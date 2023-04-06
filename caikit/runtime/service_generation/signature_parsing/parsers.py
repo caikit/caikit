@@ -16,7 +16,7 @@ Contains functions that attempt to parse the I/O types of member methods on `cai
 """
 # Standard
 from types import FunctionType
-from typing import List, Optional, Type
+from typing import Callable, Dict, List, Optional, Type
 import inspect
 
 # First Party
@@ -25,6 +25,7 @@ import alog
 # Local
 from . import docstrings
 from caikit.core.data_model.base import DataBase
+from caikit.core.data_model.dataobject import Defaultable
 from caikit.core.module import ModuleBase
 
 log = alog.use_channel("SIG-PARSING")
@@ -43,7 +44,7 @@ KNOWN_OUTPUT_TYPES = {}
 def get_output_type_name(
     module_class: ModuleBase.__class__,
     fn_signature: inspect.Signature,
-    fn: FunctionType,
+    fn: Callable,
 ) -> Type:
     """Get the type for a return type based on the name of the module class and
     the Caikit library naming convention.
@@ -71,8 +72,7 @@ def get_output_type_name(
             return fn_signature.return_annotation
 
     # Check the docstring
-    # TODO: NOOOOOOOO need the real function
-    type_from_docstring = docstrings.get_return_type(module_class, fn)
+    type_from_docstring = docstrings.get_return_type(fn)
     if type_from_docstring:
         return type_from_docstring
 
@@ -80,8 +80,7 @@ def get_output_type_name(
     module_parts = module_class.__module__.split(".")
     log.debug3("Parent module parts for %s: %s", module_class.__name__, module_parts)
 
-    # TODO: Why the F doesn't this work with docstrings?
-    # please test lol
+    # TODO: please test lol
 
     class_name = _snake_to_camel(module_parts[2]) + "Prediction"
     return _get_dm_type_from_name(class_name) or _get_dm_type_from_name(
@@ -89,12 +88,35 @@ def get_output_type_name(
     )
 
 
+def get_argument_types(module_method: Callable) -> Dict[str, Type]:
+    """Get the python types for each parameter to this method, returned in a dict.
+    This does more than simply looking at inspect.Signature, see _get_argument_type
+
+    Args:
+        module_method (Callable): A pointer to a method
+
+    Returns:
+        Dict[str, Type]: A dictionary of parameter name to parameter type
+    """
+    method_signature = inspect.signature(module_method)
+    types_dict = {
+        name: _get_argument_type(param, module_method)
+        for name, param in method_signature.parameters.items()
+        if name not in ["self", "args", "kwargs", "_", "__"]
+    }
+
+    for name, type_ in types_dict.items():
+        if method_signature.parameters[name].default != inspect.Parameter.empty:
+            types_dict[name] = Defaultable[type_]
+
+    return types_dict
+
+
 # pylint: disable=too-many-return-statements
 @alog.logged_function(log.debug2)
-def get_argument_type(
+def _get_argument_type(
     arg: inspect.Parameter,
-    module_class: ModuleBase.__class__,
-    module_method: FunctionType,
+    module_method: Callable,
 ) -> Type:
     """Get the python type for a named argument to a Module's given method. This
     is where the heuristics for determining types are implemented:
@@ -105,8 +127,9 @@ def get_argument_type(
     * Parse the docstring
     * Look for a data model object whose name matches the argument name
     """
-    # Check docstring for optional arg
-    optional_arg = docstrings.is_optional(module_method, arg.name)
+    # TODO: There are more "defaultable" cases that in the section above
+    # get_default_type
+    # TODO: KNOWN_ARG_TYPES should be configurable
 
     # Use known arg types first
     # This avoids cases where docstrings are very obviously flubbed, such as
@@ -116,6 +139,9 @@ def get_argument_type(
         # Not checking if this is optional: These known types should never be optional (maybe...?)
         # This could totally be incorrect!
         return dm_type_from_known_arg_types
+
+    # Check docstring for optional arg
+    optional_arg = docstrings.is_optional(module_method, arg.name)
 
     # Look for a type annotation
     if arg.annotation != inspect.Parameter.empty:
@@ -133,7 +159,7 @@ def get_argument_type(
 
     # Parse docstring
 
-    type_from_docstring = docstrings.get_arg_type(module_class, module_method, arg.name)
+    type_from_docstring = docstrings.get_arg_type(module_method, arg.name)
     if type_from_docstring:
         if optional_arg:
             return Optional[type_from_docstring]

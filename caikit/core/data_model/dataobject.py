@@ -21,10 +21,11 @@ model objects inline without manually defining the protobufs representation
 from datetime import datetime
 from functools import update_wrapper
 from types import ModuleType
-from typing import Callable, Dict, List, Type, Union
+from typing import Callable, Dict, Generic, List, Type, TypeVar, Union
 import importlib
 import sys
 import types
+import typing
 
 # Third Party
 from google.protobuf import descriptor as _descriptor
@@ -41,6 +42,7 @@ import jtd_to_proto
 from ..toolkit.errors import error_handler
 from . import enums
 from .base import DataBase, _DataBaseMetaClass
+from .streams.data_stream import DataStream
 
 ## Globals #####################################################################
 
@@ -84,6 +86,15 @@ _NATIVE_TYPE_TO_JTD = {
 
 # Common package prefix
 CAIKIT_DATA_MODEL = "caikit_data_model"
+
+# Type container used for static analysis
+# Simply denotes that a function parameter of Defaultable[T]
+# is of type T, and contains a default value
+T = TypeVar("T")
+
+
+class Defaultable(Generic[T]):
+    pass
 
 
 def dataobject(
@@ -262,9 +273,19 @@ def _to_jtd_schema(input_schema: _SCHEMA_DEF_TYPE) -> _JTD_DEF_TYPE:
             if any(keyword in input_schema for keyword in _JTD_KEYWORDS):
                 return {k: _to_jtd_schema(v) for k, v in input_schema.items()}
 
-            # If not, assume it's a flat properties dict
+            # If not, assume we have properties or optional properties that we
+            # need to recursively put into jtd format
             return {
-                "properties": {k: _to_jtd_schema(v) for k, v in input_schema.items()}
+                "properties": {
+                    k: _to_jtd_schema(v)
+                    for k, v in input_schema.items()
+                    if not _is_optional_type(v)
+                },
+                "optionalProperties": {
+                    k: _to_jtd_schema(_unwrap_optional_type(v))
+                    for k, v in input_schema.items()
+                    if _is_optional_type(v)
+                },
             }
 
         # If it's a reference to another data model object, de-alias to that
@@ -276,12 +297,34 @@ def _to_jtd_schema(input_schema: _SCHEMA_DEF_TYPE) -> _JTD_DEF_TYPE:
         if input_schema in _NATIVE_TYPE_TO_JTD:
             return {"type": _NATIVE_TYPE_TO_JTD[input_schema]}
 
+        # If it's a list or data stream, wrap it with "elements":
+        if typing.get_origin(input_schema) in [list, DataStream]:
+            # type_ could be caikit.core.data_model.streams.data_stream.DataStream[int]
+            return {"elements": _to_jtd_schema(typing.get_args(input_schema)[0])}
+
         # All other cases are invalid!
         raise ValueError(f"Invalid input schema: {input_schema}")
 
     except ValueError:
         log.error("Invalid schema: %s", input_schema)
         raise
+
+
+def _is_optional_type(type_: Type) -> bool:
+    origin = typing.get_origin(type_)
+    if origin == Defaultable:
+        return True
+    if origin == Union:
+        return type(None) in typing.get_args(type_)
+    return False
+
+
+def _unwrap_optional_type(type_: typing.Any) -> Type:
+    possible_types = set(typing.get_args(type_))
+    possible_types.discard(type(None))
+    if len(possible_types) == 1:
+        return list(possible_types)[0]
+    raise ValueError(f"Invalid input schema, cannot handle unions yet: {type_}")
 
 
 def _get_all_enums(

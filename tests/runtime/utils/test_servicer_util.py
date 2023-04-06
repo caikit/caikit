@@ -221,10 +221,8 @@ def test_global_predict_build_caikit_library_request_dict_creates_caikit_core_ru
         sample_lib.blocks.sample_task.SampleBlock().run,
     )
 
-    expected_arguments = set(
-        sample_lib.blocks.sample_task.SampleBlock().run.__code__.co_varnames
-    )
-    expected_arguments.remove("self")
+    # No self or "throw", throw was not set and the throw parameter contains a default value
+    expected_arguments = {"sample_input"}
 
     assert expected_arguments == set(request_dict.keys())
     assert isinstance(request_dict["sample_input"], SampleInputType)
@@ -242,10 +240,7 @@ def test_global_predict_build_caikit_library_request_dict_strips_invalid_run_kwa
         sample_lib.blocks.sample_task.SampleBlock().run,
     )
 
-    expected_arguments = set(
-        sample_lib.blocks.sample_task.SampleBlock().run.__code__.co_varnames
-    )
-    expected_arguments.remove("self")
+    expected_arguments = {"sample_input"}
     assert expected_arguments == set(request_dict.keys())
     assert "int_type" not in request_dict.keys()
 
@@ -356,17 +351,15 @@ def test_global_train_build_caikit_library_request_dict_creates_caikit_core_run_
         sample_lib.blocks.sample_task.SampleBlock().train,
     )
 
-    expected_arguments = set(
-        sample_lib.blocks.sample_task.SampleBlock().train.__code__.co_varnames
-    )
-    expected_arguments.remove("cls")
+    expected_arguments = {"training_data"}
 
-    # assert that even though not passed in, caikit.core_request now has both batch_size and training_data
+    # assert that even though not passed in, caikit.core_request now has training_data
+    # because empty stream types get an empty steam initialized
+    # TODO: unclear if this behavior is correct, but okay
     assert expected_arguments == set(caikit.core_request.keys())
     assert isinstance(
         caikit.core_request["training_data"], caikit.core.data_model.DataStream
     )
-    assert caikit.core_request["batch_size"] == 0
 
 
 def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_request(
@@ -388,10 +381,8 @@ def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_r
         sample_lib.blocks.sample_task.SampleBlock().train,
     )
 
-    expected_arguments = set(
-        sample_lib.blocks.sample_task.SampleBlock().train.__code__.co_varnames
-    )
-    expected_arguments.remove("cls")
+    # model_name is not expected to be passed through
+    expected_arguments = {"training_data"}
 
     assert expected_arguments == set(caikit.core_request.keys())
 
@@ -414,13 +405,11 @@ def test_global_train_build_caikit_library_request_dict_works_for_repeated_field
         sample_lib.blocks.sample_task.ListBlock().train,
     )
 
-    expected_arguments = set(
-        sample_lib.blocks.sample_task.ListBlock().train.__code__.co_varnames
-    )
-    expected_arguments.remove("cls")
+    # model_name is not expected to be passed through
+    expected_arguments = {"training_data", "poison_pills"}
 
     assert expected_arguments == set(caikit.core_request.keys())
-    assert len(caikit.core_request.keys()) == 3
+    assert len(caikit.core_request.keys()) == 2
     assert "poison_pills" in caikit.core_request
     assert isinstance(caikit.core_request["poison_pills"], list)
 
@@ -470,10 +459,8 @@ def test_global_train_build_caikit_library_request_dict_ok_with_data_stream_file
         sample_lib.blocks.sample_task.SampleBlock().train,
     )
 
-    expected_arguments = set(
-        sample_lib.blocks.sample_task.SampleBlock().train.__code__.co_varnames
-    )
-    expected_arguments.remove("cls")
+    # model_name is not expected to be passed through
+    expected_arguments = {"training_data"}
 
     assert expected_arguments == set(caikit.core_request.keys())
 
@@ -497,13 +484,11 @@ def test_global_train_build_caikit_library_request_dict_ok_with_training_data_as
         sample_lib.blocks.sample_task.ListBlock().train,
     )
 
-    expected_arguments = set(
-        sample_lib.blocks.sample_task.ListBlock().train.__code__.co_varnames
-    )
-    expected_arguments.remove("cls")
+    # model_name is not expected to be passed through
+    expected_arguments = {"training_data", "poison_pills"}
 
     assert expected_arguments == set(caikit.core_request.keys())
-    assert len(caikit.core_request.keys()) == 3
+    assert len(caikit.core_request.keys()) == 2
     assert "training_data" in caikit.core_request
 
 

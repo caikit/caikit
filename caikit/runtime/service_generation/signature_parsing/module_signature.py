@@ -67,13 +67,7 @@ class CaikitCoreModuleMethodSignature:
                 self._module, method_signature, self._method_pointer
             )
 
-            self._parameters = {
-                name: parsers.get_argument_type(
-                    param, self._module, self._method_pointer
-                )
-                for name, param in method_signature.parameters.items()
-                if name not in ["self", "args", "kwargs", "_"]
-            }
+            self._parameters = parsers.get_argument_types(self._method_pointer)
         except AttributeError:
             log.warning(
                 "Could not find method [%s] in this module",

@@ -177,6 +177,9 @@ class TaskPredictRPC(RPCSerializerBase):
             )
             for arg_name, arg_type in primitive_arg_dict.items():
                 current_val = parameters_dict.get(arg_name, arg_type)
+                # TODO: raise runtime error here!
+                # TODO: need to resolve Defaultable[T] vs. T - if both come in,
+                # use Defaultable[T] (same for Optional - probably bug right now)
                 assert (
                     current_val == arg_type
                 ), f"Conflicting value types for arg {arg_name}: {current_val} != {arg_type}"

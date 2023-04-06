@@ -15,6 +15,7 @@
 """Tests for the @dataobject decorator"""
 
 # Standard
+from typing import Optional
 import json
 import os
 import tempfile
@@ -29,6 +30,7 @@ from caikit.core.data_model import enums
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import (
     _AUTO_GEN_PROTO_CLASSES,
+    Defaultable,
     render_dataobject_protos,
 )
 from caikit.core.toolkit.isa import isprotobufenum
@@ -219,6 +221,45 @@ def test_dataobject_obj_refs():
     assert check_field_enum_type(
         FooBar.get_proto_class(), "bare_bar", BarEnum._proto_enum.DESCRIPTOR
     )
+
+
+def test_dataobject_obj_refs_with_optional_and_defaultable_types():
+    """Make sure that references to other data objects and enums work as
+    expected
+    """
+
+    @dataobject({"enum": ["EXAM", "METAL"]})
+    class BarEnum:
+        pass
+
+    @dataobject({"foo": str})
+    class Foo:
+        pass
+
+    # The dataobject in question: includes Optional[T] and Defaultable[T]
+    # for other object types
+    @dataobject(
+        schema={
+            "foo": Foo,
+            "optionalFoo": Optional[Foo],
+            "fooWithDefault": Defaultable[Foo],
+            "bar": BarEnum,
+            "optionalBar": Optional[BarEnum],
+            "barWithDefault": Defaultable[BarEnum],
+        }
+    )
+    class FooBar:
+        pass
+
+    assert check_field_type(FooBar._proto_class, "foo", "TYPE_MESSAGE")
+    for field in ["foo", "optionalFoo", "fooWithDefault"]:
+        assert check_field_message_type(
+            FooBar._proto_class, field, Foo._proto_class.DESCRIPTOR
+        )
+    for field in ["bar", "optionalBar", "barWithDefault"]:
+        assert check_field_enum_type(
+            FooBar._proto_class, field, BarEnum._proto_enum.DESCRIPTOR
+        )
 
 
 def test_dataobject_invalid_schema():

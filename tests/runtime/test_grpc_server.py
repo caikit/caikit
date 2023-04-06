@@ -78,8 +78,6 @@ def is_good_train_response(actual_response, expected, model_name):
     assert actual_response.model_name == model_name
 
 
-# TODO: Fix this with optional fields support - https://github.com/IBM/jtd-to-proto/issues/34
-@pytest.mark.skip("Waiting for optional fields support")
 def test_model_train(runtime_grpc_server):
     """Test model train's RUN function"""
     model_train_stub = process_pb2_grpc.ProcessStub(
@@ -94,9 +92,15 @@ def test_model_train(runtime_grpc_server):
             "training_params": json.dumps(
                 {
                     "model_name": "abc",
-                    "training_data": [
-                        sample_lib.data_model.SampleTrainingType(number=1).to_dict()
-                    ],
+                    "training_data": {
+                        "jsondata": {
+                            "data": [
+                                sample_lib.data_model.SampleTrainingType(
+                                    number=1
+                                ).to_dict()
+                            ]
+                        },
+                    },
                 }
             ),
         },

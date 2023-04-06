@@ -751,8 +751,6 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 or as the unqualified class name
 
         Returns:
-
-        Returns:
             dm_class (Type[DataBase])
                 The data model class corresponding to the given protobuf
         """

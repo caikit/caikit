@@ -245,13 +245,6 @@ class ServicePackageFactory:
 
     # Implementation details for pure python service packages #
     @staticmethod
-    def _fix_lists(type_: Type) -> Union[Dict, Type]:
-        if typing.get_origin(type_) in [list, DataStream]:
-            # type_ could be caikit.core.data_model.streams.data_stream.DataStream[int]
-            return {"elements": typing.get_args(type_)[0]}
-        return type_
-
-    @staticmethod
     def _create_request_message_types(
         rpcs_list: List[RPCSerializerBase],
         package_name: str,
@@ -262,7 +255,7 @@ class ServicePackageFactory:
             schema = {
                 # triple e.g. ('caikit.interfaces.common.ProducerPriority', 'producer_id', 1)
                 # This does not take care of nested descriptors
-                triple[1]: ServicePackageFactory._fix_lists(triple[0])
+                triple[1]: triple[0]
                 for triple in task.request.triples
             }
 
