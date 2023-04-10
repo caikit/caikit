@@ -1,0 +1,5 @@
+resource_id: "C12E68BA-E1D2-43CD-CCCC-779120EB1377"
+resource_class: "sample_lib.resources.sample_type.sample_implementation.SampleResource"
+name: "Dummy config file."
+version: "4.0.2"
+description: "Totally not WatBERT or RoBERTa"

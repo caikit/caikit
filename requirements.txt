@@ -1,0 +1,40 @@
+alchemy-config>=1.0.0
+alchemy-logging>=1.0.4
+anytree>=2.7.0,<3.0
+docstring-parser>=0.14.1
+grpcio-health-checking>=1.35.0,<2.0
+grpcio>=1.35.0,<2.0
+ijson>=3.1.4,<3.2.0
+munch>=2.5.0,<3.0
+pip-licenses==3.5.3
+protobuf>=3.20.0,<4
+prometheus_client==0.12.0
+py-grpc-prometheus>=0.7.0,<0.8
+PyYAML>=6.0,<7.0
+requests>=2.26.0,<3.0
+semver>=2.13.0,<3.0
+setuptools>=65.5.1,<66.0.0
+six>=1.16.0,<2.0.0
+tqdm>=4.59.0,<5.0.0
+wheel>=0.37.0
+jtd-to-proto>=0.11.4,<0.12.0
+import-tracker>=3.1.5,<4
+
+################### Potential packages that might be good candidates for removal ##################
+
+# Short of completely removing these, a good intermediate step would be
+# to not pin the versions. That would enable pip's newer package
+# dependency resolvers to do its thing and for downstream projects
+# to specify newer versions of things like scikit-learn, for example, which
+# has a joblib>1 dependency.
+
+# Not actually used at the moment but has been used in the past for deprecation warnings on blocks.
+# Probably a good idea to remove this and implement a deprecator decorator in the core that uses
+# alog so that we don't need to hack our warning logic around this
+
+deprecated
+
+# Not sure why this is pinned directly here, but it's only used by sklearn + blocks. We should
+# move this with sklearn as needed or avoid pinning it unless there is a good reason to do so
+# since we don't really leverage it directly...
+joblib

@@ -1,0 +1,163 @@
+# User can set comma-separated string of config file locations to read
+config_files: ""
+
+# Configuration items for service generation:
+service_generation:
+    enabled: true
+    client_package_name: ""
+    module_types:
+        included: ["blocks", "workflows"]
+    modules:
+        excluded: []
+    primitive_data_model_types: []
+    task_types:
+        excluded: []
+
+use_abortable_threads: true
+
+strict_rpc_mode: false
+
+metering:
+    # Switch off metering by default
+    enabled: false
+    # Directory to save metrics files
+    log_dir: "metering_logs"
+    # Write to log file every N seconds
+    log_interval: 3600
+
+local_models_dir: models
+
+# Model Mesh capacity in bytes for holding models (1024 ^ 3)
+capacity: 10737418240
+max_loading_concurrency: 2
+# Should be big enough to load any really chonky models
+model_loading_timeout_ms: 121000
+
+# Model Mesh's Default model size in bytes. This needs to be a
+# certain size, or else Model Mesh won't come up correctly (18 * 1024 ^ 2)
+default_model_size: 18874368
+default_model_size_multiplier: 10
+model_size_multipliers:
+    categories_esa: 2.95
+    concepts_alchemy: 13
+    entities_alchemy-disambig: 13.76
+    entity-mentions_bilstm: 1.44
+    entity-mentions_rbr: 1.8
+    sentiment_cnn: 2.73
+    syntax_izumo: 43000
+    fake_block: 2
+
+# Configuration for batch inference. This dict contains entries for individual
+# model types and can be extended using additional overlay config files to add
+# sections for model types beyond those listed here. Each section should contain
+# the `size` value where a 0 indicates no batching and may optionally contain a
+# `collect_delay_s` value as a float number of seconds >= 0. This will indicate
+# the amount of time the batch should wait for more requests before running a
+# partial batch.
+batching:
+    default:
+        size: 0
+        collect_delay_s: 0.0
+    fake_batch_block:
+        size: 10
+
+# Configuration for loading alternate module implementations via
+# distributed backends
+distributed:
+    # Toggle distributed loading globally
+    enabled: false
+    # Configuration overrides for distributed backends configuration.
+    # Specific fields that may be of interest:
+    #
+    # backend_priority: List of ordered string names for the order that backend
+    #   implementations should be used
+    # backends.<backend name>: Per-backend configuration blobs
+    config: {}
+
+numeric_runtime_version: 0
+# Whether or not model-mesh should respect MAX_MODEL_CONCURRENCY and scale out model loads appropriately
+latency_based_autoscaling_enabled: true
+# If latency based autoscaling is enabled, the default max in-flight requests per copy of each model
+max_model_concurrency: 2
+# ...which can also be set per-model-type
+max_model_concurrency_per_type:
+    keywords_text-rank: 8
+
+# Service exposure options
+service_port: 8085
+metrics_port: 8086
+find_available_port: false
+unix_socket_path: /tmp/mmesh/grpc.sock
+
+# Default level for all python loggers
+log_level: info
+# Alog filter customization [comma separated list of channels and the level to set them to]
+alog_filters: botocore:off,urllib3:off,matplotlib:off,boto3:off,jnius.reflect:off
+# Width of channels in ALOG when using the pretty formatter
+alog_channel_width: 12
+# if bool(int(ALOG_THREAD_ID)), then ALOG will also log information about thread IDs
+alog_thread_id: true
+# Which formatter to use. options are 'json' or 'pretty'
+alog_formatter: json
+
+# Number of workers with which we will run the gRPC server
+server_thread_pool_size: 5
+# The caikit* library (or libraries) whose models we want to serve using Caikit Runtime. This should
+# be a snake case string, e.g., caikit_nlp or caikit_cv.
+caikit_library: sample_lib
+service_proto_gen_module_dir: unused
+# Configuration for training
+training:
+    # the directory to save trained models in
+    output_dir: training_output
+    # whether to automatically load the trained model
+    auto_load_trained_model: false
+    # Run training jobs in isolated processes
+    use_subprocess: false
+
+# gRPC Server shutdown grace period
+server_shutdown_grace_period_seconds: 45
+
+# Per-environment configurations
+environment: prod
+test:
+    grpc_server_sleep_interval: 1
+    find_available_port: true
+    runtime_version: mock
+    caikit_library: sample_lib
+    service_proto_gen_module_dir: tests.fixtures.protobufs
+    metering:
+        # Switch on metering by default
+        enabled: true
+        # Directory to save metrics files
+        log_dir: "test/metering_logs"
+        # Write to log file every N seconds
+        log_interval: 5
+    service_generation:
+        client_package_name: ""
+        module_types:
+            included: ["blocks", "workflows"]
+        modules:
+            excluded: []
+        primitive_data_model_types:
+            - "sample_lib.data_model.SampleInputType"
+        task_types:
+            excluded: []
+    # training configs for tests
+    training:
+        auto_load_trained_model: true
+        output_dir: test/training_output
+dev:
+    grpc_server_sleep_interval: 45
+    runtime_version: real_implementation
+prod:
+    grpc_server_sleep_interval: 45
+    runtime_version: real
+
+# TLS configs
+tls:
+    server:
+        key: ""
+        cert: ""
+    client:
+        cert: ""

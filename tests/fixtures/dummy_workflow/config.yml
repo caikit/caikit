@@ -1,0 +1,15 @@
+created: "2020-02-24 05:59:13.487275"
+module_paths:
+    # These paths just point at other fixture models.  This model wouldn't work
+    # if moved/copied elsewhere...
+    dummy_model: ./dummy_block
+    dummy_models:
+        - ./dummy_block
+        - ./dummy_block
+name: Dummy Workflow
+version: 0.0.1
+workflow_class: sample_lib.workflows.sample_task.sample_implementation.SampleWorkflow
+workflow_id: A34E68FA-E5E6-41BD-BAAE-77A880EB6877
+train_parameters:
+    dummy_param1: 42
+    dummy_param2: foo
