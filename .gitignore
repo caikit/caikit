@@ -1,0 +1,16 @@
+*.egg-info
+*.pyc
+__pycache__
+.coverage
+.coverage*
+dist
+htmlcov
+build
+test
+
+# IDEs
+.vscode/
+.idea/
+
+# debug proto files
+tests/protos/*

@@ -1,0 +1,6 @@
+# Ignore this test json file
+tests/fixtures/data_stream_inputs/bad_file.json
+# ignore jsonl files
+*.jsonl
+**/.github
+*.md

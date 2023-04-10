@@ -1,0 +1,10 @@
+[
+    {
+        "foo": [{ "hello": "there" }],
+        "bar": "This is some data."
+    },
+    {
+        "foo": [{ "some key": "some value" }],
+        "bar": "This is some data as well. My contents do not matter!"
+    }
+]

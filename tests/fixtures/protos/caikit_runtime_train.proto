@@ -1,0 +1,20 @@
+// pulled from grpc examples repo
+syntax = "proto3";
+
+package helloworld;
+
+// The greeting service definition.
+service SampleLibTrainingService {
+  // Sends a greeting
+  rpc TrainHello (HelloTrainRequest) returns (HelloTrainReply) {}
+}
+
+// The request message containing the user's name.
+message HelloTrainRequest {
+  string name = 1;
+}
+
+// The response message containing the greetings
+message HelloTrainReply {
+  string message = 1;
+}

@@ -1,0 +1,69 @@
+// Copyright The Caikit Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+option java_package = "com.ibm.watson.modeltrain.process"; 
+package processproto;
+
+option go_package = "github.ibm.com/deep-learning-platform/processproto;processproto";
+
+// A Process running in Model-Train's Dynamic Workflow (DWF) must implement these APIs.
+service Process {
+
+    // Upon receiving a training job, Run() will be called once it is the current process' turn to execute
+    rpc Run (ProcessRequest) returns (ProcessResponse) {}
+
+}
+
+// Defines the Process request
+message ProcessRequest {
+
+    // The training id of the job
+    string trainingID = 1;
+
+    // The custom training id of the job (if one was specified)
+    string customTrainingID = 6;
+
+    // Training-specific parameters proxied from the original training request arrive here
+    map<string, string> request_dict = 2;
+
+    // If using training-level COS storage, files from `readFiles` get copied to the folder path here
+    // at the start of the training and will be cleared when training finishes
+    string training_input_dir = 3;
+
+    // If using training-level COS storage, any files that exist here at the end of the training will be copied
+    // to the first training-level bucket provided, under a sub-folder with the name of the trainingID
+    string training_output_dir = 4;
+
+    // If using workflow-level COS storage, paths to access each of the bucket will be provided here
+    repeated string data_input_dir = 5;
+
+    // If using workflow-level storage, paths to access each of the bucket will be provided here
+    map<string, string> data_inputs = 7;
+
+}
+
+// Defines the Process response
+message ProcessResponse {
+
+    // The training id of the job
+    string trainingID = 1;
+
+    // The custom training id of the job (if one was specified)
+    string customTrainingID = 3;
+
+    // Any training specific parameters to send back
+    map<string, string> response_dict = 2;
+
+}

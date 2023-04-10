@@ -1,0 +1,19 @@
+{
+    "bool_param": true,
+    "int_param": 7,
+    "utf_text": "人工智能",
+    "tokens": [
+        {
+            "begin": 0,
+            "end": 2
+        },
+        {
+            "begin": 3,
+            "end": 5
+        },
+        {
+            "begin": 7,
+            "end": 9
+        }
+    ]
+}
