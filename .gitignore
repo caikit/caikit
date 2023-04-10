@@ -13,3 +13,6 @@ test
 
 # debug proto files
 tests/protos/*
+
+# Tox envs
+.tox
