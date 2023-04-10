@@ -42,4 +42,4 @@ jobs:
             - name: Build library
               run: python setup.py bdist_wheel clean --all
             - name: Test with pytest
-              run: pytest
+              run: pytest tests
