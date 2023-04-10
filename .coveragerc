@@ -1,0 +1,4 @@
+[report]
+omit =
+    caikit/runtime/protobufs/*
+    tests/**

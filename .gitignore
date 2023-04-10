@@ -2,7 +2,7 @@
 *.pyc
 __pycache__
 .coverage
-.coverage*
+.coverage.*
 dist
 htmlcov
 build
