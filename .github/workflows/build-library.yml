@@ -15,31 +15,31 @@
 name: Build Caikit Core Library
 
 on:
-    push:
-        branches: ["main"]
-    pull_request:
-        branches: ["main"]
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 env:
   CAIKIT_VERSION: 0.0.1
 
 jobs:
-    build:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v3
-            - name: Set up Python
-              uses: actions/setup-python@v3
-            - name: Install dependencies
-              run: |
-                  python -m pip install --upgrade pip
-                  if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-                  if [ -f requirements_test.txt ]; then pip install -r requirements_test.txt; fi
-            - name: Lint
-              run: python3 -m pylint caikit
-            - name: Check Formatting
-              run: ./scripts/fmt.sh
-            - name: Build library
-              run: python setup.py bdist_wheel clean --all
-            - name: Test with pytest
-              run: pytest tests
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10' , '3.11', '3.12']
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r setup_requirements.txt
+      - name: Test with tox
+        run: tox -e ${{ matrix.python-version }}
+    
