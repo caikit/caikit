@@ -1,0 +1,61 @@
+syntax = "proto3";
+package natural_language_understanding;
+
+// Sample message containing only primitives types with optional. Every field descriptor in the pb2 compiled from
+// this message should be marked as a primitive protobuf type by global predict.
+message OptionalPrimitives {
+    optional double double_field = 1;
+    optional float float_field = 2;
+    optional int64 int64_field = 3;
+    optional uint64 uint64_field = 4;
+    optional int32 int32_field = 5;
+    optional fixed64 fixed64_field = 6;
+    optional fixed32 fixed32_field = 7;
+    optional bool bool_field = 8;
+    optional string string_field = 9;
+    optional bytes bytes_field = 10;
+    optional uint32 uint32_field = 11;
+    optional sfixed32 sfixed32_field = 12;
+    optional sfixed64 sfixed64_field = 13;
+    optional sint32 sint32_field = 14;
+    optional sint64 sint64_field = 15;
+}
+// Sample message containing only primitives types without optional. Every field descriptor in the pb2 compiled from
+// this message should be marked as a primitive protobuf type by global predict.
+message NonOptionalPrimitives {
+    double double_field = 1;
+    float float_field = 2;
+    int64 int64_field = 3;
+    uint64 uint64_field = 4;
+    int32 int32_field = 5;
+    fixed64 fixed64_field = 6;
+    fixed32 fixed32_field = 7;
+    bool bool_field = 8;
+    string string_field = 9;
+    bytes bytes_field = 10;
+    uint32 uint32_field = 11;
+    sfixed32 sfixed32_field = 12;
+    sfixed64 sfixed64_field = 13;
+    sint32 sint32_field = 14;
+    sint64 sint64_field = 15;
+}
+
+// Sample message containing only nonprimitives types. Every field descriptor in the pb2 compiled
+// from this message should be marked as a nonprimitive protobuf type by global predict.
+message Nonprimitives {
+    message MessageType { }
+    enum EnumType {
+        FOO = 0;
+        BAR = 1;
+    }    
+    MessageType message_field = 1;
+    EnumType enum_field = 2;
+}
+
+// TODO: uncomment the MessageType and support the repeated MessageType field
+message Repeateds {
+    // message MessageType { }
+
+    repeated string repeated_string_field = 1;
+    // repeated MessageType repeated_message_field = 2; 
+}
