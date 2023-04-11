@@ -20,9 +20,6 @@ on:
   pull_request:
     branches: [ "main" ]
 
-env:
-  CAIKIT_VERSION: 0.0.1
-
 jobs:
   build:
     runs-on: ubuntu-latest
