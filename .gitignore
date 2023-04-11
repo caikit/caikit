@@ -11,6 +11,8 @@ test
 # IDEs
 .vscode/
 .idea/
+# Mac personalization files
+*.DS_Store
 
 # debug proto files
 tests/protos/*
