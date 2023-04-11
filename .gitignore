@@ -8,8 +8,9 @@ htmlcov
 build
 test
 
-# vscode
+# IDEs
 .vscode/
+.idea/
 
 # debug proto files
 tests/protos/*
