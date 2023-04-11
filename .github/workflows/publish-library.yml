@@ -25,10 +25,10 @@ jobs:
       - uses: actions/checkout@v3
       - name: Set up Python
         uses: actions/setup-python@v3
-      - name: Release # Release stage after all other builds
+      - name: Release
         env:
-          FLIT_USERNAME: ${{ secrets.PYPI_USERNAME }}
           FLIT_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
+          pip install tox
           sed -i "s/^version=.*/version=\"${{ github.ref }}\"/" pyproject.toml
           tox -e publish
