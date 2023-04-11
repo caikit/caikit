@@ -54,6 +54,11 @@ Your dev environment is set up by [tox](https://tox.wiki/en/latest/), an environ
 pip install -r setup_requirements.txt
 ```
 
+If you want to manage your own virtual environment instead of using `tox`, you can install `caikit` and all dependencies with:
+```sh
+pip install .
+```
+
 ### Run unit tests
 
 Running tests against all supported Python versions is as simple as:
