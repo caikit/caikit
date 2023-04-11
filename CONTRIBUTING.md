@@ -48,30 +48,38 @@ Improvements to existing functionality are tracked as [GitHub issues using the U
 
 ### Set up your dev environment
 
-You can develop locally using standard python development practices. You'll need to install the dependencies for the unit tests. It is recommended that you do this in a virtual environment such as [`conda`](https://docs.conda.io/en/latest/miniconda.html) or [`pyenv`](https://github.com/pyenv/pyenv) so that you avoid version conflicts in a shared global dependency set.
+Your dev environment is set up by [tox](https://tox.wiki/en/latest/), an environment orchestrator which allows for setting up environments for and invoking builds, unit tests, formatting, linting, etc. Install tox with:
 
 ```sh
-pip install -r requirements_test.txt
+pip install -r setup_requirements.txt
 ```
 
 ### Run unit tests
 
-Running the tests is as simple as:
+Running tests against all supported Python versions is as simple as:
 
 ```sh
-pytest tests
+tox
+```
+
+Running tests against a single Python version can be done with:
+
+```sh
+tox -e 3.9
 ```
 
 
 ### Code formatting
 
-This project uses [pre-commit](https://pre-commit.com/) to enforce coding style using [black](https://github.com/psf/black). To set up `pre-commit` locally, you can:
+This project uses [pre-commit](https://pre-commit.com/) to enforce coding style using [black](https://github.com/psf/black).
 
+You can invoke formatting with:
 ```sh
-pip install pre-commit
+tox -e fmt
 ```
 
 Coding style is enforced by the CI tests, so if not installed locally, your PR will fail until formatting has been applied.
+
 
 ## Your First Code Contribution
 
