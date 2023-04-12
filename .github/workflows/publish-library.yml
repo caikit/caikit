@@ -30,5 +30,7 @@ jobs:
           FLIT_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
           pip install tox
-          sed -i "s/^version=.*/version=\"${{ github.ref }}\"/" pyproject.toml
+          RELEASE_VERSION=${GITHUB_REF#refs/*/}
+          RELEASE_VERSION=${RELEASE_VERSION#v*}
+          sed -i "s/^version=.*/version=\"${RELEASE_VERSION}\"/" pyproject.toml
           tox -e publish
