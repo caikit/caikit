@@ -229,12 +229,6 @@ class ServicePackageFactory:
                 excluded_task_types,
                 excluded_modules,
             )
-            print(
-                "Generating RPC for modules after excluding task types and modules ids",
-                clean_modules,
-            )
-            print("exlcuded task types are: ", excluded_task_types)
-            print("excluded_modules are: ", excluded_modules)
 
             if service_type == cls.ServiceType.INFERENCE:
                 task_rpc_list = service_generation.create_inference_rpcs(clean_modules)
@@ -294,6 +288,7 @@ class ServicePackageFactory:
         excluded_task_types: List[str] = None,
         excluded_modules: List[str] = None,
     ) -> List[Type[ModuleBase]]:
+        print(modules)
         clean_modules = []
         for ck_module in modules:
             # Only create for modules kinds from defined list

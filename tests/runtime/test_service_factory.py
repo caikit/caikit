@@ -15,7 +15,6 @@
 """Unit tests for the service factory"""
 # Standard
 from types import ModuleType, SimpleNamespace
-import importlib
 
 # Third Party
 import pytest
@@ -23,8 +22,7 @@ import pytest
 # Local
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from tests.conftest import temp_config_parser
-from tests.data_model_helpers import temp_dpool
+import caikit
 
 
 # 🌶️🌶️🌶️🌶️🌶️
@@ -170,37 +168,42 @@ def test_get_service_proto_module():
     assert service_proto_module == caikit_runtime_pb2
 
 
-### Test compiled inference service
-def test_compiled_inference_service_does_not_include_modules():
-    with temp_dpool():
-        with temp_config_parser(
-            {
-                "service_generation": {
-                    "modules": {"excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]}
-                }
-            }  # excluding InnerBlock
-        ):
+# Third Party
+import sample_lib
 
-            inference_service = ServicePackageFactory().get_service_package(
-                ServicePackageFactory.ServiceType.INFERENCE,
-                ServicePackageFactory.ServiceSource.GENERATED,
-            )
-            assert (
-                hasattr(inference_service.messages.SampleTaskRequest, "some_input")
-                == False
-            )  # this is a field only in InnerBlock run function
+MODULE_LIST = [
+    module_class
+    for module_class in caikit.core.MODULE_REGISTRY.values()
+    if module_class.__module__.partition(".")[0] == "sample_lib"
+]
+
+### Test ServicePackageFactory._remove_exclusions_from_module_list
+def test_remove_exclusions_from_module_list_respects_excluded_task_type():
+    assert len(MODULE_LIST) == 6  # there are 6 modules in Sample Lib
+    clean_modules = ServicePackageFactory._remove_exclusions_from_module_list(
+        MODULE_LIST, excluded_task_types=["sample_task"]
+    )
+    assert len(clean_modules) == 1
+    assert "sample_task" not in str(clean_modules)
 
 
-def test_compiled_inference_service_does_not_include_task_types():
-    with temp_dpool():
-        with temp_config_parser(
-            {
-                "service_generation": {"task_types": {"excluded": ["sample_task"]}}
-            }  # excluding Sample task blocks/workflows
-        ):
-            inference_service_2 = ServicePackageFactory().get_service_package(
-                ServicePackageFactory.ServiceType.INFERENCE,
-                ServicePackageFactory.ServiceSource.GENERATED,
-            )
-            assert hasattr(inference_service_2.messages, "SampleTaskRequest") == False
-            assert hasattr(inference_service_2.messages, "OtherTaskRequest")
+def test_remove_exclusions_from_module_list_respects_excluded_modules():
+    assert "InnerBlock" in str(MODULE_LIST)
+    clean_modules = ServicePackageFactory._remove_exclusions_from_module_list(
+        MODULE_LIST, excluded_modules=["00110203-baad-beef-0809-0a0b02dd0e0f"]
+    )  # excluding InnerBlock
+    assert len(clean_modules) == 5
+    assert "InnerBlock" not in str(clean_modules)
+
+
+def test_remove_exclusions_from_module_list_respects_excluded_modules_and_excluded_task_type():
+    assert "InnerBlock" in str(MODULE_LIST)
+    assert len(MODULE_LIST) == 6  # there are 6 modules in Sample Lib
+    clean_modules = ServicePackageFactory._remove_exclusions_from_module_list(
+        MODULE_LIST,
+        excluded_modules=["00110203-baad-beef-0809-0a0b02dd0e0f"],
+        excluded_task_types=["other_task"],
+    )  # excluding InnerBlock
+    assert len(clean_modules) == 4
+    assert "InnerBlock" not in str(clean_modules)
+    assert "other_task" not in str(clean_modules)
