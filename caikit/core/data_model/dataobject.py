@@ -91,6 +91,7 @@ CAIKIT_DATA_MODEL = "caikit_data_model"
 def dataobject(
     schema: _SCHEMA_DEF_TYPE,
     package: str = CAIKIT_DATA_MODEL,
+    optional_property_names: typing.Set[str] = None,
 ) -> Callable[[Type], Type[DataBase]]:
     """The @schema decorator can be used to define a Data Model object's schema
     inline with the definition of the python class rather than needing to bind
@@ -113,6 +114,10 @@ def dataobject(
             The full schema definition dict
         package:  str
             The package name to use for the generated protobufs class
+        optional_property_names: Set[str]
+            The set of property names that should be placed in `optionalProperties`
+            rather than `properties`, when using shorthand schema definitions
+            that get translated to valid JTD
 
     Returns:
         decorator:  Callable[[Type], Type[DataBase]]
@@ -129,7 +134,7 @@ def dataobject(
         )
 
         # Create the message class from the schema
-        jtd_def = _to_jtd_schema(schema)
+        jtd_def = _to_jtd_schema(schema, optional_property_names)
         log.debug3("JTD Def for %s: %s", cls.__name__, jtd_def)
         proto_class = jtd_to_proto.descriptor_to_message_class(
             jtd_to_proto.jtd_to_proto(
@@ -238,10 +243,12 @@ class _EnumBaseSentinel:
     """
 
 
-def _to_jtd_schema(input_schema: _SCHEMA_DEF_TYPE) -> _JTD_DEF_TYPE:
+def _to_jtd_schema(input_schema: _SCHEMA_DEF_TYPE, optional_property_names: typing.Set[str] = None) -> _JTD_DEF_TYPE:
     """Recursive helper that will convert an input schema to a fully fleshed out
     JTD schema
     """
+    if optional_property_names is None:
+        optional_property_names = set()
 
     try:
 
@@ -262,20 +269,20 @@ def _to_jtd_schema(input_schema: _SCHEMA_DEF_TYPE) -> _JTD_DEF_TYPE:
             # If the dict is structured as a JTD element already, recurse on the
             # values
             if any(keyword in input_schema for keyword in _JTD_KEYWORDS):
-                return {k: _to_jtd_schema(v) for k, v in input_schema.items()}
+                return {k: _to_jtd_schema(v, optional_property_names) for k, v in input_schema.items()}
 
             # If not, assume we have properties or optional properties that we
             # need to recursively put into jtd format
             return {
                 "properties": {
-                    k: _to_jtd_schema(v)
+                    k: _to_jtd_schema(v, optional_property_names)
                     for k, v in input_schema.items()
-                    if not _is_optional_type(v)
+                    if not _is_optional_type(v) and k not in optional_property_names
                 },
                 "optionalProperties": {
-                    k: _to_jtd_schema(_unwrap_optional_type(v))
+                    k: _to_jtd_schema(_unwrap_optional_type(v), optional_property_names)
                     for k, v in input_schema.items()
-                    if _is_optional_type(v)
+                    if _is_optional_type(v) or k in optional_property_names
                 },
             }
 
@@ -291,7 +298,7 @@ def _to_jtd_schema(input_schema: _SCHEMA_DEF_TYPE) -> _JTD_DEF_TYPE:
         # If it's a list or data stream, wrap it with "elements":
         if typing.get_origin(input_schema) in [list, DataStream]:
             # type_ could be caikit.core.data_model.streams.data_stream.DataStream[int]
-            return {"elements": _to_jtd_schema(typing.get_args(input_schema)[0])}
+            return {"elements": _to_jtd_schema(typing.get_args(input_schema)[0], optional_property_names)}
 
         # All other cases are invalid!
         raise ValueError(f"Invalid input schema: {input_schema}")
@@ -308,7 +315,14 @@ def _is_optional_type(type_: Type) -> bool:
     return False
 
 
-def _unwrap_optional_type(type_: typing.Any) -> Type:
+def _unwrap_optional_type(type_: typing.Any) -> typing.Any:
+    """Unwrap an Optional[T] type, or return the type as-is if it is not an optional
+    NB: Union[T] is expressed as Optional[T, None]
+    This function checks for Unions of [T, None] and returns T, or raises if the union
+    contains more types, as those need to be handled differently (and are not yet supported)
+    """
+    if typing.get_origin(type_) != Union:
+        return type_
     possible_types = set(typing.get_args(type_))
     possible_types.discard(type(None))
     if len(possible_types) == 1:
