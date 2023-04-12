@@ -23,15 +23,16 @@ import os
 import tempfile
 
 # Third Party
+import pytest
+
+# Local
+from caikit.core import toolkit
+
 # pylint: disable=import-error
 from sample_lib.blocks.sample_task import SampleBlock
 
 # pylint: disable=import-error
 from sample_lib.workflows.sample_task import SampleWorkflow
-import pytest
-
-# Local
-from caikit.core import toolkit
 
 # Unit Test Infrastructure
 from tests.base import TestCaseBase

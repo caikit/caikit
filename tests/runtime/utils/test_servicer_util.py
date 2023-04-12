@@ -17,9 +17,7 @@ import os
 import tempfile
 
 # Third Party
-from sample_lib.data_model import SampleInputType, SampleTrainingType
 import pytest
-import sample_lib
 
 # Local
 from caikit.runtime.protobufs import model_runtime_pb2
@@ -34,10 +32,12 @@ from caikit.runtime.utils.servicer_util import (
     validate_caikit_library_class_method_exists,
     validate_data_model,
 )
+from sample_lib.data_model import SampleInputType
 from tests.fixtures import Fixtures
 from tests.fixtures.protobufs import primitive_party_pb2
 import caikit.core
 import caikit.interfaces
+import sample_lib
 
 
 # ---------------- Tests for validate_caikit_library_class_exists --------------------

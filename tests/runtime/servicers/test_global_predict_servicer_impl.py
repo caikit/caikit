@@ -21,17 +21,16 @@ import time
 import uuid
 
 # Third Party
-from sample_lib.blocks.sample_task import SampleBlock
-from sample_lib.data_model import SampleInputType, SampleOutputType
 import grpc
 import pytest
-import sample_lib
 
 # Local
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from sample_lib.blocks.sample_task import SampleBlock
+from sample_lib.data_model import SampleInputType, SampleOutputType
 from tests.fixtures import Fixtures
-from tests.fixtures.protobufs import primitive_party_pb2
+import sample_lib
 
 
 def _random_test_id():

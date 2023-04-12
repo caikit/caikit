@@ -25,15 +25,8 @@ import uuid
 
 # Third Party
 from grpc_health.v1 import health_pb2, health_pb2_grpc
-from sample_lib.data_model import (
-    OtherOutputType,
-    SampleInputType,
-    SampleOutputType,
-    SampleTrainingType,
-)
 import grpc
 import pytest
-import sample_lib
 import tls_test_tools
 
 # First Party
@@ -41,7 +34,6 @@ import alog
 
 # Local
 from caikit.interfaces.runtime.data_model import (
-    ModelPointer,
     TrainingInfoRequest,
     TrainingInfoResponse,
     TrainingJob,
@@ -58,9 +50,16 @@ from caikit.runtime.protobufs import (
 )
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.utils.config_parser import ConfigParser
+from sample_lib.data_model import (
+    OtherOutputType,
+    SampleInputType,
+    SampleOutputType,
+    SampleTrainingType,
+)
 from tests.conftest import temp_config_parser
 from tests.fixtures import Fixtures
 import caikit
+import sample_lib
 
 log = alog.use_channel("TEST-SERVE-I")
 

@@ -17,18 +17,18 @@ import time
 import uuid
 
 # Third Party
-from sample_lib.blocks.sample_task.sample_implementation import SampleBlock
-from sample_lib.data_model.sample import (
-    SampleInputType,
-    SampleOutputType,
-    SampleTrainingType,
-)
 import pytest
 
 # Local
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from sample_lib.blocks.sample_task.sample_implementation import SampleBlock
+from sample_lib.data_model.sample import (
+    SampleInputType,
+    SampleOutputType,
+    SampleTrainingType,
+)
 from tests.conftest import temp_config_parser
 from tests.fixtures import Fixtures
 from tests.fixtures.protobufs import primitive_party_pb2

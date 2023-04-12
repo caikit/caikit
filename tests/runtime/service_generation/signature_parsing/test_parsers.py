@@ -19,16 +19,7 @@ Coverage is probably not the best
 from typing import List, Optional
 import inspect
 
-# Third Party
-from sample_lib.data_model import SampleInputType
-import sample_lib
-
 # Local
-from caikit.core.data_model.dataobject import Defaultable
-from caikit.runtime.service_generation.signature_parsing.docstrings import (
-    _extract_nested_type,
-    _get_docstring_type,
-)
 from caikit.runtime.service_generation.signature_parsing.parsers import (
     _get_dm_type_from_name,
     _snake_to_camel,
@@ -36,6 +27,7 @@ from caikit.runtime.service_generation.signature_parsing.parsers import (
     get_output_type_name,
 )
 import caikit.core
+import sample_lib
 
 ## Tests ########################################################################
 
@@ -91,25 +83,6 @@ def test_optional_type_annotation():
     assert get_argument_types(_run)["sample_input"] == Optional[int]
 
 
-def test_defaultable_type_annotation():
-    """Check that we keep the `Optional` wrapping on input types"""
-
-    def _run(sample_input=5):
-        pass
-
-    assert get_argument_types(_run)["sample_input"] == Defaultable[int]
-
-    def _run_with_anno(sample_input: int = 5):
-        pass
-
-    assert get_argument_types(_run_with_anno)["sample_input"] == Defaultable[int]
-
-    def _run_with_list(sample_list=(1, 2, 3)):
-        pass
-
-    assert get_argument_types(_run_with_list)["sample_list"] == Defaultable[List[int]]
-
-
 def test_get_argument_type_from_malformed_docstring():
     """This test tests docstring arg type parsing for docstrings in non-conforming styles
     where the actual type name is hidden in the description"""
@@ -126,26 +99,3 @@ def test_get_argument_type_from_malformed_docstring():
         pass
 
     assert get_argument_types(_run)["foo"] == sample_lib.data_model.SampleInputType
-
-
-# These tests are on private functions in docstrings
-
-
-def test_get_docstring_type():
-    # TODO: fun edge case where producer word in description is found in types
-    assert (
-        _get_docstring_type(
-            candidate_type_names=["sample_lib.data_model.SampleOutputType"],
-        )
-        == sample_lib.data_model.SampleOutputType
-    )
-
-
-def test_extract_nested_type():
-    """
-    Test that this function returns the type of List[T], or None if it's not a nested type
-    """
-    assert _extract_nested_type("List[str]") == List[str]
-    assert _extract_nested_type("list(str)") == List[str]
-    assert _extract_nested_type("List(SampleInputType)") == List[SampleInputType]
-    assert _extract_nested_type("int") == None

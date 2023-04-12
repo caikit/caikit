@@ -20,9 +20,6 @@ import tempfile
 import uuid
 
 # Third Party
-# pylint: disable=import-error
-from sample_lib.blocks.sample_task import SampleBlock
-from sample_lib.data_model.sample import SampleInputType
 import pytest
 
 # First Party
@@ -32,6 +29,10 @@ import aconfig
 from caikit.core import ModuleConfig, module
 from caikit.core.module_backend_config import get_backend
 from caikit.core.module_backends import backend_types
+
+# pylint: disable=import-error
+from sample_lib.blocks.sample_task import SampleBlock
+from sample_lib.data_model.sample import SampleInputType
 
 # Unit Test Infrastructure
 from tests.base import TestCaseBase
