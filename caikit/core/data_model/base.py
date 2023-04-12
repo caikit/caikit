@@ -288,43 +288,54 @@ class _DataBaseMetaClass(type):
         arguments for all the fields and just sets them as instance attributes.
         """
 
-        def __init__(self, *args, **kwargs):
-            """Construct with arguments for each field on the object
-
+        # Format and preserve docstring
+        docstring = """Construct with arguments for each field on the object
             Args:
                 {}
-            """.format(
-                "\n    ".join(fields)
-            )
+        """.format(
+            "\n    ".join(fields)
+        )
 
+        def __init__(self, *args, **kwargs):
+            num_args = len(args)
+            num_kwargs = len(kwargs)
+            num_fields = len(fields)
             used_fields = []
-            # pylint: disable=unnecessary-comprehension
-            field_nums = {i: field for i, field in enumerate(fields)}
-            if len(args) + len(kwargs) > len(fields):
+
+            if num_args + num_kwargs > num_fields:
                 error(
                     "<COR71444420E>",
                     ValueError(f"Too many arguments given. Args are: {fields}"),
                 )
-            for i, arg in enumerate(args):
-                field = field_nums[i]
-                used_fields.append(field)
-                setattr(self, field, arg)
-            for field_name, field_val in kwargs.items():
-                if field_name not in fields:
-                    error("<COR71444421E>", ValueError(f"Unknown field {field_name}"))
-                elif field_name in used_fields:
-                    error(
-                        "<COR71444422E>",
-                        ValueError(f"Got multiple values for field {field_name}"),
-                    )
-                setattr(self, field_name, field_val)
-                used_fields.append(field_name)
+
+            if num_args > 0:  # Do a quick check for performance reason
+                for i, field_val in enumerate(args):
+                    field_name = fields[i]
+                    setattr(self, field_name, field_val)
+                    used_fields.append(field_name)
+
+            if num_kwargs > 0:  # Do a quick check for performance reason
+                for field_name, field_val in kwargs.items():
+                    if field_name not in fields:
+                        error(
+                            "<COR71444421E>", ValueError(f"Unknown field {field_name}")
+                        )
+                    elif field_name in used_fields:
+                        error(
+                            "<COR71444422E>",
+                            ValueError(f"Got multiple values for field {field_name}"),
+                        )
+                    setattr(self, field_name, field_val)
+                    used_fields.append(field_name)
 
             # Default all unspecified fields to None
-            for field_name in fields:
-                if field_name not in used_fields:
-                    setattr(self, field_name, None)
+            if num_fields > 0:  # Do a quick check for performance reason
+                for field_name in fields:
+                    if field_name not in used_fields:
+                        setattr(self, field_name, None)
 
+        # Set docstring to the method explicitly
+        setattr(__init__, "__doc__", docstring)
         return __init__
 
 
