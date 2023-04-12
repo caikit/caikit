@@ -25,7 +25,6 @@ import alog
 # Local
 from . import docstrings
 from caikit.core.data_model.base import DataBase
-from caikit.core.data_model.dataobject import Defaultable
 from caikit.core.module import ModuleBase
 
 log = alog.use_channel("SIG-PARSING")
@@ -99,17 +98,11 @@ def get_argument_types(module_method: Callable) -> Dict[str, Type]:
         Dict[str, Type]: A dictionary of parameter name to parameter type
     """
     method_signature = inspect.signature(module_method)
-    types_dict = {
+    return {
         name: _get_argument_type(param, module_method)
         for name, param in method_signature.parameters.items()
         if name not in ["self", "args", "kwargs", "_", "__"]
     }
-
-    for name, type_ in types_dict.items():
-        if method_signature.parameters[name].default != inspect.Parameter.empty:
-            types_dict[name] = Defaultable[type_]
-
-    return types_dict
 
 
 def get_args_with_defaults(module_method: Callable) -> Set[str]:
@@ -144,8 +137,6 @@ def _get_argument_type(
     * Parse the docstring
     * Look for a data model object whose name matches the argument name
     """
-    # TODO: There are more "defaultable" cases that in the section above
-    # get_default_type
     # TODO: KNOWN_ARG_TYPES should be configurable
 
     # Use known arg types first

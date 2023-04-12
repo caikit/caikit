@@ -87,15 +87,6 @@ _NATIVE_TYPE_TO_JTD = {
 # Common package prefix
 CAIKIT_DATA_MODEL = "caikit_data_model"
 
-# Type container used for static analysis
-# Simply denotes that a function parameter of Defaultable[T]
-# is of type T, and contains a default value
-T = TypeVar("T")
-
-
-class Defaultable(Generic[T]):
-    pass
-
 
 def dataobject(
     schema: _SCHEMA_DEF_TYPE,
