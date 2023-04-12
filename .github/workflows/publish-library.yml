@@ -32,5 +32,5 @@ jobs:
           pip install tox
           RELEASE_VERSION=${GITHUB_REF#refs/*/}
           RELEASE_VERSION=${RELEASE_VERSION#v*}
-          sed -i "s/^version=.*/version=\"${RELEASE_VERSION}\"/" pyproject.toml
+          sed -i "s/^version = .*/version = \"${RELEASE_VERSION}\"/" pyproject.toml
           tox -e publish
