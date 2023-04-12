@@ -41,89 +41,11 @@ There are 2 user profiles who leverage Caikit:
 
 At this point, Caikit does not publish any pre-defined task implementations that can be readily consumed. Stay tuned!
 
+## AI Model Author Quick Start
 
-### Prerequisitive
+**UNDER CONSTRUCTION**
 
-Install Caikit toolkit:
-
-```console
-pip install caikit
-pip install caikit-nlp
-
-# TODO: import the libraries to enable the sample code to run
-```
-
-### Preprocessing
-
-Start by loading training data from Consumer Financial complaint database:
-
-**TODO: show how to preprocess sample training data**
-
-```python
-
-```
-
-### Training
-
-Train an TF-IDF SVM classifier model on the training data:
-
-```python
-import caikit_nlp
-
-syntax_model = caikit.load('syntax_izumo_en_stock'))
-
-tfidf_classification_model = caikit_nlp.workflows.classification.base_classifier.tfidf_svm.TFidfSvm.train(
-    training_data=training_data,
-    syntax_model=syntax_model, 
-    tfidf_svm_epochs=1,
-    multi_label=True
-)
-```
-
-### Inference
-
-Use the trained model for prediction on new data:
-
-```python
-tfidf_svm_preds = tfidf_classification_model.run(text)
-```
-
-## Start the runtime with the sample_lib! 
-
-Useful for interacting with the runtime with the sample_lib and playing around with it.
-
-### Start the server
-In one terminal, run the script that starts the server:
-
-```
-python3 -m examples.start_runtime_with_sample_lib
-```
-
-### Start training a sample block
-
-This script will also create `protos`. In order to interact with the `sample_lib`, in another terminal, go inside that directory:
-
-```
-cd protos
-```
-then
-
-```
-grpcurl -plaintext -proto samplelibtrainingservice.proto -d '{"model_name": "my_model", "training_data": {"file": {"filename": "protos/sample.json"}}}' localhost:8085 caikit.runtime.SampleLib.SampleLibTrainingService/BlocksSampleTaskSampleBlockTrain
-```
-### Fetch status through training management API
-
-```
-grpcurl -plaintext -proto trainingmanagement.proto -d '{
-    "training_id": "<training_id_from_above_response>"
-}' localhost:8085 caikit.runtime.training.TrainingManagement/GetTrainingStatus
-```
-### Run prediction on trained block
-```
-grpcurl -plaintext -proto samplelibservice.proto -d '{"sample_input": {"name": "blah"}}' -H 'mm-model-id: my_model' localhost:8085 caikit.runtime.SampleLib.SampleLibService/SampleTaskPredict
-```
-
-</strike>
+We're getting a slim example ready, so stay tuned!
 
 ## Code of conduct
 
