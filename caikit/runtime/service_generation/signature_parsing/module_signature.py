@@ -20,7 +20,7 @@ comes to the caikit core common data model.
 """
 
 # Standard
-from typing import Dict, Optional, Type, Set
+from typing import Dict, Optional, Set, Type
 import inspect
 
 # First Party

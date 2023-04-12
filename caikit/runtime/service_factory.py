@@ -263,7 +263,11 @@ class ServicePackageFactory:
                 # hacky hack hack: make sure we actually have a schema to generate
                 continue
 
-            decorator = dataobject(schema=schema, package=package_name, optional_property_names=task.request.default_set)
+            decorator = dataobject(
+                schema=schema,
+                package=package_name,
+                optional_property_names=task.request.default_set,
+            )
             cls_ = type(task.request.name, (object,), {})
             decorated_cls = decorator(cls_)
             data_model_classes.append(decorated_cls)

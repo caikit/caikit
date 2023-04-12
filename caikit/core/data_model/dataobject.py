@@ -243,7 +243,9 @@ class _EnumBaseSentinel:
     """
 
 
-def _to_jtd_schema(input_schema: _SCHEMA_DEF_TYPE, optional_property_names: typing.Set[str] = None) -> _JTD_DEF_TYPE:
+def _to_jtd_schema(
+    input_schema: _SCHEMA_DEF_TYPE, optional_property_names: typing.Set[str] = None
+) -> _JTD_DEF_TYPE:
     """Recursive helper that will convert an input schema to a fully fleshed out
     JTD schema
     """
@@ -269,7 +271,10 @@ def _to_jtd_schema(input_schema: _SCHEMA_DEF_TYPE, optional_property_names: typi
             # If the dict is structured as a JTD element already, recurse on the
             # values
             if any(keyword in input_schema for keyword in _JTD_KEYWORDS):
-                return {k: _to_jtd_schema(v, optional_property_names) for k, v in input_schema.items()}
+                return {
+                    k: _to_jtd_schema(v, optional_property_names)
+                    for k, v in input_schema.items()
+                }
 
             # If not, assume we have properties or optional properties that we
             # need to recursively put into jtd format
@@ -298,7 +303,11 @@ def _to_jtd_schema(input_schema: _SCHEMA_DEF_TYPE, optional_property_names: typi
         # If it's a list or data stream, wrap it with "elements":
         if typing.get_origin(input_schema) in [list, DataStream]:
             # type_ could be caikit.core.data_model.streams.data_stream.DataStream[int]
-            return {"elements": _to_jtd_schema(typing.get_args(input_schema)[0], optional_property_names)}
+            return {
+                "elements": _to_jtd_schema(
+                    typing.get_args(input_schema)[0], optional_property_names
+                )
+            }
 
         # All other cases are invalid!
         raise ValueError(f"Invalid input schema: {input_schema}")

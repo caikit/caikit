@@ -17,7 +17,7 @@ This package has classes that will serialize a python interface to a protocol bu
 Typically used for `caikit.core.module`s that expose .train and .run functions.
 """
 # Standard
-from typing import Dict, List, Optional, Tuple, Type, get_args, Set
+from typing import Dict, List, Optional, Set, Tuple, Type, get_args
 import abc
 
 # First Party
@@ -76,7 +76,9 @@ class ModuleClassTrainRPC(RPCSerializerBase):
         # Store the input and output protobuf message types for this RPC
         self.return_type = self._method.return_type
         self._req = _RequestMessage(
-            self._module_class_to_req_name(), self._method.parameters, self._method.default_parameters
+            self._module_class_to_req_name(),
+            self._method.parameters,
+            self._method.default_parameters,
         )
 
     @property
@@ -187,7 +189,9 @@ class TaskPredictRPC(RPCSerializerBase):
 
                 parameters_dict[arg_name] = arg_type
 
-        self._req = _RequestMessage(self._task_to_req_name(), parameters_dict, default_parameters)
+        self._req = _RequestMessage(
+            self._task_to_req_name(), parameters_dict, default_parameters
+        )
 
         # Validate that the return_type of all modules in the grouping matches
         return_types = {method.return_type for method in method_signatures}
