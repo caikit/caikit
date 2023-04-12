@@ -18,6 +18,7 @@ from caikit.runtime.service_generation.data_stream_source import (
     make_data_stream_source,
 )
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from tests.conftest import temp_config_parser
 import caikit
 
 ################################################
@@ -210,6 +211,65 @@ def test_data_stream_source_as_data_stream():
         handle.flush()
         inst = stream_source(file=stream_source.File(filename=handle.name))
         assert list(inst) == source_list
+
+
+def test_data_stream_source_base_path():
+    """Make sure that a globally configured base path is used"""
+    stream_source = make_data_stream_source(int)
+    source_data = [1, 2, 3, 4]
+    with tempfile.TemporaryDirectory() as workdir:
+        with temp_config_parser({"data_streams": {"file_source_base": workdir}}):
+            nested_dir = os.path.join("foo", "bar")
+            full_nested_dir = os.path.join(workdir, nested_dir)
+            os.makedirs(full_nested_dir)
+            fname = os.path.join(nested_dir, "data.json")
+            full_fname = os.path.join(workdir, fname)
+            with open(full_fname, "w") as handle:
+                handle.write(json.dumps(source_data))
+
+            # Make sure it works with the relative file path
+            assert (
+                list(stream_source(file=stream_source.File(filename=fname)))
+                == source_data
+            )
+
+            # Make sure it works with the absolute file path
+            assert (
+                list(stream_source(file=stream_source.File(filename=full_fname)))
+                == source_data
+            )
+
+            # Make sure it works with the relative directory
+            assert list(
+                stream_source(
+                    directory=stream_source.Directory(
+                        dirname=nested_dir,
+                        extension="json",
+                    )
+                )
+            ) == [source_data]
+
+            # Make sure it works with the absolute directory
+            assert list(
+                stream_source(
+                    directory=stream_source.Directory(
+                        dirname=full_nested_dir,
+                        extension="json",
+                    )
+                )
+            ) == [source_data]
+
+            # Make sure bad paths still raise the right errors
+            with pytest.raises(CaikitRuntimeException):
+                list(
+                    stream_source(file=stream_source.File(filename="invalid/path.json"))
+                )
+            with pytest.raises(CaikitRuntimeException):
+                list(
+                    stream_source(
+                        directory=stream_source.Directory(dirname="invalid/path")
+                    )
+                )
 
 
 #################

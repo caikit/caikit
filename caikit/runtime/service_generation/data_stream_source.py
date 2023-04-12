@@ -31,6 +31,7 @@ from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import _NATIVE_TYPE_TO_JTD
 from caikit.core.data_model.streams.data_stream import DataStream
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from caikit.runtime.utils.config_parser import ConfigParser
 import caikit
 
 # This global holds the mapping of element types to their respective
@@ -119,13 +120,14 @@ class DataStreamSourceBase(DataStream):
         # If directory, attempt to read an element from each file in the dir
         if set_field == "directory":
             dirname = self.directory.dirname
+            full_dirname = self._get_resolved_source_path(dirname)
             extension = self.directory.extension or "json"
-            if not dirname or not os.path.isdir(dirname):
+            if not dirname or not os.path.isdir(full_dirname):
                 raise CaikitRuntimeException(
                     grpc.StatusCode.INVALID_ARGUMENT,
-                    f"Invalid {extension} directory source file: {dirname}",
+                    f"Invalid {extension} directory source file: {full_dirname}",
                 )
-            files_with_ext = list(glob(os.path.join(dirname, "*." + extension)))
+            files_with_ext = list(glob(os.path.join(full_dirname, "*." + extension)))
             # make sure at least 1 file with the given extension exists
             if len(files_with_ext) == 0:
                 raise CaikitRuntimeException(
@@ -133,15 +135,15 @@ class DataStreamSourceBase(DataStream):
                     f"directory {dirname} contains no source files with extension {extension}",
                 )
             if extension == "json":
-                return DataStream.from_json_collection(dirname, extension).map(
+                return DataStream.from_json_collection(full_dirname, extension).map(
                     self._to_element_type
                 )
             if extension == "csv":
-                return DataStream.from_csv_collection(dirname).map(
+                return DataStream.from_csv_collection(full_dirname).map(
                     self._to_element_type
                 )
             if extension == "jsonl":
-                return DataStream.from_jsonl_collection(dirname).map(
+                return DataStream.from_jsonl_collection(full_dirname).map(
                     self._to_element_type
                 )
             raise CaikitRuntimeException(
@@ -154,20 +156,21 @@ class DataStreamSourceBase(DataStream):
         """Create a data stream object by deducing file extension
         and reading the file accordingly"""
 
+        full_fname = cls._get_resolved_source_path(fname)
         _, extension = os.path.splitext(fname)
-        log.debug3("Pulling data stream from %s file [%s]", extension, fname)
+        log.debug3("Pulling data stream from %s file [%s]", extension, full_fname)
 
-        if not fname or not os.path.isfile(fname):
+        if not fname or not os.path.isfile(full_fname):
             raise CaikitRuntimeException(
                 grpc.StatusCode.INVALID_ARGUMENT,
                 f"Invalid {extension} data source file: {fname}",
             )
         if extension == ".json":
-            return DataStream.from_json_array(fname).map(cls._to_element_type)
+            return DataStream.from_json_array(full_fname).map(cls._to_element_type)
         if extension == ".csv":
-            return DataStream.from_header_csv(fname).map(cls._to_element_type)
+            return DataStream.from_header_csv(full_fname).map(cls._to_element_type)
         if extension == ".jsonl":
-            return DataStream.from_jsonl(fname).map(cls._to_element_type)
+            return DataStream.from_jsonl(full_fname).map(cls._to_element_type)
         raise CaikitRuntimeException(
             grpc.StatusCode.INVALID_ARGUMENT,
             f"Extension not supported! {extension}",
@@ -181,6 +184,15 @@ class DataStreamSourceBase(DataStream):
         if issubclass(cls.ELEMENT_TYPE, DataBase):
             return cls.ELEMENT_TYPE.from_json(raw_element)
         return raw_element
+
+    @staticmethod
+    def _get_resolved_source_path(input_path: str) -> str:
+        """Get a fully resolved path, including any shared prefix"""
+        # Get any configured prefix
+        source_pfx = ConfigParser.get_instance().data_streams.file_source_base
+        # If a prefix is configured, use it, otherwise return the path as is
+        # NOTE: os.path.join will ignore the prefix if input_path is absolute
+        return os.path.join(source_pfx, input_path) if source_pfx else input_path
 
 
 def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:

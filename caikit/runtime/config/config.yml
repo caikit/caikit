@@ -106,11 +106,17 @@ server_thread_pool_size: 5
 # be a snake case string, e.g., caikit_nlp or caikit_cv.
 caikit_library: sample_lib
 service_proto_gen_module_dir: unused
+
+# Configuration for data streams and how they're handled in the server
+data_streams:
+    # Base directory where stream source relative paths should be found
+    file_source_base: null
+
 # Configuration for training
 training:
-    # the directory to save trained models in
+    # The directory to save trained models in
     output_dir: training_output
-    # whether to automatically load the trained model
+    # Whether to automatically load the trained model
     auto_load_trained_model: false
     # Run training jobs in isolated processes
     use_subprocess: false
