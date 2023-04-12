@@ -23,6 +23,7 @@ import inspect
 from caikit.runtime.service_generation.signature_parsing.parsers import (
     _get_dm_type_from_name,
     _snake_to_camel,
+    get_args_with_defaults,
     get_argument_types,
     get_output_type_name,
 )
@@ -99,3 +100,14 @@ def test_get_argument_type_from_malformed_docstring():
         pass
 
     assert get_argument_types(_run)["foo"] == sample_lib.data_model.SampleInputType
+
+
+def test_get_args_with_defaults():
+    """Check that we get arguments with any default value supplied"""
+
+    def _run(
+        a, b: bool, c: int = None, d: str = None, e: int = 5, f: float = 0.5, g=None
+    ):
+        pass
+
+    assert get_args_with_defaults(_run) == {"c", "d", "e", "f", "g"}

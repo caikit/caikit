@@ -26,6 +26,7 @@ from caikit.runtime.service_generation.signature_parsing.docstrings import (
 from sample_lib.data_model import SampleInputType
 import sample_lib
 
+
 def test_get_docstring_type():
     # TODO: fun edge case where producer word in description is found in types
     assert (
