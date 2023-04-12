@@ -25,7 +25,6 @@ import typing
 import alog
 
 # Local
-from ...core.data_model.dataobject import Defaultable
 from .signature_parsing.module_signature import CaikitCoreModuleMethodSignature
 from .type_helpers import PROTO_TYPE_MAP
 from caikit.core.data_model.base import DataBase
@@ -117,10 +116,6 @@ def _is_primitive_type(arg_type: Type, primitive_data_model_types: List[str]) ->
     False otherwise"""
     lib_dm_primitives = _get_library_dm_primitives(primitive_data_model_types)
     primitive_set = list(PROTO_TYPE_MAP.keys()) + lib_dm_primitives
-
-    # HACKY HACK: add Defaultables
-    default_primitive_set = {Defaultable[type_] for type_ in primitive_set}
-    primitive_set.extend(default_primitive_set)
 
     if arg_type in primitive_set:
         return True

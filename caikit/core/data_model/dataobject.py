@@ -303,8 +303,6 @@ def _to_jtd_schema(input_schema: _SCHEMA_DEF_TYPE) -> _JTD_DEF_TYPE:
 
 def _is_optional_type(type_: Type) -> bool:
     origin = typing.get_origin(type_)
-    if origin == Defaultable:
-        return True
     if origin == Union:
         return type(None) in typing.get_args(type_)
     return False
