@@ -16,7 +16,7 @@ Contains functions that attempt to parse the I/O types of member methods on `cai
 """
 # Standard
 from types import FunctionType
-from typing import Callable, Dict, List, Optional, Type
+from typing import Callable, Dict, List, Optional, Set, Type
 import inspect
 
 # First Party
@@ -110,6 +110,23 @@ def get_argument_types(module_method: Callable) -> Dict[str, Type]:
             types_dict[name] = Defaultable[type_]
 
     return types_dict
+
+
+def get_args_with_defaults(module_method: Callable) -> Set[str]:
+    """Get the names of all arguments that have a default value supplied.
+    Args:
+        module_method (Callable): A pointer to a method
+
+    Returns:
+        Set[str]: A set of all parameter names which have a default value.
+            Empty if none have defaults or no parameters exist.
+    """
+    method_signature = inspect.signature(module_method)
+    return {
+        param.name
+        for param in method_signature.parameters.values()
+        if param.default != inspect.Parameter.empty
+    }
 
 
 # pylint: disable=too-many-return-statements
