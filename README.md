@@ -2,7 +2,7 @@
 
 Caikit is an AI toolkit that enables users to manage AI models through a set of developer friendly APIs. It provides a consistent format for AI model deployment, consumption and evolution.
 
-![Caikit Overview](./caikit-overview.png)
+![Caikit Overview](https://raw.githubusercontent.com/caikit/caikit/main/caikit-overview.png)
 
 ## Capabilities
 
