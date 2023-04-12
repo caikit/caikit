@@ -189,7 +189,7 @@ class DataStreamSourceBase(DataStream):
     def _get_resolved_source_path(input_path: str) -> str:
         """Get a fully resolved path, including any shared prefix"""
         # Get any configured prefix
-        source_pfx = ConfigParser.get_instance().stream_source_base
+        source_pfx = ConfigParser.get_instance().data_streams.file_source_base
         # If a prefix is configured, use it, otherwise return the path as is
         # NOTE: os.path.join will ignore the prefix if input_path is absolute
         return os.path.join(source_pfx, input_path) if source_pfx else input_path
