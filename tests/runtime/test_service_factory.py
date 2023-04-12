@@ -15,6 +15,7 @@
 """Unit tests for the service factory"""
 # Standard
 from types import ModuleType, SimpleNamespace
+import importlib
 
 # Third Party
 import pytest
@@ -22,6 +23,8 @@ import pytest
 # Local
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from tests.conftest import temp_config_parser
+from tests.data_model_helpers import temp_dpool
 
 
 # 🌶️🌶️🌶️🌶️🌶️
@@ -165,3 +168,39 @@ def test_get_service_proto_module():
         "caikit_runtime_pb2", mock_config
     )
     assert service_proto_module == caikit_runtime_pb2
+
+
+### Test compiled inference service
+def test_compiled_inference_service_does_not_include_modules():
+    with temp_dpool():
+        with temp_config_parser(
+            {
+                "service_generation": {
+                    "modules": {"excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]}
+                }
+            }  # excluding InnerBlock
+        ):
+
+            inference_service = ServicePackageFactory().get_service_package(
+                ServicePackageFactory.ServiceType.INFERENCE,
+                ServicePackageFactory.ServiceSource.GENERATED,
+            )
+            assert (
+                hasattr(inference_service.messages.SampleTaskRequest, "some_input")
+                == False
+            )  # this is a field only in InnerBlock run function
+
+
+def test_compiled_inference_service_does_not_include_task_types():
+    with temp_dpool():
+        with temp_config_parser(
+            {
+                "service_generation": {"task_types": {"excluded": ["sample_task"]}}
+            }  # excluding Sample task blocks/workflows
+        ):
+            inference_service_2 = ServicePackageFactory().get_service_package(
+                ServicePackageFactory.ServiceType.INFERENCE,
+                ServicePackageFactory.ServiceSource.GENERATED,
+            )
+            assert hasattr(inference_service_2.messages, "SampleTaskRequest") == False
+            assert hasattr(inference_service_2.messages, "OtherTaskRequest")

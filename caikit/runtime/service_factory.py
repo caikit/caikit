@@ -38,11 +38,13 @@ import alog
 from caikit.core import dataobject
 from caikit.core.data_model import DataStream
 from caikit.core.data_model.base import DataBase
+from caikit.core.module import ModuleBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingInfoResponse,
 )
 from caikit.runtime import service_generation
+from caikit.runtime.service_generation.core_module_helpers import get_module_info
 from caikit.runtime.service_generation.serializers import (
     RPCSerializerBase,
     snake_to_upper_camel,
@@ -189,7 +191,8 @@ class ServicePackageFactory:
             # !!!! This will use the `caikit_library` config
             _ = import_util.get_data_model()
 
-            lib = ConfigParser.get_instance().caikit_library
+            config_parser = ConfigParser.get_instance()
+            lib = config_parser.caikit_library
             ai_domain_name = snake_to_upper_camel(lib.replace("caikit_", ""))
             package_name = f"caikit.runtime.{ai_domain_name}"
 
@@ -199,11 +202,45 @@ class ServicePackageFactory:
                 for module_class in caikit.core.MODULE_REGISTRY.values()
                 if module_class.__module__.partition(".")[0] == lib
             ]
+
+            log.debug("Found modules %s for library %s", modules, lib)
+
+            # Check config for any exclusions
+            excluded_task_types = (
+                config_parser.service_generation
+                and config_parser.service_generation.task_types
+                and config_parser.service_generation.task_types.excluded
+            )
+            excluded_modules = (
+                config_parser.service_generation
+                and config_parser.service_generation.modules
+                and config_parser.service_generation.modules.excluded
+            )
+
+            clean_modules = ServicePackageFactory._remove_exclusions_from_module_list(
+                modules,
+                excluded_task_types=excluded_task_types,
+                excluded_modules=excluded_modules,
+            )
+
+            log.debug(
+                "Generating RPC for modules %s after excluding task types: %s and modules ids: %s. Exclusions are defined in config",
+                clean_modules,
+                excluded_task_types,
+                excluded_modules,
+            )
+            print(
+                "Generating RPC for modules after excluding task types and modules ids",
+                clean_modules,
+            )
+            print("exlcuded task types are: ", excluded_task_types)
+            print("excluded_modules are: ", excluded_modules)
+
             if service_type == cls.ServiceType.INFERENCE:
-                task_rpc_list = service_generation.create_inference_rpcs(modules)
+                task_rpc_list = service_generation.create_inference_rpcs(clean_modules)
                 service_name = f"{ai_domain_name}Service"
             else:  # service_type == cls.ServiceType.TRAINING
-                task_rpc_list = service_generation.create_training_rpcs(modules)
+                task_rpc_list = service_generation.create_training_rpcs(clean_modules)
                 service_name = f"{ai_domain_name}TrainingService"
 
             for rpc in task_rpc_list:
@@ -250,6 +287,27 @@ class ServicePackageFactory:
             # type_ could be caikit.core.data_model.streams.data_stream.DataStream[int]
             return {"elements": typing.get_args(type_)[0]}
         return type_
+
+    @staticmethod
+    def _remove_exclusions_from_module_list(
+        modules: List[Type[ModuleBase]],
+        excluded_task_types: List[str] = None,
+        excluded_modules: List[str] = None,
+    ) -> List[Type[ModuleBase]]:
+        clean_modules = []
+        for ck_module in modules:
+            # Only create for modules kinds from defined list
+            module_info = get_module_info(ck_module)
+            if excluded_task_types and module_info.type in excluded_task_types:
+                log.debug("Skipping module %s of type %s", ck_module, module_info.type)
+                continue
+
+            if excluded_modules and ck_module.MODULE_ID in excluded_modules:
+                log.debug("Skipping module %s of id %s", ck_module, ck_module.MODULE_ID)
+                continue
+
+            clean_modules.append(ck_module)
+        return clean_modules
 
     @staticmethod
     def _create_request_message_types(

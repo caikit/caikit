@@ -75,7 +75,7 @@ def test_environment():
 
 
 @pytest.fixture(scope="session")
-def sample_inference_service(render_protos) -> ServicePackage:
+def sample_inference_service(render_protos=True) -> ServicePackage:
     """Service package pointing to `sample_lib` for testing"""
     inference_service = ServicePackageFactory().get_service_package(
         ServicePackageFactory.ServiceType.INFERENCE,
