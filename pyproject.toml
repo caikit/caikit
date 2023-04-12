@@ -4,6 +4,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "caikit"
+readme = "README.md"
 description = "AI toolkit that enables AI users to consume stable task-specific model APIs and enables AI developers build algorithms and models in a modular/composable framework"
 requires-python = "~=3.8"
 # Not the actual current version: overwritten by CI
