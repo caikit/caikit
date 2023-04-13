@@ -181,7 +181,7 @@ class TaskPredictRPC(RPCSerializerBase):
             )
             for arg_name, arg_type in primitive_arg_dict.items():
                 current_val = parameters_dict.get(arg_name, arg_type)
-                # TODO: raise runtime error here!
+                # TODO: raise runtime error here instead of assert!
                 # TODO: need to resolve Optional[T] vs. T - if both come in, use Optional[T]
                 assert (
                     current_val == arg_type

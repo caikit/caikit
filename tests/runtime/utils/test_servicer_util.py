@@ -355,7 +355,7 @@ def test_global_train_build_caikit_library_request_dict_creates_caikit_core_run_
 
     # assert that even though not passed in, caikit.core_request now has training_data
     # because empty stream types get an empty steam initialized
-    # TODO: unclear if this behavior is correct, but okay
+    # TODO: will need additional tests for list arguments
     assert expected_arguments == set(caikit.core_request.keys())
     assert isinstance(
         caikit.core_request["training_data"], caikit.core.data_model.DataStream

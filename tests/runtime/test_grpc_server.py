@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from unittest import mock
 import json
 import os
-import tempfile
 import threading
 import time
 import uuid
@@ -135,14 +134,16 @@ def test_model_train(runtime_grpc_server):
     )
     assert response.status == TrainingStatus.COMPLETED
 
-    # make sure we wait for training to finish
+    # Make sure we wait for training to finish
     result = TrainingManager.get_instance().training_futures[training_id].result()
 
-    assert result.batch_size == 64
     assert (
         result.BLOCK_CLASS
         == "sample_lib.blocks.sample_task.sample_implementation.SampleBlock"
     )
+    # Fields with defaults have expected values
+    assert result.batch_size == 64
+    assert result.learning_rate == 0.0015
 
 
 def test_predict_fake_block_ok_response(

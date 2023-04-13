@@ -79,8 +79,7 @@ def get_output_type_name(
     module_parts = module_class.__module__.split(".")
     log.debug3("Parent module parts for %s: %s", module_class.__name__, module_parts)
 
-    # TODO: please test lol
-
+    # TODO: this part needs a test (or consider deleting and say user needs to specify output type)
     class_name = _snake_to_camel(module_parts[2]) + "Prediction"
     return _get_dm_type_from_name(class_name) or _get_dm_type_from_name(
         KNOWN_OUTPUT_TYPES.get(class_name)
