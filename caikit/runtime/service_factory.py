@@ -197,37 +197,8 @@ class ServicePackageFactory:
             package_name = f"caikit.runtime.{ai_domain_name}"
 
             # Then do API introspection to come up with all the API definitions to support
-            modules = [
-                module_class
-                for module_class in caikit.core.MODULE_REGISTRY.values()
-                if module_class.__module__.partition(".")[0] == lib
-            ]
-
-            log.debug("Found modules %s for library %s", modules, lib)
-
-            # Check config for any exclusions
-            excluded_task_types = (
-                config_parser.service_generation
-                and config_parser.service_generation.task_types
-                and config_parser.service_generation.task_types.excluded
-            )
-            excluded_modules = (
-                config_parser.service_generation
-                and config_parser.service_generation.modules
-                and config_parser.service_generation.modules.excluded
-            )
-
-            clean_modules = ServicePackageFactory._remove_exclusions_from_module_list(
-                modules,
-                excluded_task_types=excluded_task_types,
-                excluded_modules=excluded_modules,
-            )
-
-            log.debug(
-                "Generating RPC for modules %s after excluding task types: %s and modules ids: %s. Exclusions are defined in config",
-                clean_modules,
-                excluded_task_types,
-                excluded_modules,
+            clean_modules = ServicePackageFactory._get_and_filter_modules(
+                config_parser, lib
             )
 
             if service_type == cls.ServiceType.INFERENCE:
@@ -283,6 +254,71 @@ class ServicePackageFactory:
         return type_
 
     @staticmethod
+    def _get_and_filter_modules(config_parser: ConfigParser, lib: str):
+        clean_modules = set()
+        modules = [
+            module_class
+            for module_class in caikit.core.MODULE_REGISTRY.values()
+            if module_class.__module__.partition(".")[0] == lib
+        ]
+        log.debug("Found all modules %s for library %s.", modules, lib)
+        print("all modules are: ", modules)
+
+        # Check config for any explicit inclusions
+        included_task_types = (
+            config_parser.service_generation
+            and config_parser.service_generation.task_types
+            and config_parser.service_generation.task_types.included
+        )
+        included_modules = (
+            config_parser.service_generation
+            and config_parser.service_generation.modules
+            and config_parser.service_generation.modules.included
+        )
+
+        # Check config for any exclusions
+        excluded_task_types = (
+            config_parser.service_generation
+            and config_parser.service_generation.task_types
+            and config_parser.service_generation.task_types.excluded
+        )
+        excluded_modules = (
+            config_parser.service_generation
+            and config_parser.service_generation.modules
+            and config_parser.service_generation.modules.excluded
+        )
+
+        for ck_module in modules:
+            # Only create for modules from defined included and exclusion list
+            module_info = get_module_info(ck_module)
+            if excluded_task_types and module_info.type in excluded_task_types:
+                log.debug("Skipping module %s of type %s", ck_module, module_info.type)
+                continue
+
+            if excluded_modules and ck_module.MODULE_ID in excluded_modules:
+                log.debug("Skipping module %s of id %s", ck_module, ck_module.MODULE_ID)
+                continue
+
+            # no inclusions specified means include everything
+            if included_task_types is None and included_modules is None:
+                clean_modules.add(ck_module)
+
+            # if inclusion is specified, use that
+            else:
+                if (included_modules and ck_module.MODULE_ID in included_modules) or (
+                    included_task_types and module_info.type in included_task_types
+                ):
+                    clean_modules.add(ck_module)
+
+        log.debug(
+            "Filtered list of modules %s after excluding task types: %s and modules ids: %s. Exclusions are defined in config",
+            clean_modules,
+            excluded_task_types,
+            excluded_modules,
+        )
+        print("clean modules are: ", clean_modules)
+        return clean_modules
+
     def _remove_exclusions_from_module_list(
         modules: List[Type[ModuleBase]],
         excluded_task_types: List[str] = None,
