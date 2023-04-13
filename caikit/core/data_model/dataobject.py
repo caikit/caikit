@@ -91,7 +91,6 @@ CAIKIT_DATA_MODEL = "caikit_data_model"
 def dataobject(
     schema: _SCHEMA_DEF_TYPE,
     package: str = CAIKIT_DATA_MODEL,
-    optional_property_names: Optional[Set[str]] = None,
 ) -> Callable[[Type], Type[DataBase]]:
     """The @schema decorator can be used to define a Data Model object's schema
     inline with the definition of the python class rather than needing to bind
@@ -114,10 +113,6 @@ def dataobject(
             The full schema definition dict
         package:  str
             The package name to use for the generated protobufs class
-        optional_property_names: Set[str]
-            The set of property names that should be placed in `optionalProperties`
-            rather than `properties`, when using shorthand schema definitions
-            that get translated to valid JTD
 
     Returns:
         decorator:  Callable[[Type], Type[DataBase]]
@@ -134,7 +129,7 @@ def dataobject(
         )
 
         # Create the message class from the schema
-        jtd_def = _to_jtd_schema(schema, optional_property_names)
+        jtd_def = _to_jtd_schema(schema)
         log.debug3("JTD Def for %s: %s", cls.__name__, jtd_def)
         proto_class = jtd_to_proto.descriptor_to_message_class(
             jtd_to_proto.jtd_to_proto(
@@ -245,14 +240,11 @@ class _EnumBaseSentinel:
 
 # pylint: disable=too-many-return-statements
 def _to_jtd_schema(
-    input_schema: _SCHEMA_DEF_TYPE, optional_property_names: Optional[Set[str]] = None
+    input_schema: _SCHEMA_DEF_TYPE, is_inside_properties_dict: bool = False
 ) -> _JTD_DEF_TYPE:
     """Recursive helper that will convert an input schema to a fully fleshed out
     JTD schema
     """
-    if optional_property_names is None:
-        optional_property_names = set()
-
     try:
 
         # If it's a reference to an EnumBase, de-alias to that enum's EnumDescriptor
@@ -273,24 +265,21 @@ def _to_jtd_schema(
             # values
             if any(keyword in input_schema for keyword in _JTD_KEYWORDS):
                 return {
-                    k: _to_jtd_schema(v, optional_property_names)
+                    k: _to_jtd_schema(v, "properties" in k.lower())
                     for k, v in input_schema.items()
                 }
 
-            # If not, assume we have properties or optional properties that we
-            # need to recursively put into jtd format
-            return {
-                "properties": {
-                    k: _to_jtd_schema(v, optional_property_names)
-                    for k, v in input_schema.items()
-                    if not _is_optional_type(v) and k not in optional_property_names
-                },
-                "optionalProperties": {
-                    k: _to_jtd_schema(_unwrap_optional_type(v), optional_property_names)
-                    for k, v in input_schema.items()
-                    if _is_optional_type(v) or k in optional_property_names
-                },
-            }
+            # If not, assume it's a flat properties dict
+            # Check to make sure we don't re-wrap *properties
+            translated_dict = {k: _to_jtd_schema(v) for k, v in input_schema.items()}
+            return (
+                {"properties": translated_dict}
+                if not is_inside_properties_dict
+                else translated_dict
+            )
+
+        # Unwrap optional to base type if applicable
+        input_schema = _unwrap_optional_type(input_schema)
 
         # If it's a reference to another data model object, de-alias to that
         # object's underlying proto descriptor
@@ -304,11 +293,7 @@ def _to_jtd_schema(
         # If it's a list or data stream, wrap it with "elements":
         if typing.get_origin(input_schema) in [list, DataStream]:
             # type_ could be caikit.core.data_model.streams.data_stream.DataStream[int]
-            return {
-                "elements": _to_jtd_schema(
-                    typing.get_args(input_schema)[0], optional_property_names
-                )
-            }
+            return {"elements": _to_jtd_schema(typing.get_args(input_schema)[0])}
 
         # All other cases are invalid!
         raise ValueError(f"Invalid input schema: {input_schema}")
@@ -318,16 +303,9 @@ def _to_jtd_schema(
         raise
 
 
-def _is_optional_type(type_: Type) -> bool:
-    origin = typing.get_origin(type_)
-    if origin == Union:
-        return type(None) in typing.get_args(type_)
-    return False
-
-
 def _unwrap_optional_type(type_: typing.Any) -> typing.Any:
     """Unwrap an Optional[T] type, or return the type as-is if it is not an optional
-    NB: Union[T] is expressed as Optional[T, None]
+    NB: Optional[T] is expressed as Union[T, None]
     This function checks for Unions of [T, None] and returns T, or raises if the union
     contains more types, as those need to be handled differently (and are not yet supported)
     """

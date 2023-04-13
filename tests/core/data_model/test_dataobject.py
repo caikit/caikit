@@ -222,7 +222,7 @@ def test_dataobject_obj_refs():
     )
 
 
-def test_dataobject_obj_refs_with_optional_and_defaultable_types():
+def test_dataobject_obj_refs_with_optional_types():
     """Make sure that references to other data objects and enums work as
     expected
     """
@@ -256,6 +256,28 @@ def test_dataobject_obj_refs_with_optional_and_defaultable_types():
         assert check_field_enum_type(
             FooBar._proto_class, field, BarEnum._proto_enum.DESCRIPTOR
         )
+
+
+def test_dataobject_properties_needs_jtd_translation():
+    """Make sure shorthand get recognized as still needing jtd translation
+    when inside properties or optionalProperties
+    """
+
+    @dataobject(
+        schema={
+            "properties": {
+                "foo": int,
+            },
+            "optionalProperties": {
+                "bar": bool,
+            },
+        }
+    )
+    class FooBar:
+        pass
+
+    assert check_field_type(FooBar.get_proto_class(), "foo", "TYPE_INT64")
+    assert check_field_type(FooBar.get_proto_class(), "bar", "TYPE_BOOL")
 
 
 def test_dataobject_invalid_schema():

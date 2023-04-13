@@ -250,11 +250,21 @@ class ServicePackageFactory:
         """Dynamically create data model classes for the inputs to these RPCs"""
         data_model_classes = []
         for task in rpcs_list:
-            schema = {
+            properties = {
                 # triple e.g. ('caikit.interfaces.common.ProducerPriority', 'producer_id', 1)
                 # This does not take care of nested descriptors
                 triple[1]: triple[0]
                 for triple in task.request.triples
+                if triple[1] not in task.request.default_set
+            }
+            optional_properties = {
+                triple[1]: triple[0]
+                for triple in task.request.triples
+                if triple[1] in task.request.default_set
+            }
+            schema = {
+                "properties": properties,
+                "optionalProperties": optional_properties,
             }
 
             if not schema:
@@ -264,7 +274,6 @@ class ServicePackageFactory:
             decorator = dataobject(
                 schema=schema,
                 package=package_name,
-                optional_property_names=task.request.default_set,
             )
             cls_ = type(task.request.name, (object,), {})
             decorated_cls = decorator(cls_)
