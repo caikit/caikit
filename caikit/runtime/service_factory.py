@@ -38,7 +38,6 @@ import alog
 from caikit.core import dataobject
 from caikit.core.data_model import DataStream
 from caikit.core.data_model.base import DataBase
-from caikit.core.module import ModuleBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingInfoResponse,
@@ -310,7 +309,8 @@ class ServicePackageFactory:
                     clean_modules.add(ck_module)
 
         log.debug(
-            "Filtered list of modules %s after excluding task types: %s and modules ids: %s. Exclusions are defined in config",
+            "Filtered list of modules %s after excluding task types: %s and modules ids: %s. \
+                Exclusions are defined in config",
             clean_modules,
             excluded_task_types,
             excluded_modules,
