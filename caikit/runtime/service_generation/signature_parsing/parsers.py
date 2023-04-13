@@ -15,7 +15,6 @@
 Contains functions that attempt to parse the I/O types of member methods on `caikit.core.module`s
 """
 # Standard
-from types import FunctionType
 from typing import Callable, Dict, List, Optional, Set, Type
 import inspect
 

@@ -15,10 +15,9 @@
 # Standard
 from enum import Enum
 from types import ModuleType
-from typing import Callable, Dict, List, Type, Union
+from typing import Callable, Dict, List, Type
 import dataclasses
 import inspect
-import typing
 
 # Third Party
 import google.protobuf.descriptor
@@ -36,7 +35,6 @@ import alog
 
 # Local
 from caikit.core import dataobject
-from caikit.core.data_model import DataStream
 from caikit.core.data_model.base import DataBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,

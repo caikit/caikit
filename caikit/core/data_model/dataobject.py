@@ -21,7 +21,7 @@ model objects inline without manually defining the protobufs representation
 from datetime import datetime
 from functools import update_wrapper
 from types import ModuleType
-from typing import Callable, Dict, Generic, List, Type, TypeVar, Union
+from typing import Callable, Dict, List, Type, Union
 import importlib
 import sys
 import types
@@ -242,7 +242,7 @@ class _EnumBaseSentinel:
     classes so that they can be identified generically
     """
 
-
+# pylint: disable=too-many-return-statements
 def _to_jtd_schema(
     input_schema: _SCHEMA_DEF_TYPE, optional_property_names: typing.Set[str] = None
 ) -> _JTD_DEF_TYPE:
