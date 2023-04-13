@@ -246,6 +246,8 @@ def _to_jtd_schema(
     JTD schema
     """
     try:
+        # Unwrap optional to base type if applicable
+        input_schema = _unwrap_optional_type(input_schema)
 
         # If it's a reference to an EnumBase, de-alias to that enum's EnumDescriptor
         # NOTE: This must come before the check for dict since EnumBase instances
@@ -277,9 +279,6 @@ def _to_jtd_schema(
                 if not is_inside_properties_dict
                 else translated_dict
             )
-
-        # Unwrap optional to base type if applicable
-        input_schema = _unwrap_optional_type(input_schema)
 
         # If it's a reference to another data model object, de-alias to that
         # object's underlying proto descriptor
