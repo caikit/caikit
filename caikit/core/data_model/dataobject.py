@@ -21,7 +21,7 @@ model objects inline without manually defining the protobufs representation
 from datetime import datetime
 from functools import update_wrapper
 from types import ModuleType
-from typing import Callable, Dict, List, Type, Union
+from typing import Callable, Dict, List, Optional, Set, Type, Union
 import importlib
 import sys
 import types
@@ -91,7 +91,7 @@ CAIKIT_DATA_MODEL = "caikit_data_model"
 def dataobject(
     schema: _SCHEMA_DEF_TYPE,
     package: str = CAIKIT_DATA_MODEL,
-    optional_property_names: typing.Set[str] = None,
+    optional_property_names: Optional[Set[str]] = None,
 ) -> Callable[[Type], Type[DataBase]]:
     """The @schema decorator can be used to define a Data Model object's schema
     inline with the definition of the python class rather than needing to bind
@@ -242,9 +242,10 @@ class _EnumBaseSentinel:
     classes so that they can be identified generically
     """
 
+
 # pylint: disable=too-many-return-statements
 def _to_jtd_schema(
-    input_schema: _SCHEMA_DEF_TYPE, optional_property_names: typing.Set[str] = None
+    input_schema: _SCHEMA_DEF_TYPE, optional_property_names: Optional[Set[str]] = None
 ) -> _JTD_DEF_TYPE:
     """Recursive helper that will convert an input schema to a fully fleshed out
     JTD schema
