@@ -15,10 +15,9 @@
 # Standard
 from enum import Enum
 from types import ModuleType
-from typing import Callable, Dict, List, Type, Union
+from typing import Callable, Dict, List, Type
 import dataclasses
 import inspect
-import typing
 
 # Third Party
 import google.protobuf.descriptor
@@ -36,7 +35,6 @@ import alog
 
 # Local
 from caikit.core import dataobject
-from caikit.core.data_model import DataStream
 from caikit.core.data_model.base import DataBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
@@ -245,13 +243,6 @@ class ServicePackageFactory:
 
     # Implementation details for pure python service packages #
     @staticmethod
-    def _fix_lists(type_: Type) -> Union[Dict, Type]:
-        if typing.get_origin(type_) in [list, DataStream]:
-            # type_ could be caikit.core.data_model.streams.data_stream.DataStream[int]
-            return {"elements": typing.get_args(type_)[0]}
-        return type_
-
-    @staticmethod
     def _create_request_message_types(
         rpcs_list: List[RPCSerializerBase],
         package_name: str,
@@ -259,18 +250,31 @@ class ServicePackageFactory:
         """Dynamically create data model classes for the inputs to these RPCs"""
         data_model_classes = []
         for task in rpcs_list:
-            schema = {
+            properties = {
                 # triple e.g. ('caikit.interfaces.common.ProducerPriority', 'producer_id', 1)
                 # This does not take care of nested descriptors
-                triple[1]: ServicePackageFactory._fix_lists(triple[0])
+                triple[1]: triple[0]
                 for triple in task.request.triples
+                if triple[1] not in task.request.default_set
+            }
+            optional_properties = {
+                triple[1]: triple[0]
+                for triple in task.request.triples
+                if triple[1] in task.request.default_set
+            }
+            schema = {
+                "properties": properties,
+                "optionalProperties": optional_properties,
             }
 
             if not schema:
                 # hacky hack hack: make sure we actually have a schema to generate
                 continue
 
-            decorator = dataobject(schema=schema, package=package_name)
+            decorator = dataobject(
+                schema=schema,
+                package=package_name,
+            )
             cls_ = type(task.request.name, (object,), {})
             decorated_cls = decorator(cls_)
             data_model_classes.append(decorated_cls)

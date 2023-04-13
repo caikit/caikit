@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Third Party
-import sample_lib
-
 # Local
 from caikit.runtime.service_generation.create_service import (
     create_inference_rpcs,
     create_training_rpcs,
 )
+import sample_lib
 
 ## Setup ########################################################################
 

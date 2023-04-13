@@ -17,16 +17,15 @@ import os
 import shutil
 import tempfile
 
-# Third Party
-# pylint: disable=import-error
-from sample_lib.blocks.sample_task import SampleBlock
-from sample_lib.data_model.sample import SampleInputType
-
 # Local
 from caikit.core.blocks import block
 from caikit.core.blocks.base import BlockSaver
 from caikit.core.config import lib_config
 from caikit.core.toolkit.serializers import JSONSerializer
+
+# pylint: disable=import-error
+from sample_lib.blocks.sample_task import SampleBlock
+from sample_lib.data_model.sample import SampleInputType
 
 # Unit Test Infrastructure
 from tests.base import TestCaseBase

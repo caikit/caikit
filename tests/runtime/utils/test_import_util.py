@@ -108,7 +108,7 @@ def test_get_data_model_ok_on_lib_with_no_data_model():
 
 def test_get_data_model_is_accessible():
     """get_data_model should return the stuff in the `sample_lib.data_model` package"""
-    # Third Party
+    # Local
     import sample_lib
 
     cdm = get_data_model()

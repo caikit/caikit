@@ -15,6 +15,7 @@
 """Tests for the @dataobject decorator"""
 
 # Standard
+from typing import Optional
 import json
 import os
 import tempfile
@@ -219,6 +220,64 @@ def test_dataobject_obj_refs():
     assert check_field_enum_type(
         FooBar.get_proto_class(), "bare_bar", BarEnum._proto_enum.DESCRIPTOR
     )
+
+
+def test_dataobject_obj_refs_with_optional_types():
+    """Make sure that references to other data objects and enums work as
+    expected
+    """
+
+    @dataobject({"enum": ["EXAM", "METAL"]})
+    class BarEnum:
+        pass
+
+    @dataobject({"foo": str})
+    class Foo:
+        pass
+
+    # The dataobject in question: includes Optional[T]
+    @dataobject(
+        schema={
+            "foo": Foo,
+            "optionalFoo": Optional[Foo],
+            "bar": BarEnum,
+            "optionalBar": Optional[BarEnum],
+        }
+    )
+    class FooBar:
+        pass
+
+    assert check_field_type(FooBar._proto_class, "foo", "TYPE_MESSAGE")
+    for field in ["foo", "optionalFoo"]:
+        assert check_field_message_type(
+            FooBar._proto_class, field, Foo._proto_class.DESCRIPTOR
+        )
+    for field in ["bar", "optionalBar"]:
+        assert check_field_enum_type(
+            FooBar._proto_class, field, BarEnum._proto_enum.DESCRIPTOR
+        )
+
+
+def test_dataobject_properties_needs_jtd_translation():
+    """Make sure shorthand get recognized as still needing jtd translation
+    when inside properties or optionalProperties
+    """
+
+    @dataobject(
+        schema={
+            "properties": {
+                "foo": int,
+            },
+            "optionalProperties": {
+                "bar": bool,
+            },
+        }
+    )
+    class FooBar:
+        pass
+
+    assert check_field_type(FooBar.get_proto_class(), "foo", "TYPE_INT64")
+    assert check_field_type(FooBar.get_proto_class(), "bar", "TYPE_BOOL")
 
 
 def test_dataobject_invalid_schema():

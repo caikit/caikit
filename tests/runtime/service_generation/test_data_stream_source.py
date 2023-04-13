@@ -6,7 +6,6 @@ import pickle
 import tempfile
 
 # Third Party
-from sample_lib.data_model.sample import SampleTrainingType
 import pytest
 
 # Local
@@ -18,6 +17,7 @@ from caikit.runtime.service_generation.data_stream_source import (
     make_data_stream_source,
 )
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from sample_lib.data_model.sample import SampleTrainingType
 from tests.conftest import temp_config_parser
 import caikit
 

@@ -17,7 +17,7 @@ This package has classes that will serialize a python interface to a protocol bu
 Typically used for `caikit.core.module`s that expose .train and .run functions.
 """
 # Standard
-from typing import Dict, List, Optional, Tuple, Type, get_args
+from typing import Dict, List, Optional, Set, Tuple, Type, get_args
 import abc
 
 # First Party
@@ -76,7 +76,9 @@ class ModuleClassTrainRPC(RPCSerializerBase):
         # Store the input and output protobuf message types for this RPC
         self.return_type = self._method.return_type
         self._req = _RequestMessage(
-            self._module_class_to_req_name(), self._method.parameters
+            self._module_class_to_req_name(),
+            self._method.parameters,
+            self._method.default_parameters,
         )
 
     @property
@@ -171,19 +173,25 @@ class TaskPredictRPC(RPCSerializerBase):
 
         # Aggregate the argument signature types into a single parameters_dict
         parameters_dict = {}
+        default_parameters = set()
         for method in method_signatures:
+            default_parameters.update(method.default_parameters)
             primitive_arg_dict = primitives.to_primitive_signature(
                 method.parameters, primitive_data_model_types
             )
             for arg_name, arg_type in primitive_arg_dict.items():
                 current_val = parameters_dict.get(arg_name, arg_type)
+                # TODO: raise runtime error here instead of assert!
+                # TODO: need to resolve Optional[T] vs. T - if both come in, use Optional[T]
                 assert (
                     current_val == arg_type
                 ), f"Conflicting value types for arg {arg_name}: {current_val} != {arg_type}"
 
                 parameters_dict[arg_name] = arg_type
 
-        self._req = _RequestMessage(self._task_to_req_name(), parameters_dict)
+        self._req = _RequestMessage(
+            self._task_to_req_name(), parameters_dict, default_parameters
+        )
 
         # Validate that the return_type of all modules in the grouping matches
         return_types = {method.return_type for method in method_signatures}
@@ -228,12 +236,13 @@ class _RequestMessage:
     objects.
     """
 
-    def __init__(self, msg_name: str, params: Dict[str, Type]):
+    def __init__(self, msg_name: str, params: Dict[str, Type], default_set: Set[str]):
         """Initialize with the module class and the parsed parameters to the run
         function.
         """
         self.name = msg_name
         self.triples = []
+        self.default_set = default_set
 
         existing_fields = ApiFieldNames.get_fields_for_message(self.name)
 

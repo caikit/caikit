@@ -179,7 +179,7 @@ class GlobalTrainServicer:
             }
             log.warning(log_dict)
             raise CaikitRuntimeException(
-                StatusCode.INTERNAL, "Unhandled exception during prediction"
+                StatusCode.INTERNAL, "Unhandled exception during training"
             ) from e
 
     def run_training_job(

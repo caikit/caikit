@@ -19,8 +19,6 @@ import unittest
 import uuid
 
 # Third Party
-from sample_lib.blocks.sample_task import SampleBlock
-from sample_lib.data_model import SampleInputType, SampleOutputType
 import grpc
 import pytest
 
@@ -34,6 +32,8 @@ from caikit.runtime.model_management.batcher import Batcher
 from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.config_parser import ConfigParser
+from sample_lib.blocks.sample_task import SampleBlock
+from sample_lib.data_model import SampleInputType, SampleOutputType
 from tests.conftest import temp_config_parser
 from tests.fixtures import Fixtures
 

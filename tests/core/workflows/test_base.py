@@ -16,16 +16,15 @@
 import os
 import tempfile
 
-# Third Party
-# pylint: disable=import-error
-from sample_lib.blocks.sample_task import SampleBlock
-from sample_lib.data_model.sample import SampleInputType
-from sample_lib.workflows.sample_task import SampleWorkflow
-
 # Local
 from caikit.core.config import lib_config
 from caikit.core.workflows import workflow
 from caikit.core.workflows.base import WorkflowLoader, WorkflowSaver
+
+# pylint: disable=import-error
+from sample_lib.blocks.sample_task import SampleBlock
+from sample_lib.data_model.sample import SampleInputType
+from sample_lib.workflows.sample_task import SampleWorkflow
 
 # Unit Test Infrastructure
 from tests.base import TestCaseBase

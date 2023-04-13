@@ -20,7 +20,7 @@ comes to the caikit core common data model.
 """
 
 # Standard
-from typing import Dict, Optional, Type
+from typing import Dict, Optional, Set, Type
 import inspect
 
 # First Party
@@ -62,18 +62,13 @@ class CaikitCoreModuleMethodSignature:
 
         try:
             self._method_pointer = getattr(self._module, self._method_name)
+            self._default_set = parsers.get_args_with_defaults(self._method_pointer)
             method_signature = inspect.signature(self._method_pointer)
             self._return_type = parsers.get_output_type_name(
                 self._module, method_signature, self._method_pointer
             )
 
-            self._parameters = {
-                name: parsers.get_argument_type(
-                    param, self._module, self._method_pointer
-                )
-                for name, param in method_signature.parameters.items()
-                if name not in ["self", "args", "kwargs", "_"]
-            }
+            self._parameters = parsers.get_argument_types(self._method_pointer)
         except AttributeError:
             log.warning(
                 "Could not find method [%s] in this module",
@@ -81,6 +76,7 @@ class CaikitCoreModuleMethodSignature:
             )
             self._return_type = None
             self._parameters = None
+            self._default_set = set()
 
     @property
     def module(self) -> Type[ModuleBase]:
@@ -102,6 +98,11 @@ class CaikitCoreModuleMethodSignature:
         """A dictionary of the parameter names to their types, or None if the method does not
         exist"""
         return self._parameters
+
+    @property
+    def default_parameters(self) -> Set[str]:
+        """A set of all parameter names which have default values"""
+        return self._default_set
 
 
 class CustomSignature(CaikitCoreModuleMethodSignature):
