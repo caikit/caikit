@@ -277,3 +277,20 @@ def test_get_and_filter_modules_respects_included_task_types():
         assert len(clean_modules) == 5
         assert "InnerBlock" in str(clean_modules)
         assert "OtherBlock" not in str(clean_modules)
+
+
+def test_get_and_filter_modules_respects_included_task_types_and_excluded_modules():
+    assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
+    with temp_config_parser(
+        {
+            "service_generation": {
+                "task_types": {"included": ["sample_task"]},
+                "modules": {"excluded": ["00af2203-0405-0607-0263-0a0b02dd0c2f"]},
+            }
+        }  # only want sample_task but not ListBlock
+    ) as cfg:
+
+        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        assert len(clean_modules) == 4
+        assert "InnerBlock" in str(clean_modules)
+        assert "ListBlock" not in str(clean_modules)

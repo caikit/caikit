@@ -262,7 +262,6 @@ class ServicePackageFactory:
             if module_class.__module__.partition(".")[0] == lib
         ]
         log.debug("Found all modules %s for library %s.", modules, lib)
-        print("all modules are: ", modules)
 
         # Check config for any explicit inclusions
         included_task_types = (
@@ -316,28 +315,6 @@ class ServicePackageFactory:
             excluded_task_types,
             excluded_modules,
         )
-        print("clean modules are: ", clean_modules)
-        return clean_modules
-
-    def _remove_exclusions_from_module_list(
-        modules: List[Type[ModuleBase]],
-        excluded_task_types: List[str] = None,
-        excluded_modules: List[str] = None,
-    ) -> List[Type[ModuleBase]]:
-        print(modules)
-        clean_modules = []
-        for ck_module in modules:
-            # Only create for modules kinds from defined list
-            module_info = get_module_info(ck_module)
-            if excluded_task_types and module_info.type in excluded_task_types:
-                log.debug("Skipping module %s of type %s", ck_module, module_info.type)
-                continue
-
-            if excluded_modules and ck_module.MODULE_ID in excluded_modules:
-                log.debug("Skipping module %s of id %s", ck_module, ck_module.MODULE_ID)
-                continue
-
-            clean_modules.append(ck_module)
         return clean_modules
 
     @staticmethod

@@ -116,7 +116,6 @@ def test_global_predict_works_on_good_inputs(
     sample_inference_service, sample_predict_servicer, loaded_model_id
 ):
     """Global predict of CategoriesEsaPredict returns a categories prediction"""
-
     response = sample_predict_servicer.Predict(
         sample_inference_service.messages.SampleTaskRequest(
             sample_input=HAPPY_PATH_INPUT
