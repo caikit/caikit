@@ -9,8 +9,10 @@ version = "0.0.1"
 description = "AI toolkit that enables AI users to consume stable task-specific model APIs and enables AI developers build algorithms and models in a modular/composable framework"
 license = {text = "Apache-2.0"}
 readme = "README.md"
-repository = "https://github.com/caikit/caikit"
 requires-python = "~=3.8"
+classifiers=[
+    "License :: OSI Approved :: Apache Software License"
+]
 dependencies = [
     "alchemy-config>=1.0.0",
     "alchemy-logging>=1.0.4",
@@ -32,3 +34,6 @@ dependencies = [
     "jtd-to-proto>=0.11.4,<0.12.0",
     "import-tracker>=3.1.5,<4",
 ]
+
+[project.urls]
+Source = "https://github.com/caikit/caikit"
