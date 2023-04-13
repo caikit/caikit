@@ -21,7 +21,7 @@ model objects inline without manually defining the protobufs representation
 from datetime import datetime
 from functools import update_wrapper
 from types import ModuleType
-from typing import Callable, Dict, List, Optional, Set, Type, Union
+from typing import Callable, Dict, List, Type, Union
 import importlib
 import sys
 import types
