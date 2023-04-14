@@ -15,7 +15,7 @@
 # Standard
 from enum import Enum
 from types import ModuleType
-from typing import Callable, Dict, List, Type
+from typing import Callable, Dict, List, Set, Type
 import dataclasses
 import inspect
 
@@ -36,6 +36,7 @@ import alog
 # Local
 from caikit.core import dataobject
 from caikit.core.data_model.base import DataBase
+from caikit.core.module import ModuleBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingInfoResponse,
@@ -244,7 +245,9 @@ class ServicePackageFactory:
 
     # Implementation details for pure python service packages #
     @staticmethod
-    def _get_and_filter_modules(config_parser: ConfigParser, lib: str):
+    def _get_and_filter_modules(
+        config_parser: ConfigParser, lib: str
+    ) -> Set[Type[ModuleBase]]:
         clean_modules = set()
         modules = [
             module_class
