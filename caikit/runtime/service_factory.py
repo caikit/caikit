@@ -261,8 +261,8 @@ class ServicePackageFactory:
         )
         included_modules = (
             config_parser.service_generation
-            and config_parser.service_generation.modules
-            and config_parser.service_generation.modules.included
+            and config_parser.service_generation.module_guids
+            and config_parser.service_generation.module_guids.included
         )
 
         # Check config for any exclusions
@@ -273,8 +273,8 @@ class ServicePackageFactory:
         )
         excluded_modules = (
             config_parser.service_generation
-            and config_parser.service_generation.modules
-            and config_parser.service_generation.modules.excluded
+            and config_parser.service_generation.module_guids
+            and config_parser.service_generation.module_guids.excluded
         )
 
         for ck_module in modules:

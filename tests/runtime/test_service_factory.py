@@ -178,7 +178,7 @@ MODULE_LIST = [
     if module_class.__module__.partition(".")[0] == "sample_lib"
 ]
 
-### Test ServicePackageFactory._remove_exclusions_from_module_list
+### Test ServicePackageFactory._get_and_filter_modules function
 def test_get_and_filter_modules_respects_excluded_task_type():
     assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
     with temp_config_parser(
@@ -194,7 +194,7 @@ def test_get_and_filter_modules_respects_excluded_modules():
     with temp_config_parser(
         {
             "service_generation": {
-                "modules": {"excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]}
+                "module_guids": {"excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]}
             }
         }  # excluding InnerBlock
     ) as cfg:
@@ -210,7 +210,7 @@ def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type
     with temp_config_parser(
         {
             "service_generation": {
-                "modules": {"excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]},
+                "module_guids": {"excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]},
                 "task_types": {"excluded": ["other_task"]},
             }
         }  # excluding InnerBlock and OtherBlock
@@ -228,7 +228,7 @@ def test_get_and_filter_modules_respects_included_modules_and_included_task_type
     with temp_config_parser(
         {
             "service_generation": {
-                "modules": {"included": ["00110203-baad-beef-0809-0a0b02dd0e0f"]},
+                "module_guids": {"included": ["00110203-baad-beef-0809-0a0b02dd0e0f"]},
                 "task_types": {"included": ["other_task"]},
             }
         }  # only want InnerBlock and OtherBlock
@@ -246,7 +246,7 @@ def test_get_and_filter_modules_respects_included_modules():
     with temp_config_parser(
         {
             "service_generation": {
-                "modules": {
+                "module_guids": {
                     "included": [
                         "00110203-baad-beef-0809-0a0b02dd0e0f",
                         "00af2203-0405-0607-0263-0a0b02dd0c2f",
@@ -285,7 +285,7 @@ def test_get_and_filter_modules_respects_included_task_types_and_excluded_module
         {
             "service_generation": {
                 "task_types": {"included": ["sample_task"]},
-                "modules": {"excluded": ["00af2203-0405-0607-0263-0a0b02dd0c2f"]},
+                "module_guids": {"excluded": ["00af2203-0405-0607-0263-0a0b02dd0c2f"]},
             }
         }  # only want sample_task but not ListBlock
     ) as cfg:

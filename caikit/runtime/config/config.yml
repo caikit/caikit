@@ -7,7 +7,7 @@ service_generation:
     client_package_name: ""
     module_types:
         included: ["blocks", "workflows"]
-    modules:
+    module_guids:
         included: []
         excluded: []
     primitive_data_model_types: []
@@ -145,7 +145,7 @@ test:
         client_package_name: ""
         module_types:
             included: ["blocks", "workflows"]
-        modules:
+        module_guids:
             included: []
             excluded: []
         primitive_data_model_types:
