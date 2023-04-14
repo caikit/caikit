@@ -116,6 +116,7 @@ def _is_primitive_type(arg_type: Type, primitive_data_model_types: List[str]) ->
     False otherwise"""
     lib_dm_primitives = _get_library_dm_primitives(primitive_data_model_types)
     primitive_set = list(PROTO_TYPE_MAP.keys()) + lib_dm_primitives
+
     if arg_type in primitive_set:
         return True
     if typing.get_origin(arg_type) == list:
@@ -157,3 +158,4 @@ def _get_library_dm_primitives(primitive_data_model_types) -> List[Type[DataBase
 def _is_optional_type(arg_type: Type):
     if typing.get_origin(arg_type) == Union and type(None) in typing.get_args(arg_type):
         return True
+    return False

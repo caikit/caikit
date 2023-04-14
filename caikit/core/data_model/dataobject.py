@@ -25,6 +25,7 @@ from typing import Callable, Dict, List, Type, Union
 import importlib
 import sys
 import types
+import typing
 
 # Third Party
 from google.protobuf import descriptor as _descriptor
@@ -41,6 +42,7 @@ import jtd_to_proto
 from ..toolkit.errors import error_handler
 from . import enums
 from .base import DataBase, _DataBaseMetaClass
+from .streams.data_stream import DataStream
 
 ## Globals #####################################################################
 
@@ -236,12 +238,16 @@ class _EnumBaseSentinel:
     """
 
 
-def _to_jtd_schema(input_schema: _SCHEMA_DEF_TYPE) -> _JTD_DEF_TYPE:
+# pylint: disable=too-many-return-statements
+def _to_jtd_schema(
+    input_schema: _SCHEMA_DEF_TYPE, is_inside_properties_dict: bool = False
+) -> _JTD_DEF_TYPE:
     """Recursive helper that will convert an input schema to a fully fleshed out
     JTD schema
     """
-
     try:
+        # Unwrap optional to base type if applicable
+        input_schema = _unwrap_optional_type(input_schema)
 
         # If it's a reference to an EnumBase, de-alias to that enum's EnumDescriptor
         # NOTE: This must come before the check for dict since EnumBase instances
@@ -260,12 +266,19 @@ def _to_jtd_schema(input_schema: _SCHEMA_DEF_TYPE) -> _JTD_DEF_TYPE:
             # If the dict is structured as a JTD element already, recurse on the
             # values
             if any(keyword in input_schema for keyword in _JTD_KEYWORDS):
-                return {k: _to_jtd_schema(v) for k, v in input_schema.items()}
+                return {
+                    k: _to_jtd_schema(v, "properties" in k.lower())
+                    for k, v in input_schema.items()
+                }
 
             # If not, assume it's a flat properties dict
-            return {
-                "properties": {k: _to_jtd_schema(v) for k, v in input_schema.items()}
-            }
+            # Check to make sure we don't re-wrap *properties
+            translated_dict = {k: _to_jtd_schema(v) for k, v in input_schema.items()}
+            return (
+                {"properties": translated_dict}
+                if not is_inside_properties_dict
+                else translated_dict
+            )
 
         # If it's a reference to another data model object, de-alias to that
         # object's underlying proto descriptor
@@ -276,12 +289,32 @@ def _to_jtd_schema(input_schema: _SCHEMA_DEF_TYPE) -> _JTD_DEF_TYPE:
         if input_schema in _NATIVE_TYPE_TO_JTD:
             return {"type": _NATIVE_TYPE_TO_JTD[input_schema]}
 
+        # If it's a list or data stream, wrap it with "elements":
+        if typing.get_origin(input_schema) in [list, DataStream]:
+            # type_ could be caikit.core.data_model.streams.data_stream.DataStream[int]
+            return {"elements": _to_jtd_schema(typing.get_args(input_schema)[0])}
+
         # All other cases are invalid!
         raise ValueError(f"Invalid input schema: {input_schema}")
 
     except ValueError:
         log.error("Invalid schema: %s", input_schema)
         raise
+
+
+def _unwrap_optional_type(type_: typing.Any) -> typing.Any:
+    """Unwrap an Optional[T] type, or return the type as-is if it is not an optional
+    NB: Optional[T] is expressed as Union[T, None]
+    This function checks for Unions of [T, None] and returns T, or raises if the union
+    contains more types, as those need to be handled differently (and are not yet supported)
+    """
+    if typing.get_origin(type_) != Union:
+        return type_
+    possible_types = set(typing.get_args(type_))
+    possible_types.discard(type(None))
+    if len(possible_types) == 1:
+        return list(possible_types)[0]
+    raise ValueError(f"Invalid input schema, cannot handle unions yet: {type_}")
 
 
 def _get_all_enums(

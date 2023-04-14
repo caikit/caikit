@@ -15,32 +15,27 @@
 conventions"""
 
 # Standard
-from types import FunctionType
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import Callable, Dict, List, Optional, Tuple, Type, Union
 import builtins
 import sys
 
 # Third Party
-# Third party
 import docstring_parser
 
 # First Party
-# First party
 import alog
 
 # Local
-from caikit.core import ModuleBase
+from caikit.core.data_model.base import DataBase
 import caikit.core
 
 log = alog.use_channel("DOCSTRINGS")
 
 
-def get_return_type(module_class: Type[ModuleBase], fn: FunctionType) -> Optional[Type]:
+def get_return_type(fn: Callable) -> Optional[Type]:
     """
     Grabs the return type off the docstring, if possible
     Args:
-        module_class: The type of the caikit.core.module that fn is defined on
-            e.g. my_caikit_library.blocks.classification.Transformer
         fn: The function to get the return value of
             e.g. my_caikit_library.blocks.classification.Transformer.run
 
@@ -49,21 +44,21 @@ def get_return_type(module_class: Type[ModuleBase], fn: FunctionType) -> Optiona
     """
     docstring = docstring_parser.parse(fn.__doc__)
     if not docstring:
-        log.warning("Failed to parse the docstring for %s", module_class)
+        log.warning("Failed to parse the docstring")
         return None
 
     type_names, desc_names = _get_candidate_type_names_from_docstring(docstring.returns)
 
-    return_type = _get_docstring_type(module_class, type_names)
+    return_type = _get_docstring_type(type_names)
     if return_type:
         return return_type
 
-    return _get_docstring_type(module_class, desc_names)
+    return _get_docstring_type(desc_names)
 
 
-def is_optional(fn: FunctionType, arg_name: str) -> bool:
+def is_optional(fn: Callable, arg_name: str) -> bool:
     """
-    Checks if the `argname` param from `fn`s docstring is optional
+    Checks if the `arg_name` param from `fn`s docstring is optional
     by checking if param description starts with "an optional"
     or "optional".
 
@@ -95,14 +90,10 @@ def is_optional(fn: FunctionType, arg_name: str) -> bool:
         return False
 
 
-def get_arg_type(
-    module_class: ModuleBase.__class__, fn: FunctionType, arg_name: str
-) -> Optional[Type]:
+def get_arg_type(fn: Callable, arg_name: str) -> Optional[Type]:
     """
-    Grabs the type of the `argname` param from `fn`s docstring, if possible
+    Grabs the type of the `arg_name` param from `fn`s docstring, if possible
     Args:
-        module_class: The type of the caikit.core.module that fn is defined on
-            e.g. my_caikit_library.blocks.classification.Transformer
         fn: The function to get the type of a parameter from
             e.g. my_caikit_library.blocks.classification.Transformer.run
         arg_name: The name of the parameter that we should try to get the type of
@@ -113,9 +104,7 @@ def get_arg_type(
 
     docstring = docstring_parser.parse(fn.__doc__)
     if not docstring:
-        log.warning(
-            "Failed to parse the docstring for %s:%s", module_class, fn.__name__
-        )
+        log.warning("Failed to parse the docstring for function %s", fn.__name__)
         return None
 
     ds_param = [param for param in docstring.params if param.arg_name == arg_name]
@@ -124,16 +113,14 @@ def get_arg_type(
             log.warning("Docstring has multiple args with the same name! %s", arg_name)
         ds_param = ds_param[0]
         type_names, desc_names = _get_candidate_type_names_from_docstring(ds_param)
-        docstring_type = _get_docstring_type(module_class, type_names)
+        docstring_type = _get_docstring_type(type_names)
         if not docstring_type:
-            docstring_type = _get_docstring_type(module_class, desc_names)
+            docstring_type = _get_docstring_type(desc_names)
         if docstring_type is not None:
             log.debug2("Found type from docstring for %s: %s", arg_name, docstring_type)
             return docstring_type
     else:
-        log.warning(
-            "Found no parameter named %s in %s:%s", arg_name, module_class, fn.__name__
-        )
+        log.warning("Found no parameter named %s:%s", arg_name, fn.__name__)
     return None
 
 
@@ -169,7 +156,6 @@ def _get_candidate_type_names_from_docstring(
 
 
 def _get_docstring_type(
-    module_class: Type[ModuleBase],
     candidate_type_names: List[str],
 ) -> Optional[Type]:
     """Given a parsed docstring parameter, look in all of the possible places
@@ -197,16 +183,14 @@ def _get_docstring_type(
 
         # Try to find things like "list(str)"
         # List[str]???
-        nested_type = _extract_nested_type(module_class, type_name)
+        nested_type = _extract_nested_type(type_name)
         if nested_type is not None:
             valid_candidates.append(nested_type)
             log.debug2(f"Found valid nested type: {nested_type}")
             continue
 
         # Try to spelunk down `sys.modules` for the type. This should work if it is fully qualified
-        candidate_type = _extract_type_from_pymodule(
-            sys.modules, module_class, type_name
-        )
+        candidate_type = _extract_type_from_pymodule(sys.modules, type_name)
         if candidate_type is not None:
             valid_candidates.append(candidate_type)
             log.debug2(f"Found valid candidate type on sys.modules: {candidate_type}")
@@ -215,7 +199,7 @@ def _get_docstring_type(
         # If the type was not fully qualified (like a `RawDocument`), look in a couple well known
         # places - the caikit core data model itself
         candidate_type = _extract_type_from_pymodule(
-            caikit.interfaces.common.data_model, module_class, type_name
+            caikit.interfaces.common.data_model, type_name
         )
         if candidate_type is not None:
             valid_candidates.append(candidate_type)
@@ -224,17 +208,15 @@ def _get_docstring_type(
                 f"Found valid candidate type on caikit.interfaces.common.data_model: {candidate_type}"
             )
             continue
-        # ...And the containing library's data model
-        lib_base = sys.modules[module_class.__module__.partition(".")[0]]
-        if hasattr(lib_base, "data_model"):
-            candidate_type = _extract_type_from_pymodule(
-                lib_base.data_model, module_class, type_name
-            )
+        # ...And the data model within the interfaces, including those defined in library
+        try:
+            candidate_type = DataBase.get_class_for_name(type_name)
+        except ValueError:
+            log.debug2(f"Data model match failed on {candidate_type}, continuing")
+            continue
         if candidate_type is not None:
             valid_candidates.append(candidate_type)
-            log.debug2(
-                f"Found valid candidate type on {lib_base.data_model}: {candidate_type}"
-            )
+            log.debug2(f"Found valid data model candidate type: {candidate_type}")
             continue
 
     log.debug3("valid candidates %s", valid_candidates)
@@ -247,15 +229,12 @@ def _get_docstring_type(
         # pylint: disable=unnecessary-dunder-call
         return Union.__getitem__(tuple(valid_candidates))
     log.debug2(
-        "Unable to pull type name [%s] from module %s",
+        "Unable to pull type name [%s]",
         candidate_type_names,
-        module_class.__module__,
     )
 
 
-def _extract_nested_type(
-    module_class: Type[ModuleBase], type_name: str
-) -> Optional[Type]:
+def _extract_nested_type(type_name: str) -> Optional[Type]:
     type_name = type_name.replace("[", "(").replace("]", ")")
     is_a_list = type_name.lower().startswith("list")
     if is_a_list:
@@ -263,24 +242,19 @@ def _extract_nested_type(
         end_child_type_name = type_name.rfind(")")
         child_type_name = type_name[start_child_type_name:end_child_type_name]
 
-        child_type = _get_docstring_type(
-            module_class=module_class, candidate_type_names=[child_type_name]
-        )
+        child_type = _get_docstring_type(candidate_type_names=[child_type_name])
         if child_type:
             return List[child_type]
 
 
 def _extract_type_from_pymodule(
-    py_module: Union[Type, Dict], module_class: Type[ModuleBase], type_name: str
+    py_module: Union[Type, Dict], type_name: str
 ) -> Optional[Type]:
     """This walks down a type hierarchy to try to find the concrete type given an input string name
 
     Args:
         py_module: Type | Dict
             A python module, or dictionary of modules, to start walking to find "type_name"
-        module_class: Type[ModuleBase]
-            The containing class of the function which has an argument of type "type_name".
-            Used for logging.
         type_name: str
             The name of the type that we're trying to find. e.g. "caikit.core.data_model.ProducerId"
 
@@ -303,10 +277,9 @@ def _extract_type_from_pymodule(
         if output_type is None:
             if not isinstance(py_module, dict):
                 log.debug2(
-                    "Couldn't find type name [%s] as an attribute on [%s] for module %s",
+                    "Couldn't find type name [%s] as an attribute on [%s]",
                     type_name,
                     py_module,
-                    module_class.__module__,
                 )
             return None
     if output_type not in [None, py_module]:

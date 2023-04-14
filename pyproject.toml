@@ -4,11 +4,15 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "caikit"
-readme = "README.md"
-description = "AI toolkit that enables AI users to consume stable task-specific model APIs and enables AI developers build algorithms and models in a modular/composable framework"
-requires-python = "~=3.8"
 # Not the actual current version: overwritten by CI
 version = "0.0.1"
+description = "AI toolkit that enables AI users to consume stable task-specific model APIs and enables AI developers build algorithms and models in a modular/composable framework"
+license = {text = "Apache-2.0"}
+readme = "README.md"
+requires-python = "~=3.8"
+classifiers=[
+    "License :: OSI Approved :: Apache Software License"
+]
 dependencies = [
     "alchemy-config>=1.0.0",
     "alchemy-logging>=1.0.4",
@@ -18,7 +22,7 @@ dependencies = [
     "grpcio>=1.35.0,<2.0",
     "ijson>=3.1.4,<3.2.0",
     "munch>=2.5.0,<3.0",
-    "protobuf>=3.20.0,<4",
+    "protobuf>=3.20.1,<5",
     "prometheus_client==0.12.0",
     "py-grpc-prometheus>=0.7.0,<0.8",
     "PyYAML>=6.0,<7.0",
@@ -27,6 +31,9 @@ dependencies = [
     "six>=1.16.0,<2.0.0",
     "tqdm>=4.59.0,<5.0.0",
     "wheel>=0.37.0",
-    "jtd-to-proto>=0.11.4,<0.12.0",
+    "jtd-to-proto>=0.12.1,<0.13.0",
     "import-tracker>=3.1.5,<4",
 ]
+
+[project.urls]
+Source = "https://github.com/caikit/caikit"

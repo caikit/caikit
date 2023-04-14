@@ -22,7 +22,6 @@ import threading
 import time
 
 # Third Party
-from sample_lib.data_model import SampleOutputType
 import pytest
 
 # First Party
@@ -30,6 +29,7 @@ import alog
 
 # Local
 from caikit.runtime.model_management.batcher import Batcher
+from sample_lib.data_model import SampleOutputType
 import caikit.core
 
 ## Helpers #####################################################################

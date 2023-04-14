@@ -16,25 +16,19 @@
 Coverage is probably not the best
 """
 # Standard
-from typing import List
+from typing import List, Optional
 import inspect
 
-# Third Party
-from sample_lib.data_model import SampleInputType
-import sample_lib
-
 # Local
-from caikit.runtime.service_generation.signature_parsing.docstrings import (
-    _extract_nested_type,
-    _get_docstring_type,
-)
 from caikit.runtime.service_generation.signature_parsing.parsers import (
     _get_dm_type_from_name,
     _snake_to_camel,
-    get_argument_type,
+    get_args_with_defaults,
+    get_argument_types,
     get_output_type_name,
 )
 import caikit.core
+import sample_lib
 
 ## Tests ########################################################################
 
@@ -59,96 +53,61 @@ def test_get_dm_type_from_name():
     )
 
 
-def test_get_docstring_type():
-    # TODO: fun edge case where producer word in description is found in types
-    assert (
-        _get_docstring_type(
-            module_class=sample_lib.blocks.sample_task.SampleBlock,
-            candidate_type_names=["sample_lib.data_model.SampleOutputType"],
-        )
-        == sample_lib.data_model.SampleOutputType
-    )
-
-
-def test_get_argument_type_from_docstring():
-    """This tests docstring parsing only (note annotation=inspect.Parameter.empty)
-    The 'SampleBlock' has correctly formatted docstrings in Google style
-    """
-    assert (
-        get_argument_type(
-            arg=inspect.Parameter(
-                name="sample_input",
-                kind=inspect.Parameter.POSITIONAL_ONLY,
-                annotation=inspect.Parameter.empty,
-            ),
-            module_class=sample_lib.blocks.sample_task.SampleBlock,
-            module_method=sample_lib.blocks.sample_task.SampleBlock.run,
-        )
-        == sample_lib.data_model.SampleInputType
-    )
-
-
-def test_get_argument_type_from_malformed_docstring():
-    """This test tests docstring arg type parsing for docstrings in non-conforming styles
-    where the actual type name is hidden in the description"""
-
-    class TestClass:
-        def run(self, foo):
-            """
-
-            Args:
-                foo: yadda yadda blah sample_lib.data_model.SampleInputType
-
-            Returns:
-                None
-            """
-            pass
-
-    assert (
-        get_argument_type(
-            arg=inspect.Parameter(
-                name="foo",
-                kind=inspect.Parameter.POSITIONAL_ONLY,
-                annotation=inspect.Parameter.empty,
-            ),
-            module_class=TestClass,
-            module_method=TestClass.run,
-        )
-        == sample_lib.data_model.SampleInputType
-    )
-
-
 def test_get_output_type_name():
     run_sign = inspect.Signature(return_annotation=inspect.Signature.empty)
     assert (
         get_output_type_name(
             module_class=sample_lib.blocks.sample_task.SampleBlock,
             fn_signature=run_sign,
-            fn=getattr(sample_lib.blocks.sample_task.SampleBlock, "run"),
+            fn=sample_lib.blocks.sample_task.SampleBlock.run,
         )
         == sample_lib.data_model.SampleOutputType
     )
 
 
-def test_extract_nested_type():
-    """
-    Test that this function returns the type of List[T], or None if it's not a nested type
-    """
-    # TODO: I don't really get why the block ref has to be passed here :hmm:
+def test_get_argument_types_with_real_block():
+    """Quick check that we get the right type for our sample block"""
     assert (
-        _extract_nested_type(sample_lib.blocks.sample_task.SampleBlock, "List[str]")
-        == List[str]
+        get_argument_types(sample_lib.blocks.sample_task.SampleBlock.run)[
+            "sample_input"
+        ]
+        == sample_lib.data_model.SampleInputType
     )
-    assert (
-        _extract_nested_type(sample_lib.blocks.sample_task.SampleBlock, "list(str)")
-        == List[str]
-    )
-    assert (
-        _extract_nested_type(
-            sample_lib.blocks.sample_task.SampleBlock, "List(SampleInputType)"
-        )
-        == List[SampleInputType]
-    )
-    assert (
-        _extract_nested_type(sample_lib.blocks.sample_task.SampleBlock, "int") == None
-    )
+
+
+def test_optional_type_annotation():
+    """Check that we keep the `Optional` wrapping on input types"""
+
+    def _run(sample_input: Optional[int]):
+        pass
+
+    assert get_argument_types(_run)["sample_input"] == Optional[int]
+
+
+def test_get_argument_type_from_malformed_docstring():
+    """This test tests docstring arg type parsing for docstrings in non-conforming styles
+    where the actual type name is hidden in the description"""
+
+    def _run(self, foo):
+        """
+
+        Args:
+            foo: yadda yadda blah sample_lib.data_model.SampleInputType
+
+        Returns:
+            None
+        """
+        pass
+
+    assert get_argument_types(_run)["foo"] == sample_lib.data_model.SampleInputType
+
+
+def test_get_args_with_defaults():
+    """Check that we get arguments with any default value supplied"""
+
+    def _run(
+        a, b: bool, c: int = None, d: str = None, e: int = 5, f: float = 0.5, g=None
+    ):
+        pass
+
+    assert get_args_with_defaults(_run) == {"c", "d", "e", "f", "g"}

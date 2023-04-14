@@ -45,6 +45,7 @@ def get_module_info(ck_module: Type[ModuleBase]) -> Optional[ModuleInfo]:
     2. The module derives from a base class that itself derives from one of the
         known type-hierarchy derived from `ModuleBase`.
     """
+    # NOTE: all of this assumes <library> has no .
     # Use the library name to qualify the module type in case there are
     # collisions across domains (e.g. classification in nlp and cv)
     py_mod_name_parts = ck_module.__module__.split(".")
@@ -64,7 +65,10 @@ def get_module_info(ck_module: Type[ModuleBase]) -> Optional[ModuleInfo]:
 
     # Look for a base class that meets our expectations
     for parent in ck_module.__mro__[1:]:
-        if parent.__module__.partition(".")[0] != "caikit.core":
+        if not (
+            parent.__module__.partition(".")[0] == "caikit"
+            and parent.__module__.partition(".")[1] == "core"
+        ):
             module_parts = parent.__module__.split(".")
             module_kind = module_parts[1]
             module_type = module_parts[-1]

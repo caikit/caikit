@@ -15,9 +15,6 @@
 # Standard
 from typing import List, Optional, Union
 
-# Third Party
-import sample_lib
-
 # Local
 from caikit.core.data_model import DataStream
 from caikit.runtime.service_generation.type_helpers import (
@@ -25,6 +22,7 @@ from caikit.runtime.service_generation.type_helpers import (
     has_data_stream,
     is_model_type,
 )
+import sample_lib
 
 
 def test_data_stream_helpers():

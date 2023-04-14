@@ -18,22 +18,14 @@ from dataclasses import dataclass
 from unittest import mock
 import json
 import os
-import tempfile
 import threading
 import time
 import uuid
 
 # Third Party
 from grpc_health.v1 import health_pb2, health_pb2_grpc
-from sample_lib.data_model import (
-    OtherOutputType,
-    SampleInputType,
-    SampleOutputType,
-    SampleTrainingType,
-)
 import grpc
 import pytest
-import sample_lib
 import tls_test_tools
 
 # First Party
@@ -41,7 +33,6 @@ import alog
 
 # Local
 from caikit.interfaces.runtime.data_model import (
-    ModelPointer,
     TrainingInfoRequest,
     TrainingInfoResponse,
     TrainingJob,
@@ -58,9 +49,16 @@ from caikit.runtime.protobufs import (
 )
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.utils.config_parser import ConfigParser
+from sample_lib.data_model import (
+    OtherOutputType,
+    SampleInputType,
+    SampleOutputType,
+    SampleTrainingType,
+)
 from tests.conftest import temp_config_parser
 from tests.fixtures import Fixtures
 import caikit
+import sample_lib
 
 log = alog.use_channel("TEST-SERVE-I")
 
@@ -78,8 +76,6 @@ def is_good_train_response(actual_response, expected, model_name):
     assert actual_response.model_name == model_name
 
 
-# TODO: Fix this with optional fields support - https://github.com/IBM/jtd-to-proto/issues/34
-@pytest.mark.skip("Waiting for optional fields support")
 def test_model_train(runtime_grpc_server):
     """Test model train's RUN function"""
     model_train_stub = process_pb2_grpc.ProcessStub(
@@ -94,9 +90,15 @@ def test_model_train(runtime_grpc_server):
             "training_params": json.dumps(
                 {
                     "model_name": "abc",
-                    "training_data": [
-                        sample_lib.data_model.SampleTrainingType(number=1).to_dict()
-                    ],
+                    "training_data": {
+                        "jsondata": {
+                            "data": [
+                                sample_lib.data_model.SampleTrainingType(
+                                    number=1
+                                ).to_dict()
+                            ]
+                        },
+                    },
                 }
             ),
         },
@@ -132,14 +134,16 @@ def test_model_train(runtime_grpc_server):
     )
     assert response.status == TrainingStatus.COMPLETED
 
-    # make sure we wait for training to finish
+    # Make sure we wait for training to finish
     result = TrainingManager.get_instance().training_futures[training_id].result()
 
-    assert result.batch_size == 64
     assert (
         result.BLOCK_CLASS
         == "sample_lib.blocks.sample_task.sample_implementation.SampleBlock"
     )
+    # Fields with defaults have expected values
+    assert result.batch_size == 64
+    assert result.learning_rate == 0.0015
 
 
 def test_predict_fake_block_ok_response(

@@ -169,7 +169,7 @@ def test_get_service_proto_module():
     assert service_proto_module == caikit_runtime_pb2
 
 
-# Third Party
+# Local
 import sample_lib
 
 MODULE_LIST = [

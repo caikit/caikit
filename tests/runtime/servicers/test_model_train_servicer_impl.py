@@ -21,7 +21,6 @@ import uuid
 # Third Party
 import grpc
 import pytest
-import sample_lib
 
 # Local
 from caikit.interfaces.runtime.data_model import TrainingStatus
@@ -29,6 +28,7 @@ from caikit.runtime.protobufs import process_pb2
 from caikit.runtime.servicers.model_train_servicer import ModelTrainServicerImpl
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from tests.conftest import temp_config_parser
+import sample_lib
 
 
 @pytest.fixture
