@@ -298,7 +298,9 @@ class ServicePackageFactory:
                 continue
 
             # no inclusions specified means include everything
-            if included_task_types is None and included_modules is None:
+            if (included_task_types is None or included_task_types == []) and (
+                included_modules is None or included_modules == []
+            ):
                 clean_modules.add(ck_module)
 
             # if inclusion is specified, use that
