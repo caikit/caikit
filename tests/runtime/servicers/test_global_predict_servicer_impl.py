@@ -41,24 +41,6 @@ HAPPY_PATH_INPUT = SampleInputType(name="Gabe").to_proto()
 HAPPY_PATH_RESPONSE = SampleOutputType(greeting="Hello Gabe").to_proto()
 
 
-@pytest.mark.skip("We'd like to just nix the whole strict_rpc_mode check from caikit")
-def test_calling_the_wrong_rpc_for_a_model_raises(
-    sample_inference_service, sample_predict_servicer, loaded_model_id
-):
-    request = sample_inference_service.messages.BobbitRequest(
-        producer_id=TEST_PRODUCER_ID
-    )
-
-    with pytest.raises(CaikitRuntimeException) as context:
-        sample_predict_servicer.Predict(
-            request, Fixtures.build_context(loaded_model_id)
-        )
-
-    assert context.value.status_code == grpc.StatusCode.INVALID_ARGUMENT
-
-    assert "Wrong return type from model" in context.value.message
-
-
 def test_calling_predict_should_raise_if_block_raises(
     sample_inference_service, sample_predict_servicer, loaded_model_id
 ):
@@ -72,27 +54,6 @@ def test_calling_predict_should_raise_if_block_raises(
         )
     assert context.value.status_code == grpc.StatusCode.INTERNAL
     assert "Unhandled exception during prediction" in context.value.message
-
-
-@pytest.mark.skip("We'd like to just nix the strict_rpc_mode checking from caikit")
-def test_wrong_rpc_edge_case(sample_inference_service, sample_predict_servicer):
-    """Test that a model that returns a type with a name like ${some_bad_prefix}${expected_type_name} will still
-    raise an invalid argument error"""
-    model_id = _random_test_id()
-    model = DeprecatedWidget()
-    with tempfile.TemporaryDirectory() as tmpdir:
-        model_path = os.path.join(tmpdir, model_id)
-        model.save(model_path)
-        Fixtures.load_model(model_id, model_path, Fixtures().get_good_model_type())
-        with pytest.raises(CaikitRuntimeException) as context:
-            sample_predict_servicer.Predict(
-                sample_inference_service.messages.WidgetRequest(
-                    producer_id=TEST_PRODUCER_ID
-                ),
-                Fixtures.build_context(model_id),
-            )
-        assert context.value.status_code == grpc.StatusCode.INVALID_ARGUMENT
-        assert "Wrong return type from model" in context.value.message
 
 
 def test_invalid_input_to_a_valid_caikit_core_class_method_raises(
