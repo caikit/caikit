@@ -99,7 +99,6 @@ class GlobalPredictServicer:
         self,
         inference_service: ServicePackage,
         use_abortable_threads: bool = ConfigParser.get_instance().use_abortable_threads,
-        strict_rpc_mode: bool = ConfigParser.get_instance().strict_rpc_mode,
     ):
         self._model_manager = ModelManager.get_instance()
         if ConfigParser.get_instance().metering.enabled:
@@ -115,7 +114,6 @@ class GlobalPredictServicer:
             )
 
         self.use_abortable_threads = use_abortable_threads
-        self.strict_rpc_mode = strict_rpc_mode
         self._inference_service = inference_service
         # Validate that the Caikit Library CDM is compatible with our service descriptor
         validate_data_model(self._inference_service.descriptor)
@@ -193,11 +191,6 @@ class GlobalPredictServicer:
                                 response = work.do()
                             else:
                                 response = model.run(**caikit_library_request)
-
-                if self.strict_rpc_mode:
-                    GlobalPredictServicer._raise_on_wrong_rpc(
-                        desc_name, type(response), model_id, model
-                    )
 
                 # Marshall the response to the necessary return type
                 with PREDICT_TO_PROTO_SUMMARY.labels(

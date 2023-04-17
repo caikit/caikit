@@ -17,8 +17,6 @@ service_generation:
 
 use_abortable_threads: true
 
-strict_rpc_mode: false
-
 metering:
     # Switch off metering by default
     enabled: false
