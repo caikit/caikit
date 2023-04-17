@@ -11,6 +11,9 @@ test
 # IDEs
 .vscode/
 .idea/
+
+# Virtual Env
+venv/
 # Mac personalization files
 *.DS_Store
 

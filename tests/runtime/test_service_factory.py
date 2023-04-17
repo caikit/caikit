@@ -22,6 +22,8 @@ import pytest
 # Local
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from tests.conftest import temp_config_parser
+import caikit
 
 
 # 🌶️🌶️🌶️🌶️🌶️
@@ -165,3 +167,130 @@ def test_get_service_proto_module():
         "caikit_runtime_pb2", mock_config
     )
     assert service_proto_module == caikit_runtime_pb2
+
+
+# Local
+import sample_lib
+
+MODULE_LIST = [
+    module_class
+    for module_class in caikit.core.MODULE_REGISTRY.values()
+    if module_class.__module__.partition(".")[0] == "sample_lib"
+]
+
+### Test ServicePackageFactory._get_and_filter_modules function
+def test_get_and_filter_modules_respects_excluded_task_type():
+    assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
+    with temp_config_parser(
+        {"service_generation": {"task_types": {"excluded": ["sample_task"]}}}
+    ) as cfg:
+        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        assert len(clean_modules) == 1
+        assert "sample_task" not in str(clean_modules)
+
+
+def test_get_and_filter_modules_respects_excluded_modules():
+    assert "InnerBlock" in str(MODULE_LIST)
+    with temp_config_parser(
+        {
+            "service_generation": {
+                "module_guids": {"excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]}
+            }
+        }  # excluding InnerBlock
+    ) as cfg:
+
+        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        assert len(clean_modules) == 5
+        assert "InnerBlock" not in str(clean_modules)
+
+
+def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type():
+    assert "InnerBlock" in str(MODULE_LIST)
+    assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
+    with temp_config_parser(
+        {
+            "service_generation": {
+                "module_guids": {"excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]},
+                "task_types": {"excluded": ["other_task"]},
+            }
+        }  # excluding InnerBlock and OtherBlock
+    ) as cfg:
+
+        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        assert len(clean_modules) == 4
+        assert "InnerBlock" not in str(clean_modules)
+        assert "OtherBlock" not in str(clean_modules)
+        assert "other_task" not in str(clean_modules)
+
+
+def test_get_and_filter_modules_respects_included_modules_and_included_task_types():
+    assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
+    with temp_config_parser(
+        {
+            "service_generation": {
+                "module_guids": {"included": ["00110203-baad-beef-0809-0a0b02dd0e0f"]},
+                "task_types": {"included": ["other_task"]},
+            }
+        }  # only want InnerBlock and OtherBlock
+    ) as cfg:
+
+        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        assert len(clean_modules) == 2
+        assert "InnerBlock" in str(clean_modules)
+        assert "OtherBlock" in str(clean_modules)
+        assert "ListBlock" not in str(clean_modules)
+
+
+def test_get_and_filter_modules_respects_included_modules():
+    assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
+    with temp_config_parser(
+        {
+            "service_generation": {
+                "module_guids": {
+                    "included": [
+                        "00110203-baad-beef-0809-0a0b02dd0e0f",
+                        "00af2203-0405-0607-0263-0a0b02dd0c2f",
+                    ]
+                },
+            }
+        }  # only want InnerBlock and ListBlock
+    ) as cfg:
+
+        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        assert len(clean_modules) == 2
+        assert "InnerBlock" in str(clean_modules)
+        assert "ListBlock" in str(clean_modules)
+        assert "OtherBlock" not in str(clean_modules)
+
+
+def test_get_and_filter_modules_respects_included_task_types():
+    assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
+    with temp_config_parser(
+        {
+            "service_generation": {
+                "task_types": {"included": ["sample_task"]},
+            }
+        }  # only want sample_task which has 5 modules
+    ) as cfg:
+
+        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        assert len(clean_modules) == 5
+        assert "InnerBlock" in str(clean_modules)
+        assert "OtherBlock" not in str(clean_modules)
+
+
+def test_get_and_filter_modules_respects_included_task_types_and_excluded_modules():
+    assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
+    with temp_config_parser(
+        {
+            "service_generation": {
+                "task_types": {"included": ["sample_task"]},
+                "module_guids": {"excluded": ["00af2203-0405-0607-0263-0a0b02dd0c2f"]},
+            }
+        }  # only want sample_task but not ListBlock
+    ) as cfg:
+
+        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        assert len(clean_modules) == 4
+        assert "InnerBlock" in str(clean_modules)
+        assert "ListBlock" not in str(clean_modules)

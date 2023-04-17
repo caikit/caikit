@@ -7,10 +7,12 @@ service_generation:
     client_package_name: ""
     module_types:
         included: ["blocks", "workflows"]
-    modules:
+    module_guids:
+        included: []
         excluded: []
     primitive_data_model_types: []
     task_types:
+        included: []
         excluded: []
 
 use_abortable_threads: true
@@ -143,11 +145,13 @@ test:
         client_package_name: ""
         module_types:
             included: ["blocks", "workflows"]
-        modules:
+        module_guids:
+            included: []
             excluded: []
         primitive_data_model_types:
             - "sample_lib.data_model.SampleInputType"
         task_types:
+            included: []
             excluded: []
     # training configs for tests
     training:
