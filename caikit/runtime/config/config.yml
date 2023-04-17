@@ -127,7 +127,6 @@ server_shutdown_grace_period_seconds: 45
 # Per-environment configurations
 environment: prod
 test:
-    grpc_server_sleep_interval: 1
     find_available_port: true
     runtime_version: mock
     caikit_library: sample_lib
@@ -156,10 +155,8 @@ test:
         auto_load_trained_model: true
         output_dir: test/training_output
 dev:
-    grpc_server_sleep_interval: 45
     runtime_version: real_implementation
 prod:
-    grpc_server_sleep_interval: 45
     runtime_version: real
 
 # TLS configs
