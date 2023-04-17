@@ -60,7 +60,7 @@ class TestConfigs(unittest.TestCase):
             # PROD should set the grpc sleep setting up to 45
             os.environ["ENVIRONMENT"] = "PROD"
             c = ConfigParser()
-            self.assertEqual(45, c.grpc_server_sleep_interval)
+            self.assertEqual("real", c.runtime_version)
         finally:
             # Try to make sure we re-set this to not bork other tests
             os.environ["ENVIRONMENT"] = old_deploy_env
@@ -69,7 +69,7 @@ class TestConfigs(unittest.TestCase):
         delete_config_singleton()
         try:
             with TemporaryDirectory() as tempdir:
-                cfg = {"grpc_server_sleep_interval": 7, "new_key": "new_value"}
+                cfg = {"new_key": "new_value"}
                 path = os.path.join(tempdir, "new_config.yml")
                 with open(path, "w") as f:
                     yaml.dump(cfg, f)
@@ -77,7 +77,6 @@ class TestConfigs(unittest.TestCase):
                 os.environ["CONFIG_FILES"] = path
                 c = ConfigParser()
 
-                self.assertEqual(7, c.grpc_server_sleep_interval)
                 self.assertEqual("new_value", c.new_key)
         finally:
             os.environ["CONFIG_FILES"] = ""
