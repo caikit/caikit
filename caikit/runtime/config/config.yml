@@ -74,7 +74,10 @@ distributed:
     # backends.<backend name>: Per-backend configuration blobs
     config: {}
 
+# These are only used for model mesh
+runtime_version: real
 numeric_runtime_version: 0
+
 # Whether or not model-mesh should respect MAX_MODEL_CONCURRENCY and scale out model loads appropriately
 latency_based_autoscaling_enabled: true
 # If latency based autoscaling is enabled, the default max in-flight requests per copy of each model
@@ -123,41 +126,6 @@ training:
 
 # gRPC Server shutdown grace period
 server_shutdown_grace_period_seconds: 45
-
-# Per-environment configurations
-environment: prod
-test:
-    find_available_port: true
-    runtime_version: mock
-    caikit_library: sample_lib
-    service_proto_gen_module_dir: tests.fixtures.protobufs
-    metering:
-        # Switch on metering by default
-        enabled: true
-        # Directory to save metrics files
-        log_dir: "test/metering_logs"
-        # Write to log file every N seconds
-        log_interval: 5
-    service_generation:
-        client_package_name: ""
-        module_types:
-            included: ["blocks", "workflows"]
-        module_guids:
-            included: []
-            excluded: []
-        primitive_data_model_types:
-            - "sample_lib.data_model.SampleInputType"
-        task_types:
-            included: []
-            excluded: []
-    # training configs for tests
-    training:
-        auto_load_trained_model: true
-        output_dir: test/training_output
-dev:
-    runtime_version: real_implementation
-prod:
-    runtime_version: real
 
 # TLS configs
 tls:
