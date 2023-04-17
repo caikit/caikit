@@ -9,3 +9,5 @@ from . import core, interfaces
 
 # Expose model management at the top level
 from .core import extract, load, resolve_and_load
+
+config = core.config.ConfigParser.get_config()

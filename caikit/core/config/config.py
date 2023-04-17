@@ -17,6 +17,7 @@
 """
 
 # Standard
+import os
 from importlib import metadata
 
 # Third Party
@@ -27,6 +28,7 @@ import aconfig
 import alog
 
 # Local
+from ..toolkit.config_utils import merge_configs
 from ..toolkit.errors import error_handler
 
 log = alog.use_channel("CONFIG")
@@ -37,10 +39,43 @@ error = error_handler.get(log)
 __all__ = [
     "Config",
     "compare_versions",
+    "ConfigParser"
 ]
 
 log = alog.use_channel("CKCCNFG")
 error = error_handler.get(log)
+
+BASE_CONFIG_PATH = os.path.realpath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "config.yml")
+)
+
+
+class ConfigParser:
+    """This classes manages configuration settings for caikit.
+    It draws values first out of the base config.yml file packaged within this repo.
+    It will also merge in any configuration from config yaml files specified in a comma-separated
+    list in the environment variable 'CONFIG_FILES', going from left to right and overwriting on
+    merge. (Last takes precedence)
+    """
+
+    @staticmethod
+    def get_config(config_path: str = BASE_CONFIG_PATH) -> aconfig.Config:
+        config = aconfig.Config.from_yaml(config_path, override_env_vars=True)
+        # Merge in config from any other user-provided config files
+        if config.config_files:
+            extra_config_files = [
+                s.strip() for s in str(config.config_files).split(",")
+            ]
+            for file in extra_config_files:
+                log.info(
+                    {
+                        "log_code": "<RUN17612094I>",
+                        "message": "Loading config file '%s'" % file,
+                    }
+                )
+                new_overrides = aconfig.Config.from_yaml(file, override_env_vars=True)
+                config = merge_configs(config, new_overrides)
+        return config
 
 
 class Config(aconfig.Config):
