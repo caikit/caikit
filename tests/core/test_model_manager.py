@@ -70,7 +70,7 @@ class TestModelManager(TestCaseBase):
     def global_load_path(self):
         """Set load_path prior to importing caikit.core."""
         # Set test load path
-        test_load_path = os.path.join(self.fixtures_dir, "studio_models")
+        test_load_path = os.path.join(self.fixtures_dir, "models")
 
         # Save the original load path so that it can be undone
         std_load_path = lib_config.load_path
@@ -199,7 +199,7 @@ class TestModelManager(TestCaseBase):
     @pytest.mark.usefixtures("global_load_path")
     def test_load_path(self):
         """Test that loading a model from a path defined in the load_path config variable works."""
-        model = caikit.core.load("studio_block")
+        model = caikit.core.load("foo")
         self.assertIsInstance(model, caikit.core.BlockBase)
 
     def test_import_block_registry(self):
