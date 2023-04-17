@@ -13,8 +13,7 @@
 # limitations under the License.
 
 
-"""Caikit Core AI Framework library.  This is the base framework for core AI/ML libraries, such
-as NLP and Vision.
+"""Caikit Core AI Framework library.  This is the base framework for core AI/ML libraries.
 """
 
 # the import order cannot adhere to the linter here because we must do things like
