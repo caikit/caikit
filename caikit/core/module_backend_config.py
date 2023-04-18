@@ -112,7 +112,7 @@ def configure(*_, config_file: Optional[str] = None, **overrides):
     disable_local_backend = config_object.disable_local_backend or False
 
     # Add local at the end of priority by default
-    # TODO: Should we remove LOCAL if from priority it is disabled?
+    # TODO: Should we remove LOCAL from priority if it is disabled?
     if not disable_local_backend and (
         MODULE_BACKEND_TYPES.LOCAL not in backend_priority
     ):
