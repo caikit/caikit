@@ -94,11 +94,7 @@ class ModelManager:
         """
         error.type_check("<COR98255724E>", bool, load_singleton=load_singleton)
 
-        # This is mainly done for the caikit Studio integration so that the models are loadable from
-        # a volume mount such as `/opt/caikit/nlpmodels`. Note if the path exists we assume the
-        # customer is trying to load their own model (e.g,. a standard models saved to disk, or
-        # a custom model downloaded from Studio data assets. In that case we keep module_path
-        # intact.
+        # This allows a user to load their own model (e.g. model saved to disk)
         load_path = lib_config.load_path
         if load_path is not None and isinstance(module_path, str):
             if not os.path.exists(module_path):

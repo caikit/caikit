@@ -127,7 +127,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
     @alog.logged_function(log.debug)
     def bootstrap(cls, *args, **kwargs):
         """Bootstrap a block. This method can be used to initialize the block
-        from artifacts created outside of caikitNLP
+        from artifacts created outside of a particular caikit library
         """
         error(
             "<COR92634438E>",

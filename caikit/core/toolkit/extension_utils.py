@@ -85,7 +85,7 @@ def bind_extensions(extension_names, lib_handle):
 
     Ex)
         Say we provide inputs:
-            extension_names = ["sample_module"], a caikit NLP extension
+            extension_names = ["sample_module"], a caikit extension
             lib_handle = caikit_nlp
 
         Register sample_module onto caikit_nlp.extensions.sample_module.
