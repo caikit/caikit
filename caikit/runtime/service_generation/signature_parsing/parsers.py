@@ -30,12 +30,13 @@ log = alog.use_channel("SIG-PARSING")
 
 # Constants ##################################
 KNOWN_ARG_TYPES = {
-    "syntax_doc": "SyntaxPrediction",
     "producer_id": "ProducerId",
-    "raw_document": "RawDocument",
 }
 
-KNOWN_OUTPUT_TYPES = {}
+KNOWN_OUTPUT_TYPES = {
+    "SampleTaskPredict": "SampleOutputType",
+    "OtherTaskPredict": "OtherOutputType",
+}
 
 
 @alog.logged_function(log.debug2)
@@ -47,7 +48,6 @@ def get_output_type_name(
     """Get the type for a return type based on the name of the module class and
     the Caikit library naming convention.
     """
-    extra_candidate_names = []
     log.debug(fn_signature)
     # Check type annotation first
     if fn_signature.return_annotation != fn_signature.empty:
@@ -60,12 +60,6 @@ def get_output_type_name(
                     fn_signature.return_annotation,
                 )
                 return module_class
-
-            log.debug(
-                "Adding %s to list of candidate type names to search for concrete types:",
-                fn_signature.return_annotation,
-            )
-            extra_candidate_names.append(fn_signature.return_annotation)
         else:
             return fn_signature.return_annotation
 
@@ -79,7 +73,7 @@ def get_output_type_name(
     log.debug3("Parent module parts for %s: %s", module_class.__name__, module_parts)
 
     # TODO: this part needs a test (or consider deleting and say user needs to specify output type)
-    class_name = _snake_to_camel(module_parts[2]) + "Prediction"
+    class_name = _snake_to_camel(module_parts[2]) + "Predict"
     return _get_dm_type_from_name(class_name) or _get_dm_type_from_name(
         KNOWN_OUTPUT_TYPES.get(class_name)
     )
