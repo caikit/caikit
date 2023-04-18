@@ -20,6 +20,7 @@
 from importlib import metadata
 from typing import Optional
 import os
+import threading
 
 # Third Party
 import semver
@@ -43,6 +44,15 @@ BASE_CONFIG_PATH = os.path.realpath(
     os.path.join(os.path.dirname(__file__), "config.yml")
 )
 
+_CONFIG: aconfig.Config = aconfig.Config({})
+_CONFIG_LOCK: threading.Lock = threading.Lock()
+
+
+def get_config() -> aconfig.Config:
+    """Get the caikit configuration"""
+    with _CONFIG_LOCK:
+        return _CONFIG
+
 
 def configure(library_config_yml_path: Optional[str] = None):
     """Configure caikit for your usage!
@@ -64,15 +74,17 @@ def configure(library_config_yml_path: Optional[str] = None):
     """
 
     cfg = parse_config(library_config_yml_path)
-    # Assign this new config back to the top-level `caikit.config` attribute
-    # Local
-    import caikit
 
-    caikit.config = cfg
+    # Update the config
+    with _CONFIG_LOCK:
+        _CONFIG.clear()
+        _CONFIG.update(cfg)
 
     # TODO: hook into any inner `configure()` calls that need to happen (fill this section in)
-    error_handler.ENABLE_ERROR_CHECKS = caikit.config.enable_error_checks
-    error_handler.MAX_EXCEPTION_LOG_MESSAGES = caikit.config.max_exception_log_messages
+    error_handler.ENABLE_ERROR_CHECKS = get_config().enable_error_checks
+    error_handler.MAX_EXCEPTION_LOG_MESSAGES = (
+        get_config().config.max_exception_log_messages
+    )
 
     # TODO: Or think about having those pull config dynamically?
 
