@@ -28,18 +28,8 @@ _warnings.filterwarnings("ignore")
 
 # Local
 # must import toolkit first since we need alog to be set up before it is used
-from . import (
-    blocks,
-    config,
-    data_model,
-    module,
-    module_config,
-    resources,
-    toolkit,
-    workflows,
-)
+from . import blocks, data_model, module, module_config, resources, toolkit, workflows
 from .blocks.base import BlockBase, block
-from .config import *
 from .data_model import dataobject
 from .model_manager import *
 from .module import *

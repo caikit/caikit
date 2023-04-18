@@ -20,13 +20,10 @@ from contextlib import contextmanager
 import os
 import tempfile
 
-# Third Party
-import pytest
-
 # Local
-from caikit.core.config import lib_config
-from caikit.core.module_backend_config import configure, configured_backends
-from caikit.core.module_backends import LocalBackend, backend_types
+from caikit.config import lib_config
+from caikit.core.module_backend_config import configure
+from caikit.core.module_backends import LocalBackend
 
 # Unit Test Infrastructure
 from tests.base import TestCaseBase
@@ -206,19 +203,16 @@ class TestModelManager(TestCaseBase):
         """Make sure that the BLOCK_REGISTRY can be imported from model_manager"""
         # pylint: disable = import-outside-toplevel,no-name-in-module,unused-import
         # Local
-        from caikit.core.model_manager import BLOCK_REGISTRY
 
     def test_import_workflow_registry(self):
         """Make sure that the WORKFLOW_REGISTRY can be imported from model_manager"""
         # pylint: disable = import-outside-toplevel,no-name-in-module,unused-import
         # Local
-        from caikit.core.model_manager import WORKFLOW_REGISTRY
 
     def test_import_resource_registry(self):
         """Make sure that the RESOURCE_REGISTRY can be imported from model_manager"""
         # pylint: disable = import-outside-toplevel,no-name-in-module,unused-import
         # Local
-        from caikit.core.model_manager import RESOURCE_REGISTRY
 
 
 # Pytest tests #########################################################

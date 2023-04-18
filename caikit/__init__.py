@@ -4,10 +4,17 @@ model APIs while enabling AI developers build algorithms and models in a
 modular/composable framework.
 """
 
+# First Party
+import aconfig
+
 # Local
-from . import core, interfaces
+from . import config, core, interfaces
+
+# Expose configuration fn at the top level
+from .config import configure
 
 # Expose model management at the top level
 from .core import extract, load, resolve_and_load
 
-config = core.config.ConfigParser.get_config()
+# Define a `config` attribute that is written to by `configure()`
+config: aconfig.Config

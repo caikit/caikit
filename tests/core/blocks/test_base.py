@@ -18,9 +18,9 @@ import shutil
 import tempfile
 
 # Local
+from caikit.config import lib_config
 from caikit.core.blocks import block
 from caikit.core.blocks.base import BlockSaver
-from caikit.core.config import lib_config
 from caikit.core.toolkit.serializers import JSONSerializer
 
 # pylint: disable=import-error

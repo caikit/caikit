@@ -28,7 +28,6 @@ import alog
 
 # Local
 from . import module_backend_config as backend_config
-from .config import lib_config
 from .module import (
     _MODULE_TYPES,
     MODULE_BACKEND_REGISTRY,
@@ -39,6 +38,7 @@ from .module import (
 )
 from .module_backends import backend_types
 from .toolkit.errors import error_handler
+from caikit.config import lib_config
 
 log = alog.use_channel("MDLMNG")
 error = error_handler.get(log)

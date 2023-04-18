@@ -17,7 +17,7 @@ from unittest.mock import patch
 import sys
 
 # Local
-from caikit.core.config import lib_config
+from caikit.config import lib_config
 
 # Unit Test Infrastructure
 from tests.base import TestCaseBase
@@ -71,6 +71,6 @@ class TestConfig(TestCaseBase):
         sys.modules.pop("caikit.core.config")
         # pylint: disable=redefined-outer-name,reimported,import-outside-toplevel
         # Local
-        from caikit.core.config import lib_config
+        from caikit.config import lib_config
 
         self.assertEqual(lib_config.library_version, version)

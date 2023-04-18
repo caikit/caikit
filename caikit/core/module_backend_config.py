@@ -166,7 +166,7 @@ def configure(*_, config_file: Optional[str] = None, **overrides):
 ## Implementation Details ######################################################
 
 _DEFAULT_CONFIG_FILE = os.path.realpath(
-    os.path.join(os.path.dirname(__file__), "config", "config.yml")
+    os.path.join(os.path.dirname(__file__), "../config", "config.yml")
 )
 
 # The global map of configured backends

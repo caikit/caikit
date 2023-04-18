@@ -13,22 +13,9 @@
 # limitations under the License.
 
 
-"""Top-level configuration for the `caikit.core` library.  Mainly used for model management and
-version.
+"""Top-level configuration for the `caikit.core` library.
 """
 
-# Standard
-import os
-
 # Local
-from ..toolkit.errors import error_handler
-from .config import *
-
-lib_config = Config.get_config(
-    "caikit.core",
-    os.path.join(os.path.abspath(os.path.dirname(__file__)), "config.yml"),
-)
-
-# Update the global error configurations
-error_handler.ENABLE_ERROR_CHECKS = lib_config.enable_error_checks
-error_handler.MAX_EXCEPTION_LOG_MESSAGES = lib_config.max_exception_log_messages
+# Export public configuration functions
+from .config import configure, parse_config
