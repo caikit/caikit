@@ -14,6 +14,9 @@ import time
 import uuid
 
 # Third Party
+from unittest.mock import patch
+
+from aconfig import aconfig
 from grpc_health.v1 import health_pb2, health_pb2_grpc
 import grpc
 import pytest
@@ -23,8 +26,11 @@ import yaml
 import alog
 
 # Local
+from caikit import get_config
+from caikit.config import parse_config
 from caikit.core.data_model.dataobject import render_dataobject_protos
 from caikit.core.toolkit import logging
+from caikit.core.toolkit.config_utils import merge_configs
 from caikit.runtime.grpc_server import RuntimeGRPCServer
 from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.model_management.model_manager import ModelManager
@@ -186,11 +192,24 @@ def other_loaded_model_id(other_good_model_path) -> str:
 @contextmanager
 def temp_config(config_overrides: dict):
     """Temporarily edit the caikit config in a mock context"""
+    # We don't use `caikit.configure` here because we don't want to update the "real" config.
+    # Instead, we'll mock the response of `caikit.get_config()`. This is thread safe with
+    # parallel test runners.
     with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w") as temp_cfg:
+        # Create a new config object from this one
         yaml.safe_dump(config_overrides, temp_cfg)
         temp_cfg.flush()
+        mock_config = parse_config(temp_cfg)
+
+        # copy current config and merge this one over it
+        current_cfg_copy = aconfig.Config(get_config().copy())
+        mock_config = merge_configs(current_cfg_copy, mock_config)
+
+        with patch("caikit.get_config", return_value=mock_config):
+            yield
 
 
+# TODO: migrate to `temp_config` instead
 @contextmanager
 def temp_config_parser(config_overrides):
     """Temporarily overwrite the ConfigParser singleton"""
