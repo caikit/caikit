@@ -197,7 +197,7 @@ class TaskPredictRPC(RPCSerializerBase):
         return_types = {method.return_type for method in method_signatures}
         assert len(return_types) == 1, f"Found multiple return types for task [{task}]"
         return_type = list(return_types)[0]
-        self.return_type = return_type
+        self.return_type = primitives.py_type_to_proto_type(return_type)
 
         # Create the rpc name based on the module type
         self.name = self._task_to_rpc_name()
