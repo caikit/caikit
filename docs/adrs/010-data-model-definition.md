@@ -22,4 +22,4 @@ Accepted
 - Caikit users may face one extra level of indirection if they want to access mathematical representations of their data models results (e.g. arrays).
 - Caikit will provide the same data model per AI task [TODO: link to task ADR].
 - Data models will be backed by a common backend [TODO: link to backends, protobuf ADRs].
-- Caikit model authors will have to translate model inputs and outputs to work with data models. This has implications on usability and stability.
+- AI model authors will have to translate model inputs and outputs to work with data models. This has implications on usability and stability.
