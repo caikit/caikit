@@ -18,7 +18,7 @@
 
 # Standard
 from importlib import metadata
-from typing import Optional
+from typing import Optional, Union, List
 import os
 import threading
 
@@ -56,7 +56,7 @@ def get_config() -> aconfig.Config:
 
 def configure(library_config_yml_path: Optional[str] = None):
     """Configure caikit for your usage!
-    Sets `caikit.config` to an aconfig.Config object with overrides from multiple sources.
+    Sets the internal config to an aconfig.Config object with overrides from multiple sources.
 
     Sources, last takes precedence:
         1. caikit's base config.yml file baked into this repo
@@ -70,13 +70,15 @@ def configure(library_config_yml_path: Optional[str] = None):
             with overrides for your library. If omitted, only the base caikit config is used.
 
     Returns: None
-        This only sets the `caikit.config` attribute.
+        This only sets the config object that is returned by `caikit.get_config()`
     """
 
     cfg = parse_config(library_config_yml_path)
 
     # Update the config
     with _CONFIG_LOCK:
+        # This is done by clearing and updating so that the reference held by `_CONFIG` does not change.
+        # This means any references held by callers of `caikit.get_config()` will receive reconfiguration updates
         _CONFIG.clear()
         _CONFIG.update(cfg)
 
@@ -89,10 +91,10 @@ def configure(library_config_yml_path: Optional[str] = None):
     # TODO: Or think about having those pull config dynamically?
 
 
-def parse_config(extra_config_yml: Optional[str] = None) -> aconfig.Config:
+def parse_config(extra_config_yml: Optional[Union[str, List[str]]] = None) -> aconfig.Config:
     """This function parses configuration files used to manage configuration settings for caikit.
     It draws values first out of the base config.yml file packaged within this repo.
-    It then merges in an optional extra config
+    It then merges in optional extra config file(s)
     It will also merge in any configuration from config yaml files specified in a comma-separated
     list in the environment variable 'CONFIG_FILES', going from left to right and overwriting on
     merge. (Last takes precedence)
@@ -100,12 +102,15 @@ def parse_config(extra_config_yml: Optional[str] = None) -> aconfig.Config:
     # Start with the base config
     config = aconfig.Config.from_yaml(BASE_CONFIG_PATH, override_env_vars=True)
 
-    # Merge in the supplied config file
+    # Merge in the supplied config file(s)
     if extra_config_yml:
-        new_overrides = aconfig.Config.from_yaml(
-            extra_config_yml, override_env_vars=True
-        )
-        config = merge_configs(config, new_overrides)
+        if isinstance(extra_config_yml, str):
+            extra_config_yml = [extra_config_yml]
+        for yml in extra_config_yml:
+            new_overrides = aconfig.Config.from_yaml(
+                yml, override_env_vars=True
+            )
+            config = merge_configs(config, new_overrides)
 
     # Merge in config from any other user-provided config files
     if config.config_files:

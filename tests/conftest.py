@@ -23,6 +23,7 @@ import yaml
 import alog
 
 # Local
+import caikit
 from caikit.core.data_model.dataobject import render_dataobject_protos
 from caikit.core.toolkit import logging
 from caikit.runtime.grpc_server import RuntimeGRPCServer
@@ -36,13 +37,13 @@ from tests.fixtures import Fixtures
 
 log = alog.use_channel("TEST-CONFTEST")
 
-# Make sample_lib available for import
-sys.path.append(
-    os.path.join(
+FIXTURES_DIR = os.path.join(
         os.path.dirname(__file__),
         "fixtures",
-    ),
-)
+    )
+
+# Make sample_lib available for import
+sys.path.append(FIXTURES_DIR)
 
 # Configure logging from the environment
 logging.configure(
@@ -54,24 +55,12 @@ logging.configure(
 
 @pytest.fixture(autouse=True, scope="session")
 def test_environment():
-    """The most important fixture: This sets `ENVIRONMENT=test` for all tests.
-    This is required to pick up the `test` section of config so that our unit
-    tests pick up the correct settings.
+    """The most important fixture: This runs caikit configuration with the base test config overrides
     """
-    old_env = os.environ.get("ENVIRONMENT")
-    os.environ["ENVIRONMENT"] = "test"
-    # hack: delete any config that exists
-    ConfigParser._ConfigParser__instance = None
-    cfg = ConfigParser.get_instance()
-    # Make sure we picked up teh test configs
-    assert cfg.environment == "test"
-    # Test away!
+    test_config_path = os.path.join(FIXTURES_DIR, "config", "config.yml")
+    caikit.configure(test_config_path)
     yield
-    # Reset environment back to previous state
-    if old_env is None:
-        os.unsetenv("ENVIRONMENT")
-    else:
-        os.environ["ENVIRONMENT"] = old_env
+    # No cleanup required...?
 
 
 @pytest.fixture(scope="session")
@@ -193,6 +182,14 @@ def other_loaded_model_id(other_good_model_path) -> str:
 
     # teardown
     model_manager.unload_model(model_id)
+
+
+@contextmanager
+def temp_config(config_overrides: dict):
+    """Temporarily edit the caikit config in a mock context"""
+    with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w") as temp_cfg:
+        yaml.safe_dump(config_overrides, temp_cfg)
+        temp_cfg.flush()
 
 
 @contextmanager
