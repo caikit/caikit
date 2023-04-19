@@ -19,7 +19,6 @@ class OtherBlock(caikit.core.BlockBase):
         self.batch_size = batch_size
         self.learning_rate = learning_rate
 
-    # def run(self, sample_input: SampleInputType) -> str:
     def run(self, sample_input: SampleInputType) -> Union[OtherOutputType, str]:
         return OtherOutputType(f"goodbye: {sample_input.name} {self.batch_size} times")
 

@@ -16,7 +16,7 @@ This file contains our logic about what constitutes a "primitive" for RPC genera
 """
 
 # Standard
-from typing import Dict, List, Optional, Type, Union, get_args, get_origin
+from typing import Dict, List, Type, Union, get_args, get_origin
 import inspect
 import sys
 import typing
@@ -82,14 +82,18 @@ def to_primitive_signature(
     return primitives
 
 
-def py_type_to_proto_type(arg_type: type) -> str:
-    """Helper function that determines the right protobuf type to use based on
+def to_output_dm_type(arg_type: type) -> str:
+    """Helper function that determines the right data model type to use based on
     the python type of the argument.
     """
 
     # Decompose this type using typing to determine if it's a useful typing hint
     typing_origin = get_origin(arg_type)
     typing_args = get_args(arg_type)
+
+    # If this is a data model type, no need to do anything
+    if isinstance(arg_type, type) and issubclass(arg_type, DataBase):
+        return arg_type
 
     # Handle Unions by looking for a data model object in the union
     if typing_origin is Union:
@@ -102,45 +106,19 @@ def py_type_to_proto_type(arg_type: type) -> str:
             log.debug2(
                 "Found data model types in Union: [%s], taking first one", dm_types
             )
-            return py_type_to_proto_type(dm_types[0])
+            return to_output_dm_type(dm_types[0])
 
         # Then, if the union is None + something else (like an Optional type), grab the other type:
+        # TODO: figure out if this is still needed?
         non_none_types = [arg for arg in typing_args if arg is not None]
         if non_none_types:
             log.debug2(
                 "Found non-none types in Union: [%s], taking first one", dm_types
             )
-            return py_type_to_proto_type(non_none_types[0])
+            return to_output_dm_type(non_none_types[0])
 
-    # If this is a list or DataStream, we'll recurse on the enclosed type and add 'repeated'
-    # TODO
-    # if (typing_origin is list or typing_origin is DataStream) and typing_args:
-    #     log.debug2("Found List[...]")
-    #     if len(typing_args) > 1:
-    #         log.warning("Found List[...] with multiple type arguments! %s", arg_type)
-    #     element_proto_type = py_type_to_proto_type(typing_args[0])
-    #     if element_proto_type:
-    #         return f"repeated {element_proto_type}"
-
-    # If this is a data model type, no need to do anything
-    if isinstance(arg_type, type) and issubclass(arg_type, DataBase):
-        return arg_type
-
-    # If not a data model type, look up the corresponding primitive type
-    # Do we want to support this???
-    proto_primitive = get_proto_primitive(arg_type)
-    if proto_primitive is None:
-        if isinstance(arg_type, str):
-            log.warning(
-                f"No known proto type for string: [{arg_type}]. Using {arg_type} directly"
-            )
-            return arg_type
-        raise RuntimeError(f"No known proto type for type [{arg_type}]")
-    return proto_primitive
-
-
-def get_proto_primitive(arg_type: Type) -> Optional[str]:
-    return PROTO_TYPE_MAP.get(arg_type)
+    # anything else is an invalid output type
+    raise RuntimeError(f"Invalid arg type for output : {arg_type}")
 
 
 def is_primitive_method(
