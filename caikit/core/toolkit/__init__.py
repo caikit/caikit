@@ -19,7 +19,6 @@ may find helpful methods in here for more advanced use of this library.
 # Local
 from . import compatibility, logging
 from .errors import *
-from .extension_utils import *
 from .fileio import *
 from .isa import *
 from .quality_evaluation import (
