@@ -7,7 +7,7 @@ import alog
 
 # Local
 from . import toolkit
-from .toolkit import error_handler
+from .toolkit.errors import error_handler
 
 log = alog.use_channel("MODULE")
 error = error_handler.get(log)
