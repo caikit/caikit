@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-"""Top-level configuration for the `caikit.core` library.
+"""Top-level configuration for the `caikit` library.
 """
 
 # Local

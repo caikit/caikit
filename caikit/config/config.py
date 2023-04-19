@@ -18,7 +18,7 @@
 
 # Standard
 from importlib import metadata
-from typing import Optional, Union, List
+from typing import List, Optional, Union
 import os
 import threading
 
@@ -84,14 +84,14 @@ def configure(library_config_yml_path: Optional[str] = None):
 
     # TODO: hook into any inner `configure()` calls that need to happen (fill this section in)
     error_handler.ENABLE_ERROR_CHECKS = get_config().enable_error_checks
-    error_handler.MAX_EXCEPTION_LOG_MESSAGES = (
-        get_config().config.max_exception_log_messages
-    )
+    error_handler.MAX_EXCEPTION_LOG_MESSAGES = get_config().max_exception_log_messages
 
     # TODO: Or think about having those pull config dynamically?
 
 
-def parse_config(extra_config_yml: Optional[Union[str, List[str]]] = None) -> aconfig.Config:
+def parse_config(
+    extra_config_yml: Optional[Union[str, List[str]]] = None
+) -> aconfig.Config:
     """This function parses configuration files used to manage configuration settings for caikit.
     It draws values first out of the base config.yml file packaged within this repo.
     It then merges in optional extra config file(s)
@@ -107,9 +107,7 @@ def parse_config(extra_config_yml: Optional[Union[str, List[str]]] = None) -> ac
         if isinstance(extra_config_yml, str):
             extra_config_yml = [extra_config_yml]
         for yml in extra_config_yml:
-            new_overrides = aconfig.Config.from_yaml(
-                yml, override_env_vars=True
-            )
+            new_overrides = aconfig.Config.from_yaml(yml, override_env_vars=True)
             config = merge_configs(config, new_overrides)
 
     # Merge in config from any other user-provided config files

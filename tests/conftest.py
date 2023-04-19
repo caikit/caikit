@@ -23,7 +23,6 @@ import yaml
 import alog
 
 # Local
-import caikit
 from caikit.core.data_model.dataobject import render_dataobject_protos
 from caikit.core.toolkit import logging
 from caikit.runtime.grpc_server import RuntimeGRPCServer
@@ -34,13 +33,14 @@ from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServic
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.utils.config_parser import ConfigParser
 from tests.fixtures import Fixtures
+import caikit
 
 log = alog.use_channel("TEST-CONFTEST")
 
 FIXTURES_DIR = os.path.join(
-        os.path.dirname(__file__),
-        "fixtures",
-    )
+    os.path.dirname(__file__),
+    "fixtures",
+)
 
 # Make sample_lib available for import
 sys.path.append(FIXTURES_DIR)
@@ -55,8 +55,7 @@ logging.configure(
 
 @pytest.fixture(autouse=True, scope="session")
 def test_environment():
-    """The most important fixture: This runs caikit configuration with the base test config overrides
-    """
+    """The most important fixture: This runs caikit configuration with the base test config overrides"""
     test_config_path = os.path.join(FIXTURES_DIR, "config", "config.yml")
     caikit.configure(test_config_path)
     yield

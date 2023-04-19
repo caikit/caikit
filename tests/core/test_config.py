@@ -17,7 +17,7 @@ from unittest.mock import patch
 import sys
 
 # Local
-from caikit.config import lib_config
+from caikit.config import get_config
 
 # Unit Test Infrastructure
 from tests.base import TestCaseBase
@@ -51,7 +51,7 @@ class TestConfig(TestCaseBase):
     def setUpClass(cls):
         # 🌶️🌶️🌶️ Set the version to 1.0.0 for the tests in this class to work properly
         # (The version is otherwise reported as 0.0.0)
-        lib_config.library_version = "1.0.0"
+        get_config().library_version = "1.0.0"
 
         # pylint: disable=use-dict-literal
         cls.resource_dict = dict(
@@ -62,6 +62,7 @@ class TestConfig(TestCaseBase):
             }
         )
 
+    # TODO: ARGGGGGGHHH
     @patch("importlib.metadata.version")
     def test_library_version(self, mock_get_distribution):
         version = "1.2.3"
@@ -71,6 +72,6 @@ class TestConfig(TestCaseBase):
         sys.modules.pop("caikit.core.config")
         # pylint: disable=redefined-outer-name,reimported,import-outside-toplevel
         # Local
-        from caikit.config import lib_config
+        from caikit.config import get_config
 
-        self.assertEqual(lib_config.library_version, version)
+        self.assertEqual(get_config().library_version, version)

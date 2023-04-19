@@ -4,7 +4,7 @@ model APIs while enabling AI developers build algorithms and models in a
 modular/composable framework.
 """
 # Local
-from . import config, core, interfaces
+from . import core, interfaces
 
 # Expose configuration fn and getter at the top level
 from .config import configure, get_config

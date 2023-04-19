@@ -38,7 +38,7 @@ from .module import (
 )
 from .module_backends import backend_types
 from .toolkit.errors import error_handler
-from caikit.config import lib_config
+from caikit.config import get_config
 
 log = alog.use_channel("MDLMNG")
 error = error_handler.get(log)
@@ -95,7 +95,7 @@ class ModelManager:
         error.type_check("<COR98255724E>", bool, load_singleton=load_singleton)
 
         # This allows a user to load their own model (e.g. model saved to disk)
-        load_path = lib_config.load_path
+        load_path = get_config().load_path
         if load_path is not None and isinstance(module_path, str):
             if not os.path.exists(module_path):
                 module_path = os.path.join(load_path, module_path)

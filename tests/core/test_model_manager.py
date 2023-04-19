@@ -21,7 +21,7 @@ import os
 import tempfile
 
 # Local
-from caikit.config import lib_config
+from caikit.config import get_config
 from caikit.core.module_backend_config import configure
 from caikit.core.module_backends import LocalBackend
 
@@ -70,16 +70,16 @@ class TestModelManager(TestCaseBase):
         test_load_path = os.path.join(self.fixtures_dir, "models")
 
         # Save the original load path so that it can be undone
-        std_load_path = lib_config.load_path
+        std_load_path = get_config().load_path
 
         # Overwrite the load path with the test fixtures path
-        lib_config.load_path = test_load_path
+        get_config().load_path = test_load_path
 
         # Yield execution to the test itself
         yield
 
         # Undo the load path patching
-        lib_config.load_path = std_load_path
+        get_config().load_path = std_load_path
 
     def test_load_can_return_a_block(self):
         model = caikit.core.load(self.model_path)
