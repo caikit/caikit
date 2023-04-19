@@ -79,6 +79,7 @@ def test_get_output_type_name():
         == sample_lib.data_model.SampleOutputType
     )
 
+
 def test_get_argument_types_with_real_block():
     """Quick check that we get the right type for our sample block"""
     assert (
@@ -123,6 +124,7 @@ def test_get_argument_type_from_malformed_docstring():
         pass
 
     assert get_argument_types(_run)["foo"] == sample_lib.data_model.SampleInputType
+
 
 def test_get_args_with_no_annotation():
     """Check that we get arguments with known arg type supplied"""
