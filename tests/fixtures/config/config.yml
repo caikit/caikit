@@ -11,29 +11,6 @@ metering:
     # Write to log file every N seconds
     log_interval: 5
 
-service_generation:
-    client_package_name: ""
-    module_types:
-        included: ["blocks", "workflows"]
-    module_guids:
-        included: []
-        excluded: []
-    primitive_data_model_types:
-        - "sample_lib.data_model.SampleInputType"
-    task_types:
-        included: []
-        excluded: []
-
 training:
     auto_load_trained_model: true
     output_dir: test/training_output
-
-caikit_library: sample_lib
-runtime_library: sample_lib # TODO: replace with libraries below when ready
-local_models_dir: models
-libraries:
-    tests.fixtures.sample_lib:
-        # Version override for dev running
-        version: 1.2.3
-        # Module path override if nested
-        module_path: tests.fixtures.sample_lib

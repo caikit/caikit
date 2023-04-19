@@ -34,6 +34,14 @@ backends:
         - LOCAL
     config: {}
 
+# TLS configs
+tls:
+    server:
+        key: ""
+        cert: ""
+    client:
+        cert: ""
+
 ### Runtime-specific configurations
 
 # Default level for all python loggers
@@ -68,6 +76,20 @@ training:
     auto_load_trained_model: false
     # Run training jobs in isolated processes
     use_subprocess: false
+
+# Configuration for batch inference. This dict contains entries for individual
+# model types and can be extended using additional overlay config files to add
+# sections for model types beyond those listed here. Each section should contain
+# the `size` value where a 0 indicates no batching and may optionally contain a
+# `collect_delay_s` value as a float number of seconds >= 0. This will indicate
+# the amount of time the batch should wait for more requests before running a
+# partial batch.
+batching:
+    default:
+        size: 0
+        collect_delay_s: 0.0
+    fake_batch_block:
+        size: 10
 
 ### Server configurations
 
@@ -133,7 +155,7 @@ service_generation:
 ### Libraries configuration
 # The runtime library (or libraries) whose models we want to serve using Caikit Runtime. This should
 # be a snake case string, e.g., caikit_nlp or caikit_cv.
-runtime_library: sample_lib # TODO: replace with libraries below when ready
+runtime_library: sample_lib # TODO: replace with libraries below when runtime can support multiple libraries
 local_models_dir: models
 libraries:
     sample_lib:

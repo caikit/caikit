@@ -5,6 +5,7 @@ This sets up global test configs when pytest starts
 # Standard
 from contextlib import contextmanager
 from typing import Type
+from unittest.mock import patch
 import json
 import os
 import sys
@@ -14,15 +15,13 @@ import time
 import uuid
 
 # Third Party
-from unittest.mock import patch
-
-from aconfig import aconfig
 from grpc_health.v1 import health_pb2, health_pb2_grpc
 import grpc
 import pytest
 import yaml
 
 # First Party
+from aconfig import aconfig
 import alog
 
 # Local
