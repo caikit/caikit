@@ -76,13 +76,14 @@ def configured_backends() -> List[str]:
     return list(_CONFIGURED_BACKENDS.keys())
 
 
+# TODO: These keys esp. backend priority need update to work with new config
 def configure(*_, config_file: Optional[str] = None, **overrides):
     """Configure the backend environment based on configuration available
     in the given arguments.
 
     NOTE: This function is NOT thread safe!
 
-    KWargs:
+    Kwargs:
         config_file:  Optional[str]
             Path to a configuration yaml file to use instead of the default
         **overrides
@@ -166,7 +167,7 @@ def configure(*_, config_file: Optional[str] = None, **overrides):
 ## Implementation Details ######################################################
 
 _DEFAULT_CONFIG_FILE = os.path.realpath(
-    os.path.join(os.path.dirname(__file__), "../config", "config.yml")
+    os.path.join(os.path.dirname(__file__), "..", "config", "config.yml")
 )
 
 # The global map of configured backends

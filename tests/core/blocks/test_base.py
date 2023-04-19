@@ -155,13 +155,7 @@ class TestBlockAnnotation(TestCaseBase):
 class TestBlockSaver(TestCaseBase):
     @classmethod
     def setUpClass(cls):
-        @caikit.core.block(
-            "2D391918-13FE-45D8-B6C5-549BCD5EAA1B", "SampleBlock", "0.0.1"
-        )
-        class TestSampleBlock(caikit.core.BlockBase):
-            pass
-
-        cls.dummy_block = TestSampleBlock()
+        cls.dummy_block = SampleBlock()
 
     def test_block_saver_attribs(self):
         # make sure the saver has the desired config attrs
@@ -169,8 +163,6 @@ class TestBlockSaver(TestCaseBase):
             with BlockSaver(
                 self.dummy_block,
                 model_path=tempdir,
-                library_name=get_config().library_name,
-                library_version=get_config().library_version,
             ) as block_saver:
                 # name
                 self.assertIsInstance(block_saver.config.get("name"), str)
@@ -196,13 +188,11 @@ class TestBlockSaver(TestCaseBase):
                     block_saver.config.get("block_id"), self.dummy_block.BLOCK_ID
                 )
 
-                # caikit.core version
-                self.assertIsInstance(
-                    block_saver.config.get("caikit.core_version"), str
-                )
+                # sample_lib_version
+                self.assertIsInstance(block_saver.config.get("sample_lib_version"), str)
                 self.assertEqual(
-                    block_saver.config.get("caikit.core_version"),
-                    get_config().library_version,
+                    block_saver.config.get("sample_lib_version"),
+                    "1.2.3",
                 )
 
                 # creation date
@@ -216,8 +206,6 @@ class TestBlockSaver(TestCaseBase):
             with BlockSaver(
                 self.dummy_block,
                 model_path=tempdir,
-                library_name=get_config().library_name,
-                library_version=get_config().library_version,
             ) as block_saver:
                 # add a directory called `a`
                 a_rel, a_abs = block_saver.add_dir("a")
@@ -238,8 +226,6 @@ class TestBlockSaver(TestCaseBase):
             with BlockSaver(
                 self.dummy_block,
                 model_path=tempdir,
-                library_name=get_config().library_name,
-                library_version=get_config().library_version,
             ) as block_saver:
                 block_saver.update_config(
                     {
@@ -257,8 +243,6 @@ class TestBlockSaver(TestCaseBase):
             with BlockSaver(
                 self.dummy_block,
                 model_path=tempdir,
-                library_name=get_config().library_name,
-                library_version=get_config().library_version,
             ) as block_saver:
                 block_saver.copy_file(
                     os.path.join(self.fixtures_dir, "linux.txt"), "artifacts"
@@ -278,8 +262,6 @@ class TestBlockSaver(TestCaseBase):
                 with BlockSaver(
                     self.dummy_block,
                     model_path=tempdir,
-                    library_name=get_config().library_name,
-                    library_version=get_config().library_version,
                 ) as block_saver:
                     block_saver.add_dir("artifacts")
                     raise RuntimeError("test")
@@ -296,8 +278,6 @@ class TestBlockSaver(TestCaseBase):
             with BlockSaver(
                 self.dummy_block,
                 model_path=tempdir,
-                library_name=get_config().library_name,
-                library_version=get_config().library_version,
             ) as block_saver:
                 serializer = JSONSerializer()
 
@@ -310,8 +290,6 @@ class TestBlockSaver(TestCaseBase):
             with BlockSaver(
                 self.dummy_block,
                 model_path=tempdir,
-                library_name=get_config().library_name,
-                library_version=get_config().library_version,
             ) as block_saver:
                 serializer = JSONSerializer()
 

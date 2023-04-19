@@ -36,8 +36,6 @@ class SampleWorkflow(caikit.core.WorkflowBase):
         saver = WorkflowSaver(
             module=self,
             model_path=model_path,
-            library_name="sample_lib",
-            library_version="0.0.1",
         )
         with saver:
             saver.save_module(self.block, "dummy_model")

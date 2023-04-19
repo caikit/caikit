@@ -5,7 +5,6 @@ A block meant to flex a bit of the protobufs primitive support
 from typing import List
 
 # Local
-from ...config import lib_config
 from ...data_model.sample import SampleOutputType
 from caikit.core.module import ModuleSaver
 import caikit.core
@@ -41,8 +40,6 @@ class SamplePrimitiveBlock(caikit.core.BlockBase):
         module_saver = ModuleSaver(
             self,
             model_path=model_path,
-            library_name="sample_lib",
-            library_version=lib_config.library_version,
         )
         with module_saver:
             pass

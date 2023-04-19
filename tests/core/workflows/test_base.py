@@ -203,13 +203,7 @@ class TestWorkflowLoader(TestCaseBase):
 class TestWorkflowSaver(TestCaseBase):
     @classmethod
     def setUpClass(cls):
-        @caikit.core.workflow(
-            "A32D68FA-E5E6-41BD-BAAE-77A880EB6877", "SampleWorkflow", "0.0.1"
-        )
-        class TestSampleWorkflow(caikit.core.WorkflowBase):
-            pass
-
-        cls.dummy_workflow = TestSampleWorkflow()
+        cls.dummy_workflow = SampleWorkflow()
 
     def test_workflow_saver_attribs(self):
         # make sure the saver has the desired config attrs
@@ -217,8 +211,6 @@ class TestWorkflowSaver(TestCaseBase):
             with WorkflowSaver(
                 self.dummy_workflow,
                 model_path=tempdir,
-                library_name=get_config().library_name,
-                library_version=get_config().library_version,
             ) as workflow_saver:
                 # name
                 self.assertIsInstance(workflow_saver.config.get("name"), str)
@@ -247,13 +239,13 @@ class TestWorkflowSaver(TestCaseBase):
                     self.dummy_workflow.WORKFLOW_ID,
                 )
 
-                # caikit.core version
+                # sample_lib_version
                 self.assertIsInstance(
-                    workflow_saver.config.get("caikit.core_version"), str
+                    workflow_saver.config.get("sample_lib_version"), str
                 )
                 self.assertEqual(
-                    workflow_saver.config.get("caikit.core_version"),
-                    get_config().library_version,
+                    workflow_saver.config.get("sample_lib_version"),
+                    "1.2.3",
                 )
 
                 # creation date
@@ -270,8 +262,6 @@ class TestWorkflowSaver(TestCaseBase):
             with WorkflowSaver(
                 self.dummy_workflow,
                 model_path=tempdir,
-                library_name=get_config().library_name,
-                library_version=get_config().library_version,
             ) as workflow_saver:
                 workflow_saver.save_module(dummy_block, "dummy")
 
@@ -289,8 +279,6 @@ class TestWorkflowSaver(TestCaseBase):
             with WorkflowSaver(
                 self.dummy_workflow,
                 model_path=tempdir,
-                library_name=get_config().library_name,
-                library_version=get_config().library_version,
             ) as workflow_saver:
                 workflow_saver.save_module(dummy_block, "dummy")
                 workflow_saver.save_module(dummy_block, "dummy2")
@@ -313,8 +301,6 @@ class TestWorkflowSaver(TestCaseBase):
             with WorkflowSaver(
                 self.dummy_workflow,
                 model_path=tempdir,
-                library_name=get_config().library_name,
-                library_version=get_config().library_version,
             ) as workflow_saver:
                 with self.assertRaises(TypeError):
                     workflow_saver.save_module_list(
@@ -329,8 +315,6 @@ class TestWorkflowSaver(TestCaseBase):
             with WorkflowSaver(
                 self.dummy_workflow,
                 model_path=tempdir,
-                library_name=get_config().library_name,
-                library_version=get_config().library_version,
             ) as workflow_saver:
                 with self.assertRaises(TypeError):
                     workflow_saver.save_module_list(dummy_models_with_rel_path, "dummy")
@@ -345,8 +329,6 @@ class TestWorkflowSaver(TestCaseBase):
             with WorkflowSaver(
                 self.dummy_workflow,
                 model_path=tempdir,
-                library_name=get_config().library_name,
-                library_version=get_config().library_version,
             ) as workflow_saver:
                 with self.assertRaises(TypeError):
                     workflow_saver.save_module_list(dummy_models_with_rel_path, {})
@@ -361,8 +343,6 @@ class TestWorkflowSaver(TestCaseBase):
             with WorkflowSaver(
                 self.dummy_workflow,
                 model_path=tempdir,
-                library_name=get_config().library_name,
-                library_version=get_config().library_version,
             ) as workflow_saver:
                 list_of_rel_path, _ = workflow_saver.save_module_list(
                     dummy_models_with_rel_path, "dummy"

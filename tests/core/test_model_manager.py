@@ -264,8 +264,6 @@ class NonDistributedBlock(caikit.core.blocks.base.BlockBase):
         block_saver = caikit.core.blocks.BlockSaver(
             self,
             model_path=model_path,
-            library_name="foo",
-            library_version="0.42.0",
         )
         with block_saver:
             pass

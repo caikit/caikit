@@ -23,6 +23,7 @@
 # pylint: disable=unused-argument
 
 # Standard
+from importlib import metadata
 from io import BytesIO
 from typing import Any, Dict, List, Optional, Type, Union
 import collections
@@ -50,6 +51,7 @@ from .module_meta import _ModuleBaseMeta
 from .toolkit import ObjectSerializer, fileio
 from .toolkit.errors import DataValidationError, error_handler
 from .toolkit.wip_decorator import TempDisableWIP, WipCategory, work_in_progress
+from caikit.config import get_config
 
 log = alog.use_channel("MODULE")
 error = error_handler.get(log)
@@ -777,7 +779,7 @@ class ModuleSaver:
     TRACKING_KEY_NAME = "tracking_id"
     MODULE_VERSION_KEY_NAME = "version"
 
-    def __init__(self, module: ModuleBase, model_path, library_name, library_version):
+    def __init__(self, module: ModuleBase, model_path):
         """Construct a new module saver.
 
         Args:
@@ -786,14 +788,33 @@ class ModuleSaver:
             model_path:  str
                 The absolute path to the directory where the model will be saved.  If this directory
                 does not exist, it will be created.
-            library_name:  str
-                Name of library or extension calling the block saver.
-            library_version:  str
-                Version of library or extension calling the block saver.
         """
         self.model_path = os.path.normpath(model_path)
-        self.library_name = library_name
-        self.library_version = library_version
+
+        module_path = module.__module__
+        lib_name_generator = (
+            k
+            for k, v in get_config().libraries.items()
+            if module_path.startswith(v.module_path)
+        )
+        try:
+            self.library_name = next(lib_name_generator)
+        except StopIteration:
+            # This assumes no nested module path by default
+            self.library_name = module_path.split(".")[0]  # tests
+
+        try:
+            self.library_version = metadata.version(self.library_name)
+        except metadata.PackageNotFoundError:
+            log.debug("<COR25991305D>", "No library version found")
+            if (
+                self.library_name in get_config().libraries
+                and "version" in get_config().libraries[self.library_name]
+            ):
+                self.library_version = get_config().libraries[self.library_name].version
+            else:
+                self.library_version = "0.0.0"
+
         self.config = {
             self.library_name + "_version": self.library_version,
             self.CREATED_KEY_NAME: str(datetime.datetime.now()),

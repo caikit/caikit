@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-"""Config methods for the `caikit.core` library. Mainly interacts with `config.yml`.
+"""Config methods for the `caikit` library. Mainly interacts with `config.yml`.
 """
 
 # Standard

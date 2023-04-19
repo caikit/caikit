@@ -1,7 +1,6 @@
 # Config for tests
 find_available_port: true
 runtime_version: mock
-caikit_library: sample_lib
 service_proto_gen_module_dir: tests.fixtures.protobufs
 
 metering:
@@ -28,3 +27,13 @@ service_generation:
 training:
     auto_load_trained_model: true
     output_dir: test/training_output
+
+caikit_library: sample_lib
+runtime_library: sample_lib # TODO: replace with libraries below when ready
+local_models_dir: models
+libraries:
+    tests.fixtures.sample_lib:
+        # Version override for dev running
+        version: 1.2.3
+        # Module path override if nested
+        module_path: tests.fixtures.sample_lib

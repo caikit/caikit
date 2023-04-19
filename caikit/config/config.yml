@@ -47,11 +47,6 @@ alog_thread_id: true
 # Which formatter to use. options are 'json' or 'pretty'
 alog_formatter: json
 
-# The runtime library (or libraries) whose models we want to serve using Caikit Runtime. This should
-# be a snake case string, e.g., caikit_nlp or caikit_cv.
-runtime_library: sample_lib
-local_models_dir: models
-
 # Configuration for data streams and how they're handled in the server
 data_streams:
     # Base directory where stream source relative paths should be found
@@ -134,3 +129,15 @@ service_generation:
     task_types:
         included: []
         excluded: []
+
+### Libraries configuration
+# The runtime library (or libraries) whose models we want to serve using Caikit Runtime. This should
+# be a snake case string, e.g., caikit_nlp or caikit_cv.
+runtime_library: sample_lib # TODO: replace with libraries below when ready
+local_models_dir: models
+libraries:
+    sample_lib:
+        # Version override for dev running
+        version: 1.2.3
+        # Module path override if nested
+        module_path: sample_lib
