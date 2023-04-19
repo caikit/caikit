@@ -28,13 +28,14 @@ from caikit.core.blocks import base, block
 from caikit.core.module_backend_config import _CONFIGURED_BACKENDS, configure
 from caikit.core.module_backends import BackendBase, backend_types
 from caikit.core.module_backends.backend_types import register_backend_type
+from caikit.runtime.model_management import model_loader
 from caikit.runtime.model_management.batcher import Batcher
 from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.config_parser import ConfigParser
 from sample_lib.blocks.sample_task import SampleBlock
 from sample_lib.data_model import SampleInputType, SampleOutputType
-from tests.conftest import temp_config_parser
+from tests.conftest import temp_config_parser, temp_config
 from tests.fixtures import Fixtures
 
 ## Helpers #####################################################################
@@ -245,7 +246,7 @@ class MyTestCase(unittest.TestCase):
         """Make sure that a model type without specific batching enabled will
         load with a batcher if default is enabled
         """
-        with temp_config_parser({"batching": {"default": {"size": 10}}}) as cfg:
+        with temp_config(model_loader, {"batching": {"default": {"size": 10}}}) as cfg:
             model = self.model_loader.load_model(
                 "load_with_batch_default",
                 Fixtures.get_good_model_path(),
