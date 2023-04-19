@@ -246,7 +246,7 @@ class MyTestCase(unittest.TestCase):
         """Make sure that a model type without specific batching enabled will
         load with a batcher if default is enabled
         """
-        with temp_config(model_loader, {"batching": {"default": {"size": 10}}}) as cfg:
+        with temp_config({"batching": {"default": {"size": 10}}}) as cfg:
             model = self.model_loader.load_model(
                 "load_with_batch_default",
                 Fixtures.get_good_model_path(),

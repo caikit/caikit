@@ -6,7 +6,7 @@ This sets up global test configs when pytest starts
 from contextlib import contextmanager
 from types import ModuleType
 from typing import Type
-from unittest.mock import patch
+from unittest.mock import patch, PropertyMock
 import json
 import os
 import sys
@@ -190,7 +190,7 @@ def other_loaded_model_id(other_good_model_path) -> str:
 
 
 @contextmanager
-def temp_config(module_under_test: ModuleType, config_overrides: dict):
+def temp_config(config_overrides: dict):
     """Temporarily edit the caikit config in a mock context"""
     # We don't use `caikit.configure` here because we don't want to update the "real" config.
     # Instead, we'll mock the response of `caikit.get_config()`. This is thread safe with
@@ -205,7 +205,7 @@ def temp_config(module_under_test: ModuleType, config_overrides: dict):
         current_cfg_copy = aconfig.Config(get_config().copy())
         mock_config = merge_configs(current_cfg_copy, mock_config)
 
-        with patch(f"{module_under_test.__name__}.get_config", return_value=mock_config):
+        with patch.object(caikit.config.config, "_CONFIG", mock_config):
             yield mock_config
 
 
