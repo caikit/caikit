@@ -8,7 +8,7 @@ Even in frameworks that provide adapter functionality like [KServe](https://kser
 
 ## Decision
 
-We will use data models to encapsulate data of concrete models.
+We will use data models to capture the semantic inputs and outputs of AI tasks.
 
 
 ## Status
@@ -20,5 +20,6 @@ Accepted
 
 - Caikit users will be able to access model information through data models
 - Caikit users may face one extra level of indirection if they want to access mathematical representations of their data models results (e.g. arrays).
-- Caikit will provide the same data model per task [TODO: link to task ADR]. 
+- Caikit will provide the same data model per AI task [TODO: link to task ADR].
 - Data models will be backed by a common backend [TODO: link to backends, protobuf ADRs].
+- Caikit model authors will have to translate model inputs and outputs to work with data models. This has implications on usability and stability.
