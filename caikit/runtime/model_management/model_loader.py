@@ -52,13 +52,11 @@ class ModelLoader:
         # We will call get_config() each time in case there are updates since this
         # class is a singleton
 
-        # If distributed loading is enabled, set up the loader
-
-        # TODO: We only need to `configure` once, not in the loader for backends
+        # If backends loading is enabled, set up the loader
         if get_config().backends.enabled:
-            log.info("<RUN89711118I>", "Configuring for distributed loading")
-            log.debug("Distributed config: %s", get_config().backends.config)
-            configure(**get_config().backends.config)
+            log.info("<RUN89711118I>", "Configuring for backends loading")
+            log.debug("Backends config: %s", get_config().backends)
+            configure()
 
     def load_model(self, model_id, local_model_path, model_type) -> LoadedModel:
         """Load a model using model_path (in Cloud Object Storage) & give it a model ID.

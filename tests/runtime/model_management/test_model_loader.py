@@ -291,12 +291,10 @@ class MyTestCase(unittest.TestCase):
                     {
                         "backends": {
                             "enabled": True,
-                            "config": {
-                                "backend_priority": [
-                                    backend_types.TEST,
-                                    backend_types.LOCAL,
-                                ],
-                            },
+                            "priority": [
+                                backend_types.TEST,
+                                backend_types.LOCAL,
+                            ],
                         },
                     }
                 ):

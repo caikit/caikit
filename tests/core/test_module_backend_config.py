@@ -16,9 +16,6 @@
 Tests for the backend configuration framework
 """
 
-# Standard
-from unittest.mock import Mock
-
 # Local
 from caikit.core.blocks import base, block
 from caikit.core.module_backend_config import (
@@ -29,6 +26,7 @@ from caikit.core.module_backend_config import (
     start_backends,
 )
 from caikit.core.module_backends import backend_types
+from tests.conftest import temp_config
 from tests.core.helpers import *
 
 # Setup #########################################################################
@@ -39,46 +37,83 @@ foo_cfg = {"mock": 1}
 
 
 def test_configure_with_module(reset_globals):
-    """Test that configuring with a configured bakend type that has a
+    """Test that configuring with a configured backend type that has a
     configuration module obj works
     """
     backend_types.register_backend_type(MockBackend)
-    configure(backend_priority=[backend_types.MOCK], backends={"mock": foo_cfg})
-    assert "MOCK" in configured_backends()
-    assert _CONFIGURED_BACKENDS[backend_types.MOCK].backend_type == backend_types.MOCK
-    assert foo_cfg == _CONFIGURED_BACKENDS[backend_types.MOCK].config
+    with temp_config(
+        {
+            "backends": {
+                "priority": [backend_types.MOCK],
+                "configs": {"mock": foo_cfg},
+            }
+        }
+    ):
+        configure()
+        assert "MOCK" in configured_backends()
+        assert (
+            _CONFIGURED_BACKENDS[backend_types.MOCK].backend_type == backend_types.MOCK
+        )
+        assert foo_cfg == _CONFIGURED_BACKENDS[backend_types.MOCK].config
 
 
 def test_non_supported_backend_raises():
     """Test that backend provided as priority to configure raises
     if not registered"""
-    with pytest.raises(ValueError):
-        configure(backend_priority=[Mock()])
+    with temp_config(
+        {
+            "backends": {
+                "priority": ["unsupported"],
+            }
+        }
+    ):
+        with pytest.raises(ValueError):
+            configure()
 
 
 def test_disabling_local_backend(reset_globals):
     """Test that disabling local backend does not add it to priority automatically"""
     backend_types.register_backend_type(MockBackend)
-    configure(backend_priority=[backend_types.MOCK], disable_local_backend=True)
-    assert "LOCAL" not in configured_backends()
+    with temp_config(
+        {"backends": {"priority": [backend_types.MOCK], "disable_local": True}}
+    ):
+        configure()
+        assert "LOCAL" not in configured_backends()
 
 
 def test_duplicate_config_raises(reset_globals):
     """Test that duplicate configuration of a backend raises"""
     backend_types.register_backend_type(MockBackend)
-    configure(backend_priority=[backend_types.MOCK])
-    with pytest.raises(AssertionError):
-        configure(backend_priority=[backend_types.MOCK])
+    with temp_config(
+        {
+            "backends": {
+                "priority": [backend_types.MOCK],
+            }
+        }
+    ):
+        configure()
+        with pytest.raises(AssertionError):
+            configure()
 
 
 def test_one_configured_backend_can_start(reset_globals):
     """Test that the configured backend can be started"""
     backend_types.register_backend_type(MockBackend)
-    configure(backend_priority=[backend_types.MOCK], backends={"mock": foo_cfg})
-    start_backends()
-    # This is configured to be True in helpers
-    assert _CONFIGURED_BACKENDS[backend_types.MOCK].backend_type == backend_types.MOCK
-    assert _CONFIGURED_BACKENDS[backend_types.MOCK].is_started
+    with temp_config(
+        {
+            "backends": {
+                "priority": [backend_types.MOCK],
+                "configs": {"mock": foo_cfg},
+            }
+        }
+    ):
+        configure()
+        start_backends()
+        # This is configured to be True in helpers
+        assert (
+            _CONFIGURED_BACKENDS[backend_types.MOCK].backend_type == backend_types.MOCK
+        )
+        assert _CONFIGURED_BACKENDS[backend_types.MOCK].is_started
 
 
 def test_multiple_module_same_backend_configures(reset_globals):
@@ -115,12 +150,21 @@ def test_multiple_module_same_backend_configures(reset_globals):
 
     # Initiate configuration
 
-    configure(backend_priority=[backend_types.MOCK])
-    assert "MOCK" in configured_backends()
-    assert _CONFIGURED_BACKENDS[backend_types.MOCK].backend_type == backend_types.MOCK
-    assert "bar1" in _CONFIGURED_BACKENDS[backend_types.MOCK].config
-    assert "bar2" in _CONFIGURED_BACKENDS[backend_types.MOCK].config
-    assert _CONFIGURED_BACKENDS[backend_types.MOCK].config["bar1"] == 1
+    with temp_config(
+        {
+            "backends": {
+                "priority": [backend_types.MOCK],
+            }
+        }
+    ):
+        configure()
+        assert "MOCK" in configured_backends()
+        assert (
+            _CONFIGURED_BACKENDS[backend_types.MOCK].backend_type == backend_types.MOCK
+        )
+        assert "bar1" in _CONFIGURED_BACKENDS[backend_types.MOCK].config
+        assert "bar2" in _CONFIGURED_BACKENDS[backend_types.MOCK].config
+        assert _CONFIGURED_BACKENDS[backend_types.MOCK].config["bar1"] == 1
 
 
 def test_get_backend_starts_backend(reset_globals):
@@ -128,8 +172,11 @@ def test_get_backend_starts_backend(reset_globals):
     is started
     """
     backend_types.register_backend_type(MockBackend)
-    configure(backend_priority=[backend_types.MOCK], disable_local_backend=True)
-    assert not _CONFIGURED_BACKENDS[backend_types.MOCK].is_started
-    backend = get_backend(backend_types.MOCK)
-    assert backend.is_started
-    assert _CONFIGURED_BACKENDS[backend_types.MOCK].is_started
+    with temp_config(
+        {"backends": {"priority": [backend_types.MOCK], "disable_local": True}}
+    ):
+        configure()
+        assert not _CONFIGURED_BACKENDS[backend_types.MOCK].is_started
+        backend = get_backend(backend_types.MOCK)
+        assert backend.is_started
+        assert _CONFIGURED_BACKENDS[backend_types.MOCK].is_started

@@ -251,7 +251,6 @@ class TestModelManager(unittest.TestCase):
 
     def test_estimate_model_size_ok_response_on_loaded_model(self):
         """Test if loaded model correctly returns model size"""
-        print("CONFIGUREREREDDDD", _CONFIGURED_BACKENDS)
         self.model_manager.load_model(
             model_id=_random_test_id(),
             local_model_path=Fixtures.get_good_model_path(),

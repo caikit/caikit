@@ -32,7 +32,7 @@ backends:
     # priority: List for the order that backend implementations should be used
     priority:
         - LOCAL
-    config: {}
+    configs: {}
 
 # TLS configs
 tls:
