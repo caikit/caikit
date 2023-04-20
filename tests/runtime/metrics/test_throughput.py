@@ -25,12 +25,12 @@ import requests
 import alog
 
 # Local
+from caikit import get_config
 from caikit.runtime.metrics.throughput import Throughput
-from caikit.runtime.utils.config_parser import ConfigParser
 
 log = alog.use_channel("TEST-THROUGHPT")
 # add 1 to get a new unused metrics port for this test. (Can't seem to shutdown the prometheus server)
-METRICS_PORT = int(ConfigParser.get_instance().metrics_port) + 1
+METRICS_PORT = int(get_config().get_instance().metrics_port) + 1
 
 
 def scrape_metrics() -> Dict[str, core.Metric]:

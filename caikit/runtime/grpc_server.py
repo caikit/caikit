@@ -318,11 +318,11 @@ def load_secret(secret: str) -> str:
 
 def main():
     # Configure using the log level and formatter type specified in config.
-    config_parser = get_config()
+    caikit_config = get_config()
     initialize_logging()
 
     # Start serving Prometheus metrics
-    start_http_server(config_parser.metrics_port)
+    start_http_server(caikit_config.metrics_port)
 
     # Enable signal handling
     handle_terminations = True
@@ -330,7 +330,7 @@ def main():
     # Assume we want compiled services for now
     service_source = (
         ServicePackageFactory.ServiceSource.GENERATED
-        if config_parser.service_generation.enabled
+        if caikit_config.service_generation.enabled
         else ServicePackageFactory.ServiceSource.COMPILED
     )
     log.debug("Running with service source: %s", service_source)

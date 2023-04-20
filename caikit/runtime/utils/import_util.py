@@ -81,7 +81,7 @@ def get_data_model(config: aconfig.Config = None) -> UnifiedDataModel:
         running server instance.
 
     Args:
-        config(ConfigParser): Config parser instance
+        config(aconfig.Config): caikit configuration
 
     Returns:
         (module): Handle to the module after dynamic wild import

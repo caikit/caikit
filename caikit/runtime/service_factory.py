@@ -247,7 +247,7 @@ class ServicePackageFactory:
     # Implementation details for pure python service packages #
     @staticmethod
     def _get_and_filter_modules(
-        config_parser: aconfig.Config, lib: str
+        caikit_config: aconfig.Config, lib: str
     ) -> Set[Type[ModuleBase]]:
         clean_modules = set()
         modules = [
@@ -259,26 +259,26 @@ class ServicePackageFactory:
 
         # Check config for any explicit inclusions
         included_task_types = (
-            config_parser.service_generation
-            and config_parser.service_generation.task_types
-            and config_parser.service_generation.task_types.included
+            caikit_config.service_generation
+            and caikit_config.service_generation.task_types
+            and caikit_config.service_generation.task_types.included
         )
         included_modules = (
-            config_parser.service_generation
-            and config_parser.service_generation.module_guids
-            and config_parser.service_generation.module_guids.included
+            caikit_config.service_generation
+            and caikit_config.service_generation.module_guids
+            and caikit_config.service_generation.module_guids.included
         )
 
         # Check config for any exclusions
         excluded_task_types = (
-            config_parser.service_generation
-            and config_parser.service_generation.task_types
-            and config_parser.service_generation.task_types.excluded
+            caikit_config.service_generation
+            and caikit_config.service_generation.task_types
+            and caikit_config.service_generation.task_types.excluded
         )
         excluded_modules = (
-            config_parser.service_generation
-            and config_parser.service_generation.module_guids
-            and config_parser.service_generation.module_guids.excluded
+            caikit_config.service_generation
+            and caikit_config.service_generation.module_guids
+            and caikit_config.service_generation.module_guids.excluded
         )
 
         for ck_module in modules:
