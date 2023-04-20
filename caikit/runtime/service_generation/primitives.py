@@ -83,8 +83,7 @@ def extract_primitive_type_from_union(
             )
             return union_primitives[0]
         return arg_type
-    else:
-        log.debug("Skipping non-primitive argument type [%s]", arg_type)
+    log.debug("Skipping non-primitive argument type [%s]", arg_type)
 
 
 def extract_data_model_type_from_union(arg_type: Type) -> Type:
