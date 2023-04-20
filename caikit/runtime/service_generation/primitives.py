@@ -65,25 +65,23 @@ def extract_primitive_type_from_union(
             ]
             if len(union_primitives) == 1:
                 return union_primitives[0]
-            else:
-                dm_types = [
-                    arg
-                    for arg in union_primitives
-                    if inspect.isclass(arg) and issubclass(arg, DataBase)
-                ]
-                if len(dm_types) > 0:
-                    log.debug2(
-                        "Picking first data model type %s in union primitives %s",
-                        dm_types,
-                        union_primitives,
-                    )
-                    return dm_types[0]
-                else:
-                    log.debug(
-                        "Just picking first primitive type %s in union",
-                        union_primitives[0],
-                    )
-                    return union_primitives[0]
+            dm_types = [
+                arg
+                for arg in union_primitives
+                if inspect.isclass(arg) and issubclass(arg, DataBase)
+            ]
+            if len(dm_types) > 0:
+                log.debug2(
+                    "Picking first data model type %s in union primitives %s",
+                    dm_types,
+                    union_primitives,
+                )
+                return dm_types[0]
+            log.debug(
+                "Just picking first primitive type %s in union",
+                union_primitives[0],
+            )
+            return union_primitives[0]
 
         else:
             return arg_type
