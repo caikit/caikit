@@ -7,8 +7,9 @@ import pytest
 # Local
 from caikit.runtime.service_generation.primitives import (
     extract_data_model_type_from_union,
+    extract_primitive_type_from_union,
 )
-from sample_lib.data_model import SampleOutputType
+from sample_lib.data_model import SampleInputType, SampleOutputType
 
 
 def test_to_output_dm_type_with_dm():
@@ -32,3 +33,72 @@ def test_to_output_dm_type_with_union_optional_dm():
 def test_to_output_dm_type_raises_primitive():
     with pytest.raises(RuntimeError):
         extract_data_model_type_from_union(str)
+
+
+def test_extract_primitive_dm_type_from_union():
+    """If we provide a list of primitive_data_model_types,
+    then fetch that from the Union"""
+    assert (
+        extract_primitive_type_from_union(
+            primitive_data_model_types=["sample_lib.data_model.SampleInputType"],
+            arg_type=Union[SampleInputType, str],
+        )
+        == SampleInputType
+    )
+
+
+def test_extract_primitive_raw_type_from_union():
+    """If we don't provide a primitive_data_model_types, then
+    fetch the raw primitive from union"""
+    assert (
+        extract_primitive_type_from_union(
+            primitive_data_model_types=[],
+            arg_type=Union[SampleInputType, str],
+        )
+        == str
+    )
+
+
+def test_extract_primitive_multiple_raw_type_union():
+    """If multiple raw primitives exist, return the first one"""
+    assert (
+        extract_primitive_type_from_union(
+            primitive_data_model_types=[], arg_type=Union[str, int]
+        )
+        == str
+    )
+    assert (
+        extract_primitive_type_from_union(
+            primitive_data_model_types=[], arg_type=Union[int, str]
+        )
+        == int
+    )
+
+
+def test_extract_primitive_raw_type_no_union():
+    """If we provide a primitive without a union, we still get it back"""
+    assert (
+        extract_primitive_type_from_union(primitive_data_model_types=[], arg_type=str)
+        == str
+    )
+
+
+def test_extract_primitive_dm_type_no_union():
+    """If we provide a primitive dm without a union, we still get it back"""
+    assert (
+        extract_primitive_type_from_union(
+            primitive_data_model_types=["sample_lib.data_model.SampleInputType"],
+            arg_type=SampleInputType,
+        )
+        == SampleInputType
+    )
+
+
+def test_extract_primitive_type_no_primitive():
+    """If no primitives exist, nothing gets returned"""
+    assert (
+        extract_primitive_type_from_union(
+            primitive_data_model_types=[], arg_type=SampleInputType
+        )
+        == None
+    )
