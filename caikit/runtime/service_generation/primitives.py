@@ -82,9 +82,7 @@ def extract_primitive_type_from_union(
                 union_primitives[0],
             )
             return union_primitives[0]
-
-        else:
-            return arg_type
+        return arg_type
     else:
         log.debug("Skipping non-primitive argument type [%s]", arg_type)
 
