@@ -65,13 +65,10 @@ def configure(config_yml_path: Optional[str] = None):
     """
 
     if not config_yml_path and not _CONFIG:
-        # If nothing is passed and we currently have no config, use the base config
+        # If nothing is passed, and we currently have no config, use the base config
         config_yml_path = BASE_CONFIG_PATH
-    elif not config_yml_path:
-        # If we already have config and no more was specified, do nothing
-        return
 
-    cfg = parse_config(config_yml_path)
+    cfg = parse_config(config_yml_path) if config_yml_path else aconfig.Config({})
 
     # Update the config by merging the new updates over the existing config
     with _CONFIG_LOCK:
