@@ -197,7 +197,7 @@ class TaskPredictRPC(RPCSerializerBase):
         return_types = {method.return_type for method in method_signatures}
         assert len(return_types) == 1, f"Found multiple return types for task [{task}]"
         return_type = list(return_types)[0]
-        self.return_type = return_type
+        self.return_type = primitives.extract_data_model_type_from_union(return_type)
 
         # Create the rpc name based on the module type
         self.name = self._task_to_rpc_name()
@@ -205,7 +205,8 @@ class TaskPredictRPC(RPCSerializerBase):
     @property
     def module_list(self) -> List[Type[ModuleBase]]:
         """Returns the list of all caikit.core.modules that this RPC will be for. These should all
-        be of the same ai-problem, e.g. my_caikit_library.[blocks | workflows].classification"""
+        be of the same ai-problem, e.g. my_caikit_library.[blocks | workflows].classification
+        """
         return self._module_list
 
     @property

@@ -1,6 +1,9 @@
 """
 A sample block for sample things!
 """
+# Standard
+from typing import Union
+
 # Local
 from ...config import lib_config
 from ...data_model.sample import OtherOutputType, SampleInputType, SampleTrainingType
@@ -16,7 +19,7 @@ class OtherBlock(caikit.core.BlockBase):
         self.batch_size = batch_size
         self.learning_rate = learning_rate
 
-    def run(self, sample_input: SampleInputType) -> OtherOutputType:
+    def run(self, sample_input: SampleInputType) -> Union[OtherOutputType, str]:
         return OtherOutputType(f"goodbye: {sample_input.name} {self.batch_size} times")
 
     @classmethod

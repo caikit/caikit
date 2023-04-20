@@ -16,7 +16,7 @@ This file contains our logic about what constitutes a "primitive" for RPC genera
 """
 
 # Standard
-from typing import Dict, List, Type, Union
+from typing import Dict, List, Type, Union, get_args, get_origin
 import inspect
 import sys
 import typing
@@ -80,6 +80,34 @@ def to_primitive_signature(
             log.debug("Skipping non-primitive argument [%s], type [%s]", arg, arg_type)
 
     return primitives
+
+
+def extract_data_model_type_from_union(arg_type: Type) -> Type:
+    """Helper function that determines the right data model type to use from a Union"""
+
+    # Decompose this type using typing to determine if it's a useful typing hint
+    typing_origin = get_origin(arg_type)
+    typing_args = get_args(arg_type)
+
+    # If this is a data model type, no need to do anything
+    if isinstance(arg_type, type) and issubclass(arg_type, DataBase):
+        return arg_type
+
+    # Handle Unions by looking for a data model object in the union
+    if typing_origin is Union:
+        dm_types = [
+            arg
+            for arg in typing_args
+            if inspect.isclass(arg) and issubclass(arg, DataBase)
+        ]
+        if dm_types:
+            log.debug2(
+                "Found data model types in Union: [%s], taking first one", dm_types
+            )
+            return extract_data_model_type_from_union(dm_types[0])
+
+    # anything else is an invalid output type
+    raise RuntimeError(f"Invalid arg type for output : {arg_type}")
 
 
 def is_primitive_method(
