@@ -144,8 +144,7 @@ class ModuleClassTrainRPC(RPCSerializerBase):
                 # Found a model pointer
                 new_params[name] = ModelPointer
             else:
-                new_params[name] = primitives.get_primitive_arg(
-                    arg=name,
+                new_params[name] = primitives.extract_primitive_type_from_union(
                     arg_type=typ,
                     primitive_data_model_types=primitive_data_model_types,
                 )
