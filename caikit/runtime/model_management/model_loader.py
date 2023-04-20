@@ -58,7 +58,7 @@ class ModelLoader:
         if get_config().backends.enabled:
             log.info("<RUN89711118I>", "Configuring for distributed loading")
             log.debug("Distributed config: %s", get_config().backends.config)
-            configure(**get_config().distributed.config)
+            configure(**get_config().backends.config)
 
     def load_model(self, model_id, local_model_path, model_type) -> LoadedModel:
         """Load a model using model_path (in Cloud Object Storage) & give it a model ID.

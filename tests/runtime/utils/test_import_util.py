@@ -92,7 +92,7 @@ def test_get_caikit_library_loads_caikit_core():
 
 def test_get_data_model_throws_on_nonimportable_lib():
     """If an invalid module is provided to get_data_model, it throws a ValueError"""
-    mock_config = SimpleNamespace(**{"caikit_library": "caikit_bad_lib"})
+    mock_config = SimpleNamespace(**{"runtime_library": "caikit_bad_lib"})
     with pytest.raises(CaikitRuntimeException):
         get_data_model(mock_config)
 
@@ -101,7 +101,7 @@ def test_get_data_model_ok_on_lib_with_no_data_model():
     """If a valid module with no data model is provided to get_data_model it
     returns an empty module object
     """
-    mock_config = SimpleNamespace(**{"caikit_library": "sys"})
+    mock_config = SimpleNamespace(**{"runtime_library": "sys"})
     data_model = get_data_model(mock_config)
     assert isinstance(data_model, UnifiedDataModel)
 
@@ -132,7 +132,7 @@ def test_multiple_caikit_libraries():
     #         os.path.join(os.path.dirname(os.path.dirname(__file__)), "fixtures")
     #     )
     # )
-    mock_config = SimpleNamespace(**{"caikit_library": " ".join(lib_names)})
+    mock_config = SimpleNamespace(**{"runtime_library": " ".join(lib_names)})
     cdm = get_data_model(mock_config)
     for lib_name in lib_names:
         assert lib_name in sys.modules

@@ -24,12 +24,12 @@ from typing import List, Type
 import alog
 
 # Local
+from ... import get_config
 from .core_module_helpers import get_module_info
 from .primitives import is_primitive_method
 from .serializers import ModuleClassTrainRPC, RPCSerializerBase, TaskPredictRPC
 from .signature_parsing.module_signature import CaikitCoreModuleMethodSignature
 from caikit.core.module import ModuleBase
-from ... import get_config
 
 log = alog.use_channel("CREATE-RPCS")
 
@@ -50,7 +50,7 @@ def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[RPCSerializer
     """Handles the logic to create all the RPCs for inference"""
 
     primitive_data_model_types = (
-        get_config().get_instance().service_generation.primitive_data_model_types
+        get_config().service_generation.primitive_data_model_types
     )
 
     rpcs = []

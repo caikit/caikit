@@ -20,7 +20,6 @@ import uuid
 import pytest
 
 # Local
-from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.blocks.sample_task.sample_implementation import SampleBlock
@@ -29,9 +28,8 @@ from sample_lib.data_model.sample import (
     SampleOutputType,
     SampleTrainingType,
 )
-from tests.conftest import temp_config_parser
+from tests.conftest import temp_config
 from tests.fixtures import Fixtures
-from tests.fixtures.protobufs import primitive_party_pb2
 import caikit.core
 
 ## Helpers #####################################################################
@@ -77,7 +75,7 @@ def set_train_location(request):
     """This fixture ensures that all tests in this file will be run with both
     subprocess and local training styles
     """
-    with temp_config_parser({"training": {"use_subprocess": request.param}}):
+    with temp_config({"training": {"use_subprocess": request.param}}):
         yield
 
 

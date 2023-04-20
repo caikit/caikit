@@ -19,9 +19,11 @@ import alog
 # DEBUG -- This needs a hook to configure library-specific logging
 from caikit import get_config
 from caikit.core.toolkit.logging import configure
+
 # Alog is a wrapper around the standard logging package in Python; there may be logs from
 # coming from channels that you don't want to see (e.g., Boto3). To silence these, add them
 # to the list of ALOG_FILTERS; each channel in this list will be set to ALOG_FILTER_LEVEL.
+
 
 def initialize_logging():
     """Initializes the logging framework (wrapper around alog.configure). If a pretty formatter

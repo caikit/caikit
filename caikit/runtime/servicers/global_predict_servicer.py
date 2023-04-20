@@ -121,7 +121,7 @@ class GlobalPredictServicer:
 
         # Duplicate code in global_train_servicer
         # pylint: disable=duplicate-code
-        library = clean_lib_names(get_config().get_instance().caikit_library)[0]
+        library = clean_lib_names(get_config().runtime_library)[0]
         try:
             lib_version = version(library)
         except Exception:  # pylint: disable=broad-exception-caught

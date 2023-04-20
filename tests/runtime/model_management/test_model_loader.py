@@ -229,10 +229,7 @@ class MyTestCase(unittest.TestCase):
             model_type="fake_batch_block",
         ).module()
         assert isinstance(model, Batcher)
-        assert (
-            model._batch_size
-            == get_config().batching.fake_batch_block.size
-        )
+        assert model._batch_size == get_config().batching.fake_batch_block.size
 
         # Make sure another model loads without batching
         model = self.model_loader.load_model(
@@ -292,16 +289,13 @@ class MyTestCase(unittest.TestCase):
             with reset_distributed_config():
                 with temp_config(
                     {
-                        "distributed": {
+                        "backends": {
                             "enabled": True,
                             "config": {
                                 "backend_priority": [
                                     backend_types.TEST,
                                     backend_types.LOCAL,
                                 ],
-                            },
-                            "preferred_backends": {
-                                model_type: backend_types.TEST,
                             },
                         },
                     }

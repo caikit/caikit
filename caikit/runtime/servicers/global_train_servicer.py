@@ -81,7 +81,7 @@ class GlobalTrainServicer:
         # Or grab the `libraries` off of the `training_service` instead of config here?
         # Duplicate code in global_train_servicer
         # pylint: disable=duplicate-code
-        self.library = clean_lib_names(caikit_config.caikit_library)[0]
+        self.library = clean_lib_names(caikit_config.runtime_library)[0]
         try:
             lib_version = version(self.library)
         except Exception:  # pylint: disable=broad-exception-caught

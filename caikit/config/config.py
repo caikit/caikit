@@ -17,13 +17,9 @@
 """
 
 # Standard
-from importlib import metadata
 from typing import Optional
 import os
 import threading
-
-# Third Party
-import semver
 
 # First Party
 import aconfig
@@ -37,7 +33,7 @@ error = error_handler.get(log)
 
 
 # restrict functions that are imported so we don't pollute the base module namespce
-__all__ = ["Config", "compare_versions", "parse_config"]
+__all__ = ["parse_config"]
 
 BASE_CONFIG_PATH = os.path.realpath(
     os.path.join(os.path.dirname(__file__), "config.yml")
@@ -90,14 +86,12 @@ def configure(config_yml_path: Optional[str] = None):
     error_handler.MAX_EXCEPTION_LOG_MESSAGES = get_config().max_exception_log_messages
 
 
-def parse_config(
-    config_file: str
-) -> aconfig.Config:
+def parse_config(config_file: str) -> aconfig.Config:
     """This function parses a configuration file used to manage configuration settings for caikit.
 
-    It first parses the config in the specified file, then looks for extra config file paths specified
-    as a comma separated list either in this file (key: `config_files`) or in the environment variable
-    `CONFIG_FILES`. (Environment variable taking precedence).
+    It first parses the config in the specified file, then looks for extra config file paths
+    specified as a comma separated list either in this file (key: `config_files`) or in the
+    environment variable `CONFIG_FILES`. (Environment variable taking precedence).
 
     Those extra files are then parsed and merged in from left to right, last taking precedence.
 

@@ -29,8 +29,8 @@ from .module_backends.backend_types import (
     MODULE_BACKEND_TYPES,
 )
 from .module_backends.base import BackendBase
-from .toolkit.config_utils import merge_configs
 from .toolkit.errors import error_handler
+from caikit.config.config import merge_configs
 
 log = alog.use_channel("CONF")
 error = error_handler.get(log)

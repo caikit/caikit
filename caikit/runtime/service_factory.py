@@ -20,7 +20,6 @@ import dataclasses
 import inspect
 
 # Third Party
-import aconfig
 import google.protobuf.descriptor
 import google.protobuf.service
 import grpc
@@ -32,6 +31,7 @@ from jtd_to_proto.json_to_service import (
     service_descriptor_to_server_registration_function,
     service_descriptor_to_service,
 )
+import aconfig
 import alog
 
 # Local
@@ -191,7 +191,7 @@ class ServicePackageFactory:
             _ = import_util.get_data_model()
 
             caikit_config = get_config()
-            lib = caikit_config.caikit_library
+            lib = caikit_config.runtime_library
             ai_domain_name = snake_to_upper_camel(lib.replace("caikit_", ""))
             package_name = f"caikit.runtime.{ai_domain_name}"
 
@@ -458,7 +458,7 @@ class ServicePackageFactory:
     @staticmethod
     def _get_lib_name_for_servicer() -> str:
         """Get caikit library name from Config, make upper case and not include caikit_"""
-        lib_names = import_util.clean_lib_names(get_config().caikit_library)
+        lib_names = import_util.clean_lib_names(get_config().runtime_library)
         assert len(lib_names) == 1, "Only 1 caikit library supported for now"
         return ServicePackageFactory._snake_to_upper_camel(
             lib_names[0].replace("caikit_", "")

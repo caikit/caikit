@@ -22,7 +22,7 @@ import pytest
 # Local
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from tests.conftest import temp_config_parser
+from tests.conftest import temp_config
 import caikit
 
 
@@ -181,7 +181,7 @@ MODULE_LIST = [
 ### Test ServicePackageFactory._get_and_filter_modules function
 def test_get_and_filter_modules_respects_excluded_task_type():
     assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
-    with temp_config_parser(
+    with temp_config(
         {"service_generation": {"task_types": {"excluded": ["sample_task"]}}}
     ) as cfg:
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
@@ -191,7 +191,7 @@ def test_get_and_filter_modules_respects_excluded_task_type():
 
 def test_get_and_filter_modules_respects_excluded_modules():
     assert "InnerBlock" in str(MODULE_LIST)
-    with temp_config_parser(
+    with temp_config(
         {
             "service_generation": {
                 "module_guids": {"excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]}
@@ -207,7 +207,7 @@ def test_get_and_filter_modules_respects_excluded_modules():
 def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type():
     assert "InnerBlock" in str(MODULE_LIST)
     assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
-    with temp_config_parser(
+    with temp_config(
         {
             "service_generation": {
                 "module_guids": {"excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]},
@@ -225,7 +225,7 @@ def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type
 
 def test_get_and_filter_modules_respects_included_modules_and_included_task_types():
     assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
-    with temp_config_parser(
+    with temp_config(
         {
             "service_generation": {
                 "module_guids": {"included": ["00110203-baad-beef-0809-0a0b02dd0e0f"]},
@@ -243,7 +243,7 @@ def test_get_and_filter_modules_respects_included_modules_and_included_task_type
 
 def test_get_and_filter_modules_respects_included_modules():
     assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
-    with temp_config_parser(
+    with temp_config(
         {
             "service_generation": {
                 "module_guids": {
@@ -265,7 +265,7 @@ def test_get_and_filter_modules_respects_included_modules():
 
 def test_get_and_filter_modules_respects_included_task_types():
     assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
-    with temp_config_parser(
+    with temp_config(
         {
             "service_generation": {
                 "task_types": {"included": ["sample_task"]},
@@ -281,7 +281,7 @@ def test_get_and_filter_modules_respects_included_task_types():
 
 def test_get_and_filter_modules_respects_included_task_types_and_excluded_modules():
     assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
-    with temp_config_parser(
+    with temp_config(
         {
             "service_generation": {
                 "task_types": {"included": ["sample_task"]},

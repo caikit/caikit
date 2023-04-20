@@ -27,9 +27,9 @@ import alog
 # Local
 from caikit import get_config
 from caikit.config import parse_config
+from caikit.config.config import merge_configs
 from caikit.core.data_model.dataobject import render_dataobject_protos
 from caikit.core.toolkit import logging
-from caikit.core.toolkit.config_utils import merge_configs
 from caikit.runtime.grpc_server import RuntimeGRPCServer
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory

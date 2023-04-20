@@ -22,10 +22,10 @@ import re
 import sys
 
 # Third Party
-import aconfig
 from grpc import StatusCode
 
 # First Party
+import aconfig
 import alog
 
 # Local
@@ -88,7 +88,7 @@ def get_data_model(config: aconfig.Config = None) -> UnifiedDataModel:
     """
     if not config:
         config = get_config()
-    lib_names = clean_lib_names(config.caikit_library)
+    lib_names = clean_lib_names(config.runtime_library)
 
     # Add all caikit.interfaces.X modules
     lib_names.extend(

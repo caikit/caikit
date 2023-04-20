@@ -80,9 +80,7 @@ class RPCMeter:
                 self.file_path,
             )
             self._write_metrics()
-            notified = self.metering_event.wait(
-                get_config().metering.log_interval
-            )
+            notified = self.metering_event.wait(get_config().metering.log_interval)
             if notified:
                 log.debug("<RUN76774003I>", "Shutting down metering writer log thread")
                 break
