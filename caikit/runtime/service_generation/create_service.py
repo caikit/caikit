@@ -74,6 +74,10 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[RPCSerializerB
 
     rpcs = []
 
+    primitive_data_model_types = (
+        ConfigParser.get_instance().service_generation.primitive_data_model_types
+    )
+
     for ck_module in modules:
         # If this train function has not been changed from the base, skip it as
         # a module that can't be trained
@@ -99,7 +103,7 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[RPCSerializerB
         )
         with alog.ContextLog(log.debug, "Generating train RPC for %s", ck_module):
             try:
-                rpcs.append(ModuleClassTrainRPC(signature))
+                rpcs.append(ModuleClassTrainRPC(signature, primitive_data_model_types))
                 log.debug("Successfully generated train RPC for %s", ck_module)
             except Exception as err:  # pylint: disable=broad-exception-caught
                 log.warning(

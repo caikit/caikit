@@ -158,6 +158,7 @@ def test_global_train_other_task(
     train_request = sample_train_service.messages.BlocksOtherTaskOtherBlockTrainRequest(
         model_name="Other block Training",
         training_data=training_data,
+        sample_input=SampleInputType(name="Gabe").to_proto(),
         batch_size=batch_size,
     )
 

@@ -45,41 +45,45 @@ def to_primitive_signature(
     primitives = {}
     log.debug("Building primitive signature for %s", signature)
     for arg, arg_type in signature.items():
-        if _is_primitive_type(arg_type, primitive_data_model_types):
-            if typing.get_origin(arg_type) == Union:
-                union_primitives = [
-                    union_val
-                    for union_val in typing.get_args(arg_type)
-                    if _is_primitive_type(union_val, primitive_data_model_types)
-                ]
-                if len(union_primitives) == 1:
-                    primitives[arg] = union_primitives[0]
-                else:
-                    dm_types = [
-                        arg
-                        for arg in union_primitives
-                        if inspect.isclass(arg) and issubclass(arg, DataBase)
-                    ]
-                    if len(dm_types) > 0:
-                        log.debug2(
-                            "Picking first data model type %s in union primitives %s",
-                            dm_types,
-                            union_primitives,
-                        )
-                        primitives[arg] = dm_types[0]
-                    else:
-                        log.debug(
-                            "Just picking first primitive type %s in union",
-                            union_primitives[0],
-                        )
-                        primitives[arg] = union_primitives[0]
-
-            else:
-                primitives[arg] = arg_type
-        else:
-            log.debug("Skipping non-primitive argument [%s], type [%s]", arg, arg_type)
+        primitives[arg] = get_primitive_arg(primitive_data_model_types, arg, arg_type)
 
     return primitives
+
+
+def get_primitive_arg(primitive_data_model_types, arg, arg_type):
+    if _is_primitive_type(arg_type, primitive_data_model_types):
+        if typing.get_origin(arg_type) == Union:
+            union_primitives = [
+                union_val
+                for union_val in typing.get_args(arg_type)
+                if _is_primitive_type(union_val, primitive_data_model_types)
+            ]
+            if len(union_primitives) == 1:
+                return union_primitives[0]
+            else:
+                dm_types = [
+                    arg
+                    for arg in union_primitives
+                    if inspect.isclass(arg) and issubclass(arg, DataBase)
+                ]
+                if len(dm_types) > 0:
+                    log.debug2(
+                        "Picking first data model type %s in union primitives %s",
+                        dm_types,
+                        union_primitives,
+                    )
+                    return dm_types[0]
+                else:
+                    log.debug(
+                        "Just picking first primitive type %s in union",
+                        union_primitives[0],
+                    )
+                    return union_primitives[0]
+
+        else:
+            return arg_type
+    else:
+        log.debug("Skipping non-primitive argument [%s], type [%s]", arg, arg_type)
 
 
 def extract_data_model_type_from_union(arg_type: Type) -> Type:
