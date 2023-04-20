@@ -108,15 +108,6 @@ def to_output_dm_type(arg_type: type) -> str:
             )
             return to_output_dm_type(dm_types[0])
 
-        # Then, if the union is None + something else (like an Optional type), grab the other type:
-        # TODO: figure out if this is still needed?
-        non_none_types = [arg for arg in typing_args if arg is not None]
-        if non_none_types:
-            log.debug2(
-                "Found non-none types in Union: [%s], taking first one", dm_types
-            )
-            return to_output_dm_type(non_none_types[0])
-
     # anything else is an invalid output type
     raise RuntimeError(f"Invalid arg type for output : {arg_type}")
 
