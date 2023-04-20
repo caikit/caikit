@@ -14,9 +14,6 @@
 
 
 # TODO: Tests for:
-# configure() without a file (get base)
-# configure() with a file
-# configure() again adds more
 # configure() picks up env vars
 # configure() with extra config files picks those up
 
@@ -24,3 +21,142 @@
 
 # Add `autouse` fixture that patch.object's `caikit.config.config._CONFIG` or something so we get a fresh one each time?
 # - Need to make sure that these tests use a patch so that other concurrent tests are unaffected
+import os
+from unittest.mock import patch
+
+import aconfig
+import pytest
+import yaml
+
+import caikit
+
+
+@pytest.fixture(autouse=True)
+def patched_config():
+    with patch.object(caikit.config.config, "_CONFIG", aconfig.Config({})):
+        yield
+
+
+CFG_1 = {
+    "foo": 1,
+    "combined": {
+        "one": "bar"
+    }
+}
+
+CFG_2 = {
+    "foo": 2,
+    "combined": {
+        "two": "baz"
+    }
+}
+
+CFG_3 = {
+    "foo": 3,
+    "combined": {
+        "three": "buz"
+    }
+}
+
+
+def _dump_yml(cfg_dict: dict, path: str):
+    with open(path, "w") as f:
+        yaml.safe_dump(cfg_dict, f)
+        f.flush()
+
+
+def test_configure_picks_up_base_configs():
+    """If no config is set and configure() is called, we get the baked-in caikit config"""
+    caikit.configure()
+    cfg = caikit.get_config()
+
+    assert cfg.backends.priority == ["LOCAL"]
+
+
+def test_configure_reads_a_config_yml(tmp_path):
+    path = os.path.join(os.path.join(tmp_path, "one.yml"))
+    _dump_yml(CFG_1, path)
+    caikit.configure(path)
+
+    assert caikit.get_config() == CFG_1
+
+
+def test_configure_merges_over_existing_configs(tmp_path):
+    path = os.path.join(os.path.join(tmp_path, "one.yml"))
+    _dump_yml(CFG_1, path)
+    caikit.configure(path)
+
+    path = os.path.join(os.path.join(tmp_path, "two.yml"))
+    _dump_yml(CFG_2, path)
+    caikit.configure(path)
+
+    cfg = caikit.get_config()
+    # Not just the second one, we merged things in
+    assert cfg != CFG_2
+    # foo was overriden from two.yml
+    assert cfg.foo == 2
+    assert "one" in cfg.combined and "two" in cfg.combined
+
+
+@patch.dict(os.environ, {"FOO": "42"})
+def test_configure_picks_up_env_vars(tmp_path):
+    path = os.path.join(os.path.join(tmp_path, "one.yml"))
+    _dump_yml(CFG_1, path)
+    caikit.configure(path)
+
+    # the FOO=42 env var is picked up
+    assert caikit.get_config().foo == 42
+
+
+def test_configure_adds_more_user_specified_files_from_env(tmp_path):
+    path_1 = os.path.join(os.path.join(tmp_path, "one.yml"))
+    _dump_yml(CFG_1, path_1)
+
+    path_2 = os.path.join(os.path.join(tmp_path, "two.yml"))
+    _dump_yml(CFG_2, path_2)
+
+    path_3 = os.path.join(os.path.join(tmp_path, "three.yml"))
+    _dump_yml(CFG_3, path_3)
+
+    with patch.dict(os.environ, {"CONFIG_FILES": f"{path_2},{path_3}"}):
+        caikit.configure(path_1)
+
+    cfg = caikit.get_config()
+    # all three configs applied, with CFG_3 applied last
+    assert cfg.foo == 3
+    assert "one" in cfg.combined and "two" in cfg.combined and "three" in cfg.combined
+
+
+def test_merge_configs_aconfig():
+    """Make sure merge_configs works as expected with aconfig.Config objects"""
+    cfg1 = aconfig.Config({"foo": 1, "bar": {"baz": 2}, "bat": [1, 2, 3]})
+    cfg2 = aconfig.Config({"foo": 11, "bar": {"buz": 22}, "bat": [5, 6, 7]})
+    merged = caikit.config.config.merge_configs(cfg1, cfg2)
+    assert merged == aconfig.Config(
+        {
+            "foo": 11,
+            "bar": {"baz": 2, "buz": 22},
+            "bat": [5, 6, 7],
+        }
+    )
+
+
+def test_merge_configs_dicts():
+    """Make sure merge_configs works as expected with plain old dicts objects"""
+    cfg1 = {"foo": 1, "bar": {"baz": 2}, "bat": [1, 2, 3]}
+    cfg2 = {"foo": 11, "bar": {"buz": 22}, "bat": [5, 6, 7]}
+    merged = caikit.config.config.merge_configs(cfg1, cfg2)
+    assert merged == {
+        "foo": 11,
+        "bar": {"baz": 2, "buz": 22},
+        "bat": [5, 6, 7],
+    }
+
+
+def test_merge_configs_none_args():
+    """Test that None args are handled correctly"""
+    cfg1 = {"foo": 1, "bar": {"baz": 2}, "bat": [1, 2, 3]}
+    cfg2 = {"foo": 11, "bar": {"buz": 22}, "bat": [5, 6, 7]}
+    assert caikit.config.config.merge_configs(cfg1, None) == cfg1
+    assert caikit.config.config.merge_configs(None, cfg2) == cfg2
+    assert caikit.config.config.merge_configs(None, None) == {}

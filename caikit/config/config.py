@@ -31,10 +31,6 @@ from caikit.core.toolkit.errors import error_handler
 log = alog.use_channel("CONFIG")
 error = error_handler.get(log)
 
-
-# restrict functions that are imported so we don't pollute the base module namespce
-__all__ = ["parse_config"]
-
 BASE_CONFIG_PATH = os.path.realpath(
     os.path.join(os.path.dirname(__file__), "config.yml")
 )
@@ -105,8 +101,8 @@ def parse_config(config_file: str) -> aconfig.Config:
     config = aconfig.Config.from_yaml(config_file, override_env_vars=True)
 
     # Merge in config from any other user-specified config files
-    if config.config_files:
-        extra_config_files = [s.strip() for s in str(config.config_files).split(",")]
+    if config.config_files or os.environ.get("CONFIG_FILES"):
+        extra_config_files = [s.strip() for s in str(config.config_files or os.environ.get("CONFIG_FILES")).split(",")]
         for file in extra_config_files:
             log.info(
                 {
