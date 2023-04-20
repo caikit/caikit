@@ -82,10 +82,8 @@ def to_primitive_signature(
     return primitives
 
 
-def to_output_dm_type(arg_type: type) -> str:
-    """Helper function that determines the right data model type to use based on
-    the python type of the argument.
-    """
+def extract_data_model_type_from_union(arg_type: Type) -> Type:
+    """Helper function that determines the right data model type to use from a Union"""
 
     # Decompose this type using typing to determine if it's a useful typing hint
     typing_origin = get_origin(arg_type)
@@ -106,7 +104,7 @@ def to_output_dm_type(arg_type: type) -> str:
             log.debug2(
                 "Found data model types in Union: [%s], taking first one", dm_types
             )
-            return to_output_dm_type(dm_types[0])
+            return extract_data_model_type_from_union(dm_types[0])
 
     # anything else is an invalid output type
     raise RuntimeError(f"Invalid arg type for output : {arg_type}")
