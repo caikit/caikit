@@ -102,7 +102,12 @@ def parse_config(config_file: str) -> aconfig.Config:
 
     # Merge in config from any other user-specified config files
     if config.config_files or os.environ.get("CONFIG_FILES"):
-        extra_config_files = [s.strip() for s in str(config.config_files or os.environ.get("CONFIG_FILES")).split(",")]
+        extra_config_files = [
+            s.strip()
+            for s in str(config.config_files or os.environ.get("CONFIG_FILES")).split(
+                ","
+            )
+        ]
         for file in extra_config_files:
             log.info(
                 {

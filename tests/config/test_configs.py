@@ -12,22 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-# TODO: Tests for:
-# configure() picks up env vars
-# configure() with extra config files picks those up
-
-# get_config() should be implicitly tested with those ^^
-
-# Add `autouse` fixture that patch.object's `caikit.config.config._CONFIG` or something so we get a fresh one each time?
-# - Need to make sure that these tests use a patch so that other concurrent tests are unaffected
-import os
+# Standard
 from unittest.mock import patch
+import os
 
-import aconfig
+# Third Party
 import pytest
 import yaml
 
+# First Party
+import aconfig
+
+# Local
 import caikit
 
 
@@ -37,26 +33,11 @@ def patched_config():
         yield
 
 
-CFG_1 = {
-    "foo": 1,
-    "combined": {
-        "one": "bar"
-    }
-}
+CFG_1 = {"foo": 1, "combined": {"one": "bar"}}
 
-CFG_2 = {
-    "foo": 2,
-    "combined": {
-        "two": "baz"
-    }
-}
+CFG_2 = {"foo": 2, "combined": {"two": "baz"}}
 
-CFG_3 = {
-    "foo": 3,
-    "combined": {
-        "three": "buz"
-    }
-}
+CFG_3 = {"foo": 3, "combined": {"three": "buz"}}
 
 
 def _dump_yml(cfg_dict: dict, path: str):
