@@ -33,11 +33,6 @@ KNOWN_ARG_TYPES = {
     "producer_id": "ProducerId",
 }
 
-KNOWN_OUTPUT_TYPES = {
-    "SampleTaskPredict": "SampleOutputType",
-    "OtherTaskPredict": "OtherOutputType",
-}
-
 
 @alog.logged_function(log.debug2)
 def get_output_type_name(
@@ -68,14 +63,11 @@ def get_output_type_name(
     if type_from_docstring:
         return type_from_docstring
 
-    # Check based on naming conventions and then known output types
-    module_parts = module_class.__module__.split(".")
-    log.debug3("Parent module parts for %s: %s", module_class.__name__, module_parts)
-
-    # TODO: this part needs a test (or consider deleting and say user needs to specify output type)
-    class_name = _snake_to_camel(module_parts[2]) + "Predict"
-    return _get_dm_type_from_name(class_name) or _get_dm_type_from_name(
-        KNOWN_OUTPUT_TYPES.get(class_name)
+    # If we get here, it means no annotation or docstring for type was provided
+    log.warning(
+        "Could not deduct output type from function %s for module class %s.",
+        fn_signature,
+        module_class.__name__,
     )
 
 

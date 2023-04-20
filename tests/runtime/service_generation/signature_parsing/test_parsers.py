@@ -60,23 +60,68 @@ def test_get_dm_type_from_name():
 
 
 def test_get_output_type_name():
-    run_sign = inspect.Signature(return_annotation=inspect.Signature.empty)
+
+    # Test that if there's no function signature, use docstring to deduct output type
+    empty_sign = inspect.Signature(return_annotation=inspect.Signature.empty)
     assert (
         get_output_type_name(
             module_class=sample_lib.blocks.sample_task.SampleBlock,
-            fn_signature=run_sign,
+            fn_signature=empty_sign,
             fn=sample_lib.blocks.sample_task.SampleBlock.run,
         )
         == sample_lib.data_model.SampleOutputType
     )
 
+    # Test that we use type annotation to deduct output type
+    inner_block_run_method_ptr = getattr(
+        sample_lib.blocks.sample_task.InnerBlock, "run"
+    )
+    fn_sign = inspect.signature(inner_block_run_method_ptr)
     assert (
         get_output_type_name(
             module_class=sample_lib.blocks.sample_task.InnerBlock,
-            fn_signature=run_sign,
+            fn_signature=fn_sign,
             fn=sample_lib.blocks.sample_task.InnerBlock.run,
         )
         == sample_lib.data_model.SampleOutputType
+    )
+
+    # Test that we use type annotation to deduct output type is return annotation is a string
+    def _run(self, some_input: str) -> "InnerBlock":
+        pass
+
+    fn_sign = inspect.signature(_run)
+    assert (
+        get_output_type_name(
+            module_class=sample_lib.blocks.sample_task.InnerBlock,
+            fn_signature=fn_sign,
+            fn=sample_lib.blocks.sample_task.InnerBlock.run,
+        )
+        == sample_lib.blocks.sample_task.InnerBlock
+    )
+
+    # Test that we return None if type annotation as a string that doesn't match module class name
+    def _run2(self, some_input: str) -> "AStringThatsNotInnerBlock":
+        pass
+
+    fn_sign = inspect.signature(_run2)
+    assert (
+        get_output_type_name(
+            module_class=sample_lib.blocks.sample_task.InnerBlock,
+            fn_signature=fn_sign,
+            fn=sample_lib.blocks.sample_task.InnerBlock.run,
+        )
+        == None
+    )
+
+    # User doesn't provide any type annotation or docstring, return None
+    assert (
+        get_output_type_name(
+            module_class=sample_lib.blocks.sample_task.InnerBlock,
+            fn_signature=empty_sign,
+            fn=sample_lib.blocks.sample_task.InnerBlock.run,
+        )
+        == None
     )
 
 
@@ -127,7 +172,7 @@ def test_get_argument_type_from_malformed_docstring():
 
 
 def test_get_args_with_no_annotation():
-    """Check that we get arguments with known arg type supplied"""
+    """Check that we get arguments with no type annotation supplied"""
 
     def _run(input_1="hello world"):
         pass
