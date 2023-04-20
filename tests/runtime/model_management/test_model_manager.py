@@ -23,13 +23,12 @@ import uuid
 import grpc
 
 # Local
+from caikit import get_config
 from caikit.core.blocks.base import BlockBase
 from caikit.core.module_backend_config import _CONFIGURED_BACKENDS, configure
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.utils import config_parser
-from caikit.runtime.utils.config_parser import ConfigParser
 from caikit.runtime.utils.import_util import get_dynamic_module
 from tests.fixtures import Fixtures
 
@@ -94,7 +93,7 @@ class TestModelManager(unittest.TestCase):
                 os.path.join(tempdir, "model2.zip"),
             )
             ModelManager._ModelManager__instance = None
-            ConfigParser.get_instance().local_models_dir = tempdir
+            get_config().local_models_dir = tempdir
             self.model_manager = ModelManager()
 
             self.assertEqual(len(self.model_manager.loaded_models), 2)
@@ -276,7 +275,7 @@ class TestModelManager(unittest.TestCase):
 
     def test_estimate_model_size_by_type(self):
         """Test that a model's size is estimated differently based on its type"""
-        config = config_parser.ConfigParser.get_instance()
+        config = get_config()
         self.assertTrue(Fixtures.get_good_model_type() in config.model_size_multipliers)
 
         typed_model_size = self.model_manager.estimate_model_size(

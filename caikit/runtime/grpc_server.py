@@ -31,6 +31,7 @@ import alog
 
 # Local
 # Get the injectable servicer class definitions
+from caikit import get_config
 from caikit.runtime.interceptors.caikit_runtime_server_wrapper import (
     CaikitRuntimeServerWrapper,
 )
@@ -44,7 +45,6 @@ from caikit.runtime.servicers.training_management_servicer import (
     TrainingManagementServicerImpl,
 )
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.utils.config_parser import ConfigParser
 from caikit.runtime.utils.log_config import initialize_logging
 
 # Have pylint ignore broad exception catching in this file so that we can log all
@@ -66,7 +66,7 @@ class RuntimeGRPCServer:
         tls_config_override: aconfig.Config = None,
         hndle_terms: bool = False,
     ):
-        self.config = ConfigParser.get_instance()
+        self.config = get_config()
         self.inference_service = infer_srv
         self.training_service = train_srv
 
@@ -317,8 +317,8 @@ def load_secret(secret: str) -> str:
 
 
 def main():
-    # Configure using the log level and formatter type specified in configparser.
-    config_parser = ConfigParser.get_instance()
+    # Configure using the log level and formatter type specified in config.
+    config_parser = get_config()
     initialize_logging()
 
     # Start serving Prometheus metrics

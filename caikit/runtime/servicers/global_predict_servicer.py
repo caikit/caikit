@@ -26,13 +26,13 @@ import grpc
 import alog
 
 # Local
+from caikit import get_config
 from caikit.core import ModuleBase
 from caikit.runtime.metrics.rpc_meter import RPCMeter
 from caikit.runtime.metrics.throughput import Throughput
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.utils.config_parser import ConfigParser
 from caikit.runtime.utils.import_util import clean_lib_names
 from caikit.runtime.utils.servicer_util import (
     build_caikit_library_request_dict,
@@ -98,10 +98,10 @@ class GlobalPredictServicer:
     def __init__(
         self,
         inference_service: ServicePackage,
-        use_abortable_threads: bool = ConfigParser.get_instance().use_abortable_threads,
+        use_abortable_threads: bool = get_config().use_abortable_threads,
     ):
         self._model_manager = ModelManager.get_instance()
-        if ConfigParser.get_instance().metering.enabled:
+        if get_config().metering.enabled:
             self.rpc_meter = RPCMeter()
             log.info(
                 "<RUN76773775I>",
@@ -121,9 +121,9 @@ class GlobalPredictServicer:
 
         # Duplicate code in global_train_servicer
         # pylint: disable=duplicate-code
-        library = clean_lib_names(ConfigParser.get_instance().caikit_library)[0]
+        library = clean_lib_names(get_config().get_instance().caikit_library)[0]
         try:
-            lib_version = version(self.library)
+            lib_version = version(library)
         except Exception:  # pylint: disable=broad-exception-caught
             lib_version = "unknown"
 
@@ -202,7 +202,7 @@ class GlobalPredictServicer:
             PREDICT_RPC_COUNTER.labels(
                 grpc_request=desc_name, code=StatusCode.OK.name, model_id=model_id
             ).inc()
-            if ConfigParser.get_instance().metering.enabled:
+            if get_config().metering.enabled:
                 self.rpc_meter.update_metrics(str(type(model)))
             return response_proto
 

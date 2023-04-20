@@ -24,7 +24,6 @@ from caikit.interfaces.runtime.data_model import (
     TrainingInfoResponse,
 )
 from caikit.runtime.model_management.training_manager import TrainingManager
-from caikit.runtime.utils.config_parser import ConfigParser
 
 log = alog.use_channel("MR-SERVICR-I")
 
@@ -34,7 +33,6 @@ class TrainingManagementServicerImpl:
     service in Model Mesh as a Model-Runtime."""
 
     def __init__(self):
-        self.config_parser = ConfigParser.get_instance()
         self.training_manager = TrainingManager.get_instance()
 
     def GetTrainingStatus(self, request, context):  # pylint: disable=unused-argument

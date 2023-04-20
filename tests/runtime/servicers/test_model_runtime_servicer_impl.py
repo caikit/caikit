@@ -18,9 +18,9 @@ import time
 import unittest
 
 # Local
+from caikit import get_config
 from caikit.runtime.protobufs import model_runtime_pb2
 from caikit.runtime.servicers.model_runtime_servicer import ModelRuntimeServicerImpl
-from caikit.runtime.utils.config_parser import ConfigParser
 from tests.fixtures import Fixtures
 
 
@@ -30,18 +30,17 @@ class TestModelRuntimeServicerImpl(unittest.TestCase):
     def setUp(self):
         """This method runs before each test begins to run"""
         self.servicer = ModelRuntimeServicerImpl()
-        self.config = ConfigParser.get_instance()
 
     def test_model_load_sets_per_model_concurrency(self):
         model = "test-any-model-id"
         # Grab a model type that has some max concurrency set
-        model_type = list(self.config.max_model_concurrency_per_type.keys())[0]
+        model_type = list(get_config().max_model_concurrency_per_type.keys())[0]
         request = model_runtime_pb2.LoadModelRequest(
             modelId=model, modelType=model_type
         )
         context = Fixtures.build_context(model)
 
-        expected_concurrency = self.config.max_model_concurrency_per_type[model_type]
+        expected_concurrency = get_config().max_model_concurrency_per_type[model_type]
         mock_manager = MagicMock()
         mock_manager.load_model.return_value = 1
 
@@ -57,7 +56,7 @@ class TestModelRuntimeServicerImpl(unittest.TestCase):
         )
         context = Fixtures.build_context(model)
 
-        expected_concurrency = self.config.max_model_concurrency
+        expected_concurrency = get_config().max_model_concurrency
         mock_manager = MagicMock()
         mock_manager.load_model.return_value = 1
 

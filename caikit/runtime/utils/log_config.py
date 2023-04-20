@@ -17,28 +17,26 @@ import alog
 
 # Local
 # DEBUG -- This needs a hook to configure library-specific logging
+from caikit import get_config
 from caikit.core.toolkit.logging import configure
-from caikit.runtime.utils.config_parser import ConfigParser
-
 # Alog is a wrapper around the standard logging package in Python; there may be logs from
 # coming from channels that you don't want to see (e.g., Boto3). To silence these, add them
 # to the list of ALOG_FILTERS; each channel in this list will be set to ALOG_FILTER_LEVEL.
-
-parser = ConfigParser.get_instance()
-
 
 def initialize_logging():
     """Initializes the logging framework (wrapper around alog.configure). If a pretty formatter
     is used, construct one explicitly so that we can set the channel width using our environment
     variable override."""
+    config = get_config()
+
     formatter = (
-        alog.AlogPrettyFormatter(int(parser.alog_channel_width))
-        if parser.alog_formatter == "pretty"
-        else parser.alog_formatter
+        alog.AlogPrettyFormatter(int(config.alog_channel_width))
+        if config.alog_formatter == "pretty"
+        else config.alog_formatter
     )
     configure(
-        default_level=parser.log_level,
-        filters=parser.alog_filters,
+        default_level=config.log_level,
+        filters=config.alog_filters,
         formatter=formatter,
-        thread_id=parser.alog_thread_id,
+        thread_id=config.alog_thread_id,
     )

@@ -20,6 +20,7 @@ import dataclasses
 import inspect
 
 # Third Party
+import aconfig
 import google.protobuf.descriptor
 import google.protobuf.service
 import grpc
@@ -34,6 +35,7 @@ from jtd_to_proto.json_to_service import (
 import alog
 
 # Local
+from caikit import get_config
 from caikit.core import dataobject
 from caikit.core.data_model.base import DataBase
 from caikit.core.module import ModuleBase
@@ -49,7 +51,6 @@ from caikit.runtime.service_generation.serializers import (
 )
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils import import_util
-from caikit.runtime.utils.config_parser import ConfigParser
 import caikit.core
 
 log = alog.use_channel("SVC-FACTORY")
@@ -189,14 +190,14 @@ class ServicePackageFactory:
             # !!!! This will use the `caikit_library` config
             _ = import_util.get_data_model()
 
-            config_parser = ConfigParser.get_instance()
-            lib = config_parser.caikit_library
+            caikit_config = get_config()
+            lib = caikit_config.caikit_library
             ai_domain_name = snake_to_upper_camel(lib.replace("caikit_", ""))
             package_name = f"caikit.runtime.{ai_domain_name}"
 
             # Then do API introspection to come up with all the API definitions to support
             clean_modules = ServicePackageFactory._get_and_filter_modules(
-                config_parser, lib
+                caikit_config, lib
             )
 
             if service_type == cls.ServiceType.INFERENCE:
@@ -246,7 +247,7 @@ class ServicePackageFactory:
     # Implementation details for pure python service packages #
     @staticmethod
     def _get_and_filter_modules(
-        config_parser: ConfigParser, lib: str
+        config_parser: aconfig.Config, lib: str
     ) -> Set[Type[ModuleBase]]:
         clean_modules = set()
         modules = [
@@ -457,8 +458,7 @@ class ServicePackageFactory:
     @staticmethod
     def _get_lib_name_for_servicer() -> str:
         """Get caikit library name from Config, make upper case and not include caikit_"""
-        config_parser = ConfigParser.get_instance()
-        lib_names = import_util.clean_lib_names(config_parser.caikit_library)
+        lib_names = import_util.clean_lib_names(get_config().caikit_library)
         assert len(lib_names) == 1, "Only 1 caikit library supported for now"
         return ServicePackageFactory._snake_to_upper_camel(
             lib_names[0].replace("caikit_", "")
@@ -467,20 +467,20 @@ class ServicePackageFactory:
     @staticmethod
     def _get_service_proto_module(
         module: str,
-        config: ConfigParser = None,
+        config: aconfig.Config = None,
     ) -> ModuleType:
         """
         Dynamically import the service module. This is accomplished via dynamic
         import on the SERVICE_PROTO_GEN_MODULE_DIR's environment variable.
 
         Args:
-            config(ConfigParser): Config parser instance
+            config(aconfig.Config): caikit configuration
 
         Returns:
             (module): Handle to the module after dynamic import
         """
         if not config:
-            config = ConfigParser.get_instance()
+            config = get_config()
         module_dir = config.service_proto_gen_module_dir
         service_proto_gen_module = import_util.get_dynamic_module(module, module_dir)
         if service_proto_gen_module is None:

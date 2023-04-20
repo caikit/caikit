@@ -4,9 +4,8 @@ This sets up global test configs when pytest starts
 
 # Standard
 from contextlib import contextmanager
-from types import ModuleType
 from typing import Type
-from unittest.mock import patch, PropertyMock
+from unittest.mock import patch
 import json
 import os
 import sys
@@ -32,12 +31,10 @@ from caikit.core.data_model.dataobject import render_dataobject_protos
 from caikit.core.toolkit import logging
 from caikit.core.toolkit.config_utils import merge_configs
 from caikit.runtime.grpc_server import RuntimeGRPCServer
-from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
-from caikit.runtime.utils.config_parser import ConfigParser
 from tests.fixtures import Fixtures
 import caikit
 
@@ -207,28 +204,6 @@ def temp_config(config_overrides: dict):
 
         with patch.object(caikit.config.config, "_CONFIG", mock_config):
             yield mock_config
-
-
-# TODO: migrate to `temp_config` instead
-@contextmanager
-def temp_config_parser(config_overrides):
-    """Temporarily overwrite the ConfigParser singleton"""
-    real_singleton = ConfigParser.get_instance()
-    prev_config_path = os.environ.get("CONFIG_FILES")
-    ConfigParser._ConfigParser__instance = None
-    with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w") as temp_cfg:
-        yaml.safe_dump(config_overrides, temp_cfg)
-        temp_cfg.flush()
-        os.environ["CONFIG_FILES"] = temp_cfg.name
-        temp_inst = ConfigParser.get_instance()
-        ModelLoader.get_instance().config_parser = temp_inst
-        yield temp_inst
-    ConfigParser._ConfigParser__instance = real_singleton
-    ModelLoader.get_instance().config_parser = ConfigParser.get_instance()
-    if prev_config_path is None:
-        del os.environ["CONFIG_FILES"]
-    else:
-        os.environ["CONFIG_FILES"] = prev_config_path
 
 
 # fixtures to optionally generate the protos for easier debugging

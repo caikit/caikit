@@ -22,14 +22,15 @@ import re
 import sys
 
 # Third Party
+import aconfig
 from grpc import StatusCode
 
 # First Party
 import alog
 
 # Local
+from caikit import get_config
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.utils.config_parser import ConfigParser
 import caikit.core
 
 log = alog.use_channel("COM-LIB-INIT")
@@ -68,7 +69,7 @@ class UnifiedDataModel:
         return super().__getattr__(name)
 
 
-def get_data_model(config: ConfigParser = None) -> UnifiedDataModel:
+def get_data_model(config: aconfig.Config = None) -> UnifiedDataModel:
     """
     Get the data model from the Caikit library of interest. This is accomplished
     via dynamic import on the caikit_library's environment variable.
@@ -86,7 +87,7 @@ def get_data_model(config: ConfigParser = None) -> UnifiedDataModel:
         (module): Handle to the module after dynamic wild import
     """
     if not config:
-        config = ConfigParser.get_instance()
+        config = get_config()
     lib_names = clean_lib_names(config.caikit_library)
 
     # Add all caikit.interfaces.X modules

@@ -24,8 +24,8 @@ import grpc
 import alog
 
 # Local
+from caikit import get_config
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.utils.config_parser import ConfigParser
 
 log = alog.use_channel("MODEL-SIZER")
 
@@ -40,7 +40,6 @@ class ModelSizer:
         # Re-instantiating this is a programming error
         assert self.__class__.__instance is None, "This class is a singleton!"
         ModelSizer.__instance = self
-        self.config_parser = ConfigParser.get_instance()
 
         # Cache of archive sizes: cos model path -> archive size in bytes
         self._model_archive_sizes: Dict[str, int] = {}
@@ -67,15 +66,15 @@ class ModelSizer:
         )
 
     def __estimate_with_multiplier(self, model_id, model_type, archive_size) -> int:
-        if model_type in self.config_parser.model_size_multipliers:
-            multiplier = self.config_parser.model_size_multipliers[model_type]
+        if model_type in get_config().model_size_multipliers:
+            multiplier = get_config().model_size_multipliers[model_type]
             log.debug(
                 "Using size multiplier '%f' for model '%s' to estimate model size",
                 multiplier,
                 model_id,
             )
         else:
-            multiplier = self.config_parser.default_model_size_multiplier
+            multiplier = get_config().default_model_size_multiplier
             log.info(
                 "<RUN62161564I>",
                 "No configured model size multiplier found for model type '%s' for model '%s'. "

@@ -19,11 +19,11 @@
 import alog
 
 # Local
+from caikit import get_config
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.protobufs import model_runtime_pb2, model_runtime_pb2_grpc
 from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.utils.config_parser import ConfigParser
 from caikit.runtime.work_management.abortable_action import AbortableAction
 from caikit.runtime.work_management.call_aborter import CallAborter
 
@@ -35,7 +35,6 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
     service in Model Mesh as a Model-Runtime."""
 
     def __init__(self):
-        self.config_parser = ConfigParser.get_instance()
         self.model_manager = ModelManager.get_instance()
 
     def loadModel(self, request, context):
@@ -56,8 +55,8 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
                     "model_id": request.modelId,
                 }
             )
-
-            if self.config_parser.use_abortable_threads:
+            caikit_config = get_config()
+            if caikit_config.use_abortable_threads:
                 work = AbortableAction(
                     CallAborter(context),
                     self.model_manager.load_model,
@@ -109,12 +108,12 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             raise e
 
         # get concurrency
-        if request.modelType in self.config_parser.max_model_concurrency_per_type:
-            max_concurrency = self.config_parser.max_model_concurrency_per_type[
+        if request.modelType in caikit_config.max_model_concurrency_per_type:
+            max_concurrency = caikit_config.max_model_concurrency_per_type[
                 request.modelType
             ]
         else:
-            max_concurrency = self.config_parser.max_model_concurrency
+            max_concurrency = caikit_config.max_model_concurrency
 
         return model_runtime_pb2.LoadModelResponse(
             sizeInBytes=model_size, maxConcurrency=max_concurrency
@@ -258,18 +257,19 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             model_runtime_pb2.RuntimeStatusResponse:
                 Gen from model-runtime.proto
         """
+        caikit_config = get_config()
         log.info(
             "<RUN25209721I>",
             "Starting Model Runtime version: %s",
-            self.config_parser.runtime_version,
+            caikit_config.runtime_version,
         )
         return model_runtime_pb2.RuntimeStatusResponse(
             status=model_runtime_pb2.RuntimeStatusResponse.READY,
-            capacityInBytes=self.config_parser.capacity,
-            maxLoadingConcurrency=self.config_parser.max_loading_concurrency,
-            modelLoadingTimeoutMs=self.config_parser.model_loading_timeout_ms,
-            defaultModelSizeInBytes=self.config_parser.default_model_size,
-            runtimeVersion=self.config_parser.runtime_version,
-            numericRuntimeVersion=self.config_parser.numeric_runtime_version,
-            limitModelConcurrency=self.config_parser.latency_based_autoscaling_enabled,
+            capacityInBytes=caikit_config.capacity,
+            maxLoadingConcurrency=caikit_config.max_loading_concurrency,
+            modelLoadingTimeoutMs=caikit_config.model_loading_timeout_ms,
+            defaultModelSizeInBytes=caikit_config.default_model_size,
+            runtimeVersion=caikit_config.runtime_version,
+            numericRuntimeVersion=caikit_config.numeric_runtime_version,
+            limitModelConcurrency=caikit_config.latency_based_autoscaling_enabled,
         )
