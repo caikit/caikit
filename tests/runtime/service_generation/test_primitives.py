@@ -6,7 +6,7 @@ import pytest
 
 # Local
 from caikit.runtime.service_generation.primitives import to_output_dm_type
-from tests.fixtures.sample_lib.data_model.sample import SampleOutputType
+from sample_lib.data_model import SampleOutputType
 
 
 def test_to_output_dm_type_with_dm():
