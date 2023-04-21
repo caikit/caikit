@@ -115,8 +115,10 @@ def extract_data_model_type_from_union(arg_type: Type) -> Type:
             )
             return extract_data_model_type_from_union(dm_types[0])
 
-    # anything else is an invalid output type
-    raise RuntimeError(f"Invalid arg type for output : {arg_type}")
+    # if it's anything else we just return as is
+    # we don't actually want to throw errors from service generation
+    log.warning("Return type [%s] not a DM type, returning as is", arg_type)
+    return arg_type
 
 
 def is_primitive_method(
