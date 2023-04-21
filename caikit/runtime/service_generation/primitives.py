@@ -16,7 +16,7 @@ This file contains our logic about what constitutes a "primitive" for RPC genera
 """
 
 # Standard
-from typing import Dict, List, Type, Union
+from typing import Dict, List, Type, Union, get_args, get_origin
 import inspect
 import sys
 import typing
@@ -45,41 +45,80 @@ def to_primitive_signature(
     primitives = {}
     log.debug("Building primitive signature for %s", signature)
     for arg, arg_type in signature.items():
-        if _is_primitive_type(arg_type, primitive_data_model_types):
-            if typing.get_origin(arg_type) == Union:
-                union_primitives = [
-                    union_val
-                    for union_val in typing.get_args(arg_type)
-                    if _is_primitive_type(union_val, primitive_data_model_types)
-                ]
-                if len(union_primitives) == 1:
-                    primitives[arg] = union_primitives[0]
-                else:
-                    dm_types = [
-                        arg
-                        for arg in union_primitives
-                        if inspect.isclass(arg) and issubclass(arg, DataBase)
-                    ]
-                    if len(dm_types) > 0:
-                        log.debug2(
-                            "Picking first data model type %s in union primitives %s",
-                            dm_types,
-                            union_primitives,
-                        )
-                        primitives[arg] = dm_types[0]
-                    else:
-                        log.debug(
-                            "Just picking first primitive type %s in union",
-                            union_primitives[0],
-                        )
-                        primitives[arg] = union_primitives[0]
-
-            else:
-                primitives[arg] = arg_type
-        else:
-            log.debug("Skipping non-primitive argument [%s], type [%s]", arg, arg_type)
+        primitive_arg_type = extract_primitive_type_from_union(
+            primitive_data_model_types, arg_type
+        )
+        if primitive_arg_type:
+            primitives[arg] = primitive_arg_type
 
     return primitives
+
+
+def extract_primitive_type_from_union(
+    primitive_data_model_types: List[str], arg_type: Type
+) -> Type:
+    """Returns the primitive arg type from a Union if found"""
+    if _is_primitive_type(arg_type, primitive_data_model_types):
+        if typing.get_origin(arg_type) == Union:
+            union_primitives = [
+                union_val
+                for union_val in typing.get_args(arg_type)
+                if _is_primitive_type(union_val, primitive_data_model_types)
+            ]
+            # if there's only 1 primitive found, return that
+            if len(union_primitives) == 1:
+                return union_primitives[0]
+            # otherwise, try to get the primitive dm objects in the Union
+            dm_types = [
+                arg
+                for arg in union_primitives
+                if inspect.isclass(arg) and issubclass(arg, DataBase)
+            ]
+            # if there are multiple, pick the first one
+            if len(dm_types) > 0:
+                log.debug2(
+                    "Picking first data model type %s in union primitives %s",
+                    dm_types,
+                    union_primitives,
+                )
+                return dm_types[0]
+            log.debug(
+                "Just picking first primitive type %s in union",
+                union_primitives[0],
+            )
+            return union_primitives[0]
+        return arg_type
+    log.debug("Skipping non-primitive argument type [%s]", arg_type)
+
+
+def extract_data_model_type_from_union(arg_type: Type) -> Type:
+    """Helper function that determines the right data model type to use from a Union"""
+
+    # Decompose this type using typing to determine if it's a useful typing hint
+    typing_origin = get_origin(arg_type)
+    typing_args = get_args(arg_type)
+
+    # If this is a data model type, no need to do anything
+    if isinstance(arg_type, type) and issubclass(arg_type, DataBase):
+        return arg_type
+
+    # Handle Unions by looking for a data model object in the union
+    if typing_origin is Union:
+        dm_types = [
+            arg
+            for arg in typing_args
+            if inspect.isclass(arg) and issubclass(arg, DataBase)
+        ]
+        if dm_types:
+            log.debug2(
+                "Found data model types in Union: [%s], taking first one", dm_types
+            )
+            return extract_data_model_type_from_union(dm_types[0])
+
+    # if it's anything else we just return as is
+    # we don't actually want to throw errors from service generation
+    log.warning("Return type [%s] not a DM type, returning as is", arg_type)
+    return arg_type
 
 
 def is_primitive_method(

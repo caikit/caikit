@@ -56,16 +56,24 @@ class ModuleClassTrainRPC(RPCSerializerBase):
     for a given module class
     """
 
-    def __init__(self, method_signature: CaikitCoreModuleMethodSignature):
+    def __init__(
+        self,
+        method_signature: CaikitCoreModuleMethodSignature,
+        primitive_data_model_types: List[str],
+    ):
         """Initialize a .proto generator with a single module to convert
 
         Args:
             method_signature (CaikitCoreModuleMethodSignature): The module method signature to
             generate an RPC for
+
+            primitive_data_model_types: List[str]
+                List of primitive data model types for a caikit_* library, such as
+                caikit.interfaces.nlp.data_model.RawDocument for nlp domains
         """
         self.clz: Type[ModuleBase] = method_signature.module
         self._method = ModuleClassTrainRPC._mutate_method_signature_for_training(
-            method_signature
+            method_signature, primitive_data_model_types
         )
         self.name = self._module_class_to_rpc_name()
 
@@ -115,7 +123,7 @@ class ModuleClassTrainRPC(RPCSerializerBase):
 
     @staticmethod
     def _mutate_method_signature_for_training(
-        signature,
+        signature, primitive_data_model_types: List[str]
     ) -> Optional[CaikitCoreModuleMethodSignature]:
         # Change return type for async training interface
         return_type = TrainingJob
@@ -136,7 +144,10 @@ class ModuleClassTrainRPC(RPCSerializerBase):
                 # Found a model pointer
                 new_params[name] = ModelPointer
             else:
-                new_params[name] = typ
+                new_params[name] = primitives.extract_primitive_type_from_union(
+                    arg_type=typ,
+                    primitive_data_model_types=primitive_data_model_types,
+                )
 
         return CustomSignature(
             original_signature=signature, parameters=new_params, return_type=return_type
@@ -197,7 +208,7 @@ class TaskPredictRPC(RPCSerializerBase):
         return_types = {method.return_type for method in method_signatures}
         assert len(return_types) == 1, f"Found multiple return types for task [{task}]"
         return_type = list(return_types)[0]
-        self.return_type = return_type
+        self.return_type = primitives.extract_data_model_type_from_union(return_type)
 
         # Create the rpc name based on the module type
         self.name = self._task_to_rpc_name()
@@ -205,7 +216,8 @@ class TaskPredictRPC(RPCSerializerBase):
     @property
     def module_list(self) -> List[Type[ModuleBase]]:
         """Returns the list of all caikit.core.modules that this RPC will be for. These should all
-        be of the same ai-problem, e.g. my_caikit_library.[blocks | workflows].classification"""
+        be of the same ai-problem, e.g. my_caikit_library.[blocks | workflows].classification
+        """
         return self._module_list
 
     @property

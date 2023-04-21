@@ -19,7 +19,11 @@ Coverage is probably not the best
 from typing import List, Optional
 import inspect
 
+# Third Party
+import pytest
+
 # Local
+from caikit.runtime.service_generation.signature_parsing import docstrings
 from caikit.runtime.service_generation.signature_parsing.parsers import (
     _get_dm_type_from_name,
     _snake_to_camel,
@@ -52,16 +56,72 @@ def test_get_dm_type_from_name():
         == sample_lib.data_model.sample.SampleOutputType
     )
 
+    assert _get_dm_type_from_name("NonExistentName") == None
+
 
 def test_get_output_type_name():
-    run_sign = inspect.Signature(return_annotation=inspect.Signature.empty)
+
+    # Test that if there's no function signature, use docstring to deduct output type
+    empty_sign = inspect.Signature(return_annotation=inspect.Signature.empty)
     assert (
         get_output_type_name(
             module_class=sample_lib.blocks.sample_task.SampleBlock,
-            fn_signature=run_sign,
+            fn_signature=empty_sign,
             fn=sample_lib.blocks.sample_task.SampleBlock.run,
         )
         == sample_lib.data_model.SampleOutputType
+    )
+
+    # Test that we use type annotation to deduct output type
+    inner_block_run_method_ptr = getattr(
+        sample_lib.blocks.sample_task.InnerBlock, "run"
+    )
+    fn_sign = inspect.signature(inner_block_run_method_ptr)
+    assert (
+        get_output_type_name(
+            module_class=sample_lib.blocks.sample_task.InnerBlock,
+            fn_signature=fn_sign,
+            fn=sample_lib.blocks.sample_task.InnerBlock.run,
+        )
+        == sample_lib.data_model.SampleOutputType
+    )
+
+    # Test that we use type annotation to deduct output type is return annotation is a string
+    def _run(self, some_input: str) -> "InnerBlock":
+        pass
+
+    fn_sign = inspect.signature(_run)
+    assert (
+        get_output_type_name(
+            module_class=sample_lib.blocks.sample_task.InnerBlock,
+            fn_signature=fn_sign,
+            fn=sample_lib.blocks.sample_task.InnerBlock.run,
+        )
+        == sample_lib.blocks.sample_task.InnerBlock
+    )
+
+    # Test that we return None if type annotation as a string that doesn't match module class name
+    def _run2(self, some_input: str) -> "AStringThatsNotInnerBlock":
+        pass
+
+    fn_sign = inspect.signature(_run2)
+    assert (
+        get_output_type_name(
+            module_class=sample_lib.blocks.sample_task.InnerBlock,
+            fn_signature=fn_sign,
+            fn=sample_lib.blocks.sample_task.InnerBlock.run,
+        )
+        == None
+    )
+
+    # User doesn't provide any type annotation or docstring, return None
+    assert (
+        get_output_type_name(
+            module_class=sample_lib.blocks.sample_task.InnerBlock,
+            fn_signature=empty_sign,
+            fn=sample_lib.blocks.sample_task.InnerBlock.run,
+        )
+        == None
     )
 
 
@@ -83,6 +143,15 @@ def test_optional_type_annotation():
 
     assert get_argument_types(_run)["sample_input"] == Optional[int]
 
+    def _run2(sample_input: Optional[str]):
+        """
+        Args:
+            sample_input: str
+                optional string input
+        """
+
+    assert get_argument_types(_run2)["sample_input"] == Optional[str]
+
 
 def test_get_argument_type_from_malformed_docstring():
     """This test tests docstring arg type parsing for docstrings in non-conforming styles
@@ -102,6 +171,59 @@ def test_get_argument_type_from_malformed_docstring():
     assert get_argument_types(_run)["foo"] == sample_lib.data_model.SampleInputType
 
 
+def test_get_args_with_no_annotation():
+    """Check that we get arguments with no type annotation supplied"""
+
+    def _run(input_1="hello world"):
+        pass
+
+    assert get_argument_types(_run)["input_1"] == str
+
+    def _run_with_docstring(input_1):
+        """
+        Args:
+            input_1: str
+                Optional str input
+        """
+        pass
+
+    assert get_argument_types(_run_with_docstring)["input_1"] == Optional[str]
+
+    def _run_with_known_dm_type(sample_input_type):
+        pass
+
+    assert (
+        get_argument_types(_run_with_known_dm_type)["sample_input_type"]
+        == sample_lib.data_model.SampleInputType
+    )
+
+    def _run_with_optional_known_dm_type(sample_input_type):
+        """
+        Args:
+            sample_input_type: blah blah
+                Optional input
+        """
+        pass
+
+    assert (
+        get_argument_types(_run_with_optional_known_dm_type)["sample_input_type"]
+        == Optional[sample_lib.data_model.SampleInputType]
+    )
+
+    def _run_with_default_as_list_of_ints(a_list=[1, 2, 3]):
+        pass
+
+    assert get_argument_types(_run_with_default_as_list_of_ints)["a_list"] == List[int]
+
+    def _run_with_default_as_list_of_multiple_types(a_list=[True, "hello", 1]):
+        pass
+
+    # We parse it as a random type
+    assert get_argument_types(_run_with_default_as_list_of_multiple_types)[
+        "a_list"
+    ] in [List[str], List[bool], List[int]]
+
+
 def test_get_args_with_defaults():
     """Check that we get arguments with any default value supplied"""
 
@@ -111,3 +233,15 @@ def test_get_args_with_defaults():
         pass
 
     assert get_args_with_defaults(_run) == {"c", "d", "e", "f", "g"}
+
+
+def test_get_args_with_known_args():
+    """Check that we get arguments with a known arg type supplied"""
+
+    def _run(producer_id):
+        pass
+
+    assert (
+        get_argument_types(_run)["producer_id"]
+        == caikit.core.data_model.producer.ProducerId
+    )

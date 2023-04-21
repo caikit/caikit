@@ -1,6 +1,9 @@
 """
 A sample block for sample things!
 """
+# Standard
+from typing import Union
+
 # Local
 from ...data_model.sample import OtherOutputType, SampleInputType
 from caikit.core.data_model import DataStream
@@ -15,7 +18,9 @@ class OtherBlock(caikit.core.BlockBase):
         self.batch_size = batch_size
         self.learning_rate = learning_rate
 
-    def run(self, sample_input: SampleInputType) -> OtherOutputType:
+    def run(
+        self, sample_input: Union[SampleInputType, str]
+    ) -> Union[OtherOutputType, str]:
         return OtherOutputType(f"goodbye: {sample_input.name} {self.batch_size} times")
 
     @classmethod
@@ -41,7 +46,10 @@ class OtherBlock(caikit.core.BlockBase):
 
     @classmethod
     def train(
-        cls, training_data: DataStream[int], batch_size: int = 64
+        cls,
+        training_data: DataStream[int],
+        sample_input: Union[SampleInputType, str],
+        batch_size: int = 64,
     ) -> "OtherBlock":
         """Sample training method that produces a trained model"""
         # Barf if we were incorrectly passed data not in datastream format
