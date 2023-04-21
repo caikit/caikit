@@ -89,6 +89,10 @@ def extract_data_model_type_from_union(arg_type: Type) -> Type:
     typing_origin = get_origin(arg_type)
     typing_args = get_args(arg_type)
 
+    # If it's none, return as none. Caikit checks for None later.
+    if arg_type is None:
+        return arg_type
+
     # If this is a data model type, no need to do anything
     if isinstance(arg_type, type) and issubclass(arg_type, DataBase):
         return arg_type

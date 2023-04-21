@@ -11,6 +11,10 @@ from caikit.runtime.service_generation.primitives import (
 from sample_lib.data_model import SampleOutputType
 
 
+def test_to_output_dm_type_with_None():
+    assert extract_data_model_type_from_union(None) == None
+
+
 def test_to_output_dm_type_with_dm():
     assert extract_data_model_type_from_union(SampleOutputType) == SampleOutputType
 
