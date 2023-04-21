@@ -65,13 +65,16 @@ def extract_primitive_type_from_union(
                 for union_val in typing.get_args(arg_type)
                 if _is_primitive_type(union_val, primitive_data_model_types)
             ]
+            # if there's only 1 primitive found, return that
             if len(union_primitives) == 1:
                 return union_primitives[0]
+            # otherwise, try to get the primitive dm objects in the Union
             dm_types = [
                 arg
                 for arg in union_primitives
                 if inspect.isclass(arg) and issubclass(arg, DataBase)
             ]
+            # if there are multiple, pick the first one
             if len(dm_types) > 0:
                 log.debug2(
                     "Picking first data model type %s in union primitives %s",
