@@ -78,7 +78,7 @@ def configure():
 
     NOTE: This function is NOT thread safe!
     """
-    config_object = get_config().backends
+    config_object = get_config().module_backends
 
     log.debug3("Full Config: %s", config_object)
 

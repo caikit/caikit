@@ -21,7 +21,7 @@ load_path: null
 
 # Configuration for loading alternate module implementations via
 # distributed backends
-backends:
+module_backends:
     # Toggle distributed loading globally
     enabled: false
     # Local is always enabled unless explicitly disabled

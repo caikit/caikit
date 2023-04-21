@@ -289,7 +289,7 @@ class MyTestCase(unittest.TestCase):
             with reset_distributed_config():
                 with temp_config(
                     {
-                        "backends": {
+                        "module_backends": {
                             "enabled": True,
                             "priority": [
                                 backend_types.TEST,

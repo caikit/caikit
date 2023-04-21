@@ -288,7 +288,7 @@ def test_backend_supported_model_load_successfully(reset_globals):
     # Configure backend
     with temp_config(
         {
-            "backends": {
+            "module_backends": {
                 "priority": [backend_types.MOCK],
                 "configs": {"mock": {}},
             }
@@ -308,7 +308,7 @@ def test_local_model_load_successfully(reset_globals):
     # Configure backend
     with temp_config(
         {
-            "backends": {
+            "module_backends": {
                 "priority": [backend_types.LOCAL],
                 "configs": {"mock": {}},
             }
@@ -331,7 +331,7 @@ def test_local_model_loaded_backend_successfully(reset_globals):
     # Configure backend
     with temp_config(
         {
-            "backends": {
+            "module_backends": {
                 "priority": [backend_types.MOCK],
                 "configs": {"mock": {}},
             }
@@ -352,7 +352,7 @@ def test_backend_model_loaded_as_singleton(reset_globals):
     # Configure backend
     with temp_config(
         {
-            "backends": {
+            "module_backends": {
                 "priority": [backend_types.MOCK],
                 "configs": {"mock": {}},
             }
@@ -389,7 +389,7 @@ def test_singleton_cache_with_different_backend(reset_globals):
     # Configure backend
     with temp_config(
         {
-            "backends": {
+            "module_backends": {
                 "priority": [backend_types.MOCK],
                 "configs": {"mock": {}},
             }
@@ -430,7 +430,7 @@ def test_fall_back_to_local(reset_globals):
     """
     with temp_config(
         {
-            "backends": {
+            "module_backends": {
                 "priority": [],
             }
         }
@@ -448,7 +448,7 @@ def test_no_local_if_disabled(reset_globals):
     """
     _ = setup_saved_model(MockBackend)
     with temp_config(
-        {"backends": {"priority": [backend_types.MOCK], "disable_local": True}}
+        {"module_backends": {"priority": [backend_types.MOCK], "disable_local": True}}
     ):
         configure()
         with temp_saved_model(NonDistributedBlock()) as model_path:
@@ -463,7 +463,7 @@ def test_preferred_backend_enabled(reset_globals):
     _, DummyBar = setup_saved_model(MockBackend)
     with temp_config(
         {
-            "backends": {
+            "module_backends": {
                 "priority": [backend_types.MOCK],
                 "configs": {"mock": {}},
             }
@@ -483,7 +483,7 @@ def test_preferred_backend_disabled(reset_globals):
     DummyFoo, DummyBar = setup_saved_model(MockBackend)
     with temp_config(
         {
-            "backends": {
+            "module_backends": {
                 "priority": [backend_types.LOCAL],
                 "configs": {},
             }
@@ -497,7 +497,7 @@ def test_preferred_backend_disabled(reset_globals):
         assert not isinstance(model, DummyBar)
 
 
-def test_non_local_supported_backed(reset_globals):
+def test_non_local_supported_backend(reset_globals):
     """Make sure model artifact saved with as non-local backend loads as
     non-local backend if supported by SUPPORTED_LOAD_BACKENDS
     """
@@ -527,7 +527,7 @@ def test_non_local_supported_backed(reset_globals):
 
     with temp_config(
         {
-            "backends": {
+            "module_backends": {
                 "priority": [backend_types.MOCK2],
                 "configs": {},
             }

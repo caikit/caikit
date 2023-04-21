@@ -56,7 +56,7 @@ def test_configure_picks_up_base_configs(patched_config):
     caikit.configure()
     cfg = caikit.get_config()
 
-    assert cfg.backends.priority == ["LOCAL"]
+    assert cfg.module_backends.priority == ["LOCAL"]
 
 
 def test_configure_reads_a_config_yml(tmp_path):

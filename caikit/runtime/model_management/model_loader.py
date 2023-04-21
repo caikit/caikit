@@ -53,9 +53,9 @@ class ModelLoader:
         # class is a singleton
 
         # If backends loading is enabled, set up the loader
-        if get_config().backends.enabled:
+        if get_config().module_backends.enabled:
             log.info("<RUN89711118I>", "Configuring for backends loading")
-            log.debug("Backends config: %s", get_config().backends)
+            log.debug("Backends config: %s", get_config().module_backends)
             configure()
 
     def load_model(self, model_id, local_model_path, model_type) -> LoadedModel:

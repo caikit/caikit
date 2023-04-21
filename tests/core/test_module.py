@@ -408,7 +408,7 @@ def test_class_attributes(reset_globals):
     # Configure and make sure it can be fetched by the class
     with temp_config(
         {
-            "backends": {
+            "module_backends": {
                 "priority": [backend_types.MOCK],
             }
         }

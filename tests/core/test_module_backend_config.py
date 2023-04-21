@@ -43,7 +43,7 @@ def test_configure_with_module(reset_globals):
     backend_types.register_backend_type(MockBackend)
     with temp_config(
         {
-            "backends": {
+            "module_backends": {
                 "priority": [backend_types.MOCK],
                 "configs": {"mock": foo_cfg},
             }
@@ -62,7 +62,7 @@ def test_non_supported_backend_raises():
     if not registered"""
     with temp_config(
         {
-            "backends": {
+            "module_backends": {
                 "priority": ["unsupported"],
             }
         }
@@ -75,7 +75,7 @@ def test_disabling_local_backend(reset_globals):
     """Test that disabling local backend does not add it to priority automatically"""
     backend_types.register_backend_type(MockBackend)
     with temp_config(
-        {"backends": {"priority": [backend_types.MOCK], "disable_local": True}}
+        {"module_backends": {"priority": [backend_types.MOCK], "disable_local": True}}
     ):
         configure()
         assert "LOCAL" not in configured_backends()
@@ -86,7 +86,7 @@ def test_duplicate_config_raises(reset_globals):
     backend_types.register_backend_type(MockBackend)
     with temp_config(
         {
-            "backends": {
+            "module_backends": {
                 "priority": [backend_types.MOCK],
             }
         }
@@ -101,7 +101,7 @@ def test_one_configured_backend_can_start(reset_globals):
     backend_types.register_backend_type(MockBackend)
     with temp_config(
         {
-            "backends": {
+            "module_backends": {
                 "priority": [backend_types.MOCK],
                 "configs": {"mock": foo_cfg},
             }
@@ -152,7 +152,7 @@ def test_multiple_module_same_backend_configures(reset_globals):
 
     with temp_config(
         {
-            "backends": {
+            "module_backends": {
                 "priority": [backend_types.MOCK],
             }
         }
@@ -173,7 +173,7 @@ def test_get_backend_starts_backend(reset_globals):
     """
     backend_types.register_backend_type(MockBackend)
     with temp_config(
-        {"backends": {"priority": [backend_types.MOCK], "disable_local": True}}
+        {"module_backends": {"priority": [backend_types.MOCK], "disable_local": True}}
     ):
         configure()
         assert not _CONFIGURED_BACKENDS[backend_types.MOCK].is_started

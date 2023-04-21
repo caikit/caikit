@@ -259,7 +259,7 @@ class ModelManager:
                 break
 
         # If model not able to load still, it is a model that probably
-        # does not define the "backed_type" or "supported_load_backends".
+        # does not define the "backend_type" or "supported_load_backends".
         # These would all be 'LOCAL' backend model, thus try to load with that
         if not loaded_artifact and local_enabled:
             module_class = MODULE_REGISTRY.get(module_id)
