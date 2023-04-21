@@ -25,6 +25,7 @@ from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.blocks.sample_task.sample_implementation import SampleBlock
 from sample_lib.data_model.sample import (
+    OtherOutputType,
     SampleInputType,
     SampleOutputType,
     SampleTrainingType,
@@ -87,7 +88,7 @@ def set_train_location(request):
 ##############
 
 
-def test_global_train_simple_Sample_Widget(
+def test_global_train_sample_task(
     sample_train_service,
     sample_train_servicer,
     sample_inference_service,
@@ -137,6 +138,58 @@ def test_global_train_simple_Sample_Widget(
         inference_response
         == SampleOutputType(
             greeting="Hello Gabe",
+        ).to_proto()
+    )
+
+
+def test_global_train_other_task(
+    sample_train_service,
+    sample_train_servicer,
+    sample_inference_service,
+    sample_predict_servicer,
+):
+    """Global train of TrainRequest returns a training job with the correct
+    model name, and some training id for a basic train function that doesn't
+    require any loaded model
+    """
+    batch_size = 42
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
+    training_data = stream_type(jsondata=stream_type.JsonData(data=[1])).to_proto()
+    train_request = sample_train_service.messages.BlocksOtherTaskOtherBlockTrainRequest(
+        model_name="Other block Training",
+        training_data=training_data,
+        sample_input=SampleInputType(name="Gabe").to_proto(),
+        batch_size=batch_size,
+    )
+
+    training_response = sample_train_servicer.Train(train_request)
+    assert training_response.model_name == "Other block Training"
+    assert training_response.training_id is not None
+    assert isinstance(training_response.training_id, str)
+
+    result = sample_train_servicer.training_map.get(
+        training_response.training_id
+    ).result()
+    assert result.batch_size == batch_size
+    assert (
+        result.BLOCK_CLASS
+        == "sample_lib.blocks.other_task.other_implementation.OtherBlock"
+    )
+
+    # give the trained model time to load
+    # TODO: no sleeps in tests!
+    time.sleep(1)
+
+    inference_response = sample_predict_servicer.Predict(
+        sample_inference_service.messages.OtherTaskRequest(
+            sample_input=SampleInputType(name="Gabe").to_proto()
+        ),
+        Fixtures.build_context(training_response.model_name),
+    )
+    assert (
+        inference_response
+        == OtherOutputType(
+            farewell=f"goodbye: Gabe {batch_size} times",
         ).to_proto()
     )
 
