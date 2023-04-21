@@ -75,7 +75,7 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[RPCSerializerB
     rpcs = []
 
     primitive_data_model_types = (
-        ConfigParser.get_instance().service_generation.primitive_data_model_types
+        get_config().service_generation.primitive_data_model_types
     )
 
     for ck_module in modules:
