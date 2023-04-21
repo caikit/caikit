@@ -89,10 +89,6 @@ def extract_data_model_type_from_union(arg_type: Type) -> Type:
     typing_origin = get_origin(arg_type)
     typing_args = get_args(arg_type)
 
-    # If it's none, return as none. Caikit checks for None later.
-    if arg_type is None:
-        return arg_type
-
     # If this is a data model type, no need to do anything
     if isinstance(arg_type, type) and issubclass(arg_type, DataBase):
         return arg_type
@@ -110,8 +106,10 @@ def extract_data_model_type_from_union(arg_type: Type) -> Type:
             )
             return extract_data_model_type_from_union(dm_types[0])
 
-    # anything else is an invalid output type
-    raise RuntimeError(f"Invalid arg type for output : {arg_type}")
+    # if it's anything else we just return as is
+    # we don't actually want to throw errors from service generation
+    log.warning("Return type [%s] not a DM type, returning as is", arg_type)
+    return arg_type
 
 
 def is_primitive_method(
