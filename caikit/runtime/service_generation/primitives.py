@@ -45,9 +45,11 @@ def to_primitive_signature(
     primitives = {}
     log.debug("Building primitive signature for %s", signature)
     for arg, arg_type in signature.items():
-        primitives[arg] = extract_primitive_type_from_union(
+        primitive_arg_type = extract_primitive_type_from_union(
             primitive_data_model_types, arg_type
         )
+        if primitive_arg_type:
+            primitives[arg] = primitive_arg_type
 
     return primitives
 
