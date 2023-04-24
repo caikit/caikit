@@ -3,10 +3,10 @@ This sets up global test configs when pytest starts
 """
 
 # Standard
-import copy
 from contextlib import contextmanager
 from typing import Type
 from unittest.mock import patch
+import copy
 import json
 import os
 import sys

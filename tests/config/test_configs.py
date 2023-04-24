@@ -24,8 +24,8 @@ import yaml
 import aconfig
 
 # Local
-import caikit
 from tests.conftest import temp_config
+import caikit
 
 
 # Let all of these tests call caikit.configure() without mucking the real config up
