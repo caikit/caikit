@@ -17,7 +17,7 @@
 """
 
 # Standard
-from typing import Optional
+from typing import Any, Dict, Optional
 import os
 import threading
 
@@ -45,7 +45,9 @@ def get_config() -> aconfig.Config:
     return _CONFIG
 
 
-def configure(config_yml_path: Optional[str] = None):
+def configure(
+    config_yml_path: Optional[str] = None, config_dict: Dict[str, Any] = None
+):
     """Configure caikit for your usage!
     Sets the internal config to an aconfig.Config object with overrides from multiple sources.
 
@@ -64,11 +66,15 @@ def configure(config_yml_path: Optional[str] = None):
         This only sets the config object that is returned by `caikit.get_config()`
     """
 
-    if not config_yml_path and not _CONFIG:
+    if not config_yml_path and not config_dict and not _CONFIG:
         # If nothing is passed, and we currently have no config, use the base config
         config_yml_path = BASE_CONFIG_PATH
 
-    cfg = parse_config(config_yml_path) if config_yml_path else aconfig.Config({})
+    cfg = (
+        parse_config(config_yml_path, config_dict)
+        if config_yml_path or config_dict
+        else aconfig.Config({})
+    )
 
     # Update the config by merging the new updates over the existing config
     with _CONFIG_LOCK:
@@ -79,7 +85,7 @@ def configure(config_yml_path: Optional[str] = None):
     error_handler.MAX_EXCEPTION_LOG_MESSAGES = get_config().max_exception_log_messages
 
 
-def parse_config(config_file: str) -> aconfig.Config:
+def parse_config(config_file: str = None, config_dict: Dict = None) -> aconfig.Config:
     """This function parses a configuration file used to manage configuration settings for caikit.
 
     It first parses the config in the specified file, then looks for extra config file paths
@@ -89,13 +95,20 @@ def parse_config(config_file: str) -> aconfig.Config:
     Those extra files are then parsed and merged in from left to right, last taking precedence.
 
     Args:
-        config_file (str): path to a config.yml file
+        config_file (str): Optional path to a config.yml file
+        config_dict (Dict): Optional config definition in dictionary
+        One of config_file or config_dict must be provided
 
     Returns: aconfig.Config
         The merged configuration
     """
-    # Start with the given file
-    config = aconfig.Config.from_yaml(config_file, override_env_vars=True)
+    if config_file:
+        # Start with the given file
+        config = aconfig.Config.from_yaml(config_file, override_env_vars=True)
+    elif config_dict:
+        config = aconfig.Config(config_dict, override_env_vars=True)
+    else:
+        log.error("<RUN43273054E>", "No config_file or config_dict provided")
 
     # Merge in config from any other user-specified config files
     if config.config_files or os.environ.get("CONFIG_FILES"):

@@ -67,14 +67,16 @@ def test_configure_reads_a_config_yml(tmp_path):
     assert caikit.get_config() == CFG_1
 
 
-def test_configure_merges_over_existing_configs(tmp_path):
-    path = os.path.join(os.path.join(tmp_path, "one.yml"))
-    _dump_yml(CFG_1, path)
-    caikit.configure(path)
+def test_configure_reads_a_config_dict(tmp_path):
+    caikit.configure(config_dict=CFG_1)
 
-    path = os.path.join(os.path.join(tmp_path, "two.yml"))
-    _dump_yml(CFG_2, path)
-    caikit.configure(path)
+    assert caikit.get_config() == CFG_1
+
+
+def test_configure_merges_over_existing_configs(tmp_path):
+    caikit.configure(config_dict=CFG_1)
+
+    caikit.configure(config_dict=CFG_2)
 
     cfg = caikit.get_config()
     # Not just the second one, we merged things in
@@ -86,18 +88,13 @@ def test_configure_merges_over_existing_configs(tmp_path):
 
 @patch.dict(os.environ, {"FOO": "42"})
 def test_configure_picks_up_env_vars(tmp_path):
-    path = os.path.join(os.path.join(tmp_path, "one.yml"))
-    _dump_yml(CFG_1, path)
-    caikit.configure(path)
+    caikit.configure(config_dict=CFG_1)
 
     # the FOO=42 env var is picked up
     assert caikit.get_config().foo == 42
 
 
 def test_configure_adds_more_user_specified_files_from_env(tmp_path):
-    path_1 = os.path.join(os.path.join(tmp_path, "one.yml"))
-    _dump_yml(CFG_1, path_1)
-
     path_2 = os.path.join(os.path.join(tmp_path, "two.yml"))
     _dump_yml(CFG_2, path_2)
 
@@ -105,7 +102,7 @@ def test_configure_adds_more_user_specified_files_from_env(tmp_path):
     _dump_yml(CFG_3, path_3)
 
     with patch.dict(os.environ, {"CONFIG_FILES": f"{path_2},{path_3}"}):
-        caikit.configure(path_1)
+        caikit.configure(config_dict=CFG_1)
 
     cfg = caikit.get_config()
     # all three configs applied, with CFG_3 applied last
