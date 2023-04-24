@@ -36,14 +36,6 @@ module_backends:
         - LOCAL
     configs: {}
 
-# TLS configs
-tls:
-    server:
-        key: ""
-        cert: ""
-    client:
-        cert: ""
-
 ### Runtime-specific configurations
 
 log:
@@ -95,6 +87,14 @@ batching:
         size: 10
 
 ### Server configurations
+
+# TLS configs
+tls:
+    server:
+        key: ""
+        cert: ""
+    client:
+        cert: ""
 
 # Service exposure options
 service_port: 8085
