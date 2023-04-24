@@ -15,7 +15,9 @@
 # User can set comma-separated string of config file locations to read
 config_files: ""
 
+# Global config switch for runtime check functions (type_check, value_check, file_check...)
 enable_error_checks: true
+# Maximum number of times that a single exception is logged
 max_exception_log_messages: 4
 load_path: null
 

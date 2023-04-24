@@ -25,11 +25,7 @@ import threading
 import aconfig
 import alog
 
-# Local
-from caikit.core.toolkit.errors import error_handler
-
 log = alog.use_channel("CONFIG")
-error = error_handler.get(log)
 
 BASE_CONFIG_PATH = os.path.realpath(
     os.path.join(os.path.dirname(__file__), "config.yml")
@@ -79,10 +75,6 @@ def configure(
     # Update the config by merging the new updates over the existing config
     with _CONFIG_LOCK:
         merge_configs(_CONFIG, cfg)
-
-    # TODO: hook into any inner `configure()` calls that need to happen (fill this section in)
-    error_handler.ENABLE_ERROR_CHECKS = get_config().enable_error_checks
-    error_handler.MAX_EXCEPTION_LOG_MESSAGES = get_config().max_exception_log_messages
 
 
 def parse_config(config_file: str = None, config_dict: Dict = None) -> aconfig.Config:
