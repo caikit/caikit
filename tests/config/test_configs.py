@@ -31,11 +31,6 @@ import caikit
 def patched_config():
     with patch.object(caikit.config.config, "_CONFIG", aconfig.Config({})):
         yield
-    # Need to re-call `configure` because currently this is not threadsafe nor
-    # side-effect-safe. This will use the real config to go and re-configure
-    # things that may have been configured incorrectly during the course of
-    # running these tests
-    caikit.configure()
 
 
 CFG_1 = {"foo": 1, "combined": {"one": "bar"}}
