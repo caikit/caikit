@@ -18,4 +18,4 @@
 
 # Local
 # Export public configuration functions
-from .config import configure, get_config, parse_config
+from .config import configure, get_config

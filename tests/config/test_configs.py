@@ -25,11 +25,13 @@ import aconfig
 
 # Local
 import caikit
+from tests.conftest import temp_config
 
 
+# Let all of these tests call caikit.configure() without mucking the real config up
 @pytest.fixture(autouse=True)
 def patched_config():
-    with patch.object(caikit.config.config, "_CONFIG", aconfig.Config({})):
+    with temp_config({}):
         yield
 
 
@@ -46,12 +48,9 @@ def _dump_yml(cfg_dict: dict, path: str):
         f.flush()
 
 
-def test_configure_picks_up_base_configs(patched_config):
-    """If no config is set and configure() is called, we get the baked-in caikit config"""
-    caikit.configure()
-    cfg = caikit.get_config()
-
-    assert cfg.module_backends.priority == ["LOCAL"]
+def test_configure_raises_on_no_input():
+    with pytest.raises(ValueError):
+        caikit.configure()
 
 
 def test_configure_reads_a_config_yml(tmp_path):
@@ -59,16 +58,18 @@ def test_configure_reads_a_config_yml(tmp_path):
     _dump_yml(CFG_1, path)
     caikit.configure(path)
 
-    assert caikit.get_config() == CFG_1
+    for k, v in CFG_1.items():
+        assert caikit.get_config()[k] == v
 
 
-def test_configure_reads_a_config_dict(tmp_path):
+def test_configure_reads_a_config_dict():
     caikit.configure(config_dict=CFG_1)
 
-    assert caikit.get_config() == CFG_1
+    for k, v in CFG_1.items():
+        assert caikit.get_config()[k] == v
 
 
-def test_configure_merges_over_existing_configs(tmp_path):
+def test_configure_merges_over_existing_configs():
     caikit.configure(config_dict=CFG_1)
 
     caikit.configure(config_dict=CFG_2)
@@ -82,7 +83,7 @@ def test_configure_merges_over_existing_configs(tmp_path):
 
 
 @patch.dict(os.environ, {"FOO": "42"})
-def test_configure_picks_up_env_vars(tmp_path):
+def test_configure_picks_up_env_vars():
     caikit.configure(config_dict=CFG_1)
 
     # the FOO=42 env var is picked up

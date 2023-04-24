@@ -42,68 +42,49 @@ def get_config() -> aconfig.Config:
 
 
 def configure(
-    config_yml_path: Optional[str] = None, config_dict: Dict[str, Any] = None
+    config_yml_path: Optional[str] = None, config_dict: Optional[Dict[str, Any]] = None
 ):
     """Configure caikit for your usage!
-    Sets the internal config to an aconfig.Config object with overrides from multiple sources.
+    Merges into the internal aconfig.Config object with overrides from multiple sources.
 
     Sources, last takes precedence:
-        1. caikit's base config.yml file baked into this repo
-        2. all `config_yml_path`s provided to this function, in the order the calls are made
-        3. The config files specified in the `config_files` configuration
+        1. The existing configuration from calls to `caikit.configure()`
+        2. The config from `config_yml_path`
+        3. The config from `config_dict`
+        4. The config files specified in the `config_files` configuration
             (NB: This may be set by the `CONFIG_FILES` environment variable)
-        4. Environment variables, in ALL_CAPS_SNAKE_FORMAT
+        5. Environment variables, in ALL_CAPS_SNAKE_FORMAT
 
     Args:
         config_yml_path (Optional[str]): The path to the base configuration yaml
-            with overrides for your library. If omitted, only the base caikit config is used.
+            with overrides for your usage.
+        config_dict (Optional[Dict]): Config overrides in dictionary form
 
     Returns: None
         This only sets the config object that is returned by `caikit.get_config()`
     """
+    if not config_yml_path and not config_dict:
+        log.error("<RUN43273054E>", "No config_file or config_dict provided")
+        raise ValueError("No config_file or config_dict provided")
 
-    if not config_yml_path and not config_dict and not _CONFIG:
-        # If nothing is passed, and we currently have no config, use the base config
-        config_yml_path = BASE_CONFIG_PATH
+    cfg = aconfig.Config(_CONFIG)
+    if config_yml_path:
+        cfg = merge_configs(cfg, aconfig.Config.from_yaml(config_yml_path))
+    if config_dict:
+        cfg = merge_configs(cfg, aconfig.Config(config_dict))
 
-    cfg = (
-        parse_config(config_yml_path, config_dict)
-        if config_yml_path or config_dict
-        else aconfig.Config({})
-    )
+    cfg = _merge_extra_files(cfg)
 
     # Update the config by merging the new updates over the existing config
     with _CONFIG_LOCK:
+        # Locked just in case `configure()` is called concurrently for any reason
         merge_configs(_CONFIG, cfg)
 
 
-def parse_config(config_file: str = None, config_dict: Dict = None) -> aconfig.Config:
-    """This function parses a configuration file used to manage configuration settings for caikit.
-
-    It first parses the config in the specified file, then looks for extra config file paths
-    specified as a comma separated list either in this file (key: `config_files`) or in the
-    environment variable `CONFIG_FILES`. (Environment variable taking precedence).
-
-    Those extra files are then parsed and merged in from left to right, last taking precedence.
-
-    Args:
-        config_file (str): Optional path to a config.yml file
-        config_dict (Dict): Optional config definition in dictionary
-        One of config_file or config_dict must be provided
-
-    Returns: aconfig.Config
-        The merged configuration
-    """
-    if config_file:
-        # Start with the given file
-        config = aconfig.Config.from_yaml(config_file, override_env_vars=True)
-    elif config_dict:
-        config = aconfig.Config(config_dict, override_env_vars=True)
-    else:
-        log.error("<RUN43273054E>", "No config_file or config_dict provided")
-
-    # Merge in config from any other user-specified config files
-    if config.config_files or os.environ.get("CONFIG_FILES"):
+def _merge_extra_files(config: aconfig.Config) -> aconfig.Config:
+    """Looks at the `config_files` configuration item and merges those files into the config,
+    left to right"""
+    if config.config_files:
         extra_config_files = [
             s.strip()
             for s in str(config.config_files or os.environ.get("CONFIG_FILES")).split(
@@ -155,3 +136,7 @@ def merge_configs(base: Optional[dict], overrides: Optional[dict]) -> dict:
             base[key] = merge_configs(base[key], value)
 
     return base
+
+
+# Run initial configuration with the base config
+configure(BASE_CONFIG_PATH)
