@@ -44,16 +44,17 @@ tls:
 
 ### Runtime-specific configurations
 
-# Default level for all python loggers
-log_level: info
-# Alog filter customization [comma separated list of channels and the level to set them to]
-alog_filters: botocore:off,urllib3:off,matplotlib:off,boto3:off,jnius.reflect:off
-# Width of channels in ALOG when using the pretty formatter
-alog_channel_width: 12
-# if bool(int(ALOG_THREAD_ID)), then ALOG will also log information about thread IDs
-alog_thread_id: true
-# Which formatter to use. options are 'json' or 'pretty'
-alog_formatter: json
+log:
+    # Default level for all python loggers
+    level: info
+    # Alog filter customization [comma separated list of channels and the level to set them to]
+    filters: botocore:off,urllib3:off,matplotlib:off,boto3:off,jnius.reflect:off
+    # Width of channels in ALOG when using the pretty formatter
+    channel_width: 12
+    # if bool(int(ALOG_THREAD_ID)), then ALOG will also log information about thread IDs
+    thread_id: true
+    # Which formatter to use. options are 'json' or 'pretty'
+    formatter: json
 
 # Configuration for data streams and how they're handled in the server
 data_streams:

@@ -45,7 +45,6 @@ from caikit.runtime.servicers.training_management_servicer import (
     TrainingManagementServicerImpl,
 )
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.utils.log_config import initialize_logging
 
 # Have pylint ignore broad exception catching in this file so that we can log all
 # unexpected errors using alog.
@@ -318,10 +317,10 @@ def load_secret(secret: str) -> str:
 
 def main():
     # Configure using the log level and formatter type specified in config.
-    caikit_config = get_config()
-    initialize_logging()
+    caikit.core.toolkit.logging.configure()
 
     # Start serving Prometheus metrics
+    caikit_config = get_config()
     start_http_server(caikit_config.metrics_port)
 
     # Enable signal handling

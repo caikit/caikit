@@ -49,11 +49,7 @@ FIXTURES_DIR = os.path.join(
 sys.path.append(FIXTURES_DIR)
 
 # Configure logging from the environment
-logging.configure(
-    default_level=os.environ.get("LOG_LEVEL", "off"),
-    filters=os.environ.get("LOG_FILTERS", "urllib3:off"),
-    thread_id=os.environ.get("LOG_THREAD_ID", "") == "true",
-)
+logging.configure()
 
 
 @pytest.fixture(autouse=True, scope="session")
