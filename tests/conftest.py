@@ -19,15 +19,12 @@ import uuid
 from grpc_health.v1 import health_pb2, health_pb2_grpc
 import grpc
 import pytest
-import yaml
 
 # First Party
-from aconfig import aconfig
 import alog
 
 # Local
 from caikit import get_config
-from caikit.config.config import merge_configs
 from caikit.core.data_model.dataobject import render_dataobject_protos
 from caikit.core.toolkit import logging
 from caikit.runtime.grpc_server import RuntimeGRPCServer
@@ -47,6 +44,8 @@ FIXTURES_DIR = os.path.join(
 
 # Make sample_lib available for import
 sys.path.append(FIXTURES_DIR)
+# Local
+import sample_lib
 
 # Configure logging from the environment
 logging.configure()
@@ -185,14 +184,20 @@ def other_loaded_model_id(other_good_model_path) -> str:
 @contextmanager
 def temp_config(config_overrides: dict):
     """Temporarily edit the caikit config in a mock context"""
-    existing_config = aconfig.Config(copy.deepcopy(get_config()))
+    existing_config = copy.deepcopy(getattr(caikit.config.config, "_CONFIG"))
     # Patch out the internal config, starting with a fresh copy of the current config
     with patch.object(caikit.config.config, "_CONFIG", existing_config):
-        # Run our config overrides inside the patch
-        if config_overrides:
-            caikit.configure(config_dict=config_overrides)
-        # Yield to the test with the new overriden config
-        yield get_config()
+        # Patch the immutable view of the config as well
+        # This is required otherwise the updated immutable view will persist after the test
+        with patch.object(caikit.config.config, "_IMMUTABLE_CONFIG", None):
+            # Run our config overrides inside the patch
+            if config_overrides:
+                caikit.configure(config_dict=config_overrides)
+            else:
+                # or just slap some random uuids in there. Barf, but we need to call `.configure()`
+                caikit.configure(config_dict={str(uuid.uuid4()): str(uuid.uuid4())})
+            # Yield to the test with the new overriden config
+            yield get_config()
 
 
 # fixtures to optionally generate the protos for easier debugging

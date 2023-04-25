@@ -53,6 +53,12 @@ def test_configure_raises_on_no_input():
         caikit.configure()
 
 
+def test_config_is_immutable():
+    assert isinstance(caikit.get_config(), aconfig.ImmutableConfig)
+    with pytest.raises(AttributeError):
+        caikit.get_config().config_files = "foo"
+
+
 def test_configure_reads_a_config_yml(tmp_path):
     path = os.path.join(os.path.join(tmp_path, "one.yml"))
     _dump_yml(CFG_1, path)

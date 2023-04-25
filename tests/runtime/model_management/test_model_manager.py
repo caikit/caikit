@@ -30,6 +30,7 @@ from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import get_dynamic_module
+from tests.conftest import temp_config
 from tests.fixtures import Fixtures
 
 
@@ -93,15 +94,15 @@ class TestModelManager(unittest.TestCase):
                 os.path.join(tempdir, "model2.zip"),
             )
             ModelManager._ModelManager__instance = None
-            get_config().local_models_dir = tempdir
-            self.model_manager = ModelManager()
+            with temp_config({"local_models_dir": tempdir}):
+                self.model_manager = ModelManager()
 
-            self.assertEqual(len(self.model_manager.loaded_models), 2)
-            self.assertIn("model1", self.model_manager.loaded_models.keys())
-            self.assertIn("model2.zip", self.model_manager.loaded_models.keys())
-            self.assertNotIn(
-                "model-does-not-exist.zip", self.model_manager.loaded_models.keys()
-            )
+                self.assertEqual(len(self.model_manager.loaded_models), 2)
+                self.assertIn("model1", self.model_manager.loaded_models.keys())
+                self.assertIn("model2.zip", self.model_manager.loaded_models.keys())
+                self.assertNotIn(
+                    "model-does-not-exist.zip", self.model_manager.loaded_models.keys()
+                )
 
     def test_model_manager_raises_if_all_local_models_fail_to_load(self):
         with TemporaryDirectory() as tempdir:

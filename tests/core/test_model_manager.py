@@ -70,17 +70,8 @@ class TestModelManager(TestCaseBase):
         # Set test load path
         test_load_path = os.path.join(self.fixtures_dir, "models")
 
-        # Save the original load path so that it can be undone
-        std_load_path = get_config().load_path
-
-        # Overwrite the load path with the test fixtures path
-        get_config().load_path = test_load_path
-
-        # Yield execution to the test itself
-        yield
-
-        # Undo the load path patching
-        get_config().load_path = std_load_path
+        with temp_config({"load_path": test_load_path}):
+            yield
 
     def test_load_can_return_a_block(self):
         model = caikit.core.load(self.model_path)

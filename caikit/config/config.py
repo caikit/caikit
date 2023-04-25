@@ -31,14 +31,16 @@ BASE_CONFIG_PATH = os.path.realpath(
     os.path.join(os.path.dirname(__file__), "config.yml")
 )
 
+# The core config object that is continually merged into
 _CONFIG: aconfig.Config = aconfig.Config({})
+# An immutable view into the core config object, to be passed to callers
+_IMMUTABLE_CONFIG: aconfig.ImmutableConfig = aconfig.ImmutableConfig({})
 _CONFIG_LOCK: threading.Lock = threading.Lock()
 
 
 def get_config() -> aconfig.Config:
     """Get the caikit configuration"""
-    # TODO: update aconfig to allow immutable configs and return an immutable config instead
-    return _CONFIG
+    return _IMMUTABLE_CONFIG
 
 
 def configure(
@@ -74,11 +76,21 @@ def configure(
         cfg = merge_configs(cfg, aconfig.Config(config_dict))
 
     cfg = _merge_extra_files(cfg)
+    _update_global_config(cfg)
 
+
+def _update_global_config(cfg: aconfig.Config):
+    """Updates the caikit config and creates a new immutable view of it to be shared via
+    get_config().
+    Locked because who the heck knows if merge_configs() is threadsafe.
+    """
+    # pylint: disable=global-statement
+    global _IMMUTABLE_CONFIG
     # Update the config by merging the new updates over the existing config
     with _CONFIG_LOCK:
         # Locked just in case `configure()` is called concurrently for any reason
         merge_configs(_CONFIG, cfg)
+        _IMMUTABLE_CONFIG = aconfig.ImmutableConfig(_CONFIG, override_env_vars=False)
 
 
 def _merge_extra_files(config: aconfig.Config) -> aconfig.Config:

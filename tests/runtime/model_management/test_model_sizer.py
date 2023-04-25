@@ -24,6 +24,7 @@ import grpc
 from caikit import get_config
 from caikit.runtime.model_management.model_sizer import ModelSizer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from tests.conftest import temp_config
 from tests.fixtures import Fixtures
 
 
@@ -62,32 +63,32 @@ class TestModelSizer(unittest.TestCase):
             total_size += TestModelSizer._add_file(
                 os.path.join(subdir, "some_file"), 512
             )
-
             model_type = _random_test_model_type()
             mult = 7
-            get_config().model_size_multipliers[model_type] = mult
-            expected_size = total_size * mult
-
-            size = self.model_sizer.get_model_size(
-                model_id=_random_test_id(),
-                local_model_path=d,
-                model_type=model_type,
-            )
-            self.assertEqual(size, expected_size)
+            with temp_config({"model_size_multipliers": {model_type: mult}}):
+                expected_size = total_size * mult
+                size = self.model_sizer.get_model_size(
+                    model_id=_random_test_id(),
+                    local_model_path=d,
+                    model_type=model_type,
+                )
+                self.assertEqual(size, expected_size)
 
     def test_it_can_size_a_model_archive(self):
         """Get local model archive file size"""
         model_type = _random_test_model_type()
         mult = 42
-        get_config().model_size_multipliers[model_type] = mult
-        expected_size = os.path.getsize(Fixtures.get_good_model_archive_path()) * mult
+        with temp_config({"model_size_multipliers": {model_type: mult}}):
+            expected_size = (
+                os.path.getsize(Fixtures.get_good_model_archive_path()) * mult
+            )
 
-        size = self.model_sizer.get_model_size(
-            model_id=_random_test_id(),
-            local_model_path=Fixtures.get_good_model_archive_path(),
-            model_type=model_type,
-        )
-        self.assertEqual(size, expected_size)
+            size = self.model_sizer.get_model_size(
+                model_id=_random_test_id(),
+                local_model_path=Fixtures.get_good_model_archive_path(),
+                model_type=model_type,
+            )
+            self.assertEqual(size, expected_size)
 
     def test_it_uses_the_default_multiplier_for_unknown_model_types(self):
         model_type = "definitely not a real type"
