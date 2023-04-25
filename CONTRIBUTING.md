@@ -2,11 +2,9 @@
 
 👍🎉 First off, thank you for taking the time to contribute! 🎉👍
 
-The following is a set of guidelines for contributing. These are just guidelines, not rules. Use your best judgment, and feel free to propose changes to this document in a pull request.
+The following is a set of guidelines for contributing. These are just guidelines, not rules. Use your best judgment, and feel free to propose changes to this document in a pull request. Please [read community contribution guide](TODO) for general practices for the Caikit community.
 
 ## What Should I Know Before I Get Started?
-
-If you're new to GitHub and working with open source repositories, this section will be helpful. Otherwise, you can skip to learning how to [set up your dev environment](#set-up-your-dev-environment).
 
 ### Code of Conduct
 
@@ -22,7 +20,22 @@ Help on open source projects is always welcome and there is always something tha
 
 ## How Can I Contribute?
 
-When contributing, it's useful to start by looking at [issues](https://github.com/caikit/caikit/issues). After picking up an issue, writing code, or updating a document, make a pull request and your work will be reviewed and merged. If you're adding a new feature, it's best to [write an issue](https://github.com/caikit/caikit/issues/new?assignees=&labels=&template=feature_request.md&title=) first to discuss it with maintainers first.
+When contributing, it's useful to start by looking at [issues](https://github.com/caikit/caikit/issues). After picking up an issue, writing code, or updating a document, make a pull request and your work will be reviewed and merged. If you're adding a new feature or find a bug, it's best to [write an issue](https://github.com/caikit/caikit/issues/new?assignees=&labels=&template=feature_request.md&title=) first to discuss it with maintainers.
+
+To contribute to this repo, you'll use the Fork and Pull model common in many open source repositories. For details on this process, watch [how to contribute](https://egghead.io/courses/how-to-contribute-to-an-open-source-project-on-github).
+
+When your contribution is ready, you can create a pull request. Pull requests are often referred to as "PR". In general, we follow the standard [github pull request](https://help.github.com/en/articles/about-pull-requests) process. Follow the template to provide details about your pull request to the maintainers.
+
+Before sending pull requests, make sure your changes pass formatting, linting and unit tests.
+
+#### Code Review
+
+Once you've [created a pull request](#how-to-contribute), maintainers will review your code and may make suggestions to fix before merging. It will be easier for your pull request to receive reviews if you consider the criteria the reviewers follow while working. Remember to:
+
+- Run tests locally and ensure they pass
+- Follow the project coding conventions
+- Write detailed commit messages
+- Break large changes into a logical series of smaller patches, which are easy to understand individually and combine to solve a broader issue
 
 ### Reporting Bugs
 
@@ -48,20 +61,29 @@ Improvements to existing functionality are tracked as [GitHub issues using the U
 
 ### Set up your dev environment
 
-Your dev environment is set up by [tox](https://tox.wiki/en/latest/), an environment orchestrator which allows for setting up environments for and invoking builds, unit tests, formatting, linting, etc. Install tox with:
+The following tools are required:
+
+- [git](https://git-scm.com)
+- [python](https://www.python.org) (v3.9+)
+- [pip](https://pypi.org/project/pip/) (v23.0+)
+
+You can setup your dev environment using [tox](https://tox.wiki/en/latest/), an environment orchestrator which allows for setting up environments for and invoking builds, unit tests, formatting, linting, etc. Install tox with:
 
 ```sh
 pip install -r setup_requirements.txt
 ```
 
 If you want to manage your own virtual environment instead of using `tox`, you can install `caikit` and all dependencies with:
+
 ```sh
 pip install .
 ```
 
-### Run unit tests
+### Unit tests
 
-Running tests against all supported Python versions is as simple as:
+Unit tests are enforced by the CI system. When making changes, run the tests before pushing the changes to avoid CI issues.
+
+Running unit tests against all supported Python versions is as simple as:
 
 ```sh
 tox
@@ -73,18 +95,25 @@ Running tests against a single Python version can be done with:
 tox -e 3.9
 ```
 
+### Coding style
 
-### Code formatting
+Caikit follows the python [pep8](https://peps.python.org/pep-0008/) coding style. The coding style is enforced by the CI system, and your PR will fail until the style has been applied correctly.
 
-This project uses [pre-commit](https://pre-commit.com/) to enforce coding style using [black](https://github.com/psf/black).
+We use [pre-commit](https://pre-commit.com/) to enforce coding style using [black](https://github.com/psf/black), [prettier](https://github.com/prettier/prettier) and [isort](https://pycqa.github.io/isort/).
 
 You can invoke formatting with:
+
 ```sh
 tox -e fmt
 ```
 
-Coding style is enforced by the CI tests, so if not installed locally, your PR will fail until formatting has been applied.
+In addition, we use [pylint](https://www.pylint.org) to perform static code analysis of the code.
 
+You can invoke the linting with the following command
+
+```sh
+tox -e lint
+```
 
 ## Your First Code Contribution
 
@@ -92,23 +121,6 @@ Unsure where to begin contributing? You can start by looking through these issue
 
 - Issues with the [`good first issue` label](https://github.com/caikit/caikit/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) - these should only require a few lines of code and are good targets if you're just starting contributing.
 - Issues with the [`help wanted` label](https://github.com/caikit/caikit/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22) - these range from simple to more complex, but are generally things we want but can't get to in a short time frame.
-
-### How to contribute
-
-To contribute to this repo, you'll use the Fork and Pull model common in many open source repositories. For details on this process, watch [how to contribute](https://egghead.io/courses/how-to-contribute-to-an-open-source-project-on-github).
-
-When ready, you can create a pull request. Pull requests are often referred to as "PR". In general, we follow the standard [github pull request](https://help.github.com/en/articles/about-pull-requests) process. Follow the template to provide details about your pull request to the maintainers.
-
-Before sending pull requests, make sure your changes pass tests.
-
-#### Code Review
-
-Once you've [created a pull request](#how-to-contribute), maintainers will review your code and likely make suggestions to fix before merging. It will be easier for your pull request to receive reviews if you consider the criteria the reviewers follow while working. Remember to:
-
-- Run tests locally and ensure they pass
-- Follow the project coding conventions
-- Write detailed commit messages
-- Break large changes into a logical series of smaller patches, which are easy to understand individually and combine to solve a broader issue
 
 <!-- ## Releasing (Maintainers only)
 
