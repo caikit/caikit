@@ -1,0 +1,11 @@
+#####################################################
+#
+# List of approvers for caikit/caikit repository
+#
+#####################################################
+#
+# Learn about CODEOWNERS file format:
+#  https://help.github.com/en/articles/about-code-owners
+#
+
+*  @gabe-l-hart @joerunde @prashantgupta24 @gkumbhat @hickeyma @evaline-ju
