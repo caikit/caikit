@@ -14,10 +14,10 @@ classifiers=[
     "License :: OSI Approved :: Apache Software License"
 ]
 dependencies = [
-    "alchemy-config>=1.1.1",
-    "alchemy-logging>=1.0.4",
+    "alchemy-config>=1.1.1,<1.2.0",
+    "alchemy-logging>=1.0.4,<1.1.0",
     "anytree>=2.7.0,<3.0",
-    "docstring-parser>=0.14.1",
+    "docstring-parser>=0.14.1,<0.15.0",
     "grpcio-health-checking>=1.35.0,<2.0",
     "grpcio>=1.35.0,<2.0",
     "ijson>=3.1.4,<3.3.0",
@@ -30,7 +30,6 @@ dependencies = [
     "semver>=2.13.0,<4.0",
     "six>=1.16.0,<2.0.0",
     "tqdm>=4.59.0,<5.0.0",
-    "wheel>=0.37.0",
     "jtd-to-proto>=0.12.1,<0.13.0",
     "import-tracker>=3.1.5,<4",
 ]
