@@ -20,7 +20,7 @@ dependencies = [
     "docstring-parser>=0.14.1",
     "grpcio-health-checking>=1.35.0,<2.0",
     "grpcio>=1.35.0,<2.0",
-    "ijson>=3.1.4,<3.2.0",
+    "ijson>=3.1.4,<3.3.0",
     "munch>=2.5.0,<3.0",
     "protobuf>=3.19.0,<5",
     "prometheus_client==0.12.0",
