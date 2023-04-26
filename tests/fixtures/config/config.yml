@@ -1,16 +1,20 @@
 # Config for tests
-find_available_port: true
-runtime_version: mock
-service_proto_gen_module_dir: tests.fixtures.protobufs
+runtime:
+    find_available_port: true
+    compiled_proto_module_dir: tests.fixtures.protobufs
 
-metering:
-    # Switch on metering by default
-    enabled: true
-    # Directory to save metrics files
-    log_dir: "test/metering_logs"
-    # Write to log file every N seconds
-    log_interval: 5
+    metering:
+        # Switch on metering by default
+        enabled: true
+        # Directory to save metrics files
+        log_dir: "test/metering_logs"
+        # Write to log file every N seconds
+        log_interval: 5
 
-training:
-    auto_load_trained_model: true
-    output_dir: test/training_output
+    training:
+        output_dir: test/training_output
+        auto_load_trained_model: true
+
+inference_plugin:
+    model_mesh:
+        runtime_version: mock

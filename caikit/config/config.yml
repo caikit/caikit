@@ -36,8 +36,6 @@ module_backends:
         - LOCAL
     configs: {}
 
-### Runtime-specific configurations
-
 log:
     # Default level for all python loggers
     level: info
@@ -55,111 +53,115 @@ data_streams:
     # Base directory where stream source relative paths should be found
     file_source_base: null
 
-metering:
-    # Switch off metering by default
-    enabled: false
-    # Directory to save metrics files
-    log_dir: "metering_logs"
-    # Write to log file every N seconds
-    log_interval: 3600
+### Runtime configurations
+runtime:
+    # The runtime library (or libraries) whose models we want to serve using Caikit Runtime. This should
+    # be a snake case string, e.g., caikit_nlp or caikit_cv.
+    library: sample_lib # TODO: replace with libraries below when runtime can support multiple libraries
+    local_models_dir: models
 
-# Configuration for training
-training:
-    # The directory to save trained models in
-    output_dir: training_output
-    # Whether to automatically load the trained model
-    auto_load_trained_model: false
-    # Run training jobs in isolated processes
-    use_subprocess: false
+    # TLS configs
+    tls:
+        server:
+            key: ""
+            cert: ""
+        client:
+            cert: ""
 
-# Configuration for batch inference. This dict contains entries for individual
-# model types and can be extended using additional overlay config files to add
-# sections for model types beyond those listed here. Each section should contain
-# the `size` value where a 0 indicates no batching and may optionally contain a
-# `collect_delay_s` value as a float number of seconds >= 0. This will indicate
-# the amount of time the batch should wait for more requests before running a
-# partial batch.
-batching:
-    default:
-        size: 0
-        collect_delay_s: 0.0
-    fake_batch_block:
-        size: 10
+    # Service exposure options
+    port: 8085
+    metrics:
+        port: 8086
+    find_available_port: false
+    unix_socket_path: /tmp/mmesh/grpc.sock
 
-### Server configurations
+    # Number of workers with which we will run the gRPC server
+    server_thread_pool_size: 5
+    use_abortable_threads: true
+    # gRPC Server shutdown grace period
+    server_shutdown_grace_period_seconds: 45
 
-# TLS configs
-tls:
-    server:
-        key: ""
-        cert: ""
-    client:
-        cert: ""
+    compiled_proto_module_dir: unused # former service_proto_gen_module_dir
 
-# Service exposure options
-service_port: 8085
-metrics_port: 8086
-find_available_port: false
-unix_socket_path: /tmp/mmesh/grpc.sock
+    # Configuration items for service generation
+    service_generation:
+        enabled: true
+        module_types:
+            included: ["blocks", "workflows"]
+        module_guids:
+            included: []
+            excluded: []
+        primitive_data_model_types: []
+        task_types:
+            included: []
+            excluded: []
 
-# Number of workers with which we will run the gRPC server
-server_thread_pool_size: 5
-use_abortable_threads: true
-# gRPC Server shutdown grace period
-server_shutdown_grace_period_seconds: 45
+    # Configuration for batch inference. This dict contains entries for individual
+    # model types and can be extended using additional overlay config files to add
+    # sections for model types beyond those listed here. Each section should contain
+    # the `size` value where a 0 indicates no batching and may optionally contain a
+    # `collect_delay_s` value as a float number of seconds >= 0. This will indicate
+    # the amount of time the batch should wait for more requests before running a
+    # partial batch.
+    batching:
+        default:
+            size: 0
+            collect_delay_s: 0.0
+        fake_batch_block:
+            size: 10
 
-# Model Mesh specific versions
-runtime_version: real
-numeric_runtime_version: 0
+    metering:
+        # Switch off metering by default
+        enabled: false
+        # Directory to save metrics files
+        log_dir: "metering_logs"
+        # Write to log file every N seconds
+        log_interval: 3600
 
-# Model Mesh capacity in bytes for holding models (1024 ^ 3)
-capacity: 10737418240
-max_loading_concurrency: 2
-# Should be big enough to load any really chonky models
-model_loading_timeout_ms: 121000
-# Whether or not model-mesh should respect MAX_MODEL_CONCURRENCY and scale out model loads appropriately
-latency_based_autoscaling_enabled: true
-# If latency based autoscaling is enabled, the default max in-flight requests per copy of each model
-max_model_concurrency: 2
-# ...which can also be set per-model-type
-max_model_concurrency_per_type:
-    keywords_text-rank: 8
+    # Training configuration for server
+    training:
+        # The directory to save trained models in
+        output_dir: training_output
+        # Whether to automatically load the trained model
+        auto_load_trained_model: false
+        # Run training jobs in isolated processes
+        use_subprocess: false
 
-# Model Mesh's Default model size in bytes. This needs to be a
-# certain size, or else Model Mesh won't come up correctly (18 * 1024 ^ 2)
-default_model_size: 18874368
-default_model_size_multiplier: 10
-model_size_multipliers:
-    # NOTE: This won't work until https://github.com/caikit/caikit/issues/37 is addressed
-    categories_esa: 2.95
-    concepts_alchemy: 13
-    entities_alchemy-disambig: 13.76
-    entity-mentions_bilstm: 1.44
-    entity-mentions_rbr: 1.8
-    sentiment_cnn: 2.73
-    syntax_izumo: 43000
-    fake_block: 2
+inference_plugin:
+    model_mesh:
+        # Model Mesh specific versions
+        runtime_version: real
+        numeric_runtime_version: 0
 
-service_proto_gen_module_dir: unused
-# Configuration items for service generation
-service_generation:
-    enabled: true
-    client_package_name: ""
-    module_types:
-        included: ["blocks", "workflows"]
-    module_guids:
-        included: []
-        excluded: []
-    primitive_data_model_types: []
-    task_types:
-        included: []
-        excluded: []
+        # Model Mesh capacity in bytes for holding models (1024 ^ 3)
+        capacity: 10737418240
+        max_loading_concurrency: 2
+        # Should be big enough to load any really chonky models
+        model_loading_timeout_ms: 121000
+        # Whether or not model-mesh should respect MAX_MODEL_CONCURRENCY and scale out model loads appropriately
+        latency_based_autoscaling_enabled: true
+        # If latency based autoscaling is enabled, the default max in-flight requests per copy of each model
+        max_model_concurrency: 2
+        # ...which can also be set per-model-type
+        max_model_concurrency_per_type:
+            keywords_text-rank: 8
+
+        # Model Mesh's Default model size in bytes. This needs to be a
+        # certain size, or else Model Mesh won't come up correctly (18 * 1024 ^ 2)
+        default_model_size: 18874368
+        default_model_size_multiplier: 10
+        model_size_multipliers:
+            # NOTE: This won't work until https://github.com/caikit/caikit/issues/37 is addressed
+            categories_esa: 2.95
+            concepts_alchemy: 13
+            entities_alchemy-disambig: 13.76
+            entity-mentions_bilstm: 1.44
+            entity-mentions_rbr: 1.8
+            sentiment_cnn: 2.73
+            syntax_izumo: 43000
+            fake_block: 2
 
 ### Libraries configuration
-# The runtime library (or libraries) whose models we want to serve using Caikit Runtime. This should
-# be a snake case string, e.g., caikit_nlp or caikit_cv.
-runtime_library: sample_lib # TODO: replace with libraries below when runtime can support multiple libraries
-local_models_dir: models
 libraries:
     sample_lib:
         # Version override for dev running
