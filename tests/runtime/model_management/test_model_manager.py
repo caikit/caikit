@@ -94,7 +94,7 @@ class TestModelManager(unittest.TestCase):
                 os.path.join(tempdir, "model2.zip"),
             )
             ModelManager._ModelManager__instance = None
-            with temp_config({"local_models_dir": tempdir}):
+            with temp_config({"runtime": {"local_models_dir": tempdir}}):
                 self.model_manager = ModelManager()
 
                 self.assertEqual(len(self.model_manager.loaded_models), 2)
@@ -275,7 +275,7 @@ class TestModelManager(unittest.TestCase):
 
     def test_estimate_model_size_by_type(self):
         """Test that a model's size is estimated differently based on its type"""
-        config = get_config()
+        config = get_config().inference_plugin.model_mesh
         self.assertTrue(Fixtures.get_good_model_type() in config.model_size_multipliers)
 
         typed_model_size = self.model_manager.estimate_model_size(

@@ -791,6 +791,7 @@ class ModuleSaver:
         """
         self.model_path = os.path.normpath(model_path)
 
+        # Get possibly nested caikit library path
         module_path = module.__module__
         lib_name_generator = (
             k

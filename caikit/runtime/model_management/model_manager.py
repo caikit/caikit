@@ -80,7 +80,7 @@ class ModelManager:
         self.loaded_models: Dict[str, LoadedModel] = {}
 
         # Optionally load models mounted into a local directory
-        local_models_path = get_config().local_models_dir
+        local_models_path = get_config().runtime.local_models_dir
         if os.path.exists(local_models_path) and len(os.listdir(local_models_path)) > 0:
             log.info("<RUN44739400I>", "Loading local models into Caikit Runtime...")
             self.load_local_models(local_models_path)

@@ -65,7 +65,13 @@ class TestModelSizer(unittest.TestCase):
             )
             model_type = _random_test_model_type()
             mult = 7
-            with temp_config({"model_size_multipliers": {model_type: mult}}):
+            with temp_config(
+                {
+                    "inference_plugin": {
+                        "model_mesh": {"model_size_multipliers": {model_type: mult}}
+                    }
+                }
+            ):
                 expected_size = total_size * mult
                 size = self.model_sizer.get_model_size(
                     model_id=_random_test_id(),
@@ -78,7 +84,13 @@ class TestModelSizer(unittest.TestCase):
         """Get local model archive file size"""
         model_type = _random_test_model_type()
         mult = 42
-        with temp_config({"model_size_multipliers": {model_type: mult}}):
+        with temp_config(
+            {
+                "inference_plugin": {
+                    "model_mesh": {"model_size_multipliers": {model_type: mult}}
+                }
+            }
+        ):
             expected_size = (
                 os.path.getsize(Fixtures.get_good_model_archive_path()) * mult
             )
@@ -94,7 +106,7 @@ class TestModelSizer(unittest.TestCase):
         model_type = "definitely not a real type"
         expected_size = (
             os.path.getsize(Fixtures.get_good_model_archive_path())
-            * get_config().default_model_size_multiplier
+            * get_config().inference_plugin.model_mesh.default_model_size_multiplier
         )
 
         size = self.model_sizer.get_model_size(

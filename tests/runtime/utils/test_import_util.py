@@ -13,7 +13,6 @@
 # limitations under the License.
 
 # Standard
-from types import SimpleNamespace
 import inspect
 import sys
 
@@ -29,6 +28,7 @@ from caikit.runtime.utils.import_util import (
     get_data_model,
     get_dynamic_module,
 )
+from tests.conftest import temp_config
 
 ## Setup #########################################################################
 
@@ -92,18 +92,18 @@ def test_get_caikit_library_loads_caikit_core():
 
 def test_get_data_model_throws_on_nonimportable_lib():
     """If an invalid module is provided to get_data_model, it throws a ValueError"""
-    mock_config = SimpleNamespace(**{"runtime_library": "caikit_bad_lib"})
-    with pytest.raises(CaikitRuntimeException):
-        get_data_model(mock_config)
+    with temp_config({"runtime": {"library": "caikit_bad_lib"}}):
+        with pytest.raises(CaikitRuntimeException):
+            get_data_model()
 
 
 def test_get_data_model_ok_on_lib_with_no_data_model():
     """If a valid module with no data model is provided to get_data_model it
     returns an empty module object
     """
-    mock_config = SimpleNamespace(**{"runtime_library": "sys"})
-    data_model = get_data_model(mock_config)
-    assert isinstance(data_model, UnifiedDataModel)
+    with temp_config({"runtime": {"library": "sys"}}):
+        data_model = get_data_model()
+        assert isinstance(data_model, UnifiedDataModel)
 
 
 def test_get_data_model_is_accessible():
@@ -127,21 +127,16 @@ def test_multiple_caikit_libraries():
     unified data model
     """
     lib_names = ["caikit.interfaces.runtime", "sample_lib"]
-    # sys.path.append(
-    #     os.path.realpath(
-    #         os.path.join(os.path.dirname(os.path.dirname(__file__)), "fixtures")
-    #     )
-    # )
-    mock_config = SimpleNamespace(**{"runtime_library": " ".join(lib_names)})
-    cdm = get_data_model(mock_config)
-    for lib_name in lib_names:
-        assert lib_name in sys.modules
-        lib_mod = sys.modules[lib_name]
-        attrs_match = [
-            (hasattr(cdm, attr_name) and getattr(cdm, attr_name) == attr_val)
-            for attr_name, attr_val in vars(lib_mod.data_model).items()
-            if not attr_name.startswith("_")
-            and inspect.isclass(attr_val)
-            and issubclass(attr_val, DataBase)
-        ]
-        assert all(attrs_match)
+    with temp_config({"runtime": {"library": " ".join(lib_names)}}):
+        cdm = get_data_model()
+        for lib_name in lib_names:
+            assert lib_name in sys.modules
+            lib_mod = sys.modules[lib_name]
+            attrs_match = [
+                (hasattr(cdm, attr_name) and getattr(cdm, attr_name) == attr_val)
+                for attr_name, attr_val in vars(lib_mod.data_model).items()
+                if not attr_name.startswith("_")
+                and inspect.isclass(attr_val)
+                and issubclass(attr_val, DataBase)
+            ]
+            assert all(attrs_match)

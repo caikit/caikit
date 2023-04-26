@@ -98,10 +98,10 @@ class GlobalPredictServicer:
     def __init__(
         self,
         inference_service: ServicePackage,
-        use_abortable_threads: bool = get_config().use_abortable_threads,
+        use_abortable_threads: bool = get_config().runtime.use_abortable_threads,
     ):
         self._model_manager = ModelManager.get_instance()
-        if get_config().metering.enabled:
+        if get_config().runtime.metering.enabled:
             self.rpc_meter = RPCMeter()
             log.info(
                 "<RUN76773775I>",
@@ -121,7 +121,7 @@ class GlobalPredictServicer:
 
         # Duplicate code in global_train_servicer
         # pylint: disable=duplicate-code
-        library = clean_lib_names(get_config().runtime_library)[0]
+        library = clean_lib_names(get_config().runtime.library)[0]
         try:
             lib_version = version(library)
         except Exception:  # pylint: disable=broad-exception-caught
@@ -202,7 +202,7 @@ class GlobalPredictServicer:
             PREDICT_RPC_COUNTER.labels(
                 grpc_request=desc_name, code=StatusCode.OK.name, model_id=model_id
             ).inc()
-            if get_config().metering.enabled:
+            if get_config().runtime.metering.enabled:
                 self.rpc_meter.update_metrics(str(type(model)))
             return response_proto
 

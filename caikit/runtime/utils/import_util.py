@@ -88,7 +88,7 @@ def get_data_model(config: aconfig.Config = None) -> UnifiedDataModel:
     """
     if not config:
         config = get_config()
-    lib_names = clean_lib_names(config.runtime_library)
+    lib_names = clean_lib_names(config.runtime.library)
 
     # Add all caikit.interfaces.X modules
     lib_names.extend(

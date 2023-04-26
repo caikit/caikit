@@ -56,7 +56,7 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
                 }
             )
             caikit_config = get_config()
-            if caikit_config.use_abortable_threads:
+            if caikit_config.runtime.use_abortable_threads:
                 work = AbortableAction(
                     CallAborter(context),
                     self.model_manager.load_model,
@@ -108,12 +108,13 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             raise e
 
         # get concurrency
-        if request.modelType in caikit_config.max_model_concurrency_per_type:
-            max_concurrency = caikit_config.max_model_concurrency_per_type[
+        model_mesh_config = get_config().inference_plugin.model_mesh
+        if request.modelType in model_mesh_config.max_model_concurrency_per_type:
+            max_concurrency = model_mesh_config.max_model_concurrency_per_type[
                 request.modelType
             ]
         else:
-            max_concurrency = caikit_config.max_model_concurrency
+            max_concurrency = model_mesh_config.max_model_concurrency
 
         return model_runtime_pb2.LoadModelResponse(
             sizeInBytes=model_size, maxConcurrency=max_concurrency
@@ -257,19 +258,19 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             model_runtime_pb2.RuntimeStatusResponse:
                 Gen from model-runtime.proto
         """
-        caikit_config = get_config()
+        model_mesh_config = get_config().inference_plugin.model_mesh
         log.info(
             "<RUN25209721I>",
             "Starting Model Runtime version: %s",
-            caikit_config.runtime_version,
+            model_mesh_config.runtime_version,
         )
         return model_runtime_pb2.RuntimeStatusResponse(
             status=model_runtime_pb2.RuntimeStatusResponse.READY,
-            capacityInBytes=caikit_config.capacity,
-            maxLoadingConcurrency=caikit_config.max_loading_concurrency,
-            modelLoadingTimeoutMs=caikit_config.model_loading_timeout_ms,
-            defaultModelSizeInBytes=caikit_config.default_model_size,
-            runtimeVersion=caikit_config.runtime_version,
-            numericRuntimeVersion=caikit_config.numeric_runtime_version,
-            limitModelConcurrency=caikit_config.latency_based_autoscaling_enabled,
+            capacityInBytes=model_mesh_config.capacity,
+            maxLoadingConcurrency=model_mesh_config.max_loading_concurrency,
+            modelLoadingTimeoutMs=model_mesh_config.model_loading_timeout_ms,
+            defaultModelSizeInBytes=model_mesh_config.default_model_size,
+            runtimeVersion=model_mesh_config.runtime_version,
+            numericRuntimeVersion=model_mesh_config.numeric_runtime_version,
+            limitModelConcurrency=model_mesh_config.latency_based_autoscaling_enabled,
         )

@@ -70,19 +70,21 @@ class RuntimeGRPCServer:
         self.training_service = train_srv
 
         self.port = (
-            self._find_port(self.config.service_port)
-            if self.config.find_available_port
-            else self.config.service_port
+            self._find_port(self.config.runtime.port)
+            if self.config.runtime.find_available_port
+            else self.config.runtime.port
         )
-        if self.port != self.config.service_port:
+        if self.port != self.config.runtime.port:
             log.warning(
-                "Port %s was in use, had to find another!", self.config.service_port
+                "Port %s was in use, had to find another!", self.config.runtime.port
             )
 
         # Initialize basic server
         # py_grpc_prometheus.server_metrics.
         self.server = grpc.server(
-            futures.ThreadPoolExecutor(max_workers=self.config.server_thread_pool_size),
+            futures.ThreadPoolExecutor(
+                max_workers=self.config.runtime.server_thread_pool_size
+            ),
             interceptors=(PROMETHEUS_METRICS_INTERCEPTOR,),
         )
 
@@ -147,22 +149,24 @@ class RuntimeGRPCServer:
 
         # Listen on a unix socket as well for model mesh.
         try:
-            self.server.add_insecure_port(f"unix://{self.config.unix_socket_path}")
+            self.server.add_insecure_port(
+                f"unix://{self.config.runtime.unix_socket_path}"
+            )
             log.info(
                 "<RUN10001011I>",
                 "Caikit Runtime is communicating through address: unix://%s",
-                self.config.unix_socket_path,
+                self.config.runtime.unix_socket_path,
             )
         except RuntimeError:
             log.info(
                 "<RUN10001100I>",
                 "Binding failed for: unix://%s",
-                self.config.unix_socket_path,
+                self.config.runtime.unix_socket_path,
             )
 
         # Pull TLS config from app config, unless an explicit override was passed
         self.tls_config = (
-            tls_config_override if tls_config_override else self.config.tls
+            tls_config_override if tls_config_override else self.config.runtime.tls
         )
 
         if (
@@ -214,7 +218,7 @@ class RuntimeGRPCServer:
             "<RUN10001001I>",
             "Caikit Runtime is serving on port: %s with thread pool size: %s",
             self.port,
-            self.config.server_thread_pool_size,
+            self.config.runtime.server_thread_pool_size,
         )
 
         if blocking:
@@ -240,10 +244,12 @@ class RuntimeGRPCServer:
                 Defaults to application config
         """
         if not grace_period_seconds:
-            grace_period_seconds = self.config.server_shutdown_grace_period_seconds
+            grace_period_seconds = (
+                self.config.runtime.server_shutdown_grace_period_seconds
+            )
         self.server.stop(grace_period_seconds)
         # Ensure we flush out any remaining billing metrics and stop metering
-        if self.config.metering.enabled:
+        if self.config.runtime.metering.enabled:
             self._global_predict_servicer.rpc_meter.flush_metrics()
             self._global_predict_servicer.rpc_meter.end_writer_thread()
 
@@ -321,7 +327,7 @@ def main():
 
     # Start serving Prometheus metrics
     caikit_config = get_config()
-    start_http_server(caikit_config.metrics_port)
+    start_http_server(caikit_config.runtime.metrics.port)
 
     # Enable signal handling
     handle_terminations = True
@@ -329,7 +335,7 @@ def main():
     # Assume we want compiled services for now
     service_source = (
         ServicePackageFactory.ServiceSource.GENERATED
-        if caikit_config.service_generation.enabled
+        if caikit_config.runtime.service_generation.enabled
         else ServicePackageFactory.ServiceSource.COMPILED
     )
     log.debug("Running with service source: %s", service_source)

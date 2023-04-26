@@ -144,9 +144,9 @@ class ModelLoader:
         """Perform Batcher wrapping on the given module if configured, otherwise
         return the model as is
         """
-        batch_config = get_config().batching.get(
+        batch_config = get_config().runtime.batching.get(
             model_type,
-            get_config().batching.get("default", {}),
+            get_config().runtime.batching.get("default", {}),
         )
         log.debug2("Batch config for model type [%s]: %s", model_type, batch_config)
         batch_size = batch_config.get("size", 0)

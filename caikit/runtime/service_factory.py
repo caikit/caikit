@@ -127,10 +127,10 @@ class ServicePackageFactory:
 
             if service_type == cls.ServiceType.INFERENCE:
                 # 🌶️🌶️🌶️! hardcoded service names
-                compiled_pb2_package = cls._get_service_proto_module(
+                compiled_pb2_package = cls._get_compiled_proto_module(
                     "caikit_runtime_pb2"
                 )
-                compiled_pb2_grpc_package = cls._get_service_proto_module(
+                compiled_pb2_grpc_package = cls._get_compiled_proto_module(
                     "caikit_runtime_pb2_grpc"
                 )
             elif service_type == cls.ServiceType.TRAINING_MANAGEMENT:
@@ -141,10 +141,10 @@ class ServicePackageFactory:
             else:  # elif  service_type == cls.ServiceType.TRAINING:
                 # (using final _else_ for static analysis happiness)
                 # 🌶️🌶️🌶️! hardcoded service names
-                compiled_pb2_package = cls._get_service_proto_module(
+                compiled_pb2_package = cls._get_compiled_proto_module(
                     "caikit_runtime_train_pb2"
                 )
-                compiled_pb2_grpc_package = cls._get_service_proto_module(
+                compiled_pb2_grpc_package = cls._get_compiled_proto_module(
                     "caikit_runtime_train_pb2_grpc"
                 )
 
@@ -191,7 +191,7 @@ class ServicePackageFactory:
             _ = import_util.get_data_model()
 
             caikit_config = get_config()
-            lib = caikit_config.runtime_library
+            lib = caikit_config.runtime.library
             ai_domain_name = snake_to_upper_camel(lib.replace("caikit_", ""))
             package_name = f"caikit.runtime.{ai_domain_name}"
 
@@ -259,26 +259,26 @@ class ServicePackageFactory:
 
         # Check config for any explicit inclusions
         included_task_types = (
-            caikit_config.service_generation
-            and caikit_config.service_generation.task_types
-            and caikit_config.service_generation.task_types.included
+            caikit_config.runtime.service_generation
+            and caikit_config.runtime.service_generation.task_types
+            and caikit_config.runtime.service_generation.task_types.included
         )
         included_modules = (
-            caikit_config.service_generation
-            and caikit_config.service_generation.module_guids
-            and caikit_config.service_generation.module_guids.included
+            caikit_config.runtime.service_generation
+            and caikit_config.runtime.service_generation.module_guids
+            and caikit_config.runtime.service_generation.module_guids.included
         )
 
         # Check config for any exclusions
         excluded_task_types = (
-            caikit_config.service_generation
-            and caikit_config.service_generation.task_types
-            and caikit_config.service_generation.task_types.excluded
+            caikit_config.runtime.service_generation
+            and caikit_config.runtime.service_generation.task_types
+            and caikit_config.runtime.service_generation.task_types.excluded
         )
         excluded_modules = (
-            caikit_config.service_generation
-            and caikit_config.service_generation.module_guids
-            and caikit_config.service_generation.module_guids.excluded
+            caikit_config.runtime.service_generation
+            and caikit_config.runtime.service_generation.module_guids
+            and caikit_config.runtime.service_generation.module_guids.excluded
         )
 
         for ck_module in modules:
@@ -458,20 +458,20 @@ class ServicePackageFactory:
     @staticmethod
     def _get_lib_name_for_servicer() -> str:
         """Get caikit library name from Config, make upper case and not include caikit_"""
-        lib_names = import_util.clean_lib_names(get_config().runtime_library)
+        lib_names = import_util.clean_lib_names(get_config().runtime.library)
         assert len(lib_names) == 1, "Only 1 caikit library supported for now"
         return ServicePackageFactory._snake_to_upper_camel(
             lib_names[0].replace("caikit_", "")
         )
 
     @staticmethod
-    def _get_service_proto_module(
+    def _get_compiled_proto_module(
         module: str,
-        config: aconfig.Config = None,
+        config=None,
     ) -> ModuleType:
         """
-        Dynamically import the service module. This is accomplished via dynamic
-        import on the SERVICE_PROTO_GEN_MODULE_DIR's environment variable.
+        Dynamically import the compiled service module. This is accomplished via dynamic
+        import on the RUNTIME_COMPILED_PROTO_MODULE_DIR's environment variable.
 
         Args:
             config(aconfig.Config): caikit configuration
@@ -481,11 +481,11 @@ class ServicePackageFactory:
         """
         if not config:
             config = get_config()
-        module_dir = config.service_proto_gen_module_dir
+        module_dir = config.runtime.compiled_proto_module_dir
         service_proto_gen_module = import_util.get_dynamic_module(module, module_dir)
         if service_proto_gen_module is None:
             message = (
-                "Unable to load service proto gen module: %s within dir %s"
+                "Unable to load compiled proto module: %s within dir %s"
                 % (module)
                 % (module_dir)
             )

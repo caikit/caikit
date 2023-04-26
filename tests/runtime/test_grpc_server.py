@@ -511,7 +511,10 @@ def test_model_size_ok_response(loaded_model_id, runtime_grpc_server):
     # Mar. 14, 23
     # The size of the directory pointed to by Fixtures.get_good_model_path() is 355 now.
     expected_size = (
-        355 * get_config().model_size_multipliers[Fixtures.get_good_model_type()]
+        355
+        * get_config().inference_plugin.model_mesh.model_size_multipliers[
+            Fixtures.get_good_model_type()
+        ]
     )
     assert abs(actual_response.sizeInBytes - expected_size) < 100
 
@@ -537,10 +540,14 @@ def test_runtime_status_ok_response(runtime_grpc_server):
     runtime_status_request = model_runtime_pb2.RuntimeStatusRequest()
     actual_response = stub.runtimeStatus(runtime_status_request)
     assert actual_response.status == model_runtime_pb2.RuntimeStatusResponse.READY
-    assert actual_response.capacityInBytes == get_config().capacity
+    assert (
+        actual_response.capacityInBytes
+        == get_config().inference_plugin.model_mesh.capacity
+    )
     assert actual_response.maxLoadingConcurrency == 2
     assert (
-        actual_response.modelLoadingTimeoutMs == get_config().model_loading_timeout_ms
+        actual_response.modelLoadingTimeoutMs
+        == get_config().inference_plugin.model_mesh.model_loading_timeout_ms
     )
     assert actual_response.defaultModelSizeInBytes == 18874368
     assert actual_response.numericRuntimeVersion == 0
@@ -732,8 +739,10 @@ def test_out_of_range_port(sample_inference_service):
     free_high_port = RuntimeGRPCServer._find_port(50000, 60000)
     with temp_config(
         {
-            "service_port": free_high_port,
-            "find_available_port": False,
+            "runtime": {
+                "port": free_high_port,
+                "find_available_port": False,
+            }
         }
     ):
         with RuntimeGRPCServer(

@@ -66,15 +66,24 @@ class ModelSizer:
         )
 
     def __estimate_with_multiplier(self, model_id, model_type, archive_size) -> int:
-        if model_type in get_config().model_size_multipliers:
-            multiplier = get_config().model_size_multipliers[model_type]
+        if (
+            model_type
+            in get_config().inference_plugin.model_mesh.model_size_multipliers
+        ):
+            multiplier = (
+                get_config().inference_plugin.model_mesh.model_size_multipliers[
+                    model_type
+                ]
+            )
             log.debug(
                 "Using size multiplier '%f' for model '%s' to estimate model size",
                 multiplier,
                 model_id,
             )
         else:
-            multiplier = get_config().default_model_size_multiplier
+            multiplier = (
+                get_config().inference_plugin.model_mesh.default_model_size_multiplier
+            )
             log.info(
                 "<RUN62161564I>",
                 "No configured model size multiplier found for model type '%s' for model '%s'. "

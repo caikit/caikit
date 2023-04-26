@@ -229,7 +229,7 @@ class MyTestCase(unittest.TestCase):
             model_type="fake_batch_block",
         ).module()
         assert isinstance(model, Batcher)
-        assert model._batch_size == get_config().batching.fake_batch_block.size
+        assert model._batch_size == get_config().runtime.batching.fake_batch_block.size
 
         # Make sure another model loads without batching
         model = self.model_loader.load_model(
@@ -243,25 +243,27 @@ class MyTestCase(unittest.TestCase):
         """Make sure that a model type without specific batching enabled will
         load with a batcher if default is enabled
         """
-        with temp_config({"batching": {"default": {"size": 10}}}) as cfg:
+        with temp_config({"runtime": {"batching": {"default": {"size": 10}}}}) as cfg:
             model = self.model_loader.load_model(
                 "load_with_batch_default",
                 Fixtures.get_good_model_path(),
                 model_type=Fixtures.get_good_model_type(),
             ).module()
             assert isinstance(model, Batcher)
-            assert model._batch_size == cfg.batching.default.size
+            assert model._batch_size == cfg.runtime.batching.default.size
 
     def test_with_batching_collect_delay(self):
         """Make sure that a non-zero collect_delay_s is read correctly"""
         model_type = Fixtures.get_good_model_type()
         with temp_config(
             {
-                "batching": {
-                    model_type: {
-                        "size": 10,
-                        "collect_delay_s": 0.01,
-                    },
+                "runtime": {
+                    "batching": {
+                        model_type: {
+                            "size": 10,
+                            "collect_delay_s": 0.01,
+                        },
+                    }
                 }
             }
         ) as cfg:
@@ -271,10 +273,10 @@ class MyTestCase(unittest.TestCase):
                 model_type=model_type,
             ).module()
             assert isinstance(model, Batcher)
-            assert model._batch_size == getattr(cfg.batching, model_type).size
+            assert model._batch_size == getattr(cfg.runtime.batching, model_type).size
             assert (
                 model._batch_collect_delay_s
-                == getattr(cfg.batching, model_type).collect_delay_s
+                == getattr(cfg.runtime.batching, model_type).collect_delay_s
             )
 
     def test_load_distributed_impl(self):

@@ -29,7 +29,7 @@ class RPCMeter:
         self.metering_event = threading.Event()
         self.rpc_counter_lock = threading.Lock()
         self.write_file_lock = threading.Lock()
-        self.metrics_dir = get_config().metering.log_dir
+        self.metrics_dir = get_config().runtime.metering.log_dir
         self.unique_id = str(uuid.uuid4()).replace("-", "_")
         self.file_path = os.path.join(
             self.metrics_dir,
@@ -80,7 +80,9 @@ class RPCMeter:
                 self.file_path,
             )
             self._write_metrics()
-            notified = self.metering_event.wait(get_config().metering.log_interval)
+            notified = self.metering_event.wait(
+                get_config().runtime.metering.log_interval
+            )
             if notified:
                 log.debug("<RUN76774003I>", "Shutting down metering writer log thread")
                 break

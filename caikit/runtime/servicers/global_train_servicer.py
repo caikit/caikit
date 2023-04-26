@@ -66,9 +66,11 @@ class GlobalTrainServicer:
         # store the map of model ids to job ids
         self.training_map = self.training_manager.training_futures
         caikit_config = get_config()
-        self.training_output_dir = caikit_config.training.output_dir
-        self.auto_load_trained_model = caikit_config.training.auto_load_trained_model
-        self.use_subprocess = caikit_config.training.use_subprocess
+        self.training_output_dir = caikit_config.runtime.training.output_dir
+        self.auto_load_trained_model = (
+            caikit_config.runtime.training.auto_load_trained_model
+        )
+        self.use_subprocess = caikit_config.runtime.training.use_subprocess
 
         # TODO: think about if we really want to do this here:
         self.cdm = get_data_model()
@@ -81,7 +83,7 @@ class GlobalTrainServicer:
         # Or grab the `libraries` off of the `training_service` instead of config here?
         # Duplicate code in global_train_servicer
         # pylint: disable=duplicate-code
-        self.library = clean_lib_names(caikit_config.runtime_library)[0]
+        self.library = clean_lib_names(caikit_config.runtime.library)[0]
         try:
             lib_version = version(self.library)
         except Exception:  # pylint: disable=broad-exception-caught

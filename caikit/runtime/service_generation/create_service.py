@@ -50,7 +50,7 @@ def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[RPCSerializer
     """Handles the logic to create all the RPCs for inference"""
 
     primitive_data_model_types = (
-        get_config().service_generation.primitive_data_model_types
+        get_config().runtime.service_generation.primitive_data_model_types
     )
 
     rpcs = []
@@ -75,7 +75,7 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[RPCSerializerB
     rpcs = []
 
     primitive_data_model_types = (
-        get_config().service_generation.primitive_data_model_types
+        get_config().runtime.service_generation.primitive_data_model_types
     )
 
     for ck_module in modules:
