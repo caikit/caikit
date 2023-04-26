@@ -29,3 +29,4 @@ from .enums import *
 from .producer import PACKAGE_COMMON, ProducerId
 from .streams import data_stream
 from .streams.data_stream import *
+from .task_decorator import task
