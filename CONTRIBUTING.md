@@ -22,7 +22,9 @@ Help on open source projects is always welcome and there is always something tha
 
 When contributing, it's useful to start by looking at [issues](https://github.com/caikit/caikit/issues). After picking up an issue, writing code, or updating a document, make a pull request and your work will be reviewed and merged. If you're adding a new feature or find a bug, it's best to [write an issue](https://github.com/caikit/caikit/issues/new?assignees=&labels=&template=feature_request.md&title=) first to discuss it with maintainers.
 
-To contribute to this repo, you'll use the Fork and Pull model common in many open source repositories. For details on this process, watch [how to contribute](https://egghead.io/courses/how-to-contribute-to-an-open-source-project-on-github).
+To contribute to this repo, you'll use the Fork and Pull model common in many open source repositories. For details on this process, check out [The GitHub Workflow
+Guide](https://github.com/kubernetes/community/blob/master/contributors/guide/github-workflow.md)
+from Kubernetes.
 
 When your contribution is ready, you can create a pull request. Pull requests are often referred to as "PR". In general, we follow the standard [github pull request](https://help.github.com/en/articles/about-pull-requests) process. Follow the template to provide details about your pull request to the maintainers.
 
@@ -30,7 +32,7 @@ Before sending pull requests, make sure your changes pass formatting, linting an
 
 #### Code Review
 
-Once you've [created a pull request](#how-to-contribute), maintainers will review your code and may make suggestions to fix before merging. It will be easier for your pull request to receive reviews if you consider the criteria the reviewers follow while working. Remember to:
+Once you've [created a pull request](#how-can-i-contribute), maintainers will review your code and may make suggestions to fix before merging. It will be easier for your pull request to receive reviews if you consider the criteria the reviewers follow while working. Remember to:
 
 - Run tests locally and ensure they pass
 - Follow the project coding conventions
@@ -64,7 +66,7 @@ Improvements to existing functionality are tracked as [GitHub issues using the U
 The following tools are required:
 
 - [git](https://git-scm.com)
-- [python](https://www.python.org) (v3.9+)
+- [python](https://www.python.org) (v3.8+)
 - [pip](https://pypi.org/project/pip/) (v23.0+)
 
 You can setup your dev environment using [tox](https://tox.wiki/en/latest/), an environment orchestrator which allows for setting up environments for and invoking builds, unit tests, formatting, linting, etc. Install tox with:
