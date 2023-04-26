@@ -256,7 +256,7 @@ class _DataBaseMetaClass(type):
     def _make_property_getter(mcs, field):
         """This helper creates an @property attribute getter for the given field
 
-        NOTE: This needs to live as a standalone funciton in order for the given
+        NOTE: This needs to live as a standalone function in order for the given
             field name to be properly bound to the closure for the attrs
         """
         private_name = f"_{field}"
