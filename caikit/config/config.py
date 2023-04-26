@@ -66,7 +66,7 @@ def configure(
         This only sets the config object that is returned by `caikit.get_config()`
     """
     if not config_yml_path and not config_dict:
-        log.error("<RUN43273054E>", "No config_file or config_dict provided")
+        log.error("<CFG43273054E>", "No config_file or config_dict provided")
         raise ValueError("No config_file or config_dict provided")
 
     cfg = aconfig.Config(_CONFIG)
