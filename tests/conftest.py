@@ -104,8 +104,8 @@ def runtime_grpc_server(
     sample_inference_service, sample_train_service
 ) -> RuntimeGRPCServer:
     server = RuntimeGRPCServer(
-        infer_srv=sample_inference_service,
-        train_srv=sample_train_service,
+        inference_service=sample_inference_service,
+        training_service=sample_train_service,
     )
 
     grpc_thread = threading.Thread(
