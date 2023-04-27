@@ -360,6 +360,19 @@ class GlobalTrainServicer:
         proc.start()
         proc.join()
 
+        if proc.exitcode is not None:
+            # If process exited with a non-zero exit code
+            if proc.exitcode == 137:
+                raise CaikitRuntimeException(
+                    grpc.StatusCode.RESOURCE_EXHAUSTED,
+                    "Training process died with OOM error!"
+                )
+            else:
+                raise CaikitRuntimeException(
+                    grpc.StatusCode.UNKNOWN,
+                    f"Training process died with exit code {proc.exitcode}"
+                )
+
         # If an error occurred, reraise it here
         # TODO: Make sure the stack trace is preserved
         if proc.error is not None:

@@ -60,8 +60,14 @@ class SampleBlock(caikit.core.BlockBase):
         cls,
         training_data: DataStream[SampleTrainingType],
         batch_size: int = 64,
+        oom_exit: bool = False,
     ) -> "SampleBlock":
         """Sample training method that produces a trained model"""
+
+        if oom_exit:
+            # exit with OOM code
+            exit(137)
+
         if batch_size == cls.POISON_PILL_BATCH_SIZE:
             raise ValueError(
                 f"Batch size of {cls.POISON_PILL_BATCH_SIZE} is not allowed!"
