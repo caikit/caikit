@@ -50,16 +50,68 @@ run (vector: Vector) -> Classification
 
 # workflow? : task Classification
 runs model 2 + model 3
-- public
+
+- public (independent?)
+  - output must match a task
+  - Input must match input type of domain/task
+  - if public set in bool, then check the pre-requisites for the corresponding domain/task
+
+
+- private (or a better name?) -> dependent?
+  - output must match a task
+  - input doesn't need to
+  - optional bool in module decorator to control public/private
+  
+
+
 
 --- Prashant is an amazing awful user
 --- Do we want to say like, all tasks must take one "domain primitive" type?
 --- all NLP tasks must have `raw_document: RawDocument`
 
+
+- wip ..?
+  - no interface definitions
+  - no perf testing
+
+@domain(input=raw_string: str)
+Text
+
+
 @domain(input=raw_document: RawDocument)
 NLP
+
 
 @task(domain=NLP, output_type= nlp.Classification)
 ClassificationTask
 
+Questions:
+- Why do we need each module to tell which task it wants to belong to? Can we not deduce it based on the task declaration?
+- Needed for sure, and a required field.
 
+- Once we create a `task`, it will:
+  - Try to find all modules that fit the requirements by validating signatures
+  - Generate RPC for that task
+  
+- So for NLP, we can have:
+  - @task(inputs = RawDocument, output = Classification)
+    class ClassificationTask
+  - @task(inputs = RawDocument, output = Syntax)
+    class SyntaxTask
+  - @task(inputs = RawDocument, output = LangDetect)
+    class LangDetectTask
+
+- For other libs, can we have something like this?
+  - @task(inputs = str, output = SomePrediction)
+    class SomeTask
+  
+- Are we assuming multiple domains within a single lib?
+  - domain
+    - tasks
+      - modules
+
+
+CakePOP (caikit proposal on progression) (similar to PEP, RFC)
+- tasks + domain
+- API build time validation?
+- blocks + coupler/connector 
