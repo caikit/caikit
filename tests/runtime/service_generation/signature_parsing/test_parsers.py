@@ -17,9 +17,11 @@ Coverage is probably not the best
 """
 # Standard
 from typing import List, Optional
+from unittest.mock import patch
 import inspect
 
 # Third Party
+from docstring_parser import ParseError
 import pytest
 
 # Local
@@ -124,6 +126,17 @@ def test_get_output_type_name():
         == None
     )
 
+    # Test that if a ParseError was raised with docstring.parsers, we have no idea the type and return None
+    with patch("docstring_parser.parse", side_effect=ParseError("mocked error")):
+        assert (
+            get_output_type_name(
+                module_class=sample_lib.blocks.sample_task.InnerBlock,
+                fn_signature=empty_sign,
+                fn=sample_lib.blocks.sample_task.InnerBlock.run,
+            )
+            == None
+        )
+
 
 def test_get_argument_types_with_real_block():
     """Quick check that we get the right type for our sample block"""
@@ -133,6 +146,23 @@ def test_get_argument_types_with_real_block():
         ]
         == sample_lib.data_model.SampleInputType
     )
+
+    # Test that if a ParseError was raised with docstring.parsers, we could still parse from type annotation
+    with patch("docstring_parser.parse", side_effect=ParseError("mocked error")):
+        assert (
+            get_argument_types(sample_lib.blocks.sample_task.SampleBlock.run)[
+                "sample_input"
+            ]
+            == sample_lib.data_model.SampleInputType
+        )
+
+    # Test that if a ParseError was raised with docstring.parsers, but no type annotation provided, we cannot deduct type and return None
+    def run_fn(some_input: str, some_input_2):
+        pass
+
+    with patch("docstring_parser.parse", side_effect=ParseError("mocked error")):
+        assert get_argument_types(run_fn)["some_input"] == str
+        assert get_argument_types(run_fn)["some_input_2"] == None
 
 
 def test_optional_type_annotation():

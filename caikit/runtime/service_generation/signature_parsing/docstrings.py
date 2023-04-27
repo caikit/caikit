@@ -21,12 +21,14 @@ import sys
 
 # Third Party
 import docstring_parser
+import grpc
 
 # First Party
 import alog
 
 # Local
 from caikit.core.data_model.base import DataBase
+from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit.core
 
 log = alog.use_channel("DOCSTRINGS")
@@ -44,9 +46,11 @@ def get_return_type(fn: Callable) -> Optional[Type]:
     """
     try:
         docstring = docstring_parser.parse(fn.__doc__)
-    except docstring_parser.ParseError:
-        log.warning("Failed to parse the docstring for %s", fn.__name__)
-        return None
+    except Exception as exc:
+        raise CaikitRuntimeException(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            f"ParseError when parsing docstring for function: {fn.__name__}",
+        ) from exc
 
     type_names, desc_names = _get_candidate_type_names_from_docstring(docstring.returns)
 
@@ -71,9 +75,11 @@ def is_optional(fn: Callable, arg_name: str) -> bool:
     """
     try:
         docstring = docstring_parser.parse(fn.__doc__)
-    except docstring_parser.ParseError:
-        log.warning("Failed to parse the docstring for %s", fn.__name__)
-        return None
+    except Exception as exc:
+        raise CaikitRuntimeException(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            f"ParseError when parsing docstring for function: {fn.__name__}",
+        ) from exc
 
     ds_param = [param for param in docstring.params if param.arg_name == arg_name]
     if ds_param:
@@ -107,9 +113,11 @@ def get_arg_type(fn: Callable, arg_name: str) -> Optional[Type]:
 
     try:
         docstring = docstring_parser.parse(fn.__doc__)
-    except docstring_parser.ParseError:
-        log.warning("Failed to parse the docstring for %s", fn.__name__)
-        return None
+    except Exception as exc:
+        raise CaikitRuntimeException(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            f"ParseError when parsing docstring for function: {fn.__name__}",
+        ) from exc
 
     ds_param = [param for param in docstring.params if param.arg_name == arg_name]
     if ds_param:
