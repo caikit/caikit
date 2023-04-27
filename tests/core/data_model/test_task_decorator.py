@@ -24,7 +24,7 @@ def test_task_decorator_has_required_inputs_and_output_type():
     assert SampleTask.get_required_inputs() == {"sample_input": SampleInputType}
 
 
-def test_task_decorator_implodes_if_class_does_not_extend_task_base():
+def test_task_decorator_validates_class_extends_task_base():
     with pytest.raises(TypeError):
 
         @task(
@@ -32,4 +32,15 @@ def test_task_decorator_implodes_if_class_does_not_extend_task_base():
             output_type=SampleOutputType,
         )
         class SampleTask:
+            pass
+
+
+def test_task_decorator_validates_output_is_data_model():
+    with pytest.raises(TypeError):
+
+        @task(
+            required_inputs={"sample_input": SampleInputType},
+            output_type=str,
+        )
+        class SampleTask(TaskBase):
             pass
