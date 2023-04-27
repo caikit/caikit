@@ -31,12 +31,12 @@ import typing
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from google.protobuf.internal.enum_type_wrapper import EnumTypeWrapper
+from py_to_proto.jtd_to_proto import JTD_TO_PROTO_TYPES
+from py_to_proto.validation import is_valid_jtd
+import py_to_proto
 
 # First Party
-from jtd_to_proto.jtd_to_proto import JTD_TO_PROTO_TYPES
-from jtd_to_proto.validation import is_valid_jtd
 import alog
-import jtd_to_proto
 
 # Local
 from ..toolkit.errors import error_handler
@@ -131,8 +131,8 @@ def dataobject(
         # Create the message class from the schema
         jtd_def = _to_jtd_schema(schema)
         log.debug3("JTD Def for %s: %s", cls.__name__, jtd_def)
-        proto_class = jtd_to_proto.descriptor_to_message_class(
-            jtd_to_proto.jtd_to_proto(
+        proto_class = py_to_proto.descriptor_to_message_class(
+            py_to_proto.jtd_to_proto(
                 name=cls.__name__,
                 package=package,
                 jtd_def=jtd_def,

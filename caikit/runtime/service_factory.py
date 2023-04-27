@@ -25,7 +25,7 @@ import google.protobuf.service
 import grpc
 
 # First Party
-from jtd_to_proto.json_to_service import (
+from py_to_proto.json_to_service import (
     json_to_service,
     service_descriptor_to_client_stub,
     service_descriptor_to_server_registration_function,
