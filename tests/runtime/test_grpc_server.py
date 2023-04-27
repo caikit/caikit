@@ -32,6 +32,7 @@ import tls_test_tools
 import alog
 
 # Local
+from caikit import get_config
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingInfoResponse,
@@ -48,14 +49,13 @@ from caikit.runtime.protobufs import (
     process_pb2_grpc,
 )
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
-from caikit.runtime.utils.config_parser import ConfigParser
 from sample_lib.data_model import (
     OtherOutputType,
     SampleInputType,
     SampleOutputType,
     SampleTrainingType,
 )
-from tests.conftest import temp_config_parser
+from tests.conftest import temp_config
 from tests.fixtures import Fixtures
 import caikit
 import sample_lib
@@ -512,7 +512,7 @@ def test_model_size_ok_response(loaded_model_id, runtime_grpc_server):
     # The size of the directory pointed to by Fixtures.get_good_model_path() is 355 now.
     expected_size = (
         355
-        * ConfigParser.get_instance().model_size_multipliers[
+        * get_config().inference_plugin.model_mesh.model_size_multipliers[
             Fixtures.get_good_model_type()
         ]
     )
@@ -540,11 +540,14 @@ def test_runtime_status_ok_response(runtime_grpc_server):
     runtime_status_request = model_runtime_pb2.RuntimeStatusRequest()
     actual_response = stub.runtimeStatus(runtime_status_request)
     assert actual_response.status == model_runtime_pb2.RuntimeStatusResponse.READY
-    assert actual_response.capacityInBytes == ConfigParser.get_instance().capacity
+    assert (
+        actual_response.capacityInBytes
+        == get_config().inference_plugin.model_mesh.capacity
+    )
     assert actual_response.maxLoadingConcurrency == 2
     assert (
         actual_response.modelLoadingTimeoutMs
-        == ConfigParser.get_instance().model_loading_timeout_ms
+        == get_config().inference_plugin.model_mesh.model_loading_timeout_ms
     )
     assert actual_response.defaultModelSizeInBytes == 18874368
     assert actual_response.numericRuntimeVersion == 0
@@ -734,10 +737,12 @@ def test_out_of_range_port(sample_inference_service):
     range
     """
     free_high_port = RuntimeGRPCServer._find_port(50000, 60000)
-    with temp_config_parser(
+    with temp_config(
         {
-            "service_port": free_high_port,
-            "find_available_port": False,
+            "runtime": {
+                "port": free_high_port,
+                "find_available_port": False,
+            }
         }
     ):
         with RuntimeGRPCServer(

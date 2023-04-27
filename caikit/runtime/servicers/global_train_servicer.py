@@ -31,13 +31,13 @@ import grpc
 import alog
 
 # Local
+from caikit import get_config
 from caikit.core.module import ModuleBase
 from caikit.interfaces.runtime.data_model import TrainingJob
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.model_management.training_manager import TrainingManager
 from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.utils.config_parser import ConfigParser
 from caikit.runtime.utils.import_util import clean_lib_names, get_data_model
 from caikit.runtime.utils.servicer_util import (
     build_caikit_library_request_dict,
@@ -65,10 +65,12 @@ class GlobalTrainServicer:
         self.executor = concurrent.futures.ThreadPoolExecutor()
         # store the map of model ids to job ids
         self.training_map = self.training_manager.training_futures
-        cfg = ConfigParser.get_instance()
-        self.training_output_dir = cfg.training.output_dir
-        self.auto_load_trained_model = cfg.training.auto_load_trained_model
-        self.use_subprocess = cfg.training.use_subprocess
+        caikit_config = get_config()
+        self.training_output_dir = caikit_config.runtime.training.output_dir
+        self.auto_load_trained_model = (
+            caikit_config.runtime.training.auto_load_trained_model
+        )
+        self.use_subprocess = caikit_config.runtime.training.use_subprocess
 
         # TODO: think about if we really want to do this here:
         self.cdm = get_data_model()
@@ -77,9 +79,11 @@ class GlobalTrainServicer:
         validate_data_model(self._training_service.descriptor)
         log.info("<RUN76773777I>", "Validated Caikit Library CDM successfully")
 
+        # TODO: support multiple libs? `caikit_config.libraries` dict
+        # Or grab the `libraries` off of the `training_service` instead of config here?
         # Duplicate code in global_train_servicer
         # pylint: disable=duplicate-code
-        self.library = clean_lib_names(ConfigParser.get_instance().caikit_library)[0]
+        self.library = clean_lib_names(caikit_config.runtime.library)[0]
         try:
             lib_version = version(self.library)
         except Exception:  # pylint: disable=broad-exception-caught

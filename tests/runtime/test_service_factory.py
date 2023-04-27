@@ -14,7 +14,7 @@
 
 """Unit tests for the service factory"""
 # Standard
-from types import ModuleType, SimpleNamespace
+from types import ModuleType
 
 # Third Party
 import pytest
@@ -22,7 +22,7 @@ import pytest
 # Local
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from tests.conftest import temp_config_parser
+from tests.conftest import temp_config
 import caikit
 
 
@@ -31,17 +31,17 @@ import caikit
 # These compiled fixtures should be deleted with a move to `json-to-service`d service interfaces
 @pytest.fixture
 def compiled_caikit_runtime_inference_pb2() -> ModuleType:
-    return ServicePackageFactory._get_service_proto_module("caikit_runtime_pb2")
+    return ServicePackageFactory._get_compiled_proto_module("caikit_runtime_pb2")
 
 
 @pytest.fixture
 def compiled_caikit_runtime_inference_pb2_grpc() -> ModuleType:
-    return ServicePackageFactory._get_service_proto_module("caikit_runtime_pb2_grpc")
+    return ServicePackageFactory._get_compiled_proto_module("caikit_runtime_pb2_grpc")
 
 
 @pytest.fixture
 def compiled_caikit_runtime_train_pb2() -> ModuleType:
-    return ServicePackageFactory._get_service_proto_module("caikit_runtime_train_pb2")
+    return ServicePackageFactory._get_compiled_proto_module("caikit_runtime_train_pb2")
 
 
 # /🌶️🌶️🌶️🌶️🌶️
@@ -133,40 +133,38 @@ def test_inference_client_stub(
 # Tests already existed - thus testing private method
 
 
-def test_invalid_get_service_proto_module_dir():
+def test_invalid_get_compiled_proto_module_dir():
     """If an invalid directory is provided, should throw module not found"""
 
-    mock_config = SimpleNamespace(
-        **{"service_proto_gen_module_dir": "invalid_proto_module_dir"}
-    )
-    with pytest.raises(ModuleNotFoundError):
-        ServicePackageFactory._get_service_proto_module(
-            "caikit_runtime_pb2", mock_config
-        )
+    with temp_config(
+        {"runtime": {"compiled_proto_module_dir": "invalid_proto_module_dir"}}
+    ):
+        with pytest.raises(ModuleNotFoundError):
+            ServicePackageFactory._get_compiled_proto_module("caikit_runtime_pb2")
 
 
-def test_invalid_get_service_proto_module():
-    """If an invalid module is provided to _get_service_proto_module, it throws a ValueError"""
+def test_invalid_get_compiled_proto_module():
+    """If an invalid module is provided to _get_compiled_proto_module, it throws a ValueError"""
 
-    mock_config = SimpleNamespace(
-        **{"service_proto_gen_module_dir": "tests.fixtures.protobufs"}
-    )
-    with pytest.raises(CaikitRuntimeException):
-        ServicePackageFactory._get_service_proto_module("invalid_module", mock_config)
+    with temp_config(
+        {"runtime": {"compiled_proto_module_dir": "tests.fixtures.protobufs"}}
+    ):
+        with pytest.raises(CaikitRuntimeException):
+            ServicePackageFactory._get_compiled_proto_module("invalid_module")
 
 
-def test_get_service_proto_module():
-    """If caikit_runtime_pb2 is provided to _get_service_proto_module, the module is returned"""
+def test_get_compiled_proto_module():
+    """If caikit_runtime_pb2 is provided to _get_compiled_proto_module, the module is returned"""
     # Local
     from tests.fixtures.protobufs import caikit_runtime_pb2
 
-    mock_config = SimpleNamespace(
-        **{"service_proto_gen_module_dir": "tests.fixtures.protobufs"}
-    )
-    service_proto_module = ServicePackageFactory._get_service_proto_module(
-        "caikit_runtime_pb2", mock_config
-    )
-    assert service_proto_module == caikit_runtime_pb2
+    with temp_config(
+        {"runtime": {"compiled_proto_module_dir": "tests.fixtures.protobufs"}}
+    ):
+        service_proto_module = ServicePackageFactory._get_compiled_proto_module(
+            "caikit_runtime_pb2"
+        )
+        assert service_proto_module == caikit_runtime_pb2
 
 
 # Local
@@ -181,8 +179,12 @@ MODULE_LIST = [
 ### Test ServicePackageFactory._get_and_filter_modules function
 def test_get_and_filter_modules_respects_excluded_task_type():
     assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
-    with temp_config_parser(
-        {"service_generation": {"task_types": {"excluded": ["sample_task"]}}}
+    with temp_config(
+        {
+            "runtime": {
+                "service_generation": {"task_types": {"excluded": ["sample_task"]}}
+            }
+        }
     ) as cfg:
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
         assert len(clean_modules) == 1
@@ -191,10 +193,14 @@ def test_get_and_filter_modules_respects_excluded_task_type():
 
 def test_get_and_filter_modules_respects_excluded_modules():
     assert "InnerBlock" in str(MODULE_LIST)
-    with temp_config_parser(
+    with temp_config(
         {
-            "service_generation": {
-                "module_guids": {"excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]}
+            "runtime": {
+                "service_generation": {
+                    "module_guids": {
+                        "excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]
+                    }
+                }
             }
         }  # excluding InnerBlock
     ) as cfg:
@@ -207,11 +213,15 @@ def test_get_and_filter_modules_respects_excluded_modules():
 def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type():
     assert "InnerBlock" in str(MODULE_LIST)
     assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
-    with temp_config_parser(
+    with temp_config(
         {
-            "service_generation": {
-                "module_guids": {"excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]},
-                "task_types": {"excluded": ["other_task"]},
+            "runtime": {
+                "service_generation": {
+                    "module_guids": {
+                        "excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]
+                    },
+                    "task_types": {"excluded": ["other_task"]},
+                }
             }
         }  # excluding InnerBlock and OtherBlock
     ) as cfg:
@@ -225,11 +235,15 @@ def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type
 
 def test_get_and_filter_modules_respects_included_modules_and_included_task_types():
     assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
-    with temp_config_parser(
+    with temp_config(
         {
-            "service_generation": {
-                "module_guids": {"included": ["00110203-baad-beef-0809-0a0b02dd0e0f"]},
-                "task_types": {"included": ["other_task"]},
+            "runtime": {
+                "service_generation": {
+                    "module_guids": {
+                        "included": ["00110203-baad-beef-0809-0a0b02dd0e0f"]
+                    },
+                    "task_types": {"included": ["other_task"]},
+                }
             }
         }  # only want InnerBlock and OtherBlock
     ) as cfg:
@@ -243,15 +257,17 @@ def test_get_and_filter_modules_respects_included_modules_and_included_task_type
 
 def test_get_and_filter_modules_respects_included_modules():
     assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
-    with temp_config_parser(
+    with temp_config(
         {
-            "service_generation": {
-                "module_guids": {
-                    "included": [
-                        "00110203-baad-beef-0809-0a0b02dd0e0f",
-                        "00af2203-0405-0607-0263-0a0b02dd0c2f",
-                    ]
-                },
+            "runtime": {
+                "service_generation": {
+                    "module_guids": {
+                        "included": [
+                            "00110203-baad-beef-0809-0a0b02dd0e0f",
+                            "00af2203-0405-0607-0263-0a0b02dd0c2f",
+                        ]
+                    },
+                }
             }
         }  # only want InnerBlock and ListBlock
     ) as cfg:
@@ -265,10 +281,12 @@ def test_get_and_filter_modules_respects_included_modules():
 
 def test_get_and_filter_modules_respects_included_task_types():
     assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
-    with temp_config_parser(
+    with temp_config(
         {
-            "service_generation": {
-                "task_types": {"included": ["sample_task"]},
+            "runtime": {
+                "service_generation": {
+                    "task_types": {"included": ["sample_task"]},
+                }
             }
         }  # only want sample_task which has 5 modules
     ) as cfg:
@@ -281,11 +299,15 @@ def test_get_and_filter_modules_respects_included_task_types():
 
 def test_get_and_filter_modules_respects_included_task_types_and_excluded_modules():
     assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
-    with temp_config_parser(
+    with temp_config(
         {
-            "service_generation": {
-                "task_types": {"included": ["sample_task"]},
-                "module_guids": {"excluded": ["00af2203-0405-0607-0263-0a0b02dd0c2f"]},
+            "runtime": {
+                "service_generation": {
+                    "task_types": {"included": ["sample_task"]},
+                    "module_guids": {
+                        "excluded": ["00af2203-0405-0607-0263-0a0b02dd0c2f"]
+                    },
+                }
             }
         }  # only want sample_task but not ListBlock
     ) as cfg:

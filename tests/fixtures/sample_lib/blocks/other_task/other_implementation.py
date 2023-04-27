@@ -5,8 +5,7 @@ A sample block for sample things!
 from typing import Union
 
 # Local
-from ...config import lib_config
-from ...data_model.sample import OtherOutputType, SampleInputType, SampleTrainingType
+from ...data_model.sample import OtherOutputType, SampleInputType
 from caikit.core.data_model import DataStream
 from caikit.core.module import ModuleLoader, ModuleSaver
 import caikit.core
@@ -34,8 +33,6 @@ class OtherBlock(caikit.core.BlockBase):
         module_saver = ModuleSaver(
             self,
             model_path=model_path,
-            library_name="sample_lib",
-            library_version=lib_config.library_version,
         )
         with module_saver:
             config_options = {

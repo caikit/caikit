@@ -5,6 +5,8 @@ This sets up global test configs when pytest starts
 # Standard
 from contextlib import contextmanager
 from typing import Type
+from unittest.mock import patch
+import copy
 import json
 import os
 import sys
@@ -17,61 +19,45 @@ import uuid
 from grpc_health.v1 import health_pb2, health_pb2_grpc
 import grpc
 import pytest
-import yaml
 
 # First Party
 import alog
 
 # Local
+from caikit import get_config
 from caikit.core.data_model.dataobject import render_dataobject_protos
 from caikit.core.toolkit import logging
 from caikit.runtime.grpc_server import RuntimeGRPCServer
-from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
-from caikit.runtime.utils.config_parser import ConfigParser
 from tests.fixtures import Fixtures
+import caikit
 
 log = alog.use_channel("TEST-CONFTEST")
 
-# Make sample_lib available for import
-sys.path.append(
-    os.path.join(
-        os.path.dirname(__file__),
-        "fixtures",
-    ),
+FIXTURES_DIR = os.path.join(
+    os.path.dirname(__file__),
+    "fixtures",
 )
 
+# Make sample_lib available for import
+sys.path.append(FIXTURES_DIR)
+# Local
+import sample_lib
+
 # Configure logging from the environment
-logging.configure(
-    default_level=os.environ.get("LOG_LEVEL", "off"),
-    filters=os.environ.get("LOG_FILTERS", "urllib3:off"),
-    thread_id=os.environ.get("LOG_THREAD_ID", "") == "true",
-)
+logging.configure()
 
 
 @pytest.fixture(autouse=True, scope="session")
 def test_environment():
-    """The most important fixture: This sets `ENVIRONMENT=test` for all tests.
-    This is required to pick up the `test` section of config so that our unit
-    tests pick up the correct settings.
-    """
-    old_env = os.environ.get("ENVIRONMENT")
-    os.environ["ENVIRONMENT"] = "test"
-    # hack: delete any config that exists
-    ConfigParser._ConfigParser__instance = None
-    cfg = ConfigParser.get_instance()
-    # Make sure we picked up teh test configs
-    assert cfg.environment == "test"
-    # Test away!
+    """The most important fixture: This runs caikit configuration with the base test config overrides"""
+    test_config_path = os.path.join(FIXTURES_DIR, "config", "config.yml")
+    caikit.configure(test_config_path)
     yield
-    # Reset environment back to previous state
-    if old_env is None:
-        os.unsetenv("ENVIRONMENT")
-    else:
-        os.environ["ENVIRONMENT"] = old_env
+    # No cleanup required...?
 
 
 @pytest.fixture(scope="session")
@@ -196,24 +182,22 @@ def other_loaded_model_id(other_good_model_path) -> str:
 
 
 @contextmanager
-def temp_config_parser(config_overrides):
-    """Temporarily overwrite the ConfigParser singleton"""
-    real_singleton = ConfigParser.get_instance()
-    prev_config_path = os.environ.get("CONFIG_FILES")
-    ConfigParser._ConfigParser__instance = None
-    with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w") as temp_cfg:
-        yaml.safe_dump(config_overrides, temp_cfg)
-        temp_cfg.flush()
-        os.environ["CONFIG_FILES"] = temp_cfg.name
-        temp_inst = ConfigParser.get_instance()
-        ModelLoader.get_instance().config_parser = temp_inst
-        yield temp_inst
-    ConfigParser._ConfigParser__instance = real_singleton
-    ModelLoader.get_instance().config_parser = ConfigParser.get_instance()
-    if prev_config_path is None:
-        del os.environ["CONFIG_FILES"]
-    else:
-        os.environ["CONFIG_FILES"] = prev_config_path
+def temp_config(config_overrides: dict):
+    """Temporarily edit the caikit config in a mock context"""
+    existing_config = copy.deepcopy(getattr(caikit.config.config, "_CONFIG"))
+    # Patch out the internal config, starting with a fresh copy of the current config
+    with patch.object(caikit.config.config, "_CONFIG", existing_config):
+        # Patch the immutable view of the config as well
+        # This is required otherwise the updated immutable view will persist after the test
+        with patch.object(caikit.config.config, "_IMMUTABLE_CONFIG", None):
+            # Run our config overrides inside the patch
+            if config_overrides:
+                caikit.configure(config_dict=config_overrides)
+            else:
+                # or just slap some random uuids in there. Barf, but we need to call `.configure()`
+                caikit.configure(config_dict={str(uuid.uuid4()): str(uuid.uuid4())})
+            # Yield to the test with the new overriden config
+            yield get_config()
 
 
 # fixtures to optionally generate the protos for easier debugging

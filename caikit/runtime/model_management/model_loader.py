@@ -22,12 +22,12 @@ from prometheus_client import Summary
 import alog
 
 # Local
+from caikit.config import get_config
 from caikit.core import MODEL_MANAGER
 from caikit.core.module_backend_config import configure
 from caikit.runtime.model_management.batcher import Batcher
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.utils.config_parser import ConfigParser
 import caikit.core
 
 log = alog.use_channel("MODEL-LOADER")
@@ -49,13 +49,14 @@ class ModelLoader:
         # Re-instantiating this is a programming error
         assert self.__class__.__instance is None, "This class is a singleton!"
         ModelLoader.__instance = self
-        self.config_parser = ConfigParser.get_instance()
+        # We will call get_config() each time in case there are updates since this
+        # class is a singleton
 
-        # If distributed loading is enabled, set up the loader
-        if self.config_parser.distributed.enabled:
-            log.info("<RUN89711118I>", "Configuring for distributed loading")
-            log.debug("Distributed config: %s", self.config_parser.distributed.config)
-            configure(**self.config_parser.distributed.config)
+        # If backends loading is enabled, set up the loader
+        if get_config().module_backends.enabled:
+            log.info("<RUN89711118I>", "Configuring for backends loading")
+            log.debug("Backends config: %s", get_config().module_backends)
+            configure()
 
     def load_model(self, model_id, local_model_path, model_type) -> LoadedModel:
         """Load a model using model_path (in Cloud Object Storage) & give it a model ID.
@@ -143,9 +144,9 @@ class ModelLoader:
         """Perform Batcher wrapping on the given module if configured, otherwise
         return the model as is
         """
-        batch_config = self.config_parser.batching.get(
+        batch_config = get_config().runtime.batching.get(
             model_type,
-            self.config_parser.batching.get("default", {}),
+            get_config().runtime.batching.get("default", {}),
         )
         log.debug2("Batch config for model type [%s]: %s", model_type, batch_config)
         batch_size = batch_config.get("size", 0)

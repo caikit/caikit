@@ -1,0 +1,12 @@
+runtime:
+    library: sample_lib # TODO: replace with libraries below when runtime can support multiple libraries
+    service_generation:
+        primitive_data_model_types:
+            - "sample_lib.data_model.SampleInputType"
+
+libraries:
+    sample_lib:
+        # Version override for dev running
+        version: 1.2.3
+        # Module path override if nested
+        module_path: tests.fixtures.sample_lib

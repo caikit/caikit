@@ -21,15 +21,8 @@ from collections.abc import Iterable
 from types import GeneratorType
 import os
 
-# Global enablement switch for *_check functions. This will be set once the
-# library config has been fully parsed and can be overridden by the
-# `ENABLE_ERROR_CHECKS` environment variable
-ENABLE_ERROR_CHECKS = True
-
-# Maximum number of times that a single exception is logged. This will be set
-# once the library config has been fully parsed and can be overriden by the
-# `MAX_EXCEPTION_LOG_MESSAGES` environment variable
-MAX_EXCEPTION_LOG_MESSAGES = 4
+# Local
+from caikit.config import get_config
 
 # dictionary mapping string log channel name to error handler instances
 # there is only one error handler instance for each log channel name
@@ -76,20 +69,26 @@ class ErrorHandler:
         else:
             exception._caikit_core_nexception_log_messages = 0
 
+        caikit_config = get_config()
+
         # if less than max log messages, then omit a log message
-        if exception._caikit_core_nexception_log_messages < MAX_EXCEPTION_LOG_MESSAGES:
+        if (
+            exception._caikit_core_nexception_log_messages
+            < caikit_config.max_exception_log_messages
+        ):
             self.log_chan.error(
                 log_code, "exception raised: {}".format(repr(exception))
             )
 
         # if at the limit omit one message stating that we will no longer log
         elif (
-            exception._caikit_core_nexception_log_messages == MAX_EXCEPTION_LOG_MESSAGES
+            exception._caikit_core_nexception_log_messages
+            == caikit_config.max_exception_log_messages
         ):
             self.log_chan.error(
                 log_code,
                 "reached MAX_EXCEPTION_LOG_MESSAGES of `{}`, will no log exception `{}`".format(
-                    MAX_EXCEPTION_LOG_MESSAGES, repr(exception)
+                    caikit_config.max_exception_log_messages, repr(exception)
                 ),
             )
 
@@ -168,7 +167,7 @@ class ErrorHandler:
             # this type check verifies that `foo` and `bar` are both strings
             > error.type_check('<COR03761101E>', str, foo=foo, bar=bar)
         """
-        if not ENABLE_ERROR_CHECKS:
+        if not get_config().enable_error_checks:
             return
 
         if not types:
@@ -222,7 +221,7 @@ class ErrorHandler:
             > baz = None
             > error.type_check('<COR40818868E>', None, int, foo=foo, bar=bar, baz=None)
         """
-        if not ENABLE_ERROR_CHECKS:
+        if not get_config().enable_error_checks:
             return
 
         if not types:
@@ -302,7 +301,7 @@ class ErrorHandler:
                 Additional `{}`-style string formatting arguments to be lazily interpolated into
                 the `msg` argument.
         """
-        if not ENABLE_ERROR_CHECKS:
+        if not get_config().enable_error_checks:
             return
 
         if not condition:
@@ -328,7 +327,7 @@ class ErrorHandler:
                 of these file paths does not exist or is not a regular file, then a
                 log message will be omitted and a `FileNotFoundError` will be raised.
         """
-        if not ENABLE_ERROR_CHECKS:
+        if not get_config().enable_error_checks:
             return
 
         for file_path in file_paths:
@@ -364,7 +363,7 @@ class ErrorHandler:
                 any of these file paths does not exist or is not a regular file, then a log message
                 will be omitted and a `FileNotFoundError` or `NotADirectoryError` will raised.
         """
-        if not ENABLE_ERROR_CHECKS:
+        if not get_config().enable_error_checks:
             return
 
         for dir_path in dir_paths:

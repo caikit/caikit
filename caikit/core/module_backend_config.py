@@ -13,13 +13,10 @@
 # limitations under the License.
 
 # Standard
-from typing import List, Optional
-import os
+from typing import List
 import threading
 
 # First Party
-# First party
-import aconfig
 import alog
 
 # Local
@@ -29,8 +26,8 @@ from .module_backends.backend_types import (
     MODULE_BACKEND_TYPES,
 )
 from .module_backends.base import BackendBase
-from .toolkit.config_utils import merge_configs
 from .toolkit.errors import error_handler
+from caikit.config import get_config
 
 log = alog.use_channel("CONF")
 error = error_handler.get(log)
@@ -76,27 +73,12 @@ def configured_backends() -> List[str]:
     return list(_CONFIGURED_BACKENDS.keys())
 
 
-def configure(*_, config_file: Optional[str] = None, **overrides):
-    """Configure the backend environment based on configuration available
-    in the given arguments.
+def configure():
+    """Configure the backend environment
 
     NOTE: This function is NOT thread safe!
-
-    KWargs:
-        config_file:  Optional[str]
-            Path to a configuration yaml file to use instead of the default
-        **overrides
-            overrides dict to apply on top of the loaded coniguration
     """
-    # Load the config file either from the default location or from the given
-    # path with environment overides
-    config_file = config_file or _DEFAULT_CONFIG_FILE
-    error.file_check("<COR37636675E>", config_file)
-
-    config_object = aconfig.Config.from_yaml(config_file, override_env_vars=True)
-
-    # Deep merge the given overrides on top of the the loaded config
-    config_object = merge_configs(config_object, overrides)
+    config_object = get_config().module_backends
 
     log.debug3("Full Config: %s", config_object)
 
@@ -105,14 +87,14 @@ def configure(*_, config_file: Optional[str] = None, **overrides):
     # NOTE: All backends are held in UPPERCASE, but this is not canonical for
     #   yaml or function arguments, so we allow lowercase names in the config
     #   and coerce them to upper here
-    backend_priority = config_object.backend_priority or []
+    backend_priority = config_object.priority or []
     error.type_check("<COR46006487E>", list, backend_priority=backend_priority)
 
-    # Check if disable_local_backend is set
-    disable_local_backend = config_object.disable_local_backend or False
+    # Check if disable_local is set
+    disable_local_backend = config_object.disable_local or False
 
     # Add local at the end of priority by default
-    # TODO: Should we remove LOCAL if from priority it is disabled?
+    # TODO: Should we remove LOCAL from priority if it is disabled?
     if not disable_local_backend and (
         MODULE_BACKEND_TYPES.LOCAL not in backend_priority
     ):
@@ -133,7 +115,7 @@ def configure(*_, config_file: Optional[str] = None, **overrides):
     # Iterate through the config objects for each enabled backend in order and
     # do the actual config
     backend_configs = {
-        key.lower(): val for key, val in config_object.get("backends", {}).items()
+        key.lower(): val for key, val in config_object.get("configs", {}).items()
     }
     for backend in backend_priority:
         log.debug("Configuring backend [%s]", backend)
@@ -164,10 +146,6 @@ def configure(*_, config_file: Optional[str] = None, **overrides):
 
 
 ## Implementation Details ######################################################
-
-_DEFAULT_CONFIG_FILE = os.path.realpath(
-    os.path.join(os.path.dirname(__file__), "config", "config.yml")
-)
 
 # The global map of configured backends
 _CONFIGURED_BACKENDS = {}

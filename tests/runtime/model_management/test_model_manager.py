@@ -23,14 +23,14 @@ import uuid
 import grpc
 
 # Local
+from caikit import get_config
 from caikit.core.blocks.base import BlockBase
 from caikit.core.module_backend_config import _CONFIGURED_BACKENDS, configure
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.utils import config_parser
-from caikit.runtime.utils.config_parser import ConfigParser
 from caikit.runtime.utils.import_util import get_dynamic_module
+from tests.conftest import temp_config
 from tests.fixtures import Fixtures
 
 
@@ -94,15 +94,15 @@ class TestModelManager(unittest.TestCase):
                 os.path.join(tempdir, "model2.zip"),
             )
             ModelManager._ModelManager__instance = None
-            ConfigParser.get_instance().local_models_dir = tempdir
-            self.model_manager = ModelManager()
+            with temp_config({"runtime": {"local_models_dir": tempdir}}):
+                self.model_manager = ModelManager()
 
-            self.assertEqual(len(self.model_manager.loaded_models), 2)
-            self.assertIn("model1", self.model_manager.loaded_models.keys())
-            self.assertIn("model2.zip", self.model_manager.loaded_models.keys())
-            self.assertNotIn(
-                "model-does-not-exist.zip", self.model_manager.loaded_models.keys()
-            )
+                self.assertEqual(len(self.model_manager.loaded_models), 2)
+                self.assertIn("model1", self.model_manager.loaded_models.keys())
+                self.assertIn("model2.zip", self.model_manager.loaded_models.keys())
+                self.assertNotIn(
+                    "model-does-not-exist.zip", self.model_manager.loaded_models.keys()
+                )
 
     def test_model_manager_raises_if_all_local_models_fail_to_load(self):
         with TemporaryDirectory() as tempdir:
@@ -252,7 +252,6 @@ class TestModelManager(unittest.TestCase):
 
     def test_estimate_model_size_ok_response_on_loaded_model(self):
         """Test if loaded model correctly returns model size"""
-        print("CONFIGUREREREDDDD", _CONFIGURED_BACKENDS)
         self.model_manager.load_model(
             model_id=_random_test_id(),
             local_model_path=Fixtures.get_good_model_path(),
@@ -276,7 +275,7 @@ class TestModelManager(unittest.TestCase):
 
     def test_estimate_model_size_by_type(self):
         """Test that a model's size is estimated differently based on its type"""
-        config = config_parser.ConfigParser.get_instance()
+        config = get_config().inference_plugin.model_mesh
         self.assertTrue(Fixtures.get_good_model_type() in config.model_size_multipliers)
 
         typed_model_size = self.model_manager.estimate_model_size(

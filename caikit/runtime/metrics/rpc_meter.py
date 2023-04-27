@@ -10,7 +10,7 @@ import uuid
 import alog
 
 # Local
-from caikit.runtime.utils.config_parser import ConfigParser
+from caikit import get_config
 
 log = alog.use_channel("RPC_METER")
 
@@ -29,7 +29,7 @@ class RPCMeter:
         self.metering_event = threading.Event()
         self.rpc_counter_lock = threading.Lock()
         self.write_file_lock = threading.Lock()
-        self.metrics_dir = ConfigParser.get_instance().metering.log_dir
+        self.metrics_dir = get_config().runtime.metering.log_dir
         self.unique_id = str(uuid.uuid4()).replace("-", "_")
         self.file_path = os.path.join(
             self.metrics_dir,
@@ -81,7 +81,7 @@ class RPCMeter:
             )
             self._write_metrics()
             notified = self.metering_event.wait(
-                ConfigParser.get_instance().metering.log_interval
+                get_config().runtime.metering.log_interval
             )
             if notified:
                 log.debug("<RUN76774003I>", "Shutting down metering writer log thread")

@@ -20,16 +20,14 @@ from contextlib import contextmanager
 import os
 import tempfile
 
-# Third Party
-import pytest
-
 # Local
-from caikit.core.config import lib_config
-from caikit.core.module_backend_config import configure, configured_backends
-from caikit.core.module_backends import LocalBackend, backend_types
+from caikit.config import get_config
+from caikit.core.module_backend_config import configure
+from caikit.core.module_backends import LocalBackend
 
 # Unit Test Infrastructure
 from tests.base import TestCaseBase
+from tests.conftest import temp_config
 
 # NOTE: We do need to import `reset_backend_types` and `reset_module_distribution_registry` for `reset_globals` to work
 from tests.core.helpers import *
@@ -72,17 +70,8 @@ class TestModelManager(TestCaseBase):
         # Set test load path
         test_load_path = os.path.join(self.fixtures_dir, "models")
 
-        # Save the original load path so that it can be undone
-        std_load_path = lib_config.load_path
-
-        # Overwrite the load path with the test fixtures path
-        lib_config.load_path = test_load_path
-
-        # Yield execution to the test itself
-        yield
-
-        # Undo the load path patching
-        lib_config.load_path = std_load_path
+        with temp_config({"load_path": test_load_path}):
+            yield
 
     def test_load_can_return_a_block(self):
         model = caikit.core.load(self.model_path)
@@ -205,20 +194,17 @@ class TestModelManager(TestCaseBase):
     def test_import_block_registry(self):
         """Make sure that the BLOCK_REGISTRY can be imported from model_manager"""
         # pylint: disable = import-outside-toplevel,no-name-in-module,unused-import
-        # Local
-        from caikit.core.model_manager import BLOCK_REGISTRY
+        from caikit.core.model_manager import BLOCK_REGISTRY  # isort: skip
 
     def test_import_workflow_registry(self):
         """Make sure that the WORKFLOW_REGISTRY can be imported from model_manager"""
         # pylint: disable = import-outside-toplevel,no-name-in-module,unused-import
-        # Local
-        from caikit.core.model_manager import WORKFLOW_REGISTRY
+        from caikit.core.model_manager import WORKFLOW_REGISTRY  # isort: skip
 
     def test_import_resource_registry(self):
         """Make sure that the RESOURCE_REGISTRY can be imported from model_manager"""
         # pylint: disable = import-outside-toplevel,no-name-in-module,unused-import
-        # Local
-        from caikit.core.model_manager import RESOURCE_REGISTRY
+        from caikit.core.model_manager import RESOURCE_REGISTRY  # isort: skip
 
 
 # Pytest tests #########################################################
@@ -270,8 +256,6 @@ class NonDistributedBlock(caikit.core.blocks.base.BlockBase):
         block_saver = caikit.core.blocks.BlockSaver(
             self,
             model_path=model_path,
-            library_name="foo",
-            library_version="0.42.0",
         )
         with block_saver:
             pass
@@ -293,11 +277,19 @@ def test_backend_supported_model_load_successfully(reset_globals):
 
     _, DummyBar = setup_saved_model(MockBackend)
     # Configure backend
-    configure(backend_priority=[backend_types.MOCK], backends={"mock": {}})
+    with temp_config(
+        {
+            "module_backends": {
+                "priority": [backend_types.MOCK],
+                "configs": {"mock": {}},
+            }
+        }
+    ):
+        configure()
 
-    dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_BACKEND_MODEL_NAME)
-    model = caikit.core.load(dummy_model_path)
-    assert isinstance(model, DummyBar)
+        dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_BACKEND_MODEL_NAME)
+        model = caikit.core.load(dummy_model_path)
+        assert isinstance(model, DummyBar)
 
 
 def test_local_model_load_successfully(reset_globals):
@@ -305,13 +297,21 @@ def test_local_model_load_successfully(reset_globals):
     DummyFoo, DummyBar = setup_saved_model(MockBackend)
 
     # Configure backend
-    configure(backend_priority=[backend_types.LOCAL], backends={"mock": {}})
+    with temp_config(
+        {
+            "module_backends": {
+                "priority": [backend_types.LOCAL],
+                "configs": {"mock": {}},
+            }
+        }
+    ):
+        configure()
 
-    dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
-    model = caikit.core.load(dummy_model_path)
+        dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
+        model = caikit.core.load(dummy_model_path)
 
-    assert isinstance(model, DummyFoo)
-    assert not isinstance(model, DummyBar)
+        assert isinstance(model, DummyFoo)
+        assert not isinstance(model, DummyBar)
 
 
 def test_local_model_loaded_backend_successfully(reset_globals):
@@ -320,12 +320,20 @@ def test_local_model_loaded_backend_successfully(reset_globals):
     """
     _, DummyBar = setup_saved_model(MockBackend)
     # Configure backend
-    configure(backend_priority=[backend_types.MOCK], backends={"mock": {}})
+    with temp_config(
+        {
+            "module_backends": {
+                "priority": [backend_types.MOCK],
+                "configs": {"mock": {}},
+            }
+        }
+    ):
+        configure()
 
-    DummyBar.SUPPORTED_LOAD_BACKENDS.append("LOCAL")
-    dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
-    model = caikit.core.load(dummy_model_path)
-    assert isinstance(model, DummyBar)
+        DummyBar.SUPPORTED_LOAD_BACKENDS.append("LOCAL")
+        dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
+        model = caikit.core.load(dummy_model_path)
+        assert isinstance(model, DummyBar)
 
 
 def test_backend_model_loaded_as_singleton(reset_globals):
@@ -333,14 +341,22 @@ def test_backend_model_loaded_as_singleton(reset_globals):
 
     _, DummyBar = setup_saved_model(MockBackend)
     # Configure backend
-    configure(backend_priority=[backend_types.MOCK], backends={"mock": {}})
+    with temp_config(
+        {
+            "module_backends": {
+                "priority": [backend_types.MOCK],
+                "configs": {"mock": {}},
+            }
+        }
+    ):
+        configure()
 
-    dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_BACKEND_MODEL_NAME)
-    model1 = caikit.core.load(dummy_model_path, load_singleton=True)
-    model2 = caikit.core.load(dummy_model_path, load_singleton=True)
+        dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_BACKEND_MODEL_NAME)
+        model1 = caikit.core.load(dummy_model_path, load_singleton=True)
+        model2 = caikit.core.load(dummy_model_path, load_singleton=True)
 
-    # Pointers should be same
-    assert id(model1) == id(model2)
+        # Pointers should be same
+        assert id(model1) == id(model2)
 
 
 def test_singleton_cache_can_be_cleared(reset_globals):
@@ -348,7 +364,7 @@ def test_singleton_cache_can_be_cleared(reset_globals):
     dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_BACKEND_MODEL_NAME)
     # Setup the mock backend
     _, _ = setup_saved_model(MockBackend)
-    model = caikit.core.load(dummy_model_path, load_singleton=True)
+    _ = caikit.core.load(dummy_model_path, load_singleton=True)
 
     assert len(caikit.core.MODEL_MANAGER.get_singleton_model_cache_info()) > 0
 
@@ -360,17 +376,25 @@ def test_singleton_cache_can_be_cleared(reset_globals):
 def test_singleton_cache_with_different_backend(reset_globals):
     """Test singleton cache doesn't stop different backend models"""
 
-    DummyFoo, DummyBar = setup_saved_model(MockBackend)
+    _, _ = setup_saved_model(MockBackend)
     # Configure backend
-    configure(backend_priority=[backend_types.MOCK], backends={"mock": {}})
+    with temp_config(
+        {
+            "module_backends": {
+                "priority": [backend_types.MOCK],
+                "configs": {"mock": {}},
+            }
+        }
+    ):
+        configure()
 
-    dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_BACKEND_MODEL_NAME)
-    model1 = caikit.core.load(dummy_model_path, load_singleton=True)
+        dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_BACKEND_MODEL_NAME)
+        _ = caikit.core.load(dummy_model_path, load_singleton=True)
 
-    dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
-    model2 = caikit.core.load(dummy_model_path, load_singleton=True)
+        dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
+        _ = caikit.core.load(dummy_model_path, load_singleton=True)
 
-    assert len(caikit.core.MODEL_MANAGER.get_singleton_model_cache_info()) == 2
+        assert len(caikit.core.MODEL_MANAGER.get_singleton_model_cache_info()) == 2
 
 
 def test_get_module_class():
@@ -395,11 +419,18 @@ def test_fall_back_to_local(reset_globals):
     """Make sure that if LOCAL is enabled and a given module doesn't have any
     registered backends, the default caikit.core.load is used.
     """
-    configure(backend_priority=[])
-    with temp_saved_model(NonDistributedBlock()) as model_path:
-        model = caikit.core.load(model_path)
+    with temp_config(
+        {
+            "module_backends": {
+                "priority": [],
+            }
+        }
+    ):
+        configure()
+        with temp_saved_model(NonDistributedBlock()) as model_path:
+            model = caikit.core.load(model_path)
 
-    assert isinstance(model, NonDistributedBlock)
+        assert isinstance(model, NonDistributedBlock)
 
 
 def test_no_local_if_disabled(reset_globals):
@@ -407,10 +438,13 @@ def test_no_local_if_disabled(reset_globals):
     registered backends, loading fails.
     """
     _ = setup_saved_model(MockBackend)
-    configure(backend_priority=[backend_types.MOCK], disable_local_backend=True)
-    with temp_saved_model(NonDistributedBlock()) as model_path:
-        with pytest.raises(ValueError):
-            caikit.core.load(model_path)
+    with temp_config(
+        {"module_backends": {"priority": [backend_types.MOCK], "disable_local": True}}
+    ):
+        configure()
+        with temp_saved_model(NonDistributedBlock()) as model_path:
+            with pytest.raises(ValueError):
+                caikit.core.load(model_path)
 
 
 def test_preferred_backend_enabled(reset_globals):
@@ -418,11 +452,19 @@ def test_preferred_backend_enabled(reset_globals):
     loaded with an enabled non-local backend if given as a preferred_backend.
     """
     _, DummyBar = setup_saved_model(MockBackend)
-    configure(backend_priority=[backend_types.MOCK], backends={"mock": {}})
+    with temp_config(
+        {
+            "module_backends": {
+                "priority": [backend_types.MOCK],
+                "configs": {"mock": {}},
+            }
+        }
+    ):
+        configure()
 
-    dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
-    model = caikit.core.load(dummy_model_path)
-    assert isinstance(model, DummyBar)
+        dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
+        model = caikit.core.load(dummy_model_path)
+        assert isinstance(model, DummyBar)
 
 
 def test_preferred_backend_disabled(reset_globals):
@@ -430,15 +472,23 @@ def test_preferred_backend_disabled(reset_globals):
     local even with a preferred_backend when the preferred backend is disabled.
     """
     DummyFoo, DummyBar = setup_saved_model(MockBackend)
-    configure(backend_priority=[backend_types.LOCAL], backends={})
+    with temp_config(
+        {
+            "module_backends": {
+                "priority": [backend_types.LOCAL],
+                "configs": {},
+            }
+        }
+    ):
+        configure()
 
-    dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
-    model = caikit.core.load(dummy_model_path)
-    assert isinstance(model, DummyFoo)
-    assert not isinstance(model, DummyBar)
+        dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
+        model = caikit.core.load(dummy_model_path)
+        assert isinstance(model, DummyFoo)
+        assert not isinstance(model, DummyBar)
 
 
-def test_non_local_supported_backed(reset_globals):
+def test_non_local_supported_backend(reset_globals):
     """Make sure model artifact saved with as non-local backend loads as
     non-local backend if supported by SUPPORTED_LOAD_BACKENDS
     """
@@ -466,8 +516,16 @@ def test_non_local_supported_backed(reset_globals):
         def load(self, *args, **kwargs):
             return DummyBaz()
 
-    configure(backend_priority=[backend_types.MOCK2], backends={})
+    with temp_config(
+        {
+            "module_backends": {
+                "priority": [backend_types.MOCK2],
+                "configs": {},
+            }
+        }
+    ):
+        configure()
 
-    dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_BACKEND_MODEL_NAME)
-    model = caikit.core.load(dummy_model_path)
-    assert isinstance(model, DummyBaz)
+        dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_BACKEND_MODEL_NAME)
+        model = caikit.core.load(dummy_model_path)
+        assert isinstance(model, DummyBaz)

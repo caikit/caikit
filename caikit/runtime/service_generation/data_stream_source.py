@@ -31,7 +31,6 @@ from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import _NATIVE_TYPE_TO_JTD
 from caikit.core.data_model.streams.data_stream import DataStream
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.utils.config_parser import ConfigParser
 import caikit
 
 # This global holds the mapping of element types to their respective
@@ -189,7 +188,7 @@ class DataStreamSourceBase(DataStream):
     def _get_resolved_source_path(input_path: str) -> str:
         """Get a fully resolved path, including any shared prefix"""
         # Get any configured prefix
-        source_pfx = ConfigParser.get_instance().data_streams.file_source_base
+        source_pfx = caikit.get_config().data_streams.file_source_base
         # If a prefix is configured, use it, otherwise return the path as is
         # NOTE: os.path.join will ignore the prefix if input_path is absolute
         return os.path.join(source_pfx, input_path) if source_pfx else input_path

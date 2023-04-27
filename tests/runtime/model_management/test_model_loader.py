@@ -23,18 +23,19 @@ import grpc
 import pytest
 
 # Local
+from caikit.config import get_config
 from caikit.core import ModuleConfig
 from caikit.core.blocks import base, block
 from caikit.core.module_backend_config import _CONFIGURED_BACKENDS, configure
 from caikit.core.module_backends import BackendBase, backend_types
 from caikit.core.module_backends.backend_types import register_backend_type
+from caikit.runtime.model_management import model_loader
 from caikit.runtime.model_management.batcher import Batcher
 from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.utils.config_parser import ConfigParser
 from sample_lib.blocks.sample_task import SampleBlock
 from sample_lib.data_model import SampleInputType, SampleOutputType
-from tests.conftest import temp_config_parser
+from tests.conftest import temp_config
 from tests.fixtures import Fixtures
 
 ## Helpers #####################################################################
@@ -228,10 +229,7 @@ class MyTestCase(unittest.TestCase):
             model_type="fake_batch_block",
         ).module()
         assert isinstance(model, Batcher)
-        assert (
-            model._batch_size
-            == ConfigParser.get_instance().batching.fake_batch_block.size
-        )
+        assert model._batch_size == get_config().runtime.batching.fake_batch_block.size
 
         # Make sure another model loads without batching
         model = self.model_loader.load_model(
@@ -245,25 +243,27 @@ class MyTestCase(unittest.TestCase):
         """Make sure that a model type without specific batching enabled will
         load with a batcher if default is enabled
         """
-        with temp_config_parser({"batching": {"default": {"size": 10}}}) as cfg:
+        with temp_config({"runtime": {"batching": {"default": {"size": 10}}}}) as cfg:
             model = self.model_loader.load_model(
                 "load_with_batch_default",
                 Fixtures.get_good_model_path(),
                 model_type=Fixtures.get_good_model_type(),
             ).module()
             assert isinstance(model, Batcher)
-            assert model._batch_size == cfg.batching.default.size
+            assert model._batch_size == cfg.runtime.batching.default.size
 
     def test_with_batching_collect_delay(self):
         """Make sure that a non-zero collect_delay_s is read correctly"""
         model_type = Fixtures.get_good_model_type()
-        with temp_config_parser(
+        with temp_config(
             {
-                "batching": {
-                    model_type: {
-                        "size": 10,
-                        "collect_delay_s": 0.01,
-                    },
+                "runtime": {
+                    "batching": {
+                        model_type: {
+                            "size": 10,
+                            "collect_delay_s": 0.01,
+                        },
+                    }
                 }
             }
         ) as cfg:
@@ -273,10 +273,10 @@ class MyTestCase(unittest.TestCase):
                 model_type=model_type,
             ).module()
             assert isinstance(model, Batcher)
-            assert model._batch_size == getattr(cfg.batching, model_type).size
+            assert model._batch_size == getattr(cfg.runtime.batching, model_type).size
             assert (
                 model._batch_collect_delay_s
-                == getattr(cfg.batching, model_type).collect_delay_s
+                == getattr(cfg.runtime.batching, model_type).collect_delay_s
             )
 
     def test_load_distributed_impl(self):
@@ -289,19 +289,14 @@ class MyTestCase(unittest.TestCase):
 
             model_type = "gadget"
             with reset_distributed_config():
-                with temp_config_parser(
+                with temp_config(
                     {
-                        "distributed": {
+                        "module_backends": {
                             "enabled": True,
-                            "config": {
-                                "backend_priority": [
-                                    backend_types.TEST,
-                                    backend_types.LOCAL,
-                                ],
-                            },
-                            "preferred_backends": {
-                                model_type: backend_types.TEST,
-                            },
+                            "priority": [
+                                backend_types.TEST,
+                                backend_types.LOCAL,
+                            ],
                         },
                     }
                 ):

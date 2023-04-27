@@ -18,7 +18,7 @@ from caikit.runtime.service_generation.data_stream_source import (
 )
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model.sample import SampleTrainingType
-from tests.conftest import temp_config_parser
+from tests.conftest import temp_config
 import caikit
 
 ################################################
@@ -218,7 +218,7 @@ def test_data_stream_source_base_path():
     stream_source = make_data_stream_source(int)
     source_data = [1, 2, 3, 4]
     with tempfile.TemporaryDirectory() as workdir:
-        with temp_config_parser({"data_streams": {"file_source_base": workdir}}):
+        with temp_config({"data_streams": {"file_source_base": workdir}}):
             nested_dir = os.path.join("foo", "bar")
             full_nested_dir = os.path.join(workdir, nested_dir)
             os.makedirs(full_nested_dir)

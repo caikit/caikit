@@ -28,6 +28,7 @@ from caikit.core.toolkit.errors import error_handler
 
 # Unit Test Infrastructure
 from tests.base import TestCaseBase
+import caikit
 
 
 class TestErrorHandler(TestCaseBase):
@@ -84,7 +85,7 @@ class TestErrorHandler(TestCaseBase):
         """Verify that `log_raises` will not keep logging after max log lines written."""
         # raise the same exception over and over, max + 10 times
         exception = AttributeError("this is a test")
-        for i in range(error_handler.MAX_EXCEPTION_LOG_MESSAGES + 10):
+        for i in range(caikit.get_config().max_exception_log_messages + 10):
             try:
                 self.error("<BBB>", exception)
             except:
@@ -95,12 +96,12 @@ class TestErrorHandler(TestCaseBase):
         # verify that it was incremented for every raise
         self.assertEqual(
             exception._caikit_core_nexception_log_messages,
-            error_handler.MAX_EXCEPTION_LOG_MESSAGES + 10 - 1,
+            caikit.get_config().max_exception_log_messages + 10 - 1,
         )
         # verify that it only wrote the max log lines
         # one for extra for message that logging will stop
         self.assertEqual(
-            len(self.caplog.records), error_handler.MAX_EXCEPTION_LOG_MESSAGES + 1
+            len(self.caplog.records), caikit.get_config().max_exception_log_messages + 1
         )
 
     def test_log_raises_max_with_root(self):
@@ -108,7 +109,7 @@ class TestErrorHandler(TestCaseBase):
         # raise the same exception over and over, max + 10 times
         exception = AttributeError("this is a test")
         root_exception = ValueError("this is the root ex")
-        for i in range(error_handler.MAX_EXCEPTION_LOG_MESSAGES + 10):
+        for i in range(caikit.get_config().max_exception_log_messages + 10):
             try:
                 self.error("<BBB>", exception, root_exception)
             except:
@@ -120,18 +121,19 @@ class TestErrorHandler(TestCaseBase):
         # verify that it was incremented for every raise
         self.assertEqual(
             exception._caikit_core_nexception_log_messages,
-            error_handler.MAX_EXCEPTION_LOG_MESSAGES + 10 - 1,
+            caikit.get_config().max_exception_log_messages + 10 - 1,
         )
         self.assertEqual(
             root_exception._caikit_core_nexception_log_messages,
-            error_handler.MAX_EXCEPTION_LOG_MESSAGES + 10 - 1,
+            caikit.get_config().max_exception_log_messages + 10 - 1,
         )
 
         # verify that it only wrote the max log lines
         # one for extra for message that logging will stop
         # Length of all records == 2 * MAX (one for each: exception and root exception)
         self.assertEqual(
-            len(self.caplog.records), 2 * (error_handler.MAX_EXCEPTION_LOG_MESSAGES + 1)
+            len(self.caplog.records),
+            2 * (caikit.get_config().max_exception_log_messages + 1),
         )
 
     def test_type_check_raises(self):

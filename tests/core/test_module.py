@@ -38,6 +38,7 @@ from sample_lib.data_model.sample import SampleInputType
 from tests.base import TestCaseBase
 
 # NOTE: We do need to import `reset_backend_types` and `reset_module_distribution_registry` for `reset_globals` to work
+from tests.conftest import temp_config
 from tests.core.helpers import *
 import caikit.core
 
@@ -405,12 +406,19 @@ def test_class_attributes(reset_globals):
         assert get_backend(DummyBar.BACKEND_TYPE)
 
     # Configure and make sure it can be fetched by the class
-    caikit.core.module_backend_config.configure(backend_priority=[backend_types.MOCK])
-    assert DummyBar.BACKEND_TYPE == backend_types.MOCK
+    with temp_config(
+        {
+            "module_backends": {
+                "priority": [backend_types.MOCK],
+            }
+        }
+    ):
+        caikit.core.module_backend_config.configure()
+        assert DummyBar.BACKEND_TYPE == backend_types.MOCK
 
-    # Make sure an instance can fetch via get_backend()
-    inst = DummyBar()
-    assert inst.test_fetching_backend().backend_type == backend_types.MOCK
+        # Make sure an instance can fetch via get_backend()
+        inst = DummyBar()
+        assert inst.test_fetching_backend().backend_type == backend_types.MOCK
 
 
 def test_default_load_supported_backend(reset_globals):

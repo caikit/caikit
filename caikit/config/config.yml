@@ -1,0 +1,170 @@
+# Copyright The Caikit Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# User can set comma-separated string of config file locations to read
+config_files: ""
+
+# Global config switch for runtime check functions (type_check, value_check, file_check...)
+enable_error_checks: true
+# Maximum number of times that a single exception is logged
+max_exception_log_messages: 4
+load_path: null
+
+# Configuration for loading alternate module implementations via
+# distributed backends
+module_backends:
+    # Toggle distributed loading globally
+    enabled: false
+    # Local is always enabled unless explicitly disabled
+    disable_local: false
+    # Configuration overrides for distributed backends configuration.
+    # Specific fields that may be of interest:
+    #
+    # priority: List for the order that backend implementations should be used
+    priority:
+        - LOCAL
+    configs: {}
+
+log:
+    # Default level for all python loggers
+    level: info
+    # Alog filter customization [comma separated list of channels and the level to set them to]
+    filters: botocore:off,urllib3:off,matplotlib:off,boto3:off,jnius.reflect:off
+    # Width of channels in ALOG when using the pretty formatter
+    channel_width: 12
+    # if bool(int(ALOG_THREAD_ID)), then ALOG will also log information about thread IDs
+    thread_id: true
+    # Which formatter to use. options are 'json' or 'pretty'
+    formatter: json
+
+# Configuration for data streams and how they're handled in the server
+data_streams:
+    # Base directory where stream source relative paths should be found
+    file_source_base: null
+
+### Runtime configurations
+runtime:
+    # The runtime library (or libraries) whose models we want to serve using Caikit Runtime. This should
+    # be a snake case string, e.g., caikit_nlp or caikit_cv.
+    library: sample_lib # TODO: replace with libraries below when runtime can support multiple libraries
+    local_models_dir: models
+
+    # TLS configs
+    tls:
+        server:
+            key: ""
+            cert: ""
+        client:
+            cert: ""
+
+    # Service exposure options
+    port: 8085
+    metrics:
+        port: 8086
+    find_available_port: false
+    unix_socket_path: /tmp/mmesh/grpc.sock
+
+    # Number of workers with which we will run the gRPC server
+    server_thread_pool_size: 5
+    use_abortable_threads: true
+    # gRPC Server shutdown grace period
+    server_shutdown_grace_period_seconds: 45
+
+    compiled_proto_module_dir: unused
+
+    # Configuration items for service generation
+    service_generation:
+        enabled: true
+        module_types:
+            included: ["blocks", "workflows"]
+        module_guids:
+            included: []
+            excluded: []
+        primitive_data_model_types: []
+        task_types:
+            included: []
+            excluded: []
+
+    # Configuration for batch inference. This dict contains entries for individual
+    # model types and can be extended using additional overlay config files to add
+    # sections for model types beyond those listed here. Each section should contain
+    # the `size` value where a 0 indicates no batching and may optionally contain a
+    # `collect_delay_s` value as a float number of seconds >= 0. This will indicate
+    # the amount of time the batch should wait for more requests before running a
+    # partial batch.
+    batching:
+        default:
+            size: 0
+            collect_delay_s: 0.0
+        fake_batch_block:
+            size: 10
+
+    metering:
+        # Switch off metering by default
+        enabled: false
+        # Directory to save metrics files
+        log_dir: "metering_logs"
+        # Write to log file every N seconds
+        log_interval: 3600
+
+    # Training configuration for server
+    training:
+        # The directory to save trained models in
+        output_dir: training_output
+        # Whether to automatically load the trained model
+        auto_load_trained_model: false
+        # Run training jobs in isolated processes
+        use_subprocess: false
+
+inference_plugin:
+    model_mesh:
+        # Model Mesh specific versions
+        runtime_version: real
+        numeric_runtime_version: 0
+
+        # Model Mesh capacity in bytes for holding models (1024 ^ 3)
+        capacity: 10737418240
+        max_loading_concurrency: 2
+        # Should be big enough to load any really chonky models
+        model_loading_timeout_ms: 121000
+        # Whether or not model-mesh should respect MAX_MODEL_CONCURRENCY and scale out model loads appropriately
+        latency_based_autoscaling_enabled: true
+        # If latency based autoscaling is enabled, the default max in-flight requests per copy of each model
+        max_model_concurrency: 2
+        # ...which can also be set per-model-type
+        max_model_concurrency_per_type:
+            keywords_text-rank: 8
+
+        # Model Mesh's Default model size in bytes. This needs to be a
+        # certain size, or else Model Mesh won't come up correctly (18 * 1024 ^ 2)
+        default_model_size: 18874368
+        default_model_size_multiplier: 10
+        model_size_multipliers:
+            # NOTE: This won't work until https://github.com/caikit/caikit/issues/37 is addressed
+            categories_esa: 2.95
+            concepts_alchemy: 13
+            entities_alchemy-disambig: 13.76
+            entity-mentions_bilstm: 1.44
+            entity-mentions_rbr: 1.8
+            sentiment_cnn: 2.73
+            syntax_izumo: 43000
+            fake_block: 2
+
+### Libraries configuration
+libraries:
+    sample_lib:
+        # Version override for dev running
+        version: 1.2.3
+        # Module path override if nested
+        module_path: sample_lib

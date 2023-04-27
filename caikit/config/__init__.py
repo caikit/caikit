@@ -12,24 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-enable_error_checks: true
-max_exception_log_messages: 4
-load_path: null
 
-# Local is always enabled unless explicitly disabled
-disable_local_backend: False
+"""Top-level configuration for the `caikit` library.
+"""
 
-backend_priority:
-    - LOCAL
-
-backends:
-    spark:
-        # These are aribtrary nested kwargs that will be passed to the
-        # backend-specific configuration file
-        foo: 1
-        bar: 2
-    ray:
-        baz: 3
-        bat:
-            buz:
-                biz: 5
+# Local
+# Export public configuration functions
+from .config import configure, get_config

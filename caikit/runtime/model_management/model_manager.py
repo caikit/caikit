@@ -26,12 +26,12 @@ from prometheus_client import Counter, Gauge, Summary
 import alog
 
 # Local
+from caikit import get_config
 from caikit.core import ModuleBase
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.model_management.model_sizer import ModelSizer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.utils.config_parser import ConfigParser
 
 log = alog.use_channel("MODEL-MANAGR")
 
@@ -80,7 +80,7 @@ class ModelManager:
         self.loaded_models: Dict[str, LoadedModel] = {}
 
         # Optionally load models mounted into a local directory
-        local_models_path = ConfigParser.get_instance().local_models_dir
+        local_models_path = get_config().runtime.local_models_dir
         if os.path.exists(local_models_path) and len(os.listdir(local_models_path)) > 0:
             log.info("<RUN44739400I>", "Loading local models into Caikit Runtime...")
             self.load_local_models(local_models_path)

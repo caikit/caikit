@@ -183,6 +183,7 @@ def test_models_with_funky_load_do_not_throw():
 
     model = _FunkyModel()
     with tempfile.TemporaryDirectory() as tempdir:
+        # NOTE: the module will get detected as tests since _FunkyModel is defined here
         model.save(tempdir)
         caikit.core.load(tempdir)
 

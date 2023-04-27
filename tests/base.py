@@ -35,11 +35,6 @@ class TestCaseBase(unittest.TestCase):
     toolkit_fixtures_dir = os.path.join(fixtures_dir, "toolkit")
 
     def __init__(self, *args, **kwargs):
-        # configure logging from env
-        default_level = os.environ.get("ALOG_DEFAULT_LEVEL", "error")
-        filters = os.environ.get("ALOG_FILTERS", "")
-        logging.configure(default_level, filters)
-
         # initialize parent class
         super().__init__(*args, **kwargs)
 

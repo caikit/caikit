@@ -11,35 +11,38 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 """Logging top-level configuration for `caikit.core` library.
 """
 
 # First Party
 import alog
 
+# Local
+from caikit.config import get_config
 
-def configure(default_level, filters="urllib3:off", formatter=None, thread_id=False):
+
+def configure():
     """Utility function to initialize logging stack components.
 
-    Args:
-        default_level:  str
-            This is the level that will be enabled for a given channel when a specific level has
-            not been set in the filters.
-        filters:  str/dict
-            This is a mapping from channel name to level that allows levels to be set on a
-            per-channel basis. If a string, it is formatted as "CHAN:info,FOO:debug". If a dict,
-            it should map from channel string to level string.
-        formatter:  str ('pretty' or 'json')/AlogFormatterBase
-            The formatter is either the string 'pretty' or 'json' to indicate one of the default
-            formatting options or an instance of AlogFormatterBase for a custom formatter
-            implementation.
-        thread_id  bool
-            If true, include thread.
+    This uses the caikit configuration to determine how logging should be configured.
+
+    This should _only_ be called in the context of executing a __main__ application.
+    Configuring the logger from a library context may override log config that has
+    already been set by the consuming application.
     """
-    # Default to using a 12-character channel slot with the pretty printer
-    formatter = formatter or alog.AlogPrettyFormatter(12)
+    caikit_config = get_config()
+
+    # For pretty format, build the formatter with the configured channel width
+    if caikit_config.log.formatter == "pretty":
+        formatter = alog.AlogPrettyFormatter(caikit_config.log.channel_width)
+    else:
+        # Otherwise just use the config string
+        formatter = caikit_config.log.formatter
 
     # Initialize the python alog stack
-    alog.configure(default_level, filters, formatter, thread_id)
+    alog.configure(
+        caikit_config.log.level,
+        caikit_config.log.filters,
+        formatter,
+        caikit_config.log.thread_id,
+    )
