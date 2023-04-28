@@ -627,8 +627,8 @@ def test_tls(sample_inference_service):
         server=KeyPair(cert=tls_cert, key=tls_key), client=KeyPair(cert="", key="")
     )
     with RuntimeGRPCServer(
-        infer_srv=sample_inference_service,
-        train_srv=None,
+        inference_service=sample_inference_service,
+        training_service=None,
         tls_config_override=tls_config,
     ) as server:
         _assert_connection(_make_secure_channel(server, ca_cert))
@@ -644,8 +644,8 @@ def test_mtls(sample_inference_service):
         server=KeyPair(cert=tls_cert, key=tls_key), client=KeyPair(cert=ca_cert, key="")
     )
     with RuntimeGRPCServer(
-        infer_srv=sample_inference_service,
-        train_srv=None,
+        inference_service=sample_inference_service,
+        training_service=None,
         tls_config_override=tls_config,
     ) as server:
         client_key, client_cert = tls_test_tools.generate_derived_key_cert_pair(ca_key)
@@ -684,8 +684,8 @@ def test_certs_can_be_loaded_as_files(sample_inference_service, tmp_path):
         client=KeyPair(cert=ca_cert_path, key=""),
     )
     with RuntimeGRPCServer(
-        infer_srv=sample_inference_service,
-        train_srv=None,
+        inference_service=sample_inference_service,
+        training_service=None,
         tls_config_override=tls_config,
     ) as server:
         client_key, client_cert = tls_test_tools.generate_derived_key_cert_pair(ca_key)
@@ -700,8 +700,8 @@ def test_metrics_stored_after_server_interrupt(
     """This tests the gRPC server's behaviour when interrupted"""
 
     with RuntimeGRPCServer(
-        infer_srv=sample_inference_service,
-        train_srv=None,
+        inference_service=sample_inference_service,
+        training_service=None,
     ) as server:
         stub = sample_inference_service.stub_class(server.make_local_channel())
         predict_request = sample_inference_service.messages.SampleTaskRequest(
@@ -746,8 +746,8 @@ def test_out_of_range_port(sample_inference_service):
         }
     ):
         with RuntimeGRPCServer(
-            infer_srv=sample_inference_service,
-            train_srv=None,
+            inference_service=sample_inference_service,
+            training_service=None,
         ) as server:
             _assert_connection(grpc.insecure_channel(f"localhost:{free_high_port}"))
 

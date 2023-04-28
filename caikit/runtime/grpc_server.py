@@ -60,14 +60,14 @@ class RuntimeGRPCServer:
 
     def __init__(
         self,
-        infer_srv: ServicePackage,
-        train_srv: Optional[ServicePackage],
+        inference_service: ServicePackage,
+        training_service: Optional[ServicePackage],
         tls_config_override: aconfig.Config = None,
-        hndle_terms: bool = False,
+        handle_terminations: bool = False,
     ):
         self.config = get_config()
-        self.inference_service = infer_srv
-        self.training_service = train_srv
+        self.inference_service = inference_service
+        self.training_service = training_service
 
         self.port = (
             self._find_port(self.config.runtime.port)
@@ -141,11 +141,11 @@ class RuntimeGRPCServer:
 
         # Add gRPC default health servicer.
         # We use the non-blocking implementation to avoid thread starvation.
-        health_srvcer = health.HealthServicer(
+        health_servicer = health.HealthServicer(
             experimental_non_blocking=True,
             experimental_thread_pool=futures.ThreadPoolExecutor(max_workers=1),
         )
-        health_pb2_grpc.add_HealthServicer_to_server(health_srvcer, self.server)
+        health_pb2_grpc.add_HealthServicer_to_server(health_servicer, self.server)
 
         # Listen on a unix socket as well for model mesh.
         try:
@@ -201,7 +201,7 @@ class RuntimeGRPCServer:
         # If this function is called from a thread (like in tests) then signal handler cannot
         # be used. Thus, we will only have real termination_handler when this is called from
         # the __main__.
-        if hndle_terms:
+        if handle_terminations:
             signal.signal(signal.SIGINT, self.interrupt)
             signal.signal(signal.SIGTERM, self.interrupt)
 
@@ -359,9 +359,9 @@ def main():
         training_service = None
 
     server = RuntimeGRPCServer(
-        infer_srv=inference_service,
-        train_srv=training_service,
-        hndle_terms=handle_terminations,
+        inference_service=inference_service,
+        training_service=training_service,
+        handle_terminations=handle_terminations,
     )
     server.start()
 
