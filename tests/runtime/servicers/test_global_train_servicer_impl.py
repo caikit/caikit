@@ -413,13 +413,15 @@ def test_global_train_returns_exit_code_with_oom(
         )
     )
 
+    # Enable sub-processing for test
+    sample_train_servicer.use_subprocess = True
+
     with pytest.raises(CaikitRuntimeException) as context:
         training_response = sample_train_servicer.Train(train_request)
-        sample_train_servicer.training_map.get(
-            training_response.training_id
-        ).result()
+        sample_train_servicer.training_map.get(training_response.training_id).result()
 
     assert f"Training process died with OOM error!" in str(context.value.message)
+
 
 #####################################################################
 
