@@ -21,12 +21,14 @@ import sys
 
 # Third Party
 import docstring_parser
+import grpc
 
 # First Party
 import alog
 
 # Local
 from caikit.core.data_model.base import DataBase
+from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit.core
 
 log = alog.use_channel("DOCSTRINGS")
@@ -42,10 +44,13 @@ def get_return_type(fn: Callable) -> Optional[Type]:
     Returns:
         The return type of `fn`, if it can be parsed from the docstring. Otherwise, None
     """
-    docstring = docstring_parser.parse(fn.__doc__)
-    if not docstring:
-        log.warning("Failed to parse the docstring")
-        return None
+    try:
+        docstring = docstring_parser.parse(fn.__doc__)
+    except Exception as exc:
+        raise CaikitRuntimeException(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            f"ParseError when parsing docstring for function: {fn.__name__}",
+        ) from exc
 
     type_names, desc_names = _get_candidate_type_names_from_docstring(docstring.returns)
 
@@ -68,10 +73,13 @@ def is_optional(fn: Callable, arg_name: str) -> bool:
         arg_name: The name of the parameter that we should try to get the type of
             e.g. "raw_document"
     """
-    docstring = docstring_parser.parse(fn.__doc__)
-    if not docstring:
-        log.warning("Failed to parse the docstring for %s", fn.__name__)
-        return False
+    try:
+        docstring = docstring_parser.parse(fn.__doc__)
+    except Exception as exc:
+        raise CaikitRuntimeException(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            f"ParseError when parsing docstring for function: {fn.__name__}",
+        ) from exc
 
     ds_param = [param for param in docstring.params if param.arg_name == arg_name]
     if ds_param:
@@ -88,6 +96,7 @@ def is_optional(fn: Callable, arg_name: str) -> bool:
                     return True
 
         return False
+    return False
 
 
 def get_arg_type(fn: Callable, arg_name: str) -> Optional[Type]:
@@ -102,10 +111,13 @@ def get_arg_type(fn: Callable, arg_name: str) -> Optional[Type]:
         The return type of `fn`, if it can be parsed from the docstring. Otherwise, None
     """
 
-    docstring = docstring_parser.parse(fn.__doc__)
-    if not docstring:
-        log.warning("Failed to parse the docstring for function %s", fn.__name__)
-        return None
+    try:
+        docstring = docstring_parser.parse(fn.__doc__)
+    except Exception as exc:
+        raise CaikitRuntimeException(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            f"ParseError when parsing docstring for function: {fn.__name__}",
+        ) from exc
 
     ds_param = [param for param in docstring.params if param.arg_name == arg_name]
     if ds_param:
@@ -196,7 +208,7 @@ def _get_docstring_type(
             log.debug2(f"Found valid candidate type on sys.modules: {candidate_type}")
             continue
 
-        # If the type was not fully qualified (like a `RawDocument`), look in a couple well known
+        # If the type was not fully qualified (like a `ProducerId`), look in a couple well known
         # places - the caikit core data model itself
         candidate_type = _extract_type_from_pymodule(
             caikit.interfaces.common.data_model, type_name

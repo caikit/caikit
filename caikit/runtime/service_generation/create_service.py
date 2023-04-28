@@ -123,11 +123,12 @@ def _remove_non_primitive_modules(
     # If the module is not "primitive" we won't include it
     for ck_module in modules:
         signature = CaikitCoreModuleMethodSignature(ck_module, "run")
-        if not is_primitive_method(signature, primitive_data_model_types):
-            log.debug("Skipping non-primitive module %s", ck_module)
-            continue
+        if signature.parameters and signature.return_type:
+            if not is_primitive_method(signature, primitive_data_model_types):
+                log.debug("Skipping non-primitive module %s", ck_module)
+                continue
 
-        primitive_modules.append(ck_module)
+            primitive_modules.append(ck_module)
     return primitive_modules
 
 

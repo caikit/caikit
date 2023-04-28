@@ -29,6 +29,15 @@ untrainable_module_class = sample_lib.blocks.sample_task.SamplePrimitiveBlock
 ### create_inference_rpcs tests #################################################
 
 
+def test_create_inference_rpcs_for_module_with_no_run_function():
+    class Foo:
+        def __init__(self):
+            pass
+
+    rpcs = create_inference_rpcs([Foo])
+    assert len(rpcs) == 0
+
+
 def test_create_inference_rpcs():
     rpcs = create_inference_rpcs([widget_class])
     assert len(rpcs) == 1
@@ -76,6 +85,21 @@ def test_create_inference_rpcs_remove_non_primitive_modules():
 
 
 ### create_training_rpcs tests #################################################
+
+
+def test_create_inference_rpcs_for_module_with_no_train_function():
+    class Foo:
+        def __init__(self):
+            pass
+
+        def run(self):
+            pass
+
+        def train_in_progress(self):
+            pass
+
+    rpcs = create_inference_rpcs([Foo])
+    assert len(rpcs) == 0
 
 
 def test_create_training_rpcs():
