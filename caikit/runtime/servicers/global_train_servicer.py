@@ -376,15 +376,16 @@ class GlobalTrainServicer:
         # If process exited with a non-zero exit code
         if proc.exitcode and proc.exitcode != os.EX_OK:
             if proc.exitcode == OOM_EXIT_CODE:
-                raise CaikitRuntimeException(
+                exception = CaikitRuntimeException(
                     grpc.StatusCode.RESOURCE_EXHAUSTED,
                     "Training process died with OOM error!",
                 )
             else:
-                raise CaikitRuntimeException(
+                exception = CaikitRuntimeException(
                     grpc.StatusCode.UNKNOWN,
                     f"Training process died with exit code {proc.exitcode}",
                 )
+            raise exception
 
     class _ErrorCaptureProcess(multiprocessing.get_context("fork").Process):
         """This class wraps a Process and keeps track of any errors that occur
