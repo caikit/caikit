@@ -396,6 +396,33 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_blo
     assert f"This may be a problem with your input" in str(context.value.message)
 
 
+def test_global_train_returns_exit_code_with_oom(
+    sample_train_service, sample_train_servicer
+):
+    """Test that if block goes into OOM we are able to surface error code"""
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    training_data = stream_type(
+        jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
+    ).to_proto()
+    train_request = (
+        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+            model_name="Foo Bar Training",
+            batch_size=42,
+            training_data=training_data,
+            oom_exit=True,
+        )
+    )
+
+    # Enable sub-processing for test
+    sample_train_servicer.use_subprocess = True
+
+    with pytest.raises(CaikitRuntimeException) as context:
+        training_response = sample_train_servicer.Train(train_request)
+        sample_train_servicer.training_map.get(training_response.training_id).result()
+
+    assert f"Training process died with OOM error!" in str(context.value.message)
+
+
 #####################################################################
 
 # NOTE: This test was commented out in the original unittest.TestCase impl - leaving as is

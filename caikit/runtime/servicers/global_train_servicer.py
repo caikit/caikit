@@ -53,6 +53,7 @@ log = alog.use_channel("GT-SERVICR-I")
 # Ref: https://developers.google.com/protocol-buffers/docs/reference/cpp/google.protobuf.descriptor
 NON_PRIMITIVE_TYPES = [FieldDescriptor.TYPE_MESSAGE, FieldDescriptor.TYPE_ENUM]
 
+OOM_EXIT_CODE = 137
 
 # pylint: disable=too-many-instance-attributes
 class GlobalTrainServicer:
@@ -352,11 +353,13 @@ class GlobalTrainServicer:
     @classmethod
     def _train_and_save_model_subproc(cls, *args, **kwargs):
         """This function runs _train_and_save_model in a subprocess"""
+
         proc = cls._ErrorCaptureProcess(
             target=cls._train_and_save_model,
             args=args,
             kwargs=kwargs,
         )
+
         proc.start()
         proc.join()
 
@@ -369,6 +372,20 @@ class GlobalTrainServicer:
                 grpc.StatusCode.INTERNAL,
                 "Error caught in training subprocess",
             ) from proc.error
+
+        # If process exited with a non-zero exit code
+        if proc.exitcode and proc.exitcode != os.EX_OK:
+            if proc.exitcode == OOM_EXIT_CODE:
+                exception = CaikitRuntimeException(
+                    grpc.StatusCode.RESOURCE_EXHAUSTED,
+                    "Training process died with OOM error!",
+                )
+            else:
+                exception = CaikitRuntimeException(
+                    grpc.StatusCode.UNKNOWN,
+                    f"Training process died with exit code {proc.exitcode}",
+                )
+            raise exception
 
     class _ErrorCaptureProcess(multiprocessing.get_context("fork").Process):
         """This class wraps a Process and keeps track of any errors that occur
