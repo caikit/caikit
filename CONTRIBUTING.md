@@ -2,15 +2,15 @@
 
 👍🎉 First off, thank you for taking the time to contribute! 🎉👍
 
-The following is a set of guidelines for contributing. These are just guidelines, not rules. Use your best judgment, and feel free to propose changes to this document in a pull request. Please [read community contribution guide](TODO) for general practices for the Caikit community.
+The following is a set of guidelines for contributing. These are just guidelines, not rules. Use your best judgment, and feel free to propose changes to this document in a pull request. Please read the [community contribution guide](https://github.com/caikit/community/blob/main/CONTRIBUTING.md) first for general practices for the Caikit community.
 
 ## What Should I Know Before I Get Started?
 
 ### Code of Conduct
 
-This project adheres to the [Contributor Covenant](./CODE-OF-CONDUCT.md). By participating, you are expected to uphold this code.
+This project adheres to the [Contributor Covenant](./code-of-conduct.md). By participating, you are expected to uphold this code.
 
-Please report unacceptable behavior to one of the [Code Owners](./OWNERS).
+Please report unacceptable behavior to one of the [Code Owners](./CODEOWNERS).
 
 ### How Do I Start Contributing?
 
@@ -26,7 +26,7 @@ To contribute to this repo, you'll use the Fork and Pull model common in many op
 Guide](https://github.com/kubernetes/community/blob/master/contributors/guide/github-workflow.md)
 from Kubernetes.
 
-When your contribution is ready, you can create a pull request. Pull requests are often referred to as "PR". In general, we follow the standard [github pull request](https://help.github.com/en/articles/about-pull-requests) process. Follow the template to provide details about your pull request to the maintainers.
+When your contribution is ready, you can create a pull request. Pull requests are often referred to as "PR". In general, we follow the standard [GitHub pull request](https://help.github.com/en/articles/about-pull-requests) process. Follow the template to provide details about your pull request to the maintainers.
 
 Before sending pull requests, make sure your changes pass formatting, linting and unit tests.
 
