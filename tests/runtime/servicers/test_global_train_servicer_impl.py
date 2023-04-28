@@ -413,9 +413,6 @@ def test_global_train_returns_exit_code_with_oom(
         )
     )
 
-    # Enable sub-processing for test
-    sample_train_servicer.use_subprocess = True
-
     with pytest.raises(CaikitRuntimeException) as context:
         training_response = sample_train_servicer.Train(train_request)
         sample_train_servicer.training_map.get(
