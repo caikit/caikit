@@ -1,6 +1,9 @@
 """
 A sample block for sample things!
 """
+# Standard
+import os
+
 # Local
 from ...data_model.sample import SampleInputType, SampleOutputType, SampleTrainingType
 from caikit.core.data_model import DataStream
@@ -65,8 +68,10 @@ class SampleBlock(caikit.core.BlockBase):
         """Sample training method that produces a trained model"""
 
         if oom_exit:
-            # exit with OOM code
-            exit(137)
+            # exit with OOM code. Note _exit method is used to exit the
+            # process with specified status without calling cleanup handlers
+            # to replicate OOM scenario
+            os._exit(137)
 
         if batch_size == cls.POISON_PILL_BATCH_SIZE:
             raise ValueError(
