@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Standard
+from dataclasses import dataclass
+from enum import Enum
+
 # First Party
 import alog
 
@@ -21,62 +25,49 @@ import caikit.core
 
 log = alog.use_channel("MDLOPS")
 
+RUNTIME_PACKAGE = "caikit_data_model.runtime"
+
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
-@caikit.core.dataobject(
-    schema={"training_id": str},
-    package="caikit_data_model.runtime",
-)
+@caikit.core.dataobject(RUNTIME_PACKAGE)
+@dataclass
 class TrainingInfoRequest:
-    pass
+    training_id: str
 
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
-@caikit.core.dataobject(
-    schema={"training_id": str, "model_name": str},
-    package="caikit_data_model.runtime",
-)
+@caikit.core.dataobject(RUNTIME_PACKAGE)
+@dataclass
 class TrainingJob:
-    pass
+    training_id: str
+    model_name: str
 
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
-@caikit.core.dataobject(
-    schema={"model_id": str},
-    package="caikit_data_model.runtime",
-)
+@caikit.core.dataobject(RUNTIME_PACKAGE)
+@dataclass
 class ModelPointer:
-    pass
+    model_id: str
 
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
-@caikit.core.dataobject(
-    {
-        "enum": [
-            "NOT_STARTED",
-            "HALTED",
-            "FAILED",
-            "DOWNLOADING",
-            "PROCESSING",
-            "STORING",
-            "COMPLETED",
-        ]
-    }
-)
-class TrainingStatus:
-    pass
+@caikit.core.dataobject(RUNTIME_PACKAGE)
+class TrainingStatus(Enum):
+    NOT_STARTED = 0
+    HALTED = 1
+    FAILED = 2
+    DOWNLOADING = 3
+    PROCESSING = 4
+    STORING = 5
+    COMPLETED = 6
 
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
-@caikit.core.dataobject(
-    schema={
-        "training_id": str,
-        "status": TrainingStatus,
-        "submission_timestamp": str,
-        "completion_timestamp": str,
-        "error_code": str,
-    },
-    package="caikit_data_model.runtime",
-)
+@caikit.core.dataobject(RUNTIME_PACKAGE)
+@dataclass
 class TrainingInfoResponse:
-    pass
+    training_id: str
+    status: TrainingStatus
+    submission_timestamp: str
+    completion_timestamp: str
+    error_code: str
