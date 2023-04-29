@@ -1,4 +1,5 @@
 # Standard
+from dataclasses import dataclass
 from typing import List
 import json
 import os
@@ -182,9 +183,11 @@ def test_pickle_round_trip_data_model():
     cleanly with pickle
     """
 
-    @caikit.core.dataobject({"foo": int, "bar": str})
+    @caikit.core.dataobject
+    @dataclass
     class Foo:
-        pass
+        foo: int
+        bar: str
 
     stream_type = make_data_stream_source(Foo)
     inst = stream_type(

@@ -1,31 +1,41 @@
 """
 Dummy data model object for testing
 """
+# Standard
+from dataclasses import dataclass
 
 # Local
 import caikit.core
 
 
-@caikit.core.dataobject({"name": str}, package="caikit_data_model.sample_lib")
+@caikit.core.dataobject(package="caikit_data_model.sample_lib")
+@dataclass
 class SampleInputType:
     """A sample `domain primitive` input type for this library.
     The analog to a `Raw Document` for the `Natural Language Processing` domain."""
 
+    name: str
 
-@caikit.core.dataobject(
-    schema={"greeting": str}, package="caikit_data_model.sample_lib"
-)
+
+@caikit.core.dataobject(package="caikit_data_model.sample_lib")
+@dataclass
 class SampleOutputType:
     """A simple return type for the `sample_task` task"""
 
+    greeting: str
 
-@caikit.core.dataobject(
-    schema={"farewell": str}, package="caikit_data_model.sample_lib"
-)
+
+@caikit.core.dataobject(package="caikit_data_model.sample_lib")
+@dataclass
 class OtherOutputType:
     """A simple return type for the `other_task` task"""
 
+    farewell: str
 
-@caikit.core.dataobject({"number": int}, package="caikit_data_model.sample_lib")
+
+@caikit.core.dataobject(package="caikit_data_model.sample_lib")
+@dataclass
 class SampleTrainingType:
     """A sample `training data` type for the `sample_task` task."""
+
+    number: int
