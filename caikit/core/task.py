@@ -6,16 +6,16 @@ import abc
 from alog import alog
 
 # Local
-from ..toolkit.errors import error_handler
+from caikit.core.toolkit.errors import error_handler
 from caikit.core.data_model import DataStream
 from caikit.core.data_model.base import DataBase
 
 log = alog.use_channel("TASK_BASE")
 error = error_handler.get(log)
 
-ProtoableInputTypes = Union[
-    Type[int], Type[float], Type[str], Type[bytes], Type[bool], Type[DataBase]
-]
+ProtoableInputTypes = Type[Union[
+    int, float, str, bytes, bool, DataBase
+]]
 ValidInputTypes = Union[
     ProtoableInputTypes, List[ProtoableInputTypes], DataStream[ProtoableInputTypes]
 ]

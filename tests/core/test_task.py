@@ -3,8 +3,8 @@
 import pytest
 
 # Local
-from caikit.core.data_model import task
-from caikit.core.data_model.task_decorator import TaskBase
+from caikit.core.task import task
+from caikit.core.task import TaskBase
 from sample_lib.data_model.sample import SampleInputType, SampleOutputType
 
 
