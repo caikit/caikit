@@ -28,7 +28,6 @@ import alog
 # Local
 from caikit.core.data_model import dataobject
 from caikit.core.data_model.base import DataBase
-from caikit.core.data_model.dataobject import _NATIVE_TYPE_TO_JTD
 from caikit.core.data_model.streams.data_stream import DataStream
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit
@@ -206,7 +205,7 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
             data_element_type.get_proto_class().DESCRIPTOR
             if isinstance(data_element_type, type)
             and issubclass(data_element_type, DataBase)
-            else _NATIVE_TYPE_TO_JTD[data_element_type]
+            else _NATIVE_TYPE_TO_JTD[data_element_type]  # DEBUG THIS IS BROKEN!!!
         )
         data_object = dataobject(
             schema={
