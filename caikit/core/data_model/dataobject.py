@@ -140,8 +140,6 @@ def dataobject(*args, **kwargs) -> Callable[[Type], Type[DataBase]]:
         else:
             enums.import_enum(proto_class, cls)
             setattr(cls, "_proto_enum", proto_class)
-            # for method in ["items", "toDict", "toJSON", "toYAML"]:
-            #     setattr(cls, method, getattr(ck_enum, method))
             wrapper_class = cls
 
         # Attach the proto class to the protobufs module
@@ -187,12 +185,6 @@ def render_dataobject_protos(interfaces_dir: str):
 
 
 ## Implementation Details ######################################################
-
-
-class _EnumBaseSentinel:
-    """This base class is used to provide a common base class for enum warpper
-    classes so that they can be identified generically
-    """
 
 
 def _dataobject_to_proto(*args, **kwargs):
