@@ -268,7 +268,7 @@ def test_default_init_valid_args():
 
 
 def test_default_init_invalid_args():
-    """Make sure that a ValueError is raised if the default __init__ is given
+    """Make sure that a TypeError is raised if the default __init__ is given
     various combinations of incorrect arguments
     """
     with temp_data_model(
@@ -282,19 +282,19 @@ def test_default_init_invalid_args():
         )
     ) as dm:
         # Too many arguments
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             dm.ThingOne(1, 2, 3, 4)
 
         # Too many args + kwargs
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             dm.ThingOne(1, 2, baz=3)
 
         # Bad kwarg name
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             dm.ThingOne(1, baz=3)
 
         # Multiple values
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             dm.ThingOne(1, foo=3)
 
 
@@ -382,7 +382,7 @@ def test_primitive_maps_are_serializable():
         make_proto_def(
             {
                 "MapParty": {
-                    "mobject": '{"values": str}',
+                    "mobject": "Dict[str, str]",
                 },
             }
         )
@@ -407,7 +407,7 @@ def test_nonprimitive_maps_are_serializable():
                     "foo": int,
                 },
                 "MapParty": {
-                    "mobject": '{"values": ComplexType}',
+                    "mobject": "Dict[str, ComplexType]",
                 },
             }
         )
