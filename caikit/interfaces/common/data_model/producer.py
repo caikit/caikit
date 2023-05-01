@@ -14,6 +14,7 @@
 
 # Standard
 from dataclasses import dataclass
+from typing import List
 
 # First Party
 import alog
@@ -34,7 +35,7 @@ class ProducerPriority:
     data structure.
     """
 
-    elements: ProducerId
+    elements: List[ProducerId]
 
     def __init__(self, producers):
         """Construct a new ProducerPriority
