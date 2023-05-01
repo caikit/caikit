@@ -42,6 +42,8 @@ class ProducerId:
 
     def fill_proto(self, proto):
         """Overloaded implementation for efficiency vs base introspection"""
-        proto.name = self.name
-        proto.version = self.version
+        if self.name is not None:
+            proto.name = self.name
+        if self.version is not None:
+            proto.version = self.version
         return proto
