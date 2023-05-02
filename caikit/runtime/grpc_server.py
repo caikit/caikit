@@ -224,7 +224,7 @@ class RuntimeGRPCServer:
         if blocking:
             self.server.wait_for_termination(None)
 
-    def interrupt(self, signal_):
+    def interrupt(self, signal_, _stack_frame):
         """Interrupt the server. Implements the interface for Python signal.signal
 
         Reference: https://docs.python.org/3/library/signal.html#signal.signal
