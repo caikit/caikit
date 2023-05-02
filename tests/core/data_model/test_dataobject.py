@@ -15,6 +15,7 @@
 """Tests for the @dataobject decorator"""
 
 # Standard
+from dataclasses import dataclass, field, is_dataclass
 from enum import Enum
 from typing import List, Optional, Union
 import json
@@ -596,16 +597,48 @@ def test_dataobject_pre_existing_dataclass():
     """Make sure that wrapping a class that's already a dataclass works as
     expected by adding additional None defaults and re-making the dataclass
     """
-    raise NotImplementedError()
+
+    @dataobject
+    @dataclass
+    class Foo:
+        foo: int
+
+    assert is_dataclass(Foo)
+
+    # Make sure defaults are added correctly per dataobject semantics
+    inst = Foo()
+    assert inst.foo is None
 
 
 def test_dataobject_dataclass_non_default_init():
     """Make sure that a dataclass with a non-default __init__ does not get
     overwritten
     """
-    raise NotImplementedError()
+
+    @dataobject
+    class Foo:
+        foo: int
+
+        def __init__(self, foo_base):
+            self.foo = foo_base + 1
+
+    assert is_dataclass(Foo)
+
+    # Make sure defaults are added correctly per dataobject semantics
+    inst = Foo(1)
+    assert inst.foo == 2
 
 
 def test_dataobject_dataclass_default_factory():
     """Make sure that a dataclass's datafactory field is preserved"""
-    raise NotImplementedError()
+
+    @dataobject
+    class Foo:
+        foo: List[int] = field(default_factory=list)
+
+    assert is_dataclass(Foo)
+
+    # Make sure default construction users the default factory
+    inst = Foo()
+    assert inst.foo is not None
+    assert inst.foo == []
