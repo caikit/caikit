@@ -15,7 +15,8 @@
 # Standard
 from enum import Enum
 from types import ModuleType
-from typing import Callable, Dict, List, Set, Type
+from typing import Callable, Dict, List, Optional, Set, Type
+import copy
 import dataclasses
 import inspect
 
@@ -25,6 +26,10 @@ import google.protobuf.service
 import grpc
 
 # First Party
+from py_to_proto.dataclass_to_proto import (  # NOTE: Imported from here for compatibility
+    Annotated,
+    FieldNumber,
+)
 from py_to_proto.json_to_service import (
     json_to_service,
     service_descriptor_to_client_stub,
@@ -325,29 +330,27 @@ class ServicePackageFactory:
             properties = {
                 # triple e.g. ('caikit.interfaces.common.ProducerPriority', 'producer_id', 1)
                 # This does not take care of nested descriptors
-                triple[1]: triple[0]
+                triple[1]: Annotated[triple[0], FieldNumber(triple[2])]
                 for triple in task.request.triples
-                if triple[1] not in task.request.default_set
+                if triple[1] not in task.request.default_map
             }
             optional_properties = {
-                triple[1]: triple[0]
+                triple[1]: Annotated[Optional[triple[0]], FieldNumber(triple[2])]
                 for triple in task.request.triples
-                if triple[1] in task.request.default_set
+                if triple[1] in task.request.default_map
             }
-            schema = {
-                "properties": properties,
-                "optionalProperties": optional_properties,
-            }
+            attrs = copy.copy(task.request.default_map)
+            attrs["__annotations__"] = {**properties, **optional_properties}
 
-            if not schema:
-                # hacky hack hack: make sure we actually have a schema to generate
+            if not properties and optional_properties:
+                log.warning(
+                    "No arguments found for request %s. Cannot generate rpc",
+                    task.request.name,
+                )
                 continue
 
-            decorator = dataobject(
-                schema=schema,
-                package=package_name,
-            )
-            cls_ = type(task.request.name, (object,), {})
+            decorator = dataobject(package=package_name)
+            cls_ = type(task.request.name, (object,), attrs)
             decorated_cls = decorator(cls_)
             data_model_classes.append(decorated_cls)
 
