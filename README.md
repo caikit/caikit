@@ -35,17 +35,9 @@ There are 2 user profiles who leverage Caikit:
   - They take trained models, deploy them, and then infer the models in applications through APIs provided by Caikit
   - Examples of operators are cloud and embedded application developers whose applications need analysis of unstructured data
 
-## AI Model Operator Quick Start
+## AI Model Operator Example
 
-**UNDER CONSTRUCTION**
-
-At this point, Caikit does not publish any pre-defined task implementations that can be readily consumed. Stay tuned!
-
-## AI Model Author Quick Start
-
-**UNDER CONSTRUCTION**
-
-We're getting a slim example ready, so stay tuned!
+Check out the [Text Sentiment example](examples/text-sentiment/) to understand how to load and infer a model using Caikit.
 
 ## Code of conduct
 

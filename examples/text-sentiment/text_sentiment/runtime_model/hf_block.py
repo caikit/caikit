@@ -1,9 +1,31 @@
+# Copyright The Caikit Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Standard
 import os
 
-from caikit.core import BlockBase, ModuleLoader, ModuleSaver, block
+# Third Party
+from text_sentiment.data_model.classification import (
+    ClassificationPrediction,
+    ClassInfo,
+    TextInput,
+)
 from transformers import pipeline
 
-from text_sentiment.data_model.classification import ClassificationPrediction, ClassInfo, TextInput
+# Local
+from caikit.core import BlockBase, ModuleLoader, ModuleSaver, block
+
 
 @block("8f72161-c0e4-49b0-8fd0-7587b3017a35", "HuggingFaceSentimentBlock", "0.0.1")
 class HuggingFaceSentimentBlock(BlockBase):
@@ -37,7 +59,7 @@ class HuggingFaceSentimentBlock(BlockBase):
         """Load a HuggingFace based caikit model
         Args:
             model_path: str
-                Path to HugginFace model
+                Path to HuggingFace model
         Returns:
             HuggingFaceModel
         """
@@ -68,4 +90,3 @@ class HuggingFaceSentimentBlock(BlockBase):
             HuggingFaceModel
         """
         return cls(model_path)
-

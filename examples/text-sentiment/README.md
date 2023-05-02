@@ -9,7 +9,7 @@ The following tools are required:
 - [python](https://www.python.org) (v3.8+)
 - [pip](https://pypi.org/project/pip/) (v23.0+)
 
-**Note: Before installing dependencie and to avoid conflicts in your environment, it is advisable to use a [virtual environment(venv)](https://docs.python.org/3/library/venv.html).**
+**Note: Before installing dependencies and to avoid conflicts in your environment, it is advisable to use a [virtual environment(venv)](https://docs.python.org/3/library/venv.html).**
 
 Install the dependencies: `pip install -r requirements.txt`
 
@@ -59,7 +59,7 @@ In another terminal, run the client code:
 python3 client.py
 ```
 
-The client code calls the model and queries it for sentiment analysis on a 2 different pieces of text.
+The client code calls the model and queries it for sentiment analysis on 2 different pieces of text.
 
 You should see output similar to the following:
 
