@@ -17,7 +17,7 @@ This package has classes that will serialize a python interface to a protocol bu
 Typically used for `caikit.core.module`s that expose .train and .run functions.
 """
 # Standard
-from typing import Dict, List, Optional, Set, Tuple, Type, get_args
+from typing import Any, Dict, List, Optional, Tuple, Type, get_args
 import abc
 
 # First Party
@@ -184,7 +184,7 @@ class TaskPredictRPC(RPCSerializerBase):
 
         # Aggregate the argument signature types into a single parameters_dict
         parameters_dict = {}
-        default_parameters = set()
+        default_parameters = {}
         for method in method_signatures:
             default_parameters.update(method.default_parameters)
             primitive_arg_dict = primitives.to_primitive_signature(
@@ -248,13 +248,15 @@ class _RequestMessage:
     objects.
     """
 
-    def __init__(self, msg_name: str, params: Dict[str, Type], default_set: Set[str]):
+    def __init__(
+        self, msg_name: str, params: Dict[str, Type], default_map: Dict[str, Any]
+    ):
         """Initialize with the module class and the parsed parameters to the run
         function.
         """
         self.name = msg_name
         self.triples = []
-        self.default_set = default_set
+        self.default_map = default_map
 
         existing_fields = ApiFieldNames.get_fields_for_message(self.name)
 
