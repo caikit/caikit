@@ -32,7 +32,7 @@ def test_task_decorator_has_required_inputs_and_output_type():
 
 
 def test_task_decorator_validates_class_extends_task_base():
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
 
         @task(
             task_group=TestTaskGroup,
@@ -44,7 +44,7 @@ def test_task_decorator_validates_class_extends_task_base():
 
 
 def test_task_decorator_validates_output_is_data_model():
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
 
         @task(
             task_group=TestTaskGroup,
@@ -56,7 +56,7 @@ def test_task_decorator_validates_output_is_data_model():
 
 
 def test_task_decorator_validates_input_is_in_domain():
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         # `str` is not in TestDomain.input_types
         @task(
             task_group=TestTaskGroup,
@@ -68,7 +68,7 @@ def test_task_decorator_validates_input_is_in_domain():
 
 
 def test_task_decorator_validates_domain_is_a_domain():
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         # `str` is not in TestDomain.input_types
         @task(
             task_group=str,
@@ -88,19 +88,19 @@ def test_domain_has_input_type_set():
 
 
 def test_domain_validates_inputs_are_protoabletypes():
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
 
         @taskgroup(input_types={1, 2.3})
         class SampleTaskGroup(TaskGroupBase):
             pass
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
 
         @taskgroup(input_types={dict})
         class SampleTaskGroup(TaskGroupBase):
             pass
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
 
         @taskgroup(input_types={caikit.core.ModuleBase})
         class SampleTaskGroup(TaskGroupBase):

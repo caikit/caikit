@@ -111,13 +111,13 @@ def task(
     """
     # TODO: type checking on required_inputs
     if not issubclass(output_type, DataBase):
-        raise ValueError("output_type must be a data model")
+        raise TypeError("output_type must be a data model")
     if not issubclass(task_group, TaskGroupBase):
-        raise ValueError("task_group must be a TaskGroup class")
+        raise TypeError("task_group must be a TaskGroup class")
 
     for parameter_name, input_type in required_inputs.items():
         if input_type not in task_group.get_input_type_set():
-            raise ValueError(
+            raise TypeError(
                 f"Task parameter {parameter_name} has type {input_type} not in task_group: "
                 f"{task_group.__name__}. Valid types are: {task_group.get_input_type_set()}"
             )
@@ -133,7 +133,7 @@ def task(
 
     def decorator(cls: Type[TaskBase]) -> Type[TaskBase]:
         if not isinstance(cls, type) or not issubclass(cls, TaskBase):
-            raise ValueError("decorated class must extend TaskBase")
+            raise TypeError("decorated class must extend TaskBase")
         setattr(cls, "get_required_inputs", classmethod(get_required_inputs))
         setattr(cls, "get_output_type", classmethod(get_output_type))
         setattr(cls, "get_task_group", classmethod(get_task_group))
@@ -158,12 +158,9 @@ def taskgroup(
         )
 
     for input_type in input_types:
-        error.value_check(
-            "<COR98288712E>",
-            type_check(input_type),
-            input_type,
-            msg="TaskGroup inputs must be python primitive types or data model types. Got {}",
-        )
+        if not type_check(input_type):
+            raise TypeError(f"TaskGroup inputs must be python primitive types or data model types."
+                            f" Got {input_type}")
 
     def get_input_type_set(_) -> Set[ProtoableInputTypes]:
         return input_types
