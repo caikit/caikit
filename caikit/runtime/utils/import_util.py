@@ -164,7 +164,7 @@ def get_dynamic_module(module_name: str, module_dir: str = None) -> ModuleType:
     spec = importlib.util.find_spec(module_path)
     if not spec:
         message = "Unable to find spec for module: %s" % (module_path)
-        log.error("<RUN11991313E>", message)
+        log.warning("<RUN11991313E>", message)
         raise CaikitRuntimeException(StatusCode.NOT_FOUND, message)
     # Found spec - import the library
     if module_dir:
