@@ -43,12 +43,12 @@ class SampleTrainingType(DataObjectBase):
 
 
 @taskgroup(input_types={SampleInputType})
-class SampleDomain(TaskGroupBase):
+class SampleTaskGroup(TaskGroupBase):
     """A sample `domain` for our test models"""
 
 
 @task(
-    task_group=SampleDomain,
+    task_group=SampleTaskGroup,
     required_inputs={"sample_input": SampleInputType},
     output_type=SampleOutputType,
 )
@@ -56,10 +56,10 @@ class SampleTask(TaskBase):
     """A sample `task` for our test models"""
 
 
-@caikit.core.task(
-    task_group=SampleDomain,
+@task(
+    task_group=SampleTaskGroup,
     required_inputs={"sample_input": SampleInputType},
     output_type=OtherOutputType,
 )
-class OtherTask(caikit.core.TaskBase):
+class OtherTask(TaskBase):
     """Another sample `task` for our test models"""
