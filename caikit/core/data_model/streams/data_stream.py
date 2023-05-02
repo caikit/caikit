@@ -157,7 +157,7 @@ class DataStream(Generic[T]):
                 {"name": "May", "wins": []}
                 {"name": "Deloise", "wins": [["three of a kind", "5♣"]]}
 
-            >>> jsonl_data_stream = DataStream.from_jsonl_array('sample.jsonl')
+            >>> jsonl_data_stream = DataStream.from_jsonl('sample.jsonl')
             >>> for data_item in jsonl_data_stream:
             >>>     print(data_item)
             {'name': 'Gilbert', 'wins': [['straight', '7♣'], ['one pair', '10♥']]}
