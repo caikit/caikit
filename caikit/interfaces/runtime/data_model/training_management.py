@@ -13,7 +13,6 @@
 # limitations under the License.
 
 # Standard
-from dataclasses import dataclass
 from enum import Enum
 
 # First Party
@@ -30,14 +29,12 @@ RUNTIME_PACKAGE = "caikit_data_model.runtime"
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
 @caikit.core.dataobject(RUNTIME_PACKAGE)
-@dataclass
 class TrainingInfoRequest:
     training_id: str
 
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
 @caikit.core.dataobject(RUNTIME_PACKAGE)
-@dataclass
 class TrainingJob:
     training_id: str
     model_name: str
@@ -45,7 +42,6 @@ class TrainingJob:
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
 @caikit.core.dataobject(RUNTIME_PACKAGE)
-@dataclass
 class ModelPointer:
     model_id: str
 
@@ -64,7 +60,6 @@ class TrainingStatus(Enum):
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
 @caikit.core.dataobject(RUNTIME_PACKAGE)
-@dataclass
 class TrainingInfoResponse:
     training_id: str
     status: TrainingStatus

@@ -167,7 +167,7 @@ def dataobject(*args, **kwargs) -> Callable[[Type], Type[DataBase]]:
         return wrapper_class
 
     # If called without the function invocation, fill in the default argument
-    if len(args) and callable(args[0]):
+    if args and callable(args[0]):
         assert not kwargs, "This shouldn't happen!"
         package = CAIKIT_DATA_MODEL
         return decorator(args[0])

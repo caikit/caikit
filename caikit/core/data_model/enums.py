@@ -19,12 +19,10 @@
 # Standard
 from enum import Enum
 from typing import Dict, Optional, Tuple, Type
-import json
 
 # Third Party
 from google.protobuf.internal.enum_type_wrapper import EnumTypeWrapper
 import munch
-import yaml
 
 # First Party
 import alog
@@ -42,7 +40,14 @@ error = error_handler.get(log)
 def to_dict(cls) -> Dict[str, int]:
     """Return a dict representation of the keys and values"""
     if not hasattr(cls, "__dict_repr__"):
-        setattr(cls, "__dict_repr__", {entry.name: entry.value for entry in cls})
+        setattr(
+            cls,
+            "__dict_repr__",
+            {
+                entry.name: entry.value
+                for entry in cls  # pylint: disable=not-an-iterable
+            },
+        )
     return cls.__dict_repr__
 
 
