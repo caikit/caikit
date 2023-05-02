@@ -1,0 +1,6 @@
+runtime:
+  library: text_sentiment
+  service_generation:
+    primitive_data_model_types:
+      - "text_sentiment.data_model.classification.TextInput"
+
