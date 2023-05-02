@@ -3,7 +3,7 @@ Dummy data model object for testing
 """
 
 # Local
-from caikit.core.data_model import DataObjectBase, dataobject
+from caikit.core import DataObjectBase, DomainBase, TaskBase, dataobject, domain, task
 
 
 @dataobject(package="caikit_data_model.sample_lib")
@@ -33,3 +33,17 @@ class SampleTrainingType(DataObjectBase):
     """A sample `training data` type for the `sample_task` task."""
 
     number: int
+
+
+@domain(input_types={SampleInputType})
+class SampleDomain(DomainBase):
+    """A sample `domain` for our test models"""
+
+
+@task(
+    domain=SampleDomain,
+    required_inputs={"sample_input": SampleInputType},
+    output_type=SampleOutputType,
+)
+class SampleTask(TaskBase):
+    """A sample `task` for our test models"""

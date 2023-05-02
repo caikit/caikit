@@ -1,48 +1,66 @@
+# Copyright The Caikit Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Standard
-from typing import Dict, List, Set, Type, Union
-import abc
+from typing import Callable, Dict, List, Type, Union
 
 # First Party
 from alog import alog
 
 # Local
-from caikit.core.toolkit.errors import error_handler
+from caikit.core import DomainBase
 from caikit.core.data_model import DataStream
 from caikit.core.data_model.base import DataBase
+from caikit.core.domain import ProtoableInputTypes
+from caikit.core.toolkit.errors import error_handler
 
 log = alog.use_channel("TASK_BASE")
 error = error_handler.get(log)
 
-ProtoableInputTypes = Type[Union[
-    int, float, str, bytes, bool, DataBase
-]]
 ValidInputTypes = Union[
     ProtoableInputTypes, List[ProtoableInputTypes], DataStream[ProtoableInputTypes]
 ]
 
 
-class TaskBase(abc.ABC):
+class TaskBase:
     @classmethod
     def validate_run_signature(cls) -> bool:
         # TODO: implement
         pass
 
     @classmethod
-    @abc.abstractmethod
     def get_required_inputs(cls) -> Dict[str, ValidInputTypes]:
-        pass
+        raise NotImplementedError("This is implemented by the @task decorator!")
 
     @classmethod
-    @abc.abstractmethod
     def get_output_type(cls) -> Type[DataBase]:
-        pass
+        raise NotImplementedError("This is implemented by the @task decorator!")
+
+    @classmethod
+    def get_domain(cls) -> Type[DomainBase]:
+        raise NotImplementedError("This is implemented by the @task decorator!")
 
 
-def task(required_inputs: Dict[str, ValidInputTypes], output_type: Type[DataBase]):
+def task(
+    domain: Type[DomainBase],
+    required_inputs: Dict[str, ValidInputTypes],
+    output_type: Type[DataBase],
+) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
     """The decorator for AI Task classes.
 
-    This defines an output data model type for the task, and a minimal set of required inputs that all public models
-    implementing this task must accept.
+    This defines an output data model type for the task, and a minimal set of required inputs
+    that all public models implementing this task must accept.
 
     As an example, the `caikit.interfaces.nlp.SentimentTask` might look like::
 
@@ -59,41 +77,60 @@ def task(required_inputs: Dict[str, ValidInputTypes], output_type: Type[DataBase
 
         def run(raw_document: caikit.interfaces.nlp.RawDocument,
                 inference_mode: str = "fast",
-                device: caikit.interfaces.common.HardwareEnum) -> caikit.interfaces.nlp.SentimentPrediction:
+                device: caikit.interfaces.common.HardwareEnum) ->
+                    caikit.interfaces.nlp.SentimentPrediction:
             # impl
 
-    Note the run function may include other arguments beyond the minimal required inputs for the task.
+    Note the run function may include other arguments beyond the minimal required inputs for
+    the task.
 
     Args:
-        required_inputs (Dict[str, ValidInputTypes]): The required parameters that all public models' .run functions
-            must contain. A dictionary of parameter name to parameter type, where the types can be in the set of:
+        domain (Type[DomainBase]): The AI Domain that this task belongs to
+        required_inputs (Dict[str, ValidInputTypes]): The required parameters that all public
+            models' .run functions must contain. A dictionary of parameter name to parameter
+            type, where the types can be in the set of:
                 - Python primitives
                 - Caikit data models
                 - Iterable containers of the above
                 - Caikit model references (maybe?)
-        output_type (Type[DataBase]): The output type of the task, which all public models' .run functions must return.
-            This must be a caikit data model type.
+        output_type (Type[DataBase]): The output type of the task, which all public models'
+            .run functions must return. This must be a caikit data model type.
 
     Returns:
-        A decorator function for the task class, registering it with caikit's core registry of tasks.
+        A decorator function for the task class, registering it with caikit's core registry of
+            tasks.
     """
-    # whoops, type checking won't handle this for us
-    # error.type_check("<COR98211745E>", Dict[str, ValidInputTypes], required_inputs=required_inputs)
-    error.type_check("<COR98211745E>", type(DataBase), output_type=output_type)
+    # TODO: type checking on required_inputs
+    if not issubclass(output_type, DataBase):
+        raise ValueError("output_type must be a data model")
+    if not issubclass(domain, DomainBase):
+        raise ValueError("domain must be a domain class")
+
+    for parameter_name, input_type in required_inputs.items():
+        if input_type not in domain.get_input_type_set():
+            raise ValueError(
+                f"Task parameter {parameter_name} has type {input_type} not in domain: "
+                f"{domain.__name__}. Valid types are: {domain.get_input_type_set()}"
+            )
 
     # def get_all_modules(cls) -> Set[Type[caikit.core.ModuleBase]]:
     #     pass
 
-    def get_required_inputs(cls):
+    def get_required_inputs(_):
         return required_inputs
 
-    def get_output_type(cls):
+    def get_output_type(_):
         return output_type
 
-    def decorator(cls: Type[TaskBase]):
-        error.type_check("<COR98211745E>", type(TaskBase), cls=cls)
+    def get_domain(_):
+        return domain
+
+    def decorator(cls: Type[TaskBase]) -> Type[TaskBase]:
+        if not isinstance(cls, type) or not issubclass(cls, TaskBase):
+            raise ValueError("decorated class must extend TaskBase")
         setattr(cls, "get_required_inputs", classmethod(get_required_inputs))
         setattr(cls, "get_output_type", classmethod(get_output_type))
+        setattr(cls, "get_domain", classmethod(get_domain))
         return cls
 
     return decorator
