@@ -39,7 +39,7 @@ class TaskGroupBase:
 
     @classmethod
     def get_input_type_set(cls) -> Set[ProtoableInputTypes]:
-        raise NotImplementedError("This is implemented by the @domain decorator!")
+        raise NotImplementedError("This is implemented by the @taskgroup decorator!")
 
 
 class TaskBase:
@@ -57,7 +57,7 @@ class TaskBase:
         raise NotImplementedError("This is implemented by the @task decorator!")
 
     @classmethod
-    def get_domain(cls) -> Type[TaskGroupBase]:
+    def get_task_group(cls) -> Type[TaskGroupBase]:
         raise NotImplementedError("This is implemented by the @task decorator!")
 
 
@@ -113,17 +113,14 @@ def task(
     if not issubclass(output_type, DataBase):
         raise ValueError("output_type must be a data model")
     if not issubclass(task_group, TaskGroupBase):
-        raise ValueError("domain must be a domain class")
+        raise ValueError("task_group must be a TaskGroup class")
 
     for parameter_name, input_type in required_inputs.items():
         if input_type not in task_group.get_input_type_set():
             raise ValueError(
-                f"Task parameter {parameter_name} has type {input_type} not in domain: "
+                f"Task parameter {parameter_name} has type {input_type} not in task_group: "
                 f"{task_group.__name__}. Valid types are: {task_group.get_input_type_set()}"
             )
-
-    # def get_all_modules(cls) -> Set[Type[caikit.core.ModuleBase]]:
-    #     pass
 
     def get_required_inputs(_):
         return required_inputs
@@ -131,7 +128,7 @@ def task(
     def get_output_type(_):
         return output_type
 
-    def get_domain(_):
+    def get_task_group(_):
         return task_group
 
     def decorator(cls: Type[TaskBase]) -> Type[TaskBase]:
@@ -139,7 +136,7 @@ def task(
             raise ValueError("decorated class must extend TaskBase")
         setattr(cls, "get_required_inputs", classmethod(get_required_inputs))
         setattr(cls, "get_output_type", classmethod(get_output_type))
-        setattr(cls, "get_domain", classmethod(get_domain))
+        setattr(cls, "get_task_group", classmethod(get_task_group))
         return cls
 
     return decorator
@@ -148,7 +145,7 @@ def task(
 def taskgroup(
     input_types: Set[ProtoableInputTypes],
 ) -> Callable[[Type[TaskGroupBase]], Type[TaskGroupBase]]:
-    """The decorator for AI Domains"""
+    """The decorator for AI Task Groups"""
 
     def type_check(x: type) -> bool:
         return (
@@ -165,7 +162,7 @@ def taskgroup(
             "<COR98288712E>",
             type_check(input_type),
             input_type,
-            msg="Domain inputs must be python primitive types or data model types. Got {}",
+            msg="TaskGroup inputs must be python primitive types or data model types. Got {}",
         )
 
     def get_input_type_set(_) -> Set[ProtoableInputTypes]:
@@ -176,7 +173,7 @@ def taskgroup(
             "<COR98211745E>",
             isinstance(cls, type) and issubclass(cls, TaskGroupBase),
             cls,
-            msg="@domain class must extend DomainBase",
+            msg="@taskgroup class must extend TaskGroupBase",
         )
         setattr(cls, "get_input_type_set", classmethod(get_input_type_set))
         return cls
