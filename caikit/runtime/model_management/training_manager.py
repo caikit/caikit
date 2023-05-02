@@ -9,12 +9,6 @@ import grpc
 from caikit.interfaces.runtime.data_model import TrainingStatus
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
-#
-# @dataclasses.dataclass
-# class TrainingStuff:
-#     status: TrainingStatus
-#     exception: Exception
-
 
 class TrainingManager:
     __instance: "TrainingManager" = None

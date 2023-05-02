@@ -14,8 +14,6 @@
 """
 Common data model objects used to identify the producer of a given output
 """
-# Standard
-from dataclasses import dataclass
 
 # Local
 from .dataobject import CAIKIT_DATA_MODEL, dataobject
@@ -24,7 +22,6 @@ PACKAGE_COMMON = f"{CAIKIT_DATA_MODEL}.common"
 
 
 @dataobject(PACKAGE_COMMON)
-@dataclass
 class ProducerId:
     """Information about a data structure and the module that produced it."""
 
