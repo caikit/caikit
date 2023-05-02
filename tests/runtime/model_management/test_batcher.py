@@ -29,7 +29,7 @@ import alog
 
 # Local
 from caikit.runtime.model_management.batcher import Batcher
-from sample_lib.data_model import SampleOutputType
+from sample_lib.data_model import SampleOutputType, SampleTask
 import caikit.core
 
 ## Helpers #####################################################################
@@ -51,6 +51,7 @@ DUMMY_MODEL = os.path.realpath(
     "7464f684-58e3-4e99-9a58-1c5bc085472b",
     "slow sample block",
     "0.0.1",
+    SampleTask
 )
 class SlowSampleBlock(caikit.core.blocks.base.BlockBase):
     """This block is just a wrapper around another module that will inject a
@@ -78,6 +79,7 @@ class SlowSampleBlock(caikit.core.blocks.base.BlockBase):
     "19b126aa-b55b-4349-94f1-d676f3e12c9b",
     "Really silly bunch of bobs!",
     "0.0.1",
+    SampleTask
 )
 class StubBlock(caikit.core.blocks.base.BlockBase):
     # NOTE: The initial implementation had "num_bobs" which expected an int.
