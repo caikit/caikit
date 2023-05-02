@@ -175,6 +175,8 @@ def dataobject(*args, **kwargs) -> Callable[[Type], Type[DataBase]]:
     # Pull the package as an arg or a keyword arg
     if args:
         package = args[0]
+        if "package" in kwargs:
+            raise TypeError("Got multiple values for argument 'package'")
     else:
         package = kwargs.get("package", CAIKIT_DATA_MODEL)
     return decorator

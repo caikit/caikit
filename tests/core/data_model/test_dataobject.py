@@ -516,3 +516,96 @@ def test_dir_on_instance():
 
     x = BazObj("foobar")
     dir(x)
+
+
+def test_dataobject_invocation_flavors():
+    """Make sure invoking dataobject works in all of the different correct
+    invocation styles and errors with all invalid styles
+
+    VALID:
+    1. No function call
+    2. Function call with no args
+    3. Function call with single positional argument
+    4. Function call with keyword args
+
+    INVALID:
+    1. Unexpected kwargs
+    2. Multiple valid kwargs
+    3. Package as position and keyword arg
+    """
+    ## Valid ##
+
+    # 1. No function call
+    @dataobject
+    class Foo1:
+        foo: int
+
+    assert "foo" in Foo1._proto_class.DESCRIPTOR.fields_by_name
+
+    # 2. Function call with no args
+    @dataobject()
+    class Foo2:
+        foo: int
+
+    assert "foo" in Foo2._proto_class.DESCRIPTOR.fields_by_name
+
+    # 3. Function call with single positional argument
+    @dataobject("foo.bar")
+    class Foo3:
+        foo: int
+
+    assert "foo" in Foo3._proto_class.DESCRIPTOR.fields_by_name
+    assert Foo3._proto_class.DESCRIPTOR.file.package == "foo.bar"
+
+    # 4. Function call with keyword args
+    @dataobject(package="foo.bar")
+    class Foo4:
+        foo: int
+
+    assert "foo" in Foo4._proto_class.DESCRIPTOR.fields_by_name
+    assert Foo4._proto_class.DESCRIPTOR.file.package == "foo.bar"
+
+    ## INVALID ##
+
+    # 1. Unexpected kwargs
+    with pytest.raises(TypeError):
+
+        @dataobject(buz="baz", package="foo.bar")
+        class FooBad:
+            foo: int
+
+    # 2. Multiple valid conflicting kwargs
+    with pytest.raises(TypeError):
+
+        @dataobject(
+            schema={"properties": {"foo": "string"}},  # Only valid for JTD flavor
+            validate=True,  # Only valid for dataclass flavor
+        )
+        class FooBad:
+            pass
+
+    # 3. Package as position and keyword arg
+    with pytest.raises(TypeError):
+
+        @dataobject("baz.bat", package="foo.bar")
+        class Foo4:
+            foo: int
+
+
+def test_dataobject_pre_existing_dataclass():
+    """Make sure that wrapping a class that's already a dataclass works as
+    expected by adding additional None defaults and re-making the dataclass
+    """
+    raise NotImplementedError()
+
+
+def test_dataobject_dataclass_non_default_init():
+    """Make sure that a dataclass with a non-default __init__ does not get
+    overwritten
+    """
+    raise NotImplementedError()
+
+
+def test_dataobject_dataclass_default_factory():
+    """Make sure that a dataclass's datafactory field is preserved"""
+    raise NotImplementedError()
