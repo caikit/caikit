@@ -355,7 +355,7 @@ def main():
             service_source,
         )
     except CaikitRuntimeException as e:
-        log.error("Cannot stand up training service, disabling training: %s", e)
+        log.warning("Cannot stand up training service, disabling training: %s", e)
         training_service = None
 
     server = RuntimeGRPCServer(
