@@ -40,5 +40,7 @@ class TrainingManagementServicerImpl:
         training_info = TrainingInfoRequest.from_proto(request)
 
         return TrainingInfoResponse(
-            status=self.training_manager.get_training_status(training_info.training_id)
+            status=self.training_manager.get_training_status(
+                training_info.training_id
+            ).value
         ).to_proto()

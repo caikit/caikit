@@ -61,7 +61,7 @@ def test_training_runs(training_management_servicer, training_pool):
     # send a request, check it's processing
     request = TrainingInfoRequest(training_id=training_id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
-    assert response.status == TrainingStatus.PROCESSING
+    assert response.status == TrainingStatus.PROCESSING.value
 
     event.set()
     future.result()
@@ -69,7 +69,7 @@ def test_training_runs(training_management_servicer, training_pool):
     # Ensure it's now done
     request = TrainingInfoRequest(training_id=training_id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
-    assert response.status == TrainingStatus.COMPLETED
+    assert response.status == TrainingStatus.COMPLETED.value
 
 
 def test_training_complete_status(training_management_servicer, training_pool):
@@ -87,7 +87,7 @@ def test_training_complete_status(training_management_servicer, training_pool):
     response = training_management_servicer.GetTrainingStatus(request, context=None)
 
     assert re.match("<class '.*TrainingInfoResponse'>", str(type(response)))
-    assert response.status == TrainingStatus.COMPLETED
+    assert response.status == TrainingStatus.COMPLETED.value
 
 
 def test_training_status_incorrect_id(training_management_servicer):
@@ -115,4 +115,4 @@ def test_training_fails(training_management_servicer, training_pool):
     request = TrainingInfoRequest(training_id=training_id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
 
-    assert response.status == TrainingStatus.FAILED
+    assert response.status == TrainingStatus.FAILED.value
