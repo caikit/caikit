@@ -421,6 +421,23 @@ def test_dataobject_with_discriminator():
     }
 
 
+# TODO --- This test is currently broken
+#
+# The reason this test is broken is because of the difference between how proto
+# and dataclass treat oneofs. In proto, the name of the oneof is just a label
+# and the elements of the oneof are concrete fields, only one of which may be
+# set at a given time. In a dataclass, a Union field holds the name of the field
+# as the property and the various definitions of that field are all accessed via
+# the name of the Union field.
+#
+# To fix this, we need to figure out the fully-supported oneof semantics for
+# caikit. My gut is that we should support the union of the two where accessing
+# the union/oneof by name gets you whichever of the individual fields is set and
+# accessing any of the individual fields gets you the value iff that is the
+# field within the oneof that's set. The catch is that this would require proper
+# "which oneof" semantics to handle the case where the type of the field does
+# not uniquely identify the sub-field (i.e. oneof delineated by name, not type)
+##
 # def test_dataobject_with_oneof():
 #     """Make sure that using a Union to create a oneof works as expected"""
 
