@@ -712,7 +712,7 @@ def test_metrics_stored_after_server_interrupt(
         )
 
         # Interrupt server
-        server.interrupt(None)
+        server.interrupt(None, None)
 
         # Assertions on the created metrics file
         with open(server._global_predict_servicer.rpc_meter.file_path) as f:
