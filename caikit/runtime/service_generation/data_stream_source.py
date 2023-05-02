@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # Standard
+from datetime import datetime
 from glob import glob
 from typing import Any, Optional, Type
 import os
@@ -36,6 +37,16 @@ import caikit
 # DataStreamSource wrappers so that the same message is not recreated
 # unnecessarily
 _DATA_STREAM_SOURCE_TYPES = {}
+
+# Python type -> jtd name
+_NATIVE_TYPE_TO_JTD = {
+    str: "string",
+    int: "int64",
+    float: "float64",
+    bytes: "bytes",
+    bool: "boolean",
+    datetime: "timestamp",
+}
 
 log = alog.use_channel("DSTRM-SRC")
 
@@ -205,7 +216,7 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
             data_element_type.get_proto_class().DESCRIPTOR
             if isinstance(data_element_type, type)
             and issubclass(data_element_type, DataBase)
-            else _NATIVE_TYPE_TO_JTD[data_element_type]  # DEBUG THIS IS BROKEN!!!
+            else _NATIVE_TYPE_TO_JTD[data_element_type]
         )
         data_object = dataobject(
             schema={
