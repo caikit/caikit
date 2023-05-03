@@ -15,7 +15,9 @@
 """Tests for the @dataobject decorator"""
 
 # Standard
-from typing import Optional
+from dataclasses import dataclass, field, is_dataclass
+from enum import Enum
+from typing import List, Optional, Union
 import json
 import os
 import tempfile
@@ -23,6 +25,9 @@ import tempfile
 # Third Party
 from google.protobuf import descriptor_pool, message
 import pytest
+
+# First Party
+from py_to_proto.dataclass_to_proto import Annotated, OneofField
 
 # Local
 from caikit.core import dataobject  # NOTE: Imported from the top to validate
@@ -82,9 +87,10 @@ def test_dataobject_native_types():
     fields declared using  native python types works
     """
 
-    @dataobject({"foo": str, "bar": int})
+    @dataobject
     class Foo:
-        pass
+        foo: str
+        bar: int
 
     assert check_field_type(Foo.get_proto_class(), "foo", "TYPE_STRING")
     assert check_field_type(Foo.get_proto_class(), "bar", "TYPE_INT64")
@@ -92,6 +98,9 @@ def test_dataobject_native_types():
     inst = Foo(foo="test", bar=1)
     assert inst.foo == "test"
     assert inst.bar == 1
+    inst = Foo()
+    assert inst.foo is None
+    assert inst.bar is None
 
 
 def test_dataobject_jtd():
@@ -99,21 +108,27 @@ def test_dataobject_jtd():
     as expected
     """
 
-    @dataobject({"properties": {"foo": {"type": "string"}}})
+    @dataobject(schema={"properties": {"foo": {"type": "string"}}})
     class Foo:
         pass
 
     assert check_field_type(Foo.get_proto_class(), "foo", "TYPE_STRING")
     inst = Foo(foo="test")
     assert inst.foo == "test"
+    inst = Foo()
+    assert inst.foo is None
 
 
 def test_dataobject_nested_objects():
     """Make sure that nested objects are handled correctly"""
 
-    @dataobject({"bar": {"bat": str}})
+    @dataobject
     class Foo:
-        pass
+        @dataobject
+        class Bar:
+            bat: str
+
+        bar: Bar
 
     assert hasattr(Foo, "Bar")
     bar_type = Foo.Bar
@@ -125,20 +140,30 @@ def test_dataobject_nested_objects():
 def test_dataobject_nested_enums():
     """Make sure enums work as nested fields"""
 
-    @dataobject(
-        {
-            "bar": {"enum": ["EXAM", "DRINKS"]},
-            "bat": {"kind": {"enum": ["BASEBALL", "VAMPIRE"]}},
-        }
-    )
+    @dataobject
     class Foo:
-        pass
+        @dataobject
+        class Bar(Enum):
+            EXAM = 0
+            DRINKS = 1
+
+        @dataobject
+        class Bat:
+            @dataobject
+            class Kind(Enum):
+                BASEBALL = 0
+                VAMPIRE = 1
+
+            kind: Kind
+
+        bar: Bar
+        bat: Bat
 
     assert hasattr(Foo, "Bat")
 
     # Foo.Bar is a nested enum
     bar_type = Foo.Bar
-    assert isinstance(bar_type, enums.EnumBase)
+    assert issubclass(bar_type, Enum)
     assert getattr(enums, "Bar") is bar_type
 
     # Foo.Bat is a nested message
@@ -149,66 +174,59 @@ def test_dataobject_nested_enums():
 
     # Foo.Bat.Kind is a nested-nested enum
     kind_type = Foo.Bat.Kind
-    assert isinstance(kind_type, enums.EnumBase)
+    assert issubclass(kind_type, Enum)
     assert getattr(enums, "Kind") is kind_type
 
 
 def test_dataobject_top_level_enums():
     """Make sure enums can be created"""
 
-    @dataobject({"enum": ["EXAM", "DRINKS"]})
-    class Foo:
-        pass
+    @dataobject
+    class Foo(Enum):
+        EXAM = 0
+        DRINKS = 1
 
     # Make sure it is in fact a class! This is surprisingly hard to achieve.
     assert isinstance(Foo, type)
-    assert Foo.EXAM == 0
-    assert Foo.DRINKS == 1
-    dict_view = Foo.toDict()
+    assert Foo.EXAM.value == 0
+    assert Foo.DRINKS.value == 1
+    dict_view = Foo.to_dict()
     assert dict_view == {"EXAM": 0, "DRINKS": 1}
-
-    # Make sure it's a singleton around the underlying EnumBase
-    foo_inst = Foo()
-    assert isinstance(foo_inst, enums.EnumBase)
-    assert foo_inst.toDict() == dict_view
-    assert Foo() is foo_inst
 
     # Make sure the underlying proto enum is accessible
     proto_enum = Foo._proto_enum
     assert isprotobufenum(proto_enum)
 
-    # Make sure the str and repr methods of the Foo class show up like the dict
-    assert str(Foo) == str(foo_inst)
-    assert repr(Foo) == repr(foo_inst)
-
 
 def test_dataobject_arrays():
     """Make sure arrays work as expected"""
 
-    @dataobject({"bar": {"elements": str}})
+    @dataobject
     class Foo:
-        pass
+        bar: List[str]
 
     assert check_field_type(Foo.get_proto_class(), "bar", "TYPE_STRING")
     assert check_field_label(Foo.get_proto_class(), "bar", "LABEL_REPEATED")
 
 
-def test_dataobject_obj_refs():
+def test_dataobject_obj_refs_no_opt_types():
     """Make sure that references to other data objects and enums work as
     expected
     """
 
-    @dataobject({"enum": ["EXAM", "METAL"]})
-    class BarEnum:
-        pass
+    @dataobject
+    class BarEnum(Enum):
+        EXAM = 0
+        METAL = 1
 
-    @dataobject({"foo": str})
+    @dataobject
     class Foo:
-        pass
+        foo: str
 
-    @dataobject({"foo": Foo, "bar": BarEnum, "bare_bar": BarEnum()})
+    @dataobject
     class FooBar:
-        pass
+        foo: Foo
+        bar: BarEnum
 
     assert check_field_type(FooBar.get_proto_class(), "foo", "TYPE_MESSAGE")
     assert check_field_message_type(
@@ -217,9 +235,6 @@ def test_dataobject_obj_refs():
     assert check_field_enum_type(
         FooBar.get_proto_class(), "bar", BarEnum._proto_enum.DESCRIPTOR
     )
-    assert check_field_enum_type(
-        FooBar.get_proto_class(), "bare_bar", BarEnum._proto_enum.DESCRIPTOR
-    )
 
 
 def test_dataobject_obj_refs_with_optional_types():
@@ -227,25 +242,21 @@ def test_dataobject_obj_refs_with_optional_types():
     expected
     """
 
-    @dataobject({"enum": ["EXAM", "METAL"]})
-    class BarEnum:
-        pass
+    @dataobject
+    class BarEnum(Enum):
+        EXAM = 0
+        METAL = 1
 
-    @dataobject({"foo": str})
+    @dataobject
     class Foo:
-        pass
+        foo: str
 
-    # The dataobject in question: includes Optional[T]
-    @dataobject(
-        schema={
-            "foo": Foo,
-            "optionalFoo": Optional[Foo],
-            "bar": BarEnum,
-            "optionalBar": Optional[BarEnum],
-        }
-    )
+    @dataobject
     class FooBar:
-        pass
+        foo: Foo
+        optionalFoo: Optional[Foo]
+        bar: BarEnum
+        optionalBar: Optional[BarEnum]
 
     assert check_field_type(FooBar._proto_class, "foo", "TYPE_MESSAGE")
     for field in ["foo", "optionalFoo"]:
@@ -258,33 +269,11 @@ def test_dataobject_obj_refs_with_optional_types():
         )
 
 
-def test_dataobject_properties_needs_jtd_translation():
-    """Make sure shorthand get recognized as still needing jtd translation
-    when inside properties or optionalProperties
-    """
-
-    @dataobject(
-        schema={
-            "properties": {
-                "foo": int,
-            },
-            "optionalProperties": {
-                "bar": bool,
-            },
-        }
-    )
-    class FooBar:
-        pass
-
-    assert check_field_type(FooBar.get_proto_class(), "foo", "TYPE_INT64")
-    assert check_field_type(FooBar.get_proto_class(), "bar", "TYPE_BOOL")
-
-
 def test_dataobject_invalid_schema():
     """Make sure that a ValueError is raised on an invalid schema"""
     with pytest.raises(ValueError):
         # pylint: disable=unused-variable
-        @dataobject("Foo")
+        @dataobject(schema="Foo")
         class Foo:
             pass
 
@@ -294,14 +283,19 @@ def test_dataobject_additional_methods():
     enums) are preserved
     """
 
-    @dataobject({"enum": ["EXAM", "DRINKS"]})
-    class Foo:
+    @dataobject
+    class Foo(Enum):
+        EXAM = 0
+        DRINKS = 1
+
         @classmethod
-        def is_exam(cls, val: int) -> bool:
+        def is_exam(cls, val: "Foo") -> bool:
             return val == cls.EXAM
 
-    @dataobject({"bar": str})
+    @dataobject
     class Bar:
+        bar: str
+
         def caps(self) -> str:
             return self.bar.upper()
 
@@ -309,22 +303,24 @@ def test_dataobject_additional_methods():
     assert Bar("bat").caps() == "BAT"
 
 
-def test_render_dataobject_protos():
+def test_render_dataobject_protos_valid_dir():
     """Make sure that render_dataobject_protos correctly renders all generated
     protobufs to the target directory
     """
 
-    @dataobject({"enum": ["EXAM", "METAL"]})
-    class BarEnum:
-        pass
+    @dataobject
+    class BarEnum(Enum):
+        EXAM = 0
+        METAL = 1
 
-    @dataobject({"foo": str})
+    @dataobject
     class Foo:
-        pass
+        foo: str
 
-    @dataobject({"foo": Foo, "bar": BarEnum, "bare_bar": BarEnum()})
+    @dataobject
     class FooBar:
-        pass
+        foo: Foo
+        bar: BarEnum
 
     with tempfile.TemporaryDirectory() as workdir:
         render_dataobject_protos(workdir)
@@ -336,11 +332,41 @@ def test_render_dataobject_protos():
         }
 
 
+def test_render_dataobject_protos_no_dir():
+    """Make sure that render_dataobject_protos correctly renders all generated
+    protobufs to the target directory and creates the target dir if it doesn't exist
+    """
+
+    @dataobject
+    class BarEnum(Enum):
+        EXAM = 0
+        METAL = 1
+
+    @dataobject
+    class Foo:
+        foo: str
+
+    @dataobject
+    class FooBar:
+        foo: Foo
+        bar: BarEnum
+
+    with tempfile.TemporaryDirectory() as workdir:
+        protos_dir_path = os.path.join(workdir, "protos")
+        render_dataobject_protos(protos_dir_path)
+        rendered_files = set(os.listdir(protos_dir_path))
+        assert rendered_files == {
+            BarEnum._proto_enum.DESCRIPTOR.file.name,
+            Foo.get_proto_class().DESCRIPTOR.file.name,
+            FooBar.get_proto_class().DESCRIPTOR.file.name,
+        }
+
+
 def test_dataobject_with_discriminator():
     """Make sure that adding a discriminator works as expected"""
 
     @dataobject(
-        {
+        schema={
             "properties": {
                 "data_stream": {
                     "discriminator": "data_reference_type",
@@ -395,40 +421,83 @@ def test_dataobject_with_discriminator():
     }
 
 
-def test_render_dataobject_protos_no_dir():
-    """Make sure that render_dataobject_protos correctly renders all generated
-    protobufs to the target directory and creates the target dir if it doesn't exist
-    """
+# TODO --- This test is currently broken
+#
+# The reason this test is broken is because of the difference between how proto
+# and dataclass treat oneofs. In proto, the name of the oneof is just a label
+# and the elements of the oneof are concrete fields, only one of which may be
+# set at a given time. In a dataclass, a Union field holds the name of the field
+# as the property and the various definitions of that field are all accessed via
+# the name of the Union field.
+#
+# To fix this, we need to figure out the fully-supported oneof semantics for
+# caikit. My gut is that we should support the union of the two where accessing
+# the union/oneof by name gets you whichever of the individual fields is set and
+# accessing any of the individual fields gets you the value iff that is the
+# field within the oneof that's set. The catch is that this would require proper
+# "which oneof" semantics to handle the case where the type of the field does
+# not uniquely identify the sub-field (i.e. oneof delineated by name, not type)
+##
+# def test_dataobject_with_oneof():
+#     """Make sure that using a Union to create a oneof works as expected"""
 
-    @dataobject({"enum": ["EXAM", "METAL"]})
-    class BarEnum:
-        pass
+#     @dataobject
+#     class BazObj:
+#         @dataobject
+#         class Foo:
+#             data: List[str]
 
-    @dataobject({"foo": str})
-    class Foo:
-        pass
+#         @dataobject
+#         class Bar:
+#             data: str
 
-    @dataobject({"foo": Foo, "bar": BarEnum, "bare_bar": BarEnum()})
-    class FooBar:
-        pass
+#         @dataobject
+#         class Baz:
+#             data: List[str]
 
-    with tempfile.TemporaryDirectory() as workdir:
-        protos_dir_path = os.path.join(workdir, "protos")
-        render_dataobject_protos(protos_dir_path)
-        rendered_files = set(os.listdir(protos_dir_path))
-        assert rendered_files == {
-            BarEnum._proto_enum.DESCRIPTOR.file.name,
-            Foo.get_proto_class().DESCRIPTOR.file.name,
-            FooBar.get_proto_class().DESCRIPTOR.file.name,
-        }
+#         @dataobject
+#         class Bat:
+#             data1: str
+#             data2: str
+
+#         data_stream: Union[
+#             Annotated[Foo, OneofField("foo")],
+#             Annotated[Bar, OneofField("bar")],
+#             Annotated[Baz, OneofField("baz")],
+#             Annotated[Bat, OneofField("bat")],
+#         ]
+
+#     #DEBUG -------------- SOMETHING BROKEN HERE!!!
+#     breakpoint()
+
+#     # proto tests
+#     foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))
+#     proto_repr_foo = foo1.to_proto()
+#     assert proto_repr_foo.foo.data == ["hello"]
+#     assert BazObj.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+
+#     bar1 = BazObj(foo=BazObj.Foo(data=["hello"]), bar=BazObj.Bar(data="world"))
+#     proto_repr_bar = bar1.to_proto()
+#     assert proto_repr_bar.bar.data == "world"
+
+#     # json tests
+#     foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))
+#     json_repr_foo = foo1.to_json()
+#     assert json.loads(json_repr_foo) == {
+#         "foo": {"data": ["hello"]},
+#         "bar": None,
+#         "baz": None,
+#         "bat": None,
+#     }
 
 
 def test_dataobject_round_trip_json():
     """Make sure that a dataobject class can serialize to/from json"""
 
-    @dataobject({"foo": str, "bar": int})
+    @dataobject
     class BazObj:
-        pass
+        foo: str
+        bar: int
 
     baz1 = BazObj(foo="foo", bar=1)
     js_repr = baz1.to_json()
@@ -440,9 +509,10 @@ def test_dataobject_round_trip_json():
 def test_dataobject_round_trip_proto():
     """Make sure that a dataobject class can serialize to/from proto"""
 
-    @dataobject({"foo": str, "bar": int})
+    @dataobject
     class BazObj:
-        pass
+        foo: str
+        bar: int
 
     baz1 = BazObj(foo="foo", bar=1)
     proto_repr = baz1.to_proto()
@@ -458,9 +528,134 @@ def test_dir_on_instance():
     classes.
     """
 
-    @dataobject({"foo": str})
+    @dataobject
     class BazObj:
-        pass
+        foo: str
 
     x = BazObj("foobar")
     dir(x)
+
+
+def test_dataobject_invocation_flavors():
+    """Make sure invoking dataobject works in all of the different correct
+    invocation styles and errors with all invalid styles
+
+    VALID:
+    1. No function call
+    2. Function call with no args
+    3. Function call with single positional argument
+    4. Function call with keyword args
+
+    INVALID:
+    1. Unexpected kwargs
+    2. Multiple valid kwargs
+    3. Package as position and keyword arg
+    """
+    ## Valid ##
+
+    # 1. No function call
+    @dataobject
+    class Foo1:
+        foo: int
+
+    assert "foo" in Foo1._proto_class.DESCRIPTOR.fields_by_name
+
+    # 2. Function call with no args
+    @dataobject()
+    class Foo2:
+        foo: int
+
+    assert "foo" in Foo2._proto_class.DESCRIPTOR.fields_by_name
+
+    # 3. Function call with single positional argument
+    @dataobject("foo.bar")
+    class Foo3:
+        foo: int
+
+    assert "foo" in Foo3._proto_class.DESCRIPTOR.fields_by_name
+    assert Foo3._proto_class.DESCRIPTOR.file.package == "foo.bar"
+
+    # 4. Function call with keyword args
+    @dataobject(package="foo.bar")
+    class Foo4:
+        foo: int
+
+    assert "foo" in Foo4._proto_class.DESCRIPTOR.fields_by_name
+    assert Foo4._proto_class.DESCRIPTOR.file.package == "foo.bar"
+
+    ## INVALID ##
+
+    # 1. Unexpected kwargs
+    with pytest.raises(TypeError):
+
+        @dataobject(buz="baz", package="foo.bar")
+        class FooBad:
+            foo: int
+
+    # 2. Multiple valid conflicting kwargs
+    with pytest.raises(TypeError):
+
+        @dataobject(
+            schema={"properties": {"foo": "string"}},  # Only valid for JTD flavor
+            validate=True,  # Only valid for dataclass flavor
+        )
+        class FooBad:
+            pass
+
+    # 3. Package as position and keyword arg
+    with pytest.raises(TypeError):
+
+        @dataobject("baz.bat", package="foo.bar")
+        class Foo4:
+            foo: int
+
+
+def test_dataobject_pre_existing_dataclass():
+    """Make sure that wrapping a class that's already a dataclass works as
+    expected by adding additional None defaults and re-making the dataclass
+    """
+
+    @dataobject
+    @dataclass
+    class Foo:
+        foo: int
+
+    assert is_dataclass(Foo)
+
+    # Make sure defaults are added correctly per dataobject semantics
+    inst = Foo()
+    assert inst.foo is None
+
+
+def test_dataobject_dataclass_non_default_init():
+    """Make sure that a dataclass with a non-default __init__ does not get
+    overwritten
+    """
+
+    @dataobject
+    class Foo:
+        foo: int
+
+        def __init__(self, foo_base):
+            self.foo = foo_base + 1
+
+    assert is_dataclass(Foo)
+
+    # Make sure defaults are added correctly per dataobject semantics
+    inst = Foo(1)
+    assert inst.foo == 2
+
+
+def test_dataobject_dataclass_default_factory():
+    """Make sure that a dataclass's datafactory field is preserved"""
+
+    @dataobject
+    class Foo:
+        foo: List[int] = field(default_factory=list)
+
+    assert is_dataclass(Foo)
+
+    # Make sure default construction users the default factory
+    inst = Foo()
+    assert inst.foo is not None
+    assert inst.foo == []

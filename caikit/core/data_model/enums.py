@@ -17,15 +17,14 @@
 """
 
 # Standard
-from typing import Tuple, Type
-import json
+from enum import Enum
+from typing import Dict, Optional, Tuple, Type
 
 # Third Party
 from google.protobuf.internal.enum_type_wrapper import EnumTypeWrapper
 import munch
 
 # First Party
-# First party
 import alog
 
 # Local
@@ -37,70 +36,42 @@ log = alog.use_channel("DATAM")
 error = error_handler.get(log)
 
 
-class EnumBase(munch.Munch):
-    """Enumerations maps from string to integer."""
-
-    def __init__(self, proto_enum: EnumTypeWrapper):
-        name = proto_enum.DESCRIPTOR.name
-        if proto_enum is None:
-            error(
-                "<COR71783952E>",
-                AttributeError(f"could not locate protobuf enum `{name}`"),
-            )
-
-        if not isprotobufenum(proto_enum):
-            error(
-                "<COR71783964E>",
-                AttributeError(f"`{name}` is not a valid protobuf enumeration"),
-            )
-
-        self._proto_enum = proto_enum
-
-        super().__init__(proto_enum.items())
-
-    def __repr__(self):
-        return json.dumps(self, indent=2)
-
-    def items(self):
-        """We need to overwrite items() from dict so that hidden attributes are
-        not shown
-        """
-        return self.__dict__.items()
-
-    def toDict(self):
-        """We need to overwrite toDict from the default Munch implementation so
-        that hidden attributes are not shown.
-        """
-        return {k: v for k, v in super().toDict().items() if k != "_proto_enum"}
+@classmethod
+def to_dict(cls) -> Dict[str, int]:
+    """Return a dict representation of the keys and values"""
+    if not hasattr(cls, "__dict_repr__"):
+        setattr(
+            cls,
+            "__dict_repr__",
+            {
+                entry.name: entry.value
+                for entry in cls  # pylint: disable=not-an-iterable
+            },
+        )
+    return cls.__dict_repr__
 
 
-class _EnumRevInject(munch.Munch, dict):
-    """Use multiple inheritance dependency injection to reverse the order
-    of the enum map before passing to dict parent.  In order to understand
-    this consider the method resolution order (MRO) for __init__ in this
-    class hierarchy:
-
-    EnumRevBase -> EnumBase -> Munch -> _EnumRevInject -> Munch -> dict -> object
-    """
-
-    def __init__(self, forward_map):
-        # reverse keys and values and call munch constructor
-        super().__init__({value: key for key, value in forward_map})
-
-
-class EnumRevBase(EnumBase, _EnumRevInject):
-    """Reverse enumeration maps from integer to string."""
+@classmethod
+def to_munch(cls) -> munch.Munch:
+    """Return a munchified version of the enum"""
+    if not hasattr(cls, "__munch_repr__"):
+        setattr(cls, "__munch_repr__", munch.Munch(cls.to_dict()))
+    return cls.__munch_repr__
 
 
 __all__ = ["import_enums", "import_enum"]
 
 
-def import_enum(proto_enum: EnumTypeWrapper) -> Tuple[Type[EnumBase], str]:
+def import_enum(
+    proto_enum: EnumTypeWrapper, enum_class: Optional[Type[Enum]] = None
+) -> Tuple[str, str]:
     """Import a single enum into the global enum module by name
 
     Args:
         proto_enum:  EnumTypeWrapper
             The enum to import
+        enum_class:  Optional[Type[Enum]]
+            A pre-existing enum class that this proto enum binds to
 
     Returns:
         name:  str
@@ -108,11 +79,22 @@ def import_enum(proto_enum: EnumTypeWrapper) -> Tuple[Type[EnumBase], str]:
         rev_name:  str
             The name of the reversed enum global
     """
+    if not isprotobufenum(proto_enum):
+        error(
+            "<COR71783964E>",
+            AttributeError(f"`{proto_enum}` is not a valid protobuf enumeration"),
+        )
+
     name = proto_enum.DESCRIPTOR.name
-    enum_class = EnumBase(proto_enum)
+    enum_class = enum_class or Enum._create_(name, proto_enum.items())
+
+    # Add extra utility functions
+    setattr(enum_class, "to_dict", to_dict)
+    setattr(enum_class, "to_munch", to_munch)
+
     globals()[name] = enum_class
     rev_name = name + "Rev"
-    globals()[rev_name] = EnumRevBase(proto_enum)
+    globals()[rev_name] = munch.Munch({v: k for k, v in proto_enum.items()})
     __all__.append(name)
     __all__.append(rev_name)
     return name, rev_name

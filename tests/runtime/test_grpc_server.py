@@ -132,7 +132,7 @@ def test_model_train(runtime_grpc_server):
     response: TrainingInfoResponse = TrainingInfoResponse.from_proto(
         training_management_stub.GetTrainingStatus(training_info_request)
     )
-    assert response.status == TrainingStatus.COMPLETED
+    assert response.status == TrainingStatus.COMPLETED.value
 
     # Make sure we wait for training to finish
     result = TrainingManager.get_instance().training_futures[training_id].result()

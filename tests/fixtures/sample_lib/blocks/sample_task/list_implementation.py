@@ -2,7 +2,7 @@
 A sample block for sample things!
 """
 # Standard
-from typing import List
+from typing import List, Optional
 
 # Local
 from ...data_model.sample import SampleInputType, SampleOutputType, SampleTrainingType
@@ -62,10 +62,13 @@ class ListBlock(caikit.core.BlockBase):
         cls,
         training_data: DataStream[SampleTrainingType],
         batch_size: int = 64,
-        poison_pills: List[str] = [POISON_PILL_NAME],
+        poison_pills: Optional[List[str]] = None,
     ) -> "ListBlock":
         """Sample training method that produces a trained model"""
         # Barf if we were incorrectly passed data not in datastream format
+        poison_pills = (
+            poison_pills if poison_pills is not None else [cls.POISON_PILL_NAME]
+        )
         assert isinstance(training_data, DataStream)
         assert len(poison_pills) > 0
         return cls(batch_size=batch_size)

@@ -143,7 +143,7 @@ def _get_proto_val_name(field_val) -> str:
         return field_val.__name__
     if isinstance(field_val, list):
         assert len(field_val) == 1
-        return f"""{{"elements": {_get_proto_val_name(field_val[0])}}}"""
+        return f"List[{_get_proto_val_name(field_val[0])}]"
     raise RuntimeError(f"Invalid field type specifier: {field_val}")
 
 
@@ -152,21 +152,18 @@ def make_proto_def(message_specs: Dict[str, dict], pkg_suffix: str = None) -> st
     if pkg_suffix is None:
         pkg_suffix = _random_package_suffix()
     package_name = f"{caikit.core.data_model.CAIKIT_DATA_MODEL}.{pkg_suffix}"
-    # pylint: disable=f-string-without-interpolation
     out = justify_script_string(
-        f"""
+        """
+        from dataclasses import dataclass
+        from typing import Dict, List
         import caikit.core
 
         """
     )
     for message_name, message_spec in message_specs.items():
-        # pylint: disable=f-string-without-interpolation
-        msg_str = f"""\n@caikit.core.dataobject(schema={{"""
-        schema_fields = [
-            f'"{field_name}": {_get_proto_val_name(field_val)}'
-            for field_name, field_val in message_spec.items()
-        ]
-        msg_str += ", ".join(schema_fields)
-        msg_str += f'}}, package="{package_name}")\nclass {message_name}: pass\n\n'
+        msg_str = f'\n@caikit.core.dataobject("{package_name}")\n@dataclass\nclass {message_name}:\n'
+        for field_name, field_type in message_spec.items():
+            msg_str += f"    {field_name}: {_get_proto_val_name(field_type)}\n"
+        msg_str += "\n"
         out += msg_str
     return out

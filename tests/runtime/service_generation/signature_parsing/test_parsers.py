@@ -262,7 +262,13 @@ def test_get_args_with_defaults():
     ):
         pass
 
-    assert get_args_with_defaults(_run) == {"c", "d", "e", "f", "g"}
+    assert get_args_with_defaults(_run) == {
+        "c": None,
+        "d": None,
+        "e": 5,
+        "f": 0.5,
+        "g": None,
+    }
 
 
 def test_get_args_with_known_args():

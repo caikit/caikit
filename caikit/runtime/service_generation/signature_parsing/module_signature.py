@@ -20,7 +20,7 @@ comes to the caikit core common data model.
 """
 
 # Standard
-from typing import Dict, Optional, Set, Type
+from typing import Any, Dict, Optional, Type
 import inspect
 
 # First Party
@@ -59,7 +59,7 @@ class CaikitCoreModuleMethodSignature:
 
         try:
             self._method_pointer = getattr(self._module, self._method_name)
-            self._default_set = parsers.get_args_with_defaults(self._method_pointer)
+            self._default_map = parsers.get_args_with_defaults(self._method_pointer)
             method_signature = inspect.signature(self._method_pointer)
             self._return_type = parsers.get_output_type_name(
                 self._module, method_signature, self._method_pointer
@@ -73,7 +73,7 @@ class CaikitCoreModuleMethodSignature:
             )
             self._return_type = None
             self._parameters = None
-            self._default_set = set()
+            self._default_map = {}
 
     @property
     def module(self) -> Type[ModuleBase]:
@@ -97,9 +97,9 @@ class CaikitCoreModuleMethodSignature:
         return self._parameters
 
     @property
-    def default_parameters(self) -> Set[str]:
+    def default_parameters(self) -> Dict[str, Any]:
         """A set of all parameter names which have default values"""
-        return self._default_set
+        return self._default_map
 
 
 class CustomSignature(CaikitCoreModuleMethodSignature):

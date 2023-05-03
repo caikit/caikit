@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # Standard
+from datetime import datetime
 from glob import glob
 from typing import Any, Optional, Type
 import os
@@ -28,7 +29,6 @@ import alog
 # Local
 from caikit.core.data_model import dataobject
 from caikit.core.data_model.base import DataBase
-from caikit.core.data_model.dataobject import _NATIVE_TYPE_TO_JTD
 from caikit.core.data_model.streams.data_stream import DataStream
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit
@@ -37,6 +37,16 @@ import caikit
 # DataStreamSource wrappers so that the same message is not recreated
 # unnecessarily
 _DATA_STREAM_SOURCE_TYPES = {}
+
+# Python type -> jtd name
+_NATIVE_TYPE_TO_JTD = {
+    str: "string",
+    int: "int64",
+    float: "float64",
+    bytes: "bytes",
+    bool: "boolean",
+    datetime: "timestamp",
+}
 
 log = alog.use_channel("DSTRM-SRC")
 

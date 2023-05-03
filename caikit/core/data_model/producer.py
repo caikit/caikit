@@ -21,12 +21,12 @@ from .dataobject import CAIKIT_DATA_MODEL, dataobject
 PACKAGE_COMMON = f"{CAIKIT_DATA_MODEL}.common"
 
 
-@dataobject(
-    {"name": str, "version": str},
-    package=PACKAGE_COMMON,
-)
+@dataobject(PACKAGE_COMMON)
 class ProducerId:
     """Information about a data structure and the module that produced it."""
+
+    name: str
+    version: str
 
     def __add__(self, other):
         """Add two producer ids."""
@@ -39,6 +39,8 @@ class ProducerId:
 
     def fill_proto(self, proto):
         """Overloaded implementation for efficiency vs base introspection"""
-        proto.name = self.name
-        proto.version = self.version
+        if self.name is not None:
+            proto.name = self.name
+        if self.version is not None:
+            proto.version = self.version
         return proto

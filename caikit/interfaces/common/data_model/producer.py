@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Standard
+from typing import List
+
 # First Party
 import alog
 
@@ -23,15 +26,14 @@ log = alog.use_channel("DATAM")
 error = error_handler.get(log)
 
 
-@dataobject(
-    package=PACKAGE_COMMON,
-    schema={"producers": {"elements": ProducerId}},
-)
+@dataobject(PACKAGE_COMMON)
 class ProducerPriority:
     """An ordered list of ProducerId structures in descending order of priority.
     This is used when handling conflicts between multiple producers of the same
     data structure.
     """
+
+    elements: List[ProducerId]
 
     def __init__(self, producers):
         """Construct a new ProducerPriority
