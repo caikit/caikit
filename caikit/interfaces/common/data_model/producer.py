@@ -19,7 +19,12 @@ from typing import List
 import alog
 
 # Local
-from caikit.core.data_model import PACKAGE_COMMON, ProducerId, dataobject
+from caikit.core.data_model import (
+    PACKAGE_COMMON,
+    DataObjectBase,
+    ProducerId,
+    dataobject,
+)
 from caikit.core.toolkit.errors import error_handler
 
 log = alog.use_channel("DATAM")
@@ -27,7 +32,7 @@ error = error_handler.get(log)
 
 
 @dataobject(PACKAGE_COMMON)
-class ProducerPriority:
+class ProducerPriority(DataObjectBase):
     """An ordered list of ProducerId structures in descending order of priority.
     This is used when handling conflicts between multiple producers of the same
     data structure.
