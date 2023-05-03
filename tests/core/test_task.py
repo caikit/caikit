@@ -1,4 +1,7 @@
 ## Tests #######################################################################
+# Standard
+import uuid
+
 # Third Party
 import pytest
 
@@ -138,7 +141,14 @@ def test_task_cannot_conflict_with_parent_block():
     with pytest.raises(TypeError, match="but superclass has"):
 
         @caikit.core.blocks.block(
-            id="foobar", name="Stuff", version="0.0.1", task=SomeTask
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
         )
         class Stuff(SampleBlock):
             pass
+
+
+def test_task_is_temporarily_not_required_for_blocks():
+    # TODO: remove (or assert failure in) this test once task is required
+    @caikit.core.blocks.block(id=str(uuid.uuid4()), name="Stuff", version="0.0.1")
+    class Stuff(caikit.core.blocks.base.BlockBase):
+        pass
