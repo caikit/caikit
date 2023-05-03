@@ -54,6 +54,11 @@ class _DataBaseMetaClass(type):
     # attribute does exist.
     _MISSING_ATTRIBUTE = "missing attribute"
 
+    # Special attribute used to communicate that the proto fields are forward
+    # declared and will be populated after the metaclass has completed
+    # construction.
+    _FWD_DECL_FIELDS = "__fwd_decl_fields__"
+
     def __new__(mcs, name, bases, attrs):
         """When constructing a new data model class, we set the 'fields' class variable from the
         protobufs descriptor and then set the '__slots__' magic class attribute to fields.  This
@@ -82,7 +87,7 @@ class _DataBaseMetaClass(type):
         _fields_map = ()
         proto_class = None
         full_name = name
-        if name != "DataBase":
+        if name not in ["DataBase", "DataObjectBase"]:
             # Look for the proto class. There are two places it could be:
             #
             # 1. The "protobufs" module in caikit.core (injected via
@@ -123,92 +128,18 @@ class _DataBaseMetaClass(type):
                                 parent_mod_protos_name,
                             )
 
-            if proto_class is None:
-                raise AttributeError(
-                    f"Failed to find {name} in caikit.core.data_model.protobufs or derived "
-                    f"library protobufs"
-                )
+            # If a proto class is found here, pull all fields from the proto
+            # descriptor
+            if proto_class is not None:
+                fields = tuple(proto_class.DESCRIPTOR.fields_by_name)
 
-            # all fields
-            fields += tuple(proto_class.DESCRIPTOR.fields_by_name)
-
-            # all fields of type map
-            _fields_map = tuple(
-                field.name
-                for field in proto_class.DESCRIPTOR.fields
-                if field.message_type and field.message_type.GetOptions().map_entry
-            )
-
-            # map from all enum fields to their enum classes
-            # note: enums are also primitives, these overlap
-            fields_enum_map = {
-                field.name: getattr(enums, field.enum_type.name)
-                for field in proto_class.DESCRIPTOR.fields
-                if field.enum_type is not None
-            }
-
-            fields_enum_rev = {
-                field.name: getattr(enums, field.enum_type.name + "Rev")
-                for field in proto_class.DESCRIPTOR.fields
-                if field.enum_type is not None
-            }
-
-            # all repeated fields
-            fields_repeated = tuple(
-                field.name
-                for field in proto_class.DESCRIPTOR.fields
-                if field.label == field.LABEL_REPEATED
-            )
-
-            # all messages, repeated or not
-            _fields_message_all = tuple(
-                field.name
-                for field in proto_class.DESCRIPTOR.fields
-                if field.type == field.TYPE_MESSAGE
-            )
-
-            # all enums, repeated or not
-            _fields_enum_all = tuple(
-                field.name
-                for field in proto_class.DESCRIPTOR.fields
-                if field.enum_type is not None
-            )
-
-            # all primitives, repeated or not
-            _fields_primitive_all = (
-                frozenset(fields)
-                .difference(_fields_map)
-                .difference(_fields_message_all)
-                .difference(_fields_enum_all)
-            )
-
-            # messages that are not repeated
-            _fields_message = frozenset(_fields_message_all).difference(fields_repeated)
-
-            # messages that are repeated
-            _fields_message_repeated = frozenset(fields_repeated).intersection(
-                _fields_message_all
-            )
-
-            _fields_enum = frozenset(_fields_enum_all).difference(fields_repeated)
-
-            _fields_enum_repeated = frozenset(_fields_enum_all).intersection(
-                fields_repeated
-            )
-
-            # primitives that are not repeated
-            _fields_primitive = frozenset(_fields_primitive_all).difference(
-                fields_repeated
-            )
-
-            # primitives that are repeated
-            _fields_primitive_repeated = frozenset(fields_repeated).intersection(
-                _fields_primitive_all
-            )
-
-            # use the fully qualified protobuf name to avoid conflicts with
-            # nested messages that have matching names
-            full_name = proto_class.DESCRIPTOR.full_name
+            # Otherwise, we need to get the fields from a "special" attribute
+            else:
+                fields = attrs.pop(mcs._FWD_DECL_FIELDS, None)
+                if fields is None:
+                    raise AttributeError(
+                        "DEBUG !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+                    )
 
         # look if any private slots are declared as class variables
         private_slots = attrs.setdefault("_private_slots", ())
@@ -235,22 +166,114 @@ class _DataBaseMetaClass(type):
         attrs["fields"] = fields
         attrs["fields_enum_map"] = fields_enum_map
         attrs["fields_enum_rev"] = fields_enum_rev
+        attrs["_fields_map"] = _fields_map
         attrs["_fields_message"] = _fields_message
         attrs["_fields_message_repeated"] = _fields_message_repeated
         attrs["_fields_enum"] = _fields_enum
         attrs["_fields_enum_repeated"] = _fields_enum_repeated
         attrs["_fields_primitive"] = _fields_primitive
         attrs["_fields_primitive_repeated"] = _fields_primitive_repeated
-        attrs["_fields_map"] = _fields_map
         attrs["_proto_class"] = proto_class
         instance = super().__new__(mcs, name, bases, attrs)
 
+        # If there's a valid proto class, perform proto descriptor parsing
+        if proto_class is not None:
+            mcs.parse_proto_descriptor(instance)
+
         # Update the global class and proto registries
-        if name != "DataBase":
-            mcs.class_registry[full_name] = instance
+        if name not in ["DataBase", "DataObjectBase"]:
+            mcs.class_registry[instance.full_name] = instance
 
         # Return the constructed class instance
         return instance
+
+    @staticmethod
+    def parse_proto_descriptor(cls):
+        """Encapsulate the logic for parsing the protobuf descriptor here. This
+        allows the parsing to be done as a post-process after metaclass
+        initialization
+        """
+
+        # use the fully qualified protobuf name to avoid conflicts with
+        # nested messages that have matching names
+        cls.full_name = cls._proto_class.DESCRIPTOR.full_name
+
+        # all fields
+        cls.fields = tuple(cls._proto_class.DESCRIPTOR.fields_by_name)
+
+        # map from all enum fields to their enum classes
+        # note: enums are also primitives, these overlap
+        cls.fields_enum_map = {
+            field.name: getattr(enums, field.enum_type.name)
+            for field in cls._proto_class.DESCRIPTOR.fields
+            if field.enum_type is not None
+        }
+
+        cls.fields_enum_rev = {
+            field.name: getattr(enums, field.enum_type.name + "Rev")
+            for field in cls._proto_class.DESCRIPTOR.fields
+            if field.enum_type is not None
+        }
+
+        # all repeated fields
+        fields_repeated = tuple(
+            field.name
+            for field in cls._proto_class.DESCRIPTOR.fields
+            if field.label == field.LABEL_REPEATED
+        )
+
+        # all messages, repeated or not
+        _fields_message_all = tuple(
+            field.name
+            for field in cls._proto_class.DESCRIPTOR.fields
+            if field.type == field.TYPE_MESSAGE
+        )
+
+        # all enums, repeated or not
+        _fields_enum_all = tuple(
+            field.name
+            for field in cls._proto_class.DESCRIPTOR.fields
+            if field.enum_type is not None
+        )
+
+        # all fields of type map
+        cls._fields_map = tuple(
+            field.name
+            for field in cls._proto_class.DESCRIPTOR.fields
+            if field.message_type and field.message_type.GetOptions().map_entry
+        )
+
+        # all primitives, repeated or not
+        _fields_primitive_all = (
+            frozenset(cls.fields)
+            .difference(cls._fields_map)
+            .difference(_fields_message_all)
+            .difference(_fields_enum_all)
+        )
+
+        # messages that are not repeated
+        cls._fields_message = frozenset(_fields_message_all).difference(fields_repeated)
+
+        # messages that are repeated
+        cls._fields_message_repeated = frozenset(fields_repeated).intersection(
+            _fields_message_all
+        )
+
+        cls._fields_enum = frozenset(_fields_enum_all).difference(fields_repeated)
+
+        cls._fields_enum_repeated = frozenset(_fields_enum_all).intersection(
+            fields_repeated
+        )
+
+        # primitives that are not repeated
+        cls._fields_primitive = frozenset(_fields_primitive_all).difference(
+            fields_repeated
+        )
+
+        # primitives that are repeated
+        cls._fields_primitive_repeated = frozenset(fields_repeated).intersection(
+            _fields_primitive_all
+        )
 
     @classmethod
     def _make_property_getter(mcs, field):
