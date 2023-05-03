@@ -19,13 +19,8 @@ model objects inline without manually defining the protobufs representation
 
 # Standard
 from enum import Enum
-from functools import update_wrapper
-from types import ModuleType
 from typing import Any, Callable, List, Type, Union, get_args, get_origin
 import dataclasses
-import importlib
-import sys
-import types
 
 # Third Party
 from google.protobuf import message as _message
