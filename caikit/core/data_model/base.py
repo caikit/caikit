@@ -22,7 +22,6 @@
 # Standard
 from typing import Optional, Type, Union
 import base64
-import importlib
 import json
 
 # Third Party
@@ -88,48 +87,9 @@ class _DataBaseMetaClass(type):
         proto_class = None
         full_name = name
         if name not in ["DataBase", "DataObjectBase"]:
-            # Look for the proto class. There are two places it could be:
-            #
-            # 1. The "protobufs" module in caikit.core (injected via
-            #   import_protobufs)
-            # 2. The "protobufs" module in the derived library.
-            #
-            # The second option is primarily needed when using import_tracker on
-            # a caikit.core derived library. The side-effects of
-            # import_protobufs break the import_tracker mechanism, so this
-            # fallback avoids the reliance on side-effects.
-            proto_class = attrs.get("_proto_class")
-            if proto_class is None:
-                parent_mod = attrs.get("__module__")
-                log.debug3(
-                    "No proto class found in central registry for [%s]. Looking in [%s]",
-                    name,
-                    parent_mod,
-                )
-                if parent_mod is not None:
-                    parent_mod_name = parent_mod.rpartition(".")[0]
-                    if not parent_mod_name:
-                        log.debug3(
-                            "No parent module for data model declared outside library"
-                        )
-                    else:
-                        parent_mod_protos_name = ".".join(
-                            [parent_mod_name, "protobufs"]
-                        )
-                        try:
-                            parent_mod_protos = importlib.import_module(
-                                parent_mod_protos_name
-                            )
-                            proto_class = getattr(parent_mod_protos, name, None)
-                        except ImportError:
-                            log.debug3(
-                                "Could not find a protobufs module in [%s]: %s",
-                                parent_mod,
-                                parent_mod_protos_name,
-                            )
-
-            # If a proto class is found here, pull all fields from the proto
+            # Look for a precompiled proto class and if found, parse its
             # descriptor
+            proto_class = attrs.get("_proto_class")
             if proto_class is not None:
                 fields = tuple(proto_class.DESCRIPTOR.fields_by_name)
 

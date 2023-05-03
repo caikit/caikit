@@ -144,8 +144,10 @@ def test_derived_class_no_import_side_effects():
             handle.write(
                 justify_script_string(
                     """
+                    from . import protobufs
                     from caikit.core.data_model import base
                     class Object(base.DataBase):
+                        _proto_class = protobufs.Object
                         def __init__(self, foo):
                             self.foo = foo
                     """
