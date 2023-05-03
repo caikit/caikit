@@ -10,6 +10,7 @@ import tempfile
 import pytest
 
 # Local
+from caikit.core.data_model import DataObjectBase, dataobject
 from caikit.core.data_model.streams.data_stream import DataStream
 from caikit.runtime.service_generation.data_stream_source import (
     DataStreamSourceBase,
@@ -183,9 +184,8 @@ def test_pickle_round_trip_data_model():
     cleanly with pickle
     """
 
-    @caikit.core.dataobject
-    @dataclass
-    class Foo:
+    @dataobject
+    class Foo(DataObjectBase):
         foo: int
         bar: str
 
