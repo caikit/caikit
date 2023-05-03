@@ -87,8 +87,8 @@ def test_derived_class_no_proto_class():
                 )
             )
 
-        # Make sure an AttributeError is raised when the import is tried
-        with pytest.raises(AttributeError):
+        # Make sure an ValueError is raised when the import is tried
+        with pytest.raises(ValueError):
             importlib.import_module(".".join([mod_name, "object"]))
 
 
@@ -110,8 +110,8 @@ def test_derived_class_no_proto_mod():
                 )
             )
 
-        # Make sure an AttributeError is raised when the import is tried
-        with pytest.raises(AttributeError):
+        # Make sure an ValueError is raised when the import is tried
+        with pytest.raises(ValueError):
             importlib.import_module(".".join([mod_name, "object"]))
 
 
