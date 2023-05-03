@@ -70,11 +70,11 @@ class _DataBaseMetaClass(type):
         protobufs, it can be named in the tuple class variable _private_slots and will
         automatically be added to __slots__.
         """
-        # get all fields in protobufs with same name as class,
+        # Get all fields in protobufs with same name as class,
         # except for DataBase, which has no matching protobufs
         fields = ()
 
-        # protobufs fields can be divided into these categories, which are used to automatically
+        # Protobufs fields can be divided into these categories, which are used to automatically
         # determine appropriate behavior in a number of methods
         fields_enum_map = {}
         fields_enum_rev = {}
@@ -136,15 +136,20 @@ class _DataBaseMetaClass(type):
             # Otherwise, we need to get the fields from a "special" attribute
             else:
                 fields = attrs.pop(mcs._FWD_DECL_FIELDS, None)
-                if fields is None:
-                    raise AttributeError(
-                        "DEBUG !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-                    )
+                log.debug4(
+                    "Using dataclass forward declaration fields %s for %s", fields, name
+                )
+                error.value_check(
+                    "<COR49310991E>",
+                    fields is not None,
+                    name,
+                    msg="No proto class found for {}",
+                )
 
-        # look if any private slots are declared as class variables
+        # Look if any private slots are declared as class variables
         private_slots = attrs.setdefault("_private_slots", ())
 
-        # class slots are fields + private slots, this prevents other
+        # Class slots are fields + private slots, this prevents other
         # member attributes from being set and also improves performance
         attrs["__slots__"] = tuple(
             [f"_{field}" for field in fields] + list(private_slots) + ["_backend"]
@@ -159,7 +164,7 @@ class _DataBaseMetaClass(type):
         if current_init is None or current_init is DataBase.__init__:
             attrs["__init__"] = mcs._make_init(fields)
 
-        # set fields class variable for reference
+        # Set fields class variable for reference
         # these are valuable for validating attributes and
         # also for recursively converting to and from protobufs
         attrs["full_name"] = full_name
@@ -328,7 +333,7 @@ class _DataBaseMetaClass(type):
             if num_args + num_kwargs > num_fields:
                 error(
                     "<COR71444420E>",
-                    ValueError(f"Too many arguments given. Args are: {fields}"),
+                    TypeError(f"Too many arguments given. Args are: {fields}"),
                 )
 
             if num_args > 0:  # Do a quick check for performance reason
@@ -341,12 +346,12 @@ class _DataBaseMetaClass(type):
                 for field_name, field_val in kwargs.items():
                     if field_name not in fields:
                         error(
-                            "<COR71444421E>", ValueError(f"Unknown field {field_name}")
+                            "<COR71444421E>", TypeError(f"Unknown field {field_name}")
                         )
                     elif field_name in used_fields:
                         error(
                             "<COR71444422E>",
-                            ValueError(f"Got multiple values for field {field_name}"),
+                            TypeError(f"Got multiple values for field {field_name}"),
                         )
                     setattr(self, field_name, field_val)
                     used_fields.append(field_name)
@@ -604,7 +609,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
                     # protobufs message map container
                     if hasattr(subproto[key], "DESCRIPTOR"):
                         value.fill_proto(subproto[key])
-                    # Otherwise we have a protobufs scala map container, and we can set the
+                    # Otherwise we have a protobufs scalar map container, and we can set the
                     # primitive value like a normal dictionary.
                     else:
                         subproto[key] = value
