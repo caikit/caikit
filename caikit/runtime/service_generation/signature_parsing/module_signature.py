@@ -51,9 +51,6 @@ class CaikitCoreModuleMethodSignature:
     2. Look for python type annotations
     3. Look for a default value and check its type
     4. Parse the docstring
-
-    Return types can also be inferred as "{module_type}Prediction" if the type cannot be
-    determined any other way.
     """
 
     def __init__(self, caikit_core_module: Type[ModuleBase], method_name: str):
