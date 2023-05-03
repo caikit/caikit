@@ -18,7 +18,12 @@
 
 # Local
 from . import base, data_backends, enums, producer, protobufs
-from .dataobject import CAIKIT_DATA_MODEL, dataobject, render_dataobject_protos
+from .dataobject import (
+    CAIKIT_DATA_MODEL,
+    DataObjectBase,
+    dataobject,
+    render_dataobject_protos,
+)
 from .enums import *
 from .producer import PACKAGE_COMMON, ProducerId
 from .streams import data_stream
