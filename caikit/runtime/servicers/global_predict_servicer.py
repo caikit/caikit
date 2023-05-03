@@ -26,7 +26,6 @@ import alog
 # Local
 from caikit import get_config
 from caikit.runtime.metrics.rpc_meter import RPCMeter
-from caikit.runtime.metrics.throughput import Throughput
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -50,7 +49,7 @@ PREDICT_FROM_PROTO_SUMMARY = Summary(
     "Histogram of predict request unmarshalling duration (in seconds)",
     ["grpc_request", "model_id"],
 )
-PREDICT_caikit_library_SUMMARY = Summary(
+PREDICT_CAIKIT_LIBRARY_SUMMARY = Summary(
     "predict_caikit_library_duration_seconds",
     "Histogram of predict Caikit Library run duration (in seconds)",
     ["grpc_request", "model_id"],
@@ -58,16 +57,6 @@ PREDICT_caikit_library_SUMMARY = Summary(
 PREDICT_TO_PROTO_SUMMARY = Summary(
     "predict_to_proto_duration_seconds",
     "Histogram of predict response marshalling duration (in seconds)",
-    ["grpc_request", "model_id"],
-)
-INPUT_SIZE_SUMMARY = Summary(
-    "input_code_points",
-    "Size of original text input in code points",
-    ["grpc_request", "model_id"],
-)
-THROUGHPUT_ESTIMATE_SUMMARY = Throughput(
-    "throughput_kilocodepoints_per_second",
-    "An estimate of per-model throughput",
     ["grpc_request", "model_id"],
 )
 
@@ -167,27 +156,21 @@ class GlobalPredictServicer:
                         request, model.run
                     )
 
-                input_size_kchar = self.get_input_kchar(context)
-                INPUT_SIZE_SUMMARY.labels(
-                    grpc_request=desc_name, model_id=model_id
-                ).observe(input_size_kchar)
-
+                # NB: we previously recorded the size of the request, and timed this block to
+                # provide a rudimentary throughput metric of size / time
                 with alog.ContextLog(log.debug, inner_scope_name):
-                    with THROUGHPUT_ESTIMATE_SUMMARY.input_size(
-                        input_size_kchar
-                    ).labels(grpc_request=desc_name, model_id=model_id).time():
-                        with PREDICT_caikit_library_SUMMARY.labels(
-                            grpc_request=desc_name, model_id=model_id
-                        ).time():
-                            if self.use_abortable_threads:
-                                work = AbortableAction(
-                                    CallAborter(context),
-                                    model.run,
-                                    **caikit_library_request,
-                                )
-                                response = work.do()
-                            else:
-                                response = model.run(**caikit_library_request)
+                    with PREDICT_CAIKIT_LIBRARY_SUMMARY.labels(
+                        grpc_request=desc_name, model_id=model_id
+                    ).time():
+                        if self.use_abortable_threads:
+                            work = AbortableAction(
+                                CallAborter(context),
+                                model.run,
+                                **caikit_library_request,
+                            )
+                            response = work.do()
+                        else:
+                            response = model.run(**caikit_library_request)
 
                 # Marshall the response to the necessary return type
                 with PREDICT_TO_PROTO_SUMMARY.labels(
@@ -250,13 +233,3 @@ class GlobalPredictServicer:
             raise CaikitRuntimeException(
                 StatusCode.INTERNAL, "Unhandled exception during prediction"
             ) from e
-
-    def get_input_kchar(self, context):
-        input_size = get_metadata(context, self.INPUT_SIZE_KEY, required=False)
-        if input_size is not None:
-            try:
-                input_size_int = int(input_size)
-                return input_size_int / 1000.0
-            except ArithmeticError:
-                pass
-        return 0
