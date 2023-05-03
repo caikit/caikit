@@ -263,32 +263,3 @@ class GlobalPredictServicer:
             except ArithmeticError:
                 pass
         return 0
-
-    @staticmethod
-    def _raise_on_wrong_rpc(
-        desc_name: str, response_type: Type, model_id: str, model: Type[ModuleBase]
-    ) -> None:
-        """
-        Raise if a model was used for the wrong RPC. This relies on our RPC naming conventions, and
-        protects us from failing to serialize the response later in the grpc server layer.
-        (If there's a better way to check whether response.to_proto() matches the current RPC spec,
-        maybe we should do that instead...)
-
-        Args:
-            desc_name (str): The name of the RPC that was called
-            response_type (Type): type(model.run())
-            model_id (str): the ID of the model that was used
-            model (Type[ModuleBase]): the actual model used
-
-        Returns:
-            None
-        """
-        expected_response_type_name = desc_name.replace("Request", "Prediction")
-        response_class_name = response_type.__name__
-        if expected_response_type_name != response_class_name:
-            log.error("Cannot return type %s from request %s", response_type, desc_name)
-            raise CaikitRuntimeException(
-                grpc.StatusCode.INVALID_ARGUMENT,
-                f"Wrong return type from model {model_id}. Expected type {expected_response_type_name} "  # pylint: disable=line-too-long
-                f"but found type {response_type}. Model is type: {type(model)}",
-            )
