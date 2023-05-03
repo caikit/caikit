@@ -13,21 +13,18 @@
 # limitations under the License.
 # Standard
 from importlib.metadata import version
-from typing import Type
 import traceback
 
 # Third Party
 from google.protobuf.descriptor import FieldDescriptor
 from grpc import StatusCode
 from prometheus_client import Counter, Summary
-import grpc
 
 # First Party
 import alog
 
 # Local
 from caikit import get_config
-from caikit.core import ModuleBase
 from caikit.runtime.metrics.rpc_meter import RPCMeter
 from caikit.runtime.metrics.throughput import Throughput
 from caikit.runtime.model_management.model_manager import ModelManager
