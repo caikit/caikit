@@ -4,7 +4,13 @@ import pytest
 
 # Local
 from caikit.core import TaskBase, TaskGroupBase, task, taskgroup
-from sample_lib.data_model.sample import SampleInputType, SampleOutputType
+from sample_lib import SampleBlock
+from sample_lib.data_model.sample import (
+    SampleInputType,
+    SampleOutputType,
+    SampleTask,
+    SampleTaskGroup,
+)
 import caikit.core
 
 
@@ -104,4 +110,35 @@ def test_domain_validates_inputs_are_protoabletypes():
 
         @taskgroup(input_types={caikit.core.ModuleBase})
         class SampleTaskGroup(TaskGroupBase):
+            pass
+
+
+def test_task_is_set_on_module_classes():
+    assert hasattr(SampleBlock, "TASK_CLASS")
+    assert SampleBlock.TASK_CLASS == SampleTask
+
+
+def test_task_can_be_inferred_from_parent_block():
+    @caikit.core.blocks.block(id="foobar", name="Stuff", version="0.0.1")
+    class Stuff(SampleBlock):
+        pass
+
+    assert Stuff.TASK_CLASS == SampleBlock.TASK_CLASS
+
+
+def test_task_cannot_conflict_with_parent_block():
+    @task(
+        task_group=SampleTaskGroup,
+        required_inputs={"foo": SampleInputType},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    with pytest.raises(TypeError, match="but superclass has"):
+
+        @caikit.core.blocks.block(
+            id="foobar", name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class Stuff(SampleBlock):
             pass
