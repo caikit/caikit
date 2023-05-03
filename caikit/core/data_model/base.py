@@ -155,15 +155,6 @@ class _DataBaseMetaClass(type):
             [f"_{field}" for field in fields] + list(private_slots) + ["_backend"]
         )
 
-        # add properties that use the underlying backend
-        for field in fields:
-            attrs[field] = mcs._make_property_getter(field)
-
-        # If there is not already an __init__ function defined, make one
-        current_init = attrs.get("__init__")
-        if current_init is None or current_init is DataBase.__init__:
-            attrs["__init__"] = mcs._make_init(fields)
-
         # Set fields class variable for reference
         # these are valuable for validating attributes and
         # also for recursively converting to and from protobufs
@@ -179,21 +170,18 @@ class _DataBaseMetaClass(type):
         attrs["_fields_primitive"] = _fields_primitive
         attrs["_fields_primitive_repeated"] = _fields_primitive_repeated
         attrs["_proto_class"] = proto_class
+
         instance = super().__new__(mcs, name, bases, attrs)
 
         # If there's a valid proto class, perform proto descriptor parsing
         if proto_class is not None:
             mcs.parse_proto_descriptor(instance)
 
-        # Update the global class and proto registries
-        if name not in ["DataBase", "DataObjectBase"]:
-            mcs.class_registry[instance.full_name] = instance
-
         # Return the constructed class instance
         return instance
 
-    @staticmethod
-    def parse_proto_descriptor(cls):
+    @classmethod
+    def parse_proto_descriptor(mcs, cls):
         """Encapsulate the logic for parsing the protobuf descriptor here. This
         allows the parsing to be done as a post-process after metaclass
         initialization
@@ -279,6 +267,20 @@ class _DataBaseMetaClass(type):
         cls._fields_primitive_repeated = frozenset(fields_repeated).intersection(
             _fields_primitive_all
         )
+
+        # Update the global class and proto registries
+        # NOTE: Explicitly not respecting metaclass inheritance so single
+        #   registry shared for all
+        _DataBaseMetaClass.class_registry[cls.full_name] = cls
+
+        # Add properties that use the underlying backend
+        for field in cls.fields:
+            setattr(cls, field, mcs._make_property_getter(field))
+
+        # If there is not already an __init__ function defined, make one
+        current_init = cls.__init__
+        if current_init is None or current_init is DataBase.__init__:
+            setattr(cls, "__init__", mcs._make_init(cls.fields))
 
     @classmethod
     def _make_property_getter(mcs, field):
