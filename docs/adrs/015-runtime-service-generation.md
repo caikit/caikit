@@ -13,7 +13,7 @@ to a remote service depending on their deployment context, with no code changes 
 separately-authored remote APIs would make this hard, if not impossible to achieve.
 
 Module interfaces should already be defined using parameters that are easily translatable to protobuf:
-python primitives and [data models](todo: link to data model ADR).
+python primitives and [data models](010-data-model-definition.md).
 
 The protobuf stack for data models is already managed in-memory (as opposed to authoring and compiling 
 protobuf files.) It's not a stretch to also manage protobuf services and some gRPC bits and pieces in memory
