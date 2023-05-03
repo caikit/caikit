@@ -16,15 +16,15 @@
 import os
 
 # Third Party
+from transformers import pipeline
+
+# Local
+from caikit.core import BlockBase, ModuleLoader, ModuleSaver, block
 from text_sentiment.data_model.classification import (
     ClassificationPrediction,
     ClassInfo,
     TextInput,
 )
-from transformers import pipeline
-
-# Local
-from caikit.core import BlockBase, ModuleLoader, ModuleSaver, block
 
 
 @block("8f72161-c0e4-49b0-8fd0-7587b3017a35", "HuggingFaceSentimentBlock", "0.0.1")

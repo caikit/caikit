@@ -13,11 +13,11 @@
 # limitations under the License.
 
 # Third Party
-from text_sentiment.data_model import TextInput
 import grpc
 
 # Local
 from caikit.runtime.service_factory import ServicePackageFactory
+from text_sentiment.data_model import TextInput
 
 inference_service = ServicePackageFactory().get_service_package(
     ServicePackageFactory.ServiceType.INFERENCE,

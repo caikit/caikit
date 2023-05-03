@@ -23,7 +23,7 @@ sys.path.append(
     path.abspath(path.join(path.dirname(__file__), "../"))
 )  # Here we assume that `start_runtime` file is at the same level of the `text_sentiment` package
 
-# Third Party
+# Local
 import text_sentiment
 
 alog.configure(default_level="debug")
