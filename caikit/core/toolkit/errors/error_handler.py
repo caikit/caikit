@@ -292,8 +292,8 @@ class ErrorHandler:
                 Upon calling this function, this is typically provided as an expression, e.g.,
                 `0 < variable < 1`.
             *args:
-                A variable set of arguments describing the value check that failed. If only
-                1 argument is provided then an empty msg string is assumed and no additional
+                A variable set of arguments describing the value check that failed. If no
+                args are provided then an empty msg string is assumed and no additional
                 information will be provided, otherwise the first argument will be treated as 'msg'
                 argument. Note that string interpolation can be lazily performed on `msg` using `{}`
                 format syntax by passing additional arguments.  This is the preferred method for
@@ -304,14 +304,13 @@ class ErrorHandler:
         if not get_config().enable_error_checks:
             return
 
-        if len(args) == 1:
-            msg = "{}"
-        else:
-            msg = args[0]
-            args = args[1:]
-
         if not condition:
-            interpolated_msg = msg.format(*args)
+            interpolated_msg = (
+                ""
+                if not args
+                else (args[0] if len(args) == 1 else args[0].format(*args[1:]))
+            )
+
             self(
                 log_code, ValueError("value check failed: {}".format(interpolated_msg))
             )
