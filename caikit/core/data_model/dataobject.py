@@ -122,8 +122,8 @@ def dataobject(*args, **kwargs) -> Callable[[Type], Type[DataBase]]:
         error.value_check(
             "<COR95184230E>",
             issubclass(cls, (DataObjectBase, Enum)),
+            "{} must inherit from DataObjectBase/Enum when using @dataobject",
             cls.__name__,
-            msg="{} must inherit from DataObjectBase/Enum when using @dataobject",
         )
 
         # Add the package to the kwargs
