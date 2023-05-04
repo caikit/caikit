@@ -669,3 +669,31 @@ def test_dataobject_dataclass_default_factory():
     inst = Foo()
     assert inst.foo is not None
     assert inst.foo == []
+
+
+def test_enum_value_dereference():
+    """Make sure that enum value objects can be used to instantiate data model
+    objects and that they are correctly dereferenced in to_proto, to_dict, and
+    to_json
+    """
+
+    @dataobject
+    class FooEnum(Enum):
+        FOO = 1
+        BAR = 2
+
+    @dataobject
+    class Foo(DataObjectBase):
+        foo: FooEnum
+
+    # Create an instance with an enum value object
+    inst = Foo(foo=FooEnum.FOO)
+    assert inst.to_proto().foo == FooEnum.FOO.value
+    assert inst.to_dict()["foo"] == FooEnum.FOO.name
+    assert json.loads(inst.to_json())["foo"] == FooEnum.FOO.name
+
+    # Create an instance with an integer value
+    inst = Foo(foo=FooEnum.FOO.value)
+    assert inst.to_proto().foo == FooEnum.FOO.value
+    assert inst.to_dict()["foo"] == FooEnum.FOO.name
+    assert json.loads(inst.to_json())["foo"] == FooEnum.FOO.name

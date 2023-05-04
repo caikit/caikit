@@ -20,6 +20,7 @@
 # pylint: disable=no-member
 
 # Standard
+from enum import Enum
 from typing import Optional, Type, Union
 import base64
 import json
@@ -560,9 +561,13 @@ class DataBase(metaclass=_DataBaseMetaClass):
             if attr is None:
                 continue
 
-            if field in self._fields_primitive or field in self._fields_enum:
+            if field in self._fields_primitive:
                 setattr(proto, field, attr)
-
+            elif field in self._fields_enum:
+                if isinstance(attr, Enum):
+                    setattr(proto, field, attr.value)
+                else:
+                    setattr(proto, field, attr)
             elif field in self._fields_map:
                 subproto = getattr(proto, field)
                 for key, value in attr.items():
@@ -649,7 +654,9 @@ class DataBase(metaclass=_DataBaseMetaClass):
             # if field is an enum, do the reverse lookup from int -> str
             enum_rev = self.fields_enum_rev.get(field)
             if enum_rev is not None:
-                return enum_rev[attr]
+                return (
+                    enum_rev[attr.value] if isinstance(attr, Enum) else enum_rev[attr]
+                )
 
         if field in self._fields_enum_repeated:
             # if field is an enum, do the reverse lookup from int -> str
