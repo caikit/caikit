@@ -148,21 +148,24 @@ class RuntimeGRPCServer:
         health_pb2_grpc.add_HealthServicer_to_server(health_servicer, self.server)
 
         # Listen on a unix socket as well for model mesh.
-        try:
-            self.server.add_insecure_port(
-                f"unix://{self.config.runtime.unix_socket_path}"
-            )
-            log.info(
-                "<RUN10001011I>",
-                "Caikit Runtime is communicating through address: unix://%s",
-                self.config.runtime.unix_socket_path,
-            )
-        except RuntimeError:
-            log.info(
-                "<RUN10001100I>",
-                "Binding failed for: unix://%s",
-                self.config.runtime.unix_socket_path,
-            )
+        if self.config.runtime.unix_socket_path and os.path.exists(
+            self.config.runtime.unix_socket_path
+        ):
+            try:
+                self.server.add_insecure_port(
+                    f"unix://{self.config.runtime.unix_socket_path}"
+                )
+                log.info(
+                    "<RUN10001011I>",
+                    "Caikit Runtime is communicating through address: unix://%s",
+                    self.config.runtime.unix_socket_path,
+                )
+            except RuntimeError:
+                log.info(
+                    "<RUN10001100I>",
+                    "Binding failed for: unix://%s",
+                    self.config.runtime.unix_socket_path,
+                )
 
         # Pull TLS config from app config, unless an explicit override was passed
         self.tls_config = (
