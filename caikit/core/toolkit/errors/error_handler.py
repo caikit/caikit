@@ -273,7 +273,7 @@ class ErrorHandler:
                         ),
                     )
 
-    def value_check(self, log_code, condition, *args, msg=""):
+    def value_check(self, log_code, condition, msg="", *args):
         """Check for acceptable values for a given object.  If this check fails, a log message will
         be omitted at the error level on the log channel associated with this handler and a
         `ValueError` exception will be raised with an appropriate message.  This check should be
