@@ -154,14 +154,15 @@ def make_proto_def(message_specs: Dict[str, dict], pkg_suffix: str = None) -> st
     package_name = f"{caikit.core.data_model.CAIKIT_DATA_MODEL}.{pkg_suffix}"
     out = justify_script_string(
         """
-        from dataclasses import dataclass
         from typing import Dict, List
-        import caikit.core
+        from caikit.core.data_model import DataObjectBase, dataobject
 
         """
     )
     for message_name, message_spec in message_specs.items():
-        msg_str = f'\n@caikit.core.dataobject("{package_name}")\n@dataclass\nclass {message_name}:\n'
+        msg_str = (
+            f'\n@dataobject("{package_name}")\nclass {message_name}(DataObjectBase):\n'
+        )
         for field_name, field_type in message_spec.items():
             msg_str += f"    {field_name}: {_get_proto_val_name(field_type)}\n"
         msg_str += "\n"

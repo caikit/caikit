@@ -16,13 +16,13 @@ Common data model objects used to identify the producer of a given output
 """
 
 # Local
-from .dataobject import CAIKIT_DATA_MODEL, dataobject
+from .dataobject import CAIKIT_DATA_MODEL, DataObjectBase, dataobject
 
 PACKAGE_COMMON = f"{CAIKIT_DATA_MODEL}.common"
 
 
 @dataobject(PACKAGE_COMMON)
-class ProducerId:
+class ProducerId(DataObjectBase):
     """Information about a data structure and the module that produced it."""
 
     name: str

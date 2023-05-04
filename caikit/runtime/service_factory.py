@@ -41,8 +41,12 @@ import alog
 
 # Local
 from caikit import get_config
-from caikit.core import dataobject
 from caikit.core.data_model.base import DataBase
+from caikit.core.data_model.dataobject import (
+    DataObjectBase,
+    _DataObjectBaseMetaClass,
+    dataobject,
+)
 from caikit.core.module import ModuleBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
@@ -350,7 +354,12 @@ class ServicePackageFactory:
                 continue
 
             decorator = dataobject(package=package_name)
-            cls_ = type(task.request.name, (object,), attrs)
+            cls_ = _DataObjectBaseMetaClass.__new__(
+                _DataObjectBaseMetaClass,
+                name=task.request.name,
+                bases=(DataObjectBase,),
+                attrs=attrs,
+            )
             decorated_cls = decorator(cls_)
             data_model_classes.append(decorated_cls)
 

@@ -19,13 +19,8 @@ model objects inline without manually defining the protobufs representation
 
 # Standard
 from enum import Enum
-from functools import update_wrapper
-from types import ModuleType
 from typing import Any, Callable, List, Type, Union, get_args, get_origin
 import dataclasses
-import importlib
-import sys
-import types
 
 # Third Party
 from google.protobuf import message as _message
@@ -46,6 +41,9 @@ from .base import DataBase, _DataBaseMetaClass
 log = alog.use_channel("SCHEMA")
 error = error_handler.get(log)
 
+# Common package prefix
+CAIKIT_DATA_MODEL = "caikit_data_model"
+
 # Registry of auto-generated protos so that they can be rendered to .proto
 _AUTO_GEN_PROTO_CLASSES = []
 
@@ -54,8 +52,43 @@ _USER_DEFINED_DEFAULTS = "__user_defined_defaults__"
 
 ## Public ######################################################################
 
-# Common package prefix
-CAIKIT_DATA_MODEL = "caikit_data_model"
+
+class _DataObjectBaseMetaClass(_DataBaseMetaClass):
+    """This metaclass is used for the DataObject base class so that all data
+    objects can delay the creation of their proto class until after the
+    metaclass has been instantiated.
+    """
+
+    def __new__(mcs, name, bases, attrs):
+        """When instantiating a new DataObject class, the proto class will not
+        yet have been generated, but the set of fields will be known since the
+        class will be the raw input representation of a @dataclass
+        """
+
+        # Get the annotations that will go into the dataclass
+        if name != "DataObjectBase":
+            raw_field_names = attrs.get("__annotations__")
+            if raw_field_names is None:
+                raise TypeError(
+                    "All DataObjectBase classes must follow dataclass syntax"
+                )
+
+            # TODO: Sort out oneof field names
+            field_names = list(raw_field_names.keys())
+
+            # Add the forward declaration
+            attrs[_DataBaseMetaClass._FWD_DECL_FIELDS] = field_names
+
+        # Delegate to the base metaclass
+        return super().__new__(mcs, name, bases, attrs)
+
+
+class DataObjectBase(DataBase, metaclass=_DataObjectBaseMetaClass):
+    """A DataObject is a data model class that is backed by a @dataclass.
+
+    Data model classes that use the @dataobject decorator must derive from this
+    base class.
+    """
 
 
 def dataobject(*args, **kwargs) -> Callable[[Type], Type[DataBase]]:
@@ -65,7 +98,7 @@ def dataobject(*args, **kwargs) -> Callable[[Type], Type[DataBase]]:
 
     @dataobject("foo.bar")
     @dataclass
-    class MyDataObject:
+    class MyDataObject(DataObjectBase):
         '''My Custom Data Object'''
         foo: str
         bar: int
@@ -88,9 +121,9 @@ def dataobject(*args, **kwargs) -> Callable[[Type], Type[DataBase]]:
         # Make sure that the wrapped class does NOT inherit from DataBase
         error.value_check(
             "<COR95184230E>",
-            not issubclass(cls, DataBase),
-            "{} should not directly inherit from DataBase when using @schema",
+            issubclass(cls, (DataObjectBase, Enum)),
             cls.__name__,
+            msg="{} must inherit from DataObjectBase/Enum when using @dataobject",
         )
 
         # Add the package to the kwargs
@@ -150,27 +183,14 @@ def dataobject(*args, **kwargs) -> Callable[[Type], Type[DataBase]]:
         # Declare the merged class that binds DataBase to the wrapped class with
         # this generated proto class
         if isinstance(proto_class, type):
-            wrapper_class = _make_data_model_class(proto_class, cls)
+            setattr(cls, "_proto_class", proto_class)
+            cls = _make_data_model_class(proto_class, cls)
         else:
             enums.import_enum(proto_class, cls)
             setattr(cls, "_proto_enum", proto_class)
-            wrapper_class = cls
 
-        # Attach the proto class to the protobufs module
-        parent_mod_name = getattr(cls, "__module__", "").rpartition(".")[0]
-        log.debug2("Parent mod name: %s", parent_mod_name)
-        if parent_mod_name:
-            proto_mod_name = ".".join([parent_mod_name, "protobufs"])
-            try:
-                proto_mod = importlib.import_module(proto_mod_name)
-            except ImportError:
-                log.debug("Creating new protobufs module: %s", proto_mod_name)
-                proto_mod = ModuleType(proto_mod_name)
-                sys.modules[proto_mod_name] = proto_mod
-            setattr(proto_mod, cls.__name__, proto_class)
-
-        # Return the merged data class
-        return wrapper_class
+        # Return the decorated class
+        return cls
 
     # If called without the function invocation, fill in the default argument
     if args and callable(args[0]):
@@ -215,9 +235,11 @@ class _DataobjectConverter(DataclassConverter):
     def get_concrete_type(self, entry: Any) -> Any:
         """Also include data model classes and enums as concrete types"""
         unwrapped = self._resolve_wrapped_type(entry)
-        if (isinstance(unwrapped, type) and issubclass(unwrapped, DataBase)) or hasattr(
-            unwrapped, "_proto_enum"
-        ):
+        if (
+            isinstance(unwrapped, type)
+            and issubclass(unwrapped, DataBase)
+            and unwrapped._proto_class is not None
+        ) or hasattr(unwrapped, "_proto_enum"):
             return entry
         return super().get_concrete_type(entry)
 
@@ -270,31 +292,32 @@ def _get_all_enums(
     return all_enums
 
 
-def _make_data_model_class(proto_class, wrapped_cls):
-    wrapper_cls = _DataBaseMetaClass(
-        wrapped_cls.__name__,
-        tuple([DataBase, wrapped_cls]),
-        {"_proto_class": proto_class, **wrapped_cls.__dict__},
-    )
-    update_wrapper(wrapper_cls, wrapped_cls, updated=())
+def _make_data_model_class(proto_class, cls):
+    if issubclass(cls, DataObjectBase):
+        _DataBaseMetaClass.parse_proto_descriptor(cls)
 
     # Recursively make all nested message wrappers
     for nested_message_descriptor in proto_class.DESCRIPTOR.nested_types:
         nested_message_name = nested_message_descriptor.name
         nested_proto_class = getattr(proto_class, nested_message_name)
         setattr(
-            wrapper_cls,
+            cls,
             nested_message_name,
             _make_data_model_class(
                 nested_proto_class,
-                types.new_class(nested_message_name),
+                _DataBaseMetaClass.__new__(
+                    _DataBaseMetaClass,
+                    name=nested_message_name,
+                    bases=(DataBase,),
+                    attrs={"_proto_class": getattr(proto_class, nested_message_name)},
+                ),
             ),
         )
     for nested_enum_descriptor in proto_class.DESCRIPTOR.enum_types:
         setattr(
-            wrapper_cls,
+            cls,
             nested_enum_descriptor.name,
             getattr(enums, nested_enum_descriptor.name),
         )
 
-    return wrapper_cls
+    return cls

@@ -87,8 +87,8 @@ def test_derived_class_no_proto_class():
                 )
             )
 
-        # Make sure an AttributeError is raised when the import is tried
-        with pytest.raises(AttributeError):
+        # Make sure an ValueError is raised when the import is tried
+        with pytest.raises(ValueError):
             importlib.import_module(".".join([mod_name, "object"]))
 
 
@@ -110,8 +110,8 @@ def test_derived_class_no_proto_mod():
                 )
             )
 
-        # Make sure an AttributeError is raised when the import is tried
-        with pytest.raises(AttributeError):
+        # Make sure an ValueError is raised when the import is tried
+        with pytest.raises(ValueError):
             importlib.import_module(".".join([mod_name, "object"]))
 
 
@@ -144,8 +144,10 @@ def test_derived_class_no_import_side_effects():
             handle.write(
                 justify_script_string(
                     """
+                    from . import protobufs
                     from caikit.core.data_model import base
                     class Object(base.DataBase):
+                        _proto_class = protobufs.Object
                         def __init__(self, foo):
                             self.foo = foo
                     """

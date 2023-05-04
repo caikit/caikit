@@ -22,7 +22,6 @@
 # Standard
 from typing import Optional, Type, Union
 import base64
-import importlib
 import json
 
 # Third Party
@@ -54,6 +53,11 @@ class _DataBaseMetaClass(type):
     # attribute does exist.
     _MISSING_ATTRIBUTE = "missing attribute"
 
+    # Special attribute used to communicate that the proto fields are forward
+    # declared and will be populated after the metaclass has completed
+    # construction.
+    _FWD_DECL_FIELDS = "__fwd_decl_fields__"
+
     def __new__(mcs, name, bases, attrs):
         """When constructing a new data model class, we set the 'fields' class variable from the
         protobufs descriptor and then set the '__slots__' magic class attribute to fields.  This
@@ -65,11 +69,11 @@ class _DataBaseMetaClass(type):
         protobufs, it can be named in the tuple class variable _private_slots and will
         automatically be added to __slots__.
         """
-        # get all fields in protobufs with same name as class,
+        # Get all fields in protobufs with same name as class,
         # except for DataBase, which has no matching protobufs
         fields = ()
 
-        # protobufs fields can be divided into these categories, which are used to automatically
+        # Protobufs fields can be divided into these categories, which are used to automatically
         # determine appropriate behavior in a number of methods
         fields_enum_map = {}
         fields_enum_rev = {}
@@ -82,175 +86,161 @@ class _DataBaseMetaClass(type):
         _fields_map = ()
         proto_class = None
         full_name = name
-        if name != "DataBase":
-            # Look for the proto class. There are two places it could be:
-            #
-            # 1. The "protobufs" module in caikit.core (injected via
-            #   import_protobufs)
-            # 2. The "protobufs" module in the derived library.
-            #
-            # The second option is primarily needed when using import_tracker on
-            # a caikit.core derived library. The side-effects of
-            # import_protobufs break the import_tracker mechanism, so this
-            # fallback avoids the reliance on side-effects.
+        if name not in ["DataBase", "DataObjectBase"]:
+            # Look for a precompiled proto class and if found, parse its
+            # descriptor
             proto_class = attrs.get("_proto_class")
-            if proto_class is None:
-                parent_mod = attrs.get("__module__")
-                log.debug3(
-                    "No proto class found in central registry for [%s]. Looking in [%s]",
+            if proto_class is not None:
+                fields = tuple(proto_class.DESCRIPTOR.fields_by_name)
+
+            # Otherwise, we need to get the fields from a "special" attribute
+            else:
+                fields = attrs.pop(mcs._FWD_DECL_FIELDS, None)
+                log.debug4(
+                    "Using dataclass forward declaration fields %s for %s", fields, name
+                )
+                error.value_check(
+                    "<COR49310991E>",
+                    fields is not None,
                     name,
-                    parent_mod,
-                )
-                if parent_mod is not None:
-                    parent_mod_name = parent_mod.rpartition(".")[0]
-                    if not parent_mod_name:
-                        log.debug3(
-                            "No parent module for data model declared outside library"
-                        )
-                    else:
-                        parent_mod_protos_name = ".".join(
-                            [parent_mod_name, "protobufs"]
-                        )
-                        try:
-                            parent_mod_protos = importlib.import_module(
-                                parent_mod_protos_name
-                            )
-                            proto_class = getattr(parent_mod_protos, name, None)
-                        except ImportError:
-                            log.debug3(
-                                "Could not find a protobufs module in [%s]: %s",
-                                parent_mod,
-                                parent_mod_protos_name,
-                            )
-
-            if proto_class is None:
-                raise AttributeError(
-                    f"Failed to find {name} in caikit.core.data_model.protobufs or derived "
-                    f"library protobufs"
+                    msg="No proto class found for {}",
                 )
 
-            # all fields
-            fields += tuple(proto_class.DESCRIPTOR.fields_by_name)
-
-            # all fields of type map
-            _fields_map = tuple(
-                field.name
-                for field in proto_class.DESCRIPTOR.fields
-                if field.message_type and field.message_type.GetOptions().map_entry
-            )
-
-            # map from all enum fields to their enum classes
-            # note: enums are also primitives, these overlap
-            fields_enum_map = {
-                field.name: getattr(enums, field.enum_type.name)
-                for field in proto_class.DESCRIPTOR.fields
-                if field.enum_type is not None
-            }
-
-            fields_enum_rev = {
-                field.name: getattr(enums, field.enum_type.name + "Rev")
-                for field in proto_class.DESCRIPTOR.fields
-                if field.enum_type is not None
-            }
-
-            # all repeated fields
-            fields_repeated = tuple(
-                field.name
-                for field in proto_class.DESCRIPTOR.fields
-                if field.label == field.LABEL_REPEATED
-            )
-
-            # all messages, repeated or not
-            _fields_message_all = tuple(
-                field.name
-                for field in proto_class.DESCRIPTOR.fields
-                if field.type == field.TYPE_MESSAGE
-            )
-
-            # all enums, repeated or not
-            _fields_enum_all = tuple(
-                field.name
-                for field in proto_class.DESCRIPTOR.fields
-                if field.enum_type is not None
-            )
-
-            # all primitives, repeated or not
-            _fields_primitive_all = (
-                frozenset(fields)
-                .difference(_fields_map)
-                .difference(_fields_message_all)
-                .difference(_fields_enum_all)
-            )
-
-            # messages that are not repeated
-            _fields_message = frozenset(_fields_message_all).difference(fields_repeated)
-
-            # messages that are repeated
-            _fields_message_repeated = frozenset(fields_repeated).intersection(
-                _fields_message_all
-            )
-
-            _fields_enum = frozenset(_fields_enum_all).difference(fields_repeated)
-
-            _fields_enum_repeated = frozenset(_fields_enum_all).intersection(
-                fields_repeated
-            )
-
-            # primitives that are not repeated
-            _fields_primitive = frozenset(_fields_primitive_all).difference(
-                fields_repeated
-            )
-
-            # primitives that are repeated
-            _fields_primitive_repeated = frozenset(fields_repeated).intersection(
-                _fields_primitive_all
-            )
-
-            # use the fully qualified protobuf name to avoid conflicts with
-            # nested messages that have matching names
-            full_name = proto_class.DESCRIPTOR.full_name
-
-        # look if any private slots are declared as class variables
+        # Look if any private slots are declared as class variables
         private_slots = attrs.setdefault("_private_slots", ())
 
-        # class slots are fields + private slots, this prevents other
+        # Class slots are fields + private slots, this prevents other
         # member attributes from being set and also improves performance
         attrs["__slots__"] = tuple(
             [f"_{field}" for field in fields] + list(private_slots) + ["_backend"]
         )
 
-        # add properties that use the underlying backend
-        for field in fields:
-            attrs[field] = mcs._make_property_getter(field)
-
-        # If there is not already an __init__ function defined, make one
-        current_init = attrs.get("__init__")
-        if current_init is None or current_init is DataBase.__init__:
-            attrs["__init__"] = mcs._make_init(fields)
-
-        # set fields class variable for reference
+        # Set fields class variable for reference
         # these are valuable for validating attributes and
         # also for recursively converting to and from protobufs
         attrs["full_name"] = full_name
         attrs["fields"] = fields
         attrs["fields_enum_map"] = fields_enum_map
         attrs["fields_enum_rev"] = fields_enum_rev
+        attrs["_fields_map"] = _fields_map
         attrs["_fields_message"] = _fields_message
         attrs["_fields_message_repeated"] = _fields_message_repeated
         attrs["_fields_enum"] = _fields_enum
         attrs["_fields_enum_repeated"] = _fields_enum_repeated
         attrs["_fields_primitive"] = _fields_primitive
         attrs["_fields_primitive_repeated"] = _fields_primitive_repeated
-        attrs["_fields_map"] = _fields_map
         attrs["_proto_class"] = proto_class
+
         instance = super().__new__(mcs, name, bases, attrs)
 
-        # Update the global class and proto registries
-        if name != "DataBase":
-            mcs.class_registry[full_name] = instance
+        # If there's a valid proto class, perform proto descriptor parsing
+        if proto_class is not None:
+            mcs.parse_proto_descriptor(instance)
 
         # Return the constructed class instance
         return instance
+
+    @classmethod
+    def parse_proto_descriptor(mcs, cls):
+        """Encapsulate the logic for parsing the protobuf descriptor here. This
+        allows the parsing to be done as a post-process after metaclass
+        initialization
+        """
+
+        # use the fully qualified protobuf name to avoid conflicts with
+        # nested messages that have matching names
+        cls.full_name = cls._proto_class.DESCRIPTOR.full_name
+
+        # all fields
+        cls.fields = tuple(cls._proto_class.DESCRIPTOR.fields_by_name)
+
+        # map from all enum fields to their enum classes
+        # note: enums are also primitives, these overlap
+        cls.fields_enum_map = {
+            field.name: getattr(enums, field.enum_type.name)
+            for field in cls._proto_class.DESCRIPTOR.fields
+            if field.enum_type is not None
+        }
+
+        cls.fields_enum_rev = {
+            field.name: getattr(enums, field.enum_type.name + "Rev")
+            for field in cls._proto_class.DESCRIPTOR.fields
+            if field.enum_type is not None
+        }
+
+        # all repeated fields
+        fields_repeated = tuple(
+            field.name
+            for field in cls._proto_class.DESCRIPTOR.fields
+            if field.label == field.LABEL_REPEATED
+        )
+
+        # all messages, repeated or not
+        _fields_message_all = tuple(
+            field.name
+            for field in cls._proto_class.DESCRIPTOR.fields
+            if field.type == field.TYPE_MESSAGE
+        )
+
+        # all enums, repeated or not
+        _fields_enum_all = tuple(
+            field.name
+            for field in cls._proto_class.DESCRIPTOR.fields
+            if field.enum_type is not None
+        )
+
+        # all fields of type map
+        cls._fields_map = tuple(
+            field.name
+            for field in cls._proto_class.DESCRIPTOR.fields
+            if field.message_type and field.message_type.GetOptions().map_entry
+        )
+
+        # all primitives, repeated or not
+        _fields_primitive_all = (
+            frozenset(cls.fields)
+            .difference(cls._fields_map)
+            .difference(_fields_message_all)
+            .difference(_fields_enum_all)
+        )
+
+        # messages that are not repeated
+        cls._fields_message = frozenset(_fields_message_all).difference(fields_repeated)
+
+        # messages that are repeated
+        cls._fields_message_repeated = frozenset(fields_repeated).intersection(
+            _fields_message_all
+        )
+
+        cls._fields_enum = frozenset(_fields_enum_all).difference(fields_repeated)
+
+        cls._fields_enum_repeated = frozenset(_fields_enum_all).intersection(
+            fields_repeated
+        )
+
+        # primitives that are not repeated
+        cls._fields_primitive = frozenset(_fields_primitive_all).difference(
+            fields_repeated
+        )
+
+        # primitives that are repeated
+        cls._fields_primitive_repeated = frozenset(fields_repeated).intersection(
+            _fields_primitive_all
+        )
+
+        # Update the global class and proto registries
+        # NOTE: Explicitly not respecting metaclass inheritance so single
+        #   registry shared for all
+        _DataBaseMetaClass.class_registry[cls.full_name] = cls
+
+        # Add properties that use the underlying backend
+        for field in cls.fields:
+            setattr(cls, field, mcs._make_property_getter(field))
+
+        # If there is not already an __init__ function defined, make one
+        current_init = cls.__init__
+        if current_init is None or current_init is DataBase.__init__:
+            setattr(cls, "__init__", mcs._make_init(cls.fields))
 
     @classmethod
     def _make_property_getter(mcs, field):
@@ -305,7 +295,7 @@ class _DataBaseMetaClass(type):
             if num_args + num_kwargs > num_fields:
                 error(
                     "<COR71444420E>",
-                    ValueError(f"Too many arguments given. Args are: {fields}"),
+                    TypeError(f"Too many arguments given. Args are: {fields}"),
                 )
 
             if num_args > 0:  # Do a quick check for performance reason
@@ -318,12 +308,12 @@ class _DataBaseMetaClass(type):
                 for field_name, field_val in kwargs.items():
                     if field_name not in fields:
                         error(
-                            "<COR71444421E>", ValueError(f"Unknown field {field_name}")
+                            "<COR71444421E>", TypeError(f"Unknown field {field_name}")
                         )
                     elif field_name in used_fields:
                         error(
                             "<COR71444422E>",
-                            ValueError(f"Got multiple values for field {field_name}"),
+                            TypeError(f"Got multiple values for field {field_name}"),
                         )
                     setattr(self, field_name, field_val)
                     used_fields.append(field_name)
@@ -581,7 +571,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
                     # protobufs message map container
                     if hasattr(subproto[key], "DESCRIPTOR"):
                         value.fill_proto(subproto[key])
-                    # Otherwise we have a protobufs scala map container, and we can set the
+                    # Otherwise we have a protobufs scalar map container, and we can set the
                     # primitive value like a normal dictionary.
                     else:
                         subproto[key] = value
