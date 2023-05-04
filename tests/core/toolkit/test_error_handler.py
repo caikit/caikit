@@ -319,6 +319,30 @@ class TestErrorHandler(TestCaseBase):
             "exception raised: ValueError('value check failed: invalid range `1.1`')",
         )
 
+    def test_value_check_empty_msg_raises(self):
+        """Verify that `value_check` raises a `ValueError` if msg is empty."""
+        bad_value = 1.1
+
+        with self.assertRaises(ValueError):
+            self.error.value_check("<CCC>", 0.0 <= bad_value <= 1.0, bad_value)
+        error_msg = self.caplog.records[0].msg["message"]
+        self.assertEqual(
+            error_msg,
+            "exception raised: ValueError('value check failed: 1.1')",
+        )
+
+    def test_value_check_empty_args_raises(self):
+        """Verify that `value_check` raises a `ValueError` if only msg is provided."""
+        bad_value = 1.1
+
+        with self.assertRaises(ValueError):
+            self.error.value_check("<CCC>", 0.0 <= bad_value <= 1.0, "invalid range")
+        error_msg = self.caplog.records[0].msg["message"]
+        self.assertEqual(
+            error_msg,
+            "exception raised: ValueError('value check failed: invalid range')",
+        )
+
     def test_value_check_passes(self):
         """Verify that `value_check` does not raise an exception when good."""
         good_value = 0.5
