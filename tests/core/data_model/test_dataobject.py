@@ -18,6 +18,7 @@
 from dataclasses import dataclass, field, is_dataclass
 from enum import Enum
 from typing import List, Optional, Union
+import copy
 import json
 import os
 import tempfile
@@ -30,9 +31,12 @@ import pytest
 from py_to_proto.dataclass_to_proto import Annotated, OneofField
 
 # Local
-from caikit.core import dataobject  # NOTE: Imported from the top to validate
+from caikit.core import (  # NOTE: Imported from the top to validate
+    DataObjectBase,
+    dataobject,
+)
 from caikit.core.data_model import enums
-from caikit.core.data_model.base import DataBase
+from caikit.core.data_model.base import DataBase, _DataBaseMetaClass
 from caikit.core.data_model.dataobject import (
     _AUTO_GEN_PROTO_CLASSES,
     render_dataobject_protos,
@@ -56,7 +60,13 @@ def temp_dpool():
 @pytest.fixture(autouse=True)
 def reset_globals():
     """Reset the global registry of generated protos"""
+    prev_auto_gen_proto_classes = copy.copy(_AUTO_GEN_PROTO_CLASSES)
+    prev_class_registry = copy.copy(_DataBaseMetaClass.class_registry)
     _AUTO_GEN_PROTO_CLASSES.clear()
+    yield
+    _AUTO_GEN_PROTO_CLASSES.extend(prev_auto_gen_proto_classes)
+    _DataBaseMetaClass.class_registry.clear()
+    _DataBaseMetaClass.class_registry.update(prev_class_registry)
 
 
 def check_field_type(proto_class, field_name, exp_type):
@@ -88,7 +98,7 @@ def test_dataobject_native_types():
     """
 
     @dataobject
-    class Foo:
+    class Foo(DataObjectBase):
         foo: str
         bar: int
 
@@ -109,8 +119,8 @@ def test_dataobject_jtd():
     """
 
     @dataobject(schema={"properties": {"foo": {"type": "string"}}})
-    class Foo:
-        pass
+    class Foo(DataObjectBase):
+        foo: str
 
     assert check_field_type(Foo.get_proto_class(), "foo", "TYPE_STRING")
     inst = Foo(foo="test")
@@ -123,9 +133,9 @@ def test_dataobject_nested_objects():
     """Make sure that nested objects are handled correctly"""
 
     @dataobject
-    class Foo:
+    class Foo(DataObjectBase):
         @dataobject
-        class Bar:
+        class Bar(DataObjectBase):
             bat: str
 
         bar: Bar
@@ -141,14 +151,14 @@ def test_dataobject_nested_enums():
     """Make sure enums work as nested fields"""
 
     @dataobject
-    class Foo:
+    class Foo(DataObjectBase):
         @dataobject
         class Bar(Enum):
             EXAM = 0
             DRINKS = 1
 
         @dataobject
-        class Bat:
+        class Bat(DataObjectBase):
             @dataobject
             class Kind(Enum):
                 BASEBALL = 0
@@ -202,7 +212,7 @@ def test_dataobject_arrays():
     """Make sure arrays work as expected"""
 
     @dataobject
-    class Foo:
+    class Foo(DataObjectBase):
         bar: List[str]
 
     assert check_field_type(Foo.get_proto_class(), "bar", "TYPE_STRING")
@@ -220,11 +230,11 @@ def test_dataobject_obj_refs_no_opt_types():
         METAL = 1
 
     @dataobject
-    class Foo:
+    class Foo(DataObjectBase):
         foo: str
 
     @dataobject
-    class FooBar:
+    class FooBar(DataObjectBase):
         foo: Foo
         bar: BarEnum
 
@@ -248,11 +258,11 @@ def test_dataobject_obj_refs_with_optional_types():
         METAL = 1
 
     @dataobject
-    class Foo:
+    class Foo(DataObjectBase):
         foo: str
 
     @dataobject
-    class FooBar:
+    class FooBar(DataObjectBase):
         foo: Foo
         optionalFoo: Optional[Foo]
         bar: BarEnum
@@ -293,7 +303,7 @@ def test_dataobject_additional_methods():
             return val == cls.EXAM
 
     @dataobject
-    class Bar:
+    class Bar(DataObjectBase):
         bar: str
 
         def caps(self) -> str:
@@ -314,11 +324,11 @@ def test_render_dataobject_protos_valid_dir():
         METAL = 1
 
     @dataobject
-    class Foo:
+    class Foo(DataObjectBase):
         foo: str
 
     @dataobject
-    class FooBar:
+    class FooBar(DataObjectBase):
         foo: Foo
         bar: BarEnum
 
@@ -343,11 +353,11 @@ def test_render_dataobject_protos_no_dir():
         METAL = 1
 
     @dataobject
-    class Foo:
+    class Foo(DataObjectBase):
         foo: str
 
     @dataobject
-    class FooBar:
+    class FooBar(DataObjectBase):
         foo: Foo
         bar: BarEnum
 
@@ -397,8 +407,11 @@ def test_dataobject_with_discriminator():
             }
         }
     )
-    class BazObj:
-        pass
+    class BazObj(DataObjectBase):
+        foo: str
+        bar: str
+        baz: str
+        bat: str
 
     # proto tests
     foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))
@@ -495,7 +508,7 @@ def test_dataobject_round_trip_json():
     """Make sure that a dataobject class can serialize to/from json"""
 
     @dataobject
-    class BazObj:
+    class BazObj(DataObjectBase):
         foo: str
         bar: int
 
@@ -510,7 +523,7 @@ def test_dataobject_round_trip_proto():
     """Make sure that a dataobject class can serialize to/from proto"""
 
     @dataobject
-    class BazObj:
+    class BazObj(DataObjectBase):
         foo: str
         bar: int
 
@@ -529,7 +542,7 @@ def test_dir_on_instance():
     """
 
     @dataobject
-    class BazObj:
+    class BazObj(DataObjectBase):
         foo: str
 
     x = BazObj("foobar")
@@ -548,28 +561,28 @@ def test_dataobject_invocation_flavors():
 
     INVALID:
     1. Unexpected kwargs
-    2. Multiple valid kwargs
-    3. Package as position and keyword arg
+    2. Package as position and keyword arg
+    3. No inheritance from DataObjectBase
     """
     ## Valid ##
 
     # 1. No function call
     @dataobject
-    class Foo1:
+    class Foo1(DataObjectBase):
         foo: int
 
     assert "foo" in Foo1._proto_class.DESCRIPTOR.fields_by_name
 
     # 2. Function call with no args
     @dataobject()
-    class Foo2:
+    class Foo2(DataObjectBase):
         foo: int
 
     assert "foo" in Foo2._proto_class.DESCRIPTOR.fields_by_name
 
     # 3. Function call with single positional argument
     @dataobject("foo.bar")
-    class Foo3:
+    class Foo3(DataObjectBase):
         foo: int
 
     assert "foo" in Foo3._proto_class.DESCRIPTOR.fields_by_name
@@ -577,7 +590,7 @@ def test_dataobject_invocation_flavors():
 
     # 4. Function call with keyword args
     @dataobject(package="foo.bar")
-    class Foo4:
+    class Foo4(DataObjectBase):
         foo: int
 
     assert "foo" in Foo4._proto_class.DESCRIPTOR.fields_by_name
@@ -589,23 +602,20 @@ def test_dataobject_invocation_flavors():
     with pytest.raises(TypeError):
 
         @dataobject(buz="baz", package="foo.bar")
-        class FooBad:
+        class FooBad(DataObjectBase):
             foo: int
 
-    # 2. Multiple valid conflicting kwargs
-    with pytest.raises(TypeError):
-
-        @dataobject(
-            schema={"properties": {"foo": "string"}},  # Only valid for JTD flavor
-            validate=True,  # Only valid for dataclass flavor
-        )
-        class FooBad:
-            pass
-
-    # 3. Package as position and keyword arg
+    # 2. Package as position and keyword arg
     with pytest.raises(TypeError):
 
         @dataobject("baz.bat", package="foo.bar")
+        class Foo4(DataObjectBase):
+            foo: int
+
+    # 3. No inheritance from DataObjectBase
+    with pytest.raises(ValueError):
+
+        @dataobject
         class Foo4:
             foo: int
 
@@ -617,7 +627,7 @@ def test_dataobject_pre_existing_dataclass():
 
     @dataobject
     @dataclass
-    class Foo:
+    class Foo(DataObjectBase):
         foo: int
 
     assert is_dataclass(Foo)
@@ -633,7 +643,7 @@ def test_dataobject_dataclass_non_default_init():
     """
 
     @dataobject
-    class Foo:
+    class Foo(DataObjectBase):
         foo: int
 
         def __init__(self, foo_base):
@@ -650,7 +660,7 @@ def test_dataobject_dataclass_default_factory():
     """Make sure that a dataclass's datafactory field is preserved"""
 
     @dataobject
-    class Foo:
+    class Foo(DataObjectBase):
         foo: List[int] = field(default_factory=list)
 
     assert is_dataclass(Foo)

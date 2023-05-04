@@ -30,7 +30,7 @@ _warnings.filterwarnings("ignore")
 # must import toolkit first since we need alog to be set up before it is used
 from . import blocks, data_model, module, module_config, resources, toolkit, workflows
 from .blocks.base import BlockBase, block
-from .data_model import dataobject
+from .data_model import DataObjectBase, dataobject
 from .model_manager import *
 from .module import *
 from .module_backend_config import configure as backend_configure

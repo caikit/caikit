@@ -27,8 +27,12 @@ import grpc
 import alog
 
 # Local
-from caikit.core.data_model import dataobject
 from caikit.core.data_model.base import DataBase
+from caikit.core.data_model.dataobject import (
+    DataObjectBase,
+    _DataObjectBaseMetaClass,
+    dataobject,
+)
 from caikit.core.data_model.streams.data_stream import DataStream
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit
@@ -218,43 +222,57 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
             and issubclass(data_element_type, DataBase)
             else _NATIVE_TYPE_TO_JTD[data_element_type]
         )
-        data_object = dataobject(
-            schema={
-                "properties": {
-                    "data_stream": {
-                        "discriminator": "data_reference_type",
-                        "mapping": {
-                            "JsonData": {
-                                "properties": {
-                                    "data": {
-                                        "elements": {"type": element_type},
-                                    },
+        schema = {
+            "properties": {
+                "data_stream": {
+                    "discriminator": "data_reference_type",
+                    "mapping": {
+                        "JsonData": {
+                            "properties": {
+                                "data": {
+                                    "elements": {"type": element_type},
                                 },
-                            },
-                            "File": {"properties": {"filename": {"type": "string"}}},
-                            "ListOfFiles": {
-                                "properties": {
-                                    "files": {
-                                        "elements": {"type": "string"},
-                                    },
-                                },
-                            },
-                            "Directory": {
-                                "properties": {
-                                    "dirname": {"type": "string"},
-                                    "extension": {"type": "string"},
-                                }
                             },
                         },
-                    }
+                        "File": {"properties": {"filename": {"type": "string"}}},
+                        "ListOfFiles": {
+                            "properties": {
+                                "files": {
+                                    "elements": {"type": "string"},
+                                },
+                            },
+                        },
+                        "Directory": {
+                            "properties": {
+                                "dirname": {"type": "string"},
+                                "extension": {"type": "string"},
+                            }
+                        },
+                    },
                 }
-            },
-            package="caikit_data_model.runtime",
-        )(
-            type(
-                cls_name,
-                (DataStreamSourceBase,),
-                {"ELEMENT_TYPE": data_element_type},
+            }
+        }
+        # TODO: Once full oneof support is implemented, this can move to using
+        #   the proper @dataclass style. In the meantime, the "schema" version
+        #   that uses JTD is still supported so that this oneof can be
+        #   dynamically declared. In order to make this work, the
+        #   _DataObjectBaseMetaClass needs to pre-know the right set of field
+        #   names for the oneof fields as if this were a dataclass. The values
+        #   of these annotations are unused since this will never be made into a
+        #   true @dataclass.
+        annotations = {
+            name.lower(): None
+            for name in schema["properties"]["data_stream"]["mapping"]
+        }
+        data_object = dataobject(schema=schema, package="caikit_data_model.runtime",)(
+            _DataObjectBaseMetaClass.__new__(
+                _DataObjectBaseMetaClass,
+                name=cls_name,
+                bases=(DataObjectBase, DataStreamSourceBase),
+                attrs={
+                    "ELEMENT_TYPE": data_element_type,
+                    "__annotations__": annotations,
+                },
             )
         )
         setattr(
@@ -263,14 +281,14 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
             data_object,
         )
         setattr(
-            sys.modules[__name__],
+            sys.modules[data_object.__module__],
             cls_name,
             data_object,
         )
 
         # Add an init that sequences the initialization so that
         # DataStreamSourceBase is initialized after DataBase
-        orig_init = data_object.__init__
+        orig_init = _DataObjectBaseMetaClass._make_init(data_object.fields)
 
         def __init__(self, *args, **kwargs):
             orig_init(self, *args, **kwargs)

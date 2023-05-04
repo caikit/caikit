@@ -19,8 +19,8 @@ from enum import Enum
 import alog
 
 # Local
+from caikit.core.data_model import DataObjectBase, dataobject
 from caikit.core.toolkit.wip_decorator import Action, WipCategory, work_in_progress
-import caikit.core
 
 log = alog.use_channel("MDLOPS")
 
@@ -28,26 +28,26 @@ RUNTIME_PACKAGE = "caikit_data_model.runtime"
 
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
-@caikit.core.dataobject(RUNTIME_PACKAGE)
-class TrainingInfoRequest:
+@dataobject(RUNTIME_PACKAGE)
+class TrainingInfoRequest(DataObjectBase):
     training_id: str
 
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
-@caikit.core.dataobject(RUNTIME_PACKAGE)
-class TrainingJob:
+@dataobject(RUNTIME_PACKAGE)
+class TrainingJob(DataObjectBase):
     training_id: str
     model_name: str
 
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
-@caikit.core.dataobject(RUNTIME_PACKAGE)
-class ModelPointer:
+@dataobject(RUNTIME_PACKAGE)
+class ModelPointer(DataObjectBase):
     model_id: str
 
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
-@caikit.core.dataobject(RUNTIME_PACKAGE)
+@dataobject(RUNTIME_PACKAGE)
 class TrainingStatus(Enum):
     NOT_STARTED = 0
     HALTED = 1
@@ -59,8 +59,8 @@ class TrainingStatus(Enum):
 
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
-@caikit.core.dataobject(RUNTIME_PACKAGE)
-class TrainingInfoResponse:
+@dataobject(RUNTIME_PACKAGE)
+class TrainingInfoResponse(DataObjectBase):
     training_id: str
     status: TrainingStatus
     submission_timestamp: str
