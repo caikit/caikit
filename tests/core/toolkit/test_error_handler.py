@@ -313,6 +313,11 @@ class TestErrorHandler(TestCaseBase):
             self.error.value_check(
                 "<CCC>", 0.0 <= bad_value <= 1.0, "invalid range `{}`", bad_value
             )
+        error_msg = self.caplog.records[0].msg["message"]
+        self.assertEqual(
+            error_msg,
+            "exception raised: ValueError('value check failed: invalid range `1.1`')",
+        )
 
     def test_value_check_passes(self):
         """Verify that `value_check` does not raise an exception when good."""
