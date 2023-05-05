@@ -24,8 +24,8 @@ from caikit.core.data_model import dataobject
 class ClassInfo(DataObjectBase):
     """A single classification prediction."""
 
-    class_name: str
-    confidence: float
+    class_name: str  # (required) Predicted relevant class name
+    confidence: float  # (required) The confidence-like score of this prediction in [0, 1]
 
 
 @dataobject(package="text_sentiment.data_model")
