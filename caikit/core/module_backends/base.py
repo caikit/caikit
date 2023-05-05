@@ -16,7 +16,12 @@
 """
 
 # Standard
+from typing import Optional, Type
 import abc
+
+# Local
+from ..data_model import DataBase
+from ..module import ModuleBase
 
 
 class BackendBase(abc.ABC):
@@ -54,3 +59,70 @@ class BackendBase(abc.ABC):
     def stop(self):
         """Function to stop a distributed backend. This function
         should set self._started variable to False"""
+
+
+class UniversalTrainBackendBase(BackendBase, abc.ABC):
+    """Interface for a backend that can perform train on any given module
+
+    A Universal backend is one that treats the given module as a black box and
+    delegates the execution of that module's functionality to an alternate
+    execution engine.
+    """
+
+    @abc.abstractmethod
+    def train(self, module_class: Type[ModuleBase], *args, **kwargs) -> ModuleBase:
+        """Perform the given module's train operation and return the trained
+        module instance.
+
+        TODO: The return type here might be problematic in the case where the
+            server performing the train operation is just a proxy for both train
+            and inference. Consider some kind of lazy load proxy that would not
+            require the model to be held in memory.
+
+        Args:
+            module_class (Type[ModuleBase]): The module class to train
+            *args, **kwargs: The args to pass through to training
+
+        Returns:
+            model (ModuleBase): The in-memory instance of the trained
+                module
+        """
+
+
+class UniversalLoadBackendBase(BackendBase, abc.ABC):
+    """Interface for a backend that can perform load/unload on any given model
+
+    A Universal backend is one that treats the given module as a black box and
+    delegates the execution of that module's functionality to an alternate
+    execution engine.
+
+    The module returned by a universal manager must be capable of having run
+    called locally and delegating the execution of the underlying module to the
+    backend's framework.
+    """
+
+    @abc.abstractmethod
+    def load(
+        self, module_id: str, model_path: str, *args, **kwargs
+    ) -> Optional[ModuleBase]:
+        """Load the model stored at the given path into the backend
+
+        This function is responsible for loading a model in a way that the
+        backend is then able to execute it.
+
+        Universal loaders will be configured in a priority sequence. If a higher
+        priority loader fails to load a given model, the next one is attempted
+        until the model is loaded or no loaders are left.
+
+        Args:
+            module_id (str): The unique id of the module to load
+            model_path (str): Path to directory or zip file holding the model
+                with the config.yml and any artifacts
+            *args, **kwargs: Additional args to pass through to the module's
+                load function
+
+        Returns:
+            model (Optional[ModuleBase]): A runnable model if one could be
+                loaded, otherwise None. Such a model may be a wrapper that
+                delegates execution to the concrete model loaded elsewhere.
+        """
