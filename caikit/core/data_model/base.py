@@ -103,8 +103,8 @@ class _DataBaseMetaClass(type):
                 error.value_check(
                     "<COR49310991E>",
                     fields is not None,
+                    "No proto class found for {}",
                     name,
-                    msg="No proto class found for {}",
                 )
 
         # Look if any private slots are declared as class variables

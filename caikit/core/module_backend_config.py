@@ -54,7 +54,7 @@ def get_backend(backend_type: str) -> BackendBase:
     error.value_check(
         "<COR82987857E>",
         backend_type in _CONFIGURED_BACKENDS,
-        "Cannot fetch unconfigured backend [%s]",
+        "Cannot fetch unconfigured backend {}",
         backend_type,
     )
     backend = _CONFIGURED_BACKENDS[backend_type]
