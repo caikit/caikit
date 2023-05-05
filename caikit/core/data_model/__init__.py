@@ -18,6 +18,7 @@
 
 # Local
 from . import base, data_backends, enums, producer, protobufs
+from .base import DataBase
 from .dataobject import (
     CAIKIT_DATA_MODEL,
     DataObjectBase,
