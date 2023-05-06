@@ -5,6 +5,7 @@ of ModuleBase (e.g. Block)
 
 # Standard
 from typing import Dict, Optional, Type, Union
+import collections
 
 # Third Party
 import semver
@@ -14,6 +15,7 @@ import alog
 
 # Local
 from .. import core
+from . import data_model as dm
 from .module import _MODULE_TYPES, MODULE_BACKEND_REGISTRY, MODULE_REGISTRY, ModuleBase
 from .module_backends import backend_types
 from .toolkit.errors import error_handler
