@@ -103,9 +103,7 @@ class SharedLoadBackendBase(BackendBase, abc.ABC):
     """
 
     @abc.abstractmethod
-    def load(
-        self, module_id: str, model_path: str, *args, **kwargs
-    ) -> Optional[ModuleBase]:
+    def load(self, model_path: str, *args, **kwargs) -> Optional[ModuleBase]:
         """Load the model stored at the given path into the backend
 
         This function is responsible for loading a model in a way that the
@@ -116,7 +114,6 @@ class SharedLoadBackendBase(BackendBase, abc.ABC):
         until the model is loaded or no loaders are left.
 
         Args:
-            module_id (str): The unique id of the module to load
             model_path (str): Path to directory or zip file holding the model
                 with the config.yml and any artifacts
             *args, **kwargs: Additional args to pass through to the module's
