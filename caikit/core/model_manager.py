@@ -34,11 +34,12 @@ from .module import (
     _MODULE_TYPES,
     MODULE_BACKEND_REGISTRY,
     MODULE_REGISTRY,
-    SUPPORTED_LOAD_BACKENDS_VAR_NAME,
     ModuleBase,
     ModuleConfig,
 )
-from .module_backends import SharedLoadBackendBase, backend_types
+from .module_backends import backend_types
+from .module_backends.base import SharedLoadBackendBase
+from .module_type import SUPPORTED_LOAD_BACKENDS_VAR_NAME
 from .toolkit.errors import error_handler
 from caikit.config import get_config
 
