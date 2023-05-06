@@ -40,12 +40,12 @@ def start_backends() -> None:
     Returns:
         None
     """
-    for backend_name, backend in _CONFIGURED_LOAD_BACKENDS.items():
-        with _BACKEND_START_LOCKS[backend_name]:
+    for backend in _CONFIGURED_LOAD_BACKENDS:
+        with _BACKEND_START_LOCKS[backend.name]:
             if not backend.is_started:
                 backend.start()
-    for backend_name, backend in _CONFIGURED_TRAIN_BACKENDS.items():
-        with _BACKEND_START_LOCKS[backend_name]:
+    for backend in _CONFIGURED_TRAIN_BACKENDS:
+        with _BACKEND_START_LOCKS[backend.name]:
             if not backend.is_started:
                 backend.start()
 

@@ -19,8 +19,6 @@ Tests for the backend configuration framework
 # Local
 from caikit.core.blocks import base, block
 from caikit.core.module_backend_config import (
-    _CONFIGURED_LOAD_BACKENDS,
-    _CONFIGURED_TRAIN_BACKENDS,
     configure,
     configured_load_backends,
     configured_train_backends,
@@ -43,21 +41,62 @@ def test_configure_with_module(reset_globals):
     """Test that configuring with a configured backend type that has a
     configuration module obj works
     """
-    backend_types.register_backend_type(MockBackend)
     with temp_config(
         {
             "module_backends": {
-                "priority": [backend_types.MOCK],
-                "configs": {"mock": foo_cfg},
+                "load_priority": [
+                    {
+                        "type": backend_types.MOCK,
+                        "config": foo_cfg,
+                    }
+                ],
+                "train_priority": [
+                    {
+                        "type": backend_types.MOCK,
+                        "config": foo_cfg,
+                    }
+                ],
             }
         }
     ):
         configure()
-        assert "MOCK" in configured_backends()
-        assert (
-            _CONFIGURED_BACKENDS[backend_types.MOCK].backend_type == backend_types.MOCK
-        )
-        assert foo_cfg == _CONFIGURED_BACKENDS[backend_types.MOCK].config
+
+        # Test load backend config
+        mock_load_backend = get_load_backend(backend_types.MOCK)
+        assert mock_load_backend.backend_type == backend_types.MOCK
+        assert foo_cfg == mock_load_backend.config
+
+        # Test train backend config
+        mock_train_backend = get_train_backend(backend_types.MOCK)
+        assert mock_train_backend.backend_type == backend_types.MOCK
+        assert foo_cfg == mock_train_backend.config
+
+
+def test_configure_load_only(reset_globals):
+    """Test that train and load backends can be configured independently"""
+    with temp_config(
+        {
+            "module_backends": {
+                "load_priority": [
+                    {
+                        "type": backend_types.MOCK,
+                        "config": foo_cfg,
+                    }
+                ],
+                "train_priority": [],
+            }
+        }
+    ):
+        configure()
+
+        # Test load backend config
+        mock_load_backend = get_load_backend(backend_types.MOCK)
+        assert mock_load_backend.backend_type == backend_types.MOCK
+        assert foo_cfg == mock_load_backend.config
+
+        # Test train backend config
+        with pytest.raises(ValueError):
+            get_train_backend(backend_types.MOCK)
 
 
 def test_non_supported_backend_raises():
@@ -66,7 +105,7 @@ def test_non_supported_backend_raises():
     with temp_config(
         {
             "module_backends": {
-                "priority": ["unsupported"],
+                "load_priority": [{"type": "unsupported"}],
             }
         }
     ):
@@ -76,54 +115,118 @@ def test_non_supported_backend_raises():
 
 def test_disabling_local_backend(reset_globals):
     """Test that disabling local backend does not add it to priority automatically"""
-    backend_types.register_backend_type(MockBackend)
-    with temp_config(
-        {"module_backends": {"priority": [backend_types.MOCK], "disable_local": True}}
-    ):
-        configure()
-        assert "LOCAL" not in configured_backends()
-
-
-def test_duplicate_config_raises(reset_globals):
-    """Test that duplicate configuration of a backend raises"""
-    backend_types.register_backend_type(MockBackend)
     with temp_config(
         {
             "module_backends": {
-                "priority": [backend_types.MOCK],
+                "disable_local": True,
+                "load_priority": [{"type": backend_types.MOCK}],
+                "train_priority": [{"type": backend_types.MOCK}],
             }
         }
     ):
         configure()
-        with pytest.raises(AssertionError):
+        assert get_load_backend(backend_types.MOCK)
+        assert get_train_backend(backend_types.MOCK)
+        with pytest.raises(ValueError):
+            get_load_backend(backend_types.LOCAL)
+        with pytest.raises(ValueError):
+            get_train_backend(backend_types.LOCAL)
+
+
+def test_duplicate_config_raises(reset_globals):
+    """Test that duplicate configuration of a backend raises"""
+    with temp_config(
+        {
+            "module_backends": {
+                "load_priority": [
+                    {"type": backend_types.MOCK},
+                ],
+            }
+        }
+    ):
+        configure()
+        with pytest.raises(ValueError):
             configure()
+
+
+def test_duplicate_implied_names_raise(reset_globals):
+    """Test that duplicate entries with the same name implied from type raises"""
+    with temp_config(
+        {
+            "module_backends": {
+                "load_priority": [
+                    {"type": backend_types.MOCK},
+                    {"type": backend_types.MOCK},
+                ],
+            }
+        }
+    ):
+        with pytest.raises(ValueError):
+            configure()
+
+
+def test_duplicate_explicit_names_raise(reset_globals):
+    """Test that duplicate entries with the same name given explicitly from
+    raises
+    """
+    with temp_config(
+        {
+            "module_backends": {
+                "load_priority": [
+                    {"type": backend_types.MOCK, "name": "foo"},
+                    {"type": backend_types.MOCK, "name": "foo"},
+                ],
+            }
+        }
+    ):
+        with pytest.raises(ValueError):
+            configure()
+
+
+def test_duplicate_type_name_disambig(reset_globals):
+    """Test that multiple instances of the same type can be configured with
+    different names
+    """
+    with temp_config(
+        {
+            "module_backends": {
+                "load_priority": [
+                    {"type": backend_types.MOCK},
+                    {"type": backend_types.MOCK, "name": "foo"},
+                ],
+            }
+        }
+    ):
+        configure()
 
 
 def test_one_configured_backend_can_start(reset_globals):
     """Test that the configured backend can be started"""
-    backend_types.register_backend_type(MockBackend)
     with temp_config(
         {
             "module_backends": {
-                "priority": [backend_types.MOCK],
-                "configs": {"mock": foo_cfg},
+                "load_priority": [
+                    {
+                        "type": backend_types.MOCK,
+                        "config": foo_cfg,
+                    }
+                ],
             }
         }
     ):
         configure()
         start_backends()
+
         # This is configured to be True in helpers
-        assert (
-            _CONFIGURED_BACKENDS[backend_types.MOCK].backend_type == backend_types.MOCK
-        )
-        assert _CONFIGURED_BACKENDS[backend_types.MOCK].is_started
+        mock_load_backend = get_load_backend(backend_types.MOCK)
+        assert mock_load_backend.backend_type == backend_types.MOCK
+        assert mock_load_backend.is_started
 
 
 def test_multiple_module_same_backend_configures(reset_globals):
     """Test to check if multiple modules for same backend
     can override backend configurations"""
     # Register backend type
-    backend_types.register_backend_type(MockBackend)
 
     @block(id="foo", name="dummy base", version="0.0.1")
     class DummyFoo(base.BlockBase):
@@ -156,30 +259,25 @@ def test_multiple_module_same_backend_configures(reset_globals):
     with temp_config(
         {
             "module_backends": {
-                "priority": [backend_types.MOCK],
+                "load_priority": [{"type": backend_types.MOCK}],
             }
         }
     ):
         configure()
-        assert "MOCK" in configured_backends()
-        assert (
-            _CONFIGURED_BACKENDS[backend_types.MOCK].backend_type == backend_types.MOCK
-        )
-        assert "bar1" in _CONFIGURED_BACKENDS[backend_types.MOCK].config
-        assert "bar2" in _CONFIGURED_BACKENDS[backend_types.MOCK].config
-        assert _CONFIGURED_BACKENDS[backend_types.MOCK].config["bar1"] == 1
+        mock_load_backend = get_load_backend(backend_types.MOCK)
+        assert mock_load_backend.backend_type == backend_types.MOCK
+        assert "bar1" in mock_load_backend.config
+        assert "bar2" in mock_load_backend.config
+        assert mock_load_backend.config["bar1"] == 1
 
 
 def test_get_backend_starts_backend(reset_globals):
     """Test that fetching a handle to a backend with get_backend ensures that it
     is started
     """
-    backend_types.register_backend_type(MockBackend)
     with temp_config(
-        {"module_backends": {"priority": [backend_types.MOCK], "disable_local": True}}
+        {"module_backends": {"train_priority": [{"type": backend_types.MOCK}]}}
     ):
         configure()
-        assert not _CONFIGURED_BACKENDS[backend_types.MOCK].is_started
-        backend = get_backend(backend_types.MOCK)
-        assert backend.is_started
-        assert _CONFIGURED_BACKENDS[backend_types.MOCK].is_started
+        mock_train_backend = get_train_backend(backend_types.MOCK)
+        assert mock_train_backend.is_started
