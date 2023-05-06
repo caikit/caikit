@@ -84,32 +84,16 @@ SUPPORTED_LOAD_BACKENDS_VAR_NAME = "SUPPORTED_LOAD_BACKENDS"
 class ModuleBase(metaclass=_ModuleBaseMeta):
     """Abstract base class from which all Blocks and Workflows should inherit."""
 
-    # will be used to evaluate blocks; defined in sub-classes
-    evaluation_type = None
-    # first arg is "self", unfortunately; TODO: get rid of that somehow
-    evaluator = None
-
-    @staticmethod
-    def find_label_func(*_args, **_kwargs):
-        """Function used to extract "label" from a prediction/result of a block's .run method.
-        Define if you wish to have more specific evaluation metrics. Implemented in subclass.
-        """
-        raise NotImplementedError("Func not implemented")
-
-    @staticmethod
-    def find_label_data_func(*_args, **_kwargs):
-        """Function used to extract data belonging to class "label" from a prediction/result
-        of a block's .run method. Define if you wish to have more specific evaluation metrics.
-        Implemented in subclass.
-        """
-        raise NotImplementedError("Func not implemented")
-
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         """Construct a new model."""
         # Set up an empty metadata dictionary, to be:
         # - populated with metadata from `config.yml` files on `load`, and
         # - saved back to `config.yml` files on `save`
         self._metadata = {}
+
+    #############
+    ## Utility ##
+    #############
 
     @property
     @work_in_progress(category=WipCategory.WIP)
@@ -124,6 +108,10 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         if not hasattr(self, "_metadata") or self._metadata is None:
             self._metadata = {}
         return self._metadata
+
+    ###################
+    ## Instantiation ##
+    ###################
 
     @classmethod
     @alog.logged_function(log.debug)
@@ -152,6 +140,117 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             "<COR88356566E>",
             NotImplementedError("This is not available in this module."),
         )
+
+    @classmethod
+    def timed_load(cls, *args, **kwargs):
+        """Time a model `load` call.
+
+        Args:
+            *args: list
+                Will be passed to `self.load`.
+            **kwargs:  dict
+                Will be passed to `self.load` -- the only way to pass arbitrary arguments to
+                `self.load` from this function.
+
+        Returns:
+            int, caikit.core._ModuleBase
+                The first return value is the total time spent in the `self.load` call. The second
+                return value is the loaded model.
+
+        Notes:
+            You can pass everything that should go to the run function normally using args/kwargs.
+            Example: `model.timed_load("/model/path/dir")`
+        """
+        # get initial values
+        start_time = time.time()
+        # We are calling caikit.core over cls.load because we need to figure out
+        # what instance the model belongs to
+        model = core.load(*args, **kwargs)
+        time_passed = time.time() - start_time
+        return time_passed, model
+
+    def validate_loaded_model(self, *args):
+        """Validate a loaded model."""
+        error(
+            "<COR56275627E>",
+            NotImplementedError("This is not available in this module."),
+        )
+
+    ###################
+    ## Serialization ##
+    ###################
+
+    @alog.logged_function(log.debug)
+    def save(self, model_path, *args, **kwargs):
+        """Save a model.
+
+        Args:
+            model_path: str
+                Path on disk to export the model to.
+        """
+        error(
+            "<COR58632237E>",
+            NotImplementedError("This is not available in this module."),
+        )
+
+    @alog.logged_function(log.debug)
+    def as_file_like_object(self, *args, **kwargs):
+        """Produces a file-like object corresponding to a zip archive affiliated with a given
+        model. This method wraps is functionally similar to .save() - it saves a model into
+        a temporary directory and produces a zip archive, then loads the result as a io.BytesIO
+        object. The result of this function is also compatible with .load(), and cleanup is
+        handled automatically.
+
+        Args:
+            *args, **kwargs: dict
+                Optional keyword arguments for saving.
+        Returns:
+            io.BytesIO
+                File like object holding an exported model in memory as a io.BytesIO object.
+        """
+        return BytesIO(self.as_bytes(*args, **kwargs))
+
+    @alog.logged_function(log.debug)
+    def as_bytes(self, *args, **kwargs):
+        """Produces a bytes object corresponding to a zip archive affiliated with a given
+        model. This method wraps is functionally similar to .save() - it saves a model into
+        a temporary directory and produces a zip archive, then loads the result as a bytes
+        object. The result of this function is also compatible with .load(), and cleanup is
+        handled automatically.
+
+        Args:
+            *args, **kwargs: dict
+                Optional keyword arguments for saving.
+        Returns:
+            bytes
+                bytes object holding an exported model in memory.
+        """
+        # Open a temporary directory & do all operations relative to that temporary directory.
+        with tempfile.TemporaryDirectory() as ephemeral_model_path:
+            # Save the model to the temporary directory
+            model_path = os.path.join(ephemeral_model_path, ".model")
+            zip_path = os.path.join(ephemeral_model_path, ".archive")
+            zip_path_with_ext = zip_path + ".zip"
+            self.save(model_path, *args, **kwargs)
+            try:
+                # Compress the model to a zip archive in the temporary directory
+                shutil.make_archive(zip_path, "zip", model_path)
+                # Load the zip archive bytes into memory as a file-like object and clean up any disk
+                # objects (NOTE: it is safe to delete the archive once we extract the bytes).
+                with open(zip_path_with_ext, "rb") as handle:
+                    in_memory_archive = handle.read()
+            except PermissionError:
+                error(
+                    "<COR80051233E>",
+                    PermissionError(
+                        "Unable to create archive to be loaded into memory."
+                    ),
+                )
+            return in_memory_archive
+
+    ###############
+    ## Inference ##
+    ###############
 
     @alog.logged_function(log.debug)
     def run(self, *args, **kwargs):
@@ -218,6 +317,224 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             run_out = self.run(*run_args, **run_kwargs)
             predictions.append(run_out)
         return tuple(predictions)
+
+    def timed_run(self, *args, num_seconds=None, num_iterations=None, **kwargs):
+        """Time a number of runs over set seconds or iterations.
+
+        Args:
+            *args: list
+                Will be passed to `self.run`.
+            num_seconds:  int
+                Minimum number of seconds to run timed_run over. Will most likely be more than this
+                value due to its waiting for the each call to `self.run` to finish.
+            num_iterations:  int
+                Minimum number of iterations to run timed_run over. Will run exactly this many times.
+            **kwargs:  dict
+                Will be passed to `self.run`.
+
+        Returns:
+            int, int, caikit.core.data_model.DataBase
+                The first return value is the total time spent in the `self.run` loop. The second
+                return value is the total number of calls to `self.run` were made.
+                The return value is the output of the block's run method
+
+        Notes:
+            You can pass everything that should go to the run function normally using args/kwargs.
+            Example: `model.timed_run("some example text", num_seconds=60)`
+
+        By default it will run for greater than or equal to 120 seconds.
+        """
+        # default to running for 120 seconds
+        if not (num_seconds or num_iterations):
+            num_seconds = 120
+
+        # get initial values
+        start_time = time.time()
+        iterations_passed = 0
+        time_passed = time.time() - start_time
+
+        # stop on seconds or iterations depending on input arguments
+        # pylint: disable=unnecessary-lambda-assignment
+        continue_condition = (
+            lambda t_p, i_p: t_p <= num_seconds if num_seconds else i_p < num_iterations
+        )
+        response = None
+
+        while continue_condition(time_passed, iterations_passed):
+            # use model's run method
+            response = self.run(*args, **kwargs)
+
+            # increment output values
+            time_passed = time.time() - start_time
+            iterations_passed += 1
+
+        return time_passed, iterations_passed, response
+
+    def stream(self, data_stream, *args, **kwargs):
+        """Lazily evaluate a run() on a given model by constructing a new data stream generator
+        from the results. Note that we do not allow datastreams in args/kwargs. In rare cases,
+        this may mean that stream() is not available, e.g., for keywords extraction. In these
+        cases, stream() should be overridden in the subclass (module implementation) to allow
+        and expand along multiple data streams.
+
+        Args:
+            data_stream: caikit.core.data_model.DataStream
+                Datastream to be lazily sequentially processed by the module under consideration.
+            *args: Variable length argument list to be passed directly to run().
+            **kwargs: Arbitrary keyword arguments to be passed directly to run().
+        Returns:
+            protobufs
+                A DataBase object.
+        """
+        error.type_check("<COR98214589E>", dm.DataStream, data_stream=data_stream)
+        # Ensure that no args/kwargs are DataStreams, since these get passed to stream()
+        run_argvals = list(args) + list(kwargs.values())
+        if any(isinstance(arg, dm.DataStream) for arg in run_argvals):
+            error(
+                "<COR28828273E>",
+                ValueError(
+                    "Only one DataStream may be passed when invoking module stream()"
+                ),
+            )
+        # TODO: Add .run_batch() integration
+        return dm.DataStream(
+            lambda: (self.run(data_item, *args, **kwargs) for data_item in data_stream)
+        )
+
+    ##############
+    ## Training ##
+    ##############
+
+    @classmethod
+    @alog.logged_function(log.debug)
+    def train(cls, *args, **kwargs):
+        """Train a model."""
+        error(
+            "<COR44977721E>",
+            NotImplementedError("This is not available in this module."),
+        )
+
+    @classmethod
+    def validate_training_data(
+        cls, training_data: Union[str, DataStream], limit: int = -1
+    ) -> List[DataValidationError]:
+        """Validate a set of training data, passed as a filename or as a data stream.
+        Return up to `limit` number of DataValidationErrors
+        """
+        error(
+            "<COR56285627E>",
+            NotImplementedError("This is not available in this module."),
+        )
+
+    ################
+    ## Evaluation ##
+    ################
+
+    # will be used to evaluate blocks; defined in sub-classes
+    evaluation_type = None
+    # first arg is "self", unfortunately; TODO: get rid of that somehow
+    evaluator = None
+
+    @staticmethod
+    def find_label_func(*_args, **_kwargs):
+        """Function used to extract "label" from a prediction/result of a block's .run method.
+        Define if you wish to have more specific evaluation metrics. Implemented in subclass.
+        """
+        raise NotImplementedError("Func not implemented")
+
+    @staticmethod
+    def find_label_data_func(*_args, **_kwargs):
+        """Function used to extract data belonging to class "label" from a prediction/result
+        of a block's .run method. Define if you wish to have more specific evaluation metrics.
+        Implemented in subclass.
+        """
+        raise NotImplementedError("Func not implemented")
+
+    def evaluate_quality(
+        self,
+        dataset_path,
+        *args,
+        preprocess_func=None,
+        detailed_metrics=False,
+        labels=None,
+        partial_match_metrics=False,
+        max_hierarchy_levels=3,
+        **kwargs,
+    ):
+        """Run quality evaluation for instance of block or workflow.
+
+        Args:
+            dataset_path:  str
+                Path to where the input "gold set" dataset lives. Most often this is .json file.
+            preprocess_func:  method
+                Function used as proxy for any preliminary steps that need to be taken to run the
+                model on the input text. This helper function ultimately leads to the input to this
+                block and may involve executing other blocks.
+            detailed_metrics: boolean (Optional, defaults to False)
+                Only for 'keywords'. Include partial scores and scores over every text in document.
+            labels:  list (Optional, defaults to None)
+                Optional list of class labels to evaluate quality on. By default evaluation is done
+                over all class labels. Using this, you can explicitly mention only a subset of
+                labels to include in the quality evaluation.
+            partial_match_metrics: boolean (Optional, defaults to False)
+                Include partial match micro avg F1.
+            max_hierarchy_levels: int
+                Used in hierarchical multilabel multiclass evaluation only. The number of levels in
+                the hierarchy to run model evaluation on,
+                in addition to complete matches.
+            *args, **kwargs:
+                Optional arguments which can be used by goldset/prediction set extraction.
+                keyword arguments:
+                `block_level`: str (Applicable to block_type relations)
+                    For any block that has pre processing steps in the
+                    middle of raw text and actual block input, use the input from gold standard
+                    labels instead of a pre-process function. Useful for measuring quality for the
+                    'block' alone (instead of the block + pre_process pipeline)
+        Returns:
+            dict
+                Dictionary of results provided by the `self.evaluator.run` function, depending on
+                the associated `evaluation_type`. Reports things like precision, recall, and f1.
+        """
+        # 1) load dataset
+        dataset = self._load_evaluation_dataset(dataset_path)
+
+        # 2) verify dataset
+        error.type_check("<COR14030040E>", collections.abc.Iterable, dataset=dataset)
+
+        # 3) extract gold set predictions
+        # pylint: disable=assignment-from-no-return
+        gold_set = self._extract_gold_set(dataset)
+        gold_annos = self._extract_gold_annotations(gold_set)
+
+        # 4) obtain pred set predictions
+        # pylint: disable=assignment-from-no-return
+        pred_set = self._extract_pred_set(
+            dataset, preprocess_func=preprocess_func, *args, **kwargs
+        )
+        pred_annos = self._extract_pred_annotations(pred_set)
+
+        # 5) initialize evaluator
+        # pylint: disable=not-callable
+        evaluator = self.evaluator(gold_annos, pred_annos)
+
+        # 6) run evaluator
+        results = evaluator.run(
+            self.evaluation_type,
+            self.find_label_func,
+            self.find_label_data_func,
+            detailed_metrics,
+            labels,
+            partial_match_metrics,
+            max_hierarchy_levels,
+        )
+
+        # 7) generate report
+        report = self._generate_report(results, gold_set)
+
+        # 8) return report
+        return report
+
+    ## Implementation Details ##################################################
 
     @staticmethod
     def _is_expandable_iterable(arg):
@@ -364,114 +681,6 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
                 )
         return constructed_kwargs
 
-    def stream(self, data_stream, *args, **kwargs):
-        """Lazily evaluate a run() on a given model by constructing a new data stream generator
-        from the results. Note that we do not allow datastreams in args/kwargs. In rare cases,
-        this may mean that stream() is not available, e.g., for keywords extraction. In these
-        cases, stream() should be overridden in the subclass (module implementation) to allow
-        and expand along multiple data streams.
-
-        Args:
-            data_stream: caikit.core.data_model.DataStream
-                Datastream to be lazily sequentially processed by the module under consideration.
-            *args: Variable length argument list to be passed directly to run().
-            **kwargs: Arbitrary keyword arguments to be passed directly to run().
-        Returns:
-            protobufs
-                A DataBase object.
-        """
-        error.type_check("<COR98214589E>", dm.DataStream, data_stream=data_stream)
-        # Ensure that no args/kwargs are DataStreams, since these get passed to stream()
-        run_argvals = list(args) + list(kwargs.values())
-        if any(isinstance(arg, dm.DataStream) for arg in run_argvals):
-            error(
-                "<COR28828273E>",
-                ValueError(
-                    "Only one DataStream may be passed when invoking module stream()"
-                ),
-            )
-        # TODO: Add .run_batch() integration
-        return dm.DataStream(
-            lambda: (self.run(data_item, *args, **kwargs) for data_item in data_stream)
-        )
-
-    @alog.logged_function(log.debug)
-    def save(self, model_path, *args, **kwargs):
-        """Save a model.
-
-        Args:
-            model_path: str
-                Path on disk to export the model to.
-        """
-        error(
-            "<COR58632237E>",
-            NotImplementedError("This is not available in this module."),
-        )
-
-    @alog.logged_function(log.debug)
-    def as_file_like_object(self, *args, **kwargs):
-        """Produces a file-like object corresponding to a zip archive affiliated with a given
-        model. This method wraps is functionally similar to .save() - it saves a model into
-        a temporary directory and produces a zip archive, then loads the result as a io.BytesIO
-        object. The result of this function is also compatible with .load(), and cleanup is
-        handled automatically.
-
-        Args:
-            *args, **kwargs: dict
-                Optional keyword arguments for saving.
-        Returns:
-            io.BytesIO
-                File like object holding an exported model in memory as a io.BytesIO object.
-        """
-        return BytesIO(self.as_bytes(*args, **kwargs))
-
-    @alog.logged_function(log.debug)
-    def as_bytes(self, *args, **kwargs):
-        """Produces a bytes object corresponding to a zip archive affiliated with a given
-        model. This method wraps is functionally similar to .save() - it saves a model into
-        a temporary directory and produces a zip archive, then loads the result as a bytes
-        object. The result of this function is also compatible with .load(), and cleanup is
-        handled automatically.
-
-        Args:
-            *args, **kwargs: dict
-                Optional keyword arguments for saving.
-        Returns:
-            bytes
-                bytes object holding an exported model in memory.
-        """
-        # Open a temporary directory & do all operations relative to that temporary directory.
-        with tempfile.TemporaryDirectory() as ephemeral_model_path:
-            # Save the model to the temporary directory
-            model_path = os.path.join(ephemeral_model_path, ".model")
-            zip_path = os.path.join(ephemeral_model_path, ".archive")
-            zip_path_with_ext = zip_path + ".zip"
-            self.save(model_path, *args, **kwargs)
-            try:
-                # Compress the model to a zip archive in the temporary directory
-                shutil.make_archive(zip_path, "zip", model_path)
-                # Load the zip archive bytes into memory as a file-like object and clean up any disk
-                # objects (NOTE: it is safe to delete the archive once we extract the bytes).
-                with open(zip_path_with_ext, "rb") as handle:
-                    in_memory_archive = handle.read()
-            except PermissionError:
-                error(
-                    "<COR80051233E>",
-                    PermissionError(
-                        "Unable to create archive to be loaded into memory."
-                    ),
-                )
-            return in_memory_archive
-
-    @classmethod
-    @alog.logged_function(log.debug)
-    def train(cls, *args, **kwargs):
-        """Train a model."""
-        error(
-            "<COR44977721E>",
-            NotImplementedError("This is not available in this module."),
-        )
-
     def _extract_gold_set(self, dataset):
         """Method for extracting gold set from dataset. Implemented in subclass.
 
@@ -510,7 +719,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         )
 
     @staticmethod
-    def load_evaluation_dataset(dataset_path):
+    def _load_evaluation_dataset(dataset_path):
         """Helper specifically for dataset loading.
 
         Args:
@@ -532,90 +741,6 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             "<COR81451234E>",
             ValueError("Unsure of how to load: {0}".format(dataset_path)),
         )
-
-    def evaluate_quality(
-        self,
-        dataset_path,
-        *args,
-        preprocess_func=None,
-        detailed_metrics=False,
-        labels=None,
-        partial_match_metrics=False,
-        max_hierarchy_levels=3,
-        **kwargs,
-    ):
-        """Run quality evaluation for instance of block or workflow.
-
-        Args:
-            dataset_path:  str
-                Path to where the input "gold set" dataset lives. Most often this is .json file.
-            preprocess_func:  method
-                Function used as proxy for any preliminary steps that need to be taken to run the
-                model on the input text. This helper function ultimately leads to the input to this
-                block and may involve executing other blocks.
-            detailed_metrics: boolean (Optional, defaults to False)
-                Only for 'keywords'. Include partial scores and scores over every text in document.
-            labels:  list (Optional, defaults to None)
-                Optional list of class labels to evaluate quality on. By default evaluation is done
-                over all class labels. Using this, you can explicitly mention only a subset of
-                labels to include in the quality evaluation.
-            partial_match_metrics: boolean (Optional, defaults to False)
-                Include partial match micro avg F1.
-            max_hierarchy_levels: int
-                Used in hierarchical multilabel multiclass evaluation only. The number of levels in
-                the hierarchy to run model evaluation on,
-                in addition to complete matches.
-            *args, **kwargs:
-                Optional arguments which can be used by goldset/prediction set extraction.
-                keyword arguments:
-                `block_level`: str (Applicable to block_type relations)
-                    For any block that has pre processing steps in the
-                    middle of raw text and actual block input, use the input from gold standard
-                    labels instead of a pre-process function. Useful for measuring quality for the
-                    'block' alone (instead of the block + pre_process pipeline)
-        Returns:
-            dict
-                Dictionary of results provided by the `self.evaluator.run` function, depending on
-                the associated `evaluation_type`. Reports things like precision, recall, and f1.
-        """
-        # 1) load dataset
-        dataset = self.load_evaluation_dataset(dataset_path)
-
-        # 2) verify dataset
-        error.type_check("<COR14030040E>", collections.abc.Iterable, dataset=dataset)
-
-        # 3) extract gold set predictions
-        # pylint: disable=assignment-from-no-return
-        gold_set = self._extract_gold_set(dataset)
-        gold_annos = self._extract_gold_annotations(gold_set)
-
-        # 4) obtain pred set predictions
-        # pylint: disable=assignment-from-no-return
-        pred_set = self._extract_pred_set(
-            dataset, preprocess_func=preprocess_func, *args, **kwargs
-        )
-        pred_annos = self._extract_pred_annotations(pred_set)
-
-        # 5) initialize evaluator
-        # pylint: disable=not-callable
-        evaluator = self.evaluator(gold_annos, pred_annos)
-
-        # 6) run evaluator
-        results = evaluator.run(
-            self.evaluation_type,
-            self.find_label_func,
-            self.find_label_data_func,
-            detailed_metrics,
-            labels,
-            partial_match_metrics,
-            max_hierarchy_levels,
-        )
-
-        # 7) generate report
-        report = self._generate_report(results, gold_set)
-
-        # 8) return report
-        return report
 
     @staticmethod
     def _extract_gold_annotations(gold_set):
@@ -648,104 +773,8 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         """
         return report
 
-    @classmethod
-    def timed_load(cls, *args, **kwargs):
-        """Time a model `load` call.
 
-        Args:
-            *args: list
-                Will be passed to `self.load`.
-            **kwargs:  dict
-                Will be passed to `self.load` -- the only way to pass arbitrary arguments to
-                `self.load` from this function.
-
-        Returns:
-            int, caikit.core._ModuleBase
-                The first return value is the total time spent in the `self.load` call. The second
-                return value is the loaded model.
-
-        Notes:
-            You can pass everything that should go to the run function normally using args/kwargs.
-            Example: `model.timed_load("/model/path/dir")`
-        """
-        # get initial values
-        start_time = time.time()
-        # We are calling caikit.core over cls.load because we need to figure out
-        # what instance the model belongs to
-        model = core.load(*args, **kwargs)
-        time_passed = time.time() - start_time
-        return time_passed, model
-
-    def timed_run(self, *args, num_seconds=None, num_iterations=None, **kwargs):
-        """Time a number of runs over set seconds or iterations.
-
-        Args:
-            *args: list
-                Will be passed to `self.run`.
-            num_seconds:  int
-                Minimum numer of seconds to run timed_run over. Will most likely be more than this
-                value due to its waiting for the each call to `self.run` to finish.
-            num_iterations:  int
-                Minimum numer of iterations to run timed_run over. Will run exactly this many times.
-            **kwargs:  dict
-                Will be passed to `self.run`.
-
-        Returns:
-            int, int, caikit.core.data_model.DataBase
-                The first return value is the total time spent in the `self.run` loop. The second
-                return value is the total number of calls to `self.run` were made.
-                The return value is the output of the block's run method
-
-        Notes:
-            You can pass everything that should go to the run function normally using args/kwargs.
-            Example: `model.timed_run("some example text", num_seconds=60)`
-
-        By default it will run for greater than or equal to 120 seconds.
-        """
-        # default to running for 120 seconds
-        if not (num_seconds or num_iterations):
-            num_seconds = 120
-
-        # get initial values
-        start_time = time.time()
-        iterations_passed = 0
-        time_passed = time.time() - start_time
-
-        # stop on seconds or iterations depending on input arguments
-        # pylint: disable=unnecessary-lambda-assignment
-        continue_condition = (
-            lambda t_p, i_p: t_p <= num_seconds if num_seconds else i_p < num_iterations
-        )
-        response = None
-
-        while continue_condition(time_passed, iterations_passed):
-            # use model's run method
-            response = self.run(*args, **kwargs)
-
-            # increment output values
-            time_passed = time.time() - start_time
-            iterations_passed += 1
-
-        return time_passed, iterations_passed, response
-
-    def validate_loaded_model(self, *args):
-        """Validate a loaded model."""
-        error(
-            "<COR56275627E>",
-            NotImplementedError("This is not available in this module."),
-        )
-
-    @classmethod
-    def validate_training_data(
-        cls, training_data: Union[str, DataStream], limit: int = -1
-    ) -> List[DataValidationError]:
-        """Validate a set of training data, passed as a filename or as a data stream.
-        Return up to `limit` number of DataValidationErrors
-        """
-        error(
-            "<COR56285627E>",
-            NotImplementedError("This is not available in this module."),
-        )
+## ModuleLoader ################################################################
 
 
 class ModuleLoader:
@@ -767,6 +796,9 @@ class ModuleLoader:
     def load_args(self, *args):
         """Extract values from the loaded model's config"""
         return tuple(getattr(self.config, arg) for arg in args)
+
+
+## ModuleSaver #################################################################
 
 
 class ModuleSaver:
