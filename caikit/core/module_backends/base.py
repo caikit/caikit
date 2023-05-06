@@ -61,10 +61,10 @@ class BackendBase(abc.ABC):
         should set self._started variable to False"""
 
 
-class UniversalTrainBackendBase(BackendBase, abc.ABC):
+class SharedTrainBackendBase(BackendBase, abc.ABC):
     """Interface for a backend that can perform train on any given module
 
-    A Universal backend is one that treats the given module as a black box and
+    A Shared backend is one that treats the given module as a black box and
     delegates the execution of that module's functionality to an alternate
     execution engine.
     """
@@ -89,10 +89,10 @@ class UniversalTrainBackendBase(BackendBase, abc.ABC):
         """
 
 
-class UniversalLoadBackendBase(BackendBase, abc.ABC):
+class SharedLoadBackendBase(BackendBase, abc.ABC):
     """Interface for a backend that can perform load/unload on any given model
 
-    A Universal backend is one that treats the given module as a black box and
+    A Shared backend is one that treats the given module as a black box and
     delegates the execution of that module's functionality to an alternate
     execution engine.
 
@@ -110,7 +110,7 @@ class UniversalLoadBackendBase(BackendBase, abc.ABC):
         This function is responsible for loading a model in a way that the
         backend is then able to execute it.
 
-        Universal loaders will be configured in a priority sequence. If a higher
+        Shared loaders will be configured in a priority sequence. If a higher
         priority loader fails to load a given model, the next one is attempted
         until the model is loaded or no loaders are left.
 
