@@ -90,7 +90,7 @@ class ModuleConfig(aconfig.Config):
         """
         error.type_check("<COR71170339E>", str, model_path=model_path)
 
-        # validate config.yml
+        # Validate config.yml
         config_path = os.path.join(model_path, "config.yml")
         if not (os.path.exists(config_path) and os.path.isfile(config_path)):
             # NOTE: Do not log this out with error handler, as we might try this function multiple
@@ -101,10 +101,10 @@ class ModuleConfig(aconfig.Config):
                 )
             )
 
-        # read the yaml to dict and construct a new config object
+        # Read the yaml to dict and construct a new config object
         config = cls(toolkit.load_yaml(config_path))
 
-        # error if add model_path was in the config
+        # Error if model_path was in the config
         if config.model_path is not None:
             error(
                 "<COR80166142E>",
@@ -114,8 +114,15 @@ class ModuleConfig(aconfig.Config):
                 ),
             )
 
-        # add the model path to the config object
+        # Mdd the model path to the config object
         config["model_path"] = model_path
+
+        # Make sure module_id is found
+        if config.module_id is None:
+            error(
+                "<COR82701436E>",
+                KeyError(f"No module_id found in config at {model_path}"),
+            )
 
         return config
 
