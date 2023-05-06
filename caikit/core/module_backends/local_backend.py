@@ -15,22 +15,26 @@
 """This module implements a LOCAL backend configuration
 """
 # Standard
-from typing import Type
+from typing import Optional, Type
+
+# Third Party
+import yaml
 
 # First Party
 import alog
 
 # Local
 from ..module import MODULE_REGISTRY, ModuleBase
+from ..module_config import ModuleConfig
 from ..toolkit.errors import error_handler
 from .backend_types import register_backend_type
-from .base import UniversalLoadBackendBase, UniversalTrainBackendBase
+from .base import SharedLoadBackendBase, SharedTrainBackendBase
 
 log = alog.use_channel("LCLBKND")
 error = error_handler.get(log)
 
 
-class LocalBackend(UniversalLoadBackendBase, UniversalTrainBackendBase):
+class LocalBackend(SharedLoadBackendBase, SharedTrainBackendBase):
     backend_type = "LOCAL"
 
     def register_config(self, config) -> None:
@@ -55,11 +59,23 @@ class LocalBackend(UniversalLoadBackendBase, UniversalTrainBackendBase):
         with alog.ContextTimer(log.info, "Finished local training in: "):
             return module_class.train(*args, **kwargs)
 
-    def load(self, module_id: str, model_path: str, *args, **kwargs) -> ModuleBase:
+    def load(self, model_path: str, *args, **kwargs) -> Optional[ModuleBase]:
         """Look up the given module in the module registry and load it if found"""
+        try:
+            model_config = ModuleConfig.load(model_path)
+        except (FileNotFoundError, KeyError, yaml.parser.ParserError):
+            log.debug("Unable to load local model config from [%s]", model_path)
+            return None
+        module_id = model_config.module_id
         module_class = MODULE_REGISTRY.get(module_id)
         if module_class is not None:
             return module_class.load(model_path, *args, **kwargs)
+        log.warning(
+            "<COR14661026W>",
+            "Could not load MODULE_ID %s with %s",
+            module_id,
+            self.backend_type,
+        )
 
 
 # Register local backend
