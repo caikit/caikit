@@ -43,7 +43,7 @@ class TestBlockBase(TestCaseBase):
         self.dummy_block_instance = self.dummy_block_class(self.dummy_model_path)
 
     def test_init_available(self):
-        model = caikit.core.BlockBase([0, 1, 2], kw1=0, kw2=1, kw3=2)
+        model = caikit.core.BlockBase()
         self.assertIsInstance(model, caikit.core.BlockBase)
 
     def test_load_not_implemented(self):
