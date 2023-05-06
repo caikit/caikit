@@ -31,8 +31,8 @@ from caikit.core.module_backends import BackendBase, backend_types
 class MockBackend(BackendBase):
     backend_type = "MOCK"
 
-    def __init__(self, config=...) -> None:
-        super().__init__(config)
+    def __init__(self, name, config=...) -> None:
+        super().__init__(name, config)
         self._started = False
 
     def start(self):
@@ -84,11 +84,14 @@ def reset_configured_backends():
     """Fixture that will reset the configured backends"""
     load_backends_list = copy.copy(_CONFIGURED_LOAD_BACKENDS)
     train_backends_list = copy.copy(_CONFIGURED_TRAIN_BACKENDS)
+    _CONFIGURED_LOAD_BACKENDS.clear()
+    _CONFIGURED_TRAIN_BACKENDS.clear()
+    backend_types.register_backend_type(MockBackend)
     yield
     _CONFIGURED_LOAD_BACKENDS.clear()
-    _CONFIGURED_LOAD_BACKENDS.update(load_backends_list)
+    _CONFIGURED_LOAD_BACKENDS.extend(load_backends_list)
     _CONFIGURED_TRAIN_BACKENDS.clear()
-    _CONFIGURED_TRAIN_BACKENDS.update(train_backends_list)
+    _CONFIGURED_TRAIN_BACKENDS.extend(train_backends_list)
 
 
 @pytest.fixture

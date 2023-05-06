@@ -29,292 +29,35 @@ import aconfig
 from caikit.core import ModuleConfig, module
 from caikit.core.module_backend_config import get_load_backend
 from caikit.core.module_backends import backend_types
-from caikit.core.module_type import module_type
+from caikit.core.module_type import SUPPORTED_LOAD_BACKENDS_VAR_NAME
 
 # pylint: disable=import-error
-from sample_lib.blocks.sample_task import SampleBlock
 from sample_lib.data_model.sample import SampleInputType
 
 # Unit Test Infrastructure
-from tests.base import TestCaseBase
+from tests.conftest import fixtures_dir, temp_config
 
 # NOTE: We do need to import `reset_backend_types` and `reset_module_distribution_registry` for `reset_globals` to work
-from tests.conftest import temp_config
 from tests.core.helpers import *
 import caikit.core
 
-
-class TestModuleBase(TestCaseBase):
-    def setUp(self):
-        self.base_module_instance = caikit.core.ModuleBase()
-
-    def test_load_evaluation_dataset(self):
-        self.assertIsInstance(
-            module.ModuleBase.load_evaluation_dataset(
-                os.path.join(self.fixtures_dir, "dummy_dataset.json")
-            ),
-            list,
-        )
-
-    def test_init_available(self):
-        model = caikit.core.ModuleBase([0, 1, 2], kw1=0, kw2=1, kw3=2)
-        self.assertIsInstance(model, caikit.core.ModuleBase)
-
-    def test_load_not_implemented(self):
-        with self.assertRaises(NotImplementedError):
-            caikit.core.ModuleBase.load()
-
-    def test_run_not_implemented(self):
-        with self.assertRaises(NotImplementedError):
-            self.base_module_instance.run()
-
-    def test_save_not_implemented(self):
-        with self.assertRaises(NotImplementedError):
-            self.base_module_instance.save("dummy_path")
-
-    def test_train_not_implemented(self):
-        with self.assertRaises(NotImplementedError):
-            caikit.core.BlockBase.train()
+## Helpers #####################################################################
 
 
-class TestModuleConfig(TestCaseBase):
-    def setUp(self):
-        self.model_path = os.path.join(self.fixtures_dir, "dummy_block")
-
-        self.model_config = ModuleConfig.load(self.model_path)
-
-    def test_isinstance(self):
-        self.assertIsInstance(self.model_config, ModuleConfig)
-        self.assertIsInstance(self.model_config, aconfig.Config)
-
-    def test_init_and_members(self):
-        config = ModuleConfig(
-            {
-                "block_id": "123",
-                "block_class": "caikit.core.blocks.dummy.Dummy",
-                "name": "Dummy Block",
-                "string": "hello",
-                "integer": 1,
-                "float": 0.5,
-                "nested": {
-                    "string": "world",
-                    "integer": 2,
-                    "float": -0.123,
-                },
-            }
-        )
-
-        self.assertEqual(config.block_id, "123")
-        self.assertEqual(config.block_class, "caikit.core.blocks.dummy.Dummy")
-        self.assertIsInstance(config.string, str)
-        self.assertEqual(config.string, "hello")
-        self.assertIsInstance(config.integer, int)
-        self.assertEqual(config.integer, 1)
-        self.assertIsInstance(config.float, float)
-        self.assertAlmostEqual(config.float, 0.5)
-        self.assertIsInstance(config.nested, dict)
-        self.assertEqual(config.nested.string, "world")
-        self.assertEqual(config.nested.integer, 2)
-        self.assertAlmostEqual(config.nested.float, -0.123)
-
-    def test_block_config_has_module_id(self):
-        self.assertIsNotNone(self.model_config.module_id)
-        self.assertEqual(self.model_config.module_id, self.model_config.block_id)
-
-    def test_workflow_config_has_module_id(self):
-        config = ModuleConfig(
-            {
-                "workflow_id": "123",
-                "workflow_class": "caikit.core.workflows.dummy.Dummy",
-                "name": "Dummy Workflow",
-            }
-        )
-
-        self.assertIsNotNone(config.module_id)
-        self.assertEqual(config.module_id, config.workflow_id)
-
-    def test_resource_config_has_module_id(self):
-        config = ModuleConfig(
-            {
-                "resource_id": "r123",
-                "resource_class": "caikit.core.resources.dummy.Dummy",
-                "name": "Dummy Resource",
-            }
-        )
-
-        self.assertIsNotNone(config.module_id)
-        self.assertEqual(config.module_id, config.resource_id)
-
-    def test_reserved_keys(self):
-        for reserved_key in ("module_id", "model_path"):
-            with self.assertRaises(KeyError):
-                ModuleConfig(
-                    {
-                        reserved_key: "x",
-                        "block_class": "caikit.core.blocks.dummy.Dummy",
-                        "name": "Dummy Workflow",
-                    }
-                )
-
-    def test_no_config_yaml(self):
-        with self.assertRaises(FileNotFoundError):
-            with tempfile.TemporaryDirectory() as tempd:
-                ModuleConfig.load(tempd)
-
-    def test_model_path_is_file(self):
-        with tempfile.TemporaryDirectory() as tempd:
-            tempf = os.path.join(tempd, "junk")
-
-            with open(tempf, mode="w", encoding="utf-8") as fh:
-                fh.write("\n")
-
-            with self.assertRaises(FileNotFoundError):
-                ModuleConfig.load(tempf)
-
-    def test_save_and_load(self):
-        with tempfile.TemporaryDirectory() as tempd:
-            self.model_config.save(tempd)
-            ModuleConfig.load(tempd)
+@pytest.fixture
+def base_module_instance():
+    return caikit.core.ModuleBase()
 
 
-class TestModelConversionOperations(TestCaseBase):
-    def setUp(self):
-        self.dummy_model = os.path.join(self.fixtures_dir, "dummy_block")
-
-    ###############################################################################################
-    #                        Tests for interacting with file-like objects                         #
-    ###############################################################################################
-    def test_model_file_like_conversion(self):
-        """Test that we can convert a model into a file-like object."""
-        dummy_model = caikit.core.load(self.dummy_model)
-        file_like = dummy_model.as_file_like_object()
-        self.assertIsInstance(file_like, io.BytesIO)
-
-    def test_model_byte_conversion(self):
-        """Test that we can convert a model into bytes."""
-        dummy_model = caikit.core.load(self.dummy_model)
-        bytes_like = dummy_model.as_bytes()
-        self.assertIsInstance(bytes_like, bytes)
-
-    def test_load_file_like_conversion_and_back(self):
-        """Test that we can load a model, export to a file-like object, and reload the model."""
-        dummy_model = caikit.core.load(self.dummy_model)
-        file_like = dummy_model.as_file_like_object()
-        reloaded_model = caikit.core.load(file_like)
-        self.assertIsInstance(reloaded_model, caikit.core.BlockBase)
-
-    def test_load_bytes_conversion_and_back(self):
-        """Test that we can load a model, export to a bytes object, and reload the model."""
-        dummy_model = caikit.core.load(self.dummy_model)
-        bytes_like = dummy_model.as_bytes()
-        reloaded_model = caikit.core.load(bytes_like)
-        self.assertIsInstance(reloaded_model, caikit.core.BlockBase)
+@pytest.fixture
+def model_path(fixtures_dir):
+    yield os.path.join(fixtures_dir, "dummy_block")
 
 
-class TestModuleTypeDecorator(TestCaseBase):
-    @classmethod
-    def tearDownClass(cls):
-        if "TESTMOD" in module._MODULE_TYPES:
-            module._MODULE_TYPES.remove("TESTMOD")
-        if hasattr(caikit.core, "TESTMOD_REGISTRY"):
-            delattr(caikit.core, "TESTMOD_REGISTRY")
+@pytest.fixture
+def model_config(model_path):
+    yield ModuleConfig.load(model_path)
 
-    @module_type("testmod")
-    class TestModBase(module.ModuleBase):
-        """Derived module type"""
-
-    ######################### Tests #########################
-
-    def test_module_type_new_type(self):
-        """Make sure that the newly declared module type can be used just like a
-        first-class module type such as block
-        """
-        assert hasattr(caikit.core, "TESTMOD_REGISTRY")
-        assert "TESTMOD" in module._MODULE_TYPES
-        assert caikit.core.TESTMOD_REGISTRY == {}
-
-        # Add a new derived testmod
-        mod_id = str(uuid.uuid4())
-
-        @self.TestModBase.testmod(id=mod_id, name="Sample tesmod", version="1.2.3")
-        class SampleTestmod(self.TestModBase):
-            """A sample test mod"""
-
-        # Make sure that the test mod was added to the registry
-        assert caikit.core.TESTMOD_REGISTRY == {mod_id: SampleTestmod}
-
-        # Make sure module type is set as attribute of sample module
-        assert hasattr(SampleTestmod, "MODULE_TYPE")
-        assert SampleTestmod.MODULE_TYPE == "TESTMOD"
-
-    def test_module_type_missing_base_class(self):
-        """Make sure that if a derived class misses the inheritance from the
-        right base class, an exception is raised
-        """
-        mod_id = str(uuid.uuid4())
-        with pytest.raises(TypeError):
-            # pylint: disable=unused-variable
-            @self.TestModBase.testmod(id=mod_id, name="Sample tesmod", version="1.2.3")
-            class SampleBadTestmod:
-                """A sample test mod that is missing the base class"""
-
-    def test_module_type_wrong_base_class(self):
-        """Make sure that if a derived class inherits from the wrong module type
-        an exception is raised
-        """
-        mod_id = str(uuid.uuid4())
-        with pytest.raises(TypeError):
-            # pylint: disable=unused-variable
-            @self.TestModBase.testmod(id=mod_id, name="Sample tesmod", version="1.2.3")
-            class SampleBadTestmod(caikit.core.BlockBase):
-                """A sample test mod that is missing the base class"""
-
-    def test_module_no_reused_ids(self):
-        """Make sure that module ids can't be reused, even across module types"""
-        with pytest.raises(RuntimeError):
-
-            @self.TestModBase.testmod(
-                id=SampleBlock.MODULE_ID,
-                name="Sample tesmod",
-                version="1.2.3",
-            )
-            # pylint: disable=unused-variable
-            class SampleTestmod(self.TestModBase):
-                """A sample test mod"""
-
-    def test_intermediate_metabase(self):
-        """Make sure that an abc.ABC can be declared that derives from ModuleBase"""
-
-        class Intermediate(caikit.core.blocks.base.BlockBase, abc.ABC):
-            """Sample intermediate base class"""
-
-            @abc.abstractmethod
-            def foobar(self, arg):
-                """Got to define foobar!"""
-
-        @caikit.core.block("asdf-qwer-zxcv", "FooBar", "0.0.1")
-        class Derived(Intermediate):
-            def foobar(self, arg):
-                return arg + 1
-
-        d = Derived()
-        assert d.foobar(1) == 2
-
-
-class TestModuleDefaultFunctionality(TestCaseBase):
-    """Tests for default functionality (e.g. run_batch)"""
-
-    def setUp(self):
-        self.dummy_model = os.path.join(self.fixtures_dir, "dummy_block")
-
-    def test_run_batch_keyword_only(self):
-        """Make sure that calling run_batch without any positional args is safe"""
-        dummy_model = caikit.core.load(self.dummy_model)
-        dummy_model.run(sample_input=SampleInputType(name="Gabe"))
-        dummy_model.run_batch(sample_input=[SampleInputType(name="Gabe")])
-
-
-## Pytest tests ######################################
 
 DUMMY_MODULE_ID = "foo"
 
@@ -338,7 +81,193 @@ def configure_alternate_backend_impl():
     return DummyFoo, DummyBar
 
 
-### Tests #######################################################################
+## ModuleBase ##################################################################
+
+
+def test_load_evaluation_dataset(fixtures_dir):
+    assert isinstance(
+        module.ModuleBase._load_evaluation_dataset(
+            os.path.join(fixtures_dir, "dummy_dataset.json")
+        ),
+        list,
+    )
+
+
+def test_init_available():
+    """Make sure that there is an __init__ that takes no args or kwargs"""
+    model = caikit.core.ModuleBase()
+    assert isinstance(model, caikit.core.ModuleBase)
+
+
+def test_load_not_implemented():
+    with pytest.raises(NotImplementedError):
+        caikit.core.ModuleBase.load()
+
+
+def test_run_not_implemented(base_module_instance):
+    with pytest.raises(NotImplementedError):
+        base_module_instance.run()
+
+
+def test_save_not_implemented(base_module_instance):
+    with pytest.raises(NotImplementedError):
+        base_module_instance.save("dummy_path")
+
+
+def test_train_not_implemented():
+    with pytest.raises(NotImplementedError):
+        caikit.core.BlockBase.train()
+
+
+def test_run_batch_keyword_only(model_path):
+    """Make sure that calling run_batch without any positional args is safe"""
+    dummy_model = caikit.core.load(model_path)
+    dummy_model.run(sample_input=SampleInputType(name="Gabe"))
+    dummy_model.run_batch(sample_input=[SampleInputType(name="Gabe")])
+
+
+## ModuleConfig ################################################################
+
+
+def test_isinstance(model_config):
+    assert isinstance(model_config, ModuleConfig)
+    assert isinstance(model_config, aconfig.Config)
+
+
+def test_init_and_members():
+    config = ModuleConfig(
+        {
+            "block_id": "123",
+            "block_class": "caikit.core.blocks.dummy.Dummy",
+            "name": "Dummy Block",
+            "string": "hello",
+            "integer": 1,
+            "float": 0.5,
+            "nested": {
+                "string": "world",
+                "integer": 2,
+                "float": -0.123,
+            },
+        }
+    )
+
+    assert config.block_id == "123"
+    assert config.block_class == "caikit.core.blocks.dummy.Dummy"
+    assert isinstance(config.string, str)
+    assert config.string == "hello"
+    assert isinstance(config.integer, int)
+    assert config.integer == 1
+    assert isinstance(config.float, float)
+    # DEBUG
+    assert config.float == 0.5
+    assert isinstance(config.nested, dict)
+    assert config.nested.string == "world"
+    assert config.nested.integer == 2
+    # DEBUG
+    assert config.nested.float == -0.123
+
+
+def test_block_config_has_module_id(model_config):
+    assert model_config.module_id is not None
+    assert model_config.module_id == model_config.block_id
+
+
+def test_workflow_config_has_module_id():
+    config = ModuleConfig(
+        {
+            "workflow_id": "123",
+            "workflow_class": "caikit.core.workflows.dummy.Dummy",
+            "name": "Dummy Workflow",
+        }
+    )
+
+    assert config.module_id is not None
+    assert config.module_id == config.workflow_id
+
+
+def test_resource_config_has_module_id():
+    config = ModuleConfig(
+        {
+            "resource_id": "r123",
+            "resource_class": "caikit.core.resources.dummy.Dummy",
+            "name": "Dummy Resource",
+        }
+    )
+
+    assert config.module_id is not None
+    assert config.module_id == config.resource_id
+
+
+def test_reserved_keys():
+    for reserved_key in ("module_id", "model_path"):
+        with pytest.raises(KeyError):
+            ModuleConfig(
+                {
+                    reserved_key: "x",
+                    "block_class": "caikit.core.blocks.dummy.Dummy",
+                    "name": "Dummy Workflow",
+                }
+            )
+
+
+def test_no_config_yaml():
+    with pytest.raises(FileNotFoundError):
+        with tempfile.TemporaryDirectory() as tempd:
+            ModuleConfig.load(tempd)
+
+
+def test_model_path_is_file():
+    with tempfile.TemporaryDirectory() as tempd:
+        tempf = os.path.join(tempd, "junk")
+
+        with open(tempf, mode="w", encoding="utf-8") as fh:
+            fh.write("\n")
+
+        with pytest.raises(FileNotFoundError):
+            ModuleConfig.load(tempf)
+
+
+def test_save_and_load(model_config):
+    with tempfile.TemporaryDirectory() as tempd:
+        model_config.save(tempd)
+        ModuleConfig.load(tempd)
+
+
+## Model Conversion Operations #################################################
+# Tests for interacting with file-like objects
+
+
+def test_model_file_like_conversion(model_path):
+    """Test that we can convert a model into a file-like object."""
+    dummy_model = caikit.core.load(model_path)
+    file_like = dummy_model.as_file_like_object()
+    assert isinstance(file_like, io.BytesIO)
+
+
+def test_model_byte_conversion(model_path):
+    """Test that we can convert a model into bytes."""
+    dummy_model = caikit.core.load(model_path)
+    bytes_like = dummy_model.as_bytes()
+    assert isinstance(bytes_like, bytes)
+
+
+def test_load_file_like_conversion_and_back(model_path):
+    """Test that we can load a model, export to a file-like object, and reload the model."""
+    dummy_model = caikit.core.load(model_path)
+    file_like = dummy_model.as_file_like_object()
+    reloaded_model = caikit.core.load(file_like)
+    assert isinstance(reloaded_model, caikit.core.BlockBase)
+
+
+def test_load_bytes_conversion_and_back(model_path):
+    """Test that we can load a model, export to a bytes object, and reload the model."""
+    dummy_model = caikit.core.load(model_path)
+    bytes_like = dummy_model.as_bytes()
+    reloaded_model = caikit.core.load(bytes_like)
+    assert isinstance(reloaded_model, caikit.core.BlockBase)
+
+
+## Non-Local Backends ##########################################################
 
 
 def test_can_get_module_id(reset_globals):
@@ -404,13 +333,13 @@ def test_class_attributes(reset_globals):
 
     # Fetch without config raises
     with pytest.raises(ValueError):
-        assert get_backend(DummyBar.BACKEND_TYPE)
+        assert get_load_backend(DummyBar.BACKEND_TYPE)
 
     # Configure and make sure it can be fetched by the class
     with temp_config(
         {
             "module_backends": {
-                "priority": [backend_types.MOCK],
+                "load_priority": [{"type": backend_types.MOCK}],
             }
         }
     ):
@@ -425,7 +354,7 @@ def test_class_attributes(reset_globals):
 def test_default_load_supported_backend(reset_globals):
     """Test the defined backend gets added as the supported backend by default"""
     _, DummyBar = configure_alternate_backend_impl()
-    assert hasattr(DummyBar, module.SUPPORTED_LOAD_BACKENDS_VAR_NAME)
+    assert hasattr(DummyBar, SUPPORTED_LOAD_BACKENDS_VAR_NAME)
     assert len(DummyBar.SUPPORTED_LOAD_BACKENDS) == 1
     assert DummyBar.SUPPORTED_LOAD_BACKENDS[0] == backend_types.MOCK
 
@@ -453,7 +382,7 @@ def test_override_load_supported_backend(reset_globals):
     class DummyBaz:
         SUPPORTED_LOAD_BACKENDS = supported_backends
 
-    assert hasattr(DummyBaz, module.SUPPORTED_LOAD_BACKENDS_VAR_NAME)
+    assert hasattr(DummyBaz, SUPPORTED_LOAD_BACKENDS_VAR_NAME)
     assert DummyBaz.SUPPORTED_LOAD_BACKENDS == supported_backends
 
 
