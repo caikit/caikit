@@ -27,7 +27,8 @@ from ..module import ModuleBase
 class BackendBase(abc.ABC):
     """Interface for creating configuration setup for backends"""
 
-    def __init__(self, config=None) -> None:
+    def __init__(self, name: str, config=None) -> None:
+        self.name = name
         self.config = config or {}
         self._started = False
 
