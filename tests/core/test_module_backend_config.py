@@ -19,10 +19,13 @@ Tests for the backend configuration framework
 # Local
 from caikit.core.blocks import base, block
 from caikit.core.module_backend_config import (
-    _CONFIGURED_BACKENDS,
+    _CONFIGURED_LOAD_BACKENDS,
+    _CONFIGURED_TRAIN_BACKENDS,
     configure,
-    configured_backends,
-    get_backend,
+    configured_load_backends,
+    configured_train_backends,
+    get_load_backend,
+    get_train_backend,
     start_backends,
 )
 from caikit.core.module_backends import backend_types

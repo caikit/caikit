@@ -21,7 +21,6 @@ import os
 import tempfile
 
 # Local
-from caikit.config import get_config
 from caikit.core.module_backend_config import configure
 from caikit.core.module_backends import LocalBackend
 

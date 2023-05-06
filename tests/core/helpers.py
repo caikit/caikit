@@ -12,12 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Standard
+import copy
+
 # Third Party
 import pytest
 
 # Local
 from caikit.core.module import MODULE_BACKEND_REGISTRY, MODULE_REGISTRY
-from caikit.core.module_backend_config import _CONFIGURED_BACKENDS
+from caikit.core.module_backend_config import (
+    _CONFIGURED_LOAD_BACKENDS,
+    _CONFIGURED_TRAIN_BACKENDS,
+)
 from caikit.core.module_backends import BackendBase, backend_types
 
 
@@ -56,7 +62,7 @@ def reset_backend_types():
 
 
 @pytest.fixture
-def reset_module_BACKEND_registry():
+def reset_module_backend_registry():
     """Fixture that will reset the module distribution registry if a test modifies them"""
     module_registry = {key: val for key, val in MODULE_BACKEND_REGISTRY.items()}
     yield
@@ -76,10 +82,13 @@ def reset_module_registry():
 @pytest.fixture
 def reset_configured_backends():
     """Fixture that will reset the configured backends"""
-    backends_list = _CONFIGURED_BACKENDS
+    load_backends_list = copy.copy(_CONFIGURED_LOAD_BACKENDS)
+    train_backends_list = copy.copy(_CONFIGURED_TRAIN_BACKENDS)
     yield
-    _CONFIGURED_BACKENDS.clear()
-    _CONFIGURED_BACKENDS.update(backends_list)
+    _CONFIGURED_LOAD_BACKENDS.clear()
+    _CONFIGURED_LOAD_BACKENDS.update(load_backends_list)
+    _CONFIGURED_TRAIN_BACKENDS.clear()
+    _CONFIGURED_TRAIN_BACKENDS.update(train_backends_list)
 
 
 @pytest.fixture
@@ -87,6 +96,6 @@ def reset_globals(
     reset_backend_types,
     reset_configured_backends,
     reset_module_registry,
-    reset_module_BACKEND_registry,
+    reset_module_backend_registry,
 ):
     """Fixture that will reset the backend types and module registries if a test modifies them"""

@@ -25,7 +25,6 @@ import grpc
 # Local
 from caikit import get_config
 from caikit.core.blocks.base import BlockBase
-from caikit.core.module_backend_config import _CONFIGURED_BACKENDS, configure
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException

@@ -27,8 +27,9 @@ import aconfig
 
 # Local
 from caikit.core import ModuleConfig, module
-from caikit.core.module_backend_config import get_backend
+from caikit.core.module_backend_config import get_load_backend
 from caikit.core.module_backends import backend_types
+from caikit.core.module_type import module_type
 
 # pylint: disable=import-error
 from sample_lib.blocks.sample_task import SampleBlock
@@ -218,7 +219,7 @@ class TestModuleTypeDecorator(TestCaseBase):
         if hasattr(caikit.core, "TESTMOD_REGISTRY"):
             delattr(caikit.core, "TESTMOD_REGISTRY")
 
-    @module.module_type("testmod")
+    @module_type("testmod")
     class TestModBase(module.ModuleBase):
         """Derived module type"""
 
@@ -332,7 +333,7 @@ def configure_alternate_backend_impl():
     @caikit.core.blocks.block(base_module=DummyFoo, backend_type=backend_types.MOCK)
     class DummyBar:
         def test_fetching_backend(self):
-            return get_backend(backend_types.MOCK)
+            return get_load_backend(backend_types.MOCK)
 
     return DummyFoo, DummyBar
 
