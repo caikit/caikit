@@ -20,7 +20,6 @@ from typing import Optional, Type
 import abc
 
 # Local
-from ..data_model import DataBase
 from ..module import ModuleBase
 
 
