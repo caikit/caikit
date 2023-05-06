@@ -21,20 +21,35 @@ enable_error_checks: true
 max_exception_log_messages: 4
 load_path: null
 
-# Configuration for loading alternate module implementations via
-# distributed backends
+# Configuration for training/loading via module backends
 module_backends:
-    # Toggle distributed loading globally
+    # Toggle distributed training/loading globally
     enabled: false
     # Local is always enabled unless explicitly disabled
     disable_local: false
-    # Configuration overrides for distributed backends configuration.
-    # Specific fields that may be of interest:
+    # Configuration for distributed loading and training. Each has an ordered
+    # list of backends in priority order. Each entry is a mapping with a "type"
+    # field and optionally a "config" field that maps to a blob of config for
+    # the backend instance. Entries may also have a "name" field that must be
+    # unique among entries, allowing for multiple instances of the same type.
+    # For example:
     #
-    # priority: List for the order that backend implementations should be used
-    priority:
-        - LOCAL
-    configs: {}
+    # - type: FOO
+    #   config:
+    #       foo: 123
+    # - type: BAR
+    #   config:
+    #       bar: 456
+    # - type: FOO
+    #   name: BackupFoo
+    #   config:
+    #       bar: 42
+    load:
+        priority:
+            - type: LOCAL
+    train:
+        priority:
+            - type: LOCAL
 
 log:
     # Default level for all python loggers
