@@ -187,6 +187,12 @@ class ModelManager:
                             module_path,
                             load_backend.name,
                         )
+                        error.type_check(
+                            "<COR76726077E>",
+                            ModuleBase,
+                            model=model,
+                        )
+
                         loaded_model = model
                         model.set_load_backend(load_backend)
                         break

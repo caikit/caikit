@@ -25,6 +25,7 @@ from caikit.core.module_backend_config import configure
 from caikit.core.module_backends import LocalBackend
 
 # Unit Test Infrastructure
+from sample_lib.blocks.sample_task import SampleBlock
 from tests.base import TestCaseBase
 from tests.conftest import temp_config
 
@@ -528,3 +529,22 @@ def test_non_local_supported_backend(reset_globals):
         dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_BACKEND_MODEL_NAME)
         model = caikit.core.load(dummy_model_path)
         assert isinstance(model, DummyBaz)
+
+
+def test_load_must_return_model():
+    """Make sure that the return type of load is checked to be an instance of
+    ModuleBase
+    """
+
+    @caikit.core.block("00110203-baad-beef-0809-0a0b0c0d0e0f", "FunkyBlock", "0.0.1")
+    class _FunkyModel(SampleBlock):
+        @classmethod
+        def load(cls, model_path):
+            return (super().load(model_path), "something else")
+
+    model = _FunkyModel()
+    with tempfile.TemporaryDirectory() as tempdir:
+        # NOTE: the module will get detected as tests since _FunkyModel is defined here
+        model.save(tempdir)
+        with pytest.raises(TypeError):
+            caikit.core.load(tempdir)
