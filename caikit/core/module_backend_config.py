@@ -18,6 +18,7 @@ import copy
 import threading
 
 # First Party
+import aconfig
 import alog
 
 # Local
@@ -53,36 +54,14 @@ def get_load_backend(backend_name: str) -> BackendBase:
     """Get the configured instance of the given backend type. If not configured,
     a ValueError is raised
     """
-    error.value_check(
-        "<COR82987857E>",
-        backend_name in _CONFIGURED_LOAD_BACKENDS,
-        "Cannot fetch unconfigured load backend [{}]",
-        backend_name,
-    )
-    backend = _CONFIGURED_LOAD_BACKENDS[backend_name]
-    if not backend.is_started:
-        with _BACKEND_START_LOCKS[backend_name]:
-            if not backend.is_started:
-                backend.start()
-    return backend
+    return _get_registry_backend(backend_name, "load", _CONFIGURED_LOAD_BACKENDS)
 
 
 def get_train_backend(backend_name: str) -> BackendBase:
     """Get the configured instance of the given backend type. If not configured,
     a ValueError is raised
     """
-    error.value_check(
-        "<COR46491464E>",
-        backend_name in _CONFIGURED_TRAIN_BACKENDS,
-        "Cannot fetch unconfigured train backend [%s]",
-        backend_name,
-    )
-    backend = _CONFIGURED_TRAIN_BACKENDS[backend_name]
-    if not backend.is_started:
-        with _BACKEND_START_LOCKS[backend_name]:
-            if not backend.is_started:
-                backend.start()
-    return backend
+    return _get_registry_backend(backend_name, "train", _CONFIGURED_TRAIN_BACKENDS)
 
 
 def configured_load_backends() -> List[BackendBase]:
@@ -131,7 +110,12 @@ def configure():
             MODULE_BACKEND_TYPES.LOCAL not in backend_priority_types
         ):
             log.debug3("Adding fallback priority to [%s]", MODULE_BACKEND_TYPES.LOCAL)
-            backend_priority.append({"type": MODULE_BACKEND_TYPES.LOCAL})
+            backend_priority.append(
+                aconfig.Config(
+                    {"type": MODULE_BACKEND_TYPES.LOCAL},
+                    override_env_vars=False,
+                )
+            )
 
         # Configure each backend instance
         for i, backend_config in enumerate(backend_priority):
@@ -149,8 +133,8 @@ def configure():
                 i,
             )
 
-            log.debug("Configuring backend [%s]", backend_name)
             backend_name = backend_config.get("name", backend_type)
+            log.debug("Configuring backend [%s]", backend_name)
             backend_instance_config = backend_config.get("config", {})
             log.debug3("Backend [%s] config: %s", backend_name, backend_instance_config)
 
@@ -236,3 +220,30 @@ def _configure_backend_overrides(backend: str, backend_instance: object):
                 log.debug2(
                     f"No backend overrides configured for {module_id} module and {backend} backend"
                 )
+
+
+def _get_registry_backend(
+    backend_name: str, registry_name: str, registry: list
+) -> BackendBase:
+    """Get the configured instance of the given backend type. If not configured,
+    a ValueError is raised
+    """
+    matching_backends = [
+        backend for backend in registry if backend.name == backend_name
+    ]
+    error.value_check(
+        "<COR82987857E>",
+        matching_backends,
+        "Cannot fetch unconfigured {} backend [{}]",
+        registry_name,
+        backend_name,
+    )
+    assert (
+        len(matching_backends) == 1
+    ), "PROGRAMMING ERROR: Duplicate names should be prohibited"
+    backend = matching_backends[0]
+    if not backend.is_started:
+        with _BACKEND_START_LOCKS[backend_name]:
+            if not backend.is_started:
+                backend.start()
+    return backend
