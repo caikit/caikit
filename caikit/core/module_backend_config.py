@@ -14,6 +14,7 @@
 
 # Standard
 from typing import List
+import copy
 import threading
 
 # First Party
@@ -32,45 +33,68 @@ from caikit.config import get_config
 log = alog.use_channel("CONF")
 error = error_handler.get(log)
 
-_CONFIGURED_BACKENDS = {}
-_BACKEND_START_LOCKS = {}
-
 
 def start_backends() -> None:
     """This function kicks off the `start` functions for configured backends
     Returns:
         None
     """
-    for backend_type, backend in _CONFIGURED_BACKENDS.items():
-        with _BACKEND_START_LOCKS[backend_type]:
+    for backend_name, backend in _CONFIGURED_LOAD_BACKENDS.items():
+        with _BACKEND_START_LOCKS[backend_name]:
+            if not backend.is_started:
+                backend.start()
+    for backend_name, backend in _CONFIGURED_TRAIN_BACKENDS.items():
+        with _BACKEND_START_LOCKS[backend_name]:
             if not backend.is_started:
                 backend.start()
 
 
-def get_backend(backend_type: str) -> BackendBase:
+def get_load_backend(backend_name: str) -> BackendBase:
     """Get the configured instance of the given backend type. If not configured,
     a ValueError is raised
     """
     error.value_check(
         "<COR82987857E>",
-        backend_type in _CONFIGURED_BACKENDS,
-        "Cannot fetch unconfigured backend {}",
-        backend_type,
+        backend_name in _CONFIGURED_LOAD_BACKENDS,
+        "Cannot fetch unconfigured load backend [{}]",
+        backend_name,
     )
-    backend = _CONFIGURED_BACKENDS[backend_type]
+    backend = _CONFIGURED_LOAD_BACKENDS[backend_name]
     if not backend.is_started:
-        with _BACKEND_START_LOCKS[backend_type]:
+        with _BACKEND_START_LOCKS[backend_name]:
             if not backend.is_started:
                 backend.start()
     return backend
 
 
-def configured_backends() -> List[str]:
-    """This function exposes the list of configured backends for downstream
+def get_train_backend(backend_name: str) -> BackendBase:
+    """Get the configured instance of the given backend type. If not configured,
+    a ValueError is raised
+    """
+    error.value_check(
+        "<COR46491464E>",
+        backend_name in _CONFIGURED_TRAIN_BACKENDS,
+        "Cannot fetch unconfigured train backend [%s]",
+        backend_name,
+    )
+    backend = _CONFIGURED_TRAIN_BACKENDS[backend_name]
+    if not backend.is_started:
+        with _BACKEND_START_LOCKS[backend_name]:
+            if not backend.is_started:
+                backend.start()
+    return backend
+
+
+def configured_load_backends() -> List[BackendBase]:
+    """This function returns the mapping of named"""
+    return copy.copy(_CONFIGURED_TRAIN_BACKENDS)
+
+
+def configured_train_backends() -> List[BackendBase]:
+    """This function exposes the list of configured train backends for downstream
     checks
     """
-    # NOTE: Return a copy to avoid accidentally mutating the global
-    return list(_CONFIGURED_BACKENDS.keys())
+    return copy.copy(_CONFIGURED_TRAIN_BACKENDS)
 
 
 def configure():
@@ -79,92 +103,123 @@ def configure():
     NOTE: This function is NOT thread safe!
     """
     config_object = get_config().module_backends
-
     log.debug3("Full Config: %s", config_object)
 
-    # Determine the priority list of enabled backends
-    #
-    # NOTE: All backends are held in UPPERCASE, but this is not canonical for
-    #   yaml or function arguments, so we allow lowercase names in the config
-    #   and coerce them to upper here
-    backend_priority = config_object.priority or []
-    error.type_check("<COR46006487E>", list, backend_priority=backend_priority)
+    # Configure both train and load backends
+    for backend_priority, registry in [
+        (config_object.load.priority, _CONFIGURED_LOAD_BACKENDS),
+        (config_object.train.priority, _CONFIGURED_TRAIN_BACKENDS),
+    ]:
+        backend_priority = backend_priority or []
+        error.type_check("<COR46006487E>", list, backend_priority=backend_priority)
 
-    # Check if disable_local is set
-    disable_local_backend = config_object.disable_local or False
+        # Check if disable_local is set
+        disable_local_backend = config_object.disable_local or False
 
-    # Add local at the end of priority by default
-    # TODO: Should we remove LOCAL from priority if it is disabled?
-    if not disable_local_backend and (
-        MODULE_BACKEND_TYPES.LOCAL not in backend_priority
-    ):
-        log.debug3("Adding fallback priority to [%s]", MODULE_BACKEND_TYPES.LOCAL)
-        backend_priority.append(MODULE_BACKEND_TYPES.LOCAL)
-    backend_priority = [backend.upper() for backend in backend_priority]
-
-    for i, backend in enumerate(backend_priority):
+        # Add local at the end of priority by default
+        backend_priority_types = [cfg.get("type") for cfg in backend_priority]
         error.value_check(
-            "<COR72281596E>",
-            backend in MODULE_BACKEND_TYPES,
-            "Invalid backend [{}] found at backend_priority index [{}]",
-            backend,
-            i,
+            "<COR92038969E>",
+            not (
+                disable_local_backend
+                and MODULE_BACKEND_TYPES.LOCAL in backend_priority_types
+            ),
+            "Invalid configuration with {} in the priority list and disable_local set",
+            MODULE_BACKEND_TYPES.LOCAL,
         )
-    log.debug2("Backend Priority: %s", backend_priority)
+        if not disable_local_backend and (
+            MODULE_BACKEND_TYPES.LOCAL not in backend_priority_types
+        ):
+            log.debug3("Adding fallback priority to [%s]", MODULE_BACKEND_TYPES.LOCAL)
+            backend_priority.append({"type": MODULE_BACKEND_TYPES.LOCAL})
 
-    # Iterate through the config objects for each enabled backend in order and
-    # do the actual config
-    backend_configs = {
-        key.lower(): val for key, val in config_object.get("configs", {}).items()
-    }
-    for backend in backend_priority:
-        log.debug("Configuring backend [%s]", backend)
-        backend_config = backend_configs.get(backend.lower(), {})
-        log.debug3("Backend [%s] config: %s", backend, backend_config)
+        # Configure each backend instance
+        for i, backend_config in enumerate(backend_priority):
+            error.value_check(
+                "<COR48633635E>",
+                "type" in backend_config,
+                "All backend priority configs must have a 'type' field",
+            )
+            backend_type = backend_config.type
+            error.value_check(
+                "<COR72281596E>",
+                backend_type in MODULE_BACKEND_TYPES,
+                "Invalid backend [{}] found at backend_priority index [{}]",
+                backend_type,
+                i,
+            )
 
-        if backend in configured_backends() and backend != MODULE_BACKEND_TYPES.LOCAL:
-            error("<COR64618509E>", AssertionError(f"{backend} already configured"))
+            log.debug("Configuring backend [%s]", backend_name)
+            backend_name = backend_config.get("name", backend_type)
+            backend_instance_config = backend_config.get("config", {})
+            log.debug3("Backend [%s] config: %s", backend_name, backend_instance_config)
 
-        config_class = MODULE_BACKEND_CONFIG_FUNCTIONS.get(backend)
+            backend_class = MODULE_BACKEND_CONFIG_FUNCTIONS.get(backend_type)
+            error.value_check(
+                "<COR64618509E>",
+                not any(
+                    backend.name == backend_name
+                    and backend.backend_type == backend_type
+                    for backend in registry
+                ),
+                "{}/{} already configured",
+                backend_name,
+                backend_type,
+            )
+            error.value_check(
+                "<COR39517372E>",
+                backend_class is not None,
+                "Unsupported backend type {}",
+                backend_type,
+            )
+            if not isinstance(backend_class, type) and issubclass(
+                backend_class, BackendBase
+            ):
+                error(
+                    "<COR05184600E>",
+                    TypeError(
+                        f"Backend {backend_class} is not derived from BackendBase"
+                    ),
+                )
 
-        # NOTE: since all backends needs to be derived from BackendBase, they all
-        # support configuration. as input
-        if config_class is not None:
-            log.debug2("Performing config for [%s]", backend)
-            config_class_obj = config_class(backend_config)
+            log.debug2("Performing config for [%s]", backend_name)
+            backend_instance = backend_class(backend_name, backend_instance_config)
 
             # Add configuration to backends as per individual module requirements
-            _configure_backend_overrides(backend, config_class_obj)
+            _configure_backend_overrides(backend_name, backend_instance)
 
-        # NOTE: Configured backends holds the object of backend classes that are based
-        # on BaseBackend
-        # The start operation of the backend needs to be performed separately
-        _CONFIGURED_BACKENDS[backend] = config_class_obj
-        _BACKEND_START_LOCKS[backend] = threading.Lock()
+            # NOTE: Configured backends holds the object of backend classes that are based
+            # on BaseBackend
+            # The start operation of the backend needs to be performed separately
+            registry.append(backend_instance)
+            _BACKEND_START_LOCKS[backend_name] = threading.Lock()
 
-    log.debug2("All configured backends: %s", _CONFIGURED_BACKENDS)
+        log.debug2("All configured backends: %s", registry)
 
 
 ## Implementation Details ######################################################
 
-# The global map of configured backends
-_CONFIGURED_BACKENDS = {}
+# Singleton registries for load and train backends in priority order
+_CONFIGURED_LOAD_BACKENDS = []
+_CONFIGURED_TRAIN_BACKENDS = []
 
-
-# Thread-safe lock for each backend to ensure that starting is not performed
-# multiple times on any given backend
+# Locks for starting backends
+# NOTE: A single lock is held created for a backend name, even if it is repeated
+#   between train and load. Configuration is a load-time operation, so while
+#   this might be slightly overly locking, it protects against the case where
+#   a train and load backend have overlapping global state.
 _BACKEND_START_LOCKS = {}
 
 
-def _configure_backend_overrides(backend: str, config_class_obj: object):
+def _configure_backend_overrides(backend: str, backend_instance: object):
     """Function to go over all the modules registered in the MODULE_BACKEND_REGISTRY
     for a particular backend and configure their backend overrides
 
     Args:
         backend: str
             Name of the backend to select from registry
-        config_class_obj: object
-            Initialized object of Backend module. This object should
+        backend_instance: object
+            Initialized backend instance. This object should
             implement the `register_config` function which will be
             used to merge / iteratively configure the backend
     """
@@ -176,7 +231,7 @@ def _configure_backend_overrides(backend: str, config_class_obj: object):
             error.type_check("<COR61136899E>", dict, config=config)
             if len(config) != 0:
                 # TODO: Add a check here to see if the backend has already started
-                config_class_obj.register_config(config)
+                backend_instance.register_config(config)
             else:
                 log.debug2(
                     f"No backend overrides configured for {module_id} module and {backend} backend"
