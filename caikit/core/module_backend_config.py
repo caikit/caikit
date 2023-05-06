@@ -107,8 +107,8 @@ def configure():
 
     # Configure both train and load backends
     for backend_priority, registry in [
-        (config_object.load.priority, _CONFIGURED_LOAD_BACKENDS),
-        (config_object.train.priority, _CONFIGURED_TRAIN_BACKENDS),
+        (config_object.load_priority, _CONFIGURED_LOAD_BACKENDS),
+        (config_object.train_priority, _CONFIGURED_TRAIN_BACKENDS),
     ]:
         backend_priority = backend_priority or []
         error.type_check("<COR46006487E>", list, backend_priority=backend_priority)
