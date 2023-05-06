@@ -25,13 +25,14 @@ import alog
 
 # Local
 from .. import module as mod
+from ..module_type import module_type
 from ..toolkit.errors import error_handler
 
 log = alog.use_channel("BLBASE")
 error = error_handler.get(log)
 
 
-@mod.module_type("block")
+@module_type("block")
 # pylint: disable=abstract-method
 class BlockBase(mod.ModuleBase):
     """Abstract base class for creating Blocks. Inherits from ModuleBase."""

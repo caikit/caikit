@@ -22,13 +22,14 @@ import alog
 
 # Local
 from .. import module as mod
+from ..module_type import module_type
 from ..toolkit.errors import error_handler
 
 log = alog.use_channel("RSRCBASE")
 error = error_handler.get(log)
 
 
-@mod.module_type("resource")
+@module_type("resource")
 class ResourceBase(mod.ModuleBase):
     """Abstract base class for creating Resource Types.  Inherits from ModuleBase."""
 
