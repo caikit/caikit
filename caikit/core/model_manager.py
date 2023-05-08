@@ -166,7 +166,7 @@ class ModelManager:
             if not configured_load_backends:
                 log.info(
                     "<COR56759744I>",
-                    "No backend configured! Trying to configure using default config file.",
+                    "No backends configured! Configuring backends with current configuration",
                 )
                 module_backend_config.configure()
                 configured_load_backends = (
