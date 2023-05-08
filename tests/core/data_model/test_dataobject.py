@@ -58,7 +58,7 @@ def temp_dpool():
 
 
 @pytest.fixture(autouse=True)
-def reset_globals():
+def reset_global_protobuf_registry():
     """Reset the global registry of generated protos"""
     prev_auto_gen_proto_classes = copy.copy(_AUTO_GEN_PROTO_CLASSES)
     prev_class_registry = copy.copy(_DataBaseMetaClass.class_registry)

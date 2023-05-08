@@ -162,7 +162,7 @@ class TestModelManager(TestCaseBase):
     def test_load_invalid_zip_file(self):
         """Test that loading a zip archive not containing a model fails gracefully."""
         model_path = os.path.join(self.fixtures_dir, "invalid.zip")
-        with self.assertRaises(ValueError):
+        with self.assertRaises(FileNotFoundError):
             caikit.core.load(model_path)
 
     @pytest.mark.usefixtures("global_load_path")
@@ -392,18 +392,10 @@ def test_fall_back_to_local(reset_globals):
     """Make sure that if LOCAL is enabled and a given module doesn't have any
     registered backends, the default caikit.core.load is used.
     """
-    with temp_config(
-        {
-            "module_backends": {
-                "priority": [],
-            }
-        }
-    ):
-        configure()
-        with temp_saved_model(NonDistributedBlock()) as model_path:
-            model = caikit.core.load(model_path)
+    with temp_saved_model(NonDistributedBlock()) as model_path:
+        model = caikit.core.load(model_path)
 
-        assert isinstance(model, NonDistributedBlock)
+    assert isinstance(model, NonDistributedBlock)
 
 
 def test_no_local_if_disabled(reset_globals):
@@ -454,8 +446,11 @@ def test_preferred_backend_disabled(reset_globals):
     with temp_config(
         {
             "module_backends": {
-                "priority": [backend_types.LOCAL],
-                "configs": {},
+                "load_priority": [
+                    {
+                        "type": backend_types.LOCAL
+                    }
+                ],
             }
         }
     ):

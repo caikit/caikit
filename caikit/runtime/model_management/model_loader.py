@@ -58,7 +58,7 @@ class ModelLoader:
 
         Args:
             model_id (string):  Model ID string for the model to load.
-            local_model_path (string): Path to COS to load the model from.
+            local_model_path (string): local filesystem path to load the model from.
             model_type (string): Type of the model to load.
         Returns:
             model (LoadedModel) : The model that was loaded

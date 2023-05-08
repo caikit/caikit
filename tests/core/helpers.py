@@ -45,6 +45,9 @@ class MockBackend(BackendBase):
         self._started = False
 
 
+backend_types.register_backend_type(MockBackend)
+
+
 @pytest.fixture
 def reset_backend_types():
     """Fixture that will reset the backend types if a test modifies them"""
@@ -86,7 +89,7 @@ def reset_configured_backends():
     train_backends_list = copy.copy(_CONFIGURED_TRAIN_BACKENDS)
     _CONFIGURED_LOAD_BACKENDS.clear()
     _CONFIGURED_TRAIN_BACKENDS.clear()
-    backend_types.register_backend_type(MockBackend)
+    # backend_types.register_backend_type(MockBackend)
     yield
     _CONFIGURED_LOAD_BACKENDS.clear()
     _CONFIGURED_LOAD_BACKENDS.extend(load_backends_list)

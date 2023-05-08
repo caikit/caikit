@@ -65,12 +65,6 @@ def _primitives_function(
     pass
 
 
-HAPPY_PATH_RESPONSE = caikit.interfaces.runtime.data_model.TrainingJob(
-    model_name="Foo Bar Training",
-    training_id=_random_training_id(),
-)
-
-
 @pytest.fixture(autouse=True, params=[True, False])
 def set_train_location(request):
     """This fixture ensures that all tests in this file will be run with both
