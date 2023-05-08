@@ -66,7 +66,7 @@ def get_train_backend(backend_name: str) -> BackendBase:
 
 def configured_load_backends() -> List[BackendBase]:
     """This function returns the mapping of named"""
-    return copy.copy(_CONFIGURED_TRAIN_BACKENDS)
+    return copy.copy(_CONFIGURED_LOAD_BACKENDS)
 
 
 def configured_train_backends() -> List[BackendBase]:
@@ -85,9 +85,9 @@ def configure():
     log.debug3("Full Config: %s", config_object)
 
     # Configure both train and load backends
-    for backend_priority, registry in [
-        (config_object.load_priority, _CONFIGURED_LOAD_BACKENDS),
-        (config_object.train_priority, _CONFIGURED_TRAIN_BACKENDS),
+    for backend_priority, registry, registry_name in [
+        (config_object.load_priority, _CONFIGURED_LOAD_BACKENDS, "load"),
+        (config_object.train_priority, _CONFIGURED_TRAIN_BACKENDS, "train"),
     ]:
         backend_priority = backend_priority or []
         error.type_check("<COR46006487E>", list, backend_priority=backend_priority)
@@ -178,7 +178,7 @@ def configure():
             registry.append(backend_instance)
             _BACKEND_START_LOCKS[backend_name] = threading.Lock()
 
-        log.debug2("All configured backends: %s", registry)
+        log.debug2("All configured %s backends: %s", registry_name, registry)
 
 
 ## Implementation Details ######################################################

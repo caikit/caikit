@@ -178,6 +178,7 @@ class ModelManager:
             # directly. If not, parse the module config and look to see if there is
             # a version of the module available for the given backend
             loaded_model = None
+            log.debug("Available load backends: %s", configured_load_backends)
             for load_backend in configured_load_backends:
                 # If this is a shared loader, try loading the model directly
                 if isinstance(load_backend, SharedLoadBackendBase):

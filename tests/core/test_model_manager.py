@@ -499,8 +499,9 @@ def test_non_local_supported_backend(reset_globals):
     with temp_config(
         {
             "module_backends": {
-                "priority": [backend_types.MOCK2],
-                "configs": {},
+                "load_priority": [{
+                    "type": backend_types.MOCK2
+                }],
             }
         }
     ):
