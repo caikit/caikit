@@ -34,6 +34,7 @@ from sample_lib.data_model import SampleInputType, SampleOutputType
 from tests.conftest import temp_config
 from tests.core.helpers import reset_globals
 from tests.fixtures import Fixtures
+import caikit.core.blocks
 
 ## Helpers #####################################################################
 
@@ -82,7 +83,7 @@ register_backend_type(TestBackend)
     backend_type=backend_types.TEST,
     backend_config_override={"bar1": 1},
 )
-class DistributedGadget:
+class DistributedGadget(caikit.core.blocks.base.BlockBase):
     """An alternate implementation of a Gadget"""
 
     SUPPORTED_LOAD_BACKENDS = [backend_types.TEST, backend_types.LOCAL]

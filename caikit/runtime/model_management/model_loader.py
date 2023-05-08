@@ -24,7 +24,6 @@ import alog
 # Local
 from caikit.config import get_config
 from caikit.core import MODEL_MANAGER
-from caikit.core.module_backend_config import configure
 from caikit.runtime.model_management.batcher import Batcher
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -49,14 +48,9 @@ class ModelLoader:
         # Re-instantiating this is a programming error
         assert self.__class__.__instance is None, "This class is a singleton!"
         ModelLoader.__instance = self
-        # We will call get_config() each time in case there are updates since this
-        # class is a singleton
-
-        # If backends loading is enabled, set up the loader
-        if get_config().module_backends.enabled:
-            log.info("<RUN89711118I>", "Configuring for backends loading")
-            log.debug("Backends config: %s", get_config().module_backends)
-            configure()
+        # Instead of storing self.config = get_config(), we will call get_config() everywhere
+        # since this class is a singleton and configuration may be updated during its
+        # lifetime
 
     def load_model(self, model_id, local_model_path, model_type) -> LoadedModel:
         """Load a model using model_path (in Cloud Object Storage) & give it a model ID.

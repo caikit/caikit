@@ -23,9 +23,6 @@ load_path: null
 
 # Configuration for training/loading via module backends
 module_backends:
-    # Toggle distributed training/loading globally
-    #DEBUG -- This is only used in runtime currently!!!!!!
-    enabled: true
     # Local is always enabled unless explicitly disabled
     disable_local: false
     # Configuration for distributed loading and training. Each has an ordered
