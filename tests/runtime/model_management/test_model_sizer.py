@@ -24,7 +24,7 @@ import grpc
 from caikit import get_config
 from caikit.runtime.model_management.model_sizer import ModelSizer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from tests.conftest import temp_config, random_test_id
+from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
 
 

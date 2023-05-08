@@ -29,9 +29,8 @@ from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import get_dynamic_module
-from tests.conftest import temp_config, random_test_id
+from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
-
 
 get_dynamic_module("caikit.core")
 ANY_MODEL_TYPE = "test-any-model-type"

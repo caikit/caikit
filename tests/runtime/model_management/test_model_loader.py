@@ -33,8 +33,7 @@ from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.blocks.sample_task import SampleBlock
 from sample_lib.data_model import SampleInputType, SampleOutputType
-from tests.conftest import temp_config, random_test_id
-from tests.fixtures import Fixtures
+from tests.conftest import random_test_id, temp_config
 from tests.core.helpers import MockBackend
 from tests.fixtures import Fixtures
 import caikit.core.blocks

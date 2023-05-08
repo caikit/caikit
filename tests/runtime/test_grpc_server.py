@@ -55,7 +55,7 @@ from sample_lib.data_model import (
     SampleOutputType,
     SampleTrainingType,
 )
-from tests.conftest import temp_config, random_test_id
+from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
 import caikit
 import sample_lib

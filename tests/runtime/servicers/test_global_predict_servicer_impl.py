@@ -32,7 +32,6 @@ from sample_lib.data_model import SampleInputType, SampleOutputType
 from tests.fixtures import Fixtures
 import sample_lib
 
-
 HAPPY_PATH_INPUT = SampleInputType(name="Gabe").to_proto()
 HAPPY_PATH_RESPONSE = SampleOutputType(greeting="Hello Gabe").to_proto()
 

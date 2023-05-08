@@ -29,7 +29,7 @@ from sample_lib.data_model.sample import (
     SampleOutputType,
     SampleTrainingType,
 )
-from tests.conftest import temp_config, random_test_id
+from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
 import caikit.core
 

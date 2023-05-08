@@ -54,6 +54,7 @@ logging.configure()
 def random_test_id():
     return "test-any-model-" + _random_id()
 
+
 @pytest.fixture(autouse=True, scope="session")
 def test_environment():
     """The most important fixture: This runs caikit configuration with the base test config overrides"""
