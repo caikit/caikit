@@ -63,6 +63,9 @@ class GlobalTrainServicer:
         self._training_service = training_service
         self._model_manager = ModelManager.get_instance()
         self.training_manager = TrainingManager.get_instance()
+        # NOTE: Following is using default number of workers for ThreadPoolExecutor
+        # which in case of python3.8 would be between 5 to 32 depending on number of CPU cores
+        # on the machine
         self.executor = concurrent.futures.ThreadPoolExecutor()
         # store the map of model ids to job ids
         self.training_map = self.training_manager.training_futures
@@ -98,7 +101,7 @@ class GlobalTrainServicer:
         )
         super()
 
-    def Train(self, request, *_, **__) -> TrainingJob:
+    def Train(self, request, context, *_, **__) -> TrainingJob:
         """Global predict RPC -- Mocks the invocation of a Caikit Library block.train()
         method for a loaded Caikit Library model
         Args:
@@ -127,6 +130,7 @@ class GlobalTrainServicer:
                         ),
                         f"{''.join(split[2:])}",
                     )
+
                 except Exception:  # pylint: disable=broad-exception-caught
                     for mod in caikit.core.MODULE_REGISTRY.values():
                         module_split = mod.__module__.split(".")
@@ -215,6 +219,7 @@ class GlobalTrainServicer:
             if self.use_subprocess
             else self._train_and_save_model
         )
+
         log.debug2(
             "Training with %s",
             "SUBPROCESS" if self.use_subprocess else "MAIN PROCESS",
@@ -386,6 +391,14 @@ class GlobalTrainServicer:
                     f"Training process died with exit code {proc.exitcode}",
                 )
             raise exception
+
+
+    def _cancel_training(self, training_id):
+        """Function to cancel training"""
+        training_thread = self.training_map[training_id]
+        if training_thread.running():
+            training_thread.cancel()
+
 
     class _ErrorCaptureProcess(multiprocessing.get_context("fork").Process):
         """This class wraps a Process and keeps track of any errors that occur

@@ -13,6 +13,8 @@
 # limitations under the License.
 # Standard
 from tempfile import TemporaryDirectory
+from threading import Event, Thread
+from unittest.mock import MagicMock, patch
 import time
 import uuid
 
@@ -426,34 +428,45 @@ def test_global_train_returns_exit_code_with_oom(
 #####################################################################
 
 # NOTE: This test was commented out in the original unittest.TestCase impl - leaving as is
-# def test_global_train_aborts_long_running_trains(self):
-#     mock_manager = MagicMock()
+def test_global_train_aborts_long_running_trains(
+        sample_train_service, sample_train_servicer
+):
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    training_data = stream_type(
+        jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
+    ).to_proto()
+    train_request = (
+        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+            model_name="Foo Bar Training",
+            batch_size=42,
+            training_data=training_data,
+            oom_exit=True,
+        )
+    )
 
-#     # return a dummy model from the mock model manager
-#     class UnresponsiveModel:
-#         started = threading.Event()
+    started = Event()
 
-#         def run(self, *args, **kwargs):
-#             self.started.set()
-#             while True:
-#                 time.sleep(0.01)
+    def never_respond(*args, **kwargs):
+        started.set()
+        while True:
+            time.sleep(0.01)
 
-#     dummy_model = UnresponsiveModel()
-#     mock_manager.retrieve_model.return_value = dummy_model
+    # sample_train_servicer.use_subprocess = False
+    context = Fixtures.build_context("test-any-unresponsive-model")
+    train_thread = Thread(
+        # NOTE: We are not calling .Train function because this function
+        # calls the module import directly, which is making patching module hackery
+        target=sample_train_servicer.Train,
+        args=(train_request, context)
+    )
 
-#     context = Fixtures.build_context("test-any-unresponsive-model")
-#     train_thread = threading.Thread(
-#         target=self.train_servicer.Train,
-#         args=(self.HAPPY_PATH_FAKE_BLOCK_REQUEST, context),
-#     )
+    with patch("sample_lib.blocks.sample_task.sample_implementation.SampleBlock.train", never_respond):
+        train_thread.start()
+        started.wait()
+        # Simulate a timeout or client abort
+        context.cancel()
+        train_thread.join(10)
 
-#     # Patch in the mock manager and start the training
-#     with patch.object(self.train_servicer, "_model_manager", mock_manager):
-#         train_thread.start()
-#         dummy_model.started.wait()
-#         # Simulate a timeout or client abort
-#         context.cancel()
-#         train_thread.join(10)
 
-#     # Make sure the training job actually stopped
-#     self.assertFalse(train_thread.is_alive())
+    # Make sure the training job actually stopped
+    assert not train_thread.is_alive()
