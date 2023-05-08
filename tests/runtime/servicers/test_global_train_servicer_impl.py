@@ -94,16 +94,17 @@ def test_global_train_sample_task(
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
+    model_name = _random_test_id()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name="Foo Bar Training",
+            model_name=model_name,
             batch_size=42,
             training_data=training_data,
         )
     )
 
     training_response = sample_train_servicer.Train(train_request)
-    assert training_response.model_name == "Foo Bar Training"
+    assert training_response.model_name == model_name
     assert training_response.training_id is not None
     assert isinstance(training_response.training_id, str)
 
@@ -249,7 +250,7 @@ def test_run_train_job_works_with_wait(
     ).to_proto()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name="Foo Bar Training",
+            model_name=_random_test_id(),
             batch_size=42,
             training_data=training_data,
         )
@@ -375,7 +376,7 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_blo
     ).to_proto()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name="Foo Bar Training",
+            model_name=_random_test_id(),
             batch_size=999,
             training_data=training_data,
         )
@@ -400,7 +401,7 @@ def test_global_train_returns_exit_code_with_oom(
     ).to_proto()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name="Foo Bar Training",
+            model_name=_random_test_id(),
             batch_size=42,
             training_data=training_data,
             oom_exit=True,
