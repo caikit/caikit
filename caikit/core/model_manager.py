@@ -148,7 +148,9 @@ class ModelManager:
 
             # Using the module_path as a key, look for an instance preloaded in the
             # singleton cache if desired
-            if singleton_entry := self.singleton_module_cache.get(module_path):
+            if singleton_entry := (
+                load_singleton and self.singleton_module_cache.get(module_path)
+            ):
                 log.debug("Found %s in the singleton cache", module_path)
                 return singleton_entry
 

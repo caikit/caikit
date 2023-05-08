@@ -78,34 +78,14 @@ class TestModelManager(TestCaseBase):
         self.assertIsInstance(model, caikit.core.BlockBase)
 
     def test_load_can_load_a_block_as_a_singleton(self):
-        # load a model with no hash config
-        no_hashed_model = caikit.core.load(
-            self.non_singleton_model_path, load_singleton=True
-        )
-        self.assertIsInstance(no_hashed_model, caikit.core.BlockBase)
-
+        model1 = caikit.core.load(self.singleton_model_path, load_singleton=True)
         model2 = caikit.core.load(self.singleton_model_path, load_singleton=True)
-        model3 = caikit.core.load(self.singleton_model_path, load_singleton=True)
-
-        # Pointer should be equal
-        self.assertEqual(id(model2), id(model3))
-
-        # Pointer should not be equal
-        self.assertNotEqual(id(no_hashed_model), id(model3))
+        assert model1 is model2
 
     def test_load_can_load_a_block_with_singleton_disabled(self):
-        # load a model with no hash config
-        no_hashed_model = caikit.core.load(
-            self.non_singleton_model_path, load_singleton=True
-        )
-        self.assertIsInstance(no_hashed_model, caikit.core.BlockBase)
-
+        model1 = caikit.core.load(self.singleton_model_path, load_singleton=True)
         model2 = caikit.core.load(self.singleton_model_path, load_singleton=False)
-        model3 = caikit.core.load(self.singleton_model_path, load_singleton=False)
-
-        # Pointer should not be equal
-        self.assertNotEqual(id(model2), id(model3))
-        self.assertNotEqual(id(no_hashed_model), id(model3))
+        assert model1 is not model2
 
     def test_singleton_cache_can_be_cleared(self):
         model = caikit.core.load(self.singleton_model_path, load_singleton=True)
