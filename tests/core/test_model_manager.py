@@ -162,7 +162,7 @@ class TestModelManager(TestCaseBase):
     def test_load_invalid_zip_file(self):
         """Test that loading a zip archive not containing a model fails gracefully."""
         model_path = os.path.join(self.fixtures_dir, "invalid.zip")
-        with self.assertRaises(FileNotFoundError):
+        with self.assertRaises(ValueError):
             caikit.core.load(model_path)
 
     @pytest.mark.usefixtures("global_load_path")
@@ -214,7 +214,7 @@ def setup_saved_model(mock_backend_class):
     backend_types.register_backend_type(mock_backend_class)
 
     @caikit.core.blocks.block(base_module=DummyFoo, backend_type=backend_types.MOCK)
-    class DummyBar:
+    class DummyBar(caikit.core.blocks.base.BlockBase):
         SUPPORTED_LOAD_BACKENDS = [backend_types.MOCK, backend_types.LOCAL]
 
         @classmethod
@@ -258,12 +258,7 @@ def test_backend_supported_model_load_successfully(reset_globals):
     _, DummyBar = setup_saved_model(MockBackend)
     # Configure backend
     with temp_config(
-        {
-            "module_backends": {
-                "priority": [backend_types.MOCK],
-                "configs": {"mock": {}},
-            }
-        }
+        {"module_backends": {"load_priority": [{"type": backend_types.MOCK}]}}
     ):
         configure()
 
@@ -280,8 +275,7 @@ def test_local_model_load_successfully(reset_globals):
     with temp_config(
         {
             "module_backends": {
-                "priority": [backend_types.LOCAL],
-                "configs": {"mock": {}},
+                "load_priority": [{"type": backend_types.LOCAL}],
             }
         }
     ):
@@ -303,8 +297,7 @@ def test_local_model_loaded_backend_successfully(reset_globals):
     with temp_config(
         {
             "module_backends": {
-                "priority": [backend_types.MOCK],
-                "configs": {"mock": {}},
+                "load_priority": [{"type": backend_types.MOCK}],
             }
         }
     ):
@@ -418,8 +411,15 @@ def test_no_local_if_disabled(reset_globals):
     registered backends, loading fails.
     """
     _ = setup_saved_model(MockBackend)
+    # 🌶️ TODO: remove the `disable_local` flag
     with temp_config(
-        {"module_backends": {"priority": [backend_types.MOCK], "disable_local": True}}
+        {
+            "module_backends": {
+                "load_priority": [{"type": backend_types.MOCK}],
+                "train_priority": [],
+                "disable_local": True,
+            }
+        }
     ):
         configure()
         with temp_saved_model(NonDistributedBlock()) as model_path:
@@ -435,8 +435,7 @@ def test_preferred_backend_enabled(reset_globals):
     with temp_config(
         {
             "module_backends": {
-                "priority": [backend_types.MOCK],
-                "configs": {"mock": {}},
+                "load_priority": [{"type": backend_types.MOCK}],
             }
         }
     ):
@@ -489,19 +488,20 @@ def test_non_local_supported_backend(reset_globals):
     backend_types.register_backend_type(MockBackend2)
 
     @caikit.core.blocks.block(base_module=DummyFoo, backend_type=backend_types.MOCK2)
-    class DummyBaz:
+    class DummyBaz(caikit.core.blocks.base.BlockBase):
         SUPPORTED_LOAD_BACKENDS = [backend_types.MOCK, backend_types.MOCK2]
 
         @classmethod
         def load(self, *args, **kwargs):
             return DummyBaz()
 
+    print(dir(DummyBaz))
+    print(dir(DummyBaz()))
+
     with temp_config(
         {
             "module_backends": {
-                "load_priority": [{
-                    "type": backend_types.MOCK2
-                }],
+                "load_priority": [{"type": backend_types.MOCK2}],
             }
         }
     ):

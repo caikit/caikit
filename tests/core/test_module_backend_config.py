@@ -238,7 +238,7 @@ def test_multiple_module_same_backend_configures(reset_globals):
         backend_type=backend_types.MOCK,
         backend_config_override={"bar1": 1},
     )
-    class DummyBar:
+    class DummyBar(base.BlockBase):
         pass
 
     @block(id="foo2", name="dummy base", version="0.0.1")
@@ -251,7 +251,7 @@ def test_multiple_module_same_backend_configures(reset_globals):
         backend_type=backend_types.MOCK,
         backend_config_override={"bar2": 2},
     )
-    class DummyBar:
+    class DummyBar(base.BlockBase):
         pass
 
     # Initiate configuration

@@ -21,6 +21,7 @@ from contextlib import contextmanager
 from io import BytesIO
 from threading import Lock
 from typing import Union
+import errno
 import os
 import tempfile
 import zipfile
@@ -141,6 +142,12 @@ class ModelManager:
             subclass of blocks.base.BlockBase
                 Model object that is loaded, configured, and ready for prediction.
         """
+        # Short-circuit the loading process if the path does not exist
+        if not os.path.exists(module_path):
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), module_path
+            )
+
         # If this is a singleton load, the entire body of this function needs to
         # be locked to avoid concurrent loads on the same model. Otherwise, we
         # can freely load in parallel.
@@ -199,12 +206,11 @@ class ModelManager:
                         loaded_model = model
                         model.set_load_backend(load_backend)
                         break
-                    else:
-                        log.debug3(
-                            "Could not load %s with loader %s",
-                            module_path,
-                            load_backend.name,
-                        )
+                    log.debug3(
+                        "Could not load %s with loader %s",
+                        module_path,
+                        load_backend.name,
+                    )
 
                 # If this is not a shared loader, look for an implementation of the
                 # model's module that works with this backend

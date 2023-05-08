@@ -83,11 +83,10 @@ def module_type(module_type_name):
             base_module: Union[str, Type[ModuleBase]] = None,
             backend_config_override: Optional[Dict] = None,
         ):
-            f"""Apply this decorator to any class that should be treated as a {module_type_name} (i.e.,
-            extends
-            `{cls.__name__}) and registered with caikit.core so that the library "knows" the class
-            is a
-            {module_type_name} and is capable of loading instances of the {module_type_name}.
+            f"""Apply this decorator to any class that should be treated as a {module_type_name}
+             (i.e., extends`{cls.__name__}) and registered with caikit.core so that the library
+             "knows" the class is a {module_type_name} and is capable of loading instances of the
+             {module_type_name}.
 
             Args:
                 id:  str
@@ -173,19 +172,10 @@ def module_type(module_type_name):
             semver.VersionInfo.parse(version)  # Make sure this is a valid SemVer
 
             def decorator(cls_):
-                # Verify this is a valid module type (inherits from the wrapped
-                # base class)
-
-                if backend_module_impl and not issubclass(base_module_class, cls):
+                # Verify this is a valid module type (inherits from the wrapped base class)
+                if not issubclass(cls_, cls):
                     error(
                         "<COR32401861E>",
-                        TypeError(
-                            f"`{base_module_class.__name__}` does not extend `{cls.__name__}`",
-                        ),
-                    )
-                elif not backend_module_impl and not issubclass(cls_, cls):
-                    error(
-                        "<COR68265482E>",
                         TypeError(
                             f"`{cls_.__name__}` does not extend `{cls.__name__}`",
                         ),

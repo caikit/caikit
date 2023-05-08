@@ -337,7 +337,8 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
                 Minimum number of seconds to run timed_run over. Will most likely be more than this
                 value due to its waiting for the each call to `self.run` to finish.
             num_iterations:  int
-                Minimum number of iterations to run timed_run over. Will run exactly this many times.
+                Minimum number of iterations to run timed_run over. Will run exactly this many
+                times.
             **kwargs:  dict
                 Will be passed to `self.run`.
 
