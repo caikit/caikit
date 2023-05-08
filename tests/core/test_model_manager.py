@@ -446,11 +446,7 @@ def test_preferred_backend_disabled(reset_globals):
     with temp_config(
         {
             "module_backends": {
-                "load_priority": [
-                    {
-                        "type": backend_types.LOCAL
-                    }
-                ],
+                "load_priority": [{"type": backend_types.LOCAL}],
             }
         }
     ):
