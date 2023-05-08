@@ -55,7 +55,7 @@ from sample_lib.data_model import (
     SampleOutputType,
     SampleTrainingType,
 )
-from tests.conftest import temp_config
+from tests.conftest import temp_config, random_test_id
 from tests.fixtures import Fixtures
 import caikit
 import sample_lib
@@ -67,10 +67,6 @@ HAPPY_PATH_RESPONSE = SampleOutputType(greeting="Hello Gabe").to_proto()
 HAPPY_PATH_TRAIN_RESPONSE = TrainingJob(
     model_name="dummy name", training_id="dummy id"
 ).to_proto()
-
-
-def _random_test_id():
-    return "test-any-model-" + str(uuid.uuid4())
 
 
 def is_good_train_response(actual_response, expected, model_name):
@@ -195,7 +191,7 @@ def test_train_fake_block_ok_response_and_can_predict_with_trained_model(
             data=[SampleTrainingType(1), SampleTrainingType(2)]
         )
     ).to_proto()
-    model_name = _random_test_id()
+    model_name = random_test_id()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
             model_name=model_name, training_data=training_data
@@ -229,7 +225,7 @@ def test_train_fake_block_ok_response_with_loaded_model_can_predict_with_trained
     sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
         model_id=loaded_model_id
     ).to_proto()
-    model_name = _random_test_id()
+    model_name = random_test_id()
     train_request = (
         sample_train_service.messages.WorkflowsSampleTaskSampleWorkflowTrainRequest(
             model_name=model_name, sample_block=sample_model
@@ -313,7 +309,7 @@ def test_train_fake_block_ok_response_with_datastream_jsondata(
             data=[SampleTrainingType(1), SampleTrainingType(2)]
         )
     ).to_proto()
-    model_name = _random_test_id()
+    model_name = random_test_id()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
             model_name=model_name,
@@ -351,7 +347,7 @@ def test_train_fake_block_ok_response_with_datastream_csv_file(
     training_data = stream_type(
         file=stream_type.File(filename=sample_csv_file)
     ).to_proto()
-    model_name = _random_test_id()
+    model_name = random_test_id()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
             model_name=model_name,
@@ -383,12 +379,12 @@ def test_train_fake_block_error_response_with_unloaded_model(
     """Test RPC CaikitRuntime.WorkflowsSampleTaskSampleWorkflowTrain error response because sample model is not loaded"""
     with pytest.raises(grpc.RpcError) as context:
         sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
-            model_id=_random_test_id()
+            model_id=random_test_id()
         ).to_proto()
 
         train_request = (
             sample_train_service.messages.WorkflowsSampleTaskSampleWorkflowTrainRequest(
-                model_name=_random_test_id(), sample_block=sample_model
+                model_name=random_test_id(), sample_block=sample_model
             )
         )
         train_stub.WorkflowsSampleTaskSampleWorkflowTrain(train_request)

@@ -24,12 +24,8 @@ import grpc
 from caikit import get_config
 from caikit.runtime.model_management.model_sizer import ModelSizer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from tests.conftest import temp_config
+from tests.conftest import temp_config, random_test_id
 from tests.fixtures import Fixtures
-
-
-def _random_test_id() -> str:
-    return "test-any-model-" + str(uuid.uuid4())
 
 
 def _random_test_model_type() -> str:
@@ -74,7 +70,7 @@ class TestModelSizer(unittest.TestCase):
             ):
                 expected_size = total_size * mult
                 size = self.model_sizer.get_model_size(
-                    model_id=_random_test_id(),
+                    model_id=random_test_id(),
                     local_model_path=d,
                     model_type=model_type,
                 )
@@ -96,7 +92,7 @@ class TestModelSizer(unittest.TestCase):
             )
 
             size = self.model_sizer.get_model_size(
-                model_id=_random_test_id(),
+                model_id=random_test_id(),
                 local_model_path=Fixtures.get_good_model_archive_path(),
                 model_type=model_type,
             )
@@ -110,7 +106,7 @@ class TestModelSizer(unittest.TestCase):
         )
 
         size = self.model_sizer.get_model_size(
-            model_id=_random_test_id(),
+            model_id=random_test_id(),
             local_model_path=Fixtures.get_good_model_archive_path(),
             model_type=model_type,
         )
@@ -119,7 +115,7 @@ class TestModelSizer(unittest.TestCase):
     def test_it_throws_not_found_if_file_does_not_exist(self):
         with self.assertRaises(CaikitRuntimeException) as context:
             self.model_sizer.get_model_size(
-                model_id=_random_test_id(),
+                model_id=random_test_id(),
                 local_model_path="not/a/path/to/anything",
                 model_type=_random_test_model_type(),
             )
@@ -131,7 +127,7 @@ class TestModelSizer(unittest.TestCase):
             TestModelSizer._add_file(os.path.join(d, "some_file"), 256)
 
             model_type = _random_test_model_type()
-            model_id = _random_test_id()
+            model_id = random_test_id()
             original_size = self.model_sizer.get_model_size(
                 model_id=model_id,
                 local_model_path=d,

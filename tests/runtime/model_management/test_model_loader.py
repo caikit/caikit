@@ -34,16 +34,12 @@ from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.blocks.sample_task import SampleBlock
 from sample_lib.data_model import SampleInputType, SampleOutputType
-from tests.conftest import temp_config
+from tests.conftest import temp_config, random_test_id
 from tests.fixtures import Fixtures
 from tests.core.helpers import MockBackend
 import caikit.core.blocks
 
 ## Helpers #####################################################################
-
-
-def _random_test_id():
-    return "test-any-model-" + str(uuid.uuid4())
 
 
 @contextmanager
@@ -95,7 +91,7 @@ def test_load_model_archive(model_loader):
 
 def test_load_model_error_not_found_response(model_loader):
     """Test load model's model does not exist error response"""
-    model_id = _random_test_id()
+    model_id = random_test_id()
     with pytest.raises(CaikitRuntimeException) as context:
         model_loader.load_model(
             model_id=model_id,
@@ -108,7 +104,7 @@ def test_load_model_error_not_found_response(model_loader):
 
 def test_load_invalid_model_error_response(model_loader):
     """Test load invalid model error response"""
-    model_id = _random_test_id()
+    model_id = random_test_id()
     with pytest.raises(CaikitRuntimeException) as context:
         model_loader.load_model(
             model_id=model_id,

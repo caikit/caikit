@@ -33,10 +33,6 @@ from tests.fixtures import Fixtures
 import sample_lib
 
 
-def _random_test_id():
-    return "test-any-model-" + str(uuid.uuid4())
-
-
 HAPPY_PATH_INPUT = SampleInputType(name="Gabe").to_proto()
 HAPPY_PATH_RESPONSE = SampleOutputType(greeting="Hello Gabe").to_proto()
 

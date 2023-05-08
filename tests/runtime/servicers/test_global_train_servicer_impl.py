@@ -29,15 +29,11 @@ from sample_lib.data_model.sample import (
     SampleOutputType,
     SampleTrainingType,
 )
-from tests.conftest import temp_config
+from tests.conftest import temp_config, random_test_id
 from tests.fixtures import Fixtures
 import caikit.core
 
 ## Helpers #####################################################################
-
-
-def _random_test_id():
-    return "test-any-model-" + str(uuid.uuid4())
 
 
 def _random_training_id():
@@ -94,7 +90,7 @@ def test_global_train_sample_task(
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
-    model_name = _random_test_id()
+    model_name = random_test_id()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
             model_name=model_name,
@@ -250,7 +246,7 @@ def test_run_train_job_works_with_wait(
     ).to_proto()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name=_random_test_id(),
+            model_name=random_test_id(),
             batch_size=42,
             training_data=training_data,
         )
@@ -348,7 +344,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_but_not_loaded_s
     sample_train_service, sample_train_servicer
 ):
     """Global train of TrainRequest raises when calling a train function that requires another loaded model, but model is not loaded"""
-    model_id = _random_test_id()
+    model_id = random_test_id()
 
     sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
         model_id=model_id
@@ -376,7 +372,7 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_blo
     ).to_proto()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name=_random_test_id(),
+            model_name=random_test_id(),
             batch_size=999,
             training_data=training_data,
         )
@@ -401,7 +397,7 @@ def test_global_train_returns_exit_code_with_oom(
     ).to_proto()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name=_random_test_id(),
+            model_name=random_test_id(),
             batch_size=42,
             training_data=training_data,
             oom_exit=True,
