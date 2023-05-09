@@ -13,21 +13,26 @@
 # limitations under the License.
 
 # Standard
+from typing import Optional
 import copy
 
 # Third Party
 import pytest
 
 # Local
-from caikit.core.module import MODULE_BACKEND_REGISTRY, MODULE_REGISTRY
+from caikit.core import LocalBackend
+from caikit.core.module import MODULE_BACKEND_REGISTRY, MODULE_REGISTRY, ModuleBase
 from caikit.core.module_backend_config import (
     _CONFIGURED_LOAD_BACKENDS,
     _CONFIGURED_TRAIN_BACKENDS,
 )
 from caikit.core.module_backends import BackendBase, backend_types
 
-
 # Add mock backend
+# This is set in the base test config's load_priority list
+from caikit.core.module_backends.base import SharedLoadBackendBase
+
+
 class MockBackend(BackendBase):
     backend_type = "MOCK"
 
@@ -46,6 +51,36 @@ class MockBackend(BackendBase):
 
 
 backend_types.register_backend_type(MockBackend)
+
+
+# Add a new shared load backend that tests can use
+class TestLoader(SharedLoadBackendBase):
+    backend_type = "TESTLOADER"
+
+    def load(self, model_path: str, *args, **kwargs) -> Optional[ModuleBase]:
+        # allow config.model_type to control whether this loader barfs
+        if "model_type" in self.config and "model_type" in kwargs:
+            if self.config["model_type"] != kwargs["model_type"]:
+                raise ValueError(
+                    f"test loader refusing to load model type {kwargs['model_type']}"
+                )
+        # use the "Local" loader to actually load the model
+        model = LocalBackend(name="test").load(model_path)
+        # Let tests know which loader was used
+        setattr(model, "loader_name", self.name)
+        return model
+
+    def register_config(self, config):
+        pass
+
+    def stop(self):
+        pass
+
+    def start(self):
+        pass
+
+
+backend_types.register_backend_type(TestLoader)
 
 
 @pytest.fixture

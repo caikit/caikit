@@ -17,14 +17,18 @@ and download and load them.
 
 # Standard
 from contextlib import contextmanager
+from typing import Optional
 import os
 import tempfile
+import uuid
 
 # Local
+from caikit.core import ModuleBase
 from caikit.core.module_backend_config import configure
 from caikit.core.module_backends import LocalBackend
 
 # Unit Test Infrastructure
+from caikit.core.module_backends.base import SharedLoadBackendBase
 from sample_lib.blocks.sample_task import SampleBlock
 from tests.base import TestCaseBase
 from tests.conftest import temp_config
@@ -518,3 +522,21 @@ def test_load_must_return_model():
         model.save(tempdir)
         with pytest.raises(TypeError):
             caikit.core.load(tempdir)
+
+
+def test_load_with_new_shared_backend(good_model_path, reset_globals):
+    """If a shared laod backend has higher priority than LOCAL, it is used"""
+    loader_name = str(uuid.uuid4())
+    with temp_config(
+        {
+            "module_backends": {
+                "load_priority": [
+                    {"type": TestLoader.backend_type, "name": loader_name},
+                    {"type": backend_types.LOCAL},
+                ],
+            }
+        }
+    ):
+        configure()
+        model = caikit.core.load(good_model_path)
+        assert model.loader_name == loader_name
