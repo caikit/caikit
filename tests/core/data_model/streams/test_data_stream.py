@@ -88,7 +88,7 @@ class TestDataStream(TestCaseBase):
             os.path.join(self.samples_path, "sample.jsonl")
         )
         self.jsonl_w_control_chars_data_stream = core_dm.DataStream.from_jsonl(
-            os.path.join(self.samples_path, "control_chars_jsonl.jsonl")
+            os.path.join(self.samples_path, "control_chars.jsonl")
         )
         self.sample_type_data_stream = self.txt_data_stream.map(
             lambda text: SampleInputType(name=text)
