@@ -404,6 +404,7 @@ def test_no_local_if_disabled(reset_globals):
     """
     _ = setup_saved_model(MockBackend)
     # 🌶️ TODO: remove the `disable_local` flag
+    # ...if LOCAL can always be supplied in the caikit base config
     with temp_config(
         {
             "module_backends": {
