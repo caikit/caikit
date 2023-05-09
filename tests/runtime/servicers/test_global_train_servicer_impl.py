@@ -36,10 +36,6 @@ import caikit.core
 ## Helpers #####################################################################
 
 
-def _random_training_id():
-    return "training-" + str(uuid.uuid4())
-
-
 def _primitives_function(
     self,
     double_field,

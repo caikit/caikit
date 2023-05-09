@@ -486,9 +486,6 @@ def test_non_local_supported_backend(reset_globals):
         def load(self, *args, **kwargs):
             return DummyBaz()
 
-    print(dir(DummyBaz))
-    print(dir(DummyBaz()))
-
     with temp_config(
         {
             "module_backends": {
