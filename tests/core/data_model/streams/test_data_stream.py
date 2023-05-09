@@ -87,6 +87,9 @@ class TestDataStream(TestCaseBase):
         self.jsonl_data_stream = core_dm.DataStream.from_jsonl(
             os.path.join(self.samples_path, "sample.jsonl")
         )
+        self.jsonl_w_control_chars_data_stream = core_dm.DataStream.from_jsonl(
+            os.path.join(self.samples_path, "control_chars_jsonl.jsonl")
+        )
         self.sample_type_data_stream = self.txt_data_stream.map(
             lambda text: SampleInputType(name=text)
         )
@@ -151,6 +154,12 @@ class TestDataStream(TestCaseBase):
 
     def test_jsonl_array_data_stream(self):
         self.validate_data_stream(self.jsonl_data_stream, 4, dict, 2)
+        for data_item in self.jsonl_data_stream:
+            for element in data_item:
+                self.assertIsInstance(element, str)
+
+    def test_jsonl_control_chars_array_data_stream(self):
+        self.validate_data_stream(self.jsonl_w_control_chars_data_stream, 2, dict, 2)
         for data_item in self.jsonl_data_stream:
             for element in data_item:
                 self.assertIsInstance(element, str)
