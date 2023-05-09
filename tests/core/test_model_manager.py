@@ -571,3 +571,43 @@ def test_load_with_two_shared_loaders_of_the_same_type(good_model_path, reset_gl
         # model load that fails in the first loader will use the second
         model = caikit.core.load(good_model_path, model_type="model two")
         assert model.loader_name == "loader two"
+
+
+def test_load_does_not_read_config_yml_if_loader_does_not_require_it(
+    reset_globals, tmp_path
+):
+    tmpdir = str(tmp_path)
+
+    with open(os.path.join(tmpdir, "config.yml"), "w") as f:
+        f.write("{this is not yaml} !!@#$%^")
+
+    class NoYamlLoader(SharedLoadBackendBase):
+        backend_type = "NOYAML"
+
+        def stop(self):
+            pass
+
+        def start(self):
+            pass
+
+        def register_config(self, config):
+            pass
+
+        def load(self, model_path, *args, **kwargs):
+            """This load function doesn't read from model_path, so it definitely does not read the config.yml file"""
+            return SampleBlock()
+
+    backend_types.register_backend_type(NoYamlLoader)
+
+    with temp_config(
+        {
+            "module_backends": {
+                "load_priority": [
+                    {"type": NoYamlLoader.backend_type},
+                ]
+            }
+        }
+    ):
+        configure()
+        model = caikit.core.load(tmpdir)
+        assert isinstance(model, SampleBlock)
