@@ -503,7 +503,7 @@ def test_non_local_supported_backend(reset_globals):
 
 def test_load_must_return_model():
     """Make sure that the return type of load is checked to be an instance of
-    ModuleBase
+    ModuleBase, and will raise TypeError if it is not.
     """
 
     @caikit.core.block("00110203-baad-beef-0809-0a0b0c0d0e0f", "FunkyBlock", "0.0.1")

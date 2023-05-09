@@ -155,6 +155,8 @@ class ModelManager:
 
             # Using the module_path as a key, look for an instance preloaded in the
             # singleton cache if desired
+            # 🌶🌶🌶 This doesn't work for nested blocks
+            # TODO: think about bringing back the `unique_hash` or `tracking_id`
             if singleton_entry := (
                 load_singleton and self.singleton_module_cache.get(module_path)
             ):

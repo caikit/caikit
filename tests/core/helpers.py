@@ -89,7 +89,6 @@ def reset_configured_backends():
     train_backends_list = copy.copy(_CONFIGURED_TRAIN_BACKENDS)
     _CONFIGURED_LOAD_BACKENDS.clear()
     _CONFIGURED_TRAIN_BACKENDS.clear()
-    # backend_types.register_backend_type(MockBackend)
     yield
     _CONFIGURED_LOAD_BACKENDS.clear()
     _CONFIGURED_LOAD_BACKENDS.extend(load_backends_list)

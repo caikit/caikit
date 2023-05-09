@@ -227,7 +227,7 @@ def module_type(module_type_name):
                         error(
                             "<COR30607646E>",
                             RuntimeError(
-                                "BLOCK_ID `{}` conflicts for classes `{}` and `{}`".format(
+                                "MODULE_ID `{}` conflicts for classes `{}` and `{}`".format(
                                     cls_.MODULE_ID,
                                     cls_.__name__,
                                     MODULE_REGISTRY[cls_.MODULE_ID].__name__,

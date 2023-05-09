@@ -480,9 +480,6 @@ def test_dataobject_with_discriminator():
 #             Annotated[Bat, OneofField("bat")],
 #         ]
 
-#     #DEBUG -------------- SOMETHING BROKEN HERE!!!
-#     breakpoint()
-
 #     # proto tests
 #     foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))
 #     proto_repr_foo = foo1.to_proto()

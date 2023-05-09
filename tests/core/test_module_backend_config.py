@@ -144,6 +144,8 @@ def test_duplicate_config_raises(reset_globals):
             }
         }
     ):
+        # The mock backend is already registered for tests in the core
+        # see tests/core/helpers.py
         configure()
         with pytest.raises(ValueError):
             configure()

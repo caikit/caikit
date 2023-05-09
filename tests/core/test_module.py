@@ -158,12 +158,10 @@ def test_init_and_members():
     assert isinstance(config.integer, int)
     assert config.integer == 1
     assert isinstance(config.float, float)
-    # DEBUG
     assert config.float == 0.5
     assert isinstance(config.nested, dict)
     assert config.nested.string == "world"
     assert config.nested.integer == 2
-    # DEBUG
     assert config.nested.float == -0.123
 
 
