@@ -347,6 +347,7 @@ class DataStream(Generic[T]):
         def generator_func(*csv_args, **csv_kwargs):
             # open the csv file (closure around `filename`)
             with open(filename, mode="r", encoding="utf8") as fh:
+
                 # for each line of the csv file, yield a dict
                 for line in csv.DictReader(fh, *csv_args, **csv_kwargs):
                     yield line
