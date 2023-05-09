@@ -540,3 +540,34 @@ def test_load_with_new_shared_backend(good_model_path, reset_globals):
         configure()
         model = caikit.core.load(good_model_path)
         assert model.loader_name == loader_name
+
+
+def test_load_with_two_shared_loaders_of_the_same_type(good_model_path, reset_globals):
+    """Multiple instances of one shared loader type can be configured"""
+    with temp_config(
+        {
+            "module_backends": {
+                "load_priority": [
+                    {
+                        "type": TestLoader.backend_type,
+                        "name": "loader one",
+                        "config": {"model_type": "model one"},
+                    },
+                    {
+                        "type": TestLoader.backend_type,
+                        "name": "loader two",
+                        "config": {"model_type": "model two"},
+                    },
+                    {"type": backend_types.LOCAL},
+                ],
+            }
+        }
+    ):
+        configure()
+        # plain model load should use first loader
+        model = caikit.core.load(good_model_path)
+        assert model.loader_name == "loader one"
+
+        # model load that fails in the first loader will use the second
+        model = caikit.core.load(good_model_path, model_type="model two")
+        assert model.loader_name == "loader two"

@@ -61,9 +61,8 @@ class TestLoader(SharedLoadBackendBase):
         # allow config.model_type to control whether this loader barfs
         if "model_type" in self.config and "model_type" in kwargs:
             if self.config["model_type"] != kwargs["model_type"]:
-                raise ValueError(
-                    f"test loader refusing to load model type {kwargs['model_type']}"
-                )
+                # Don't load in this loader
+                return None
         # use the "Local" loader to actually load the model
         model = LocalBackend(name="test").load(model_path)
         # Let tests know which loader was used
