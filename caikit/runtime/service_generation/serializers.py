@@ -19,8 +19,13 @@ Typically used for `caikit.core.module`s that expose .train and .run functions.
 # Standard
 from typing import Any, Dict, List, Optional, Tuple, Type, get_args
 import abc
+import copy
 
 # First Party
+from py_to_proto.dataclass_to_proto import (  # NOTE: Imported from here for compatibility
+    Annotated,
+    FieldNumber,
+)
 import alog
 
 # Local
@@ -29,6 +34,12 @@ from .compatibility_checker import ApiFieldNames
 from .signature_parsing.module_signature import (
     CaikitCoreModuleMethodSignature,
     CustomSignature,
+)
+from caikit.core.data_model.base import DataBase
+from caikit.core.data_model.dataobject import (
+    DataObjectBase,
+    _DataObjectBaseMetaClass,
+    dataobject,
 )
 from caikit.core.module import ModuleBase
 from caikit.interfaces.runtime.data_model import ModelPointer, TrainingJob
@@ -49,6 +60,51 @@ class RPCSerializerBase(abc.ABC):
     @abc.abstractmethod
     def request(self) -> "_RequestMessage":
         """Return the internal representation of the request message type for this RPC"""
+
+    def create_request_data_model(self, package_name: str) -> Type[DataBase]:
+        """Dynamically create data model for this class's input RPC"""
+        properties = {
+            # triple e.g. ('caikit.interfaces.common.ProducerPriority', 'producer_id', 1)
+            # This does not take care of nested descriptors
+            triple[1]: Annotated[triple[0], FieldNumber(triple[2])]
+            for triple in self.request.triples
+            if triple[1] not in self.request.default_map
+        }
+        optional_properties = {
+            triple[1]: Annotated[Optional[triple[0]], FieldNumber(triple[2])]
+            for triple in self.request.triples
+            if triple[1] in self.request.default_map
+        }
+        attrs = copy.copy(self.request.default_map)
+        attrs["__annotations__"] = {**properties, **optional_properties}
+
+        if not properties and optional_properties:
+            log.warning(
+                "No arguments found for request %s. Cannot generate rpc",
+                self.request.name,
+            )
+            return None
+
+        decorator = dataobject(package=package_name)
+        cls_ = _DataObjectBaseMetaClass.__new__(
+            _DataObjectBaseMetaClass,
+            name=self.request.name,
+            bases=(DataObjectBase,),
+            attrs=attrs,
+        )
+        decorated_cls = decorator(cls_)
+
+        return decorated_cls
+
+    def create_rpc_json(self, package_name: str) -> dict[str, Any]:
+        output_type_name = self.return_type.get_proto_class().DESCRIPTOR.full_name
+
+        rpc_json = {
+            "name": f"{self.name}",
+            "input_type": f"{package_name}.{self.request.name}",
+            "output_type": output_type_name,
+        }
+        return rpc_json
 
 
 class ModuleClassTrainRPC(RPCSerializerBase):

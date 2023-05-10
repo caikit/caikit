@@ -55,6 +55,7 @@ def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[RPCSerializer
 
     rpcs = []
     # Inference specific logic:
+    # Remove non-primitive modules (including modules that return None type)
     primitive_modules = _remove_non_primitive_modules(
         modules, primitive_data_model_types
     )
