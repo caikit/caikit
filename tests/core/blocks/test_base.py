@@ -25,7 +25,7 @@ from caikit.core.toolkit.serializers import JSONSerializer
 
 # pylint: disable=import-error
 from sample_lib.blocks.sample_task import SampleBlock
-from sample_lib.data_model.sample import SampleInputType
+from sample_lib.data_model.sample import SampleInputType, SampleTask
 
 # Unit Test Infrastructure
 from tests.base import TestCaseBase
@@ -93,7 +93,7 @@ class TestBlockBase(TestCaseBase):
 class TestBlockAnnotation(TestCaseBase):
     def test_block_annotation_adds_metadata_to_class(self):
         # Declare a new dummy block
-        @block("12345", "MyNewBlock", "0.0.1")
+        @block("12345", "MyNewBlock", "0.0.1", SampleTask)
         class MyNewBlock(caikit.core.BlockBase):
             # pylint: disable=no-method-argument,super-init-not-called
             def __init__():
@@ -113,7 +113,7 @@ class TestBlockAnnotation(TestCaseBase):
 
     def test_block_annotation_registers_block_in_module_registry(self):
         # Declare a new dummy block
-        @block("12345-A", "MyNewBlock2", "0.0.2")
+        @block("12345-A", "MyNewBlock2", "0.0.2", SampleTask)
         # pylint: disable=unused-variable
         class MyNewBlock2(caikit.core.BlockBase):
             # pylint: disable=no-method-argument,super-init-not-called
@@ -124,7 +124,7 @@ class TestBlockAnnotation(TestCaseBase):
 
     def test_block_annotation_registers_block_in_block_registry(self):
         # Declare a new dummy block
-        @block("12345-B", "MyNewBlock3", "0.0.2")
+        @block("12345-B", "MyNewBlock3", "0.0.2", SampleTask)
         # pylint: disable=unused-variable
         class MyNewBlock3(caikit.core.BlockBase):
             # pylint: disable=no-method-argument,super-init-not-called
@@ -136,7 +136,7 @@ class TestBlockAnnotation(TestCaseBase):
     def test_block_annotation_registers_will_not_register_duplicate_block_ids(self):
         # Declare a new dummy block
         def declare_block():
-            @block("12345-C", "MyNewBlock4", "0.0.2")
+            @block("12345-C", "MyNewBlock4", "0.0.2", SampleTask)
             # pylint: disable=unused-variable
             class MyNewBlock4(caikit.core.BlockBase):
                 # pylint: disable=no-method-argument,super-init-not-called

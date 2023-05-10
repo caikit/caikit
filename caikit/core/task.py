@@ -159,8 +159,10 @@ def taskgroup(
 
     for input_type in input_types:
         if not type_check(input_type):
-            raise TypeError(f"TaskGroup inputs must be python primitive types or data model types."
-                            f" Got {input_type}")
+            raise TypeError(
+                f"TaskGroup inputs must be python primitive types or data model types."
+                f" Got {input_type}"
+            )
 
     def get_input_type_set(_) -> Set[ProtoableInputTypes]:
         return input_types

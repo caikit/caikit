@@ -5,13 +5,20 @@ A sample block for sample things!
 import os
 
 # Local
-from ...data_model.sample import SampleInputType, SampleOutputType, SampleTrainingType
+from ...data_model.sample import (
+    SampleInputType,
+    SampleOutputType,
+    SampleTask,
+    SampleTrainingType,
+)
 from caikit.core.data_model import DataStream
 from caikit.core.module import ModuleLoader, ModuleSaver
 import caikit.core
 
 
-@caikit.core.block("00110203-0405-0607-0809-0a0b02dd0e0f", "SampleBlock", "0.0.1")
+@caikit.core.block(
+    "00110203-0405-0607-0809-0a0b02dd0e0f", "SampleBlock", "0.0.1", SampleTask
+)
 class SampleBlock(caikit.core.BlockBase):
     POISON_PILL_NAME = "Bob Marley"
     POISON_PILL_BATCH_SIZE = 999

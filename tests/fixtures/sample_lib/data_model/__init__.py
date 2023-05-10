@@ -4,5 +4,6 @@ from .sample import (
     OtherOutputType,
     SampleInputType,
     SampleOutputType,
+    SampleTask,
     SampleTrainingType,
 )

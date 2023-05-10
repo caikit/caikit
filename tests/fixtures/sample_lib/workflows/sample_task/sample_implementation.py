@@ -13,12 +13,14 @@
 # limitations under the License.
 # Local
 from ...blocks.sample_task.sample_implementation import SampleBlock
-from ...data_model import SampleInputType, SampleOutputType
+from ...data_model import SampleInputType, SampleOutputType, SampleTask
 from caikit.core.workflows import WorkflowLoader, WorkflowSaver
 import caikit.core
 
 
-@caikit.core.workflow("A34E68FA-E5E6-41BD-BAAE-77A880EB6877", "SampleWorkflow", "0.0.1")
+@caikit.core.workflow(
+    "A34E68FA-E5E6-41BD-BAAE-77A880EB6877", "SampleWorkflow", "0.0.1", SampleTask
+)
 class SampleWorkflow(caikit.core.WorkflowBase):
     def __init__(self, sample_block: SampleBlock = SampleBlock()):
         super().__init__()

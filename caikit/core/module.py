@@ -44,6 +44,7 @@ from . import data_model as dm
 from .data_model import DataStream
 from .module_config import ModuleConfig
 from .module_meta import _ModuleBaseMeta
+from .task import TaskBase
 from .toolkit import ObjectSerializer, fileio
 from .toolkit.errors import DataValidationError, error_handler
 from .toolkit.wip_decorator import TempDisableWIP, WipCategory, work_in_progress

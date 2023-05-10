@@ -54,3 +54,12 @@ class SampleDomain(TaskGroupBase):
 )
 class SampleTask(TaskBase):
     """A sample `task` for our test models"""
+
+
+@caikit.core.task(
+    task_group=SampleDomain,
+    required_inputs={"sample_input": SampleInputType},
+    output_type=OtherOutputType,
+)
+class OtherTask(caikit.core.TaskBase):
+    """Another sample `task` for our test models"""
