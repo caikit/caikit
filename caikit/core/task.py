@@ -13,24 +13,33 @@
 # limitations under the License.
 
 # Standard
-from typing import Callable, Dict, List, Type, Union
+from typing import Callable, Dict, List, Set, Type, Union
 
 # First Party
 from alog import alog
 
 # Local
-from caikit.core import DomainBase
 from caikit.core.data_model import DataStream
 from caikit.core.data_model.base import DataBase
-from caikit.core.domain import ProtoableInputTypes
 from caikit.core.toolkit.errors import error_handler
 
 log = alog.use_channel("TASK_BASE")
 error = error_handler.get(log)
 
+ProtoableInputTypes = Type[Union[int, float, str, bytes, bool, DataBase]]
 ValidInputTypes = Union[
     ProtoableInputTypes, List[ProtoableInputTypes], DataStream[ProtoableInputTypes]
 ]
+
+
+class TaskGroupBase:
+    @classmethod
+    def validate_task_inputs(cls) -> bool:
+        pass
+
+    @classmethod
+    def get_input_type_set(cls) -> Set[ProtoableInputTypes]:
+        raise NotImplementedError("This is implemented by the @domain decorator!")
 
 
 class TaskBase:
@@ -48,12 +57,12 @@ class TaskBase:
         raise NotImplementedError("This is implemented by the @task decorator!")
 
     @classmethod
-    def get_domain(cls) -> Type[DomainBase]:
+    def get_domain(cls) -> Type[TaskGroupBase]:
         raise NotImplementedError("This is implemented by the @task decorator!")
 
 
 def task(
-    domain: Type[DomainBase],
+    task_group: Type[TaskGroupBase],
     required_inputs: Dict[str, ValidInputTypes],
     output_type: Type[DataBase],
 ) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
@@ -85,7 +94,7 @@ def task(
     the task.
 
     Args:
-        domain (Type[DomainBase]): The AI Domain that this task belongs to
+        task_group (Type[TaskGroupBase]): The AI Task Group that this task belongs to
         required_inputs (Dict[str, ValidInputTypes]): The required parameters that all public
             models' .run functions must contain. A dictionary of parameter name to parameter
             type, where the types can be in the set of:
@@ -103,14 +112,14 @@ def task(
     # TODO: type checking on required_inputs
     if not issubclass(output_type, DataBase):
         raise ValueError("output_type must be a data model")
-    if not issubclass(domain, DomainBase):
+    if not issubclass(task_group, TaskGroupBase):
         raise ValueError("domain must be a domain class")
 
     for parameter_name, input_type in required_inputs.items():
-        if input_type not in domain.get_input_type_set():
+        if input_type not in task_group.get_input_type_set():
             raise ValueError(
                 f"Task parameter {parameter_name} has type {input_type} not in domain: "
-                f"{domain.__name__}. Valid types are: {domain.get_input_type_set()}"
+                f"{task_group.__name__}. Valid types are: {task_group.get_input_type_set()}"
             )
 
     # def get_all_modules(cls) -> Set[Type[caikit.core.ModuleBase]]:
@@ -123,7 +132,7 @@ def task(
         return output_type
 
     def get_domain(_):
-        return domain
+        return task_group
 
     def decorator(cls: Type[TaskBase]) -> Type[TaskBase]:
         if not isinstance(cls, type) or not issubclass(cls, TaskBase):
@@ -131,6 +140,45 @@ def task(
         setattr(cls, "get_required_inputs", classmethod(get_required_inputs))
         setattr(cls, "get_output_type", classmethod(get_output_type))
         setattr(cls, "get_domain", classmethod(get_domain))
+        return cls
+
+    return decorator
+
+
+def taskgroup(
+    input_types: Set[ProtoableInputTypes],
+) -> Callable[[Type[TaskGroupBase]], Type[TaskGroupBase]]:
+    """The decorator for AI Domains"""
+
+    def type_check(x: type) -> bool:
+        return (
+            x == int
+            or x == float
+            or x == str
+            or x == bytes
+            or x == bool
+            or (isinstance(x, type) and issubclass(x, DataBase))
+        )
+
+    for input_type in input_types:
+        error.value_check(
+            "<COR98288712E>",
+            type_check(input_type),
+            input_type,
+            msg="Domain inputs must be python primitive types or data model types. Got {}",
+        )
+
+    def get_input_type_set(_) -> Set[ProtoableInputTypes]:
+        return input_types
+
+    def decorator(cls: Type[TaskGroupBase]) -> Type[TaskGroupBase]:
+        error.value_check(
+            "<COR98211745E>",
+            isinstance(cls, type) and issubclass(cls, TaskGroupBase),
+            cls,
+            msg="@domain class must extend DomainBase",
+        )
+        setattr(cls, "get_input_type_set", classmethod(get_input_type_set))
         return cls
 
     return decorator

@@ -3,20 +3,20 @@
 import pytest
 
 # Local
-from caikit.core import DomainBase, TaskBase, domain, task
+from caikit.core import TaskBase, TaskGroupBase, task, taskgroup
 from sample_lib.data_model.sample import SampleInputType, SampleOutputType
 import caikit.core
 
 
-@domain(input_types={SampleInputType})
-class TestDomain(DomainBase):
+@taskgroup(input_types={SampleInputType})
+class TestTaskGroup(TaskGroupBase):
     pass
 
 
 def test_task_decorator_has_required_inputs_and_output_type():
     # TODO: whoops, the DataBase classes _don't_ have DataBase base class at static check time
     @task(
-        domain=TestDomain,
+        task_group=TestTaskGroup,
         required_inputs={"sample_input": SampleInputType},
         output_type=SampleOutputType,
     )
@@ -35,7 +35,7 @@ def test_task_decorator_validates_class_extends_task_base():
     with pytest.raises(ValueError):
 
         @task(
-            domain=TestDomain,
+            task_group=TestTaskGroup,
             required_inputs={"sample_input": SampleInputType},
             output_type=SampleOutputType,
         )
@@ -47,7 +47,7 @@ def test_task_decorator_validates_output_is_data_model():
     with pytest.raises(ValueError):
 
         @task(
-            domain=TestDomain,
+            task_group=TestTaskGroup,
             required_inputs={"sample_input": SampleInputType},
             output_type=str,
         )
@@ -59,7 +59,7 @@ def test_task_decorator_validates_input_is_in_domain():
     with pytest.raises(ValueError):
         # `str` is not in TestDomain.input_types
         @task(
-            domain=TestDomain,
+            task_group=TestTaskGroup,
             required_inputs={"sample_input": str},
             output_type=SampleOutputType,
         )
@@ -71,7 +71,7 @@ def test_task_decorator_validates_domain_is_a_domain():
     with pytest.raises(ValueError):
         # `str` is not in TestDomain.input_types
         @task(
-            domain=str,
+            task_group=str,
             required_inputs={"sample_input": SampleInputType},
             output_type=SampleOutputType,
         )
@@ -80,28 +80,28 @@ def test_task_decorator_validates_domain_is_a_domain():
 
 
 def test_domain_has_input_type_set():
-    @domain(input_types={int, float})
-    class SampleDomain(DomainBase):
+    @taskgroup(input_types={int, float})
+    class SampleTaskGroup(TaskGroupBase):
         pass
 
-    assert SampleDomain.get_input_type_set() == {int, float}
+    assert SampleTaskGroup.get_input_type_set() == {int, float}
 
 
 def test_domain_validates_inputs_are_protoabletypes():
     with pytest.raises(ValueError):
 
-        @domain(input_types={1, 2.3})
-        class SampleDomain(DomainBase):
+        @taskgroup(input_types={1, 2.3})
+        class SampleTaskGroup(TaskGroupBase):
             pass
 
     with pytest.raises(ValueError):
 
-        @domain(input_types={dict})
-        class SampleDomain(DomainBase):
+        @taskgroup(input_types={dict})
+        class SampleTaskGroup(TaskGroupBase):
             pass
 
     with pytest.raises(ValueError):
 
-        @domain(input_types={caikit.core.ModuleBase})
-        class SampleDomain(DomainBase):
+        @taskgroup(input_types={caikit.core.ModuleBase})
+        class SampleTaskGroup(TaskGroupBase):
             pass
