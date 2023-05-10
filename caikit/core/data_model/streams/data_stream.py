@@ -176,7 +176,7 @@ class DataStream(Generic[T]):
 
                 try:
                     for line in lines:
-                        if line != b"\n":  # ignore new line characters
+                        if line.strip():  # ignore empty lines
                             yield json.loads(line)
                 except json.JSONDecodeError as e:
                     error(
