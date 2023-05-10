@@ -16,7 +16,6 @@ from contextlib import contextmanager
 from unittest import mock
 import copy
 import tempfile
-import uuid
 
 # Third Party
 import grpc
@@ -26,8 +25,7 @@ import pytest
 from caikit.config import get_config
 from caikit.core import ModuleConfig
 from caikit.core.blocks import base, block
-from caikit.core.module_backends import BackendBase, backend_types
-from caikit.core.module_backends.backend_types import register_backend_type
+from caikit.core.module_backends import backend_types
 from caikit.runtime.model_management.batcher import Batcher
 from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException

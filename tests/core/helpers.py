@@ -65,8 +65,6 @@ class TestLoader(SharedLoadBackendBase):
                 return None
         # use the "Local" loader to actually load the model
         model = LocalBackend(name="test").load(model_path)
-        # Let tests know which loader was used
-        setattr(model, "loader_name", self.name)
         return model
 
     def register_config(self, config):

@@ -539,7 +539,7 @@ def test_load_with_new_shared_backend(good_model_path, reset_globals):
     ):
         configure()
         model = caikit.core.load(good_model_path)
-        assert model.loader_name == loader_name
+        assert model.load_backend.name == loader_name
 
 
 def test_load_with_two_shared_loaders_of_the_same_type(good_model_path, reset_globals):
@@ -566,11 +566,11 @@ def test_load_with_two_shared_loaders_of_the_same_type(good_model_path, reset_gl
         configure()
         # plain model load should use first loader
         model = caikit.core.load(good_model_path)
-        assert model.loader_name == "loader one"
+        assert model.load_backend.name == "loader one"
 
         # model load that fails in the first loader will use the second
         model = caikit.core.load(good_model_path, model_type="model two")
-        assert model.loader_name == "loader two"
+        assert model.load_backend.name == "loader two"
 
 
 def test_load_does_not_read_config_yml_if_loader_does_not_require_it(
