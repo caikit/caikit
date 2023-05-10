@@ -171,8 +171,8 @@ def taskgroup(
         error.value_check(
             "<COR98211745E>",
             isinstance(cls, type) and issubclass(cls, TaskGroupBase),
+            "@taskgroup class {} must extend TaskGroupBase",
             cls,
-            msg="@taskgroup class must extend TaskGroupBase",
         )
         setattr(cls, "get_input_type_set", classmethod(get_input_type_set))
         return cls
