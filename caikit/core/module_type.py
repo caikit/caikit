@@ -31,6 +31,7 @@ from .. import core
 from . import data_model as dm
 from .module import _MODULE_TYPES, MODULE_BACKEND_REGISTRY, MODULE_REGISTRY, ModuleBase
 from .module_backends import backend_types
+from .task import TaskBase
 from .toolkit.errors import error_handler
 
 log = alog.use_channel("MODTYP")
@@ -92,6 +93,7 @@ def module_type(module_type_name):
             id=None,
             name=None,
             version=None,
+            task: Type[TaskBase] = None,
             backend_type=backend_types.LOCAL,
             base_module: Union[str, Type[ModuleBase]] = None,
             backend_config_override: Optional[Dict] = None,
@@ -110,6 +112,9 @@ def module_type(module_type_name):
                     Not required if based on another caikit module using `base_module`
                 version:  str
                     A SemVer for the {module_type_name}
+                    Not required if based on another caikit module using `base_module`
+                task:  Type[TaskBase]
+                    An ML task class that this module is an implementation for
                     Not required if based on another caikit module using `base_module`
                 backend_type: backend_type
                     Associated backend type for the module.
@@ -178,9 +183,13 @@ def module_type(module_type_name):
                 id = base_module_class.MODULE_ID
                 version = base_module_class.MODULE_VERSION
                 name = base_module_class.MODULE_NAME
+                task = base_module_class.TASK_CLASS
                 backend_module_impl = True
 
             error.type_check("<COR54118928E>", str, id=id, name=name, version=version)
+            if task is not None:
+                if not isinstance(task, type) or not issubclass(task, TaskBase):
+                    raise TypeError(f"task must be an @task class, got {task}")
 
             semver.VersionInfo.parse(version)  # Make sure this is a valid SemVer
 
@@ -205,6 +214,30 @@ def module_type(module_type_name):
                 setattr(cls_, f"{module_type_name_upper}_CLASS", classname)
                 cls_.MODULE_CLASS = classname
                 cls_.PRODUCER_ID = dm.ProducerId(cls_.MODULE_NAME, cls_.MODULE_VERSION)
+
+                # Tasks: check to see if a super-class has one as well and that they match:
+                tasks = {
+                    class_.TASK_CLASS
+                    for class_ in cls_.mro()
+                    if hasattr(class_, "TASK_CLASS")
+                }
+                if len(tasks) > 1:
+                    raise TypeError(
+                        f"Class {cls_} has multiple task definitions in class hierarchy"
+                    )
+                if tasks:
+                    parent_task = tasks.pop()
+                    if task and task != parent_task:
+                        raise TypeError(
+                            f"Class {cls_} has task {task} but superclass has task {parent_task}"
+                        )
+                    cls_.TASK_CLASS = parent_task
+                else:
+                    if not task:
+                        # TODO: raise once @tasks are integrated into service generation
+                        # raise TypeError(f"task argument is required for @{cls}")
+                        pass
+                    cls_.TASK_CLASS = task
 
                 # Set module type as attribute of the class
                 # pylint: disable=global-variable-not-assigned
