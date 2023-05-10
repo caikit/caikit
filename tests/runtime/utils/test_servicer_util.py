@@ -15,6 +15,7 @@
 # Standard
 import os
 import tempfile
+import uuid
 
 # Third Party
 import pytest
@@ -33,6 +34,7 @@ from caikit.runtime.utils.servicer_util import (
     validate_data_model,
 )
 from sample_lib.data_model import SampleInputType
+from tests.conftest import random_test_id
 from tests.fixtures import Fixtures
 from tests.fixtures.protobufs import primitive_party_pb2
 import caikit.core
@@ -342,7 +344,7 @@ def test_global_train_build_caikit_library_request_dict_creates_caikit_core_run_
     and if not passed in request, it creates the fields with default values"""
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name="Foo Bar Training"  # not having batch_size, and training_data
+            model_name=random_test_id()  # not having batch_size, and training_data
         )
     )
 
@@ -372,7 +374,7 @@ def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_r
     training_data = stream_type(jsondata=stream_type.JsonData(data=[])).to_proto()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name="Foo Bar Training", training_data=training_data
+            model_name=random_test_id(), training_data=training_data
         )
     )
 
@@ -395,7 +397,7 @@ def test_global_train_build_caikit_library_request_dict_works_for_repeated_field
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(jsondata=stream_type.JsonData(data=[])).to_proto()
     train_request = sample_train_service.messages.BlocksSampleTaskListBlockTrainRequest(
-        model_name="Foo Bar Training",
+        model_name=random_test_id(),
         training_data=training_data,
         poison_pills=["Bob Marley", "Bunny Livingston"],
     )
@@ -449,7 +451,7 @@ def test_global_train_build_caikit_library_request_dict_ok_with_data_stream_file
     ).to_proto()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name="Foo Bar Training",
+            model_name=random_test_id(),
             training_data=training_data,
         )
     )
@@ -474,7 +476,7 @@ def test_global_train_build_caikit_library_request_dict_ok_with_training_data_as
         listoffiles=stream_type.ListOfFiles(files=[sample_csv_file, sample_json_file])
     ).to_proto()
     train_request = sample_train_service.messages.BlocksSampleTaskListBlockTrainRequest(
-        model_name="Foo Bar Training",
+        model_name=random_test_id(),
         training_data=training_data,
         poison_pills=["Bob Marley", "Bunny Livingston"],
     )
@@ -513,7 +515,7 @@ def test_build_caikit_library_request_dict_works_when_data_stream_directory_incl
         ).to_proto()
         train_request = (
             sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-                model_name="Foo Bar Training",
+                model_name=random_test_id(),
                 training_data=training_data,
             )
         )
@@ -537,7 +539,7 @@ def test_build_caikit_library_request_dict_raises_invalid_data_stream_source_fil
     training_data = stream_type(file=stream_type.File(filename="abc.blah")).to_proto()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name="Foo Bar Training",
+            model_name=random_test_id(),
             training_data=training_data,
         )
     )
@@ -622,7 +624,7 @@ def test_build_caikit_library_request_dict_raises_when_data_stream_directory_pas
         ).to_proto()
         train_request = (
             sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-                model_name="Foo Bar Training",
+                model_name=random_test_id(),
                 training_data=training_data,
             )
         )
@@ -655,7 +657,7 @@ def test_build_caikit_library_request_dict_raises_when_data_stream_directory_pas
         ).to_proto()
         train_request = (
             sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-                model_name="Foo Bar Training",
+                model_name=random_test_id(),
                 training_data=training_data,
             )
         )

@@ -17,8 +17,11 @@
 """
 
 # Standard
+from contextlib import contextmanager
 from io import BytesIO
+from threading import Lock
 from typing import Union
+import errno
 import os
 import tempfile
 import zipfile
@@ -27,16 +30,17 @@ import zipfile
 import alog
 
 # Local
-from . import module_backend_config as backend_config
+from . import module_backend_config
 from .module import (
     _MODULE_TYPES,
     MODULE_BACKEND_REGISTRY,
     MODULE_REGISTRY,
-    SUPPORTED_LOAD_BACKENDS_VAR_NAME,
     ModuleBase,
     ModuleConfig,
 )
 from .module_backends import backend_types
+from .module_backends.base import SharedLoadBackendBase
+from .module_type import SUPPORTED_LOAD_BACKENDS_VAR_NAME
 from .toolkit.errors import error_handler
 from caikit.config import get_config
 
@@ -67,6 +71,7 @@ class ModelManager:
         """Initialize ModelManager."""
         # Map to store module caches, to be used for singleton model lookups
         self.singleton_module_cache = {}
+        self._singleton_lock = Lock()
 
     # make load function available from top-level of library
     def load(self, module_path, *args, load_singleton=False, **kwargs):
@@ -137,150 +142,155 @@ class ModelManager:
             subclass of blocks.base.BlockBase
                 Model object that is loaded, configured, and ready for prediction.
         """
-        module_config = ModuleConfig.load(module_path)
-
-        # Check if the model is being loaded in singleton fashion. If so,
-        # then fetch they hash for the module from config and use it as key.
-        key = module_config.unique_hash
-        if load_singleton and key is not None and key in self.singleton_module_cache:
-            # return model back from singleton cache
-            return self.singleton_module_cache[key]
-
-        # retrive and validate the module class to initialize based on the
-        # module_id retrieved from the configuration (which is dynamically set
-        # based on either a block_id or workflow_id in the config.yml), looking up
-        # the corresponding MODULE_ID (BLOCK_ID/WORKFLOW_ID) of the module class
-        # in the ModuleBase class registry
-        module_id = module_config["module_id"]
-        module_class = MODULE_REGISTRY.get(module_id)
-
-        if module_class is None:
-            error(
-                "<COR50207494E>",
-                ValueError(
-                    "could not find class with MODULE_ID of `{}`".format(module_id)
-                ),
+        # Short-circuit the loading process if the path does not exist
+        if not os.path.exists(module_path):
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), module_path
             )
 
-        if not issubclass(module_class, ModuleBase):
-            error(
-                "<COR18830919E>",
-                TypeError(
-                    "class `{}` is not a valid module for module load".format(
-                        module_class.__name__
+        # If this is a singleton load, the entire body of this function needs to
+        # be locked to avoid concurrent loads on the same model. Otherwise, we
+        # can freely load in parallel.
+        with self.singleton_lock(load_singleton):
+
+            # Using the module_path as a key, look for an instance preloaded in the
+            # singleton cache if desired
+            # 🌶🌶🌶 This doesn't work for nested blocks
+            # TODO: think about bringing back the `unique_hash` or `tracking_id`
+            if singleton_entry := (
+                load_singleton and self.singleton_module_cache.get(module_path)
+            ):
+                log.debug("Found %s in the singleton cache", module_path)
+                return singleton_entry
+
+            # Get the set of configured loaders
+            configured_load_backends = module_backend_config.configured_load_backends()
+            if not configured_load_backends:
+                log.info(
+                    "<COR56759744I>",
+                    "No backends configured! Configuring backends with current configuration",
+                )
+                module_backend_config.configure()
+                configured_load_backends = (
+                    module_backend_config.configured_load_backends()
+                )
+
+            # Pre-initialize variables that will be parsed lazily from the
+            # ModuleConfig if needed. This is done lazily so that loaders which
+            # don't require a config.yml can take precedence over those that do
+            # require one.
+            module_id = None
+            module_implementations = None
+            model_creation_backend = None
+
+            # For each backend, if it's a shared loader, attempt to load the model
+            # directly. If not, parse the module config and look to see if there is
+            # a version of the module available for the given backend
+            loaded_model = None
+            log.debug("Available load backends: %s", configured_load_backends)
+            for load_backend in configured_load_backends:
+                # If this is a shared loader, try loading the model directly
+                if isinstance(load_backend, SharedLoadBackendBase):
+                    log.debug("Trying shared backend loader")
+                    model = load_backend.load(module_path, *args, **kwargs)
+                    if model is not None:
+                        log.debug2(
+                            "Successfully loaded %s with loader %s",
+                            module_path,
+                            load_backend.name,
+                        )
+                        error.type_check(
+                            "<COR76726077E>",
+                            ModuleBase,
+                            model=model,
+                        )
+
+                        loaded_model = model
+                        model.set_load_backend(load_backend)
+                        break
+                    log.debug3(
+                        "Could not load %s with loader %s",
+                        module_path,
+                        load_backend.name,
                     )
-                ),
-            )
 
-        ## TODO: Should backend lookup be optional?
-        log.debug2("Looking for available backends for module_id %s", module_id)
+                # If this is not a shared loader, look for an implementation of the
+                # model's module that works with this backend
+                else:
+                    # If this is the first time parsing the module config, do so
+                    if module_id is None:
+                        log.debug2("Loading ModuleConfig from %s", module_path)
+                        module_config = ModuleConfig.load(module_path)
+                        module_id = module_config.module_id
+                        module_implementations = MODULE_BACKEND_REGISTRY.get(
+                            module_id, {}
+                        )
+                        log.debug2(
+                            "Number of available backend implementations for %s found: %d",
+                            module_id,
+                            len(module_implementations),
+                        )
+                        # Look up the backend that this model was created with
+                        model_creation_backend = module_config.get(
+                            "model_backend", backend_types.LOCAL
+                        )
 
-        # NOTE: module_id is going to be same for all the backends
-        # Thus it is not possible to know which backend this model was saved with from the
-        # module_id alone. We could look at the *_class field, like `block_class`.
-        # but then we have to look at various fields and that also doesn't guarantee the
-        # support for those backend in the current code of the backend.
+                    # Look in the module's implementations for this backend type
+                    backend_impl_obj = module_implementations.get(
+                        load_backend.backend_type
+                    )
+                    if backend_impl_obj is None:
+                        log.debug3(
+                            "Module %s does not support loading with %s",
+                            module_id,
+                            load_backend.backend_type,
+                        )
+                        continue
 
-        model_backend = module_config.model_backend or backend_types.LOCAL
+                    # Grab the concrete module class for this backend and check to
+                    # see if this model's artifacts were created with a version of
+                    # the module that can be loaded with this backend.
+                    module_backend_impl = backend_impl_obj.impl_class
+                    supported_load_backends = self._get_supported_load_backends(
+                        module_backend_impl
+                    )
+                    if model_creation_backend in supported_load_backends:
+                        log.debug3(
+                            "Attempting to load %s (module_id %s) with backend %s and class %s",
+                            module_path,
+                            module_id,
+                            load_backend.backend_type,
+                            module_backend_impl.__name__,
+                        )
+                        loaded_model = module_backend_impl.load(
+                            module_path,
+                            *args,
+                            **kwargs,
+                        )
+                        if loaded_model is not None:
+                            log.debug2(
+                                "Successfully loaded %s with backend %s",
+                                module_path,
+                                load_backend.backend_type,
+                            )
+                            loaded_model.set_load_backend(load_backend)
+                            break
 
-        log.debug2("model trained on backend: %s", model_backend)
-
-        # Get the mapping of available implementations for this module
-        configured_backends = backend_config.configured_backends()
-
-        if len(configured_backends) == 0:
-            log.warning(
-                "<COR56759744W>",
-                "No backend configured! Trying to configure using default config file.",
-            )
-            backend_config.configure()
-            configured_backends = backend_config.configured_backends()
-
-        # If configured backends is empty, add LOCAL backend to it
-        local_enabled = backend_types.LOCAL in configured_backends
-
-        # NOTE: Local backend can be disabled via `config.yml` but its enabled
-        # by default
-
-        log.debug2("Local enabled? %s", local_enabled)
-        module_implementations = MODULE_BACKEND_REGISTRY.get(
-            module_id, {backend_types.LOCAL: None} if local_enabled else {}
-        )
-        log.debug2(
-            "Number of available backend implementations found: %d",
-            len(module_implementations),
-        )
-
-        error.value_check(
-            "<COR84094427E>",
-            len(module_implementations) > 0,
-            "No implementation of {} available. You may need to `pip install {}`",
-            module_config.module_id,
-            self.get_module_class_from_config(module_config),
-        )
-
-        loaded_artifact = None
-        # instantiate object and return to user
-        log.debug("Loading the artifact!")
-
-        # Go through each configured backend in priority order and look for an
-        # implementation that matches
-        # NOTE: backend priority can be configured while configuring backend
-        for backend in configured_backends:
-            # NOTE: what if we have multiple backends available,
-            # this will currently only return 1st one of those
-            # based on priority
-            backend_impl_obj = module_implementations.get(backend)
-            # NOTE: LOCAL may not be marked as a specific implementation, thus skip this
-            # or if no implementation available of the provided backend, continue
-            if backend == backend_types.LOCAL or backend_impl_obj is None:
-                continue
-
-            backend_impl = backend_impl_obj.impl_class
-
-            # A particular model can be supported by multiple backends, i.e
-            # a model trained on LOCAL backend might be able to get loaded with
-            # Spark or Ray backend implementations of the same block.
-            # Here, we will try to get the list of supported load backends for
-            # each of the backend_types and check if they contain the
-            # backend type of the current model
-            supported_load_backends = self._get_supported_load_backends(backend_impl)
-
-            # Check if the module actually supports this backend for load
-            if model_backend in supported_load_backends:
-                log.debug(
-                    "%s backend implementation found for backend [%s]",
-                    backend_impl.__name__,
-                    backend,
+            # If no model successfully loaded, it's an error
+            if loaded_model is None:
+                error(
+                    "<COR50207494E>",
+                    ValueError(
+                        f"Unable to load model from {module_path} with MODULE_ID {module_id}"
+                    ),
                 )
-                loaded_artifact: ModuleBase = backend_impl.load(
-                    module_path, *args, **kwargs
-                )
-                break
 
-        # If model not able to load still, it is a model that probably
-        # does not define the "backend_type" or "supported_load_backends".
-        # These would all be 'LOCAL' backend model, thus try to load with that
-        if not loaded_artifact and local_enabled:
-            module_class = MODULE_REGISTRY.get(module_id)
-            loaded_artifact: ModuleBase = module_class.load(
-                module_path, *args, **kwargs
-            )
+            # If loading as a singleton, populate the cache
+            if load_singleton:
+                self.singleton_module_cache[module_path] = loaded_model
 
-        ### END Backend distribution
-
-        error.value_check(
-            "<COR24332812E>",
-            loaded_artifact is not None,
-            "No available implementation for provided model!",
-        )
-
-        # if singleton loading is enabled, and module unique hash is available,
-        # save the module in singleton map
-        if load_singleton and key is not None:
-            self.singleton_module_cache[key] = loaded_artifact
-
-        return loaded_artifact
+            # Return successfully!
+            return loaded_model
 
     def _load_from_zipfile(self, module_path, load_singleton, *args, **kwargs):
         """Load a model from a zip archive.
@@ -448,7 +458,19 @@ class ModelManager:
         Returns:
             None
         """
-        self.singleton_module_cache = {}
+        with self._singleton_lock:
+            self.singleton_module_cache.clear()
+
+    @contextmanager
+    def singleton_lock(self, load_singleton: bool):
+        """Helper contextmanager that will only lock the singleton cache if this
+        load is a singleton load
+        """
+        if load_singleton:
+            with self._singleton_lock:
+                yield
+        else:
+            yield
 
     def _get_supported_load_backends(self, backend_impl: ModuleBase):
         """Function to get a list of supported load backends

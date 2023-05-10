@@ -42,7 +42,7 @@ class TestWorkflowBase(TestCaseBase):
         self.NO_OP_WORKFLOW_CLASS = SampleWorkflow
 
     def test_init_available(self):
-        model = caikit.core.WorkflowBase([0, 1, 2], kw1=0, kw2=1, kw3=2)
+        model = caikit.core.WorkflowBase()
         self.assertIsInstance(model, caikit.core.WorkflowBase)
 
     def test_load_not_implemented(self):

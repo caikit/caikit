@@ -12,21 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Standard
+from typing import Optional
+import copy
+
 # Third Party
 import pytest
 
 # Local
-from caikit.core.module import MODULE_BACKEND_REGISTRY, MODULE_REGISTRY
-from caikit.core.module_backend_config import _CONFIGURED_BACKENDS
+from caikit.core import LocalBackend
+from caikit.core.module import MODULE_BACKEND_REGISTRY, MODULE_REGISTRY, ModuleBase
+from caikit.core.module_backend_config import (
+    _CONFIGURED_LOAD_BACKENDS,
+    _CONFIGURED_TRAIN_BACKENDS,
+)
 from caikit.core.module_backends import BackendBase, backend_types
 
-
 # Add mock backend
+# This is set in the base test config's load_priority list
+from caikit.core.module_backends.base import SharedLoadBackendBase
+
+
 class MockBackend(BackendBase):
     backend_type = "MOCK"
 
-    def __init__(self, config=...) -> None:
-        super().__init__(config)
+    def __init__(self, name, config=...) -> None:
+        super().__init__(name, config)
         self._started = False
 
     def start(self):
@@ -37,6 +48,36 @@ class MockBackend(BackendBase):
 
     def stop(self):
         self._started = False
+
+
+backend_types.register_backend_type(MockBackend)
+
+
+# Add a new shared load backend that tests can use
+class TestLoader(SharedLoadBackendBase):
+    backend_type = "TESTLOADER"
+
+    def load(self, model_path: str, *args, **kwargs) -> Optional[ModuleBase]:
+        # allow config.model_type to control whether this loader barfs
+        if "model_type" in self.config and "model_type" in kwargs:
+            if self.config["model_type"] != kwargs["model_type"]:
+                # Don't load in this loader
+                return None
+        # use the "Local" loader to actually load the model
+        model = LocalBackend(name="test").load(model_path)
+        return model
+
+    def register_config(self, config):
+        pass
+
+    def stop(self):
+        pass
+
+    def start(self):
+        pass
+
+
+backend_types.register_backend_type(TestLoader)
 
 
 @pytest.fixture
@@ -56,7 +97,7 @@ def reset_backend_types():
 
 
 @pytest.fixture
-def reset_module_BACKEND_registry():
+def reset_module_backend_registry():
     """Fixture that will reset the module distribution registry if a test modifies them"""
     module_registry = {key: val for key, val in MODULE_BACKEND_REGISTRY.items()}
     yield
@@ -76,10 +117,15 @@ def reset_module_registry():
 @pytest.fixture
 def reset_configured_backends():
     """Fixture that will reset the configured backends"""
-    backends_list = _CONFIGURED_BACKENDS
+    load_backends_list = copy.copy(_CONFIGURED_LOAD_BACKENDS)
+    train_backends_list = copy.copy(_CONFIGURED_TRAIN_BACKENDS)
+    _CONFIGURED_LOAD_BACKENDS.clear()
+    _CONFIGURED_TRAIN_BACKENDS.clear()
     yield
-    _CONFIGURED_BACKENDS.clear()
-    _CONFIGURED_BACKENDS.update(backends_list)
+    _CONFIGURED_LOAD_BACKENDS.clear()
+    _CONFIGURED_LOAD_BACKENDS.extend(load_backends_list)
+    _CONFIGURED_TRAIN_BACKENDS.clear()
+    _CONFIGURED_TRAIN_BACKENDS.extend(train_backends_list)
 
 
 @pytest.fixture
@@ -87,6 +133,6 @@ def reset_globals(
     reset_backend_types,
     reset_configured_backends,
     reset_module_registry,
-    reset_module_BACKEND_registry,
+    reset_module_backend_registry,
 ):
     """Fixture that will reset the backend types and module registries if a test modifies them"""

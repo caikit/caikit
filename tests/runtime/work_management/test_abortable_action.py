@@ -60,7 +60,6 @@ class TestAbortableAction(unittest.TestCase):
         infinite_function_has_started = threading.Event()
 
         def infinite_function():
-            print(infinite_function_has_started)
             infinite_function_has_started.set()
             while True:
                 time.sleep(0.1)

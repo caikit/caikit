@@ -27,13 +27,14 @@ import alog
 # Local
 from ... import core
 from .. import module as mod
+from ..module_type import module_type
 from ..toolkit.errors import error_handler
 
 log = alog.use_channel("WFBASE")
 error = error_handler.get(log)
 
 
-@mod.module_type("workflow")
+@module_type("workflow")
 class WorkflowBase(mod.ModuleBase):
     """Abstract base class for creating Workflows.  Inherits from ModuleBase."""
 

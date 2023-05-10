@@ -174,20 +174,6 @@ def test_block_metadata_is_saved_into_a_workflow(sample_model_path):
     _check_dicts_equal(resaved_metadata, initial_metadata, fields_to_not_check)
 
 
-def test_models_with_funky_load_do_not_throw():
-    @caikit.core.block("00110203-baad-beef-0809-0a0b0c0d0e0f", "FunkyBlock", "0.0.1")
-    class _FunkyModel(SampleBlock):
-        @classmethod
-        def load(cls, model_path):
-            return (super().load(model_path), "something else")
-
-    model = _FunkyModel()
-    with tempfile.TemporaryDirectory() as tempdir:
-        # NOTE: the module will get detected as tests since _FunkyModel is defined here
-        model.save(tempdir)
-        caikit.core.load(tempdir)
-
-
 # pylint: disable=redefined-outer-name
 def test_load_can_be_called_directly_with_non_standard_kwargs(sample_model_path):
     initial_metadata = _load_model_metadata(sample_model_path)

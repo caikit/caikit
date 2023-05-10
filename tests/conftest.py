@@ -51,6 +51,10 @@ import sample_lib
 logging.configure()
 
 
+def random_test_id():
+    return "test-any-model-" + _random_id()
+
+
 @pytest.fixture(autouse=True, scope="session")
 def test_environment():
     """The most important fixture: This runs caikit configuration with the base test config overrides"""
@@ -196,7 +200,7 @@ def temp_config(config_overrides: dict):
             else:
                 # or just slap some random uuids in there. Barf, but we need to call `.configure()`
                 caikit.configure(config_dict={str(uuid.uuid4()): str(uuid.uuid4())})
-            # Yield to the test with the new overriden config
+            # Yield to the test with the new overridden config
             yield get_config()
 
 
@@ -252,6 +256,31 @@ def sample_int_file() -> str:
         handle.write(content)
         handle.flush()
         yield handle.name
+
+
+@pytest.fixture
+def fixtures_dir():
+    yield os.path.join(os.path.dirname(os.path.realpath(__file__)), "fixtures")
+
+
+@pytest.fixture
+def block_fixtures_dir(fixtures_dir):
+    yield os.path.join(fixtures_dir, "blocks")
+
+
+@pytest.fixture
+def resource_fixtures_dir(fixtures_dir):
+    yield os.path.join(fixtures_dir, "resources")
+
+
+@pytest.fixture
+def workflow_fixtures_dir(fixtures_dir):
+    yield os.path.join(fixtures_dir, "workflows")
+
+
+@pytest.fixture
+def toolkit_fixtures_dir(fixtures_dir):
+    yield os.path.join(fixtures_dir, "toolkit")
 
 
 # IMPLEMENTATION DETAILS ############################################################

@@ -58,7 +58,7 @@ def temp_dpool():
 
 
 @pytest.fixture(autouse=True)
-def reset_globals():
+def reset_global_protobuf_registry():
     """Reset the global registry of generated protos"""
     prev_auto_gen_proto_classes = copy.copy(_AUTO_GEN_PROTO_CLASSES)
     prev_class_registry = copy.copy(_DataBaseMetaClass.class_registry)
@@ -479,9 +479,6 @@ def test_dataobject_with_discriminator():
 #             Annotated[Baz, OneofField("baz")],
 #             Annotated[Bat, OneofField("bat")],
 #         ]
-
-#     #DEBUG -------------- SOMETHING BROKEN HERE!!!
-#     breakpoint()
 
 #     # proto tests
 #     foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))

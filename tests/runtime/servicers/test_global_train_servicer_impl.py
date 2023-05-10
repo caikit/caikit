@@ -29,19 +29,11 @@ from sample_lib.data_model.sample import (
     SampleOutputType,
     SampleTrainingType,
 )
-from tests.conftest import temp_config
+from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
 import caikit.core
 
 ## Helpers #####################################################################
-
-
-def _random_test_id():
-    return "test-any-model-" + str(uuid.uuid4())
-
-
-def _random_training_id():
-    return "training-" + str(uuid.uuid4())
 
 
 def _primitives_function(
@@ -63,12 +55,6 @@ def _primitives_function(
     sint64_field,
 ):
     pass
-
-
-HAPPY_PATH_RESPONSE = caikit.interfaces.runtime.data_model.TrainingJob(
-    model_name="Foo Bar Training",
-    training_id=_random_training_id(),
-)
 
 
 @pytest.fixture(autouse=True, params=[True, False])
@@ -100,16 +86,17 @@ def test_global_train_sample_task(
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
+    model_name = random_test_id()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name="Foo Bar Training",
+            model_name=model_name,
             batch_size=42,
             training_data=training_data,
         )
     )
 
     training_response = sample_train_servicer.Train(train_request)
-    assert training_response.model_name == "Foo Bar Training"
+    assert training_response.model_name == model_name
     assert training_response.training_id is not None
     assert isinstance(training_response.training_id, str)
 
@@ -255,7 +242,7 @@ def test_run_train_job_works_with_wait(
     ).to_proto()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name="Foo Bar Training",
+            model_name=random_test_id(),
             batch_size=42,
             training_data=training_data,
         )
@@ -353,7 +340,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_but_not_loaded_s
     sample_train_service, sample_train_servicer
 ):
     """Global train of TrainRequest raises when calling a train function that requires another loaded model, but model is not loaded"""
-    model_id = _random_test_id()
+    model_id = random_test_id()
 
     sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
         model_id=model_id
@@ -381,7 +368,7 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_blo
     ).to_proto()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name="Foo Bar Training",
+            model_name=random_test_id(),
             batch_size=999,
             training_data=training_data,
         )
@@ -406,7 +393,7 @@ def test_global_train_returns_exit_code_with_oom(
     ).to_proto()
     train_request = (
         sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name="Foo Bar Training",
+            model_name=random_test_id(),
             batch_size=42,
             training_data=training_data,
             oom_exit=True,
