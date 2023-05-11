@@ -110,7 +110,7 @@ def test_global_train_sample_task(
         )
     )
 
-    training_response = sample_train_servicer.Train(train_request)
+    training_response = sample_train_servicer.Train(train_request, Fixtures.build_context("foo"))
     assert training_response.model_name == "Foo Bar Training"
     assert training_response.training_id is not None
     assert isinstance(training_response.training_id, str)
@@ -162,7 +162,7 @@ def test_global_train_other_task(
         batch_size=batch_size,
     )
 
-    training_response = sample_train_servicer.Train(train_request)
+    training_response = sample_train_servicer.Train(train_request, Fixtures.build_context("foo"))
     assert training_response.model_name == "Other block Training"
     assert training_response.training_id is not None
     assert isinstance(training_response.training_id, str)
@@ -213,7 +213,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
         )
     )
 
-    training_response = sample_train_servicer.Train(training_request)
+    training_response = sample_train_servicer.Train(training_request, Fixtures.build_context("foo"))
 
     assert training_response.model_name == "AnotherWidget_Training"
     assert training_response.training_id is not None
@@ -269,6 +269,7 @@ def test_run_train_job_works_with_wait(
             SampleBlock,
             training_id="dummy-training-id",
             training_output_dir=tmp_dir,
+            context=Fixtures.build_context("foo"),
             wait=True,
         )
 
@@ -311,6 +312,7 @@ def test_run_train_job_works_with_no_autoload(sample_train_service):
             SampleBlock,
             training_id="dummy-training-id",
             training_output_dir=tmp_dir,
+            context=Fixtures.build_context("foo"),
             wait=True,
         )
         assert training_response.training_id == "dummy-training-id"
@@ -340,6 +342,7 @@ def test_run_train_job_works_with_autoload(sample_train_service):
             SampleBlock,
             training_id="dummy-training-id-2",
             training_output_dir=tmp_dir,
+            context=Fixtures.build_context("foo"),
             wait=True,
         )
         assert training_response.training_id == "dummy-training-id-2"
@@ -368,7 +371,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_but_not_loaded_s
     )
 
     with pytest.raises(CaikitRuntimeException) as context:
-        sample_train_servicer.Train(request)
+        sample_train_servicer.Train(request, Fixtures.build_context("foo"))
 
     assert f"Model '{model_id}' not loaded" == context.value.message
 
@@ -389,7 +392,7 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_blo
         )
     )
     with pytest.raises(CaikitRuntimeException) as context:
-        training_response = sample_train_servicer.Train(train_request)
+        training_response = sample_train_servicer.Train(train_request, Fixtures.build_context("foo"))
 
         training_result = sample_train_servicer.training_map.get(
             training_response.training_id
@@ -419,7 +422,7 @@ def test_global_train_returns_exit_code_with_oom(
     sample_train_servicer.use_subprocess = True
 
     with pytest.raises(CaikitRuntimeException) as context:
-        training_response = sample_train_servicer.Train(train_request)
+        training_response = sample_train_servicer.Train(train_request, Fixtures.build_context("foo"))
         sample_train_servicer.training_map.get(training_response.training_id).result()
 
     assert f"Training process died with OOM error!" in str(context.value.message)
