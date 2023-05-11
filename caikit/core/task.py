@@ -33,16 +33,35 @@ ValidInputTypes = Union[
 
 
 class TaskGroupBase:
+    """The TaskGroupBase defines the interface for task groups. A task group is
+    one that provides a semantic grouping of tasks based on logically similar
+    input types.
+    """
+
     @classmethod
     def validate_task_inputs(cls) -> bool:
+        # TODO: implement
         pass
 
     @classmethod
     def get_input_type_set(cls) -> Set[ProtoableInputTypes]:
+        """Return the set of input types that this task group supports
+
+        NOTE: This method is automatically configured by the @taskgroup
+            decorator and should not be overwritten by child classes.
+        """
         raise NotImplementedError("This is implemented by the @taskgroup decorator!")
 
 
 class TaskBase:
+    """The TaskBase defines the interface for an abstract AI task
+
+    An AI task is a logical function signature which, when implemented, performs
+    a task in some AI domain. The key property of a task is that the set of
+    required input argument types and the output value type are consistent
+    across all implementations of the task.
+    """
+
     @classmethod
     def validate_run_signature(cls) -> bool:
         # TODO: implement
@@ -50,14 +69,29 @@ class TaskBase:
 
     @classmethod
     def get_required_inputs(cls) -> Dict[str, ValidInputTypes]:
+        """Get the set of input types required by this task
+
+        NOTE: This method is automatically configured by the @task decorator
+            and should not be overwritten by child classes.
+        """
         raise NotImplementedError("This is implemented by the @task decorator!")
 
     @classmethod
     def get_output_type(cls) -> Type[DataBase]:
+        """Get the output type for this task
+
+        NOTE: This method is automatically configured by the @task decorator
+            and should not be overwritten by child classes.
+        """
         raise NotImplementedError("This is implemented by the @task decorator!")
 
     @classmethod
     def get_task_group(cls) -> Type[TaskGroupBase]:
+        """Get the grouping that this task belongs to
+
+        NOTE: This method is automatically configured by the @task decorator
+            and should not be overwritten by child classes.
+        """
         raise NotImplementedError("This is implemented by the @task decorator!")
 
 
@@ -123,12 +157,15 @@ def task(
             )
 
     def get_required_inputs(_):
+        """Get the set of input types required by this task"""
         return required_inputs
 
     def get_output_type(_):
+        """Get the output type for this task"""
         return output_type
 
     def get_task_group(_):
+        """Get the grouping that this task belongs to"""
         return task_group
 
     def decorator(cls: Type[TaskBase]) -> Type[TaskBase]:
