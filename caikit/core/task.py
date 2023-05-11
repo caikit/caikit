@@ -112,8 +112,7 @@ def task(
             tasks.
     """
     # TODO: type checking on required_inputs
-    if not issubclass(output_type, DataBase):
-        raise TypeError("output_type must be a data model")
+    error.subclass_check("<COR12766440E>", output_type, DataBase)
 
     def get_required_parameters(_):
         return required_parameters
@@ -141,9 +140,7 @@ def task(
         Returns: Type
             The output type of the {cls.__name__} inference task
         """
-
-        if not isinstance(cls, type) or not issubclass(cls, TaskBase):
-            raise TypeError("decorated class must extend TaskBase")
+        error.subclass_check("<COR19436440E>", cls, TaskBase)
         setattr(cls, "get_required_parameters", classmethod(get_required_parameters))
         setattr(cls, "get_output_type", classmethod(get_output_type))
         return cls
