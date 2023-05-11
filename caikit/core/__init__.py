@@ -37,7 +37,7 @@ from .module_backend_config import configure as backend_configure
 from .module_backends import *
 from .module_config import ModuleConfig
 from .resources.base import ResourceBase, resource
-from .task import TaskBase, TaskGroupBase, task, taskgroup
+from .task import TaskBase, task
 from .toolkit import *
 from .workflows.base import WorkflowBase, workflow
 

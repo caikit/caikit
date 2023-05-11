@@ -232,7 +232,8 @@ def module_type(module_type_name):
                         error(
                             "<COR44943734E>",
                             TypeError(
-                                f"Class {cls_} has task {task} but superclass has task {parent_task}"
+                                f"Class {cls_} has task {task} but superclass has task "
+                                f"{parent_task}"
                             ),
                         )
                     cls_.TASK_CLASS = parent_task

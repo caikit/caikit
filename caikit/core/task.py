@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Standard
-from typing import Callable, Dict, List, Set, Type, Union
+from typing import Callable, Dict, List, Type, Union
 
 # First Party
 from alog import alog
@@ -30,27 +30,6 @@ ProtoableInputTypes = Type[Union[int, float, str, bytes, bool, DataBase]]
 ValidInputTypes = Union[
     ProtoableInputTypes, List[ProtoableInputTypes], DataStream[ProtoableInputTypes]
 ]
-
-
-class TaskGroupBase:
-    """The TaskGroupBase defines the interface for task groups. A task group is
-    one that provides a semantic grouping of tasks based on logically similar
-    input types.
-    """
-
-    @classmethod
-    def validate_task_inputs(cls) -> bool:
-        # TODO: implement
-        pass
-
-    @classmethod
-    def get_input_type_set(cls) -> Set[ProtoableInputTypes]:
-        """Return the set of input types that this task group supports
-
-        NOTE: This method is automatically configured by the @taskgroup
-            decorator and should not be overwritten by child classes.
-        """
-        raise NotImplementedError("This is implemented by the @taskgroup decorator!")
 
 
 class TaskBase:
@@ -85,18 +64,8 @@ class TaskBase:
         """
         raise NotImplementedError("This is implemented by the @task decorator!")
 
-    @classmethod
-    def get_task_group(cls) -> Type[TaskGroupBase]:
-        """Get the grouping that this task belongs to
-
-        NOTE: This method is automatically configured by the @task decorator
-            and should not be overwritten by child classes.
-        """
-        raise NotImplementedError("This is implemented by the @task decorator!")
-
 
 def task(
-    task_group: Type[TaskGroupBase],
     required_inputs: Dict[str, ValidInputTypes],
     output_type: Type[DataBase],
 ) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
@@ -146,15 +115,6 @@ def task(
     # TODO: type checking on required_inputs
     if not issubclass(output_type, DataBase):
         raise TypeError("output_type must be a data model")
-    if not issubclass(task_group, TaskGroupBase):
-        raise TypeError("task_group must be a TaskGroup class")
-
-    for parameter_name, input_type in required_inputs.items():
-        if input_type not in task_group.get_input_type_set():
-            raise TypeError(
-                f"Task parameter {parameter_name} has type {input_type} not in task_group: "
-                f"{task_group.__name__}. Valid types are: {task_group.get_input_type_set()}"
-            )
 
     def get_required_inputs(_):
         """Get the set of input types required by this task"""
@@ -164,54 +124,11 @@ def task(
         """Get the output type for this task"""
         return output_type
 
-    def get_task_group(_):
-        """Get the grouping that this task belongs to"""
-        return task_group
-
     def decorator(cls: Type[TaskBase]) -> Type[TaskBase]:
         if not isinstance(cls, type) or not issubclass(cls, TaskBase):
             raise TypeError("decorated class must extend TaskBase")
         setattr(cls, "get_required_inputs", classmethod(get_required_inputs))
         setattr(cls, "get_output_type", classmethod(get_output_type))
-        setattr(cls, "get_task_group", classmethod(get_task_group))
-        return cls
-
-    return decorator
-
-
-def taskgroup(
-    input_types: Set[ProtoableInputTypes],
-) -> Callable[[Type[TaskGroupBase]], Type[TaskGroupBase]]:
-    """The decorator for AI Task Groups"""
-
-    def type_check(x: type) -> bool:
-        return (
-            x == int
-            or x == float
-            or x == str
-            or x == bytes
-            or x == bool
-            or (isinstance(x, type) and issubclass(x, DataBase))
-        )
-
-    for input_type in input_types:
-        if not type_check(input_type):
-            raise TypeError(
-                f"TaskGroup inputs must be python primitive types or data model types."
-                f" Got {input_type}"
-            )
-
-    def get_input_type_set(_) -> Set[ProtoableInputTypes]:
-        return input_types
-
-    def decorator(cls: Type[TaskGroupBase]) -> Type[TaskGroupBase]:
-        error.value_check(
-            "<COR98211745E>",
-            isinstance(cls, type) and issubclass(cls, TaskGroupBase),
-            "@taskgroup class {} must extend TaskGroupBase",
-            cls,
-        )
-        setattr(cls, "get_input_type_set", classmethod(get_input_type_set))
         return cls
 
     return decorator
