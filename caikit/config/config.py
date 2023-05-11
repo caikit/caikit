@@ -36,6 +36,8 @@ _CONFIG: aconfig.Config = aconfig.Config({})
 # An immutable view into the core config object, to be passed to callers
 _IMMUTABLE_CONFIG: aconfig.ImmutableConfig = aconfig.ImmutableConfig({})
 _CONFIG_LOCK: threading.Lock = threading.Lock()
+# Little helper type for signatures
+_CONFIG_TYPE = Union[dict, aconfig.Config]
 
 
 def get_config() -> aconfig.Config:
@@ -119,14 +121,11 @@ def _merge_extra_files(config: aconfig.Config) -> aconfig.Config:
     return config
 
 
-_config_type = Union[dict, list, aconfig.Config]
-
-
 def merge_configs(
-    base: Optional[_config_type],
-    overrides: Optional[_config_type],
+    base: Optional[_CONFIG_TYPE],
+    overrides: Optional[_CONFIG_TYPE],
     merge_strategy: str = "merge",
-) -> _config_type:
+) -> _CONFIG_TYPE:
     """Helper to perform a deep merge of the overrides into the base. The merge
     is done in place, but the resulting dict is also returned for convenience.
     The merge logic is quite simple: If both the base and overrides have a key
@@ -137,6 +136,10 @@ def merge_configs(
             The base config that will be updated with the overrides
         overrides: Optional[dict]
             The override config
+        merge_strategy: str
+            The merging strategy, either `merge` or `override`
+            `override` will replace values in base with those from overrides
+            `merge` will deep-merge dictionaries and prepend-merge lists
     Returns:
         merged: dict
             The merged results of overrides merged onto base
@@ -147,24 +150,25 @@ def merge_configs(
     if overrides is None:
         return base or {}
 
+    if merge_strategy == "override":
+        base.update(overrides)
+        return base
+
     # Do the deep merge
     for key, value in overrides.items():
-        if merge_strategy == "override":
+        if (
+            key not in base
+            or not isinstance(base[key], (dict, list))
+            or not isinstance(value, (dict, list))
+        ):
             base[key] = value
-        else:
-            if (
-                key not in base
-                or not isinstance(base[key], (dict, list))
-                or not isinstance(value, (dict, list))
-            ):
+        elif isinstance(value, list):
+            if key not in base or not isinstance(base[key], list):
                 base[key] = value
-            elif isinstance(value, list):
-                if key not in base or not isinstance(base[key], list):
-                    base[key] = value
-                else:
-                    base[key] = merge_list(base[key], value)
             else:
-                base[key] = merge_configs(base[key], value, merge_strategy)
+                base[key] = merge_list(base[key], value)
+        else:
+            base[key] = merge_configs(base[key], value, merge_strategy)
 
     return base
 
@@ -176,7 +180,7 @@ def merge_list(base_list: list, new_list: list) -> list:
     return new_list + base_list
 
 
-def _get_merge_strategy(cfg: _config_type) -> str:
+def _get_merge_strategy(cfg: _CONFIG_TYPE) -> str:
     return cfg.get("merge_strategy", "merge")
 
 
