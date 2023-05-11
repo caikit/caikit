@@ -30,7 +30,7 @@ dependencies = [
     "semver>=2.13.0,<4.0",
     "six>=1.16.0,<2.0.0",
     "tqdm>=4.59.0,<5.0.0",
-    "py-to-proto>=0.1.2,<0.2.0",
+    "py-to-proto>=0.2.0,<0.3.0",
     "import-tracker>=3.1.5,<4",
 ]
 
