@@ -64,15 +64,14 @@ def compiled_training_service() -> ServicePackage:
 
 
 def test_service_package_raises_for_compiled_training_management():
-    with pytest.raises(CaikitRuntimeException) as e:
+    with pytest.raises(
+        CaikitRuntimeException,
+        match="Not allowed to get Training Management services from compiled packages",
+    ):
         ServicePackageFactory.get_service_package(
             ServicePackageFactory.ServiceType.TRAINING_MANAGEMENT,
             ServicePackageFactory.ServiceSource.COMPILED,
         )
-    assert (
-        "Not allowed to get Training Management services from compiled packages"
-        in e.value.message
-    )
 
 
 # These tests assume we have a compiled pb2 package to pull services from
@@ -93,10 +92,11 @@ def test_train_descriptor(compiled_training_service, compiled_caikit_runtime_tra
 
 
 def test_get_service_descriptor_raises_if_pb2_has_no_desc():
-    with pytest.raises(CaikitRuntimeException) as e:
+    with pytest.raises(
+        CaikitRuntimeException,
+        match="Could not find service descriptor in caikit_runtime_pb2",
+    ):
         ServicePackageFactory._get_service_descriptor(None, "SampleLib")
-
-    assert "Could not find service descriptor in caikit_runtime_pb2" in e.value.message
 
 
 def test_inference_service_registration_function(
@@ -109,12 +109,11 @@ def test_inference_service_registration_function(
 
 
 def test_get_servicer_function_raises_if_grpc_has_no_function():
-    with pytest.raises(CaikitRuntimeException) as e:
+    with pytest.raises(
+        CaikitRuntimeException,
+        match="Could not find servicer function in caikit_runtime_pb2_grpc",
+    ):
         ServicePackageFactory._get_servicer_function(None, "samplelib")
-
-    assert (
-        "Could not find servicer function in caikit_runtime_pb2_grpc" in e.value.message
-    )
 
 
 def test_inference_service_class(
@@ -127,10 +126,8 @@ def test_inference_service_class(
 
 
 def test_get_servicer_class_raises_if_grpc_has_no_class():
-    with pytest.raises(CaikitRuntimeException) as e:
+    with pytest.raises(CaikitRuntimeException, match="Could not find servicer class"):
         ServicePackageFactory._get_servicer_class(None, "samplelib")
-
-    assert "Could not find servicer class" in e.value.message
 
 
 def test_inference_client_stub(
@@ -143,10 +140,11 @@ def test_inference_client_stub(
 
 
 def test_get_servicer_stub_raises_if_grpc_has_no_stub():
-    with pytest.raises(CaikitRuntimeException) as e:
+    with pytest.raises(
+        CaikitRuntimeException,
+        match="Could not find servicer stub in caikit_runtime_pb2_grpc",
+    ):
         ServicePackageFactory._get_servicer_stub(None, "SampleLib")
-
-    assert "Could not find servicer stub in caikit_runtime_pb2_grpc" in e.value.message
 
 
 ### _get_service_proto_module #############################################################
