@@ -32,6 +32,7 @@ from caikit.core import toolkit
 from sample_lib.blocks.sample_task import SampleBlock
 
 # pylint: disable=import-error
+from sample_lib.data_model import SampleTask
 from sample_lib.workflows.sample_task import SampleWorkflow
 
 # Unit Test Infrastructure
@@ -186,7 +187,9 @@ def test_load_can_be_called_directly_with_non_standard_kwargs(sample_model_path)
     _check_dicts_equal(initial_metadata, model.metadata, {"module_id", "model_path"})
 
     # Write a class that doesn't have a `xxx_path` arg for load
-    @caikit.core.block("00110203-0809-beef-baad-0a0b0c0d0e0f", "FunkyBlock", "0.0.1")
+    @caikit.core.block(
+        "00110203-0809-beef-baad-0a0b0c0d0e0f", "FunkyBlock", "0.0.1", SampleTask
+    )
     class _FunkyModel(SampleBlock):
         @classmethod
         def load(cls, some_really_odd_param_name):

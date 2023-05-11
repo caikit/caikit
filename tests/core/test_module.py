@@ -32,7 +32,7 @@ from caikit.core.module_backends import backend_types
 from caikit.core.module_type import SUPPORTED_LOAD_BACKENDS_VAR_NAME
 
 # pylint: disable=import-error
-from sample_lib.data_model.sample import SampleInputType
+from sample_lib.data_model.sample import SampleInputType, SampleTask
 
 # Unit Test Infrastructure
 from tests.conftest import fixtures_dir, temp_config
@@ -66,7 +66,9 @@ def configure_alternate_backend_impl():
     """Function to register a new backend type and register a module implementation
     of existing caikit.core module"""
 
-    @caikit.core.blocks.block(id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1")
+    @caikit.core.blocks.block(
+        id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1", task=SampleTask
+    )
     class DummyFoo(caikit.core.blocks.base.BlockBase):
         pass
 
@@ -361,7 +363,9 @@ def test_override_load_supported_backend(reset_globals):
     """Test if the class can successfully define its own backends
     that it supports load from"""
 
-    @caikit.core.blocks.block(id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1")
+    @caikit.core.blocks.block(
+        id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1", task=SampleTask
+    )
     class DummyFoo(caikit.core.blocks.base.BlockBase):
         pass
 
@@ -397,7 +401,9 @@ def test_base_module_in_decorator(reset_globals):
     backend_types.register_backend_type(BazBackend)
     backend_types.register_backend_type(FooBackend)
 
-    @caikit.core.blocks.block(id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1")
+    @caikit.core.blocks.block(
+        id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1", task=SampleTask
+    )
     class DummyLocal(caikit.core.blocks.base.BlockBase):
         pass
 

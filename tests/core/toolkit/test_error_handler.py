@@ -305,6 +305,52 @@ class TestErrorHandler(TestCaseBase):
         with self.assertRaises(RuntimeError):
             self.error.type_check_all("<ABC>", int, str, allow_none=False)
 
+    def test_subclass_check_raises(self):
+        """Verify that `subclass_check` raises a `TypeError`."""
+        with pytest.raises(TypeError):
+            self.error.subclass_check("<HHH>", int, float)
+
+    def test_subclass_check_passes(self):
+        """Verify that `subclass_check` does not raise an exception when good."""
+
+        class Base:
+            pass
+
+        class Derived(Base):
+            pass
+
+        class SecondOrder(Derived):
+            pass
+
+        class Other:
+            pass
+
+        self.error.subclass_check("<III>", Derived, Base)
+        self.error.subclass_check("<III>", SecondOrder, Base)
+        self.error.subclass_check("<III>", Derived, Base, Other)
+        self.error.subclass_check("<III>", None, Base, Other, allow_none=True)
+
+    def test_subclass_check_none(self):
+        """Verify that `subclass_check` does not raise when `None` values are allowed."""
+        self.error.subclass_check("<III>", None, int, allow_none=True)
+
+    def test_subclass_check_logs(self):
+        """Verify that `subclass_check` writes a single log line."""
+        with pytest.raises(TypeError):
+            self.error.subclass_check("<JJJ>", int, float)
+
+        self.assertEqual(len(self.caplog.records), 1)
+
+    def test_subclass_requires_base_type(self):
+        """Verify that `subclass_check` raises a RuntimeError if no base given"""
+        with pytest.raises(RuntimeError):
+            self.error.subclass_check("<JJJ>", int)
+
+    def test_subclass_check_non_type(self):
+        """Verify that `subclass_check` raises if the value is not a type"""
+        with pytest.raises(TypeError):
+            self.error.subclass_check("<III>", 1, int, allow_none=True)
+
     def test_value_check_raises(self):
         """Verify that `value_check` raises a `ValueError`."""
         bad_value = 1.1

@@ -27,6 +27,7 @@ from caikit.core.module_backend_config import (
     start_backends,
 )
 from caikit.core.module_backends import backend_types
+from sample_lib.data_model import SampleTask
 from tests.conftest import temp_config
 from tests.core.helpers import *
 
@@ -230,7 +231,7 @@ def test_multiple_module_same_backend_configures(reset_globals):
     can override backend configurations"""
     # Register backend type
 
-    @block(id="foo", name="dummy base", version="0.0.1")
+    @block(id="foo", name="dummy base", version="0.0.1", task=SampleTask)
     class DummyFoo(base.BlockBase):
         pass
 
@@ -243,7 +244,7 @@ def test_multiple_module_same_backend_configures(reset_globals):
     class DummyBar(base.BlockBase):
         pass
 
-    @block(id="foo2", name="dummy base", version="0.0.1")
+    @block(id="foo2", name="dummy base", version="0.0.1", task=SampleTask)
     class DummyFoo2(base.BlockBase):
         pass
 

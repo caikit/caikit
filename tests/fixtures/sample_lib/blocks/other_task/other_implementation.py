@@ -5,13 +5,15 @@ A sample block for sample things!
 from typing import Union
 
 # Local
-from ...data_model.sample import OtherOutputType, SampleInputType
+from ...data_model.sample import OtherOutputType, OtherTask, SampleInputType
 from caikit.core.data_model import DataStream
 from caikit.core.module import ModuleLoader, ModuleSaver
 import caikit.core
 
 
-@caikit.core.block("33221100-0405-0607-0809-0a0b02dd0e0f", "OtherBlock", "0.0.1")
+@caikit.core.block(
+    "33221100-0405-0607-0809-0a0b02dd0e0f", "OtherBlock", "0.0.1", OtherTask
+)
 class OtherBlock(caikit.core.BlockBase):
     def __init__(self, batch_size=64, learning_rate=0.0015):
         super().__init__()
