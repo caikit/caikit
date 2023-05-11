@@ -25,12 +25,7 @@ import google.protobuf.service
 import grpc
 
 # First Party
-from py_to_proto.json_to_service import (
-    json_to_service,
-    service_descriptor_to_client_stub,
-    service_descriptor_to_server_registration_function,
-    service_descriptor_to_service,
-)
+from py_to_proto.json_to_service import json_to_service
 import aconfig
 import alog
 
@@ -74,7 +69,7 @@ class ServicePackage:
     - A client messages module
     """
 
-    service: google.protobuf.service.Service
+    service: Type[google.protobuf.service.Service]
     descriptor: google.protobuf.descriptor.ServiceDescriptor
     registration_function: Callable[
         [google.protobuf.service.Service, grpc.Server], None
@@ -164,19 +159,17 @@ class ServicePackageFactory:
             )
 
         if service_type == cls.ServiceType.TRAINING_MANAGEMENT:
-            service_descriptor = json_to_service(
+            grpc_service = json_to_service(
                 name=TRAINING_MANAGEMENT_SERVICE_NAME,
                 package="caikit.runtime.training",
                 json_service_def=TRAINING_MANAGEMENT_SERVICE_SPEC,
             )
 
             return ServicePackage(
-                service=service_descriptor_to_service(service_descriptor),
-                descriptor=service_descriptor,
-                registration_function=service_descriptor_to_server_registration_function(
-                    service_descriptor
-                ),
-                stub_class=service_descriptor_to_client_stub(service_descriptor),
+                service=grpc_service.service_class,
+                descriptor=grpc_service.descriptor,
+                registration_function=grpc_service.registration_function,
+                stub_class=grpc_service.client_stub_class,
                 messages=None,  # we don't need messages here
             )
 
@@ -221,17 +214,15 @@ class ServicePackageFactory:
 
             rpc_jsons = [rpc.create_rpc_json(package_name) for rpc in task_rpc_list]
             service_json = {"service": {"rpcs": rpc_jsons}}
-            service_descriptor = json_to_service(
+            grpc_service = json_to_service(
                 name=service_name, package=package_name, json_service_def=service_json
             )
 
             return ServicePackage(
-                service=service_descriptor_to_service(service_descriptor),
-                descriptor=service_descriptor,
-                registration_function=service_descriptor_to_server_registration_function(
-                    service_descriptor
-                ),
-                stub_class=service_descriptor_to_client_stub(service_descriptor),
+                service=grpc_service.service_class,
+                descriptor=grpc_service.descriptor,
+                registration_function=grpc_service.registration_function,
+                stub_class=grpc_service.client_stub_class,
                 messages=client_module,
             )
 
@@ -348,7 +339,7 @@ class ServicePackageFactory:
     def _get_servicer_class(
         caikit_runtime_pb2_grpc,
         lib_name,
-    ) -> google.protobuf.service.Service:
+    ) -> Type[google.protobuf.service.Service]:
         """Get google.protobufs.service.Service interface class from
         caikit_runtime_pb2_grpc module"""
         servicer = f"{lib_name}ServiceServicer"
