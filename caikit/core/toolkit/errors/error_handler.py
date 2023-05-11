@@ -19,6 +19,7 @@
 # Standard
 from collections.abc import Iterable
 from types import GeneratorType
+from typing import Any
 import os
 
 # Local
@@ -94,7 +95,7 @@ class ErrorHandler:
 
     def log_raise(self, log_code, exception, root_exception=None):
         """Log an exception with a log code and then re-raise it.  Using this instead of simply
-        using the `raise` keyword with your exceptions will ensure that log message is omitted on
+        using the `raise` keyword with your exceptions will ensure that log message is emitted on
         the `error` level for the log channel associated with this handler.  This is invaluable for
         debugging in environments where stack traces are not available.
 
@@ -113,7 +114,7 @@ class ErrorHandler:
                 where we'd like to wrap a base exception with a custom exception, preserving the
                 original's stack-trace
         Notes:
-            The error handler will track the number log messages omitted for a given exception and
+            The error handler will track the number log messages emitted for a given exception and
             stop logging after `MAX_EXCEPTION_LOG_MESSAGES` have been logged for a single instance
             of an exception.  This is to prevent pathological logging, e.g., repeatedly calling
             `log_raise` in a recursive function.
@@ -133,7 +134,7 @@ class ErrorHandler:
 
     def type_check(self, log_code, *types, allow_none=False, **variables):
         """Check for acceptable types for a given object.  If the type check fails, a log message
-        will be omitted at the error level on the log channel associated with this handler and a
+        will be emitted at the error level on the log channel associated with this handler and a
         `TypeError` exception will be raised with an appropriate message.  This check should be used
         to check for appropriate variable types.  For example, to verify that an argument passed to
         a function that expects a string is actually an instance of a string.
@@ -147,7 +148,7 @@ class ErrorHandler:
                 'trace': 'T', 'debug': 'D'}`.
             *types:  type or None
                 Variadic arguments containing all acceptable types for `variables`.  If any values
-                of `variable` are not any of `*types` then a log message will be omitted and a
+                of `variable` are not any of `*types` then a log message will be emitted and a
                 `TypeError` will be raised.  Multiple types may be specified as separate arguments.
                 If no types are specified, then a `RuntimeError` will be raised.
             allow_none:  bool
@@ -273,9 +274,80 @@ class ErrorHandler:
                         ),
                     )
 
+    def subclass_check(
+        self, log_code: str, child_class: Any, *parent_classes, allow_none: bool = False
+    ):
+        """Check that the given child classes are valid types and that they
+        derive from the given set of parent classes [issubclass(x, (y, z))]. If
+        the subclass check fails, a log message will be emitted at the error
+        level on the log channel associated with this handler and a `TypeError`
+        exception will be raised with an appropriate message. This check should
+        be used to check that a given class meets the interface of a parent
+        class. For example, to verify that a class handle is a valid ModuleBase
+        subclass.
+
+        Args:
+            log_code:  str
+                A log code with format `<COR90063501E>` where `COR` is a short
+                code for the library (for `caikit_core` in this example) and
+                where `90063501` is a unique eight-digit identifier and where
+                `E` is an error level short-code, one of `{'fatal': 'F',
+                'error': 'E', 'warning': 'W', 'info': 'I', 'trace': 'T',
+                'debug': 'D'}`.
+            child_class:  Any
+                The class to be examined for acceptable class inheritance.
+            *parent_classes:  type
+                Variadic arguments containing all acceptable parent types for
+                `child_classes`.  If any values of `child_classes` are not a
+                valid type derived from one of `*parent_classes` then a log
+                message will be emitted and a `TypeError` will be raised.
+                Multiple parent_classes may be specified as separate arguments.
+                If no parent_classes are specified, then a `RuntimeError` will
+                be raised.
+            allow_none:  bool
+                If `True` then the values of `child_classes` are allowed to take
+                on the value of `None` without causing the subclass check to
+                fail.  If `False` (default) then `None` values will cause the
+                subclass check to fail.
+
+        Examples:
+            # this will raise a `TypeError` because `Foo` is not `None` or
+            # derived from Bar
+            > class Bar: pass
+            > class Foo: pass
+            > error.subclass_check('<COR99962332E>', Bar, Foo=Foo)
+
+            # this type check verifies that `foo` and `bar` are both strings
+            > error.type_check('<COR03761101E>', str, foo=foo, bar=bar)
+        """
+        if not get_config().enable_error_checks:
+            return
+
+        if allow_none and child_class is None:
+            return
+
+        if not parent_classes:
+            self(
+                log_code,
+                RuntimeError("invalid subclass check: no parent_classes given"),
+            )
+
+        if not isinstance(child_class, type) or not issubclass(
+            child_class, parent_classes
+        ):
+            self(
+                log_code,
+                TypeError(
+                    "subclass check failed: {} is not a subclass of {}".format(
+                        child_class,
+                        parent_classes,
+                    )
+                ),
+            )
+
     def value_check(self, log_code, condition, *args):
         """Check for acceptable values for a given object.  If this check fails, a log message will
-        be omitted at the error level on the log channel associated with this handler and a
+        be emitted at the error level on the log channel associated with this handler and a
         `ValueError` exception will be raised with an appropriate message.  This check should be
         used for checking for appropriate values for variable instances.  For example, to check that
         a numerical value has an appropriate range.
@@ -317,7 +389,7 @@ class ErrorHandler:
 
     def file_check(self, log_code, *file_paths):
         """Check to see if one or more file paths exist and are regular files.  If any do not exist
-        or are not files, then a log message will be omitted on the log channel associated with this
+        or are not files, then a log message will be emitted on the log channel associated with this
         error handler and a `FileNotFoundError` will be raised with an appropriate error message.
 
         Args:
@@ -330,7 +402,7 @@ class ErrorHandler:
             *file_paths:  str
                 Variadic argument containing strings specifying the file paths to check.  If any
                 of these file paths does not exist or is not a regular file, then a
-                log message will be omitted and a `FileNotFoundError` will be raised.
+                log message will be emitted and a `FileNotFoundError` will be raised.
         """
         if not get_config().enable_error_checks:
             return
@@ -353,7 +425,7 @@ class ErrorHandler:
     def dir_check(self, log_code, *dir_paths):
         """Check to see if one or more directory paths exist and are, in fact, directories.  If any
         do not exist then a `FileNotFoundError` will be raised and if they are not directories then
-        a `NotADirectoryError` will be raised.  In either case, a log message will be omitted on the
+        a `NotADirectoryError` will be raised.  In either case, a log message will be emitted on the
         log channel associated with this error handler.
 
         Args:
@@ -366,7 +438,7 @@ class ErrorHandler:
             *dir_paths:  str
                 Variadic argument containing strings specifying the directory paths to check.  If
                 any of these file paths does not exist or is not a regular file, then a log message
-                will be omitted and a `FileNotFoundError` or `NotADirectoryError` will raised.
+                will be emitted and a `FileNotFoundError` or `NotADirectoryError` will raised.
         """
         if not get_config().enable_error_checks:
             return
