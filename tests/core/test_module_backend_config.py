@@ -67,12 +67,14 @@ def test_configure_with_module(reset_globals):
                     {
                         "type": backend_types.MOCK,
                         "config": foo_cfg,
+                        "name": "moo",
                     }
                 ],
                 "train_priority": [
                     {
                         "type": backend_types.MOCK,
                         "config": foo_cfg,
+                        "name": "moo",
                     }
                 ],
             }
@@ -81,12 +83,12 @@ def test_configure_with_module(reset_globals):
         configure()
 
         # Test load backend config
-        mock_load_backend = get_load_backend(backend_types.MOCK)
+        mock_load_backend = get_load_backend("moo")
         assert mock_load_backend.backend_type == backend_types.MOCK
         assert foo_cfg == mock_load_backend.config
 
         # Test train backend config
-        mock_train_backend = get_train_backend(backend_types.MOCK)
+        mock_train_backend = get_train_backend("moo")
         assert mock_train_backend.backend_type == backend_types.MOCK
         assert foo_cfg == mock_train_backend.config
 
@@ -100,6 +102,7 @@ def test_configure_load_only(reset_globals):
                     {
                         "type": backend_types.MOCK,
                         "config": foo_cfg,
+                        "name": "moose",
                     }
                 ],
                 "train_priority": [],
@@ -109,7 +112,7 @@ def test_configure_load_only(reset_globals):
         configure()
 
         # Test load backend config
-        mock_load_backend = get_load_backend(backend_types.MOCK)
+        mock_load_backend = get_load_backend("moose")
         assert mock_load_backend.backend_type == backend_types.MOCK
         assert foo_cfg == mock_load_backend.config
 
@@ -174,6 +177,7 @@ def test_one_configured_backend_can_start(reset_globals):
                     {
                         "type": backend_types.MOCK,
                         "config": foo_cfg,
+                        "name": "moo",
                     }
                 ],
             }
@@ -183,7 +187,7 @@ def test_one_configured_backend_can_start(reset_globals):
         start_backends()
 
         # This is configured to be True in helpers
-        mock_load_backend = get_load_backend(backend_types.MOCK)
+        mock_load_backend = get_load_backend("moo")
         assert mock_load_backend.backend_type == backend_types.MOCK
         assert mock_load_backend.is_started
 
