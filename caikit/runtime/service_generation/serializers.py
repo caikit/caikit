@@ -96,7 +96,7 @@ class RPCSerializerBase(abc.ABC):
 
         return decorated_cls
 
-    def create_rpc_json(self, package_name: str) -> dict[str, Any]:
+    def create_rpc_json(self, package_name: str) -> Dict:
         """Return json snippet for the service definition of this RPC"""
         output_type_name = self.return_type.get_proto_class().DESCRIPTOR.full_name
 
