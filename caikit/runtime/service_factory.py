@@ -43,7 +43,7 @@ from caikit.interfaces.runtime.data_model import (
 )
 from caikit.runtime import service_generation
 from caikit.runtime.service_generation.core_module_helpers import get_module_info
-from caikit.runtime.service_generation.serializers import snake_to_upper_camel
+from caikit.runtime.service_generation.rpcs import snake_to_upper_camel
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils import import_util
 import caikit.core
@@ -206,9 +206,9 @@ class ServicePackageFactory:
                 rpc for rpc in task_rpc_list if rpc.return_type is not None
             ]
 
-            request_data_models = []
-            for rpc in task_rpc_list:
-                request_data_models.append(rpc.create_request_data_model(package_name))
+            request_data_models = [
+                rpc.create_request_data_model(package_name) for rpc in task_rpc_list
+            ]
 
             client_module = ModuleType(
                 "ClientMessages",
@@ -219,9 +219,7 @@ class ServicePackageFactory:
                 # We need the message class that data model serializes to
                 setattr(client_module, dm_class.__name__, type(dm_class().to_proto()))
 
-            rpc_jsons = []
-            for rpc in task_rpc_list:
-                rpc_jsons.append(rpc.create_rpc_json(package_name))
+            rpc_jsons = [rpc.create_rpc_json(package_name) for rpc in task_rpc_list]
             service_json = {"service": {"rpcs": rpc_jsons}}
             service_descriptor = json_to_service(
                 name=service_name, package=package_name, json_service_def=service_json

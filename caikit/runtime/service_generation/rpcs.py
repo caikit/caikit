@@ -50,7 +50,7 @@ log = alog.use_channel("RPC-SERIALIZERS")
 INDENT = "    "
 
 
-class RPCSerializerBase(abc.ABC):
+class CaikitRPCBase(abc.ABC):
     @property
     @abc.abstractmethod
     def module_list(self) -> List[Type[ModuleBase]]:
@@ -62,7 +62,7 @@ class RPCSerializerBase(abc.ABC):
         """Return the internal representation of the request message type for this RPC"""
 
     def create_request_data_model(self, package_name: str) -> Type[DataBase]:
-        """Dynamically create data model for this class's input RPC"""
+        """Dynamically create data model for this RPC's request message"""
         properties = {
             # triple e.g. ('caikit.interfaces.common.ProducerPriority', 'producer_id', 1)
             # This does not take care of nested descriptors
@@ -108,7 +108,7 @@ class RPCSerializerBase(abc.ABC):
         return rpc_json
 
 
-class ModuleClassTrainRPC(RPCSerializerBase):
+class ModuleClassTrainRPC(CaikitRPCBase):
     """Helper class to create a unique RPC corresponding with the train function
     for a given module class
     """
@@ -211,7 +211,7 @@ class ModuleClassTrainRPC(RPCSerializerBase):
         )
 
 
-class TaskPredictRPC(RPCSerializerBase):
+class TaskPredictRPC(CaikitRPCBase):
     """Helper class to create a unique RPC for the aggregate set of Modules that
     implement the same task
     """

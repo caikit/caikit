@@ -27,7 +27,7 @@ import alog
 from ... import get_config
 from .core_module_helpers import get_module_info
 from .primitives import is_primitive_method
-from .serializers import ModuleClassTrainRPC, RPCSerializerBase, TaskPredictRPC
+from .rpcs import CaikitRPCBase, ModuleClassTrainRPC, TaskPredictRPC
 from .signature_parsing.module_signature import CaikitCoreModuleMethodSignature
 from caikit.core.module import ModuleBase
 
@@ -46,7 +46,7 @@ class ServiceType(Enum):
     TRAINING = 2
 
 
-def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[RPCSerializerBase]:
+def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
     """Handles the logic to create all the RPCs for inference"""
 
     primitive_data_model_types = (
@@ -70,7 +70,7 @@ def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[RPCSerializer
     return rpcs
 
 
-def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[RPCSerializerBase]:
+def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
     """Handles the logic to create all the RPCs for training"""
 
     rpcs = []
@@ -137,7 +137,7 @@ def _create_rpcs_for_modules(
     modules: List[Type[ModuleBase]],
     primitive_data_model_types: List[str],
     fname: str = INFERENCE_FUNCTION_NAME,
-) -> List[RPCSerializerBase]:
+) -> List[CaikitRPCBase]:
     """Create the RPCs for each module"""
     rpcs = []
     task_groups = {}
