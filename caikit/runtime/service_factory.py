@@ -26,7 +26,6 @@ import grpc
 
 # First Party
 from py_to_proto.json_to_service import json_to_service
-
 import aconfig
 import alog
 
