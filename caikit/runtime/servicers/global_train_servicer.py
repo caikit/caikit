@@ -15,6 +15,7 @@
 from importlib.metadata import version
 from typing import Optional, Type
 from uuid import uuid4
+import abc
 import concurrent.futures
 import importlib
 import multiprocessing
@@ -44,6 +45,8 @@ from caikit.runtime.utils.servicer_util import (
     snake_to_upper_camel,
     validate_data_model,
 )
+from caikit.runtime.work_management.abortable_action import AbortableAction
+from caikit.runtime.work_management.call_aborter import CallAborter
 import caikit.core
 
 log = alog.use_channel("GT-SERVICR-I")
@@ -63,10 +66,10 @@ class GlobalTrainServicer:
         self._training_service = training_service
         self._model_manager = ModelManager.get_instance()
         self.training_manager = TrainingManager.get_instance()
-        # NOTE: Following is using default number of workers for ThreadPoolExecutor
-        # which in case of python3.8 would be between 5 to 32 depending on number of CPU cores
-        # on the machine
-        self.executor = concurrent.futures.ThreadPoolExecutor()
+        # NOTE: we are using ThreadPoolExecutor for simplicity of the
+        # the API with an intent to handle the training job
+        # in an async fashion with "Futures".
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         # store the map of model ids to job ids
         self.training_map = self.training_manager.training_futures
         caikit_config = get_config()
@@ -155,6 +158,7 @@ class GlobalTrainServicer:
                     model=model,
                     training_id=training_id,
                     training_output_dir=self.training_output_dir,
+                    context=context,
                 )
 
         except CaikitRuntimeException as e:
@@ -197,6 +201,7 @@ class GlobalTrainServicer:
         model,
         training_id,
         training_output_dir,
+        context,
         wait=False,
     ) -> TrainingJob:
         """Builds the request dict for calling the train function asynchronously,
@@ -215,9 +220,9 @@ class GlobalTrainServicer:
 
         # If running with a subprocess, set the target and args accordingly
         target = (
-            self._train_and_save_model_subproc
+            SubProcessTrainSaveExecutor()
             if self.use_subprocess
-            else self._train_and_save_model
+            else LocalTrainSaveExecutor()
         )
 
         log.debug2(
@@ -227,12 +232,17 @@ class GlobalTrainServicer:
 
         # start training asynchronously
         thread_future = self.run_async(
-            runnable_func=target,
+            runnable_executor=target,
             kwargs=kwargs,
             model_name=model_name,
             model_path=model_path,
+            context=context,
         )
+
         self.training_map[training_id] = thread_future
+
+        # Add callback to register cancellation of training
+        context.add_callback(thread_future.cancel)
 
         # if requested, block until the training completes
         if wait:
@@ -246,22 +256,32 @@ class GlobalTrainServicer:
 
     def run_async(
         self,
-        runnable_func,
+        runnable_executor,
         kwargs,
         model_name,
         model_path,
+        context
     ) -> concurrent.futures.Future:
         """Runs the train function in a thread and saves the trained model in a callback"""
+
+
         if self.auto_load_trained_model:
 
             def target(*args, **kwargs):
-                runnable_func(*args, **kwargs)
+                runnable_executor.train_and_save_model(*args, **kwargs)
                 return self._load_trained_model(model_name, model_path)
 
         else:
-            target = runnable_func
+            target = runnable_executor.train_and_save_model
 
         future = self.executor.submit(target, **kwargs)
+
+        # Add callback to the concurrent.futures to support cancellation
+        # depending on the method chosen for running the training,
+        # i.e. local or in sub-process.
+
+        future.add_done_callback(runnable_executor.cancel)
+
         return future
 
     def _get_model_path(
@@ -293,8 +313,31 @@ class GlobalTrainServicer:
         )
         return self._model_manager.retrieve_model(model_name)
 
-    @staticmethod
-    def _train_and_save_model(
+
+
+# NOTE: Following would get replaced with training backends potentially
+# in future.
+# NOTE: Instead of using executors like Local / Subprocess
+# it might make sense to instead use concurrent.Future based
+# executors, so ThreadPoolExecutors and ProcessPoolExecutors, but
+# ProcessPoolExecutor doesn't support `fork` start method
+class TrainSaveExecutorBase(abc.ABC):
+
+    @abc.abstractmethod
+    def train_and_save_model(self, *args, **kwargs):
+        """Function to kick off training a model based and saving
+        the resultant model
+        """
+
+    @abc.abstractmethod
+    def cancel(self):
+        """Function to abort train and save operation on the executor
+        """
+
+class LocalTrainSaveExecutor(TrainSaveExecutorBase):
+
+    def train_and_save_model(
+        self,
         module_class: Type[ModuleBase],
         model_path: str,
         *args,
@@ -355,50 +398,13 @@ class GlobalTrainServicer:
                 f"Exception raised during training: {e}",
             ) from e
 
-    @classmethod
-    def _train_and_save_model_subproc(cls, *args, **kwargs):
-        """This function runs _train_and_save_model in a subprocess"""
 
-        proc = cls._ErrorCaptureProcess(
-            target=cls._train_and_save_model,
-            args=args,
-            kwargs=kwargs,
-        )
+    def cancel(self):
+        """Function to abort train and save operation on the executor
+        """
+        # TODO: Figure out what we need to do to cancel local executor
 
-        proc.start()
-        proc.join()
-
-        # If an error occurred, reraise it here
-        # TODO: Make sure the stack trace is preserved
-        if proc.error is not None:
-            if isinstance(proc.error, CaikitRuntimeException):
-                raise proc.error
-            raise CaikitRuntimeException(
-                grpc.StatusCode.INTERNAL,
-                "Error caught in training subprocess",
-            ) from proc.error
-
-        # If process exited with a non-zero exit code
-        if proc.exitcode and proc.exitcode != os.EX_OK:
-            if proc.exitcode == OOM_EXIT_CODE:
-                exception = CaikitRuntimeException(
-                    grpc.StatusCode.RESOURCE_EXHAUSTED,
-                    "Training process died with OOM error!",
-                )
-            else:
-                exception = CaikitRuntimeException(
-                    grpc.StatusCode.UNKNOWN,
-                    f"Training process died with exit code {proc.exitcode}",
-                )
-            raise exception
-
-
-    def _cancel_training(self, training_id):
-        """Function to cancel training"""
-        training_thread = self.training_map[training_id]
-        if training_thread.running():
-            training_thread.cancel()
-
+class SubProcessTrainSaveExecutor(LocalTrainSaveExecutor):
 
     class _ErrorCaptureProcess(multiprocessing.get_context("fork").Process):
         """This class wraps a Process and keeps track of any errors that occur
@@ -407,13 +413,17 @@ class GlobalTrainServicer:
         NOTE: We explicitly use "fork" here for two reasons:
             1. It's faster
             2. Due to the auto-generated classes with stream sources, "spawn"
-               can result in missing classes since it performs a full re-import,
-               but does not regenerate the service APIs
+            can result in missing classes since it performs a full re-import,
+            but does not regenerate the service APIs
         """
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.error = None
+
+        def set_args(self, *args, **kwargs):
+            self._args = args
+            self._kwargs = kwargs
 
         def run(self, *args, **kwargs):
             try:
@@ -424,3 +434,47 @@ class GlobalTrainServicer:
             # pylint: disable=broad-exception-caught
             except Exception as err:
                 self.error = err
+
+
+    def __init__(self) -> None:
+
+        self.proc = self._ErrorCaptureProcess(
+            target=super().train_and_save_model,
+        )
+
+    def train_and_save_model(self, *args, **kwargs):
+
+        # Assign args and kwargs to self.proc
+        self.proc.set_args(*args, **kwargs)
+
+        self.proc.start()
+        self.proc.join()
+
+        # If an error occurred, reraise it here
+        # TODO: Make sure the stack trace is preserved
+        if self.proc.error is not None:
+            if isinstance(self.proc.error, CaikitRuntimeException):
+                raise self.proc.error
+            raise CaikitRuntimeException(
+                grpc.StatusCode.INTERNAL,
+                "Error caught in training subprocess",
+            ) from self.proc.error
+
+        # If process exited with a non-zero exit code
+        if self.proc.exitcode and self.proc.exitcode != os.EX_OK:
+            if self.proc.exitcode == OOM_EXIT_CODE:
+                exception = CaikitRuntimeException(
+                    grpc.StatusCode.RESOURCE_EXHAUSTED,
+                    "Training process died with OOM error!",
+                )
+            else:
+                exception = CaikitRuntimeException(
+                    grpc.StatusCode.UNKNOWN,
+                    f"Training process died with exit code {self.proc.exitcode}",
+                )
+            raise exception
+
+
+    def cancel(self):
+        self.proc.terminate()
+        self.proc.close()

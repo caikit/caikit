@@ -40,6 +40,12 @@ class TrainingManager:
 
         raise RuntimeError("Unexpected error")
 
+    def cancel_training(self, model_id: str):
+        """Function to cancel the running training"""
+        training_future = self.training_futures[model_id]
+        if training_future.running():
+            training_future.cancel()
+
     @classmethod
     def get_instance(cls) -> "TrainingManager":
         """This method returns the instance of Training Manager"""
