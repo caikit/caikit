@@ -187,9 +187,7 @@ def module_type(module_type_name):
                 backend_module_impl = True
 
             error.type_check("<COR54118928E>", str, id=id, name=name, version=version)
-            if task is not None:
-                if not isinstance(task, type) or not issubclass(task, TaskBase):
-                    raise TypeError(f"task must be an @task class, got {task}")
+            error.subclass_check("<COR90789722E>", task, TaskBase, allow_none=True)
 
             semver.VersionInfo.parse(version)  # Make sure this is a valid SemVer
 
@@ -222,14 +220,20 @@ def module_type(module_type_name):
                     if hasattr(class_, "TASK_CLASS")
                 }
                 if len(tasks) > 1:
-                    raise TypeError(
-                        f"Class {cls_} has multiple task definitions in class hierarchy"
+                    error(
+                        "<COR17197749E>",
+                        TypeError(
+                            f"Class {cls_} has multiple task definitions in class hierarchy"
+                        ),
                     )
                 if tasks:
                     parent_task = tasks.pop()
                     if task and task != parent_task:
-                        raise TypeError(
-                            f"Class {cls_} has task {task} but superclass has task {parent_task}"
+                        error(
+                            "<COR44943734E>",
+                            TypeError(
+                                f"Class {cls_} has task {task} but superclass has task {parent_task}"
+                            ),
                         )
                     cls_.TASK_CLASS = parent_task
                 else:
