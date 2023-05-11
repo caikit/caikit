@@ -14,25 +14,25 @@ import caikit.core
 
 def test_task_decorator_has_required_inputs_and_output_type():
     @task(
-        required_inputs={"sample_input": SampleInputType},
+        required_parameters={"sample_input": SampleInputType},
         output_type=SampleOutputType,
     )
     class SampleTask(TaskBase):
         pass
 
-    assert SampleTask.get_required_inputs() == {"sample_input": SampleInputType}
+    assert SampleTask.get_required_parameters() == {"sample_input": SampleInputType}
     assert SampleTask.get_output_type() == SampleOutputType
 
     # assert Immutable properties
     SampleTask.required_inputs = {"sample_input": str}
-    assert SampleTask.get_required_inputs() == {"sample_input": SampleInputType}
+    assert SampleTask.get_required_parameters() == {"sample_input": SampleInputType}
 
 
 def test_task_decorator_validates_class_extends_task_base():
     with pytest.raises(TypeError):
 
         @task(
-            required_inputs={"sample_input": SampleInputType},
+            required_parameters={"sample_input": SampleInputType},
             output_type=SampleOutputType,
         )
         class SampleTask:
@@ -43,7 +43,7 @@ def test_task_decorator_validates_output_is_data_model():
     with pytest.raises(TypeError):
 
         @task(
-            required_inputs={"sample_input": SampleInputType},
+            required_parameters={"sample_input": SampleInputType},
             output_type=str,
         )
         class SampleTask(TaskBase):
@@ -65,7 +65,7 @@ def test_task_can_be_inferred_from_parent_block():
 
 def test_task_cannot_conflict_with_parent_block():
     @task(
-        required_inputs={"foo": SampleInputType},
+        required_parameters={"foo": SampleInputType},
         output_type=SampleOutputType,
     )
     class SomeTask(TaskBase):

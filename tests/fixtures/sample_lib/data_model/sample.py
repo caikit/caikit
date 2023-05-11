@@ -36,7 +36,7 @@ class SampleTrainingType(DataObjectBase):
 
 
 @task(
-    required_inputs={"sample_input": SampleInputType},
+    required_parameters={"sample_input": SampleInputType},
     output_type=SampleOutputType,
 )
 class SampleTask(TaskBase):
@@ -44,7 +44,7 @@ class SampleTask(TaskBase):
 
 
 @task(
-    required_inputs={"sample_input": SampleInputType},
+    required_parameters={"sample_input": SampleInputType},
     output_type=OtherOutputType,
 )
 class OtherTask(TaskBase):

@@ -47,7 +47,7 @@ class TaskBase:
         pass
 
     @classmethod
-    def get_required_inputs(cls) -> Dict[str, ValidInputTypes]:
+    def get_required_parameters(cls) -> Dict[str, ValidInputTypes]:
         """Get the set of input types required by this task
 
         NOTE: This method is automatically configured by the @task decorator
@@ -66,7 +66,7 @@ class TaskBase:
 
 
 def task(
-    required_inputs: Dict[str, ValidInputTypes],
+    required_parameters: Dict[str, ValidInputTypes],
     output_type: Type[DataBase],
 ) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
     """The decorator for AI Task classes.
@@ -97,8 +97,7 @@ def task(
     the task.
 
     Args:
-        task_group (Type[TaskGroupBase]): The AI Task Group that this task belongs to
-        required_inputs (Dict[str, ValidInputTypes]): The required parameters that all public
+        required_parameters (Dict[str, ValidInputTypes]): The required parameters that all public
             models' .run functions must contain. A dictionary of parameter name to parameter
             type, where the types can be in the set of:
                 - Python primitives
@@ -116,18 +115,36 @@ def task(
     if not issubclass(output_type, DataBase):
         raise TypeError("output_type must be a data model")
 
-    def get_required_inputs(_):
-        """Get the set of input types required by this task"""
-        return required_inputs
+    def get_required_parameters(_):
+        return required_parameters
 
     def get_output_type(_):
-        """Get the output type for this task"""
         return output_type
 
     def decorator(cls: Type[TaskBase]) -> Type[TaskBase]:
+        get_required_parameters.__doc__ = f"""
+        Returns the set of input parameters required in the `run` function for any module that
+        implements the '{cls.__name__}' Task.
+        
+        ({required_parameters})
+
+        Returns: Dict[str, Type]
+            The parameter dictionary for the {cls.__name__} inference task
+        """
+
+        get_output_type.__doc__ = f"""
+        Returns the output type required of the `run` function in any module that implements the
+        {cls.__name__} task. 
+        
+        ({output_type})
+        
+        Returns: Type
+            The output type of the {cls.__name__} inference task
+        """
+
         if not isinstance(cls, type) or not issubclass(cls, TaskBase):
             raise TypeError("decorated class must extend TaskBase")
-        setattr(cls, "get_required_inputs", classmethod(get_required_inputs))
+        setattr(cls, "get_required_parameters", classmethod(get_required_parameters))
         setattr(cls, "get_output_type", classmethod(get_output_type))
         return cls
 
