@@ -26,8 +26,6 @@ load_path: null
 
 # Configuration for training/loading via module backends
 module_backends:
-    # Local is always enabled unless explicitly disabled
-    disable_local: false
     # Configuration for distributed loading and training. Each has an ordered
     # list of backends in priority order. Each entry is a mapping with a "type"
     # field and optionally a "config" field that maps to a blob of config for
