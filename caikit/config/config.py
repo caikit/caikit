@@ -17,7 +17,7 @@
 """
 
 # Standard
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 import os
 import threading
 
@@ -71,9 +71,11 @@ def configure(
 
     cfg = aconfig.Config(_CONFIG)
     if config_yml_path:
-        cfg = merge_configs(cfg, aconfig.Config.from_yaml(config_yml_path))
-    if config_dict:
-        cfg = merge_configs(cfg, aconfig.Config(config_dict))
+        new_config = aconfig.Config.from_yaml(config_yml_path)
+    else:
+        new_config = aconfig.Config(config_dict)
+
+    cfg = merge_configs(cfg, new_config, _get_merge_strategy(new_config))
 
     cfg = _merge_extra_files(cfg)
     _update_global_config(cfg)
@@ -89,7 +91,7 @@ def _update_global_config(cfg: aconfig.Config):
     # Update the config by merging the new updates over the existing config
     with _CONFIG_LOCK:
         # Locked just in case `configure()` is called concurrently for any reason
-        merge_configs(_CONFIG, cfg)
+        _CONFIG.update(cfg)
         _IMMUTABLE_CONFIG = aconfig.ImmutableConfig(_CONFIG, override_env_vars=False)
 
 
@@ -111,11 +113,20 @@ def _merge_extra_files(config: aconfig.Config) -> aconfig.Config:
                 }
             )
             new_overrides = aconfig.Config.from_yaml(file, override_env_vars=True)
-            config = merge_configs(config, new_overrides)
+            config = merge_configs(
+                config, new_overrides, _get_merge_strategy(new_overrides)
+            )
     return config
 
 
-def merge_configs(base: Optional[dict], overrides: Optional[dict]) -> dict:
+_config_type = Union[dict, list, aconfig.Config]
+
+
+def merge_configs(
+    base: Optional[_config_type],
+    overrides: Optional[_config_type],
+    merge_strategy: str = "merge",
+) -> _config_type:
     """Helper to perform a deep merge of the overrides into the base. The merge
     is done in place, but the resulting dict is also returned for convenience.
     The merge logic is quite simple: If both the base and overrides have a key
@@ -138,16 +149,35 @@ def merge_configs(base: Optional[dict], overrides: Optional[dict]) -> dict:
 
     # Do the deep merge
     for key, value in overrides.items():
-        if (
-            key not in base
-            or not isinstance(base[key], dict)
-            or not isinstance(value, dict)
-        ):
+        if merge_strategy == "override":
             base[key] = value
         else:
-            base[key] = merge_configs(base[key], value)
+            if (
+                key not in base
+                or not isinstance(base[key], (dict, list))
+                or not isinstance(value, (dict, list))
+            ):
+                base[key] = value
+            elif isinstance(value, list):
+                if key not in base or not isinstance(base[key], list):
+                    base[key] = value
+                else:
+                    base[key] = merge_list(base[key], value)
+            else:
+                base[key] = merge_configs(base[key], value, merge_strategy)
 
     return base
+
+
+def merge_list(base_list: list, new_list: list) -> list:
+    for val in new_list:
+        if val in base_list:
+            base_list.remove(val)
+    return new_list + base_list
+
+
+def _get_merge_strategy(cfg: _config_type) -> str:
+    return cfg.get("merge_strategy", "merge")
 
 
 # Run initial configuration with the base config

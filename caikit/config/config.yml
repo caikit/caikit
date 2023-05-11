@@ -14,6 +14,9 @@
 
 # User can set comma-separated string of config file locations to read
 config_files: ""
+# merge_strategy can be either `merge` which will merge lists and dicts,
+# or `override` which will set the values directly
+merge_strategy: "merge"
 
 # Global config switch for runtime check functions (type_check, value_check, file_check...)
 enable_error_checks: true

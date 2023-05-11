@@ -112,6 +112,36 @@ def test_configure_adds_more_user_specified_files_from_env(tmp_path):
     assert "one" in cfg.combined and "two" in cfg.combined and "three" in cfg.combined
 
 
+def test_configure_merges_lists():
+    cfg1 = {"foo_list": [1, 2, 3]}
+    cfg2 = {"foo_list": [4, 5, 6]}
+
+    # Second list value is prepended to the first
+    caikit.configure(config_dict=cfg1)
+    caikit.configure(config_dict=cfg2)
+    assert caikit.get_config().foo_list == [4, 5, 6, 1, 2, 3]
+
+    # If values already existed in the list, they are popped then prepended
+    cfg3 = {"foo_list": [1, 2]}
+    caikit.configure(config_dict=cfg3)
+    assert caikit.get_config().foo_list == [1, 2, 4, 5, 6, 3]
+
+
+def test_merge_strategy():
+    # If merge_strategy == 'override', then lists and dicts are not merged
+    cfg1 = {"foo_list": [1, 2, 3], "foo_dict": {"bar": "baz"}}
+    cfg2 = {
+        "foo_list": [4, 5, 6],
+        "foo_dict": {"baz": "bar"},
+        "merge_strategy": "override",
+    }
+
+    caikit.configure(config_dict=cfg1)
+    caikit.configure(config_dict=cfg2)
+    assert caikit.get_config().foo_list == [4, 5, 6]
+    assert caikit.get_config().foo_dict == {"baz": "bar"}
+
+
 def test_merge_configs_aconfig():
     """Make sure merge_configs works as expected with aconfig.Config objects"""
     cfg1 = aconfig.Config({"foo": 1, "bar": {"baz": 2}, "bat": [1, 2, 3]})
@@ -121,7 +151,7 @@ def test_merge_configs_aconfig():
         {
             "foo": 11,
             "bar": {"baz": 2, "buz": 22},
-            "bat": [5, 6, 7],
+            "bat": [5, 6, 7, 1, 2, 3],
         }
     )
 
@@ -134,7 +164,7 @@ def test_merge_configs_dicts():
     assert merged == {
         "foo": 11,
         "bar": {"baz": 2, "buz": 22},
-        "bat": [5, 6, 7],
+        "bat": [5, 6, 7, 1, 2, 3],
     }
 
 
