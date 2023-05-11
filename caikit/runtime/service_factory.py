@@ -15,8 +15,7 @@
 # Standard
 from enum import Enum
 from types import ModuleType
-from typing import Callable, Dict, List, Optional, Set, Type
-import copy
+from typing import Callable, Set, Type
 import dataclasses
 import inspect
 
@@ -26,10 +25,6 @@ import google.protobuf.service
 import grpc
 
 # First Party
-from py_to_proto.dataclass_to_proto import (  # NOTE: Imported from here for compatibility
-    Annotated,
-    FieldNumber,
-)
 from py_to_proto.json_to_service import (
     json_to_service,
     service_descriptor_to_client_stub,
@@ -41,12 +36,6 @@ import alog
 
 # Local
 from caikit import get_config
-from caikit.core.data_model.base import DataBase
-from caikit.core.data_model.dataobject import (
-    DataObjectBase,
-    _DataObjectBaseMetaClass,
-    dataobject,
-)
 from caikit.core.module import ModuleBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
@@ -54,10 +43,7 @@ from caikit.interfaces.runtime.data_model import (
 )
 from caikit.runtime import service_generation
 from caikit.runtime.service_generation.core_module_helpers import get_module_info
-from caikit.runtime.service_generation.serializers import (
-    RPCSerializerBase,
-    snake_to_upper_camel,
-)
+from caikit.runtime.service_generation.rpcs import snake_to_upper_camel
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils import import_util
 import caikit.core
@@ -216,18 +202,13 @@ class ServicePackageFactory:
                 task_rpc_list = service_generation.create_training_rpcs(clean_modules)
                 service_name = f"{ai_domain_name}TrainingService"
 
-            for rpc in task_rpc_list:
-                if rpc.return_type is None:
-                    # TODO: need to hook up the excluded tasks / modules configs and add some
-                    # more handling here to ensure good RPCs generated
-                    log.info("Skipping rpc %s, no return type on method!", rpc.name)
             task_rpc_list = [
                 rpc for rpc in task_rpc_list if rpc.return_type is not None
             ]
 
-            request_data_models = cls._create_request_message_types(
-                task_rpc_list, package_name
-            )
+            request_data_models = [
+                rpc.create_request_data_model(package_name) for rpc in task_rpc_list
+            ]
 
             client_module = ModuleType(
                 "ClientMessages",
@@ -238,7 +219,8 @@ class ServicePackageFactory:
                 # We need the message class that data model serializes to
                 setattr(client_module, dm_class.__name__, type(dm_class().to_proto()))
 
-            service_json = cls._create_service_json(task_rpc_list, package_name)
+            rpc_jsons = [rpc.create_rpc_json(package_name) for rpc in task_rpc_list]
+            service_json = {"service": {"rpcs": rpc_jsons}}
             service_descriptor = json_to_service(
                 name=service_name, package=package_name, json_service_def=service_json
             )
@@ -322,71 +304,6 @@ class ServicePackageFactory:
             excluded_modules,
         )
         return clean_modules
-
-    @staticmethod
-    def _create_request_message_types(
-        rpcs_list: List[RPCSerializerBase],
-        package_name: str,
-    ) -> List[Type[DataBase]]:
-        """Dynamically create data model classes for the inputs to these RPCs"""
-        data_model_classes = []
-        for task in rpcs_list:
-            properties = {
-                # triple e.g. ('caikit.interfaces.common.ProducerPriority', 'producer_id', 1)
-                # This does not take care of nested descriptors
-                triple[1]: Annotated[triple[0], FieldNumber(triple[2])]
-                for triple in task.request.triples
-                if triple[1] not in task.request.default_map
-            }
-            optional_properties = {
-                triple[1]: Annotated[Optional[triple[0]], FieldNumber(triple[2])]
-                for triple in task.request.triples
-                if triple[1] in task.request.default_map
-            }
-            attrs = copy.copy(task.request.default_map)
-            attrs["__annotations__"] = {**properties, **optional_properties}
-
-            if not properties and optional_properties:
-                log.warning(
-                    "No arguments found for request %s. Cannot generate rpc",
-                    task.request.name,
-                )
-                continue
-
-            decorator = dataobject(package=package_name)
-            cls_ = _DataObjectBaseMetaClass.__new__(
-                _DataObjectBaseMetaClass,
-                name=task.request.name,
-                bases=(DataObjectBase,),
-                attrs=attrs,
-            )
-            decorated_cls = decorator(cls_)
-            data_model_classes.append(decorated_cls)
-
-        return data_model_classes
-
-    @staticmethod
-    def _create_service_json(
-        rpcs_list: List[RPCSerializerBase], package_name: str
-    ) -> Dict:
-        """Make a json service def out of some rpc defs"""
-        rpc_jsons = []
-        for task in rpcs_list:
-            # The return type should be a "data model" object.
-            # We can take advantage of the fact that all of these should contain a private
-            # `proto_class` field ...and use that to yoink the fully qualified name of the
-            # descriptor
-            output_type_name = task.return_type.get_proto_class().DESCRIPTOR.full_name
-
-            rpc_jsons.append(
-                {
-                    "name": f"{task.name}",
-                    "input_type": f"{package_name}.{task.request.name}",
-                    "output_type": output_type_name,
-                }
-            )
-        service_json = {"service": {"rpcs": rpc_jsons}}
-        return service_json
 
     # Implementation Details for protoc-compiled packages #
     @staticmethod
@@ -472,9 +389,7 @@ class ServicePackageFactory:
         """Get caikit library name from Config, make upper case and not include caikit_"""
         lib_names = import_util.clean_lib_names(get_config().runtime.library)
         assert len(lib_names) == 1, "Only 1 caikit library supported for now"
-        return ServicePackageFactory._snake_to_upper_camel(
-            lib_names[0].replace("caikit_", "")
-        )
+        return snake_to_upper_camel(lib_names[0].replace("caikit_", ""))
 
     @staticmethod
     def _get_compiled_proto_module(
@@ -504,8 +419,3 @@ class ServicePackageFactory:
             log.error("<RUN22291313E>", message)
             raise CaikitRuntimeException(grpc.StatusCode.INTERNAL, message)
         return service_proto_gen_module
-
-    @staticmethod
-    def _snake_to_upper_camel(string: str) -> str:
-        """Simple snake -> upper camel conversion"""
-        return "".join([part[0].upper() + part[1:] for part in string.split("_")])
