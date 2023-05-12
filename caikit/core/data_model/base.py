@@ -152,6 +152,8 @@ class _DataBaseMetaClass(type):
         # nested messages that have matching names
         cls.full_name = cls._proto_class.DESCRIPTOR.full_name
 
+        # preserve old fields for _make_property_getter later
+        old_fields = cls.fields
         # all fields
         cls.fields = tuple(cls._proto_class.DESCRIPTOR.fields_by_name)
 
@@ -235,7 +237,7 @@ class _DataBaseMetaClass(type):
         _DataBaseMetaClass.class_registry[cls.full_name] = cls
 
         # Add properties that use the underlying backend
-        for field in cls.fields:
+        for field in cls.fields + tuple(old_fields):
             setattr(cls, field, mcs._make_property_getter(field))
 
         # If there is not already an __init__ function defined, make one
