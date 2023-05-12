@@ -22,8 +22,6 @@ from caikit.core.module_backend_config import (
     configure,
     configured_load_backends,
     configured_train_backends,
-    get_load_backend,
-    get_train_backend,
     start_backends,
 )
 from caikit.core.module_backends import backend_types
@@ -34,6 +32,26 @@ from tests.core.helpers import *
 # Setup #########################################################################
 
 foo_cfg = {"mock": 1}
+
+
+def _get_backend(backend_type, backend_list):
+    """Get the single configured backend of the given type. An error is raised
+    if the number of matches != 1
+    """
+    matches = [
+        backend for backend in backend_list if backend.backend_type == backend_type
+    ]
+    assert len(matches) == 1
+    return matches[0]
+
+
+def get_load_backend(backend_type):
+    return _get_backend(backend_type, configured_load_backends())
+
+
+def get_train_backend(backend_type):
+    return _get_backend(backend_type, configured_train_backends())
+
 
 ## Tests #######################################################################
 
@@ -96,7 +114,7 @@ def test_configure_load_only(reset_globals):
         assert foo_cfg == mock_load_backend.config
 
         # Test train backend config
-        with pytest.raises(ValueError):
+        with pytest.raises(AssertionError):
             get_train_backend(backend_types.MOCK)
 
 
@@ -128,9 +146,9 @@ def test_disabling_local_backend(reset_globals):
         configure()
         assert get_load_backend(backend_types.MOCK)
         assert get_train_backend(backend_types.MOCK)
-        with pytest.raises(ValueError):
+        with pytest.raises(AssertionError):
             get_load_backend(backend_types.LOCAL)
-        with pytest.raises(ValueError):
+        with pytest.raises(AssertionError):
             get_train_backend(backend_types.LOCAL)
 
 
@@ -152,50 +170,14 @@ def test_duplicate_config_raises(reset_globals):
             configure()
 
 
-def test_duplicate_implied_names_raise(reset_globals):
-    """Test that duplicate entries with the same name implied from type raises"""
+def test_duplicate_explicit_instances_allowed(reset_globals):
+    """Test that duplicate entries are allowed"""
     with temp_config(
         {
             "module_backends": {
                 "load_priority": [
                     {"type": backend_types.MOCK},
                     {"type": backend_types.MOCK},
-                ],
-            }
-        }
-    ):
-        with pytest.raises(ValueError):
-            configure()
-
-
-def test_duplicate_explicit_names_raise(reset_globals):
-    """Test that duplicate entries with the same name given explicitly from
-    raises
-    """
-    with temp_config(
-        {
-            "module_backends": {
-                "load_priority": [
-                    {"type": backend_types.MOCK, "name": "foo"},
-                    {"type": backend_types.MOCK, "name": "foo"},
-                ],
-            }
-        }
-    ):
-        with pytest.raises(ValueError):
-            configure()
-
-
-def test_duplicate_type_name_disambig(reset_globals):
-    """Test that multiple instances of the same type can be configured with
-    different names
-    """
-    with temp_config(
-        {
-            "module_backends": {
-                "load_priority": [
-                    {"type": backend_types.MOCK},
-                    {"type": backend_types.MOCK, "name": "foo"},
                 ],
             }
         }
@@ -272,15 +254,3 @@ def test_multiple_module_same_backend_configures(reset_globals):
         assert "bar1" in mock_load_backend.config
         assert "bar2" in mock_load_backend.config
         assert mock_load_backend.config["bar1"] == 1
-
-
-def test_get_backend_starts_backend(reset_globals):
-    """Test that fetching a handle to a backend with get_backend ensures that it
-    is started
-    """
-    with temp_config(
-        {"module_backends": {"train_priority": [{"type": backend_types.MOCK}]}}
-    ):
-        configure()
-        mock_train_backend = get_train_backend(backend_types.MOCK)
-        assert mock_train_backend.is_started
