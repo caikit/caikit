@@ -23,11 +23,13 @@ from typing import Any, Callable, List, Type, Union, get_args, get_origin
 import dataclasses
 
 # Third Party
+from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from google.protobuf.internal.enum_type_wrapper import EnumTypeWrapper
+import numpy as np
 
 # First Party
-from py_to_proto.dataclass_to_proto import DataclassConverter
+from py_to_proto.dataclass_to_proto import PY_TO_PROTO_TYPES, DataclassConverter
 import alog
 import py_to_proto
 
@@ -204,8 +206,19 @@ def render_dataobject_protos(interfaces_dir: str):
 
 ## Implementation Details ######################################################
 
+DATAOBJECT_PY_TO_PROTO_TYPES = {
+    np.int32: _descriptor.FieldDescriptor.TYPE_INT32,
+    np.int64: _descriptor.FieldDescriptor.TYPE_INT64,
+    np.uint32: _descriptor.FieldDescriptor.TYPE_UINT32,
+    np.uint64: _descriptor.FieldDescriptor.TYPE_UINT64,
+    np.float32: _descriptor.FieldDescriptor.TYPE_FLOAT,
+    np.float64: _descriptor.FieldDescriptor.TYPE_DOUBLE,
+    **PY_TO_PROTO_TYPES,
+}
+
 
 def _dataobject_to_proto(*args, **kwargs):
+    kwargs.setdefault("type_mapping", DATAOBJECT_PY_TO_PROTO_TYPES)
     return _DataobjectConverter(*args, **kwargs).descriptor
 
 
