@@ -15,7 +15,6 @@
 # Standard
 from typing import List
 import copy
-import threading
 
 # First Party
 import aconfig
@@ -41,38 +40,22 @@ def start_backends() -> None:
         None
     """
     for backend in _CONFIGURED_LOAD_BACKENDS:
-        with _BACKEND_START_LOCKS[backend.name]:
+        with backend.start_lock():
             if not backend.is_started:
                 backend.start()
     for backend in _CONFIGURED_TRAIN_BACKENDS:
-        with _BACKEND_START_LOCKS[backend.name]:
+        with backend.start_lock():
             if not backend.is_started:
                 backend.start()
 
 
-def get_load_backend(backend_name: str) -> BackendBase:
-    """Get the configured instance of the given backend type. If not configured,
-    a ValueError is raised
-    """
-    return _get_registry_backend(backend_name, "load", _CONFIGURED_LOAD_BACKENDS)
-
-
-def get_train_backend(backend_name: str) -> BackendBase:
-    """Get the configured instance of the given backend type. If not configured,
-    a ValueError is raised
-    """
-    return _get_registry_backend(backend_name, "train", _CONFIGURED_TRAIN_BACKENDS)
-
-
 def configured_load_backends() -> List[BackendBase]:
-    """This function returns the mapping of named"""
+    """This function returns the list of configured load backends"""
     return copy.copy(_CONFIGURED_LOAD_BACKENDS)
 
 
 def configured_train_backends() -> List[BackendBase]:
-    """This function exposes the list of configured train backends for downstream
-    checks
-    """
+    """This function returns the list of configured train backends"""
     return copy.copy(_CONFIGURED_TRAIN_BACKENDS)
 
 
@@ -133,21 +116,18 @@ def configure():
                 i,
             )
 
-            backend_name = backend_config.get("name", backend_type)
-            log.debug("Configuring backend [%s]", backend_name)
+            log.debug("Configuring backend (%d)[%s]", i, backend_type)
             backend_instance_config = backend_config.get("config", {})
-            log.debug3("Backend [%s] config: %s", backend_name, backend_instance_config)
+            log.debug3(
+                "Backend (%d)[%s] config: %s", i, backend_type, backend_instance_config
+            )
 
             backend_class = MODULE_BACKEND_CONFIG_FUNCTIONS.get(backend_type)
             error.value_check(
                 "<COR64618509E>",
-                not any(
-                    backend.name == backend_name
-                    and backend.backend_type == backend_type
-                    for backend in registry
-                ),
-                "{}/{} already configured",
-                backend_name,
+                len(registry) == i,
+                "({})[{}] already configured",
+                i,
                 backend_type,
             )
             error.value_check(
@@ -166,17 +146,14 @@ def configure():
                     ),
                 )
 
-            log.debug2("Performing config for [%s]", backend_name)
-            backend_instance = backend_class(backend_name, backend_instance_config)
+            log.debug2("Performing config for (%d)[%s]", i, backend_type)
+            backend_instance = backend_class(backend_instance_config)
 
             # Add configuration to backends as per individual module requirements
-            _configure_backend_overrides(backend_name, backend_instance)
+            _configure_backend_overrides(backend_type, backend_instance)
 
-            # NOTE: Configured backends holds the object of backend classes that are based
-            # on BaseBackend
-            # The start operation of the backend needs to be performed separately
+            # Add the instance to the registry
             registry.append(backend_instance)
-            _BACKEND_START_LOCKS[backend_name] = threading.Lock()
 
         log.debug2("All configured %s backends: %s", registry_name, registry)
 
@@ -186,13 +163,6 @@ def configure():
 # Singleton registries for load and train backends in priority order
 _CONFIGURED_LOAD_BACKENDS = []
 _CONFIGURED_TRAIN_BACKENDS = []
-
-# Locks for starting backends
-# NOTE: A single lock is held created for a backend name, even if it is repeated
-#   between train and load. Configuration is a load-time operation, so while
-#   this might be slightly overly locking, it protects against the case where
-#   a train and load backend have overlapping global state.
-_BACKEND_START_LOCKS = {}
 
 
 def _configure_backend_overrides(backend: str, backend_instance: object):
@@ -220,30 +190,3 @@ def _configure_backend_overrides(backend: str, backend_instance: object):
                 log.debug2(
                     f"No backend overrides configured for {module_id} module and {backend} backend"
                 )
-
-
-def _get_registry_backend(
-    backend_name: str, registry_name: str, registry: list
-) -> BackendBase:
-    """Get the configured instance of the given backend type. If not configured,
-    a ValueError is raised
-    """
-    matching_backends = [
-        backend for backend in registry if backend.name == backend_name
-    ]
-    error.value_check(
-        "<COR82987857E>",
-        matching_backends,
-        "Cannot fetch unconfigured {} backend [{}]",
-        registry_name,
-        backend_name,
-    )
-    assert (
-        len(matching_backends) == 1
-    ), "PROGRAMMING ERROR: Duplicate names should be prohibited"
-    backend = matching_backends[0]
-    if not backend.is_started:
-        with _BACKEND_START_LOCKS[backend_name]:
-            if not backend.is_started:
-                backend.start()
-    return backend
