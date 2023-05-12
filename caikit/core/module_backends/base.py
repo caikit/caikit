@@ -16,6 +16,8 @@
 """
 
 # Standard
+from contextlib import contextmanager
+from threading import Lock
 from typing import Optional, Type
 import abc
 
@@ -32,6 +34,7 @@ class BackendBase(abc.ABC):
     def __init__(self, config: Optional[aconfig.Config] = None) -> None:
         self.config = config or {}
         self._started = False
+        self._start_lock = Lock()
 
     @property
     @classmethod
@@ -61,6 +64,11 @@ class BackendBase(abc.ABC):
     def stop(self):
         """Function to stop a distributed backend. This function
         should set self._started variable to False"""
+
+    @contextmanager
+    def start_lock(self):
+        with self._start_lock:
+            yield
 
 
 class SharedTrainBackendBase(BackendBase, abc.ABC):
