@@ -36,8 +36,8 @@ from caikit.core.module_backends.base import SharedLoadBackendBase
 class MockBackend(BackendBase):
     backend_type = "MOCK"
 
-    def __init__(self, name, config=...) -> None:
-        super().__init__(name, config)
+    def __init__(self, config=...) -> None:
+        super().__init__(config)
         self._started = False
 
     def start(self):
@@ -64,7 +64,7 @@ class TestLoader(SharedLoadBackendBase):
                 # Don't load in this loader
                 return None
         # use the "Local" loader to actually load the model
-        model = LocalBackend(name="test").load(model_path)
+        model = LocalBackend().load(model_path)
         return model
 
     def register_config(self, config):

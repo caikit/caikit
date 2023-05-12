@@ -27,7 +27,7 @@ import aconfig
 
 # Local
 from caikit.core import ModuleConfig, module
-from caikit.core.module_backend_config import get_load_backend
+from caikit.core.module_backend_config import configured_load_backends
 from caikit.core.module_backends import backend_types
 from caikit.core.module_type import SUPPORTED_LOAD_BACKENDS_VAR_NAME
 
@@ -78,7 +78,11 @@ def configure_alternate_backend_impl():
     @caikit.core.blocks.block(base_module=DummyFoo, backend_type=backend_types.MOCK)
     class DummyBar(caikit.core.blocks.base.BlockBase):
         def test_fetching_backend(self):
-            return get_load_backend(backend_types.MOCK)
+            return [
+                backend
+                for backend in configured_load_backends()
+                if backend.backend_type == backend_types.MOCK
+            ][0]
 
     return DummyFoo, DummyBar
 
@@ -331,9 +335,8 @@ def test_class_attributes(reset_globals):
     assert DummyBar.BLOCK_CLASS
     assert DummyBar.PRODUCER_ID
 
-    # Fetch without config raises
-    with pytest.raises(ValueError):
-        assert get_load_backend(DummyBar.BACKEND_TYPE)
+    # No configured modules before configure
+    assert not configured_load_backends()
 
     # Configure and make sure it can be fetched by the class
     with temp_config(

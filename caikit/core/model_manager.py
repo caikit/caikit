@@ -188,16 +188,17 @@ class ModelManager:
             # a version of the module available for the given backend
             loaded_model = None
             log.debug("Available load backends: %s", configured_load_backends)
-            for load_backend in configured_load_backends:
+            for i, load_backend in enumerate(configured_load_backends):
                 # If this is a shared loader, try loading the model directly
                 if isinstance(load_backend, SharedLoadBackendBase):
                     log.debug("Trying shared backend loader")
                     model = load_backend.load(module_path, *args, **kwargs)
                     if model is not None:
                         log.debug2(
-                            "Successfully loaded %s with loader %s",
+                            "Successfully loaded %s with loader (%d)%s",
                             module_path,
-                            load_backend.name,
+                            i,
+                            load_backend.backend_type,
                         )
                         error.type_check(
                             "<COR76726077E>",
@@ -209,9 +210,10 @@ class ModelManager:
                         model.set_load_backend(load_backend)
                         break
                     log.debug3(
-                        "Could not load %s with loader %s",
+                        "Could not load %s with loader (%d)%s",
                         module_path,
-                        load_backend.name,
+                        i,
+                        load_backend.backend_type,
                     )
 
                 # If this is not a shared loader, look for an implementation of the
