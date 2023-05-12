@@ -19,6 +19,9 @@
 from typing import Optional, Type
 import abc
 
+# First Party
+import aconfig
+
 # Local
 from ..module import ModuleBase
 
@@ -26,8 +29,7 @@ from ..module import ModuleBase
 class BackendBase(abc.ABC):
     """Interface for creating configuration setup for backends"""
 
-    def __init__(self, name: str, config=None) -> None:
-        self.name = name
+    def __init__(self, config: Optional[aconfig.Config] = None) -> None:
         self.config = config or {}
         self._started = False
 
