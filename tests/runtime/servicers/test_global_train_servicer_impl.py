@@ -110,7 +110,9 @@ def test_global_train_sample_task(
         )
     )
 
-    training_response = sample_train_servicer.Train(train_request, Fixtures.build_context("foo"))
+    training_response = sample_train_servicer.Train(
+        train_request, Fixtures.build_context("foo")
+    )
     assert training_response.model_name == "Foo Bar Training"
     assert training_response.training_id is not None
     assert isinstance(training_response.training_id, str)
@@ -162,7 +164,9 @@ def test_global_train_other_task(
         batch_size=batch_size,
     )
 
-    training_response = sample_train_servicer.Train(train_request, Fixtures.build_context("foo"))
+    training_response = sample_train_servicer.Train(
+        train_request, Fixtures.build_context("foo")
+    )
     assert training_response.model_name == "Other block Training"
     assert training_response.training_id is not None
     assert isinstance(training_response.training_id, str)
@@ -213,7 +217,9 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
         )
     )
 
-    training_response = sample_train_servicer.Train(training_request, Fixtures.build_context("foo"))
+    training_response = sample_train_servicer.Train(
+        training_request, Fixtures.build_context("foo")
+    )
 
     assert training_response.model_name == "AnotherWidget_Training"
     assert training_response.training_id is not None
@@ -392,7 +398,9 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_blo
         )
     )
     with pytest.raises(CaikitRuntimeException) as context:
-        training_response = sample_train_servicer.Train(train_request, Fixtures.build_context("foo"))
+        training_response = sample_train_servicer.Train(
+            train_request, Fixtures.build_context("foo")
+        )
 
         training_result = sample_train_servicer.training_map.get(
             training_response.training_id
@@ -422,7 +430,9 @@ def test_global_train_returns_exit_code_with_oom(
     sample_train_servicer.use_subprocess = True
 
     with pytest.raises(CaikitRuntimeException) as context:
-        training_response = sample_train_servicer.Train(train_request, Fixtures.build_context("foo"))
+        training_response = sample_train_servicer.Train(
+            train_request, Fixtures.build_context("foo")
+        )
         sample_train_servicer.training_map.get(training_response.training_id).result()
 
     assert f"Training process died with OOM error!" in str(context.value.message)
@@ -432,7 +442,7 @@ def test_global_train_returns_exit_code_with_oom(
 
 # NOTE: This test was commented out in the original unittest.TestCase impl - leaving as is
 def test_global_train_aborts_long_running_trains(
-        sample_train_service, sample_train_servicer
+    sample_train_service, sample_train_servicer
 ):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
@@ -456,14 +466,17 @@ def test_global_train_aborts_long_running_trains(
         # NOTE: We are not calling .Train function because this function
         # calls the module import directly, which is making patching module hackery
         target=sample_train_servicer.Train,
-        args=(train_request, context)
+        args=(train_request, context),
     )
 
     # NOTE: We are configuring following timeout
     # to avoid tests from hanging
     request_timeout = 10
 
-    with patch("sample_lib.blocks.sample_task.sample_implementation.SampleBlock.train", never_respond):
+    with patch(
+        "sample_lib.blocks.sample_task.sample_implementation.SampleBlock.train",
+        never_respond,
+    ):
         train_thread.start()
         # Simulate a timeout or client abort
         context.cancel()

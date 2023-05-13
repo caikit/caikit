@@ -278,7 +278,6 @@ class GlobalTrainServicer:
     ) -> concurrent.futures.Future:
         """Runs the train function in a thread and saves the trained model in a callback"""
 
-
         if self.auto_load_trained_model:
 
             def target(*args, **kwargs):
@@ -287,7 +286,6 @@ class GlobalTrainServicer:
 
         else:
             target = runnable_executor.train_and_save_model
-
 
         future = self.executor.submit(target, **kwargs)
 
@@ -323,7 +321,6 @@ class GlobalTrainServicer:
         return self._model_manager.retrieve_model(model_name)
 
 
-
 # NOTE: Following would get replaced with training backends potentially
 # in future.
 # NOTE: Instead of using executors like Local / Subprocess
@@ -331,7 +328,6 @@ class GlobalTrainServicer:
 # executors, so ThreadPoolExecutors and ProcessPoolExecutors, but
 # ProcessPoolExecutor doesn't support `fork` start method
 class TrainSaveExecutorBase(abc.ABC):
-
     def __init__(self, event) -> None:
         self.__event = event
 
@@ -343,11 +339,10 @@ class TrainSaveExecutorBase(abc.ABC):
 
     @abc.abstractmethod
     def cancel(self):
-        """Function to abort train and save operation on the executor
-        """
+        """Function to abort train and save operation on the executor"""
+
 
 class LocalTrainSaveExecutor(TrainSaveExecutorBase):
-
     def __init__(self, event) -> None:
         self.__event = event
 
@@ -369,9 +364,9 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
             ):
                 destroyable_thread = DestroyableThread(
                     self.__event,
-                     module_class.train,
-                     *args,
-                     **kwargs,
+                    module_class.train,
+                    *args,
+                    **kwargs,
                 )
                 destroyable_thread.run()
                 model = destroyable_thread.get_or_throw()
@@ -421,14 +416,12 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
                 f"Exception raised during training: {e}",
             ) from e
 
-
     def cancel(self):
-        """Function to abort train and save operation on the executor
-        """
+        """Function to abort train and save operation on the executor"""
         # TODO: Figure out what we need to do to cancel local executor
 
-class SubProcessTrainSaveExecutor(LocalTrainSaveExecutor):
 
+class SubProcessTrainSaveExecutor(LocalTrainSaveExecutor):
     class _ErrorCaptureProcess(multiprocessing.get_context("fork").Process):
         """This class wraps a Process and keeps track of any errors that occur
         during execution
@@ -457,7 +450,6 @@ class SubProcessTrainSaveExecutor(LocalTrainSaveExecutor):
             # pylint: disable=broad-exception-caught
             except Exception as err:
                 self.error = err
-
 
     def __init__(self, event) -> None:
 
@@ -505,7 +497,6 @@ class SubProcessTrainSaveExecutor(LocalTrainSaveExecutor):
                 )
             raise exception
 
-
     def cancel(self):
         self.proc.terminate()
         self.proc.close()
@@ -513,8 +504,6 @@ class SubProcessTrainSaveExecutor(LocalTrainSaveExecutor):
         log.error("<RUN57624710E>", "Training cancelled.")
 
         raise CaikitRuntimeException(
-                StatusCode.CANCELLED,
-                f"Training request terminated",
+            StatusCode.CANCELLED,
+            f"Training request terminated",
         )
-
-
