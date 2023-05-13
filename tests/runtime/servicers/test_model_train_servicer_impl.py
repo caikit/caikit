@@ -28,6 +28,7 @@ from caikit.runtime.protobufs import process_pb2
 from caikit.runtime.servicers.model_train_servicer import ModelTrainServicerImpl
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from tests.conftest import temp_config
+from tests.fixtures import Fixtures
 import sample_lib
 
 
@@ -184,7 +185,8 @@ def test_model_train_sample_widget(sample_model_train_servicer, output_dir):
         training_input_dir="training_input_dir",
         training_output_dir=training_output_dir,
     )
-    training_response = sample_model_train_servicer.Run(model_train_request)
+    context = Fixtures.build_context("test-any-unresponsive-model")
+    training_response = sample_model_train_servicer.Run(model_train_request, context)
     assert os.path.isdir(training_output_dir)
 
     # Make sure that the request completed synchronously

@@ -21,6 +21,7 @@ import importlib
 import multiprocessing
 import os
 import re
+import threading
 import traceback
 
 # Third Party
@@ -45,12 +46,11 @@ from caikit.runtime.utils.servicer_util import (
     snake_to_upper_camel,
     validate_data_model,
 )
-from caikit.runtime.work_management.abortable_action import AbortableAction
-from caikit.runtime.work_management.call_aborter import CallAborter
+from caikit.runtime.work_management.destroyable_thread import DestroyableThread
 import caikit.core
 
 log = alog.use_channel("GT-SERVICR-I")
-
+error = caikit.core.toolkit.errors.error_handler.get(log)
 
 # Protobuf non primitives
 # Ref: https://developers.google.com/protocol-buffers/docs/reference/cpp/google.protobuf.descriptor
@@ -170,6 +170,15 @@ class GlobalTrainServicer:
             log.warning({**log_dict, **e.metadata})
             raise e
 
+        except concurrent.futures.CancelledError as err:
+            log_dict = {
+                "log_code": "<RUN71530128W>",
+                "message": err.message,
+                "error_id": err.id,
+            }
+            log.warning({**log_dict, **e.metadata})
+            raise e
+
         # Duplicate code in global_predict_servicer
         # pylint: disable=duplicate-code
         except (TypeError, ValueError) as e:
@@ -218,11 +227,13 @@ class GlobalTrainServicer:
             **build_caikit_library_request_dict(request, model.train),
         }
 
+        event = threading.Event()
+
         # If running with a subprocess, set the target and args accordingly
         target = (
-            SubProcessTrainSaveExecutor()
+            SubProcessTrainSaveExecutor(event)
             if self.use_subprocess
-            else LocalTrainSaveExecutor()
+            else LocalTrainSaveExecutor(event)
         )
 
         log.debug2(
@@ -236,13 +247,17 @@ class GlobalTrainServicer:
             kwargs=kwargs,
             model_name=model_name,
             model_path=model_path,
-            context=context,
         )
 
         self.training_map[training_id] = thread_future
 
         # Add callback to register cancellation of training
-        context.add_callback(thread_future.cancel)
+        def cancel_future(*args, **kwargs):
+            if thread_future.running() and not event.is_set():
+                event.set()
+                thread_future.cancel()
+
+        context.add_callback(cancel_future)
 
         # if requested, block until the training completes
         if wait:
@@ -260,7 +275,6 @@ class GlobalTrainServicer:
         kwargs,
         model_name,
         model_path,
-        context
     ) -> concurrent.futures.Future:
         """Runs the train function in a thread and saves the trained model in a callback"""
 
@@ -274,13 +288,8 @@ class GlobalTrainServicer:
         else:
             target = runnable_executor.train_and_save_model
 
+
         future = self.executor.submit(target, **kwargs)
-
-        # Add callback to the concurrent.futures to support cancellation
-        # depending on the method chosen for running the training,
-        # i.e. local or in sub-process.
-
-        future.add_done_callback(runnable_executor.cancel)
 
         return future
 
@@ -323,6 +332,9 @@ class GlobalTrainServicer:
 # ProcessPoolExecutor doesn't support `fork` start method
 class TrainSaveExecutorBase(abc.ABC):
 
+    def __init__(self, event) -> None:
+        self.__event = event
+
     @abc.abstractmethod
     def train_and_save_model(self, *args, **kwargs):
         """Function to kick off training a model based and saving
@@ -336,6 +348,9 @@ class TrainSaveExecutorBase(abc.ABC):
 
 class LocalTrainSaveExecutor(TrainSaveExecutorBase):
 
+    def __init__(self, event) -> None:
+        self.__event = event
+
     def train_and_save_model(
         self,
         module_class: Type[ModuleBase],
@@ -346,12 +361,20 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
         """This function performs a single training and can be run inside a
         subprocess if needed
         """
+
         try:
             # Train it
             with alog.ContextTimer(
                 log.debug, "Done training %s in: ", module_class.__name__
             ):
-                model = module_class.train(*args, **kwargs)
+                destroyable_thread = DestroyableThread(
+                    self.__event,
+                     module_class.train,
+                     *args,
+                     **kwargs,
+                )
+                destroyable_thread.run()
+                model = destroyable_thread.get_or_throw()
 
             # Save it
             with alog.ContextTimer(
@@ -436,11 +459,15 @@ class SubProcessTrainSaveExecutor(LocalTrainSaveExecutor):
                 self.error = err
 
 
-    def __init__(self) -> None:
+    def __init__(self, event) -> None:
 
         self.proc = self._ErrorCaptureProcess(
             target=super().train_and_save_model,
         )
+
+        self.__proc_id = self.proc.pid
+        self.__event = event
+        super().__init__(event)
 
     def train_and_save_model(self, *args, **kwargs):
 
@@ -448,6 +475,10 @@ class SubProcessTrainSaveExecutor(LocalTrainSaveExecutor):
         self.proc.set_args(*args, **kwargs)
 
         self.proc.start()
+
+        if self.__event.is_set():
+            self.cancel()
+
         self.proc.join()
 
         # If an error occurred, reraise it here
@@ -478,3 +509,12 @@ class SubProcessTrainSaveExecutor(LocalTrainSaveExecutor):
     def cancel(self):
         self.proc.terminate()
         self.proc.close()
+
+        log.error("<RUN57624710E>", "Training cancelled.")
+
+        raise CaikitRuntimeException(
+                StatusCode.CANCELLED,
+                f"Training request terminated",
+        )
+
+

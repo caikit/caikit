@@ -13,8 +13,8 @@
 # limitations under the License.
 # Standard
 from tempfile import TemporaryDirectory
-from threading import Event, Thread
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
+import threading
 import time
 import uuid
 
@@ -447,29 +447,27 @@ def test_global_train_aborts_long_running_trains(
         )
     )
 
-    started = Event()
-
     def never_respond(*args, **kwargs):
-        started.set()
         while True:
             time.sleep(0.01)
 
-    # sample_train_servicer.use_subprocess = False
     context = Fixtures.build_context("test-any-unresponsive-model")
-    train_thread = Thread(
+    train_thread = threading.Thread(
         # NOTE: We are not calling .Train function because this function
         # calls the module import directly, which is making patching module hackery
         target=sample_train_servicer.Train,
         args=(train_request, context)
     )
 
+    # NOTE: We are configuring following timeout
+    # to avoid tests from hanging
+    request_timeout = 10
+
     with patch("sample_lib.blocks.sample_task.sample_implementation.SampleBlock.train", never_respond):
         train_thread.start()
-        started.wait()
         # Simulate a timeout or client abort
         context.cancel()
-        train_thread.join(10)
-
+        train_thread.join(request_timeout)
 
     # Make sure the training job actually stopped
     assert not train_thread.is_alive()

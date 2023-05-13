@@ -93,6 +93,7 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
                 model=train_module,
                 training_id=request.trainingID,
                 training_output_dir=request.training_output_dir,
+                context=context,
                 wait=True,
             )
             log.debug("<RUN00837184D>", "training_response: %s", training_response)
