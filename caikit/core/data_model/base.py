@@ -247,12 +247,21 @@ class _DataBaseMetaClass(type):
         #   registry shared for all
         _DataBaseMetaClass.class_registry[cls.full_name] = cls
 
-        # Add properties that use the underlying backend
-        # also add fields that existed in old_fields
-        # for supporting oneofs
+        # Add properties that use the underlying backend. Also add fields that
+        # existed in old_fields for supporting oneofs
         # see https://github.com/caikit/caikit/pull/107 for details
         for field in set(cls.fields + tuple(old_fields)):
-            setattr(cls, field, mcs._make_property_getter(field))
+
+            # If the field is the name of a field within a oneof and it was not
+            # in the old fields, the data is held under the oneof's name if this
+            # is the set value for the oneof
+            if oneof_name := cls._fields_to_oneof.get(field):
+                setattr(cls, field, mcs._make_property_getter(field, oneof_name))
+
+            # If the field is a plain field or the name of a oneof, it will be
+            # accessed directly
+            else:
+                setattr(cls, field, mcs._make_property_getter(field))
 
         # If there is not already an __init__ function defined, make one
         current_init = cls.__init__
@@ -260,15 +269,14 @@ class _DataBaseMetaClass(type):
             setattr(cls, "__init__", mcs._make_init(cls.fields))
 
     @classmethod
-    def _make_property_getter(mcs, field):
+    def _make_property_getter(mcs, field, oneof_name=None):
         """This helper creates an @property attribute getter for the given field
 
         NOTE: This needs to live as a standalone function in order for the given
             field name to be properly bound to the closure for the attrs
         """
-        private_name = f"_{field}"
+        private_name = f"_{field}" if oneof_name is None else oneof_name
 
-        @property
         def _property_getter(self):
             # Check to see if the private name is defined and just return it if
             # it is
@@ -287,7 +295,15 @@ class _DataBaseMetaClass(type):
             # Return the value found by the backend
             return attr_val
 
-        return _property_getter
+        if oneof_name:
+
+            def _oneof_property_getter(self):
+                if self.which_oneof(oneof_name) == field:
+                    return _property_getter(self)
+
+            return property(_oneof_property_getter)
+
+        return property(_property_getter)
 
     @staticmethod
     def _make_init(fields):
