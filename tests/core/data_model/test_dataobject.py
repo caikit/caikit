@@ -28,7 +28,7 @@ from google.protobuf import descriptor_pool, message
 import pytest
 
 # First Party
-from py_to_proto.dataclass_to_proto import Annotated, OneofField
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber, OneofField
 
 # Local
 from caikit.core import (  # NOTE: Imported from the top to validate
@@ -434,71 +434,67 @@ def test_dataobject_with_discriminator():
     }
 
 
-# TODO --- This test is currently broken
-#
-# The reason this test is broken is because of the difference between how proto
-# and dataclass treat oneofs. In proto, the name of the oneof is just a label
-# and the elements of the oneof are concrete fields, only one of which may be
-# set at a given time. In a dataclass, a Union field holds the name of the field
-# as the property and the various definitions of that field are all accessed via
-# the name of the Union field.
-#
-# To fix this, we need to figure out the fully-supported oneof semantics for
-# caikit. My gut is that we should support the union of the two where accessing
-# the union/oneof by name gets you whichever of the individual fields is set and
-# accessing any of the individual fields gets you the value iff that is the
-# field within the oneof that's set. The catch is that this would require proper
-# "which oneof" semantics to handle the case where the type of the field does
-# not uniquely identify the sub-field (i.e. oneof delineated by name, not type)
-##
-# def test_dataobject_with_oneof():
-#     """Make sure that using a Union to create a oneof works as expected"""
+def test_dataobject_with_oneof():
+    """Make sure that using a Union to create a oneof works as expected"""
 
-#     @dataobject
-#     class BazObj:
-#         @dataobject
-#         class Foo:
-#             data: List[str]
+    @dataobject
+    class BazObj(DataObjectBase):
+        _private_slots = ("_which_oneof_datastream",)
 
-#         @dataobject
-#         class Bar:
-#             data: str
+        @dataobject
+        class Foo(DataObjectBase):
+            data: List[str]
 
-#         @dataobject
-#         class Baz:
-#             data: List[str]
+        @dataobject
+        class Bar(DataObjectBase):
+            data: str
 
-#         @dataobject
-#         class Bat:
-#             data1: str
-#             data2: str
+        data_stream: Union[
+            Annotated[Foo, FieldNumber(1), OneofField("foo")],
+            Annotated[Bar, FieldNumber(2), OneofField("bar")],
+        ]
 
-#         data_stream: Union[
-#             Annotated[Foo, OneofField("foo")],
-#             Annotated[Bar, OneofField("bar")],
-#             Annotated[Baz, OneofField("baz")],
-#             Annotated[Bat, OneofField("bat")],
-#         ]
+        def __getattr__(self, name):
+            if name == "data_stream":
+                if self._which_oneof_datastream == "foo":
+                    return self.foo
+                elif self._which_oneof_datastream == "bar":
+                    return self.bar
+                return None
+            if name == "_foo":
+                if self._which_oneof_datastream == "foo":
+                    return self._data_stream
+            if name == "_bar":
+                if self._which_oneof_datastream == "bar":
+                    return self._data_stream
 
-#     # proto tests
-#     foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))
-#     proto_repr_foo = foo1.to_proto()
-#     assert proto_repr_foo.foo.data == ["hello"]
-#     assert BazObj.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+        def __init__(self, *args, **kwargs):
+            if "foo" in kwargs:
+                self._which_oneof_datastream = "foo"
+                self._data_stream = kwargs["foo"]
+            if "bar" in kwargs:
+                self._which_oneof_datastream = "bar"
+                self._data_stream = kwargs["bar"]
 
-#     bar1 = BazObj(foo=BazObj.Foo(data=["hello"]), bar=BazObj.Bar(data="world"))
-#     proto_repr_bar = bar1.to_proto()
-#     assert proto_repr_bar.bar.data == "world"
+    # proto tests
+    foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))
+    assert isinstance(foo1.data_stream, BazObj.Foo)
+    proto_repr_foo = foo1.to_proto()
+    assert proto_repr_foo.foo.data == ["hello"]
+    assert BazObj.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
-#     # json tests
-#     foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))
-#     json_repr_foo = foo1.to_json()
-#     assert json.loads(json_repr_foo) == {
-#         "foo": {"data": ["hello"]},
-#         "bar": None,
-#         "baz": None,
-#         "bat": None,
-#     }
+    bar1 = BazObj(foo=BazObj.Foo(data=["hello"]), bar=BazObj.Bar(data="world"))
+    assert isinstance(bar1.data_stream, BazObj.Bar)
+    proto_repr_bar = bar1.to_proto()
+    assert proto_repr_bar.bar.data == "world"
+
+    # json tests
+    foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))
+    json_repr_foo = foo1.to_json()
+    assert json.loads(json_repr_foo) == {
+        "foo": {"data": ["hello"]},
+        "bar": None,
+    }
 
 
 def test_dataobject_round_trip_json():

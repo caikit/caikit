@@ -152,7 +152,9 @@ class _DataBaseMetaClass(type):
         # nested messages that have matching names
         cls.full_name = cls._proto_class.DESCRIPTOR.full_name
 
-        # all fields
+        # preserve old fields for _make_property_getter later
+        old_fields = cls.fields
+        # overwrite to only have proto-specific fields present
         cls.fields = tuple(cls._proto_class.DESCRIPTOR.fields_by_name)
 
         # map from all enum fields to their enum classes
@@ -235,7 +237,10 @@ class _DataBaseMetaClass(type):
         _DataBaseMetaClass.class_registry[cls.full_name] = cls
 
         # Add properties that use the underlying backend
-        for field in cls.fields:
+        # also add fields that existed in old_fields
+        # for supporting oneofs
+        # see https://github.com/caikit/caikit/pull/107 for details
+        for field in set(cls.fields + tuple(old_fields)):
             setattr(cls, field, mcs._make_property_getter(field))
 
         # If there is not already an __init__ function defined, make one
