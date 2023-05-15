@@ -70,23 +70,24 @@ class _DataBaseMetaClass(type):
         protobufs, it can be named in the tuple class variable _private_slots and will
         automatically be added to __slots__.
         """
-        # Get all fields in protobufs with same name as class,
-        # except for DataBase, which has no matching protobufs
-        fields = ()
 
-        # Protobufs fields can be divided into these categories, which are used to automatically
-        # determine appropriate behavior in a number of methods
-        fields_enum_map = {}
-        fields_enum_rev = {}
-        _fields_message = ()
-        _fields_message_repeated = ()
-        _fields_enum = ()
-        _fields_enum_repeated = ()
-        _fields_primitive = ()
-        _fields_primitive_repeated = ()
-        _fields_map = ()
+        # Protobufs fields can be divided into these categories, which are used
+        # to automatically determine appropriate behavior in a number of methods
+        attrs["full_name"] = name
+        attrs["fields_enum_map"] = {}
+        attrs["fields_enum_rev"] = {}
+        attrs["_fields_map"] = ()
+        attrs["_fields_message"] = ()
+        attrs["_fields_message_repeated"] = ()
+        attrs["_fields_enum"] = ()
+        attrs["_fields_enum_repeated"] = ()
+        attrs["_fields_primitive"] = ()
+        attrs["_fields_primitive_repeated"] = ()
+
+        # Look for the set of fields either from a predefined protobuf class or
+        # from a forward declaration from @dataobject
+        fields = ()
         proto_class = None
-        full_name = name
         if name not in ["DataBase", "DataObjectBase"]:
             # Look for a precompiled proto class and if found, parse its
             # descriptor
@@ -106,6 +107,8 @@ class _DataBaseMetaClass(type):
                     "No proto class found for {}",
                     name,
                 )
+        attrs["fields"] = fields
+        attrs["_proto_class"] = proto_class
 
         # Look if any private slots are declared as class variables
         private_slots = attrs.setdefault("_private_slots", ())
@@ -116,22 +119,7 @@ class _DataBaseMetaClass(type):
             [f"_{field}" for field in fields] + list(private_slots) + ["_backend"]
         )
 
-        # Set fields class variable for reference
-        # these are valuable for validating attributes and
-        # also for recursively converting to and from protobufs
-        attrs["full_name"] = full_name
-        attrs["fields"] = fields
-        attrs["fields_enum_map"] = fields_enum_map
-        attrs["fields_enum_rev"] = fields_enum_rev
-        attrs["_fields_map"] = _fields_map
-        attrs["_fields_message"] = _fields_message
-        attrs["_fields_message_repeated"] = _fields_message_repeated
-        attrs["_fields_enum"] = _fields_enum
-        attrs["_fields_enum_repeated"] = _fields_enum_repeated
-        attrs["_fields_primitive"] = _fields_primitive
-        attrs["_fields_primitive_repeated"] = _fields_primitive_repeated
-        attrs["_proto_class"] = proto_class
-
+        # Create the instance of the type
         instance = super().__new__(mcs, name, bases, attrs)
 
         # If there's a valid proto class, perform proto descriptor parsing
