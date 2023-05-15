@@ -130,6 +130,7 @@ def test_derived_class_no_import_side_effects():
                     class FakeDescriptor:
                         fields = []
                         fields_by_name = {}
+                        oneofs_by_name = {}
                         name = "Baz"
                         full_name = "foo.bar.Baz"
 
