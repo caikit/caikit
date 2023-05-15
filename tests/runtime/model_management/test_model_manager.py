@@ -88,7 +88,9 @@ class TestModelManager(unittest.TestCase):
                 os.path.join(tempdir, "model2.zip"),
             )
             ModelManager._ModelManager__instance = None
-            with temp_config({"runtime": {"local_models_dir": tempdir}}):
+            with temp_config(
+                {"runtime": {"local_models_dir": tempdir}}, merge_strategy="merge"
+            ):
                 self.model_manager = ModelManager()
 
                 self.assertEqual(len(self.model_manager.loaded_models), 2)
