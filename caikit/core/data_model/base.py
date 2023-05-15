@@ -237,7 +237,7 @@ class _DataBaseMetaClass(type):
         _DataBaseMetaClass.class_registry[cls.full_name] = cls
 
         # Add properties that use the underlying backend
-        for field in cls.fields + tuple(old_fields):
+        for field in set(cls.fields + tuple(old_fields)):
             setattr(cls, field, mcs._make_property_getter(field))
 
         # If there is not already an __init__ function defined, make one
