@@ -186,7 +186,7 @@ def other_loaded_model_id(other_good_model_path) -> str:
 
 
 @contextmanager
-def temp_config(config_overrides: dict):
+def temp_config(config_overrides: dict, merge_strategy="override"):
     """Temporarily edit the caikit config in a mock context"""
     existing_config = copy.deepcopy(getattr(caikit.config.config, "_CONFIG"))
     # Patch out the internal config, starting with a fresh copy of the current config
@@ -196,6 +196,7 @@ def temp_config(config_overrides: dict):
         with patch.object(caikit.config.config, "_IMMUTABLE_CONFIG", None):
             # Run our config overrides inside the patch
             if config_overrides:
+                config_overrides["merge_strategy"] = merge_strategy
                 caikit.configure(config_dict=config_overrides)
             else:
                 # or just slap some random uuids in there. Barf, but we need to call `.configure()`
