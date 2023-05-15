@@ -76,6 +76,8 @@ class _DataBaseMetaClass(type):
         attrs["full_name"] = name
         attrs["fields_enum_map"] = {}
         attrs["fields_enum_rev"] = {}
+        attrs["_fields_oneofs_map"] = {}
+        attrs["_fields_to_oneof"] = {}
         attrs["_fields_map"] = ()
         attrs["_fields_message"] = ()
         attrs["_fields_message_repeated"] = ()
@@ -159,6 +161,17 @@ class _DataBaseMetaClass(type):
             if field.enum_type is not None
         }
 
+        # mapping of all oneofs and the fields that are part of them
+        cls._fields_oneofs_map = {
+            oneof_name: [field.name for field in oneof.fields]
+            for oneof_name, oneof in cls._proto_class.DESCRIPTOR.oneofs_by_name.items()
+        }
+        cls._fields_to_oneof = {
+            field_name: oneof_name
+            for (oneof_name, oneof_fields) in cls._fields_oneofs_map.items()
+            for field_name in oneof_fields
+        }
+
         # all repeated fields
         fields_repeated = tuple(
             field.name
@@ -203,8 +216,10 @@ class _DataBaseMetaClass(type):
             _fields_message_all
         )
 
+        # enums that are not repeated
         cls._fields_enum = frozenset(_fields_enum_all).difference(fields_repeated)
 
+        # enums that are repeated
         cls._fields_enum_repeated = frozenset(_fields_enum_all).intersection(
             fields_repeated
         )
