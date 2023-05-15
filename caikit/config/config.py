@@ -35,7 +35,6 @@ BASE_CONFIG_PATH = os.path.realpath(
 _CONFIG: aconfig.Config = aconfig.Config({})
 # An immutable view into the core config object, to be passed to callers
 _IMMUTABLE_CONFIG: aconfig.ImmutableConfig = aconfig.ImmutableConfig({})
-_CONFIG_LOCK: threading.Lock = threading.Lock()
 # Little helper type for signatures
 _CONFIG_TYPE = Union[dict, aconfig.Config]
 
@@ -84,17 +83,16 @@ def configure(
 
 
 def _update_global_config(cfg: aconfig.Config):
-    """Updates the caikit config and creates a new immutable view of it to be shared via
+    """Replaces the caikit config and creates a new immutable view of it to be shared via
     get_config().
-    Locked because who the heck knows if merge_configs() is threadsafe.
     """
     # pylint: disable=global-statement
     global _IMMUTABLE_CONFIG
-    # Update the config by merging the new updates over the existing config
-    with _CONFIG_LOCK:
-        # Locked just in case `configure()` is called concurrently for any reason
-        _CONFIG.update(cfg)
-        _IMMUTABLE_CONFIG = aconfig.ImmutableConfig(_CONFIG, override_env_vars=False)
+    # pylint: disable=global-statement
+    global _CONFIG
+    _CONFIG = cfg
+    # Set override_env_vars=False because we want the immutable config to be an exact copy
+    _IMMUTABLE_CONFIG = aconfig.ImmutableConfig(_CONFIG, override_env_vars=False)
 
 
 def _merge_extra_files(config: aconfig.Config) -> aconfig.Config:
@@ -171,10 +169,8 @@ def merge_configs(
 
 
 def merge_list(base_list: list, new_list: list) -> list:
-    for val in new_list:
-        if val in base_list:
-            base_list.remove(val)
-    return new_list + base_list
+    """Returns new list + base list with duplicates removed"""
+    return new_list + [v for v in base_list if v not in new_list]
 
 
 def _get_merge_strategy(cfg: _CONFIG_TYPE) -> str:
