@@ -160,16 +160,12 @@ def merge_configs(
         ):
             base[key] = value
         elif isinstance(value, list):
-            base[key] = merge_list(base[key], value)
+            # merge lists by prepending new one
+            base[key] = value + base[key]
         else:
             base[key] = merge_configs(base[key], value, merge_strategy)
 
     return base
-
-
-def merge_list(base_list: list, new_list: list) -> list:
-    """Returns new list + base list with duplicates removed"""
-    return new_list + [v for v in base_list if v not in new_list]
 
 
 def _get_merge_strategy(cfg: _CONFIG_TYPE) -> str:

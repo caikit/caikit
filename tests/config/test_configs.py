@@ -124,7 +124,7 @@ def test_configure_merges_lists():
     # If values already existed in the list, they are popped then prepended
     cfg3 = {"foo_list": [1, 2]}
     caikit.configure(config_dict=cfg3)
-    assert caikit.get_config().foo_list == [1, 2, 4, 5, 6, 3]
+    assert caikit.get_config().foo_list == [1, 2, 4, 5, 6, 1, 2, 3]
 
 
 def test_merge_strategy():
