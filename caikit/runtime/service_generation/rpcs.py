@@ -31,7 +31,7 @@ import alog
 # Local
 from . import primitives, type_helpers
 from .compatibility_checker import ApiFieldNames
-from .signature_parsing.module_signature import (
+from caikit.core.signature_parsing.module_signature import (
     CaikitCoreModuleMethodSignature,
     CustomSignature,
 )

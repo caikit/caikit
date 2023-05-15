@@ -24,7 +24,7 @@ from docstring_parser import ParseError
 import pytest
 
 # Local
-from caikit.runtime.service_generation.signature_parsing.docstrings import (
+from caikit.core.signature_parsing.docstrings import (
     _extract_nested_type,
     _get_docstring_type,
     get_arg_type,

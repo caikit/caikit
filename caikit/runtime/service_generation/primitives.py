@@ -25,7 +25,7 @@ import typing
 import alog
 
 # Local
-from .signature_parsing.module_signature import CaikitCoreModuleMethodSignature
+from caikit.core.signature_parsing.module_signature import CaikitCoreModuleMethodSignature
 from .type_helpers import PROTO_TYPE_MAP
 from caikit.core.data_model.base import DataBase
 
