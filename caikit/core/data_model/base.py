@@ -239,6 +239,7 @@ class _DataBaseMetaClass(type):
         # Add properties that use the underlying backend
         # also add fields that existed in old_fields
         # for supporting oneofs
+        # see https://github.com/caikit/caikit/pull/107 for details
         for field in set(cls.fields + tuple(old_fields)):
             setattr(cls, field, mcs._make_property_getter(field))
 
