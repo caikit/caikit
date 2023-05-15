@@ -371,10 +371,29 @@ class DataBase(metaclass=_DataBaseMetaClass):
     """
 
     def __setattr__(self, name, val):
-        """If attempting to set one of the named fields, instead set the
-        "private" version of the attribute.
+        """Handle attribute setting for oneofs and named fields with delegation
+        to backends as needed
         """
-        if name in self.__class__.fields:
+        # If this is the name of a oneof field, set the oneof itself
+        cls = self.__class__
+        if oneof_name := cls._fields_to_oneof.get(name):
+            which_oneof = getattr(self, _DataBaseMetaClass._WHICH_ONEOF_ATTR, None)
+            if which_oneof is None:
+                super().__setattr__(_DataBaseMetaClass._WHICH_ONEOF_ATTR, {})
+                which_oneof = getattr(self, _DataBaseMetaClass._WHICH_ONEOF_ATTR)
+            which_oneof[oneof_name] = name
+            setattr(self, oneof_name, val)
+
+        # If this is the name of a oneof, determine the variant of the oneof
+        # that this value corresponds too. Sometimes this cannot be done if the
+        # oneof has field types that are not differentiated by type!
+        elif oneof_fields := cls._fields_oneofs_map.get(name):
+            # DEBUG -- Still need to set which_oneof
+            super().__setattr__(f"_{name}", val)
+
+        # If attempting to set one of the named fields, instead set the private
+        # version of the attribute.
+        elif name in cls.fields:
             super().__setattr__(f"_{name}", val)
         else:
             super().__setattr__(name, val)
