@@ -30,7 +30,6 @@ import alog
 # Local
 from ..toolkit.errors import error_handler
 from ..toolkit.isa import isprotobufenum
-from . import protobufs
 
 log = alog.use_channel("DATAM")
 error = error_handler.get(log)
@@ -86,7 +85,10 @@ def import_enum(
         )
 
     name = proto_enum.DESCRIPTOR.name
-    enum_class = enum_class or Enum._create_(name, proto_enum.items())
+    log.debug2("Importing enum named %s", name)
+    if enum_class is None:
+        log.debug2("Creating Enum class for %s", name)
+        enum_class = Enum._create_(name, proto_enum.items())
 
     # Add extra utility functions
     setattr(enum_class, "to_dict", to_dict)
@@ -130,7 +132,8 @@ def import_enums(current_globals):
     # Add the str->int (EnumBase) and int->str (EnumRevBase) mapping for each enum
     # to the calling module's symbol table, then update __all__ to include the names
     # for the added objects.
-    all_enum_names = getattr(current_globals.get("protobufs"), "all_enum_names", [])
+    protobufs = current_globals.get("protobufs")
+    all_enum_names = getattr(protobufs, "all_enum_names", [])
     for name in all_enum_names:
         proto_enum = getattr(protobufs, name)
         name, rev_name = import_enum(proto_enum)
