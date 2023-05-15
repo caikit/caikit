@@ -17,7 +17,7 @@
 # Standard
 from dataclasses import dataclass, field, is_dataclass
 from enum import Enum
-from typing import List, Optional, Union
+from typing import List, Optional
 import copy
 import json
 import os

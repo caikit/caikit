@@ -19,7 +19,6 @@
 # Standard
 from typing import Any, Dict, Optional, Union
 import os
-import threading
 
 # First Party
 import aconfig

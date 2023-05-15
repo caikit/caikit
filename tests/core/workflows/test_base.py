@@ -17,7 +17,6 @@ import os
 import tempfile
 
 # Local
-from caikit.config import get_config
 from caikit.core.workflows import workflow
 from caikit.core.workflows.base import WorkflowLoader, WorkflowSaver
 
