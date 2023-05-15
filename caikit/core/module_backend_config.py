@@ -17,7 +17,6 @@ from typing import List
 import copy
 
 # First Party
-import aconfig
 import alog
 
 # Local
@@ -74,31 +73,6 @@ def configure():
     ]:
         backend_priority = backend_priority or []
         error.type_check("<COR46006487E>", list, backend_priority=backend_priority)
-
-        # Check if disable_local is set
-        disable_local_backend = config_object.disable_local or False
-
-        # Add local at the end of priority by default
-        backend_priority_types = [cfg.get("type") for cfg in backend_priority]
-        error.value_check(
-            "<COR92038969E>",
-            not (
-                disable_local_backend
-                and MODULE_BACKEND_TYPES.LOCAL in backend_priority_types
-            ),
-            "Invalid configuration with {} in the priority list and disable_local set",
-            MODULE_BACKEND_TYPES.LOCAL,
-        )
-        if not disable_local_backend and (
-            MODULE_BACKEND_TYPES.LOCAL not in backend_priority_types
-        ):
-            log.debug3("Adding fallback priority to [%s]", MODULE_BACKEND_TYPES.LOCAL)
-            backend_priority.append(
-                aconfig.Config(
-                    {"type": MODULE_BACKEND_TYPES.LOCAL},
-                    override_env_vars=False,
-                )
-            )
 
         # Configure each backend instance
         for i, backend_config in enumerate(backend_priority):

@@ -743,7 +743,8 @@ def test_out_of_range_port(sample_inference_service):
                 "port": free_high_port,
                 "find_available_port": False,
             }
-        }
+        },
+        merge_strategy="merge",
     ):
         with RuntimeGRPCServer(
             inference_service=sample_inference_service,

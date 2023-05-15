@@ -322,8 +322,7 @@ def test_backend_model_loaded_as_singleton(reset_globals):
     with temp_config(
         {
             "module_backends": {
-                "priority": [backend_types.MOCK],
-                "configs": {"mock": {}},
+                "load_priority": [{"type": backend_types.MOCK}],
             }
         }
     ):
@@ -359,8 +358,7 @@ def test_singleton_cache_with_different_backend(reset_globals):
     with temp_config(
         {
             "module_backends": {
-                "priority": [backend_types.MOCK],
-                "configs": {"mock": {}},
+                "load_priority": [{"type": backend_types.MOCK}],
             }
         }
     ):
@@ -403,20 +401,18 @@ def test_fall_back_to_local(reset_globals):
     assert isinstance(model, NonDistributedBlock)
 
 
-def test_no_local_if_disabled(reset_globals):
-    """Make sure that if LOCAL is disabled and a given module doesn't have any
-    registered backends, loading fails.
+def test_load_fails_on_no_supported_backend(reset_globals):
+    """Make sure if a given module doesn't have any registered backends,
+    loading fails.
     """
     _ = setup_saved_model(MockBackend)
-    # 🌶️ TODO: remove the `disable_local` flag
-    # ...if LOCAL can always be supplied in the caikit base config
     with temp_config(
         {
+            "merge_strategy": "override",
             "module_backends": {
                 "load_priority": [{"type": backend_types.MOCK}],
                 "train_priority": [],
-                "disable_local": True,
-            }
+            },
         }
     ):
         configure()

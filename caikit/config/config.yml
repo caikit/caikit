@@ -14,6 +14,9 @@
 
 # User can set comma-separated string of config file locations to read
 config_files: ""
+# merge_strategy can be either `merge` which will merge lists and dicts,
+# or `override` which will set the values directly
+merge_strategy: "merge"
 
 # Global config switch for runtime check functions (type_check, value_check, file_check...)
 enable_error_checks: true
@@ -23,8 +26,6 @@ load_path: null
 
 # Configuration for training/loading via module backends
 module_backends:
-    # Local is always enabled unless explicitly disabled
-    disable_local: false
     # Configuration for distributed loading and training. Each has an ordered
     # list of backends in priority order. Each entry is a mapping with a "type"
     # field and optionally a "config" field that maps to a blob of config for

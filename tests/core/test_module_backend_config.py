@@ -132,26 +132,6 @@ def test_non_supported_backend_raises():
             configure()
 
 
-def test_disabling_local_backend(reset_globals):
-    """Test that disabling local backend does not add it to priority automatically"""
-    with temp_config(
-        {
-            "module_backends": {
-                "disable_local": True,
-                "load_priority": [{"type": backend_types.MOCK}],
-                "train_priority": [{"type": backend_types.MOCK}],
-            }
-        }
-    ):
-        configure()
-        assert get_load_backend(backend_types.MOCK)
-        assert get_train_backend(backend_types.MOCK)
-        with pytest.raises(AssertionError):
-            get_load_backend(backend_types.LOCAL)
-        with pytest.raises(AssertionError):
-            get_train_backend(backend_types.LOCAL)
-
-
 def test_duplicate_config_raises(reset_globals):
     """Test that duplicate configuration of a backend raises"""
     with temp_config(
