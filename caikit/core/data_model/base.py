@@ -154,7 +154,7 @@ class _DataBaseMetaClass(type):
 
         # preserve old fields for _make_property_getter later
         old_fields = cls.fields
-        # all fields
+        # overwrite to only have proto-specific fields present
         cls.fields = tuple(cls._proto_class.DESCRIPTOR.fields_by_name)
 
         # map from all enum fields to their enum classes
@@ -237,6 +237,8 @@ class _DataBaseMetaClass(type):
         _DataBaseMetaClass.class_registry[cls.full_name] = cls
 
         # Add properties that use the underlying backend
+        # also add fields that existed in old_fields
+        # for supporting oneofs
         for field in set(cls.fields + tuple(old_fields)):
             setattr(cls, field, mcs._make_property_getter(field))
 
