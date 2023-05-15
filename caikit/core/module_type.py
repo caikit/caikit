@@ -31,6 +31,7 @@ from .. import core
 from . import data_model as dm
 from .module import _MODULE_TYPES, MODULE_BACKEND_REGISTRY, MODULE_REGISTRY, ModuleBase
 from .module_backends import backend_types
+from .signature_parsing import CaikitMethodSignature
 from .task import TaskBase
 from .toolkit.errors import error_handler
 
@@ -238,11 +239,15 @@ def module_type(module_type_name):
                         )
                     cls_.TASK_CLASS = parent_task
                 else:
-                    if not task:
-                        # TODO: raise once @tasks are integrated into service generation
-                        # raise TypeError(f"task argument is required for @{cls}")
-                        pass
                     cls_.TASK_CLASS = task
+
+                # Parse the `train` and `run` signatures
+                cls_.RUN_SIGNATURE = CaikitMethodSignature(cls_, "run")
+                cls_.TRAIN_SIGNATURE = CaikitMethodSignature(cls_, "train")
+
+                # If the module has a task, validate it:
+                if cls_.TASK_CLASS:
+                    cls_.TASK_CLASS.validate_run_signature(cls_.RUN_SIGNATURE)
 
                 # Set module type as attribute of the class
                 # pylint: disable=global-variable-not-assigned

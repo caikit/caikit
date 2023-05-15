@@ -10,9 +10,7 @@ from caikit.core.module import ModuleSaver
 import caikit.core
 
 
-@caikit.core.block(
-    "00112233-0405-0607-0809-0a0b02dd0e0f", "SampleBlock", "0.0.1", SampleTask
-)
+@caikit.core.block("00112233-0405-0607-0809-0a0b02dd0e0f", "SampleBlock", "0.0.1")
 class SamplePrimitiveBlock(caikit.core.BlockBase):
     def __init__(self):
         super().__init__()

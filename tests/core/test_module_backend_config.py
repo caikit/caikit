@@ -193,7 +193,7 @@ def test_multiple_module_same_backend_configures(reset_globals):
     can override backend configurations"""
     # Register backend type
 
-    @block(id="foo", name="dummy base", version="0.0.1", task=SampleTask)
+    @block(id="foo", name="dummy base", version="0.0.1")
     class DummyFoo(base.BlockBase):
         pass
 
@@ -206,7 +206,7 @@ def test_multiple_module_same_backend_configures(reset_globals):
     class DummyBar(base.BlockBase):
         pass
 
-    @block(id="foo2", name="dummy base", version="0.0.1", task=SampleTask)
+    @block(id="foo2", name="dummy base", version="0.0.1")
     class DummyFoo2(base.BlockBase):
         pass
 

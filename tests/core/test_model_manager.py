@@ -28,7 +28,6 @@ from caikit.core.module_backends.base import SharedLoadBackendBase
 
 # Unit Test Infrastructure
 from sample_lib.blocks.sample_task import SampleBlock
-from sample_lib.data_model import SampleTask
 from tests.base import TestCaseBase
 from tests.conftest import temp_config
 
@@ -207,9 +206,7 @@ def setup_saved_model(mock_backend_class):
 
     backend_types.register_backend_type(LocalBackend)
 
-    @caikit.core.blocks.block(
-        id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1", task=SampleTask
-    )
+    @caikit.core.blocks.block(id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1")
     class DummyFoo(caikit.core.blocks.base.BlockBase):
         @classmethod
         def load(cls, *args, **kwargs):
@@ -230,7 +227,7 @@ def setup_saved_model(mock_backend_class):
 
 
 @caikit.core.blocks.block(
-    id="non-distributed", name="non distributed mod", version="0.0.1", task=SampleTask
+    id="non-distributed", name="non distributed mod", version="0.0.1"
 )
 class NonDistributedBlock(caikit.core.blocks.base.BlockBase):
     @classmethod

@@ -28,7 +28,7 @@ import alog
 
 # Local
 from . import parsers
-from caikit.core import ModuleBase
+import caikit
 
 log = alog.use_channel("SIGNATURE")
 
@@ -52,7 +52,9 @@ class CaikitMethodSignature:
     4. Parse the docstring
     """
 
-    def __init__(self, caikit_core_module: Type[ModuleBase], method_name: str):
+    def __init__(
+        self, caikit_core_module: Type["caikit.core.ModuleBase"], method_name: str
+    ):
         self._module = caikit_core_module
         self._method_name = method_name
 
@@ -75,7 +77,7 @@ class CaikitMethodSignature:
             self._default_map = {}
 
     @property
-    def module(self) -> Type[ModuleBase]:
+    def module(self) -> Type["caikit.core.ModuleBase"]:
         """The concrete caikit.core.ModuleBase type"""
         return self._module
 

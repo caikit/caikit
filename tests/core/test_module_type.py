@@ -49,9 +49,7 @@ def test_module_type_new_type(TestModBase):
     # Add a new derived testmod
     mod_id = str(uuid.uuid4())
 
-    @TestModBase.testmod(
-        id=mod_id, name="Sample tesmod", version="1.2.3", task=SampleTask
-    )
+    @TestModBase.testmod(id=mod_id, name="Sample tesmod", version="1.2.3")
     class SampleTestmod(TestModBase):
         """A sample test mod"""
 
@@ -70,9 +68,7 @@ def test_module_type_missing_base_class(TestModBase):
     mod_id = str(uuid.uuid4())
     with pytest.raises(TypeError):
         # pylint: disable=unused-variable
-        @TestModBase.testmod(
-            id=mod_id, name="Sample tesmod", version="1.2.3", task=SampleTask
-        )
+        @TestModBase.testmod(id=mod_id, name="Sample tesmod", version="1.2.3")
         class SampleBadTestmod:
             """A sample test mod that is missing the base class"""
 
@@ -84,9 +80,7 @@ def test_module_type_wrong_base_class(TestModBase):
     mod_id = str(uuid.uuid4())
     with pytest.raises(TypeError):
         # pylint: disable=unused-variable
-        @TestModBase.testmod(
-            id=mod_id, name="Sample tesmod", version="1.2.3", task=SampleTask
-        )
+        @TestModBase.testmod(id=mod_id, name="Sample tesmod", version="1.2.3")
         class SampleBadTestmod(caikit.core.BlockBase):
             """A sample test mod that is missing the base class"""
 
@@ -99,7 +93,6 @@ def test_module_no_reused_ids(TestModBase):
             id=SampleBlock.MODULE_ID,
             name="Sample tesmod",
             version="1.2.3",
-            task=SampleTask,
         )
         # pylint: disable=unused-variable
         class SampleTestmod(TestModBase):
@@ -116,7 +109,7 @@ def test_intermediate_metabase():
         def foobar(self, arg):
             """Got to define foobar!"""
 
-    @caikit.core.block("asdf-qwer-zxcv", "FooBar", "0.0.1", SampleTask)
+    @caikit.core.block("asdf-qwer-zxcv", "FooBar", "0.0.1")
     class Derived(Intermediate):
         def foobar(self, arg):
             return arg + 1

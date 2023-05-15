@@ -96,7 +96,7 @@ class TestWorkflowBase(TestCaseBase):
 class TestWorkflowAnnotation(TestCaseBase):
     def test_workflow_annotation_adds_metadata_to_class(self):
         # Declare a new dummy workflow
-        @workflow("ABCDE", "MyNewWorkflow", "0.0.1", SampleTask)
+        @workflow("ABCDE", "MyNewWorkflow", "0.0.1")
         class MyNewWorkflow(caikit.core.WorkflowBase):
             # pylint: disable=no-method-argument,super-init-not-called
             def __init__():
@@ -116,7 +116,7 @@ class TestWorkflowAnnotation(TestCaseBase):
 
     def test_workflow_annotation_registers_workflow_in_module_registry(self):
         # Declare a new dummy workflow
-        @workflow("ABCDE-1", "MyNewWorkflow2", "0.0.2", SampleTask)
+        @workflow("ABCDE-1", "MyNewWorkflow2", "0.0.2")
         # pylint: disable=unused-variable
         class MyNewWorkflow2(caikit.core.WorkflowBase):
             # pylint: disable=no-method-argument,super-init-not-called
@@ -127,7 +127,7 @@ class TestWorkflowAnnotation(TestCaseBase):
 
     def test_workflow_annotation_registers_workflow_in_workflow_registry(self):
         # Declare a new dummy workflow
-        @workflow("ABCDE-2", "MyNewWorkflow3", "0.0.2", SampleTask)
+        @workflow("ABCDE-2", "MyNewWorkflow3", "0.0.2")
         # pylint: disable=unused-variable
         class MyNewWorkflow3(caikit.core.WorkflowBase):
             # pylint: disable=no-method-argument,super-init-not-called
@@ -141,7 +141,7 @@ class TestWorkflowAnnotation(TestCaseBase):
     ):
         # Declare a new dummy workflow
         def declare_workflow():
-            @workflow("ABCDE-3", "MyNewWorkflow4", "0.0.2", SampleTask)
+            @workflow("ABCDE-3", "MyNewWorkflow4", "0.0.2")
             # pylint: disable=unused-variable
             class MyNewWorkflow4(caikit.core.WorkflowBase):
                 # pylint: disable=no-method-argument,super-init-not-called
@@ -164,7 +164,6 @@ class TestWorkflowLoader(TestCaseBase):
             "A32D68FA-E5E6-41BD-BAAE-77A880EB6878",
             "SampleWorkflow",
             "0.0.1",
-            SampleTask,
         )
         class TestSampleWorkflow(caikit.core.WorkflowBase):
             pass

@@ -14,6 +14,7 @@
 
 # Standard
 from typing import Callable, Dict, List, Type, Union
+import typing
 
 # First Party
 from alog import alog
@@ -21,6 +22,7 @@ from alog import alog
 # Local
 from caikit.core.data_model import DataStream
 from caikit.core.data_model.base import DataBase
+from caikit.core.signature_parsing import CaikitMethodSignature
 from caikit.core.toolkit.errors import error_handler
 
 log = alog.use_channel("TASK_BASE")
@@ -42,9 +44,33 @@ class TaskBase:
     """
 
     @classmethod
-    def validate_run_signature(cls) -> bool:
-        # TODO: implement
-        pass
+    def validate_run_signature(cls, signature: CaikitMethodSignature) -> None:
+        if signature.parameters is None:
+            raise ValueError(
+                "Task could not be validated, no .run parameters were provided"
+            )
+        if signature.return_type is None:
+            raise ValueError(
+                "Task could not be validated, no .run return type was provided"
+            )
+
+        for parameter_name, parameter_type in cls.get_required_parameters().items():
+            if parameter_name not in signature.parameters:
+                raise ValueError(
+                    f"Required parameter {parameter_name} not in signature for module: "
+                    f"{signature.module}"
+                )
+            signature_type = signature.parameters[parameter_name]
+
+            if parameter_type != signature_type:
+                if typing.get_origin(
+                    signature_type
+                ) == typing.Union and parameter_type in typing.get_args(signature_type):
+                    continue
+                raise ValueError(
+                    f"Required parameter {parameter_name} has type {signature_type} but type "
+                    f"{parameter_type} is required for module: {signature.module}"
+                )
 
     @classmethod
     def get_required_parameters(cls) -> Dict[str, ValidInputTypes]:
