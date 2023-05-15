@@ -22,14 +22,12 @@ import sys
 # Third Party
 from docstring_parser import ParseError
 import docstring_parser
-import grpc
 
 # First Party
 import alog
 
 # Local
 from caikit.core.data_model.base import DataBase
-from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit.core
 
 log = alog.use_channel("DOCSTRINGS")
@@ -74,11 +72,14 @@ def is_optional(fn: Callable, arg_name: str) -> bool:
     """
     try:
         docstring = docstring_parser.parse(fn.__doc__)
-    except Exception as exc:
-        raise CaikitRuntimeException(
-            grpc.StatusCode.INVALID_ARGUMENT,
-            f"ParseError when parsing docstring for function: {fn.__name__}",
-        ) from exc
+    except ParseError as parse_error:
+        log.warning(
+            "Failed to parse docstring for %s when looking for optional flag on parameter %s",
+            fn,
+            arg_name,
+            exc_info=parse_error,
+        )
+        return False
 
     ds_param = [param for param in docstring.params if param.arg_name == arg_name]
     if ds_param:
@@ -109,14 +110,16 @@ def get_arg_type(fn: Callable, arg_name: str) -> Optional[Type]:
     Returns:
         The return type of `fn`, if it can be parsed from the docstring. Otherwise, None
     """
-
     try:
         docstring = docstring_parser.parse(fn.__doc__)
-    except Exception as exc:
-        raise CaikitRuntimeException(
-            grpc.StatusCode.INVALID_ARGUMENT,
-            f"ParseError when parsing docstring for function: {fn.__name__}",
-        ) from exc
+    except ParseError as parse_error:
+        log.warning(
+            "Failed to parse docstring for %s when looking for type on parameter %s",
+            fn,
+            arg_name,
+            exc_info=parse_error,
+        )
+        return None
 
     ds_param = [param for param in docstring.params if param.arg_name == arg_name]
     if ds_param:

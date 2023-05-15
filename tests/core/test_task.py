@@ -86,3 +86,7 @@ def test_task_is_not_required_for_blocks():
         pass
 
     assert Stuff.TASK_CLASS is None
+
+
+# def test_task_validation_throws_on_missing_parameter():
+#

@@ -21,7 +21,6 @@ from unittest.mock import patch
 
 # Third Party
 from docstring_parser import ParseError
-import pytest
 
 # Local
 from caikit.core.signature_parsing.docstrings import (
@@ -31,7 +30,6 @@ from caikit.core.signature_parsing.docstrings import (
     get_return_type,
     is_optional,
 )
-from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model import SampleInputType
 import caikit
 import sample_lib
@@ -106,19 +104,17 @@ def test_is_optional_works_on_corner_cases_docstrings():
         """
         pass
 
-    assert is_optional(_fn, "some_input") == True
+    assert is_optional(_fn, "some_input") is True
 
-    # test if docstring_parser.parse throws an exception, we throw an exception
+    # test if docstring_parser.parse throws an exception, we return False
     with patch("docstring_parser.parse", side_effect=ParseError("mocked error")):
-        with pytest.raises(CaikitRuntimeException) as e:
-            is_optional(_fn, "some_input")
-        assert "ParseError when parsing docstring for function: _fn" in e.value.message
+        assert is_optional(_fn, "some_input") is False
 
     def _fn(input):
         pass
 
     # test is_optional works on empty docstring
-    assert is_optional(_fn, "input") == False
+    assert is_optional(_fn, "input") is False
 
 
 def test_get_arg_type_works_on_corner_cases_docstrings():
@@ -143,11 +139,9 @@ def test_get_arg_type_works_on_corner_cases_docstrings():
 
     assert get_arg_type(_fn, "some_input") == int
 
-    # test if docstring_parser.parse throws an exception, we throw an exception
+    # test if docstring_parser.parse throws an exception, we return None
     with patch("docstring_parser.parse", side_effect=ParseError("mocked error")):
-        with pytest.raises(CaikitRuntimeException) as e:
-            get_arg_type(_fn, "some_input")
-        assert "ParseError when parsing docstring for function: _fn" in e.value.message
+        assert get_arg_type(_fn, "some_input") is None
 
     # test get_arg_type works on empty docstring
     def _fn_no_docstring(input):
