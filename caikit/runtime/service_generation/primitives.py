@@ -25,9 +25,9 @@ import typing
 import alog
 
 # Local
-from caikit.core.signature_parsing.module_signature import CaikitMethodSignature
 from .type_helpers import PROTO_TYPE_MAP
 from caikit.core.data_model.base import DataBase
+from caikit.core.signature_parsing.module_signature import CaikitMethodSignature
 
 log = alog.use_channel("MODULE_PRIMS")
 

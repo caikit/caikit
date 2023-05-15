@@ -31,10 +31,6 @@ import alog
 # Local
 from . import primitives, type_helpers
 from .compatibility_checker import ApiFieldNames
-from caikit.core.signature_parsing.module_signature import (
-    CaikitMethodSignature,
-    CustomSignature,
-)
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import (
     DataObjectBase,
@@ -42,6 +38,10 @@ from caikit.core.data_model.dataobject import (
     dataobject,
 )
 from caikit.core.module import ModuleBase
+from caikit.core.signature_parsing.module_signature import (
+    CaikitMethodSignature,
+    CustomSignature,
+)
 from caikit.interfaces.runtime.data_model import ModelPointer, TrainingJob
 from caikit.runtime.service_generation.data_stream_source import make_data_stream_source
 

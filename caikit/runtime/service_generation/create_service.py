@@ -28,8 +28,8 @@ from ... import get_config
 from .core_module_helpers import get_module_info
 from .primitives import is_primitive_method
 from .rpcs import CaikitRPCBase, ModuleClassTrainRPC, TaskPredictRPC
-from caikit.core.signature_parsing.module_signature import CaikitMethodSignature
 from caikit.core.module import ModuleBase
+from caikit.core.signature_parsing.module_signature import CaikitMethodSignature
 
 log = alog.use_channel("CREATE-RPCS")
 

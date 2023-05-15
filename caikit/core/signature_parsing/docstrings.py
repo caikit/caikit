@@ -20,6 +20,7 @@ import builtins
 import sys
 
 # Third Party
+from docstring_parser import ParseError
 import docstring_parser
 import grpc
 
@@ -27,8 +28,6 @@ import grpc
 import alog
 
 # Local
-from docstring_parser import ParseError
-
 from caikit.core.data_model.base import DataBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit.core
