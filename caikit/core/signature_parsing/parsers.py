@@ -60,11 +60,7 @@ def get_output_type_name(
             return fn_signature.return_annotation
 
     # Check the docstring
-    type_from_docstring = None
-    try:
-        type_from_docstring = docstrings.get_return_type(fn)
-    except CaikitRuntimeException:
-        log.warning("Failed to parse the docstring for %s", fn)
+    type_from_docstring = docstrings.get_return_type(fn)
 
     if type_from_docstring:
         return type_from_docstring

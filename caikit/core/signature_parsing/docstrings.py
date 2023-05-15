@@ -27,6 +27,8 @@ import grpc
 import alog
 
 # Local
+from docstring_parser import ParseError
+
 from caikit.core.data_model.base import DataBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit.core
@@ -46,11 +48,9 @@ def get_return_type(fn: Callable) -> Optional[Type]:
     """
     try:
         docstring = docstring_parser.parse(fn.__doc__)
-    except Exception as exc:
-        raise CaikitRuntimeException(
-            grpc.StatusCode.INVALID_ARGUMENT,
-            f"ParseError when parsing docstring for function: {fn.__name__}",
-        ) from exc
+    except docstring_parser.ParseError as e:
+        log.warning("Could not parse docstring: %s fn.__doc__ ", fn.__doc__, exc_info=e)
+        return None
 
     type_names, desc_names = _get_candidate_type_names_from_docstring(docstring.returns)
 

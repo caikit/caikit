@@ -163,8 +163,6 @@ def test_get_return_type_corner_case_with_exception():
     # test get_return_type works on empty docstring
     assert get_return_type(_fn) == None
 
-    # test if docstring_parser.parse throws an exception, we throw an exception
+    # test if docstring_parser.parse throws an exception, we swallow and return none
     with patch("docstring_parser.parse", side_effect=ParseError("mocked error")):
-        with pytest.raises(CaikitRuntimeException) as e:
-            get_return_type(_fn)
-        assert "ParseError when parsing docstring for function: _fn" in e.value.message
+        assert get_return_type(_fn) is None
