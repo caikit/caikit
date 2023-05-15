@@ -163,10 +163,7 @@ def merge_configs(
         ):
             base[key] = value
         elif isinstance(value, list):
-            if key not in base or not isinstance(base[key], list):
-                base[key] = value
-            else:
-                base[key] = merge_list(base[key], value)
+            base[key] = merge_list(base[key], value)
         else:
             base[key] = merge_configs(base[key], value, merge_strategy)
 
