@@ -30,11 +30,10 @@ import alog
 from . import parsers
 from caikit.core import ModuleBase
 
-log = alog.use_channel("MODULE-SIGNR")
+log = alog.use_channel("SIGNATURE")
 
 
-# Maybe TODO: support for `INPUT_TYPES` and `OUTPUT_TYPE` from module annotations was removed
-class CaikitCoreModuleMethodSignature:
+class CaikitMethodSignature:
     """Metadata about a method on a caikit core module
 
     Determines the argument types and return type for a function (run, train, etc.)
@@ -102,7 +101,7 @@ class CaikitCoreModuleMethodSignature:
         return self._default_map
 
 
-class CustomSignature(CaikitCoreModuleMethodSignature):
+class CustomSignature(CaikitMethodSignature):
     """(TBD on new class)? Need something to hold an intentionally mutated representation of a
     method signature. This represents the extra indirection that lives in the runtime, between the
     service API and the actual method. For example: .train functions return a fully constructed
@@ -111,7 +110,7 @@ class CustomSignature(CaikitCoreModuleMethodSignature):
 
     def __init__(
         self,
-        original_signature: CaikitCoreModuleMethodSignature,
+        original_signature: CaikitMethodSignature,
         parameters: Dict[str, Type],
         return_type: Optional[Type],
     ):
