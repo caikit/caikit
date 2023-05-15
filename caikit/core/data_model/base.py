@@ -59,6 +59,11 @@ class _DataBaseMetaClass(type):
     # construction.
     _FWD_DECL_FIELDS = "__fwd_decl_fields__"
 
+    # Special instance attributes that an instance of a class derived from
+    # DataBase may have. These are added to __slots__.
+    _BACKEND_ATTR = "_backend"
+    _WHICH_ONEOF_ATTR = "_which_oneof"
+
     def __new__(mcs, name, bases, attrs):
         """When constructing a new data model class, we set the 'fields' class variable from the
         protobufs descriptor and then set the '__slots__' magic class attribute to fields.  This
@@ -118,7 +123,9 @@ class _DataBaseMetaClass(type):
         # Class slots are fields + private slots, this prevents other
         # member attributes from being set and also improves performance
         attrs["__slots__"] = tuple(
-            [f"_{field}" for field in fields] + list(private_slots) + ["_backend"]
+            [f"_{field}" for field in fields]
+            + list(private_slots)
+            + [mcs._BACKEND_ATTR, mcs._WHICH_ONEOF_ATTR]
         )
 
         # Create the instance of the type
@@ -144,6 +151,7 @@ class _DataBaseMetaClass(type):
 
         # preserve old fields for _make_property_getter later
         old_fields = cls.fields
+
         # overwrite to only have proto-specific fields present
         cls.fields = tuple(cls._proto_class.DESCRIPTOR.fields_by_name)
 
@@ -269,11 +277,11 @@ class _DataBaseMetaClass(type):
                 return current
 
             # If not currently set, delegate to the backend
-            attr_val = self._backend.get_attribute(self.__class__, field)
+            attr_val = self.backend.get_attribute(self.__class__, field)
 
             # If the backend says that this attribute should be cached, set it
             # as an attribute on the class
-            if self._backend.cache_attribute(field, attr_val):
+            if self.backend.cache_attribute(field, attr_val):
                 setattr(self, private_name, attr_val)
 
             # Return the value found by the backend
@@ -386,8 +394,18 @@ class DataBase(metaclass=_DataBaseMetaClass):
     @classmethod
     def from_backend(cls, backend):
         instance = cls.__new__(cls)
-        setattr(instance, "_backend", backend)
+        setattr(instance, _DataBaseMetaClass._BACKEND_ATTR, backend)
         return instance
+
+    @property
+    def backend(self) -> Optional["DataModelBackendBase"]:
+        return getattr(self, _DataBaseMetaClass._BACKEND_ATTR, None)
+
+    def which_oneof(self, oneof_name: str) -> Optional[str]:
+        """Get the name of the oneof field set for the given oneof or None if no
+        field is set
+        """
+        return getattr(self, _DataBaseMetaClass._WHICH_ONEOF_ATTR, {}).get(oneof_name)
 
     @classmethod
     def from_binary_buffer(cls, buf):
