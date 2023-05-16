@@ -30,13 +30,12 @@ import zipfile
 import alog
 
 # Local
-from .module import (
-    _MODULE_TYPES,
+from .modules.base import (
     MODULE_BACKEND_REGISTRY,
     MODULE_REGISTRY,
     ModuleBase,
-    ModuleConfig,
 )
+from .modules.config import ModuleConfig
 from .module_backends import backend_types, module_backend_config
 from .module_backends.base import SharedLoadBackendBase
 from caikit.core.modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
@@ -492,23 +491,3 @@ class ModelManager:
         # If module_backend is None, then we will assume that this model is not loadable in
         # any other backend
         return getattr(backend_impl, SUPPORTED_LOAD_BACKENDS_VAR_NAME, [])
-
-    @classmethod
-    def get_module_class_from_config(cls, module_config):
-        """Utility function to fetch module class information
-        from ModuleConfig
-
-        Args:
-            module_config: caikit.core.module.ModuleConfig
-                Configuration for caikit.core module
-        Returns:
-            str: name of the module_class
-        """
-        module_class = ""
-        for module_type in _MODULE_TYPES:
-            module_class_name = "{}_class".format(module_type.lower())
-            if module_class_name in module_config:
-                module_class = module_config.get(module_class_name)
-                break
-
-        return module_class

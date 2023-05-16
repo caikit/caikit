@@ -31,7 +31,7 @@ class ModuleConfig(aconfig.Config):
     """Config object used by all blocks for config loading, saving, etc."""
 
     # keys that are not allowed at the top-level module configuration (reserved for internal use)
-    reserved_keys = "module_id", "model_path"
+    reserved_keys = "model_path"
 
     def __init__(self, config_dict):
         """Construct a new module configuration object from a dictionary of config options.
@@ -61,30 +61,22 @@ class ModuleConfig(aconfig.Config):
                     ),
                 )
 
-        # Alias from the subtype id to module_id
-        self.module_id = None
-        # 🌶️🌶️🌶️: Delayed import here to avoid circular dependency
-        # Needs a bit more ♻️ to be less 💩
-        # pylint: disable=import-outside-toplevel,no-name-in-module
-        # Local
-        from caikit.core import _MODULE_TYPES
+        # 🌶️🌶️🌶️: Backwards compatibility for old-style `blocks`, `workflows`, and `resources`
+        if not hasattr(self, "module_id"):
+            if hasattr(self, "block_id"):
+                log.debug("Detected legacy block_id in config")
+                self.module_id = self.block_id
+            elif hasattr(self, "workflow_id"):
+                log.debug("Detected legacy workflow_id in config")
+                self.module_id = self.block_id
+            elif hasattr(self, "resource_id"):
+                log.debug("Detected legacy resource_id in config")
+                self.module_id = self.resource_id
 
-        for subtype in _MODULE_TYPES:
-            id_field = f"{subtype.lower()}_id"
-            subtype_id_val = getattr(self, id_field, None)
-            if subtype_id_val is not None:
-                error.type_check(
-                    "<COR80419079E>",
-                    str,
-                    **{id_field: subtype_id_val},
-                )
-                self.module_id = subtype_id_val
-                break
         error.value_check(
             "<COR80418932E>",
-            self.module_id is not None,
-            "Please specify one of {} in model config.",
-            [f"{subtype.lower()}_id" for subtype in _MODULE_TYPES],
+            hasattr(self, "module_id"),
+            "Invalid model_config, module_id must be specified."
         )
 
     @classmethod
