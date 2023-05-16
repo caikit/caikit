@@ -1,7 +1,7 @@
-block_class: sample_lib.blocks.other_task.other_implementation.OtherBlock
+block_class: sample_lib.modules.other_task.other_implementation.OtherModule
 block_id: 33221100-0405-0607-0809-0a0b02dd0e0f
 created: "2023-03-28 16:34:58.720898"
-name: OtherBlock
+name: OtherModule
 sample_lib_version: 1.2.3
 saved: "2023-03-28 16:34:58.720929"
 tracking_id: 4ee84742-79f3-40da-8465-26c48c77968c

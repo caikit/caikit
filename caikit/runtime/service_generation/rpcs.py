@@ -168,9 +168,9 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         """Helper function to convert from the name of a module to the name of the
         request RPC message
 
-        Example: self.clz._module__ = sample_lib.blocks.sample_task.sample_implementation
+        Example: self.clz._module__ = sample_lib.modules.sample_task.sample_implementation
 
-        return: BlocksSampleTaskSampleBlockTrainRequest
+        return: BlocksSampleTaskSampleModuleTrainRequest
 
         """
         module_split = self.clz.__module__.split(".")

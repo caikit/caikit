@@ -50,7 +50,7 @@ DUMMY_MODEL = os.path.realpath(
 @caikit.core.block(
     "7464f684-58e3-4e99-9a58-1c5bc085472b", "slow sample block", "0.0.1", SampleTask
 )
-class SlowSampleBlock(caikit.core.blocks.base.BlockBase):
+class SlowSampleModule(caikit.core.ModuleBase):
     """This block is just a wrapper around another module that will inject a
     sleep
     """
@@ -78,7 +78,7 @@ class SlowSampleBlock(caikit.core.blocks.base.BlockBase):
     "0.0.1",
     SampleTask,
 )
-class StubBlock(caikit.core.blocks.base.BlockBase):
+class StubBlock(caikit.core.ModuleBase):
     # NOTE: The initial implementation had "num_bobs" which expected an int.
     #   This led to the discovery of the fact that lists of ints are not
     #   considered "expandable iterables" in the default run_batch impl.
@@ -179,7 +179,7 @@ def test_single_request():
 
 def test_multi_request_batch():
     """Make sure that batches of size > 1 can be run"""
-    model = SlowSampleBlock(caikit.core.load(DUMMY_MODEL))
+    model = SlowSampleModule(caikit.core.load(DUMMY_MODEL))
     batch_size = 10
     wrapped_model = Batcher("test-model", model, batch_size)
     threads = {str(i): ModelRunThread(wrapped_model, i) for i in range(2 * batch_size)}
@@ -202,7 +202,7 @@ def test_multi_request_batch():
 def test_stop_in_flight_batch():
     """Make sure that setting the stop event will preempt running a batch"""
     model_delay = 0.001
-    model = SlowSampleBlock(caikit.core.load(DUMMY_MODEL), model_delay)
+    model = SlowSampleModule(caikit.core.load(DUMMY_MODEL), model_delay)
     batch_size = 10
     wrapped_model = Batcher("test-model", model, batch_size, model_delay * 2)
     threads = {str(i): ModelRunThread(wrapped_model, i) for i in range(2 * batch_size)}
@@ -306,7 +306,7 @@ def test_invalid_req_after_valid_req():
     processed and the invalid request is rejected.
     """
 
-    model = SlowSampleBlock(StubBlock())
+    model = SlowSampleModule(StubBlock())
     batch_size = 5
     wrapped_model = Batcher("stub-model", model, batch_size)
     threads = {
@@ -340,7 +340,7 @@ def test_valid_req_after_invalid_req():
     defaults, the previous invalid requests are rejected.
     """
 
-    model = SlowSampleBlock(StubBlock())
+    model = SlowSampleModule(StubBlock())
     batch_size = 5
     wrapped_model = Batcher("stub-model", model, batch_size)
     threads = {
@@ -372,7 +372,7 @@ def test_batch_collect_delay():
     """Make sure that with the batch delay, multiple sequential calls end up in
     the same batchg even when not presented concurrently
     """
-    model = SlowSampleBlock(StubBlock())
+    model = SlowSampleModule(StubBlock())
     batch_size = 5
     batch_collect_delay = 0.01
     wrapped_model = Batcher("stub-model", model, batch_size, batch_collect_delay)

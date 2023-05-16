@@ -19,7 +19,7 @@ import os
 from transformers import pipeline
 
 # Local
-from caikit.core import BlockBase, ModuleLoader, ModuleSaver, block
+from caikit.core import ModuleBase, ModuleLoader, ModuleSaver, module
 from text_sentiment.data_model.classification import (
     ClassificationPrediction,
     ClassInfo,
@@ -27,8 +27,8 @@ from text_sentiment.data_model.classification import (
 )
 
 
-@block("8f72161-c0e4-49b0-8fd0-7587b3017a35", "HuggingFaceSentimentBlock", "0.0.1")
-class HuggingFaceSentimentBlock(BlockBase):
+@module("8f72161-c0e4-49b0-8fd0-7587b3017a35", "HuggingFaceSentimentModule", "0.0.1")
+class HuggingFaceSentimentModule(ModuleBase):
     """Class to wrap sentiment analysis pipeline from HuggingFace"""
 
     def __init__(self, model_path) -> None:

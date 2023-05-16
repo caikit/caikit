@@ -27,7 +27,7 @@ from caikit.core.module_backends import LocalBackend
 from caikit.core.module_backends.base import SharedLoadBackendBase
 
 # Unit Test Infrastructure
-from sample_lib.blocks.sample_task import SampleBlock
+from sample_lib.modules.sample_task import SampleModule
 from sample_lib.data_model import SampleTask
 from tests.base import TestCaseBase
 from tests.conftest import temp_config
@@ -207,10 +207,10 @@ def setup_saved_model(mock_backend_class):
 
     backend_types.register_backend_type(LocalBackend)
 
-    @caikit.core.blocks.block(
+    @caikit.core.modules.module(
         id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1", task=SampleTask
     )
-    class DummyFoo(caikit.core.blocks.base.BlockBase):
+    class DummyFoo(caikit.core.ModuleBase):
         @classmethod
         def load(cls, *args, **kwargs):
             return cls()
@@ -218,8 +218,8 @@ def setup_saved_model(mock_backend_class):
     # Register backend type
     backend_types.register_backend_type(mock_backend_class)
 
-    @caikit.core.blocks.block(base_module=DummyFoo, backend_type=backend_types.MOCK)
-    class DummyBar(caikit.core.blocks.base.BlockBase):
+    @caikit.core.modules.module(base_module=DummyFoo, backend_type=backend_types.MOCK)
+    class DummyBar(caikit.core.ModuleBase):
         SUPPORTED_LOAD_BACKENDS = [backend_types.MOCK, backend_types.LOCAL]
 
         @classmethod
@@ -229,10 +229,10 @@ def setup_saved_model(mock_backend_class):
     return DummyFoo, DummyBar
 
 
-@caikit.core.blocks.block(
+@caikit.core.modules.module(
     id="non-distributed", name="non distributed mod", version="0.0.1", task=SampleTask
 )
-class NonDistributedBlock(caikit.core.blocks.base.BlockBase):
+class NonDistributedBlock(caikit.core.ModuleBase):
     @classmethod
     def load(cls, *args, **kwargs):
         return cls()
@@ -480,8 +480,8 @@ def test_non_local_supported_backend(reset_globals):
 
     backend_types.register_backend_type(MockBackend2)
 
-    @caikit.core.blocks.block(base_module=DummyFoo, backend_type=backend_types.MOCK2)
-    class DummyBaz(caikit.core.blocks.base.BlockBase):
+    @caikit.core.modules.module(base_module=DummyFoo, backend_type=backend_types.MOCK2)
+    class DummyBaz(caikit.core.ModuleBase):
         SUPPORTED_LOAD_BACKENDS = [backend_types.MOCK, backend_types.MOCK2]
 
         @classmethod
@@ -508,7 +508,7 @@ def test_load_must_return_model():
     """
 
     @caikit.core.block("00110203-baad-beef-0809-0a0b0c0d0e0f", "FunkyBlock", "0.0.1")
-    class _FunkyModel(SampleBlock):
+    class _FunkyModel(SampleModule):
         @classmethod
         def load(cls, model_path):
             return (super().load(model_path), "something else")
@@ -592,7 +592,7 @@ def test_load_does_not_read_config_yml_if_loader_does_not_require_it(
 
         def load(self, model_path, *args, **kwargs):
             """This load function doesn't read from model_path, so it definitely does not read the config.yml file"""
-            return SampleBlock()
+            return SampleModule()
 
     backend_types.register_backend_type(NoYamlLoader)
 
@@ -607,4 +607,4 @@ def test_load_does_not_read_config_yml_if_loader_does_not_require_it(
     ):
         configure()
         model = caikit.core.load(tmpdir)
-        assert isinstance(model, SampleBlock)
+        assert isinstance(model, SampleModule)

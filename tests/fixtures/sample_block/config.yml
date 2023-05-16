@@ -1,7 +1,7 @@
-block_class: sample_lib.blocks.sample_task.sample_implementation.SampleBlock
+block_class: sample_lib.modules.sample_task.sample_implementation.SampleModule
 block_id: 00110203-0405-0607-0809-0a0b02dd0e0f
 created: "2022-11-21 21:51:18.761485"
-name: SampleBlock
+name: SampleModule
 saved: "2022-11-21 21:51:18.761501"
 tracking_id: 0fc3c53c-37f3-44bf-b90e-5135871ba1bf
 train:

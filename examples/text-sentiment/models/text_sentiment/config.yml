@@ -13,5 +13,5 @@
 # limitations under the License.
 
 block_id: 8f72161-c0e4-49b0-8fd0-7587b3017a35
-name: HuggingFaceSentimentBlock
+name: HuggingFaceSentimentModule
 version: 0.0.1

@@ -12,9 +12,9 @@ import caikit.core
 
 
 @caikit.core.block(
-    "33221100-0405-0607-0809-0a0b02dd0e0f", "OtherBlock", "0.0.1", OtherTask
+    "33221100-0405-0607-0809-0a0b02dd0e0f", "OtherModule", "0.0.1", OtherTask
 )
-class OtherBlock(caikit.core.BlockBase):
+class OtherModule(caikit.core.BlockBase):
     def __init__(self, batch_size=64, learning_rate=0.0015):
         super().__init__()
         self.batch_size = batch_size
@@ -52,7 +52,7 @@ class OtherBlock(caikit.core.BlockBase):
         training_data: DataStream[int],
         sample_input: Union[SampleInputType, str],
         batch_size: int = 64,
-    ) -> "OtherBlock":
+    ) -> "OtherModule":
         """Sample training method that produces a trained model"""
         # Barf if we were incorrectly passed data not in datastream format
         assert type(training_data) == DataStream

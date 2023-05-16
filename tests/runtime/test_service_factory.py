@@ -208,7 +208,7 @@ def test_get_and_filter_modules_respects_excluded_task_type():
 
 
 def test_get_and_filter_modules_respects_excluded_modules():
-    assert "InnerBlock" in str(MODULE_LIST)
+    assert "InnerModule" in str(MODULE_LIST)
     with temp_config(
         {
             "runtime": {
@@ -218,15 +218,15 @@ def test_get_and_filter_modules_respects_excluded_modules():
                     }
                 }
             }
-        }  # excluding InnerBlock
+        }  # excluding InnerModule
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert "InnerBlock" not in str(clean_modules)
+        assert "InnerModule" not in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type():
-    assert "InnerBlock" in str(MODULE_LIST)
+    assert "InnerModule" in str(MODULE_LIST)
     with temp_config(
         {
             "runtime": {
@@ -237,12 +237,12 @@ def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type
                     "task_types": {"excluded": ["other_task"]},
                 }
             }
-        }  # excluding InnerBlock and OtherBlock
+        }  # excluding InnerModule and OtherModule
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert "InnerBlock" not in str(clean_modules)
-        assert "OtherBlock" not in str(clean_modules)
+        assert "InnerModule" not in str(clean_modules)
+        assert "OtherModule" not in str(clean_modules)
         assert "other_task" not in str(clean_modules)
 
 
@@ -257,13 +257,13 @@ def test_get_and_filter_modules_respects_included_modules_and_included_task_type
                     "task_types": {"included": ["other_task"]},
                 }
             }
-        }  # only want InnerBlock and OtherBlock
+        }  # only want InnerModule and OtherModule
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
         assert len(clean_modules) == 2
-        assert "InnerBlock" in str(clean_modules)
-        assert "OtherBlock" in str(clean_modules)
+        assert "InnerModule" in str(clean_modules)
+        assert "OtherModule" in str(clean_modules)
         assert "ListBlock" not in str(clean_modules)
 
 
@@ -280,14 +280,14 @@ def test_get_and_filter_modules_respects_included_modules():
                     },
                 }
             }
-        }  # only want InnerBlock and ListBlock
+        }  # only want InnerModule and ListBlock
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
         assert len(clean_modules) == 2
-        assert "InnerBlock" in str(clean_modules)
+        assert "InnerModule" in str(clean_modules)
         assert "ListBlock" in str(clean_modules)
-        assert "OtherBlock" not in str(clean_modules)
+        assert "OtherModule" not in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_included_task_types():
@@ -302,8 +302,8 @@ def test_get_and_filter_modules_respects_included_task_types():
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert "InnerBlock" in str(clean_modules)
-        assert "OtherBlock" not in str(clean_modules)
+        assert "InnerModule" in str(clean_modules)
+        assert "OtherModule" not in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_included_task_types_and_excluded_modules():
@@ -321,5 +321,5 @@ def test_get_and_filter_modules_respects_included_task_types_and_excluded_module
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert "InnerBlock" in str(clean_modules)
+        assert "InnerModule" in str(clean_modules)
         assert "ListBlock" not in str(clean_modules)

@@ -2,8 +2,8 @@
 import os
 
 # Local
-from . import blocks, data_model, workflows
-from .blocks import InnerBlock, OtherBlock, SampleBlock, SamplePrimitiveBlock
+from . import modules, data_model, workflows
+from .modules import InnerModule, OtherModule, SampleModule, SamplePrimitiveModule
 from .workflows import SampleWorkflow
 from caikit.config import configure
 

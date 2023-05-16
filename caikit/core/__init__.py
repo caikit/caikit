@@ -30,8 +30,7 @@ import warnings as _warnings
 _warnings.filterwarnings("ignore")
 
 # Local
-from . import blocks, data_model, module, module_config, resources, toolkit, workflows
-from .blocks.base import BlockBase, block
+from . import data_model, module, module_config, resources, toolkit, workflows
 from .data_model import DataObjectBase, dataobject
 from .model_manager import *
 from .module import *

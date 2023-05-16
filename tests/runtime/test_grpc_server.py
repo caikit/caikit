@@ -139,7 +139,7 @@ def test_model_train(runtime_grpc_server):
 
     assert (
         result.BLOCK_CLASS
-        == "sample_lib.blocks.sample_task.sample_implementation.SampleBlock"
+        == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
     )
     # Fields with defaults have expected values
     assert result.batch_size == 64
@@ -184,7 +184,7 @@ def test_train_fake_block_ok_response_and_can_predict_with_trained_model(
     sample_train_service,
     sample_inference_service,
 ):
-    """Test RPC CaikitRuntime.BlocksSampleTaskSampleBlockTrain successful response"""
+    """Test RPC CaikitRuntime.BlocksSampleTaskSampleModuleTrain successful response"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(
@@ -193,11 +193,11 @@ def test_train_fake_block_ok_response_and_can_predict_with_trained_model(
     ).to_proto()
     model_name = random_test_id()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
             model_name=model_name, training_data=training_data
         )
     )
-    actual_response = train_stub.BlocksSampleTaskSampleBlockTrain(train_request)
+    actual_response = train_stub.BlocksSampleTaskSampleModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
     # give the trained model time to load
@@ -256,20 +256,20 @@ def test_train_fake_block_does_not_change_another_instance_model_of_block(
     sample_train_service,
     sample_inference_service,
 ):
-    """This test: original "stock" OtherBlock model has batch size 42 (see fixtures/models/bar.yml),
-    we then train a custom OtherBlock model with batch size 100,
+    """This test: original "stock" OtherModule model has batch size 42 (see fixtures/models/bar.yml),
+    we then train a custom OtherModule model with batch size 100,
     then we make a predict to each, they should have the correct batch size"""
 
-    # Train an OtherBlock with batch size 100
+    # Train an OtherModule with batch size 100
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
     training_data = stream_type(
         file=stream_type.File(filename=sample_int_file)
     ).to_proto()
 
-    train_request = sample_train_service.messages.BlocksOtherTaskOtherBlockTrainRequest(
+    train_request = sample_train_service.messages.BlocksOtherTaskOtherModuleTrainRequest(
         model_name="Bar Training", batch_size=100, training_data=training_data
     )
-    actual_response = train_stub.BlocksOtherTaskOtherBlockTrain(train_request)
+    actual_response = train_stub.BlocksOtherTaskOtherModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, "Bar Training")
 
     # give the trained model time to load
@@ -288,7 +288,7 @@ def test_train_fake_block_does_not_change_another_instance_model_of_block(
     ).to_proto()
     assert trained_inference_response == expected_trained_inference_response
 
-    # make sure the previously loaded OtherBlock model still has batch size 42
+    # make sure the previously loaded OtherModule model still has batch size 42
     original_inference_response = inference_stub.OtherTaskPredict(
         predict_request, metadata=[("mm-model-id", other_loaded_model_id)]
     )
@@ -302,7 +302,7 @@ def test_train_fake_block_does_not_change_another_instance_model_of_block(
 def test_train_fake_block_ok_response_with_datastream_jsondata(
     train_stub, inference_stub, sample_train_service, sample_inference_service
 ):
-    """Test RPC CaikitRuntime.BlocksSampleTaskSampleBlockTrainRequest successful response with training data json type"""
+    """Test RPC CaikitRuntime.BlocksSampleTaskSampleModuleTrainRequest successful response with training data json type"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(
@@ -311,14 +311,14 @@ def test_train_fake_block_ok_response_with_datastream_jsondata(
     ).to_proto()
     model_name = random_test_id()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
             model_name=model_name,
             batch_size=42,
             training_data=training_data,
         )
     )
 
-    actual_response = train_stub.BlocksSampleTaskSampleBlockTrain(train_request)
+    actual_response = train_stub.BlocksSampleTaskSampleModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
     # give the trained model time to load
@@ -342,20 +342,20 @@ def test_train_fake_block_ok_response_with_datastream_csv_file(
     sample_inference_service,
     sample_csv_file,
 ):
-    """Test RPC CaikitRuntime.BlocksSampleTaskSampleBlockTrainRequest successful response with training data file type"""
+    """Test RPC CaikitRuntime.BlocksSampleTaskSampleModuleTrainRequest successful response with training data file type"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         file=stream_type.File(filename=sample_csv_file)
     ).to_proto()
     model_name = random_test_id()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
             model_name=model_name,
             training_data=training_data,
         )
     )
 
-    actual_response = train_stub.BlocksSampleTaskSampleBlockTrain(train_request)
+    actual_response = train_stub.BlocksSampleTaskSampleModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
     # give the trained model time to load
@@ -728,7 +728,7 @@ def test_metrics_stored_after_server_interrupt(
             assert data[0]["batch_size"] == 1
             assert len(data[0]["model_type_counters"]) == 1
             assert data[0]["model_type_counters"] == {
-                "<class 'sample_lib.blocks.sample_task.sample_implementation.SampleBlock'>": 1
+                "<class 'sample_lib.modules.sample_task.sample_implementation.SampleModule'>": 1
             }
 
 

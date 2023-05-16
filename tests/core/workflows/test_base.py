@@ -21,7 +21,7 @@ from caikit.core.workflows import workflow
 from caikit.core.workflows.base import WorkflowLoader, WorkflowSaver
 
 # pylint: disable=import-error
-from sample_lib.blocks.sample_task import SampleBlock
+from sample_lib.modules.sample_task import SampleModule
 from sample_lib.data_model.sample import SampleInputType, SampleTask
 from sample_lib.workflows.sample_task import SampleWorkflow
 
@@ -183,7 +183,7 @@ class TestWorkflowLoader(TestCaseBase):
     def test_module_load(self):
         self.assertIsInstance(
             self.loader.load_module("dummy_model"),
-            SampleBlock,
+            SampleModule,
         )
 
     def test_module_load_list_invalid(self):
@@ -199,7 +199,7 @@ class TestWorkflowLoader(TestCaseBase):
         self.assertIsInstance(loaded_modules, list)
 
         for module in loaded_modules:
-            self.assertIsInstance(module, SampleBlock)
+            self.assertIsInstance(module, SampleModule)
 
 
 class TestWorkflowSaver(TestCaseBase):

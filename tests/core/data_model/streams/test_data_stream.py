@@ -18,7 +18,7 @@ import os
 # Local
 from caikit.core import data_model as core_dm
 from caikit.core.augmentors import AugmentorBase
-from sample_lib.blocks.sample_task.sample_implementation import SampleBlock
+from sample_lib.modules.sample_task.sample_implementation import SampleModule
 from sample_lib.data_model.sample import SampleInputType, SampleOutputType
 
 # Unit Test Infrastructure

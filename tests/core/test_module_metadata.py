@@ -29,7 +29,7 @@ import pytest
 from caikit.core import toolkit
 
 # pylint: disable=import-error
-from sample_lib.blocks.sample_task import SampleBlock
+from sample_lib.modules.sample_task import SampleModule
 
 # pylint: disable=import-error
 from sample_lib.data_model import SampleTask
@@ -100,7 +100,7 @@ def test_loaded_modules_have_metadata(sample_model_path):
     """Make sure a model has metadata after being loaded"""
     expected_metadata = _load_model_metadata(sample_model_path)
     model_loaded_with_core = caikit.core.load(sample_model_path)
-    model_directly_loaded = SampleBlock.load(sample_model_path)
+    model_directly_loaded = SampleModule.load(sample_model_path)
 
     # TODO: figure out "module_id" and "model_path" as well...
 
@@ -121,7 +121,7 @@ def test_block_has_saved_field():
     the "saved" field should track each timestamp when you save, and should be different
     """
     with tempfile.TemporaryDirectory() as tempdir:
-        model1 = SampleBlock()
+        model1 = SampleModule()
         path1 = os.path.join(tempdir, "test1")
         model1.save(path1)
         resaved_metadata1 = _load_model_metadata(path1)
@@ -138,7 +138,7 @@ def test_block_has_saved_field():
 
 def test_block_has_tracking_id_field():
     with tempfile.TemporaryDirectory() as tempdir:
-        model1 = SampleBlock()
+        model1 = SampleModule()
         path1 = os.path.join(tempdir, "test1")
         model1.save(path1)
         resaved_metadata1 = _load_model_metadata(path1)
@@ -171,7 +171,7 @@ def test_block_metadata_is_saved_into_a_workflow(sample_model_path):
         resaved_metadata = _load_model_metadata(os.path.join(tempdir, "dummy_model"))
 
     # assert resaved_metadata == initial_metadata
-    fields_to_not_check = {"saved", "SampleBlock_version", "train"}
+    fields_to_not_check = {"saved", "SampleModule_version", "train"}
     _check_dicts_equal(resaved_metadata, initial_metadata, fields_to_not_check)
 
 
@@ -181,7 +181,7 @@ def test_load_can_be_called_directly_with_non_standard_kwargs(sample_model_path)
     # note that
     # - no positional arguments given
     # - path is `model_path` not `module_path`
-    model = SampleBlock.load(foo="bar", test_kw="arg", model_path=sample_model_path)
+    model = SampleModule.load(foo="bar", test_kw="arg", model_path=sample_model_path)
 
     assert len(model.metadata) > 0
     _check_dicts_equal(initial_metadata, model.metadata, {"module_id", "model_path"})
@@ -190,7 +190,7 @@ def test_load_can_be_called_directly_with_non_standard_kwargs(sample_model_path)
     @caikit.core.block(
         "00110203-0809-beef-baad-0a0b0c0d0e0f", "FunkyBlock", "0.0.1", SampleTask
     )
-    class _FunkyModel(SampleBlock):
+    class _FunkyModel(SampleModule):
         @classmethod
         def load(cls, some_really_odd_param_name):
             return super().load(some_really_odd_param_name)
@@ -204,14 +204,14 @@ def test_load_can_be_called_directly_with_non_standard_kwargs(sample_model_path)
 def test_parent_class_loads_work(sample_model_path):
     """This test ensures that our metadata injector works on blocks that inherit from other
     classes"""
-    model = SampleBlock.load(sample_model_path)
+    model = SampleModule.load(sample_model_path)
 
-    assert isinstance(model, SampleBlock)
+    assert isinstance(model, SampleModule)
 
 
 def test_workflows_save_correct_module_paths():
     with tempfile.TemporaryDirectory() as tempdir:
-        SampleWorkflow(SampleBlock()).save(tempdir)
+        SampleWorkflow(SampleModule()).save(tempdir)
         workflow = caikit.core.load(tempdir)
 
     # Should only be the path to the one block

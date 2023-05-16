@@ -114,8 +114,8 @@ class GlobalTrainServicer:
 
         try:
             with alog.ContextLog(log.debug, outer_scope_name):
-                # BlocksSampleTaskSampleBlockTrainRequest
-                # getattr(importlib.import_module("sample_lib.blocks.sample_task"), "SampleBlock")
+                # BlocksSampleTaskSampleModuleTrainRequest
+                # getattr(importlib.import_module("sample_lib.modules.sample_task"), "SampleModule")
                 # TODO: fixme - temporary workaround for now
                 desc_name = desc_name.replace("TrainRequest", "")
                 split = re.split("(?<=.)(?=[A-Z])", desc_name)

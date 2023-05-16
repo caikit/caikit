@@ -22,7 +22,7 @@ import pytest
 # Local
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from sample_lib.blocks.sample_task.sample_implementation import SampleBlock
+from sample_lib.modules.sample_task.sample_implementation import SampleModule
 from sample_lib.data_model.sample import (
     OtherOutputType,
     SampleInputType,
@@ -88,7 +88,7 @@ def test_global_train_sample_task(
     ).to_proto()
     model_name = random_test_id()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
             model_name=model_name,
             batch_size=42,
             training_data=training_data,
@@ -106,7 +106,7 @@ def test_global_train_sample_task(
     assert result.batch_size == 42
     assert (
         result.BLOCK_CLASS
-        == "sample_lib.blocks.sample_task.sample_implementation.SampleBlock"
+        == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
     )
 
     # give the trained model time to load
@@ -140,7 +140,7 @@ def test_global_train_other_task(
     batch_size = 42
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
     training_data = stream_type(jsondata=stream_type.JsonData(data=[1])).to_proto()
-    train_request = sample_train_service.messages.BlocksOtherTaskOtherBlockTrainRequest(
+    train_request = sample_train_service.messages.BlocksOtherTaskOtherModuleTrainRequest(
         model_name="Other block Training",
         training_data=training_data,
         sample_input=SampleInputType(name="Gabe").to_proto(),
@@ -158,7 +158,7 @@ def test_global_train_other_task(
     assert result.batch_size == batch_size
     assert (
         result.BLOCK_CLASS
-        == "sample_lib.blocks.other_task.other_implementation.OtherBlock"
+        == "sample_lib.modules.other_task.other_implementation.OtherModule"
     )
 
     # give the trained model time to load
@@ -241,7 +241,7 @@ def test_run_train_job_works_with_wait(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
             model_name=random_test_id(),
             batch_size=42,
             training_data=training_data,
@@ -251,7 +251,7 @@ def test_run_train_job_works_with_wait(
     with TemporaryDirectory() as tmp_dir:
         training_response = servicer.run_training_job(
             train_request,
-            SampleBlock,
+            SampleModule,
             training_id="dummy-training-id",
             training_output_dir=tmp_dir,
             wait=True,
@@ -280,7 +280,7 @@ def test_run_train_job_works_with_no_autoload(sample_train_service):
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
             model_name=str(uuid.uuid4()),
             batch_size=42,
             training_data=training_data,
@@ -293,7 +293,7 @@ def test_run_train_job_works_with_no_autoload(sample_train_service):
     with TemporaryDirectory() as tmp_dir:
         training_response = servicer.run_training_job(
             train_request,
-            SampleBlock,
+            SampleModule,
             training_id="dummy-training-id",
             training_output_dir=tmp_dir,
             wait=True,
@@ -309,7 +309,7 @@ def test_run_train_job_works_with_autoload(sample_train_service):
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
             model_name=str(uuid.uuid4()),
             batch_size=42,
             training_data=training_data,
@@ -322,7 +322,7 @@ def test_run_train_job_works_with_autoload(sample_train_service):
     with TemporaryDirectory() as tmp_dir:
         training_response = servicer.run_training_job(
             train_request,
-            SampleBlock,
+            SampleModule,
             training_id="dummy-training-id-2",
             training_output_dir=tmp_dir,
             wait=True,
@@ -367,7 +367,7 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_blo
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
             model_name=random_test_id(),
             batch_size=999,
             training_data=training_data,
@@ -392,7 +392,7 @@ def test_global_train_returns_exit_code_with_oom(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
             model_name=random_test_id(),
             batch_size=42,
             training_data=training_data,

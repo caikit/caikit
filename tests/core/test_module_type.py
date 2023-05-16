@@ -12,7 +12,7 @@ import pytest
 # Local
 from caikit.core import module
 from caikit.core.module_type import module_type
-from sample_lib.blocks.sample_task import SampleBlock
+from sample_lib.modules.sample_task import SampleModule
 from sample_lib.data_model.sample import SampleTask
 import caikit.core
 
@@ -96,7 +96,7 @@ def test_module_no_reused_ids(TestModBase):
     with pytest.raises(RuntimeError):
 
         @TestModBase.testmod(
-            id=SampleBlock.MODULE_ID,
+            id=SampleModule.MODULE_ID,
             name="Sample tesmod",
             version="1.2.3",
             task=SampleTask,
@@ -109,7 +109,7 @@ def test_module_no_reused_ids(TestModBase):
 def test_intermediate_metabase():
     """Make sure that an abc.ABC can be declared that derives from ModuleBase"""
 
-    class Intermediate(caikit.core.blocks.base.BlockBase, abc.ABC):
+    class Intermediate(caikit.core.ModuleBase, abc.ABC):
         """Sample intermediate base class"""
 
         @abc.abstractmethod

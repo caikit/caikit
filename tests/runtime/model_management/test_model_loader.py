@@ -29,7 +29,7 @@ from caikit.core.module_backends import backend_types
 from caikit.runtime.model_management.batcher import Batcher
 from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from sample_lib.blocks.sample_task import SampleBlock
+from sample_lib.modules.sample_task import SampleModule
 from sample_lib.data_model import SampleInputType, SampleOutputType
 from tests.conftest import random_test_id, temp_config
 from tests.core.helpers import MockBackend
@@ -245,11 +245,11 @@ def test_load_distributed_impl():
             ):
 
                 @block(
-                    base_module=SampleBlock,
+                    base_module=SampleModule,
                     backend_type=backend_types.MOCK,
                     backend_config_override={"bar1": 1},
                 )
-                class DistributedGadget(caikit.core.blocks.base.BlockBase):
+                class DistributedGadget(caikit.core.ModuleBase):
                     """An alternate implementation of a Gadget"""
 
                     SUPPORTED_LOAD_BACKENDS = [
@@ -272,7 +272,7 @@ def test_load_distributed_impl():
 
                 with tempfile.TemporaryDirectory() as model_path:
                     # Create and save the model directly with the local impl
-                    SampleBlock().save(model_path)
+                    SampleModule().save(model_path)
 
                     model_type = "gadget"
 

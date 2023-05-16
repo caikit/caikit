@@ -35,5 +35,5 @@ def test_data_stream_helpers():
 
 
 def test_model_type_helpers():
-    assert is_model_type(sample_lib.blocks.sample_task.SampleBlock)
-    assert is_model_type(Union[str, sample_lib.blocks.sample_task.SampleBlock])
+    assert is_model_type(sample_lib.modules.sample_task.SampleModule)
+    assert is_model_type(Union[str, sample_lib.modules.sample_task.SampleModule])

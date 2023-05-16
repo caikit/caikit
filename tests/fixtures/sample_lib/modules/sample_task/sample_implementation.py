@@ -17,9 +17,9 @@ import caikit.core
 
 
 @caikit.core.block(
-    "00110203-0405-0607-0809-0a0b02dd0e0f", "SampleBlock", "0.0.1", SampleTask
+    "00110203-0405-0607-0809-0a0b02dd0e0f", "SampleModule", "0.0.1", SampleTask
 )
-class SampleBlock(caikit.core.BlockBase):
+class SampleModule(caikit.core.BlockBase):
     POISON_PILL_NAME = "Bob Marley"
     POISON_PILL_BATCH_SIZE = 999
 
@@ -71,7 +71,7 @@ class SampleBlock(caikit.core.BlockBase):
         training_data: DataStream[SampleTrainingType],
         batch_size: int = 64,
         oom_exit: bool = False,
-    ) -> "SampleBlock":
+    ) -> "SampleModule":
         """Sample training method that produces a trained model"""
 
         if oom_exit:

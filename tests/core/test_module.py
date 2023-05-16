@@ -17,7 +17,6 @@ import abc
 import io
 import os
 import tempfile
-import uuid
 
 # Third Party
 import pytest
@@ -66,17 +65,17 @@ def configure_alternate_backend_impl():
     """Function to register a new backend type and register a module implementation
     of existing caikit.core module"""
 
-    @caikit.core.blocks.block(
+    @caikit.core.modules.module(
         id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1", task=SampleTask
     )
-    class DummyFoo(caikit.core.blocks.base.BlockBase):
+    class DummyFoo(caikit.core.ModuleBase):
         pass
 
     # Register backend type
     backend_types.register_backend_type(MockBackend)
 
-    @caikit.core.blocks.block(base_module=DummyFoo, backend_type=backend_types.MOCK)
-    class DummyBar(caikit.core.blocks.base.BlockBase):
+    @caikit.core.modules.module(base_module=DummyFoo, backend_type=backend_types.MOCK)
+    class DummyBar(caikit.core.ModuleBase):
         def test_fetching_backend(self):
             return [
                 backend
@@ -303,8 +302,8 @@ def test_duplicate_registration_raises(reset_globals):
     DummyFoo, _ = configure_alternate_backend_impl()
     with pytest.raises(AssertionError):
 
-        @caikit.core.blocks.block(base_module=DummyFoo, backend_type=backend_types.MOCK)
-        class DummyBat(caikit.core.blocks.base.BlockBase):
+        @caikit.core.modules.module(base_module=DummyFoo, backend_type=backend_types.MOCK)
+        class DummyBat(caikit.core.ModuleBase):
             pass
 
 
@@ -314,7 +313,7 @@ def test_backend_impl_inheritance_error(reset_globals):
     DummyFoo, DummyBar = configure_alternate_backend_impl()
     with pytest.raises(TypeError):
 
-        @caikit.core.blocks.block(backend_type=backend_types.MOCK)
+        @caikit.core.modules.module(backend_type=backend_types.MOCK)
         class DummyBat(DummyFoo):
             pass
 
@@ -366,10 +365,10 @@ def test_override_load_supported_backend(reset_globals):
     """Test if the class can successfully define its own backends
     that it supports load from"""
 
-    @caikit.core.blocks.block(
+    @caikit.core.modules.module(
         id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1", task=SampleTask
     )
-    class DummyFoo(caikit.core.blocks.base.BlockBase):
+    class DummyFoo(caikit.core.ModuleBase):
         pass
 
     class BazBackend(BackendBase):
@@ -383,8 +382,8 @@ def test_override_load_supported_backend(reset_globals):
 
     supported_backends = [backend_types.BAZ, backend_types.FOO]
 
-    @caikit.core.blocks.block(base_module=DummyFoo, backend_type=backend_types.BAZ)
-    class DummyBaz(caikit.core.blocks.base.BlockBase):
+    @caikit.core.modules.module(base_module=DummyFoo, backend_type=backend_types.BAZ)
+    class DummyBaz(caikit.core.ModuleBase):
         SUPPORTED_LOAD_BACKENDS = supported_backends
 
     assert hasattr(DummyBaz, SUPPORTED_LOAD_BACKENDS_VAR_NAME)
@@ -404,20 +403,20 @@ def test_base_module_in_decorator(reset_globals):
     backend_types.register_backend_type(BazBackend)
     backend_types.register_backend_type(FooBackend)
 
-    @caikit.core.blocks.block(
+    @caikit.core.modules.module(
         id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1", task=SampleTask
     )
-    class DummyLocal(caikit.core.blocks.base.BlockBase):
+    class DummyLocal(caikit.core.ModuleBase):
         pass
 
-    @caikit.core.blocks.block(backend_type=backend_types.BAZ, base_module=DummyLocal)
-    class DummyBaz(caikit.core.blocks.base.BlockBase):
+    @caikit.core.modules.module(backend_type=backend_types.BAZ, base_module=DummyLocal)
+    class DummyBaz(caikit.core.ModuleBase):
         pass
 
-    @caikit.core.blocks.block(
+    @caikit.core.modules.module(
         backend_type=backend_types.FOO, base_module=DummyLocal.MODULE_ID
     )
-    class DummyFoo(caikit.core.blocks.base.BlockBase):
+    class DummyFoo(caikit.core.ModuleBase):
         pass
 
     assert DummyLocal in list(caikit.core.MODULE_REGISTRY.values())
