@@ -44,7 +44,7 @@ from caikit.runtime.utils.servicer_util import (
 )
 from caikit.runtime.work_management.train_executors import (
     LocalTrainSaveExecutor,
-    SubProcessTrainSaveExecutor
+    SubProcessTrainSaveExecutor,
 )
 import caikit.core
 
@@ -318,4 +318,3 @@ class GlobalTrainServicer:
             model_type="standalone",
         )
         return self._model_manager.retrieve_model(model_name)
-

@@ -57,11 +57,7 @@ class TrainSaveExecutorBase(abc.ABC):
 
     @staticmethod
     def train_and_save(
-        module_class: Type[ModuleBase],
-        model_path: str,
-        event,
-        *args,
-        **kwargs
+        module_class: Type[ModuleBase], model_path: str, event, *args, **kwargs
     ):
         """Default implementation of train and save method using module_class"""
 
@@ -130,7 +126,6 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
 
                 if not hasattr(self.__event, "is_completed"):
                     self.cancel()
-
 
         # Handle errors as CaikitRuntime errors with appropriate error codes
         except CaikitRuntimeException as e:
@@ -223,12 +218,10 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
 
         self._worker.start()
 
-
         self.__event.wait()
 
         if not hasattr(self.__event, "is_completed"):
             self.cancel()
-
 
         self._worker.join()
 
@@ -259,7 +252,6 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
     def cancel(self):
         self._worker.terminate()
         self._worker.close()
-
 
         log.error("<RUN57624710E>", "Training cancelled.")
 
