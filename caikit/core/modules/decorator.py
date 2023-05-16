@@ -202,7 +202,7 @@ def module(
         # Set its own backend_type as an attribute
         setattr(cls_, "BACKEND_TYPE", backend_type)
 
-        # Verify UUID and add this block to the module and block registries
+        # Verify UUID and add this module to the module registry
         if not backend_module_impl:
             if cls_.MODULE_ID in MODULE_REGISTRY:
                 error(

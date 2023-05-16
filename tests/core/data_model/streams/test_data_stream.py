@@ -497,7 +497,7 @@ class TestDataStream(TestCaseBase):
         text_stream = self.csv_data_stream[0]
         self.validate_data_stream(text_stream, 3, str)
 
-        dummy_model = caikit.core.load(os.path.join(self.fixtures_dir, "dummy_block"))
+        dummy_model = caikit.core.load(os.path.join(self.fixtures_dir, "dummy_module"))
         # Map to data stream of SampleInputType for model
         sample_type_data_stream = text_stream.map(
             lambda text: SampleInputType(name=text)
@@ -510,7 +510,7 @@ class TestDataStream(TestCaseBase):
         text_stream = self.csv_data_stream[0]
         self.validate_data_stream(text_stream, 3, str)
 
-        dummy_model = caikit.core.load(os.path.join(self.fixtures_dir, "dummy_block"))
+        dummy_model = caikit.core.load(os.path.join(self.fixtures_dir, "dummy_module"))
         with self.assertRaises(ValueError):
             # NOTE: Even though this is too many args for .run() to handle, it's okay; this
             # will fail before it gets to .run(). In the event that .run() is called with the
@@ -519,7 +519,7 @@ class TestDataStream(TestCaseBase):
 
     def test_pipe_stream(self):
         """Verify that we can use streams to generate dummy predictions using `|` syntax."""
-        dummy_model = caikit.core.load(os.path.join(self.fixtures_dir, "dummy_block"))
+        dummy_model = caikit.core.load(os.path.join(self.fixtures_dir, "dummy_module"))
 
         dummy_stream = self.sample_type_data_stream | dummy_model
         self.validate_data_stream(dummy_stream, 7, SampleOutputType)

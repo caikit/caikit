@@ -238,7 +238,7 @@ class ModuleSaver:
             module:  caikit.core.ModuleBase
                 The CaikitCore module to save as part of this workflow
             relative_path:  str
-                The relative path inside of `model_path` where the block will be saved
+                The relative path inside of `model_path` where the module will be saved
         """
 
         if not issubclass(module.__class__, ModuleBase):

@@ -55,7 +55,7 @@ def test_task_is_set_on_module_classes():
     assert SampleModule.TASK_CLASS == SampleTask
 
 
-def test_task_can_be_inferred_from_parent_block():
+def test_task_can_be_inferred_from_parent_module():
     @caikit.core.modules.module(id="foobar", name="Stuff", version="0.0.1")
     class Stuff(SampleModule):
         pass
@@ -63,7 +63,7 @@ def test_task_can_be_inferred_from_parent_block():
     assert Stuff.TASK_CLASS == SampleModule.TASK_CLASS
 
 
-def test_task_cannot_conflict_with_parent_block():
+def test_task_cannot_conflict_with_parent_module():
     @task(
         required_parameters={"foo": SampleInputType},
         output_type=SampleOutputType,
@@ -80,7 +80,7 @@ def test_task_cannot_conflict_with_parent_block():
             pass
 
 
-def test_task_is_not_required_for_blocks():
+def test_task_is_not_required_for_modules():
     @caikit.core.modules.module(id=str(uuid.uuid4()), name="Stuff", version="0.0.1")
     class Stuff(caikit.core.ModuleBase):
         pass

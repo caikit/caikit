@@ -45,7 +45,7 @@ def base_module_instance():
 
 @pytest.fixture
 def model_path(fixtures_dir):
-    yield os.path.join(fixtures_dir, "dummy_block")
+    yield os.path.join(fixtures_dir, "dummy_module")
 
 
 @pytest.fixture

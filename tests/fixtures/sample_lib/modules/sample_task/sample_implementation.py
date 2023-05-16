@@ -16,10 +16,10 @@ from caikit.core.modules import ModuleLoader, ModuleSaver
 import caikit.core
 
 
-@caikit.core.block(
+@caikit.core.module(
     "00110203-0405-0607-0809-0a0b02dd0e0f", "SampleModule", "0.0.1", SampleTask
 )
-class SampleModule(caikit.core.BlockBase):
+class SampleModule(caikit.core.ModuleBase):
     POISON_PILL_NAME = "Bob Marley"
     POISON_PILL_BATCH_SIZE = 999
 

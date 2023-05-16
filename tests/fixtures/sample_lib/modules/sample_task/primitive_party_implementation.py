@@ -6,14 +6,14 @@ from typing import List
 
 # Local
 from ...data_model.sample import SampleOutputType, SampleTask
-from caikit.core.module import ModuleSaver
+from caikit.core.modules import ModuleSaver
 import caikit.core
 
 
-@caikit.core.block(
+@caikit.core.module(
     "00112233-0405-0607-0809-0a0b02dd0e0f", "SampleModule", "0.0.1", SampleTask
 )
-class SamplePrimitiveModule(caikit.core.BlockBase):
+class SamplePrimitiveModule(caikit.core.ModuleBase):
     def __init__(self):
         super().__init__()
 

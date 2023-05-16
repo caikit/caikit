@@ -458,7 +458,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         max_hierarchy_levels=3,
         **kwargs,
     ):
-        """Run quality evaluation for instance of block or workflow.
+        """Run quality evaluation for instance of module
 
         Args:
             dataset_path:  str
@@ -466,7 +466,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             preprocess_func:  method
                 Function used as proxy for any preliminary steps that need to be taken to run the
                 model on the input text. This helper function ultimately leads to the input to this
-                block and may involve executing other blocks.
+                module and may involve executing other blocks.
             detailed_metrics: boolean (Optional, defaults to False)
                 Only for 'keywords'. Include partial scores and scores over every text in document.
             labels:  list (Optional, defaults to None)
@@ -482,11 +482,11 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             *args, **kwargs:
                 Optional arguments which can be used by goldset/prediction set extraction.
                 keyword arguments:
-                `block_level`: str (Applicable to block_type relations)
-                    For any block that has pre processing steps in the
-                    middle of raw text and actual block input, use the input from gold standard
+                `block_level`: str
+                    For any module that has pre processing steps in the
+                    middle of raw text and actual module input, use the input from gold standard
                     labels instead of a pre-process function. Useful for measuring quality for the
-                    'block' alone (instead of the block + pre_process pipeline)
+                    'block' alone (instead of the module + pre_process pipeline)
         Returns:
             dict
                 Dictionary of results provided by the `self.evaluator.run` function, depending on
@@ -599,7 +599,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         if self._is_expandable_iterable(val):
             iter_batch_size = len(val)
             # Set the batch size if it's not set already. Raise if we have conflicting iterator
-            # sizes. This will happen if the arg of a block run call has an iterable value. In
+            # sizes. This will happen if the arg of a module run call has an iterable value. In
             # such cases, the subclass should override run_batch.
             if current_batch_size is None:
                 return iter_batch_size
@@ -703,7 +703,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             preprocess_func:  method
                 Function used as proxy for any preliminary steps that need to be taken to run the
                 model on the input text. This helper function ultimately leads to the input to this
-                block and may involve executing other blocks.
+                module and may involve executing other blocks.
             *args, **kwargs: dict
                 Optional keyword arguments for prediction set extraction.
         Returns:

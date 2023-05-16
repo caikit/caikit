@@ -44,7 +44,7 @@ class ModuleConfig(aconfig.Config):
             The following keys are reserved and *must not* be specified at the top level of a
             configuration:
 
-            module_id - reserved for storing the block or workflow id
+            module_id - reserved for storing the module id
             model_path - reserved for storing the original location where the model was loaded from
         """
         super().__init__(config_dict, override_env_vars=False)

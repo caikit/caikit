@@ -322,7 +322,7 @@ class QualityEvaluator:
                 # If find_label_func raises NotImplementedError, we can't do label-based matching.
                 # In this case we need to fall back to set operations on the raw data tuples.
                 log.info(
-                    "INFO: find_label_func not implemented for this block type - falling back "
+                    "INFO: find_label_func not implemented for this module type - falling back "
                     "to tuple match!!"
                 )
                 use_labels_for_matching = False
@@ -400,7 +400,7 @@ class QualityEvaluator:
         if not use_labels_for_matching:
             log.warning(
                 "WARNING: Only Micro_avg metrics could be calculated based on the information "
-                "available for this block type."
+                "available for this module type."
             )
             calc_metrics.micro_metrics.precision = micro_precision
             calc_metrics.micro_metrics.recall = micro_recall

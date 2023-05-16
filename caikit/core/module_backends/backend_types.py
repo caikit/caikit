@@ -49,7 +49,8 @@ class _AttrAccessDict(dict):
 # "enum" holding known backend types. This is implemented as a dict so that it
 # can be extended as needed by downstream libraries.
 MODULE_BACKEND_TYPES = _AttrAccessDict()
-MODULE_BACKEND_CONFIG_FUNCTIONS: Dict[int, Type[BackendBase]] = {}
+MODULE_BACKEND_CONFIG_FUNCTIONS: Dict[int, Type[BackendBase]] = {} # This does not seem right
+    # backend_type -> config_class
 
 
 ## Public ######################################################################
