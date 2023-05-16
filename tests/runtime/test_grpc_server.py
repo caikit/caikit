@@ -193,7 +193,7 @@ def test_train_fake_block_ok_response_and_can_predict_with_trained_model(
     ).to_proto()
     model_name = random_test_id()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=model_name, training_data=training_data
         )
     )
@@ -266,7 +266,7 @@ def test_train_fake_block_does_not_change_another_instance_model_of_block(
         file=stream_type.File(filename=sample_int_file)
     ).to_proto()
 
-    train_request = sample_train_service.messages.BlocksOtherTaskOtherModuleTrainRequest(
+    train_request = sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
         model_name="Bar Training", batch_size=100, training_data=training_data
     )
     actual_response = train_stub.BlocksOtherTaskOtherModuleTrain(train_request)
@@ -311,7 +311,7 @@ def test_train_fake_block_ok_response_with_datastream_jsondata(
     ).to_proto()
     model_name = random_test_id()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=model_name,
             batch_size=42,
             training_data=training_data,
@@ -349,7 +349,7 @@ def test_train_fake_block_ok_response_with_datastream_csv_file(
     ).to_proto()
     model_name = random_test_id()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=model_name,
             training_data=training_data,
         )

@@ -88,7 +88,7 @@ def test_global_train_sample_task(
     ).to_proto()
     model_name = random_test_id()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=model_name,
             batch_size=42,
             training_data=training_data,
@@ -140,7 +140,7 @@ def test_global_train_other_task(
     batch_size = 42
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
     training_data = stream_type(jsondata=stream_type.JsonData(data=[1])).to_proto()
-    train_request = sample_train_service.messages.BlocksOtherTaskOtherModuleTrainRequest(
+    train_request = sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
         model_name="Other block Training",
         training_data=training_data,
         sample_input=SampleInputType(name="Gabe").to_proto(),
@@ -241,7 +241,7 @@ def test_run_train_job_works_with_wait(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=random_test_id(),
             batch_size=42,
             training_data=training_data,
@@ -280,7 +280,7 @@ def test_run_train_job_works_with_no_autoload(sample_train_service):
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=str(uuid.uuid4()),
             batch_size=42,
             training_data=training_data,
@@ -309,7 +309,7 @@ def test_run_train_job_works_with_autoload(sample_train_service):
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=str(uuid.uuid4()),
             batch_size=42,
             training_data=training_data,
@@ -361,13 +361,13 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_but_not_loaded_s
 def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_block(
     sample_train_service, sample_train_servicer
 ):
-    """Test that if a block raises a ValueError, we should surface it to the user in a helpful way"""
+    """Test that if a module raises a ValueError, we should surface it to the user in a helpful way"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=random_test_id(),
             batch_size=999,
             training_data=training_data,
@@ -386,13 +386,13 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_blo
 def test_global_train_returns_exit_code_with_oom(
     sample_train_service, sample_train_servicer
 ):
-    """Test that if block goes into OOM we are able to surface error code"""
+    """Test that if module goes into OOM we are able to surface error code"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=random_test_id(),
             batch_size=42,
             training_data=training_data,

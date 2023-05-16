@@ -87,7 +87,7 @@ def test_module_type_wrong_base_class(TestModBase):
         @TestModBase.testmod(
             id=mod_id, name="Sample tesmod", version="1.2.3", task=SampleTask
         )
-        class SampleBadTestmod(caikit.core.BlockBase):
+        class SampleBadTestmod(caikit.core.ModuleBase):
             """A sample test mod that is missing the base class"""
 
 
@@ -116,7 +116,7 @@ def test_intermediate_metabase():
         def foobar(self, arg):
             """Got to define foobar!"""
 
-    @caikit.core.block("asdf-qwer-zxcv", "FooBar", "0.0.1", SampleTask)
+    @caikit.core.module("asdf-qwer-zxcv", "FooBar", "0.0.1", SampleTask)
     class Derived(Intermediate):
         def foobar(self, arg):
             return arg + 1

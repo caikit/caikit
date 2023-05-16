@@ -343,7 +343,7 @@ def test_global_train_build_caikit_library_request_dict_creates_caikit_core_run_
     """Global train build_caikit_library_request_dict creates block run kwargs from RPC msg
     and if not passed in request, it creates the fields with default values"""
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=random_test_id()  # not having batch_size, and training_data
         )
     )
@@ -373,7 +373,7 @@ def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_r
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(jsondata=stream_type.JsonData(data=[])).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=random_test_id(), training_data=training_data
         )
     )
@@ -396,7 +396,7 @@ def test_global_train_build_caikit_library_request_dict_works_for_repeated_field
 
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(jsondata=stream_type.JsonData(data=[])).to_proto()
-    train_request = sample_train_service.messages.BlocksSampleTaskListBlockTrainRequest(
+    train_request = sample_train_service.messages.ModulesSampleTaskListBlockTrainRequest(
         model_name=random_test_id(),
         training_data=training_data,
         poison_pills=["Bob Marley", "Bunny Livingston"],
@@ -424,7 +424,7 @@ def test_global_train_build_caikit_library_request_dict_ok_with_DataStreamSource
         jsondata=stream_type.JsonData(data=[100, 120])
     ).to_proto()
 
-    train_request = sample_train_service.messages.BlocksOtherTaskOtherModuleTrainRequest(
+    train_request = sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
         model_name="Bar Training", batch_size=100, training_data=training_data
     )
     caikit.core_request = build_caikit_library_request_dict(
@@ -450,7 +450,7 @@ def test_global_train_build_caikit_library_request_dict_ok_with_data_stream_file
         file=stream_type.File(filename=sample_csv_file)
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=random_test_id(),
             training_data=training_data,
         )
@@ -475,7 +475,7 @@ def test_global_train_build_caikit_library_request_dict_ok_with_training_data_as
     training_data = stream_type(
         listoffiles=stream_type.ListOfFiles(files=[sample_csv_file, sample_json_file])
     ).to_proto()
-    train_request = sample_train_service.messages.BlocksSampleTaskListBlockTrainRequest(
+    train_request = sample_train_service.messages.ModulesSampleTaskListBlockTrainRequest(
         model_name=random_test_id(),
         training_data=training_data,
         poison_pills=["Bob Marley", "Bunny Livingston"],
@@ -514,7 +514,7 @@ def test_build_caikit_library_request_dict_works_when_data_stream_directory_incl
             directory=stream_type.Directory(dirname=tempdir, extension="json")
         ).to_proto()
         train_request = (
-            sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+            sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
                 model_name=random_test_id(),
                 training_data=training_data,
             )
@@ -538,7 +538,7 @@ def test_build_caikit_library_request_dict_raises_invalid_data_stream_source_fil
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(file=stream_type.File(filename="abc.blah")).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=random_test_id(),
             training_data=training_data,
         )
@@ -566,7 +566,7 @@ def test_build_caikit_library_request_dict_raises_invalid_data_stream_source_fil
         )
         training_data = stream_type(file=stream_type.File(filename=fname)).to_proto()
         train_request = (
-            sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+            sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
                 model_name="Foo Bar Training",
                 training_data=training_data,
             )
@@ -591,7 +591,7 @@ def test_build_caikit_library_request_dict_raises_when_data_stream_file_passes_a
         directory=stream_type.Directory(dirname=sample_csv_file)
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name="Foo Bar Training",
             training_data=training_data,
         )
@@ -623,7 +623,7 @@ def test_build_caikit_library_request_dict_raises_when_data_stream_directory_pas
             directory=stream_type.Directory(dirname=tempdir, extension="txt")
         ).to_proto()
         train_request = (
-            sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+            sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
                 model_name=random_test_id(),
                 training_data=training_data,
             )
@@ -656,7 +656,7 @@ def test_build_caikit_library_request_dict_raises_when_data_stream_directory_pas
             directory=stream_type.Directory(dirname=tempdir, extension="json")
         ).to_proto()
         train_request = (
-            sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+            sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
                 model_name=random_test_id(),
                 training_data=training_data,
             )

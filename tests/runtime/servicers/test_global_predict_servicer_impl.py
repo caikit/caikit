@@ -36,7 +36,7 @@ HAPPY_PATH_INPUT = SampleInputType(name="Gabe").to_proto()
 HAPPY_PATH_RESPONSE = SampleOutputType(greeting="Hello Gabe").to_proto()
 
 
-def test_calling_predict_should_raise_if_block_raises(
+def test_calling_predict_should_raise_if_module_raises(
     sample_inference_service, sample_predict_servicer, loaded_model_id
 ):
     with pytest.raises(CaikitRuntimeException) as context:
@@ -54,7 +54,7 @@ def test_calling_predict_should_raise_if_block_raises(
 def test_invalid_input_to_a_valid_caikit_core_class_method_raises(
     loaded_model_id, sample_inference_service, sample_predict_servicer
 ):
-    """Test that a caikit.core block that gets an unexpected input value errors in an expected way"""
+    """Test that a caikit.core module that gets an unexpected input value errors in an expected way"""
     with pytest.raises(CaikitRuntimeException) as context:
         # SampleModules will raise a ValueError if the poison pill name is given
         request = sample_inference_service.messages.SampleTaskRequest(

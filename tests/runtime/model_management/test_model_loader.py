@@ -24,7 +24,7 @@ import pytest
 # Local
 from caikit.config import get_config
 from caikit.core import ModuleConfig
-from caikit.core.blocks import base, block
+from caikit.core.modules import base, module
 from caikit.core.module_backends import backend_types
 from caikit.runtime.model_management.batcher import Batcher
 from caikit.runtime.model_management.model_loader import ModelLoader
@@ -34,7 +34,6 @@ from sample_lib.data_model import SampleInputType, SampleOutputType
 from tests.conftest import random_test_id, temp_config
 from tests.core.helpers import MockBackend
 from tests.fixtures import Fixtures
-import caikit.core.blocks
 
 ## Helpers #####################################################################
 
@@ -244,7 +243,7 @@ def test_load_distributed_impl():
                 backend_registry_copy,
             ):
 
-                @block(
+                @module(
                     base_module=SampleModule,
                     backend_type=backend_types.MOCK,
                     backend_config_override={"bar1": 1},

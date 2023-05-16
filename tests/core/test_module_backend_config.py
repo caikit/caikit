@@ -17,7 +17,7 @@ Tests for the backend configuration framework
 """
 
 # Local
-from caikit.core.blocks import base, block
+from caikit.core.modules import base, module
 from caikit.core.module_backends.module_backend_config import (
     configure,
     configured_load_backends,
@@ -192,30 +192,30 @@ def test_multiple_module_same_backend_configures(reset_globals):
     can override backend configurations"""
     # Register backend type
 
-    @block(id="foo", name="dummy base", version="0.0.1", task=SampleTask)
-    class DummyFoo(base.BlockBase):
+    @module(id="foo", name="dummy base", version="0.0.1", task=SampleTask)
+    class DummyFoo(base.ModuleBase):
         pass
 
     # Create dummy classes
-    @block(
+    @module(
         base_module=DummyFoo,
         backend_type=backend_types.MOCK,
         backend_config_override={"bar1": 1},
     )
-    class DummyBar(base.BlockBase):
+    class DummyBar(base.ModuleBase):
         pass
 
-    @block(id="foo2", name="dummy base", version="0.0.1", task=SampleTask)
-    class DummyFoo2(base.BlockBase):
+    @module(id="foo2", name="dummy base", version="0.0.1", task=SampleTask)
+    class DummyFoo2(base.ModuleBase):
         pass
 
     # Create dummy classes
-    @block(
+    @module(
         base_module=DummyFoo2,
         backend_type=backend_types.MOCK,
         backend_config_override={"bar2": 2},
     )
-    class DummyBar(base.BlockBase):
+    class DummyBar(base.ModuleBase):
         pass
 
     # Initiate configuration

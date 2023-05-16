@@ -1,5 +1,5 @@
 """
-A sample block for sample things!
+A sample module for sample things!
 """
 # Standard
 from typing import Union
@@ -7,14 +7,14 @@ from typing import Union
 # Local
 from ...data_model.sample import OtherOutputType, OtherTask, SampleInputType
 from caikit.core.data_model import DataStream
-from caikit.core.module import ModuleLoader, ModuleSaver
+from caikit.core.modules import ModuleLoader, ModuleSaver
 import caikit.core
 
 
-@caikit.core.block(
+@caikit.core.module(
     "33221100-0405-0607-0809-0a0b02dd0e0f", "OtherModule", "0.0.1", OtherTask
 )
-class OtherModule(caikit.core.BlockBase):
+class OtherModule(caikit.core.ModuleBase):
     def __init__(self, batch_size=64, learning_rate=0.0015):
         super().__init__()
         self.batch_size = batch_size

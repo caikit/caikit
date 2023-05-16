@@ -118,7 +118,7 @@ def test_save_not_implemented(base_module_instance):
 
 def test_train_not_implemented():
     with pytest.raises(NotImplementedError):
-        caikit.core.BlockBase.train()
+        caikit.core.ModuleBase.train()
 
 
 def test_run_batch_keyword_only(model_path):
@@ -256,7 +256,7 @@ def test_load_file_like_conversion_and_back(model_path):
     dummy_model = caikit.core.load(model_path)
     file_like = dummy_model.as_file_like_object()
     reloaded_model = caikit.core.load(file_like)
-    assert isinstance(reloaded_model, caikit.core.BlockBase)
+    assert isinstance(reloaded_model, caikit.core.ModuleBase)
 
 
 def test_load_bytes_conversion_and_back(model_path):
@@ -264,7 +264,7 @@ def test_load_bytes_conversion_and_back(model_path):
     dummy_model = caikit.core.load(model_path)
     bytes_like = dummy_model.as_bytes()
     reloaded_model = caikit.core.load(bytes_like)
-    assert isinstance(reloaded_model, caikit.core.BlockBase)
+    assert isinstance(reloaded_model, caikit.core.ModuleBase)
 
 
 ## Non-Local Backends ##########################################################
