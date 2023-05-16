@@ -56,7 +56,7 @@ class TaskBase:
 
         for parameter_name, parameter_type in cls.get_required_parameters().items():
             if parameter_name not in signature.parameters:
-                raise ValueError(
+                raise TypeError(
                     f"Required parameter {parameter_name} not in signature for module: "
                     f"{signature.module}"
                 )
@@ -67,7 +67,7 @@ class TaskBase:
                     signature_type
                 ) == typing.Union and parameter_type in typing.get_args(signature_type):
                     continue
-                raise ValueError(
+                raise TypeError(
                     f"Required parameter {parameter_name} has type {signature_type} but type "
                     f"{parameter_type} is required for module: {signature.module}"
                 )
