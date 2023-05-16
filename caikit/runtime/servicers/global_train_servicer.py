@@ -225,7 +225,6 @@ class GlobalTrainServicer:
             **build_caikit_library_request_dict(request, model.train),
         }
 
-
         # If running with a subprocess, set the target, events and args accordingly
         if self.use_subprocess:
             event = multiprocessing.Event()
@@ -233,7 +232,6 @@ class GlobalTrainServicer:
         else:
             event = threading.Event()
             target = LocalTrainSaveExecutor(event)
-
 
         log.debug2(
             "Training with %s",

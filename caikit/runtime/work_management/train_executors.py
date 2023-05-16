@@ -207,7 +207,6 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             except Exception as err:
                 self.error = err
 
-
     def __init__(self, event) -> None:
 
         self._worker = self._ErrorCaptureProcess(
@@ -227,7 +226,6 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
 
         self._worker.run()
         self.__event.wait()
-
 
         if self._worker.is_alive() and self.__event.is_set():
             # Since we are using process here, we cannot rely on
