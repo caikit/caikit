@@ -131,6 +131,7 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
                 if not hasattr(self.__event, "is_completed"):
                     self.cancel()
 
+                self._worker.join()
                 # Fetch the results or throw error if the
                 # task threw exception
                 self._worker.get_or_throw()

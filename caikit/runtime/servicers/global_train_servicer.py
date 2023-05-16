@@ -281,6 +281,7 @@ class GlobalTrainServicer:
 
             def target(*args, **kwargs):
                 runnable_executor.train_and_save_model(*args, **kwargs)
+                print("Reached here")
                 return self._load_trained_model(model_name, model_path)
 
         else:
