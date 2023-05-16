@@ -343,9 +343,12 @@ def _make_oneof_init(cls):
                 if has_pos_val:
                     error(
                         "<COR09282193E>",
-                        "Received conflicting oneof positional and keyword arguments for {}/{}",
-                        oneof_name,
-                        field_name,
+                        TypeError(
+                            "Received conflicting oneof positional and keyword arguments for {}/{}".format(
+                                oneof_name,
+                                field_name,
+                            )
+                        ),
                     )
 
                 other_oneof_fields = filter(
@@ -355,8 +358,11 @@ def _make_oneof_init(cls):
                 if any(field in kwargs for field in other_oneof_fields):
                     error(
                         "<COR59933157E>",
-                        "Received multiple keyword arguments for oneof {}",
-                        oneof_name,
+                        TypeError(
+                            "Received multiple keyword arguments for oneof {}".format(
+                                oneof_name,
+                            )
+                        ),
                     )
                 new_kwargs[oneof_name] = val
                 to_remove.append(field_name)
