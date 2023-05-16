@@ -814,6 +814,8 @@ class ModuleSaver:
     CREATED_KEY_NAME = "created"
     TRACKING_KEY_NAME = "tracking_id"
     MODULE_VERSION_KEY_NAME = "version"
+    MODULE_ID_KEY_NAME = "module_id"
+    MODULE_CLASS_KEY_NAME = "module_class"
 
     def __init__(self, module: ModuleBase, model_path):
         """Construct a new module saver.
@@ -858,19 +860,10 @@ class ModuleSaver:
             self.SAVED_KEY_NAME: str(datetime.datetime.now()),
             "name": module.MODULE_NAME,
             self.TRACKING_KEY_NAME: str(uuid.uuid4()),
+            self.MODULE_ID_KEY_NAME: module.MODULE_ID,
+            self.MODULE_CLASS_KEY_NAME: module.MODULE_CLASS,
+            self.MODULE_VERSION_KEY_NAME: module.MODULE_VERSION,
         }
-
-        # Add the sub-type specific fields
-        for subtype in _MODULE_TYPES:
-            subtype_id = getattr(module, f"{subtype}_ID", None)
-            if subtype_id is not None:
-                self.config.update(
-                    {
-                        f"{subtype.lower()}_id": subtype_id,
-                        f"{subtype.lower()}_class": getattr(module, f"{subtype}_CLASS"),
-                        "version": getattr(module, f"{subtype}_VERSION"),
-                    }
-                )
 
         # Temp disable wip for following invocation to not log warnings for downstream
         # usage of ModuleSaver
@@ -885,22 +878,7 @@ class ModuleSaver:
             if key in stored_config:
                 stored_config.pop(key)
 
-        # Run some extremely silly metadata sanitization stuff to _not_ save metadata that was
-        # explicitly removed from some certain modules
-        ModuleSaver._provide_backwards_compatibility(module, stored_config)
-
         self.config.update(stored_config)
-
-    @staticmethod
-    def _provide_backwards_compatibility(
-        module: ModuleBase, stored_config: Dict[str, Any]
-    ) -> None:
-        """Updates the stored_config in-place to remove any metadata keys that some certain
-        existing models expect to _not_ exist"""
-
-        # BERT entity mentions blocks no longer save the "type_map.json" file
-        if module.MODULE_ID == "f7e4208f-daee-4c5d-8268-b010929dd247":
-            stored_config.pop("type_map_path", None)
 
     def add_dir(self, relative_path, base_relative_path=""):
         """Create a directory inside the `model_path` for this saver.
