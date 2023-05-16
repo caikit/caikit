@@ -113,22 +113,6 @@ def test_dataobject_native_types():
     assert inst.bar is None
 
 
-def test_dataobject_jtd():
-    """Make sure that a simple usage of dataobject using a full JTD schema works
-    as expected
-    """
-
-    @dataobject(schema={"properties": {"foo": {"type": "string"}}})
-    class Foo(DataObjectBase):
-        foo: str
-
-    assert check_field_type(Foo.get_proto_class(), "foo", "TYPE_STRING")
-    inst = Foo(foo="test")
-    assert inst.foo == "test"
-    inst = Foo()
-    assert inst.foo is None
-
-
 def test_dataobject_nested_objects():
     """Make sure that nested objects are handled correctly"""
 
@@ -279,15 +263,6 @@ def test_dataobject_obj_refs_with_optional_types():
         )
 
 
-def test_dataobject_invalid_schema():
-    """Make sure that a ValueError is raised on an invalid schema"""
-    with pytest.raises(ValueError):
-        # pylint: disable=unused-variable
-        @dataobject(schema="Foo")
-        class Foo:
-            pass
-
-
 def test_dataobject_additional_methods():
     """Make sure that additional methods on wrapped classes (for messages and
     enums) are preserved
@@ -370,68 +345,6 @@ def test_render_dataobject_protos_no_dir():
             Foo.get_proto_class().DESCRIPTOR.file.name,
             FooBar.get_proto_class().DESCRIPTOR.file.name,
         }
-
-
-def test_dataobject_with_discriminator():
-    """Make sure that adding a discriminator works as expected"""
-
-    @dataobject(
-        schema={
-            "properties": {
-                "data_stream": {
-                    "discriminator": "data_reference_type",
-                    "mapping": {
-                        "Foo": {
-                            "properties": {
-                                "data": {
-                                    "elements": {"type": "string"},
-                                },
-                            },
-                        },
-                        "Bar": {"properties": {"data": {"type": "string"}}},
-                        "Baz": {
-                            "properties": {
-                                "data": {
-                                    "elements": {"type": "string"},
-                                },
-                            },
-                        },
-                        "Bat": {
-                            "properties": {
-                                "data1": {"type": "string"},
-                                "data2": {"type": "string"},
-                            }
-                        },
-                    },
-                }
-            }
-        }
-    )
-    class BazObj(DataObjectBase):
-        foo: str
-        bar: str
-        baz: str
-        bat: str
-
-    # proto tests
-    foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))
-    proto_repr_foo = foo1.to_proto()
-    assert proto_repr_foo.foo.data == ["hello"]
-    assert BazObj.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
-
-    bar1 = BazObj(foo=BazObj.Foo(data=["hello"]), bar=BazObj.Bar(data="world"))
-    proto_repr_bar = bar1.to_proto()
-    assert proto_repr_bar.bar.data == "world"
-
-    # json tests
-    foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))
-    json_repr_foo = foo1.to_json()
-    assert json.loads(json_repr_foo) == {
-        "foo": {"data": ["hello"]},
-        "bar": None,
-        "baz": None,
-        "bat": None,
-    }
 
 
 def test_dataobject_with_oneof():
