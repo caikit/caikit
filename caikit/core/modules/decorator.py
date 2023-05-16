@@ -29,7 +29,7 @@ import alog
 # Local
 import caikit.core
 from caikit.core import data_model as dm
-from .module import MODULE_BACKEND_REGISTRY, ModuleBase
+from .base import MODULE_BACKEND_REGISTRY, ModuleBase
 from caikit.core.module_backends import backend_types
 from caikit.core.task import TaskBase
 from caikit.core.toolkit.errors import error_handler
