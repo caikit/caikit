@@ -131,6 +131,10 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
                 if not hasattr(self.__event, "is_completed"):
                     self.cancel()
 
+                # Fetch the results or throw error if the
+                # task threw exception
+                self._worker.get_or_throw()
+
         # Handle errors as CaikitRuntime errors with appropriate error codes
         except CaikitRuntimeException as e:
             log.warning(
@@ -224,10 +228,11 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
 
         self.__event.wait()
 
+        self._worker.join()
+
         if not hasattr(self.__event, "is_completed"):
             self.cancel()
 
-        self._worker.join()
 
         # If an error occurred, reraise it here
         # TODO: Make sure the stack trace is preserved
