@@ -37,4 +37,5 @@ jobs:
         run: tox -e fmt
       - name: Run pylint
         run: tox -e lint
-
+      - name: Enforce import rules
+        run: tox -e imports
