@@ -14,6 +14,7 @@
 # Standard
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
+import multiprocessing
 import threading
 import time
 import uuid
@@ -397,6 +398,7 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_blo
             training_data=training_data,
         )
     )
+    sample_train_servicer.use_subprocess = True
     with pytest.raises(CaikitRuntimeException) as context:
         training_response = sample_train_servicer.Train(
             train_request, Fixtures.build_context("foo")
@@ -457,7 +459,15 @@ def test_global_train_aborts_long_running_trains(
         )
     )
 
+    # sample_train_servicer.use_subprocess = False
+    if sample_train_servicer.use_subprocess:
+        test_event = multiprocessing.Event()
+    else:
+        test_event = threading.Event()
+
     def never_respond(*args, **kwargs):
+        """Never ending function"""
+        test_event.set()
         while True:
             time.sleep(0.01)
 
@@ -478,6 +488,7 @@ def test_global_train_aborts_long_running_trains(
         never_respond,
     ):
         train_thread.start()
+        test_event.wait()
         # Simulate a timeout or client abort
         context.cancel()
         train_thread.join(request_timeout)
