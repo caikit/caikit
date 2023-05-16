@@ -88,5 +88,37 @@ def test_task_is_not_required_for_blocks():
     assert Stuff.TASK_CLASS is None
 
 
-# def test_task_validation_throws_on_missing_parameter():
-#
+def test_task_validation_throws_on_missing_parameter():
+    @task(
+        required_parameters={"foo": int},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    with pytest.raises(TypeError, match="Required parameter foo not in signature"):
+        @caikit.core.blocks.block(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class Stuff(caikit.core.blocks.base.BlockBase):
+
+            def run(self, bar: str) -> SampleOutputType:
+                pass
+
+
+def test_task_validation_throws_on_wrong_parameter_type():
+    @task(
+        required_parameters={"foo": int},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    with pytest.raises(TypeError, match="Required parameter foo has type .*str.* but type .*int.* is required"):
+        @caikit.core.blocks.block(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class Stuff(caikit.core.blocks.base.BlockBase):
+
+            def run(self, foo: str) -> SampleOutputType:
+                pass
