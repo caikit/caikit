@@ -22,7 +22,7 @@ import pytest
 # Local
 from caikit.core import LocalBackend
 from caikit.core.module import MODULE_BACKEND_REGISTRY, MODULE_REGISTRY, ModuleBase
-from caikit.core.module_backend_config import (
+from caikit.core.module_backends.module_backend_config import (
     _CONFIGURED_LOAD_BACKENDS,
     _CONFIGURED_TRAIN_BACKENDS,
 )

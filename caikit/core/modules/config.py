@@ -20,8 +20,8 @@ import aconfig
 import alog
 
 # Local
-from . import toolkit
-from .toolkit.errors import error_handler
+from caikit.core import toolkit
+from caikit.core.toolkit.errors import error_handler
 
 log = alog.use_channel("MODULE")
 error = error_handler.get(log)

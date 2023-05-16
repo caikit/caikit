@@ -39,14 +39,14 @@ import uuid
 import alog
 
 # Local
-from .. import core
-from . import data_model as dm
-from .data_model import DataStream
-from .module_config import ModuleConfig
-from .module_meta import _ModuleBaseMeta
-from .toolkit import ObjectSerializer, fileio
-from .toolkit.errors import DataValidationError, error_handler
-from .toolkit.wip_decorator import TempDisableWIP, WipCategory, work_in_progress
+from caikit import core
+from caikit.core import data_model as dm
+from caikit.core.data_model import DataStream
+from caikit.core.modules.config import ModuleConfig
+from caikit.core.modules.meta import _ModuleBaseMeta
+from caikit.core.toolkit import ObjectSerializer, fileio
+from caikit.core.toolkit.errors import DataValidationError, error_handler
+from caikit.core.toolkit.wip_decorator import TempDisableWIP, WipCategory, work_in_progress
 from caikit.config import get_config
 
 log = alog.use_channel("MODULE")
@@ -54,18 +54,12 @@ error = error_handler.get(log)
 
 # This file is `*` imported so we need to override what is exposed
 __all__ = [
-    "_MODULE_TYPES",
     "MODULE_BACKEND_REGISTRY",
     "MODULE_REGISTRY",
     "ModuleBase",
     "ModuleLoader",
     "ModuleSaver",
 ]
-
-# This private registry is used to define types of modules that have been
-# defined using the @module_type decorator. It is owned here along with the
-# other registries to avoid circular dependencies
-_MODULE_TYPES = []
 
 # Single base global registry of all modules
 MODULE_REGISTRY = {}

@@ -13,28 +13,25 @@
 # limitations under the License.
 
 # Standard
-import abc
 import io
 import os
 import tempfile
 
 # Third Party
-import pytest
 
 # First Party
 import aconfig
 
 # Local
 from caikit.core import ModuleConfig, module
-from caikit.core.module_backend_config import configured_load_backends
-from caikit.core.module_backends import backend_types
-from caikit.core.module_type import SUPPORTED_LOAD_BACKENDS_VAR_NAME
+from caikit.core.module_backends.module_backend_config import configured_load_backends
+from caikit.core.modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
 
 # pylint: disable=import-error
 from sample_lib.data_model.sample import SampleInputType, SampleTask
 
 # Unit Test Infrastructure
-from tests.conftest import fixtures_dir, temp_config
+from tests.conftest import temp_config
 
 # NOTE: We do need to import `reset_backend_types` and `reset_module_distribution_registry` for `reset_globals` to work
 from tests.core.helpers import *
@@ -345,7 +342,7 @@ def test_class_attributes(reset_globals):
             }
         }
     ):
-        caikit.core.module_backend_config.configure()
+        caikit.core.module_backends.module_backend_config.configure()
         assert DummyBar.BACKEND_TYPE == backend_types.MOCK
 
         # Make sure an instance can fetch via get_backend()

@@ -231,7 +231,7 @@ def test_load_distributed_impl():
     reg_copy = copy.deepcopy(caikit.core.module.MODULE_REGISTRY)
     backend_registry_copy = copy.deepcopy(caikit.core.module.MODULE_BACKEND_REGISTRY)
     # 🌶️🌶️🌶️: the MODULE_BACKEND_REGISTRY can't be easily patched since two separate modules hold
-    # an imported reference to it and one edits it (module_type.py) while the other reads it
+    # an imported reference to it and one edits it (decorator.py) while the other reads it
     # (model_manager.py)
 
     with mock.patch.object(caikit.core.module, "MODULE_REGISTRY", reg_copy):

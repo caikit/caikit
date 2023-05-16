@@ -27,7 +27,7 @@ import alog
 # Local
 from ... import core
 from .. import module as mod
-from ..module_type import module_type
+from caikit.core.modules.decorator import module_type
 from ..toolkit.errors import error_handler
 
 log = alog.use_channel("WFBASE")

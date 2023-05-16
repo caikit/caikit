@@ -72,9 +72,9 @@ import abc
 import alog
 
 # Local
-from .module_config import ModuleConfig
-from .toolkit import wip_decorator
-from .toolkit.errors import error_handler
+from caikit.core.modules.config import ModuleConfig
+from caikit.core.toolkit import wip_decorator
+from caikit.core.toolkit.errors import error_handler
 
 log = alog.use_channel("METADATA_INJECT")
 error = error_handler.get(log)

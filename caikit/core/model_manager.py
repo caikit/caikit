@@ -30,7 +30,6 @@ import zipfile
 import alog
 
 # Local
-from . import module_backend_config
 from .module import (
     _MODULE_TYPES,
     MODULE_BACKEND_REGISTRY,
@@ -38,9 +37,9 @@ from .module import (
     ModuleBase,
     ModuleConfig,
 )
-from .module_backends import backend_types
+from .module_backends import backend_types, module_backend_config
 from .module_backends.base import SharedLoadBackendBase
-from .module_type import SUPPORTED_LOAD_BACKENDS_VAR_NAME
+from caikit.core.modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
 from .toolkit.errors import error_handler
 from caikit.config import get_config
 

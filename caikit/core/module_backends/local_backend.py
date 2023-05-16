@@ -25,7 +25,7 @@ import alog
 
 # Local
 from ..module import MODULE_REGISTRY, ModuleBase
-from ..module_config import ModuleConfig
+from caikit.core.modules.config import ModuleConfig
 from ..toolkit.errors import error_handler
 from .backend_types import register_backend_type
 from .base import SharedLoadBackendBase, SharedTrainBackendBase
