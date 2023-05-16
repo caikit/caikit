@@ -224,9 +224,7 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
         # Assign args and kwargs to self._worker
         self._worker.set_args(*args, event=self.__event, **kwargs)
 
-        self._worker.start()
-
-        self._worker.join()
+        self._worker.run()
         self.__event.wait()
 
 
