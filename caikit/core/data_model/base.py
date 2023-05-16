@@ -100,7 +100,18 @@ class _DataBaseMetaClass(type):
             # descriptor
             proto_class = attrs.get("_proto_class")
             if proto_class is not None:
-                fields = tuple(proto_class.DESCRIPTOR.fields_by_name)
+                all_oneof_fields = [
+                    field.name
+                    for oneof in proto_class.DESCRIPTOR.oneofs
+                    for field in oneof.fields
+                ]
+                fields = tuple(
+                    [
+                        field
+                        for field in proto_class.DESCRIPTOR.fields_by_name
+                        if field not in all_oneof_fields
+                    ]
+                ) + tuple(proto_class.DESCRIPTOR.oneofs_by_name)
 
             # Otherwise, we need to get the fields from a "special" attribute
             else:
@@ -337,6 +348,12 @@ class _DataBaseMetaClass(type):
             num_fields = len(fields)
             used_fields = []
 
+            # If the proto has oneofs, set up which_oneof
+            which_oneof = {}
+            cls = self.__class__
+            if cls._fields_oneofs_map:
+                setattr(self, _DataBaseMetaClass._WHICH_ONEOF_ATTR, which_oneof)
+
             if num_args + num_kwargs > num_fields:
                 error(
                     "<COR71444420E>",
@@ -351,7 +368,16 @@ class _DataBaseMetaClass(type):
 
             if num_kwargs > 0:  # Do a quick check for performance reason
                 for field_name, field_val in kwargs.items():
-                    if field_name not in fields:
+
+                    # If this is a oneof field, alias to the oneof name
+                    if oneof_name := cls._fields_to_oneof.get(field_name):
+                        which_oneof[oneof_name] = field_name
+                        field_name = oneof_name
+
+                    if (
+                        field_name not in fields
+                        and field_name not in cls._fields_oneofs_map
+                    ):
                         error(
                             "<COR71444421E>", TypeError(f"Unknown field {field_name}")
                         )
@@ -366,7 +392,10 @@ class _DataBaseMetaClass(type):
             # Default all unspecified fields to None
             if num_fields > 0:  # Do a quick check for performance reason
                 for field_name in fields:
-                    if field_name not in used_fields:
+                    if (
+                        field_name not in used_fields
+                        and field_name not in cls._fields_to_oneof
+                    ):
                         setattr(self, field_name, None)
 
         # Set docstring to the method explicitly
