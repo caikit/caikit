@@ -439,8 +439,6 @@ def test_dataobject_with_oneof():
 
     @dataobject
     class BazObj(DataObjectBase):
-        _private_slots = ("_which_oneof_datastream",)
-
         @dataobject
         class Foo(DataObjectBase):
             data: List[str]
@@ -454,47 +452,71 @@ def test_dataobject_with_oneof():
             Annotated[Bar, FieldNumber(2), OneofField("bar")],
         ]
 
-        def __getattr__(self, name):
-            if name == "data_stream":
-                if self._which_oneof_datastream == "foo":
-                    return self.foo
-                elif self._which_oneof_datastream == "bar":
-                    return self.bar
-                return None
-            if name == "_foo":
-                if self._which_oneof_datastream == "foo":
-                    return self._data_stream
-            if name == "_bar":
-                if self._which_oneof_datastream == "bar":
-                    return self._data_stream
-
-        def __init__(self, *args, **kwargs):
-            if "foo" in kwargs:
-                self._which_oneof_datastream = "foo"
-                self._data_stream = kwargs["foo"]
-            if "bar" in kwargs:
-                self._which_oneof_datastream = "bar"
-                self._data_stream = kwargs["bar"]
-
-    # proto tests
+    # Construct with oneof field name
     foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))
     assert isinstance(foo1.data_stream, BazObj.Foo)
+    assert foo1.which_oneof("data_stream") == "foo"
+    assert foo1.foo is foo1.data_stream
+    assert foo1.bar is None
+
+    # Test other oneof field name
+    bar1 = BazObj(bar=BazObj.Bar(data="world"))
+    assert isinstance(bar1.data_stream, BazObj.Bar)
+    assert bar1.which_oneof("data_stream") == "bar"
+    assert bar1.bar is bar1.data_stream
+    assert bar1.foo is None
+
+    # Test proto round trip
     proto_repr_foo = foo1.to_proto()
     assert proto_repr_foo.foo.data == ["hello"]
     assert BazObj.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
-
-    bar1 = BazObj(foo=BazObj.Foo(data=["hello"]), bar=BazObj.Bar(data="world"))
-    assert isinstance(bar1.data_stream, BazObj.Bar)
     proto_repr_bar = bar1.to_proto()
     assert proto_repr_bar.bar.data == "world"
 
-    # json tests
-    foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))
+    # Test json round trip
     json_repr_foo = foo1.to_json()
     assert json.loads(json_repr_foo) == {
         "foo": {"data": ["hello"]},
         "bar": None,
     }
+    assert BazObj.from_json(json_repr_foo) == foo1
+
+    # Test setattr
+    foo1.bar = BazObj.Bar(data="it's a bar")
+    assert foo1.which_oneof("data_stream") == "bar"
+    assert foo1.data_stream is foo1.bar
+    assert foo1.foo is None
+
+    # Construct with oneof name
+    foo2 = BazObj(data_stream=BazObj.Foo(data=["some", "foo"]))
+    assert foo2.data_stream.data == ["some", "foo"]
+    assert foo2.bar is None
+    # TODO: Once we're introspecting which_oneof, these can be uncommented
+    # assert foo2.foo is foo2.data_stream
+    # assert foo2.which_oneof("data_stream") == "foo"
+
+    # Assign with oneof name
+    foo2.data_stream = BazObj.Bar(data="asdf")
+    assert foo2.foo is None
+    # TODO: Once we're introspecting which_oneof, these can be uncommented
+    # assert foo2.bar is foo2.data_stream
+    # assert foo2.which_oneof("data_stream") == "bar"
+
+    # Construct with positional oneof name
+    foo2 = BazObj(BazObj.Foo(data=["some", "foo"]))
+    assert foo2.data_stream.data == ["some", "foo"]
+    assert foo2.bar is None
+    # TODO: Once we're introspecting which_oneof, these can be uncommented
+    # assert foo2.foo is foo2.data_stream
+    # assert foo2.which_oneof("data_stream") == "foo"
+
+    # Invalid constructors
+    with pytest.raises(TypeError):
+        BazObj(BazObj.Foo(), foo=BazObj.Foo())
+    with pytest.raises(TypeError):
+        BazObj(data_stream=BazObj.Foo(), foo=BazObj.Foo())
+    with pytest.raises(TypeError):
+        BazObj(foo=BazObj.Foo(), bar=BazObj.Bar())
 
 
 def test_dataobject_round_trip_json():
