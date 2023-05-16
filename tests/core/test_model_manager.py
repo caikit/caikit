@@ -43,17 +43,17 @@ class TestModelManager(TestCaseBase):
     @classmethod
     def setUpClass(cls) -> None:
         # Test fixtures that can be directly loaded
-        cls.model_path = os.path.join(cls.fixtures_dir, "dummy_block")
+        cls.model_path = os.path.join(cls.fixtures_dir, "dummy_module")
         # This model has no unique hash set in its config; we use it as a nonsingleton model too
         cls.non_singleton_model_path = cls.model_path
         cls.singleton_model_path = os.path.join(
-            cls.fixtures_dir, "dummy_block_singleton"
+            cls.fixtures_dir, "dummy_module_singleton"
         )
 
         cls.resource_path = os.path.join(cls.fixtures_dir, "dummy_resource")
 
         # Binary buffers of zip archives, for mocking downloads
-        cls.block_zip_path = os.path.join(cls.fixtures_dir, "dummy_block.zip")
+        cls.block_zip_path = os.path.join(cls.fixtures_dir, "dummy_module.zip")
         with open(cls.block_zip_path, "rb") as f:
             cls.block_archive_buffer = f.read()
 
@@ -76,7 +76,7 @@ class TestModelManager(TestCaseBase):
 
     def test_load_can_return_a_block(self):
         model = caikit.core.load(self.model_path)
-        self.assertIsInstance(model, caikit.core.BlockBase)
+        self.assertIsInstance(model, caikit.core.ModuleBase)
 
     def test_load_can_load_a_block_as_a_singleton(self):
         model1 = caikit.core.load(self.singleton_model_path, load_singleton=True)
@@ -140,25 +140,25 @@ class TestModelManager(TestCaseBase):
     def test_load_model_with_artifacts_from_zip_str(self):
         """Test that we can load a model archive [extracts to temp_dir/...] with artifacts."""
         model = caikit.core.load(self.block_zip_path)
-        self.assertIsInstance(model, caikit.core.BlockBase)
+        self.assertIsInstance(model, caikit.core.ModuleBase)
 
     def test_load_model_with_artifacts_from_bytes(self):
         """Test that we can load a bytes object as a model, even if it has artifacts."""
         model_bytes = caikit.core.load(self.block_zip_path).as_bytes()
         model = caikit.core.load(model_bytes)
-        self.assertIsInstance(model, caikit.core.BlockBase)
+        self.assertIsInstance(model, caikit.core.ModuleBase)
 
     def test_load_model_with_artifacts_from_file_like(self):
         """Test that we can load a file-like object as a model, even if it has artifacts."""
         model_bytesio = caikit.core.load(self.block_zip_path).as_file_like_object()
         model = caikit.core.load(model_bytesio)
-        self.assertIsInstance(model, caikit.core.BlockBase)
+        self.assertIsInstance(model, caikit.core.ModuleBase)
 
     def test_load_model_with_no_nesting(self):
         """Test that we can load a zip even if it unzips directly into the extraction archive."""
-        model_path = os.path.join(self.fixtures_dir, "dummy_block_no_nesting.zip")
+        model_path = os.path.join(self.fixtures_dir, "dummy_module_no_nesting.zip")
         model = caikit.core.load(model_path)
-        self.assertIsInstance(model, caikit.core.BlockBase)
+        self.assertIsInstance(model, caikit.core.ModuleBase)
 
     def test_load_invalid_zip_file(self):
         """Test that loading a zip archive not containing a model fails gracefully."""
@@ -170,7 +170,7 @@ class TestModelManager(TestCaseBase):
     def test_load_path(self):
         """Test that loading a model from a path defined in the load_path config variable works."""
         model = caikit.core.load("foo")
-        self.assertIsInstance(model, caikit.core.BlockBase)
+        self.assertIsInstance(model, caikit.core.ModuleBase)
 
     def test_import_block_registry(self):
         """Make sure that the BLOCK_REGISTRY can be imported from model_manager"""
@@ -192,8 +192,8 @@ class TestModelManager(TestCaseBase):
 DUMMY_MODULE_ID = "foo"
 
 TEST_DATA_PATH = os.path.join("tests", "fixtures")
-DUMMY_LOCAL_MODEL_NAME = "dummy_block_foo"
-DUMMY_BACKEND_MODEL_NAME = "dummy_block_backend"
+DUMMY_LOCAL_MODEL_NAME = "dummy_module_foo"
+DUMMY_BACKEND_MODEL_NAME = "dummy_module_backend"
 CONFIG_FILE_NAME = "config.yml"
 
 

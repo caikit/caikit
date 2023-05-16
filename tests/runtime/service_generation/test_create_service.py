@@ -59,7 +59,7 @@ def test_create_inference_rpcs_for_multiple_modules_of_same_type():
     assert sample_lib.modules.other_task.OtherModule in rpcs[1].module_list
 
 
-def test_create_inference_rpcs_with_block_and_workflow():
+def test_create_inference_rpcs_with_module_and_workflow():
     module_list = [
         sample_lib.modules.sample_task.SampleModule,
         sample_lib.workflows.sample_task.SampleWorkflow,

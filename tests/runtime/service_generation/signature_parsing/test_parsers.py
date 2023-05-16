@@ -75,10 +75,10 @@ def test_get_output_type_name():
     )
 
     # Test that we use type annotation to deduct output type
-    inner_block_run_method_ptr = getattr(
+    inner_module_run_method_ptr = getattr(
         sample_lib.modules.sample_task.InnerModule, "run"
     )
-    fn_sign = inspect.signature(inner_block_run_method_ptr)
+    fn_sign = inspect.signature(inner_module_run_method_ptr)
     assert (
         get_output_type_name(
             module_class=sample_lib.modules.sample_task.InnerModule,
@@ -138,8 +138,8 @@ def test_get_output_type_name():
         )
 
 
-def test_get_argument_types_with_real_block():
-    """Quick check that we get the right type for our sample block"""
+def test_get_argument_types_with_real_module():
+    """Quick check that we get the right type for our sample module"""
     assert (
         get_argument_types(sample_lib.modules.sample_task.SampleModule.run)[
             "sample_input"

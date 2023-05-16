@@ -16,10 +16,10 @@ from caikit.core.module import ModuleLoader, ModuleSaver
 import caikit.core
 
 
-@caikit.core.block(
-    "00af2203-0405-0607-0263-0a0b02dd0c2f", "ListBlock", "0.0.1", SampleTask
+@caikit.core.module(
+    "00af2203-0405-0607-0263-0a0b02dd0c2f", "ListModule", "0.0.1", SampleTask
 )
-class ListBlock(caikit.core.BlockBase):
+class ListModule(caikit.core.ModuleBase):
     POISON_PILL_NAME = "Bob Marley"
 
     def __init__(self, batch_size=64, learning_rate=0.0015):
@@ -70,7 +70,7 @@ class ListBlock(caikit.core.BlockBase):
         training_data: DataStream[SampleTrainingType],
         batch_size: int = 64,
         poison_pills: Optional[List[str]] = None,
-    ) -> "ListBlock":
+    ) -> "ListModule":
         """Sample training method that produces a trained model"""
         # Barf if we were incorrectly passed data not in datastream format
         poison_pills = (

@@ -105,7 +105,7 @@ def test_global_train_sample_task(
     ).result()
     assert result.batch_size == 42
     assert (
-        result.BLOCK_CLASS
+        result.MODULE_CLASS
         == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
     )
 
@@ -141,14 +141,14 @@ def test_global_train_other_task(
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
     training_data = stream_type(jsondata=stream_type.JsonData(data=[1])).to_proto()
     train_request = sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
-        model_name="Other block Training",
+        model_name="Other module Training",
         training_data=training_data,
         sample_input=SampleInputType(name="Gabe").to_proto(),
         batch_size=batch_size,
     )
 
     training_response = sample_train_servicer.Train(train_request)
-    assert training_response.model_name == "Other block Training"
+    assert training_response.model_name == "Other module Training"
     assert training_response.training_id is not None
     assert isinstance(training_response.training_id, str)
 
@@ -157,7 +157,7 @@ def test_global_train_other_task(
     ).result()
     assert result.batch_size == batch_size
     assert (
-        result.BLOCK_CLASS
+        result.MODULE_CLASS
         == "sample_lib.modules.other_task.other_implementation.OtherModule"
     )
 

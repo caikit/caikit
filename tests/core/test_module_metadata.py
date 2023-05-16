@@ -73,7 +73,7 @@ def fixtures_dir():
 @pytest.fixture
 # pylint: disable=redefined-outer-name
 def sample_model_path(fixtures_dir):
-    return os.path.join(fixtures_dir, "sample_block")
+    return os.path.join(fixtures_dir, "sample_module")
 
 
 # pylint: disable=redefined-outer-name

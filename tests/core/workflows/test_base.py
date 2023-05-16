@@ -256,16 +256,16 @@ class TestWorkflowSaver(TestCaseBase):
             # and that the config gets written
             self.assertTrue(os.path.isfile(os.path.join(tempdir, "config.yml")))
 
-    def test_save_module_saves_a_block_to_model_subdirectory(self):
+    def test_save_module_saves_a_module_to_model_subdirectory(self):
         dummy_path = os.path.join(self.fixtures_dir, "dummy_workflow", "dummy_block")
-        dummy_block = caikit.core.load(dummy_path)
+        dummy_module = caikit.core.load(dummy_path)
 
         with tempfile.TemporaryDirectory() as tempdir:
             with WorkflowSaver(
                 self.dummy_workflow,
                 model_path=tempdir,
             ) as workflow_saver:
-                workflow_saver.save_module(dummy_block, "dummy")
+                workflow_saver.save_module(dummy_module, "dummy")
 
                 self.assertTrue(os.path.exists(os.path.join(tempdir, "dummy")))
                 self.assertIsNotNone(workflow_saver.config.get("module_paths"))
@@ -273,9 +273,9 @@ class TestWorkflowSaver(TestCaseBase):
                     workflow_saver.config.get("module_paths"), {"dummy": "./dummy"}
                 )
 
-    def test_save_module_saves_multiple_blocks_to_model_subdirectories(self):
+    def test_save_module_saves_multiple_modules_to_model_subdirectories(self):
         dummy_path = os.path.join(self.fixtures_dir, "dummy_workflow", "dummy_block")
-        dummy_block = caikit.core.load(dummy_path)
+        dummy_module = caikit.core.load(dummy_path)
 
         with tempfile.TemporaryDirectory() as tempdir:
             with WorkflowSaver(

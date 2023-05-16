@@ -64,7 +64,7 @@ def test_load_model_ok_response(model_loader):
         model_type=Fixtures.get_good_model_type(),
     )
     assert loaded_model.module() is not None
-    assert isinstance(loaded_model.module(), base.BlockBase)
+    assert isinstance(loaded_model.module(), base.ModuleBase)
     assert model_id == loaded_model.id()
     assert Fixtures.get_good_model_type() == loaded_model.type()
     assert Fixtures.get_good_model_path() == loaded_model.path()
@@ -82,7 +82,7 @@ def test_load_model_archive(model_loader):
         model_type=Fixtures.get_good_model_type(),
     )
     assert loaded_model.module() is not None
-    assert isinstance(loaded_model.module(), base.BlockBase)
+    assert isinstance(loaded_model.module(), base.ModuleBase)
 
 
 def test_load_model_error_not_found_response(model_loader):
@@ -166,10 +166,10 @@ def test_with_batching(model_loader):
     model = model_loader.load_model(
         "load_with_batch",
         Fixtures.get_good_model_path(),
-        model_type="fake_batch_block",
+        model_type="fake_batch_module",
     ).module()
     assert isinstance(model, Batcher)
-    assert model._batch_size == get_config().runtime.batching.fake_batch_block.size
+    assert model._batch_size == get_config().runtime.batching.fake_batch_module.size
 
     # Make sure another model loads without batching
     model = model_loader.load_model(
@@ -224,11 +224,11 @@ def test_with_batching_collect_delay(model_loader):
 
 def test_load_distributed_impl():
     """Make sure that when configured, an alternate distributed
-    implementation of a block can be loaded
+    implementation of a module can be loaded
     """
 
-    reg_copy = copy.deepcopy(caikit.core.module.MODULE_REGISTRY)
-    backend_registry_copy = copy.deepcopy(caikit.core.module.MODULE_BACKEND_REGISTRY)
+    reg_copy = copy.deepcopy(caikit.core.modules.MODULE_REGISTRY)
+    backend_registry_copy = copy.deepcopy(caikit.core.modules.MODULE_BACKEND_REGISTRY)
     # 🌶️🌶️🌶️: the MODULE_BACKEND_REGISTRY can't be easily patched since two separate modules hold
     # an imported reference to it and one edits it (decorator.py) while the other reads it
     # (model_manager.py)

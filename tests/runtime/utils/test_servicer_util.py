@@ -215,7 +215,7 @@ HAPPY_PATH_INPUT = SampleInputType(name="Gabe").to_proto()
 def test_global_predict_build_caikit_library_request_dict_creates_caikit_core_run_kwargs(
     sample_inference_service,
 ):
-    """Test that build_caikit_library_request_dict creates block run kwargs from RPC msg"""
+    """Test that build_caikit_library_request_dict creates module run kwargs from RPC msg"""
     request_dict = build_caikit_library_request_dict(
         sample_inference_service.messages.SampleTaskRequest(
             sample_input=HAPPY_PATH_INPUT
@@ -234,7 +234,7 @@ def test_global_predict_build_caikit_library_request_dict_strips_invalid_run_kwa
     sample_inference_service,
 ):
     """Global predict build_caikit_library_request_dict strips invalid run kwargs from request"""
-    # Sample block doesn't take the `int_type` or `bool_type` params
+    # Sample module doesn't take the `int_type` or `bool_type` params
     request_dict = build_caikit_library_request_dict(
         sample_inference_service.messages.SampleTaskRequest(
             sample_input=HAPPY_PATH_INPUT, int_type=5, bool_type=True
@@ -340,7 +340,7 @@ def test_global_predict_build_caikit_library_request_dict_works_for_repeated_fie
 def test_global_train_build_caikit_library_request_dict_creates_caikit_core_run_kwargs_not_fail_when_optional_proto_field_not_exist(
     sample_train_service,
 ):
-    """Global train build_caikit_library_request_dict creates block run kwargs from RPC msg
+    """Global train build_caikit_library_request_dict creates module run kwargs from RPC msg
     and if not passed in request, it creates the fields with default values"""
     train_request = (
         sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
@@ -396,7 +396,7 @@ def test_global_train_build_caikit_library_request_dict_works_for_repeated_field
 
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(jsondata=stream_type.JsonData(data=[])).to_proto()
-    train_request = sample_train_service.messages.ModulesSampleTaskListBlockTrainRequest(
+    train_request = sample_train_service.messages.ModulesSampleTaskListModuleTrainRequest(
         model_name=random_test_id(),
         training_data=training_data,
         poison_pills=["Bob Marley", "Bunny Livingston"],
@@ -404,7 +404,7 @@ def test_global_train_build_caikit_library_request_dict_works_for_repeated_field
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        sample_lib.modules.sample_task.ListBlock().train,
+        sample_lib.modules.sample_task.ListModule().train,
     )
 
     # model_name is not expected to be passed through
@@ -475,7 +475,7 @@ def test_global_train_build_caikit_library_request_dict_ok_with_training_data_as
     training_data = stream_type(
         listoffiles=stream_type.ListOfFiles(files=[sample_csv_file, sample_json_file])
     ).to_proto()
-    train_request = sample_train_service.messages.ModulesSampleTaskListBlockTrainRequest(
+    train_request = sample_train_service.messages.ModulesSampleTaskListModuleTrainRequest(
         model_name=random_test_id(),
         training_data=training_data,
         poison_pills=["Bob Marley", "Bunny Livingston"],
@@ -483,7 +483,7 @@ def test_global_train_build_caikit_library_request_dict_ok_with_training_data_as
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        sample_lib.modules.sample_task.ListBlock().train,
+        sample_lib.modules.sample_task.ListModule().train,
     )
 
     # model_name is not expected to be passed through

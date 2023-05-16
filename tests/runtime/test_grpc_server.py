@@ -138,7 +138,7 @@ def test_model_train(runtime_grpc_server):
     result = TrainingManager.get_instance().training_futures[training_id].result()
 
     assert (
-        result.BLOCK_CLASS
+        result.MODULE_CLASS
         == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
     )
     # Fields with defaults have expected values
@@ -146,7 +146,7 @@ def test_model_train(runtime_grpc_server):
     assert result.learning_rate == 0.0015
 
 
-def test_predict_fake_block_ok_response(
+def test_predict_fake_module_ok_response(
     loaded_model_id, runtime_grpc_server, sample_inference_service
 ):
     """Test RPC CaikitRuntime.WidgetPredict successful response"""
@@ -160,7 +160,7 @@ def test_predict_fake_block_ok_response(
     assert actual_response == HAPPY_PATH_RESPONSE
 
 
-def test_predict_fake_block_error_response(
+def test_predict_fake_module_error_response(
     runtime_grpc_server, sample_inference_service
 ):
     """Test RPC CaikitRuntime.WidgetPredict error response"""
@@ -178,7 +178,7 @@ def test_predict_fake_block_error_response(
 
 
 ####### End-to-end tests for train a model and then predict with it
-def test_train_fake_block_ok_response_and_can_predict_with_trained_model(
+def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
     train_stub,
     inference_stub,
     sample_train_service,
@@ -214,7 +214,7 @@ def test_train_fake_block_ok_response_and_can_predict_with_trained_model(
     assert inference_response == HAPPY_PATH_RESPONSE
 
 
-def test_train_fake_block_ok_response_with_loaded_model_can_predict_with_trained_model(
+def test_train_fake_module_ok_response_with_loaded_model_can_predict_with_trained_model(
     loaded_model_id,
     train_stub,
     inference_stub,
@@ -248,7 +248,7 @@ def test_train_fake_block_ok_response_with_loaded_model_can_predict_with_trained
     assert inference_response == HAPPY_PATH_RESPONSE
 
 
-def test_train_fake_block_does_not_change_another_instance_model_of_block(
+def test_train_fake_module_does_not_change_another_instance_model_of_block(
     other_loaded_model_id,
     sample_int_file,
     train_stub,
@@ -299,7 +299,7 @@ def test_train_fake_block_does_not_change_another_instance_model_of_block(
 
 
 ##### Test different datastream types #####
-def test_train_fake_block_ok_response_with_datastream_jsondata(
+def test_train_fake_module_ok_response_with_datastream_jsondata(
     train_stub, inference_stub, sample_train_service, sample_inference_service
 ):
     """Test RPC CaikitRuntime.BlocksSampleTaskSampleModuleTrainRequest successful response with training data json type"""
@@ -335,7 +335,7 @@ def test_train_fake_block_ok_response_with_datastream_jsondata(
     assert inference_response == HAPPY_PATH_RESPONSE
 
 
-def test_train_fake_block_ok_response_with_datastream_csv_file(
+def test_train_fake_module_ok_response_with_datastream_csv_file(
     train_stub,
     inference_stub,
     sample_train_service,
@@ -373,7 +373,7 @@ def test_train_fake_block_ok_response_with_datastream_csv_file(
 
 
 #### Error cases for train tests #####
-def test_train_fake_block_error_response_with_unloaded_model(
+def test_train_fake_module_error_response_with_unloaded_model(
     train_stub, sample_train_service
 ):
     """Test RPC CaikitRuntime.WorkflowsSampleTaskSampleWorkflowTrain error response because sample model is not loaded"""

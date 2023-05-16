@@ -375,7 +375,7 @@ def build_caikit_library_request_dict(
                             instance = caikit_library_class.from_proto(field_value)
                             # Add to the request dictionary, using the message
                             # field's name as the key (since, by convention, the
-                            # argument name to the block run function will be
+                            # argument name to the module run function will be
                             # the same as the field name)
                             caikit_library_request_dict[field.name] = instance
 
