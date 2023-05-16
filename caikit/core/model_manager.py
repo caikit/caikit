@@ -30,17 +30,13 @@ import zipfile
 import alog
 
 # Local
-from .modules.base import (
-    MODULE_BACKEND_REGISTRY,
-    MODULE_REGISTRY,
-    ModuleBase,
-)
-from .modules.config import ModuleConfig
 from .module_backends import backend_types, module_backend_config
 from .module_backends.base import SharedLoadBackendBase
-from caikit.core.modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
+from .modules.base import MODULE_BACKEND_REGISTRY, MODULE_REGISTRY, ModuleBase
+from .modules.config import ModuleConfig
 from .toolkit.errors import error_handler
 from caikit.config import get_config
+from caikit.core.modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
 
 log = alog.use_channel("MDLMNG")
 error = error_handler.get(log)

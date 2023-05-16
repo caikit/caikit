@@ -25,10 +25,10 @@ import alog
 
 # Local
 from ..module import MODULE_REGISTRY, ModuleBase
-from caikit.core.modules.config import ModuleConfig
 from ..toolkit.errors import error_handler
 from .backend_types import register_backend_type
 from .base import SharedLoadBackendBase, SharedTrainBackendBase
+from caikit.core.modules.config import ModuleConfig
 
 log = alog.use_channel("LCLBKND")
 error = error_handler.get(log)

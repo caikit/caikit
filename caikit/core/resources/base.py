@@ -22,8 +22,8 @@ import alog
 
 # Local
 from .. import module as mod
-from caikit.core.modules.decorator import module_type
 from ..toolkit.errors import error_handler
+from caikit.core.modules.decorator import module_type
 
 log = alog.use_channel("RSRCBASE")
 error = error_handler.get(log)

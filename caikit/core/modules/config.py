@@ -76,7 +76,7 @@ class ModuleConfig(aconfig.Config):
         error.value_check(
             "<COR80418932E>",
             hasattr(self, "module_id"),
-            "Invalid model_config, module_id must be specified."
+            "Invalid model_config, module_id must be specified.",
         )
 
     @classmethod

@@ -23,17 +23,14 @@
 # pylint: disable=unused-argument
 
 # Standard
-from importlib import metadata
 from io import BytesIO
 from typing import Any, Dict, List, Union
 import collections
-import datetime
 import os
 import shutil
 import tempfile
 import time
 import types
-import uuid
 
 # First Party
 import alog
@@ -42,12 +39,10 @@ import alog
 from caikit import core
 from caikit.core import data_model as dm
 from caikit.core.data_model import DataStream
-from caikit.core.modules.config import ModuleConfig
 from caikit.core.modules.meta import _ModuleBaseMeta
-from caikit.core.toolkit import ObjectSerializer, fileio
+from caikit.core.toolkit import fileio
 from caikit.core.toolkit.errors import DataValidationError, error_handler
-from caikit.core.toolkit.wip_decorator import TempDisableWIP, WipCategory, work_in_progress
-from caikit.config import get_config
+from caikit.core.toolkit.wip_decorator import WipCategory, work_in_progress
 
 log = alog.use_channel("MODULE")
 error = error_handler.get(log)
@@ -57,8 +52,6 @@ __all__ = [
     "MODULE_BACKEND_REGISTRY",
     "MODULE_REGISTRY",
     "ModuleBase",
-    "ModuleLoader",
-    "ModuleSaver",
 ]
 
 # Single base global registry of all modules
@@ -776,244 +769,3 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             gold_set: list(dict)
         """
         return report
-
-
-## ModuleLoader ################################################################
-
-
-class ModuleLoader:
-    def __init__(self, model_path):
-        """Construct a new module loader.
-
-        Args:
-            model_path:  str
-                The path to the directory where the model is to be loaded from.
-        """
-        self.model_path = os.path.normpath(model_path)
-        error.dir_check("<COR43014802E>", model_path)
-        self.config = ModuleConfig.load(model_path)
-
-    def load_arg(self, arg):
-        """Extract arg value from the loaded model's config"""
-        return getattr(self.config, arg)
-
-    def load_args(self, *args):
-        """Extract values from the loaded model's config"""
-        return tuple(getattr(self.config, arg) for arg in args)
-
-
-## ModuleSaver #################################################################
-
-
-class ModuleSaver:
-    """A module saver that provides common functionality used for saving modules and also a context
-    manager that cleans up gracefully in case an error is encountered during the save process.
-    """
-
-    SAVED_KEY_NAME = "saved"
-    CREATED_KEY_NAME = "created"
-    TRACKING_KEY_NAME = "tracking_id"
-    MODULE_VERSION_KEY_NAME = "version"
-    MODULE_ID_KEY_NAME = "module_id"
-    MODULE_CLASS_KEY_NAME = "module_class"
-
-    def __init__(self, module: ModuleBase, model_path):
-        """Construct a new module saver.
-
-        Args:
-            module:  caikit.core.module.Module
-                The instance of the module to be saved.
-            model_path:  str
-                The absolute path to the directory where the model will be saved.  If this directory
-                does not exist, it will be created.
-        """
-        self.model_path = os.path.normpath(model_path)
-
-        # Get possibly nested caikit library path
-        module_path = module.__module__
-        lib_name_generator = (
-            k
-            for k, v in get_config().libraries.items()
-            if module_path.startswith(v.module_path)
-        )
-        try:
-            self.library_name = next(lib_name_generator)
-        except StopIteration:
-            # This assumes no nested module path by default
-            self.library_name = module_path.split(".")[0]  # tests
-
-        try:
-            self.library_version = metadata.version(self.library_name)
-        except metadata.PackageNotFoundError:
-            log.debug("<COR25991305D>", "No library version found")
-            if (
-                self.library_name in get_config().libraries
-                and "version" in get_config().libraries[self.library_name]
-            ):
-                self.library_version = get_config().libraries[self.library_name].version
-            else:
-                self.library_version = "0.0.0"
-
-        self.config = {
-            self.library_name + "_version": self.library_version,
-            self.CREATED_KEY_NAME: str(datetime.datetime.now()),
-            self.SAVED_KEY_NAME: str(datetime.datetime.now()),
-            "name": module.MODULE_NAME,
-            self.TRACKING_KEY_NAME: str(uuid.uuid4()),
-            self.MODULE_ID_KEY_NAME: module.MODULE_ID,
-            self.MODULE_CLASS_KEY_NAME: module.MODULE_CLASS,
-            self.MODULE_VERSION_KEY_NAME: module.MODULE_VERSION,
-        }
-
-        # Temp disable wip for following invocation to not log warnings for downstream
-        # usage of ModuleSaver
-        with TempDisableWIP():
-            # Get metadata back about this module and add it to the config
-            stored_config = module.metadata
-        # Sanitize some things off of the config:
-        # Remove the old `saved` timestamp:
-        stored_config.pop(self.SAVED_KEY_NAME, None)
-        # Remove any reserved keys, these will be set by the `ModuleConfig` class
-        for key in ModuleConfig.reserved_keys:
-            if key in stored_config:
-                stored_config.pop(key)
-
-        self.config.update(stored_config)
-
-    def add_dir(self, relative_path, base_relative_path=""):
-        """Create a directory inside the `model_path` for this saver.
-
-        Args:
-            relative_path:  str
-                A path relative to this saver's `model_path` denoting the directory to create.
-            base_relative_path:  str
-                A path, relative to this saver's `model_path`, in which `relative_path` will be
-                created.
-
-        Returns:
-            str, str
-                A tuple containing both the `relative_path` and `absolute_path` to the
-                directory created.
-
-        Examples:
-            >>> with ModelSaver('/path/to/model') as saver:
-            >>>     rel_path, abs_path = saver.add_dir('word_embeddings', 'model_data')
-            >>> print(rel_path)
-            model_data/word_embeddings
-            >>> print(abs_path)
-            /path/to/model/model_data/word_embeddings
-        """
-        base_relative_path = os.path.normpath(base_relative_path)
-        relative_path = os.path.normpath(relative_path)
-
-        relative_path = os.path.join(base_relative_path, relative_path)
-        absolute_path = os.path.join(self.model_path, relative_path)
-
-        os.makedirs(absolute_path, exist_ok=True)
-
-        return relative_path, absolute_path
-
-    def copy_file(self, file_path, relative_path=""):
-        """Copy an external file into a subdirectory of the `model_path` for this saver.
-
-        Args:
-            file_path:  str
-                Absolute path to the external file to copy.
-            relative_path:  str
-                The relative path inside of `model_path` where the file will be copied to.
-                If set to the empty string (default) then the file will be placed directly in
-                the `model_path` directory.
-
-        Returns:
-            str, str
-                A tuple containing both the `relative_path` and `absolute_path` to the copied file.
-        """
-        file_path = os.path.normpath(file_path)
-
-        if not os.path.isfile(file_path):
-            error(
-                "<COR80954473E>",
-                FileNotFoundError(
-                    "Attempted to add `{}` but is not a regular file.".format(file_path)
-                ),
-            )
-
-        filename = os.path.basename(os.path.normpath(file_path))
-
-        relative_path, absolute_path = self.add_dir(relative_path)
-
-        relative_file_path = os.path.join(relative_path, filename)
-        absolute_file_path = os.path.join(absolute_path, filename)
-
-        shutil.copyfile(file_path, absolute_file_path)
-
-        return relative_file_path, absolute_file_path
-
-    def save_object(self, obj, filename, serializer, relative_path=""):
-        """Save a Python object using the provided ObjectSerializer.
-
-        Args:
-            obj:  any
-                The Python object to save
-            filename: str
-                The filename to use for the saved object
-            serializer: ObjectSerializer
-                An ObjectSerializer instance (e.g., YAMLSerializer) that should be used to serialize
-                the object
-            relative_path:  str
-                The relative path inside of `model_path` where the object will be saved
-        """
-        if not issubclass(serializer.__class__, ObjectSerializer):
-            error(
-                "<COR85655282E>",
-                TypeError(
-                    "`{}` does not extend `ObjectSerializer`".format(
-                        serializer.__class__.__name__
-                    )
-                ),
-            )
-
-        relative_path, absolute_path = self.add_dir(relative_path)
-
-        # Normalize any '././' structure that may come from relative paths
-        relative_file_path = os.path.normpath(os.path.join(relative_path, filename))
-        absolute_file_path = os.path.normpath(os.path.join(absolute_path, filename))
-
-        serializer.serialize(obj, absolute_file_path)
-
-        return relative_file_path, absolute_file_path
-
-    def update_config(self, additional_config):
-        """Add items to this saver's config dictionary.
-
-        Args:
-            additional_config:  dict
-                A dictionary of config options to add the this saver's configuration.
-
-        Notes:
-            The behavior of this method matches `dict.update` and is equivalent to calling
-            `saver.config.update`.  The `saver.config` dictionary may be accessed directly for
-            more sophisticated manipulation of the configuration.
-        """
-        self.config.update(additional_config)
-
-    def __enter__(self):
-        """Enter the module saver context.  This creates the `model_path` directory.  If this
-        context successfully exits, then the model configuration and all files it contains will
-        be written and saved to disk inside the `model_path` directory.  If any uncaught exceptions
-        are thrown inside this context, then `model_path` will be removed.
-        """
-        os.makedirs(self.model_path, exist_ok=True)
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Exit the module saver context. If this context successfully exits, then the model
-        configuration and all files it contains will be written and saved to disk inside the
-        `model_path` directory.  If any uncaught exceptions are thrown inside this context, then
-        `model_path` will be removed.
-        """
-        if exc_type is not None:
-            shutil.rmtree(self.model_path, ignore_errors=True)
-            return
-
-        ModuleConfig(self.config).save(self.model_path)

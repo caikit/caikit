@@ -21,13 +21,13 @@ import alog
 
 # Local
 from .module import MODULE_BACKEND_REGISTRY
+from caikit.config import get_config
 from caikit.core.module_backends.backend_types import (
     MODULE_BACKEND_CONFIG_FUNCTIONS,
     MODULE_BACKEND_TYPES,
 )
 from caikit.core.module_backends.base import BackendBase
 from caikit.core.toolkit.errors import error_handler
-from caikit.config import get_config
 
 log = alog.use_channel("CONF")
 error = error_handler.get(log)

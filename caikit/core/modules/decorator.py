@@ -27,12 +27,12 @@ import semver
 import alog
 
 # Local
-import caikit.core
-from caikit.core import data_model as dm
 from .base import MODULE_BACKEND_REGISTRY, ModuleBase
+from caikit.core import data_model as dm
 from caikit.core.module_backends import backend_types
 from caikit.core.task import TaskBase
 from caikit.core.toolkit.errors import error_handler
+import caikit.core
 
 log = alog.use_channel("MODTYP")
 error = error_handler.get(log)
@@ -164,9 +164,7 @@ def module(
 
         # Tasks: check to see if a super-class has one as well and that they match:
         tasks = {
-            class_.TASK_CLASS
-            for class_ in cls_.mro()
-            if hasattr(class_, "TASK_CLASS")
+            class_.TASK_CLASS for class_ in cls_.mro() if hasattr(class_, "TASK_CLASS")
         }
         if len(tasks) > 1:
             error(
