@@ -170,9 +170,13 @@ class _DataBaseMetaClass(type):
         }
 
         # mapping of all oneofs and the fields that are part of them
+        # NOTE: protobuf makes an interesting use of oneof to wrap types that
+        #   should be explicitly optional. We don't want to consider these
+        #   oneofs in the general oneof handling.
         cls._fields_oneofs_map = {
             oneof_name: [field.name for field in oneof.fields]
             for oneof_name, oneof in cls._proto_class.DESCRIPTOR.oneofs_by_name.items()
+            if len(oneof.fields) != 1 or oneof.name != f"_{oneof.fields[0].name}"
         }
         cls._fields_to_oneof = {
             field_name: oneof_name
