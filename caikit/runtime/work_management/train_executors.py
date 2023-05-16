@@ -85,8 +85,8 @@ class TrainSaveExecutorBase(abc.ABC):
 
         finally:
             # Indicate training is done
-            event.set()
             event.is_completed = True
+            event.set()
 
 
 class LocalTrainSaveExecutor(TrainSaveExecutorBase):
@@ -191,7 +191,6 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.error = None
-            self.__ran = False
 
         def set_args(self, *args, **kwargs):
             self._args = args
@@ -206,6 +205,7 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             # pylint: disable=broad-exception-caught
             except Exception as err:
                 self.error = err
+
 
     def __init__(self, event) -> None:
 
@@ -226,16 +226,24 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
 
         self._worker.start()
 
+        self._worker.join()
         self.__event.wait()
 
-        self._worker.join()
 
-        if not hasattr(self.__event, "is_completed"):
+        if self._worker.is_alive() and self.__event.is_set():
+            # Since we are using process here, we cannot rely on
+            # checking is_complete flag to be available to check if
+            # the training was completed or cancelled. Therefore,
+            # we will check if worker is alive and event is set.
+            # This does create an edge case, were if the thread is done
+            # naturally and at the exact same time, the request is cancelled
+            # but in that case, the training is anyways already finished
+            # so that shouldn't create huge problems
             self.cancel()
-
 
         # If an error occurred, reraise it here
         # TODO: Make sure the stack trace is preserved
+
         if self._worker.error is not None:
             if isinstance(self._worker.error, CaikitRuntimeException):
                 raise self._worker.error
