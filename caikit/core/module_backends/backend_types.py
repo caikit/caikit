@@ -23,6 +23,7 @@ from typing import Any, Dict, Optional, Type
 import alog
 
 # Local
+from ..registries import module_backend_types, module_backend_classes
 from ..toolkit.errors import error_handler
 from ..toolkit.wip_decorator import Action, WipCategory, work_in_progress
 from .base import BackendBase
@@ -70,9 +71,11 @@ def register_backend_type(config_class: Optional[Type[BackendBase]] = None):
     # Add to the global registries
     # NOTE: This only contains a module name and does not contain an object of the backend module
     # The object of the "configured" backend module is generated using caikit.config.configure
-    if type_name not in MODULE_BACKEND_TYPES:
-        MODULE_BACKEND_TYPES[type_name] = type_name
-        MODULE_BACKEND_CONFIG_FUNCTIONS[type_name] = config_class
+    backend_types = module_backend_types()
+    backend_classes = module_backend_classes()
+    if type_name not in backend_types:
+        backend_types[type_name] = type_name
+        backend_classes[type_name] = config_class
 
 
 def __getattr__(name):
@@ -80,4 +83,4 @@ def __getattr__(name):
     mapping
     """
     if not name.startswith("_"):
-        return getattr(MODULE_BACKEND_TYPES, name)
+        return getattr(module_backend_types(), name)

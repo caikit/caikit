@@ -22,12 +22,9 @@ import alog
 # Local
 from ..modules.base import MODULE_BACKEND_REGISTRY
 from caikit.config import get_config
-from caikit.core.module_backends.backend_types import (
-    MODULE_BACKEND_CONFIG_FUNCTIONS,
-    MODULE_BACKEND_TYPES,
-)
 from caikit.core.module_backends.base import BackendBase
 from caikit.core.toolkit.errors import error_handler
+from ..registries import module_backend_types, module_backend_classes
 
 log = alog.use_channel("CONF")
 error = error_handler.get(log)
@@ -84,7 +81,7 @@ def configure():
             backend_type = backend_config.type
             error.value_check(
                 "<COR72281596E>",
-                backend_type in MODULE_BACKEND_TYPES,
+                backend_type in module_backend_types(),
                 "Invalid backend [{}] found at backend_priority index [{}]",
                 backend_type,
                 i,
@@ -96,7 +93,7 @@ def configure():
                 "Backend (%d)[%s] config: %s", i, backend_type, backend_instance_config
             )
 
-            backend_class = MODULE_BACKEND_CONFIG_FUNCTIONS.get(backend_type)
+            backend_class = module_backend_classes().get(backend_type)
             error.value_check(
                 "<COR64618509E>",
                 len(registry) == i,

@@ -64,7 +64,7 @@ class _AttrAccessBackendDict(dict):
 MODULE_BACKEND_TYPES = _AttrAccessBackendDict()
 
 
-def module_backend_types() -> Dict[Dict[str, str]]:
+def module_backend_types() -> Dict[str, str]:
     return MODULE_BACKEND_TYPES
 
 

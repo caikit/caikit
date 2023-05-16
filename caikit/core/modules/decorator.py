@@ -27,14 +27,13 @@ import semver
 import alog
 
 # Local
-from .base import MODULE_BACKEND_REGISTRY, MODULE_REGISTRY, ModuleBase
+from .base import ModuleBase
 from caikit.core import data_model as dm
 
-# NOTE: circular dep between module_backends and modules
-from caikit.core.module_backends import backend_types
 from caikit.core.task import TaskBase
 from caikit.core.toolkit.errors import error_handler
 import caikit.core
+from ..registries import module_registry, module_backend_registry, module_backend_types
 
 log = alog.use_channel("MODTYP")
 error = error_handler.get(log)
@@ -50,7 +49,7 @@ def module(
     name=None,
     version=None,
     task: Type[TaskBase] = None,
-    backend_type=backend_types.LOCAL,
+    backend_type="LOCAL",
     base_module: Union[str, Type[ModuleBase]] = None,
     backend_config_override: Optional[Dict] = None,
 ):
@@ -115,11 +114,11 @@ def module(
             module_id = base_module
             error.value_check(
                 "<COR09479833E>",
-                module_id in MODULE_REGISTRY,
+                module_id in module_registry(),
                 "Unknown base module id: {}",
                 module_id,
             )
-            base_module_class = MODULE_REGISTRY[module_id]
+            base_module_class = module_registry()[module_id]
 
         # If base_module is a type, validate that it derives from ModuleBase and
         # use its MODULE_ID
@@ -204,18 +203,18 @@ def module(
 
         # Verify UUID and add this module to the module registry
         if not backend_module_impl:
-            if cls_.MODULE_ID in MODULE_REGISTRY:
+            if cls_.MODULE_ID in module_registry():
                 error(
                     "<COR30607646E>",
                     RuntimeError(
                         "MODULE_ID `{}` conflicts for classes `{}` and `{}`".format(
                             cls_.MODULE_ID,
                             cls_.__name__,
-                            MODULE_REGISTRY[cls_.MODULE_ID].__name__,
+                            module_registry()[cls_.MODULE_ID].__name__,
                         )
                     ),
                 )
-            MODULE_REGISTRY[cls_.MODULE_ID] = cls_
+            module_registry()[cls_.MODULE_ID] = cls_
 
         # Register backend
         _register_module_implementation(
@@ -266,19 +265,19 @@ def _register_module_implementation(
 
     error.value_check(
         "<COR86780140E>",
-        backend_type in backend_types.MODULE_BACKEND_TYPES,
+        backend_type in module_backend_types(),
         "Cannot override implementation of {} for unknown backend type {}",
         module_id,
         backend_type,
     )
 
-    core_class = MODULE_REGISTRY.get(module_id)
+    core_class = module_registry().get(module_id)
     if core_class is None:
         # TODO! Inject a dummy entry that will raise on usage
         pass  # pragma: no cover
 
     # Do the registration!
-    module_type_mapping = MODULE_BACKEND_REGISTRY.setdefault(module_id, {})
+    module_type_mapping = module_backend_registry().setdefault(module_id, {})
 
     # Make sure this is not an overwrite of an existing registration
     existing_type = module_type_mapping.get(backend_type)
