@@ -24,7 +24,7 @@ import yaml
 import alog
 
 # Local
-from ..module import MODULE_REGISTRY, ModuleBase
+from ..modules.base import MODULE_REGISTRY, ModuleBase
 from ..toolkit.errors import error_handler
 from .backend_types import register_backend_type
 from .base import SharedLoadBackendBase, SharedTrainBackendBase

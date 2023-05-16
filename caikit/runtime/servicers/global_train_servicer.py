@@ -32,7 +32,7 @@ import alog
 
 # Local
 from caikit import get_config
-from caikit.core.module import ModuleBase
+from caikit.core import ModuleBase
 from caikit.interfaces.runtime.data_model import TrainingJob
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.model_management.training_manager import TrainingManager

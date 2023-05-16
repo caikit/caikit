@@ -41,7 +41,7 @@ from caikit.core.data_model.dataobject import (
     _DataObjectBaseMetaClass,
     dataobject,
 )
-from caikit.core.module import ModuleBase
+from caikit.core import ModuleBase
 from caikit.interfaces.runtime.data_model import ModelPointer, TrainingJob
 from caikit.runtime.service_generation.data_stream_source import make_data_stream_source
 

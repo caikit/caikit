@@ -31,7 +31,7 @@ import alog
 
 # Local
 from caikit import get_config
-from caikit.core.module import ModuleBase
+from caikit.core import ModuleBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingInfoResponse,

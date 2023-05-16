@@ -27,7 +27,7 @@ import semver
 import alog
 
 # Local
-from .base import MODULE_BACKEND_REGISTRY, ModuleBase
+from .base import MODULE_BACKEND_REGISTRY, MODULE_REGISTRY, ModuleBase
 from caikit.core import data_model as dm
 from caikit.core.module_backends import backend_types
 from caikit.core.task import TaskBase
@@ -44,7 +44,7 @@ SUPPORTED_LOAD_BACKENDS_VAR_NAME = "SUPPORTED_LOAD_BACKENDS"
 
 
 def module(
-    id=None,
+    id=None, # pylint: disable=redefined-builtin
     name=None,
     version=None,
     task: Type[TaskBase] = None,
@@ -201,7 +201,6 @@ def module(
         setattr(cls_, "BACKEND_TYPE", backend_type)
 
         # Verify UUID and add this block to the module and block registries
-        global MODULE_REGISTRY
         if not backend_module_impl:
             if cls_.MODULE_ID in MODULE_REGISTRY:
                 error(

@@ -20,7 +20,7 @@ import copy
 import alog
 
 # Local
-from .module import MODULE_BACKEND_REGISTRY
+from ..modules.base import MODULE_BACKEND_REGISTRY
 from caikit.config import get_config
 from caikit.core.module_backends.backend_types import (
     MODULE_BACKEND_CONFIG_FUNCTIONS,

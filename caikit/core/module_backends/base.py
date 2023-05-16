@@ -25,7 +25,7 @@ import abc
 import aconfig
 
 # Local
-from ..module import ModuleBase
+from ..modules.base import ModuleBase
 
 
 class BackendBase(abc.ABC):

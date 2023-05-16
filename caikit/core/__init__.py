@@ -33,11 +33,11 @@ _warnings.filterwarnings("ignore")
 from .data_model import DataObjectBase, dataobject
 from .model_manager import *
 from .module_backends import *
-from .modules.base import ModuleBase, module
+from .modules.base import ModuleBase
+from .modules.decorator import module
 from .resources.base import ResourceBase, resource
 from .task import TaskBase, task
 from .toolkit import *
-from .workflows.base import WorkflowBase, workflow
 from caikit.core.module_backends.module_backend_config import (
     configure as backend_configure,
 )
