@@ -35,7 +35,6 @@ from .model_manager import *
 from .module_backends import *
 from .modules.base import ModuleBase
 from .modules.decorator import module
-from .resources.base import ResourceBase, resource
 from .task import TaskBase, task
 from .toolkit import *
 from caikit.core.module_backends.module_backend_config import (
