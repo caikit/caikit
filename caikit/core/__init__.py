@@ -32,7 +32,7 @@ _warnings.filterwarnings("ignore")
 # Local
 from .data_model import DataObjectBase, dataobject
 from .model_manager import *
-from .module import *
+from .modules.base import ModuleBase, module
 from caikit.core.module_backends.module_backend_config import configure as backend_configure
 from .module_backends import *
 from caikit.core.modules.config import ModuleConfig
