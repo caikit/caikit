@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # Standard
+from typing import Type
 import abc
 import multiprocessing
 import os
@@ -34,6 +35,9 @@ import caikit.core
 
 log = alog.use_channel("TRN_EXCTRS")
 error = caikit.core.toolkit.errors.error_handler.get(log)
+
+
+OOM_EXIT_CODE = 137
 
 # NOTE: Following would get replaced with training backends potentially
 # in future.

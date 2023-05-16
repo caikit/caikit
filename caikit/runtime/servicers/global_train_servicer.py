@@ -55,8 +55,6 @@ error = caikit.core.toolkit.errors.error_handler.get(log)
 # Ref: https://developers.google.com/protocol-buffers/docs/reference/cpp/google.protobuf.descriptor
 NON_PRIMITIVE_TYPES = [FieldDescriptor.TYPE_MESSAGE, FieldDescriptor.TYPE_ENUM]
 
-OOM_EXIT_CODE = 137
-
 # pylint: disable=too-many-instance-attributes
 class GlobalTrainServicer:
     """Something something about the train servicer"""
