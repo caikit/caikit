@@ -148,7 +148,7 @@ class GlobalPredictServicer:
                 log.debug("<RUN52259029D>", "Retrieving model '%s'", model_id)
                 model = self._model_manager.retrieve_model(model_id)
 
-                # Unmarshall the request object into the required block run argument(s)
+                # Unmarshall the request object into the required module run argument(s)
                 with PREDICT_FROM_PROTO_SUMMARY.labels(
                     grpc_request=desc_name, model_id=model_id
                 ).time():
@@ -156,7 +156,7 @@ class GlobalPredictServicer:
                         request, model.run
                     )
 
-                # NB: we previously recorded the size of the request, and timed this block to
+                # NB: we previously recorded the size of the request, and timed this module to
                 # provide a rudimentary throughput metric of size / time
                 with alog.ContextLog(log.debug, inner_scope_name):
                     with PREDICT_CAIKIT_LIBRARY_SUMMARY.labels(

@@ -1,5 +1,5 @@
 """
-A hypothetical inner block that transforms some output type rather than taking domain input
+A hypothetical inner module that transforms some output type rather than taking domain input
 """
 # Local
 from ...data_model.sample import SampleOutputType, SampleTask

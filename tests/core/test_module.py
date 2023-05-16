@@ -165,37 +165,6 @@ def test_init_and_members():
     assert config.nested.float == -0.123
 
 
-def test_block_config_has_module_id(model_config):
-    assert model_config.module_id is not None
-    assert model_config.module_id == model_config.block_id
-
-
-def test_workflow_config_has_module_id():
-    config = ModuleConfig(
-        {
-            "workflow_id": "123",
-            "workflow_class": "caikit.core.workflows.dummy.Dummy",
-            "name": "Dummy Workflow",
-        }
-    )
-
-    assert config.module_id is not None
-    assert config.module_id == config.workflow_id
-
-
-def test_resource_config_has_module_id():
-    config = ModuleConfig(
-        {
-            "resource_id": "r123",
-            "resource_class": "caikit.core.resources.dummy.Dummy",
-            "name": "Dummy Resource",
-        }
-    )
-
-    assert config.module_id is not None
-    assert config.module_id == config.resource_id
-
-
 def test_reserved_keys():
     for reserved_key in ("module_id", "model_path"):
         with pytest.raises(KeyError):

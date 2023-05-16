@@ -29,7 +29,9 @@ class TestFeatureExtractor(TestCaseBase):
         self.yaml_filename = os.path.join(
             self.fixtures_dir, "dummy_module", "config.yml"
         )
-        self.json_filename = os.path.join(self.fixtures_dir, "dummy_module", "data.json")
+        self.json_filename = os.path.join(
+            self.fixtures_dir, "dummy_module", "data.json"
+        )
         self.pickle_filename = os.path.join(
             self.fixtures_dir, "dummy_module", "data.pkl"
         )

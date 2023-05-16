@@ -1,5 +1,5 @@
 """
-A sample block for sample things!
+A sample module for sample things!
 """
 # Standard
 import os
