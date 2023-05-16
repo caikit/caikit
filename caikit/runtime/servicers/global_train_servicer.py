@@ -17,6 +17,7 @@ from typing import Optional
 from uuid import uuid4
 import concurrent.futures
 import importlib
+import multiprocessing
 import os
 import re
 import threading
@@ -224,14 +225,15 @@ class GlobalTrainServicer:
             **build_caikit_library_request_dict(request, model.train),
         }
 
-        event = threading.Event()
 
-        # If running with a subprocess, set the target and args accordingly
-        target = (
-            SubProcessTrainSaveExecutor(event)
-            if self.use_subprocess
-            else LocalTrainSaveExecutor(event)
-        )
+        # If running with a subprocess, set the target, events and args accordingly
+        if self.use_subprocess:
+            event = multiprocessing.Event()
+            target = SubProcessTrainSaveExecutor(event)
+        else:
+            event = threading.Event()
+            target = LocalTrainSaveExecutor(event)
+
 
         log.debug2(
             "Training with %s",
