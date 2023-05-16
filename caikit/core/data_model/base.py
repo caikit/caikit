@@ -289,11 +289,19 @@ class _DataBaseMetaClass(type):
                 return current
 
             # If not currently set, delegate to the backend
-            attr_val = self.backend.get_attribute(self.__class__, field)
+            backend = self.backend
+            if backend is None:
+                error(
+                    "<COR66616239E>",
+                    AttributeError(
+                        f"{type(self)} missing attribute {field} and no backend set"
+                    ),
+                )
+            attr_val = backend.get_attribute(self.__class__, field)
 
             # If the backend says that this attribute should be cached, set it
             # as an attribute on the class
-            if self.backend.cache_attribute(field, attr_val):
+            if backend.cache_attribute(field, attr_val):
                 setattr(self, private_name, attr_val)
 
             # Return the value found by the backend
