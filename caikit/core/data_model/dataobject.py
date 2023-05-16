@@ -67,16 +67,11 @@ class _DataObjectBaseMetaClass(_DataBaseMetaClass):
 
         # Get the annotations that will go into the dataclass
         if name != "DataObjectBase":
-            raw_field_names = attrs.get("__annotations__")
-            if raw_field_names is None:
+            field_names = attrs.get("__annotations__")
+            if field_names is None:
                 raise TypeError(
                     "All DataObjectBase classes must follow dataclass syntax"
                 )
-
-            # TODO: Sort out oneof field names
-            field_names = list(raw_field_names.keys())
-
-            # Add the forward declaration
             attrs[_DataBaseMetaClass._FWD_DECL_FIELDS] = field_names
 
         # Delegate to the base metaclass
@@ -367,6 +362,7 @@ def _make_oneof_init(cls):
                 new_kwargs[oneof_name] = val
                 to_remove.append(field_name)
                 which_oneof[oneof_name] = field_name
+
         for kwarg in to_remove:
             del kwargs[kwarg]
         kwargs.update(new_kwargs)
