@@ -481,12 +481,12 @@ class DataBase(metaclass=_DataBaseMetaClass):
             protobufs
                 A DataBase object.
         """
-        if cls.__name__ != proto.DESCRIPTOR.name:
+        if cls._proto_class.DESCRIPTOR.name != proto.DESCRIPTOR.name:
             error(
                 "<COR71783894E>",
                 ValueError(
                     "class name `{}` does not match protobufs name `{}`".format(
-                        cls.__name__, proto.DESCRIPTOR.name
+                        cls._proto_class.DESCRIPTOR.name, proto.DESCRIPTOR.name
                     )
                 ),
             )
