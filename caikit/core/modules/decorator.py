@@ -29,6 +29,8 @@ import alog
 # Local
 from .base import MODULE_BACKEND_REGISTRY, MODULE_REGISTRY, ModuleBase
 from caikit.core import data_model as dm
+
+# NOTE: circular dep between module_backends and modules
 from caikit.core.module_backends import backend_types
 from caikit.core.task import TaskBase
 from caikit.core.toolkit.errors import error_handler
@@ -265,7 +267,7 @@ def _register_module_implementation(
     error.value_check(
         "<COR86780140E>",
         backend_type in backend_types.MODULE_BACKEND_TYPES,
-        "Cannot override implementation of {} for unkonwn backend type {}",
+        "Cannot override implementation of {} for unknown backend type {}",
         module_id,
         backend_type,
     )

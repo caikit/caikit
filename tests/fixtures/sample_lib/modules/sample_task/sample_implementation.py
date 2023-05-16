@@ -12,7 +12,7 @@ from ...data_model.sample import (
     SampleTrainingType,
 )
 from caikit.core.data_model import DataStream
-from caikit.core.module import ModuleLoader, ModuleSaver
+from caikit.core.modules import ModuleLoader, ModuleSaver
 import caikit.core
 
 

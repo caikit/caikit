@@ -98,8 +98,6 @@ runtime:
     # Configuration items for service generation
     service_generation:
         enabled: true
-        module_types:
-            included: ["blocks", "workflows"]
         module_guids:
             included: []
             excluded: []

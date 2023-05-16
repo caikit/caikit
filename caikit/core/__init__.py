@@ -33,14 +33,12 @@ _warnings.filterwarnings("ignore")
 from .data_model import DataObjectBase, dataobject
 from .model_manager import *
 from .module_backends import *
-from .modules.base import ModuleBase
-from .modules.decorator import module
+from .modules import ModuleBase, ModuleConfig, module
 from .task import TaskBase, task
 from .toolkit import *
 from caikit.core.module_backends.module_backend_config import (
     configure as backend_configure,
 )
-from caikit.core.modules.config import ModuleConfig
 
 # Configure the global model wrangling functions
 MODEL_MANAGER = ModelManager()
