@@ -45,7 +45,7 @@ class TaskBase:
 
     @classmethod
     def validate_run_signature(cls, signature: CaikitMethodSignature) -> None:
-        if signature.parameters is None:
+        if not signature.parameters:
             raise ValueError(
                 "Task could not be validated, no .run parameters were provided"
             )
