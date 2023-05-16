@@ -30,28 +30,6 @@ from .base import BackendBase
 log = alog.use_channel("BCKENDTYP")
 error = error_handler.get(log)
 
-## Backend Type Extensible Enum ################################################
-
-
-class _AttrAccessDict(dict):
-    """Simple extension on a dict that allows attribute access in addition to
-    index lookup
-    """
-
-    def __getattr__(self, name: str) -> Any:
-        """Alias to index lookup"""
-        error.value_check(
-            "<COR85015051E>", name in self, "backend type {} not registered", name
-        )
-        return self[name]
-
-
-# "enum" holding known backend types. This is implemented as a dict so that it
-# can be extended as needed by downstream libraries.
-MODULE_BACKEND_TYPES = _AttrAccessDict()
-MODULE_BACKEND_CONFIG_FUNCTIONS: Dict[int, Type[BackendBase]] = {} # This does not seem right
-    # backend_type -> config_class
-
 
 ## Public ######################################################################
 
