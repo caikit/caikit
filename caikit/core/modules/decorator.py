@@ -44,7 +44,7 @@ SUPPORTED_LOAD_BACKENDS_VAR_NAME = "SUPPORTED_LOAD_BACKENDS"
 
 
 def module(
-    id=None, # pylint: disable=redefined-builtin
+    id=None,  # pylint: disable=redefined-builtin
     name=None,
     version=None,
     task: Type[TaskBase] = None,

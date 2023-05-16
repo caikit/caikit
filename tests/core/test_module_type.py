@@ -12,8 +12,8 @@ import pytest
 # Local
 from caikit.core import module
 from caikit.core.modules.decorator import module_type
-from sample_lib.modules.sample_task import SampleModule
 from sample_lib.data_model.sample import SampleTask
+from sample_lib.modules.sample_task import SampleModule
 import caikit.core
 
 ## Helpers #####################################################################

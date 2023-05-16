@@ -22,11 +22,14 @@ import tempfile
 import uuid
 
 # Local
-from caikit.core.module_backends.module_backend_config import configure, configured_load_backends
+from caikit.core.module_backends.module_backend_config import (
+    configure,
+    configured_load_backends,
+)
+from sample_lib.data_model import SampleTask
 
 # Unit Test Infrastructure
 from sample_lib.modules.sample_task import SampleModule
-from sample_lib.data_model import SampleTask
 from tests.base import TestCaseBase
 from tests.conftest import temp_config
 

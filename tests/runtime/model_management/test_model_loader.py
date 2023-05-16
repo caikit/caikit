@@ -24,13 +24,13 @@ import pytest
 # Local
 from caikit.config import get_config
 from caikit.core import ModuleConfig
-from caikit.core.modules import base, module
 from caikit.core.module_backends import backend_types
+from caikit.core.modules import base, module
 from caikit.runtime.model_management.batcher import Batcher
 from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from sample_lib.modules.sample_task import SampleModule
 from sample_lib.data_model import SampleInputType, SampleOutputType
+from sample_lib.modules.sample_task import SampleModule
 from tests.conftest import random_test_id, temp_config
 from tests.core.helpers import MockBackend
 from tests.fixtures import Fixtures

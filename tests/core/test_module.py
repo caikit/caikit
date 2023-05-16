@@ -17,8 +17,6 @@ import io
 import os
 import tempfile
 
-# Third Party
-
 # First Party
 import aconfig
 
@@ -299,7 +297,9 @@ def test_duplicate_registration_raises(reset_globals):
     DummyFoo, _ = configure_alternate_backend_impl()
     with pytest.raises(AssertionError):
 
-        @caikit.core.modules.module(base_module=DummyFoo, backend_type=backend_types.MOCK)
+        @caikit.core.modules.module(
+            base_module=DummyFoo, backend_type=backend_types.MOCK
+        )
         class DummyBat(caikit.core.ModuleBase):
             pass
 

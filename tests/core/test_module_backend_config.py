@@ -17,13 +17,13 @@ Tests for the backend configuration framework
 """
 
 # Local
-from caikit.core.modules import base, module
 from caikit.core.module_backends.module_backend_config import (
     configure,
     configured_load_backends,
     configured_train_backends,
     start_backends,
 )
+from caikit.core.modules import base, module
 from sample_lib.data_model import SampleTask
 from tests.conftest import temp_config
 from tests.core.helpers import *

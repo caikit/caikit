@@ -22,13 +22,13 @@ import pytest
 # Local
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from sample_lib.modules.sample_task.sample_implementation import SampleModule
 from sample_lib.data_model.sample import (
     OtherOutputType,
     SampleInputType,
     SampleOutputType,
     SampleTrainingType,
 )
+from sample_lib.modules.sample_task.sample_implementation import SampleModule
 from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
 import caikit.core
@@ -140,11 +140,13 @@ def test_global_train_other_task(
     batch_size = 42
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
     training_data = stream_type(jsondata=stream_type.JsonData(data=[1])).to_proto()
-    train_request = sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
-        model_name="Other module Training",
-        training_data=training_data,
-        sample_input=SampleInputType(name="Gabe").to_proto(),
-        batch_size=batch_size,
+    train_request = (
+        sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
+            model_name="Other module Training",
+            training_data=training_data,
+            sample_input=SampleInputType(name="Gabe").to_proto(),
+            batch_size=batch_size,
+        )
     )
 
     training_response = sample_train_servicer.Train(train_request)

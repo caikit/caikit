@@ -35,13 +35,13 @@ from .signature_parsing.module_signature import (
     CaikitCoreModuleMethodSignature,
     CustomSignature,
 )
+from caikit.core import ModuleBase
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import (
     DataObjectBase,
     _DataObjectBaseMetaClass,
     dataobject,
 )
-from caikit.core import ModuleBase
 from caikit.interfaces.runtime.data_model import ModelPointer, TrainingJob
 from caikit.runtime.service_generation.data_stream_source import make_data_stream_source
 

@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Local
-from ...modules.sample_task.sample_implementation import SampleModule
 from ...data_model import SampleInputType, SampleOutputType, SampleTask
+from ...modules.sample_task.sample_implementation import SampleModule
 from caikit.core.workflows import WorkflowLoader, WorkflowSaver
 import caikit.core
 

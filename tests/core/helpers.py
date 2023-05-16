@@ -22,15 +22,15 @@ import pytest
 # Local
 from caikit.core import LocalBackend
 from caikit.core.module import MODULE_BACKEND_REGISTRY, MODULE_REGISTRY, ModuleBase
-from caikit.core.module_backends.module_backend_config import (
-    _CONFIGURED_LOAD_BACKENDS,
-    _CONFIGURED_TRAIN_BACKENDS,
-)
 from caikit.core.module_backends import BackendBase, backend_types
 
 # Add mock backend
 # This is set in the base test config's load_priority list
 from caikit.core.module_backends.base import SharedLoadBackendBase
+from caikit.core.module_backends.module_backend_config import (
+    _CONFIGURED_LOAD_BACKENDS,
+    _CONFIGURED_TRAIN_BACKENDS,
+)
 
 
 class MockBackend(BackendBase):

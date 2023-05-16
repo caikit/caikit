@@ -19,10 +19,10 @@ import tempfile
 # Local
 from caikit.core.workflows import workflow
 from caikit.core.workflows.base import WorkflowLoader, WorkflowSaver
+from sample_lib.data_model.sample import SampleInputType, SampleTask
 
 # pylint: disable=import-error
 from sample_lib.modules.sample_task import SampleModule
-from sample_lib.data_model.sample import SampleInputType, SampleTask
 from sample_lib.workflows.sample_task import SampleWorkflow
 
 # Unit Test Infrastructure

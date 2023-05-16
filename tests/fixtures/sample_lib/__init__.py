@@ -2,7 +2,7 @@
 import os
 
 # Local
-from . import modules, data_model, workflows
+from . import data_model, modules, workflows
 from .modules import InnerModule, OtherModule, SampleModule, SamplePrimitiveModule
 from .workflows import SampleWorkflow
 from caikit.config import configure

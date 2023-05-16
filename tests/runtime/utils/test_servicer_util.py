@@ -396,10 +396,12 @@ def test_global_train_build_caikit_library_request_dict_works_for_repeated_field
 
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(jsondata=stream_type.JsonData(data=[])).to_proto()
-    train_request = sample_train_service.messages.ModulesSampleTaskListModuleTrainRequest(
-        model_name=random_test_id(),
-        training_data=training_data,
-        poison_pills=["Bob Marley", "Bunny Livingston"],
+    train_request = (
+        sample_train_service.messages.ModulesSampleTaskListModuleTrainRequest(
+            model_name=random_test_id(),
+            training_data=training_data,
+            poison_pills=["Bob Marley", "Bunny Livingston"],
+        )
     )
 
     caikit.core_request = build_caikit_library_request_dict(
@@ -424,8 +426,10 @@ def test_global_train_build_caikit_library_request_dict_ok_with_DataStreamSource
         jsondata=stream_type.JsonData(data=[100, 120])
     ).to_proto()
 
-    train_request = sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
-        model_name="Bar Training", batch_size=100, training_data=training_data
+    train_request = (
+        sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
+            model_name="Bar Training", batch_size=100, training_data=training_data
+        )
     )
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
@@ -475,10 +479,12 @@ def test_global_train_build_caikit_library_request_dict_ok_with_training_data_as
     training_data = stream_type(
         listoffiles=stream_type.ListOfFiles(files=[sample_csv_file, sample_json_file])
     ).to_proto()
-    train_request = sample_train_service.messages.ModulesSampleTaskListModuleTrainRequest(
-        model_name=random_test_id(),
-        training_data=training_data,
-        poison_pills=["Bob Marley", "Bunny Livingston"],
+    train_request = (
+        sample_train_service.messages.ModulesSampleTaskListModuleTrainRequest(
+            model_name=random_test_id(),
+            training_data=training_data,
+            poison_pills=["Bob Marley", "Bunny Livingston"],
+        )
     )
 
     caikit.core_request = build_caikit_library_request_dict(

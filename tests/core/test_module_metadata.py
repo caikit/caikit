@@ -29,10 +29,10 @@ import pytest
 from caikit.core import toolkit
 
 # pylint: disable=import-error
-from sample_lib.modules.sample_task import SampleModule
+from sample_lib.data_model import SampleTask
 
 # pylint: disable=import-error
-from sample_lib.data_model import SampleTask
+from sample_lib.modules.sample_task import SampleModule
 from sample_lib.workflows.sample_task import SampleWorkflow
 
 # Unit Test Infrastructure

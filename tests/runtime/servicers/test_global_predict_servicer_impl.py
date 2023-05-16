@@ -27,8 +27,8 @@ import pytest
 # Local
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from sample_lib.modules.sample_task import SampleModule
 from sample_lib.data_model import SampleInputType, SampleOutputType
+from sample_lib.modules.sample_task import SampleModule
 from tests.fixtures import Fixtures
 import sample_lib
 
