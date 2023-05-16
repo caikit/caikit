@@ -17,7 +17,6 @@ from unittest.mock import MagicMock, patch
 import os
 import shutil
 import unittest
-import uuid
 
 # Third Party
 import grpc
