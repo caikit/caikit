@@ -398,7 +398,7 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_blo
             training_data=training_data,
         )
     )
-    sample_train_servicer.use_subprocess = True
+
     with pytest.raises(CaikitRuntimeException) as context:
         training_response = sample_train_servicer.Train(
             train_request, Fixtures.build_context("foo")
