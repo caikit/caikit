@@ -39,7 +39,7 @@ import alog
 from caikit import core
 from caikit.core import data_model as dm
 from caikit.core.data_model import DataStream
-from caikit.core.modules.meta import _ModuleBaseMeta
+from .meta import _ModuleBaseMeta
 from caikit.core.toolkit import fileio
 from caikit.core.toolkit.errors import DataValidationError, error_handler
 from caikit.core.toolkit.wip_decorator import WipCategory, work_in_progress

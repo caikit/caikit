@@ -72,7 +72,7 @@ import abc
 import alog
 
 # Local
-from caikit.core.modules.config import ModuleConfig
+from .config import ModuleConfig
 from caikit.core.toolkit import wip_decorator
 from caikit.core.toolkit.errors import error_handler
 
