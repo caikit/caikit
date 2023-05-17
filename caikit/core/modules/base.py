@@ -49,16 +49,8 @@ error = error_handler.get(log)
 
 # This file is `*` imported so we need to override what is exposed
 __all__ = [
-    "MODULE_BACKEND_REGISTRY",
-    "MODULE_REGISTRY",
     "ModuleBase",
 ]
-
-# Single base global registry of all modules
-MODULE_REGISTRY = {}
-
-# Global module backend registry dict
-MODULE_BACKEND_REGISTRY = {}
 
 
 class ModuleBase(metaclass=_ModuleBaseMeta):
