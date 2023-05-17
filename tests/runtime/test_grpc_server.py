@@ -227,11 +227,11 @@ def test_train_fake_module_ok_response_with_loaded_model_can_predict_with_traine
     ).to_proto()
     model_name = random_test_id()
     train_request = (
-        sample_train_service.messages.WorkflowsSampleTaskSampleWorkflowTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskCompositeModuleTrainRequest(
             model_name=model_name, sample_block=sample_model
         )
     )
-    actual_response = train_stub.WorkflowsSampleTaskSampleWorkflowTrain(train_request)
+    actual_response = train_stub.ModulesSampleTaskCompositeModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
     # give the trained model time to load
@@ -384,12 +384,14 @@ def test_train_fake_module_error_response_with_unloaded_model(
             model_id=random_test_id()
         ).to_proto()
 
+        print(dir(sample_train_service.messages))
+
         train_request = (
-            sample_train_service.messages.WorkflowsSampleTaskSampleWorkflowTrainRequest(
+            sample_train_service.messages.ModulesSampleTaskCompositeModuleTrainRequest(
                 model_name=random_test_id(), sample_block=sample_model
             )
         )
-        train_stub.WorkflowsSampleTaskSampleWorkflowTrain(train_request)
+        train_stub.ModulesSampleTaskCompositeModuleTrain(train_request)
     assert context.value.code() == grpc.StatusCode.NOT_FOUND
 
 
