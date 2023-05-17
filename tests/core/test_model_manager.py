@@ -168,7 +168,7 @@ class TestModelManager(TestCaseBase):
         self.assertIsInstance(model, caikit.core.ModuleBase)
 
     def test_import_module_registry(self):
-        """Make sure that the MODULE_REGISTRY can be imported from model_manager"""
+        """Make sure that the module registry can be imported from model_manager"""
         # pylint: disable = import-outside-toplevel,no-name-in-module,unused-import
         from caikit.core.model_manager import module_registry  # isort: skip
 

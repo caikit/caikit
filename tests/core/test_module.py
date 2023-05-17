@@ -356,7 +356,7 @@ def test_override_load_supported_backend(reset_globals):
 
 def test_base_module_in_decorator(reset_globals):
     """Test multiple backend implementation of a module doesn't override base module
-    from MODULE_REGISTRY"""
+    from module registry"""
 
     class BazBackend(BackendBase):
         backend_type = "BAZ"

@@ -34,6 +34,7 @@ from sample_lib.modules.sample_task import SampleModule
 from tests.conftest import random_test_id, temp_config
 from tests.core.helpers import MockBackend
 from tests.fixtures import Fixtures
+import caikit.core
 
 ## Helpers #####################################################################
 
@@ -227,59 +228,58 @@ def test_load_distributed_impl():
     implementation of a module can be loaded
     """
 
-    reg_copy = copy.deepcopy(caikit.core.modules.MODULE_REGISTRY)
-    backend_registry_copy = copy.deepcopy(caikit.core.modules.MODULE_BACKEND_REGISTRY)
+    reg_copy = copy.deepcopy(caikit.core.registries.module_registry())
+    backend_registry_copy = copy.deepcopy(
+        caikit.core.registries.module_backend_registry()
+    )
     # 🌶️🌶️🌶️: the MODULE_BACKEND_REGISTRY can't be easily patched since two separate modules hold
     # an imported reference to it and one edits it (decorator.py) while the other reads it
     # (model_manager.py)
 
-    with mock.patch.object(caikit.core.module, "MODULE_REGISTRY", reg_copy):
+    with mock.patch.object(caikit.core.registries, "MODULE_REGISTRY", reg_copy):
         with mock.patch.object(
-            caikit.core.module_type, "MODULE_BACKEND_REGISTRY", backend_registry_copy
+            caikit.core.registries,
+            "MODULE_BACKEND_REGISTRY",
+            backend_registry_copy,
         ):
-            with mock.patch.object(
-                caikit.core.model_manager,
-                "MODULE_BACKEND_REGISTRY",
-                backend_registry_copy,
-            ):
 
-                @module(
-                    base_module=SampleModule,
-                    backend_type=backend_types.MOCK,
-                    backend_config_override={"bar1": 1},
-                )
-                class DistributedGadget(caikit.core.ModuleBase):
-                    """An alternate implementation of a Gadget"""
+            @module(
+                base_module=SampleModule,
+                backend_type=backend_types.MOCK,
+                backend_config_override={"bar1": 1},
+            )
+            class DistributedGadget(caikit.core.ModuleBase):
+                """An alternate implementation of a Gadget"""
 
-                    SUPPORTED_LOAD_BACKENDS = [
-                        MockBackend.backend_type,
-                        backend_types.LOCAL,
-                    ]
+                SUPPORTED_LOAD_BACKENDS = [
+                    MockBackend.backend_type,
+                    backend_types.LOCAL,
+                ]
 
-                    def __init__(self, bar):
-                        self.bar = bar
+                def __init__(self, bar):
+                    self.bar = bar
 
-                    def run(self, sample_input: SampleInputType) -> SampleOutputType:
-                        return SampleOutputType(
-                            greeting=f"hello distributed {sample_input.name}"
-                        )
+                def run(self, sample_input: SampleInputType) -> SampleOutputType:
+                    return SampleOutputType(
+                        greeting=f"hello distributed {sample_input.name}"
+                    )
 
-                    @classmethod
-                    def load(cls, model_load_path) -> "DistributedGadget":
-                        config = ModuleConfig.load(model_load_path)
-                        return cls(bar=config.bar)
+                @classmethod
+                def load(cls, model_load_path) -> "DistributedGadget":
+                    config = ModuleConfig.load(model_load_path)
+                    return cls(bar=config.bar)
 
-                with tempfile.TemporaryDirectory() as model_path:
-                    # Create and save the model directly with the local impl
-                    SampleModule().save(model_path)
+            with tempfile.TemporaryDirectory() as model_path:
+                # Create and save the model directly with the local impl
+                SampleModule().save(model_path)
 
-                    model_type = "gadget"
+                model_type = "gadget"
 
-                    with temp_model_loader() as model_loader:
-                        # Load the distributed version
-                        model = model_loader.load_model(
-                            random_test_id(),
-                            model_path,
-                            model_type=model_type,
-                        ).module()
-                        assert isinstance(model, DistributedGadget)
+                with temp_model_loader() as model_loader:
+                    # Load the distributed version
+                    model = model_loader.load_model(
+                        random_test_id(),
+                        model_path,
+                        model_type=model_type,
+                    ).module()
+                    assert isinstance(model, DistributedGadget)

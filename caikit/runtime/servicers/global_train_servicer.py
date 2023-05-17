@@ -128,7 +128,7 @@ class GlobalTrainServicer:
                         f"{''.join(split[2:])}",
                     )
                 except Exception:  # pylint: disable=broad-exception-caught
-                    for mod in caikit.core.MODULE_REGISTRY.values():
+                    for mod in caikit.core.registries.module_registry().values():
                         module_split = mod.__module__.split(".")
                         train_request_for_mod = snake_to_upper_camel(
                             f"{module_split[1]}_{module_split[2]}_{mod.__name__}"
