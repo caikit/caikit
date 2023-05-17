@@ -47,11 +47,6 @@ from caikit.core.toolkit.wip_decorator import WipCategory, work_in_progress
 log = alog.use_channel("MODULE")
 error = error_handler.get(log)
 
-# This file is `*` imported so we need to override what is exposed
-__all__ = [
-    "ModuleBase",
-]
-
 
 class ModuleBase(metaclass=_ModuleBaseMeta):
     """Abstract base class from which all modules should inherit."""
