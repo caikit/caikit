@@ -200,11 +200,10 @@ class ModuleClassTrainRPC(CaikitRPCBase):
             elif type_helpers.is_model_type(typ):
                 # Found a model pointer
                 new_params[name] = ModelPointer
+            # elif type_helpers._is_dict(typ):
+            #     new_params[name] = typ
             else:
-                new_params[name] = primitives.extract_primitive_type_from_union(
-                    arg_type=typ,
-                    primitive_data_model_types=primitive_data_model_types,
-                )
+                new_params[name] = typ
 
         return CustomSignature(
             original_signature=signature, parameters=new_params, return_type=return_type
