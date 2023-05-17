@@ -33,7 +33,6 @@ from sample_lib.data_model import SampleTask
 
 # pylint: disable=import-error
 from sample_lib.modules.sample_task import SampleModule
-from sample_lib.workflows.sample_task import SampleWorkflow
 
 # Unit Test Infrastructure
 from tests.base import TestCaseBase
@@ -77,10 +76,10 @@ def sample_model_path(fixtures_dir):
 
 
 # pylint: disable=redefined-outer-name
-def test_block_metadata_is_persisted(sample_model_path):
+def test_module_metadata_is_persisted(sample_model_path):
     """Make sure that if you load and then re-save any model, the metadata in the config.yml is
     persisted."""
-    # Get the block metadata:
+    # Get the module metadata:
     initial_metadata = _load_model_metadata(sample_model_path)
     model = caikit.core.load(sample_model_path)
 
@@ -116,7 +115,7 @@ def test_loaded_modules_have_metadata(sample_model_path):
     )
 
 
-def test_block_has_saved_field():
+def test_module_has_saved_field():
     """Make sure that if you load a model and then save it multiple times,
     the "saved" field should track each timestamp when you save, and should be different
     """
@@ -136,7 +135,7 @@ def test_block_has_saved_field():
     assert resaved_metadata1["saved"] != resaved_metadata2["saved"]
 
 
-def test_block_has_tracking_id_field():
+def test_module_has_tracking_id_field():
     with tempfile.TemporaryDirectory() as tempdir:
         model1 = SampleModule()
         path1 = os.path.join(tempdir, "test1")
@@ -154,28 +153,6 @@ def test_block_has_tracking_id_field():
 
 
 # pylint: disable=redefined-outer-name
-def test_block_metadata_is_saved_into_a_workflow(sample_model_path):
-    """Make sure that if you load a model and then re-package it as part of yet another model
-    (in this case a block is packaged inside a workflow), the metadata of the original model is
-    persisted"""
-    # Get the block metadata:
-    initial_metadata = _load_model_metadata(sample_model_path)
-    model = caikit.core.load(sample_model_path)
-
-    # Create a new workflow containing our block
-    workflow = SampleWorkflow(model)
-
-    with tempfile.TemporaryDirectory() as tempdir:
-        workflow.save(tempdir)
-        # The block's .yaml should live under workflow_root/dummy_model/config.yml
-        resaved_metadata = _load_model_metadata(os.path.join(tempdir, "dummy_model"))
-
-    # assert resaved_metadata == initial_metadata
-    fields_to_not_check = {"saved", "SampleModule_version", "train"}
-    _check_dicts_equal(resaved_metadata, initial_metadata, fields_to_not_check)
-
-
-# pylint: disable=redefined-outer-name
 def test_load_can_be_called_directly_with_non_standard_kwargs(sample_model_path):
     initial_metadata = _load_model_metadata(sample_model_path)
     # note that
@@ -187,8 +164,8 @@ def test_load_can_be_called_directly_with_non_standard_kwargs(sample_model_path)
     _check_dicts_equal(initial_metadata, model.metadata, {"module_id", "model_path"})
 
     # Write a class that doesn't have a `xxx_path` arg for load
-    @caikit.core.block(
-        "00110203-0809-beef-baad-0a0b0c0d0e0f", "FunkyBlock", "0.0.1", SampleTask
+    @caikit.core.module(
+        "00110203-0809-beef-baad-0a0b0c0d0e0f", "FunkyModule", "0.0.1", SampleTask
     )
     class _FunkyModel(SampleModule):
         @classmethod
@@ -207,22 +184,3 @@ def test_parent_class_loads_work(sample_model_path):
     model = SampleModule.load(sample_model_path)
 
     assert isinstance(model, SampleModule)
-
-
-def test_workflows_save_correct_module_paths():
-    with tempfile.TemporaryDirectory() as tempdir:
-        SampleWorkflow(SampleModule()).save(tempdir)
-        workflow = caikit.core.load(tempdir)
-
-    # Should only be the path to the one block
-    assert len(workflow.metadata["module_paths"]) == 1
-    # Add a fake module path
-    module_paths = workflow.metadata["module_paths"]
-    module_paths["some_module"] = "some_path"
-    assert len(workflow.metadata["module_paths"]) == 2
-
-    # Assert that re-loading works fine and fake path not in new model's metadata
-    with tempfile.TemporaryDirectory() as tempdir:
-        workflow.save(tempdir)
-        reloaded_workflow = caikit.core.load(tempdir)
-    assert len(reloaded_workflow.metadata["module_paths"]) == 1
