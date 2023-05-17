@@ -17,7 +17,7 @@ Shared registry of known backend types
 """
 
 # Standard
-from typing import Any, Dict, Optional, Type
+from typing import Optional, Type
 
 # First Party
 import alog

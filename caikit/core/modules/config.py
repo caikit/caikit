@@ -61,7 +61,7 @@ class ModuleConfig(aconfig.Config):
                 )
 
         # 🌶️🌶️🌶️: Backwards compatibility for old-style `blocks`, `workflows`, and `resources`
-        if not self.module_id:
+        if not self.module_id:  # pylint: disable=access-member-before-definition
             log.debug("No module ID found in config, looking for legacy IDs")
             if self.block_id:
                 log.debug("Detected legacy block_id in config")

@@ -389,8 +389,8 @@ class ModelManager:
     ):
         """Try our best to load a model, given a path or a name. Simply returns any loaded model
         passed in. This exists to ease the burden on workflow developers who need to accept
-        individual modules in their API, where users may have references to custom models or may only
-        have the ability to give the name of a stock model.
+        individual modules in their API, where users may have references to custom models or may
+        only have the ability to give the name of a stock model.
 
         Args:
             path_or_name_or_model_reference (str, ModuleBase): Either a
