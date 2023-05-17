@@ -50,8 +50,8 @@ __all__ = [
 
 
 def get_valid_module_ids():
-    """Get a dictionary mapping all module (block and workflow) IDs to the
-    string names of the implementing classes.
+    """Get a dictionary mapping all module IDs to the string names of the
+    implementing classes.
     """
     return {
         module_id: model_class.__name__
@@ -89,7 +89,7 @@ class ModelManager:
                 Indicates whether this model should be loaded as a singleton.
 
         Returns:
-            subclass of caikit.modules.ModuleBase
+            subclass of caikit.core.modules.ModuleBase
                 Model object that is loaded, configured, and ready for prediction.
         """
         error.type_check("<COR98255724E>", bool, load_singleton=load_singleton)
@@ -134,7 +134,7 @@ class ModelManager:
                 Indicates whether this model should be loaded as a singleton.
 
         Returns:
-            subclass of blocks.base.BlockBase
+            subclass of caikit.core.modules.ModuleBase
                 Model object that is loaded, configured, and ready for prediction.
         """
         # Short-circuit the loading process if the path does not exist
@@ -150,7 +150,7 @@ class ModelManager:
 
             # Using the module_path as a key, look for an instance preloaded in the
             # singleton cache if desired
-            # 🌶🌶🌶 This doesn't work for nested blocks
+            # 🌶🌶🌶 This doesn't work for nested modules
             # TODO: think about bringing back the `unique_hash` or `tracking_id`
             if singleton_entry := (
                 load_singleton and self.singleton_module_cache.get(module_path)
@@ -300,7 +300,7 @@ class ModelManager:
                 Indicates whether this model should be loaded as a singleton.
 
         Returns:
-            subclass of blocks.base.BlockBase
+            subclass of caikit.core.modules.ModuleBase
                 Model object that is loaded, configured, and ready for prediction.
         """
         with tempfile.TemporaryDirectory() as extract_path:
@@ -389,14 +389,14 @@ class ModelManager:
     ):
         """Try our best to load a model, given a path or a name. Simply returns any loaded model
         passed in. This exists to ease the burden on workflow developers who need to accept
-        individual blocks in their API, where users may have references to custom models or may only
+        individual modules in their API, where users may have references to custom models or may only
         have the ability to give the name of a stock model.
 
         Args:
             path_or_name_or_model_reference (str, ModuleBase): Either a
                 - Path to a model on disk
                 - Name of a model that the catalog knows about
-                - Loaded module (e.g. block or workflow)
+                - Loaded module
             **kwargs: Any keyword arguments to pass along to ModelManager.load()
                       or ModelManager.download()
                 e.g. parent_dir

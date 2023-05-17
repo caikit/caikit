@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Local
-from caikit.core.modules import ModuleLoader, ModuleSaver
-from ...modules.sample_task.sample_implementation import SampleModule
 from ...data_model import SampleInputType, SampleOutputType, SampleTask
+from ...modules.sample_task.sample_implementation import SampleModule
+from caikit.core.modules import ModuleLoader, ModuleSaver
 import caikit
 
 

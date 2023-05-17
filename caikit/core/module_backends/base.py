@@ -50,7 +50,7 @@ class BackendBase(abc.ABC):
     def register_config(self, config):
         """Function to allow dynamic merging of configs.
         This can be useful, if there are explicit configurations
-        particular implementations (blocks) need to register before the starting the backend.
+        particular implementations (modules) need to register before the starting the backend.
         """
         # NOTE: This function should be implemented in such a way that it can be called multiple
         # times

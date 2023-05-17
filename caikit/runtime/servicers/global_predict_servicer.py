@@ -122,7 +122,7 @@ class GlobalPredictServicer:
         super()
 
     def Predict(self, request, context):
-        """Global predict RPC -- Mocks the invocation of a Caikit Library block.run()
+        """Global predict RPC -- Mocks the invocation of a Caikit Librar module.run()
         method for a loaded Caikit Library model
 
         Args:

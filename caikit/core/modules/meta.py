@@ -137,7 +137,7 @@ class _ModuleBaseMeta(abc.ABCMeta):
                 # Call the original .load function to load the module
                 module = real_load.__func__(clz, *args, **kwargs)
 
-                # Compatibility issue: Some deprecated `blocks` returned tuples from load
+                # Compatibility issue: Some deprecated `modules` returned tuples from load
                 # Temp disable wip for following invocation to not log warnings for downstream
                 # usage of _ModuleBaseMeta
                 with wip_decorator.TempDisableWIP():

@@ -58,7 +58,7 @@ class ModuleLoader:
 
         Args:
             module_paths_key:  str
-                key in `config.module_paths` looked at to load a block/resource
+                key in `config.module_paths` looked at to load a module
             load_singleton: bool
                 singleton load flag to pass to individual module loads
         """
@@ -88,14 +88,14 @@ class ModuleLoader:
 
         Args:
             module_paths_key:  str
-                key in `config.module_paths` looked at to load a list of block/resource
+                key in `config.module_paths` looked at to load a list of modules
 
         Returns:
             list
                 list of loaded modules
         """
         # Load module from a given relative path
-        # Can be updated to load from a block/resource key
+        # Can be updated to load from a module key
         if self.MODULE_PATHS_KEY not in self.config:
             error(
                 "<COR52619266E>", KeyError("Missing `module_paths` in workflow config!")

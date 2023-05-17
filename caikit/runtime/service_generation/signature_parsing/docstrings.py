@@ -39,7 +39,7 @@ def get_return_type(fn: Callable) -> Optional[Type]:
     Grabs the return type off the docstring, if possible
     Args:
         fn: The function to get the return value of
-            e.g. my_caikit_library.blocks.classification.Transformer.run
+            e.g. my_caikit_library.modules.classification.Transformer.run
 
     Returns:
         The return type of `fn`, if it can be parsed from the docstring. Otherwise, None
@@ -69,7 +69,7 @@ def is_optional(fn: Callable, arg_name: str) -> bool:
 
     Args:
         fn: The function to get the type of a parameter from
-            e.g.  my_caikit_library.blocks.classification.Transformer.run
+            e.g.  my_caikit_library.modules.classification.Transformer.run
         arg_name: The name of the parameter that we should try to get the type of
             e.g. "raw_document"
     """
@@ -104,7 +104,7 @@ def get_arg_type(fn: Callable, arg_name: str) -> Optional[Type]:
     Grabs the type of the `arg_name` param from `fn`s docstring, if possible
     Args:
         fn: The function to get the type of a parameter from
-            e.g. my_caikit_library.blocks.classification.Transformer.run
+            e.g. my_caikit_library.modules.classification.Transformer.run
         arg_name: The name of the parameter that we should try to get the type of
             e.g. "raw_document"
     Returns:

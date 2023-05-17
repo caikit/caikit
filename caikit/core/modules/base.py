@@ -36,10 +36,10 @@ import types
 import alog
 
 # Local
+from .meta import _ModuleBaseMeta
 from caikit import core
 from caikit.core import data_model as dm
 from caikit.core.data_model import DataStream
-from .meta import _ModuleBaseMeta
 from caikit.core.toolkit import fileio
 from caikit.core.toolkit.errors import DataValidationError, error_handler
 from caikit.core.toolkit.wip_decorator import WipCategory, work_in_progress
@@ -99,7 +99,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
     @classmethod
     @alog.logged_function(log.debug)
     def bootstrap(cls, *args, **kwargs):
-        """Bootstrap a block. This method can be used to initialize the block
+        """Bootstrap a module. This method can be used to initialize the module
         from artifacts created outside of a particular caikit library
         """
         error(
@@ -320,7 +320,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             int, int, caikit.core.data_model.DataBase
                 The first return value is the total time spent in the `self.run` loop. The second
                 return value is the total number of calls to `self.run` were made.
-                The return value is the output of the block's run method
+                The return value is the output of the module's run method
 
         Notes:
             You can pass everything that should go to the run function normally using args/kwargs.
@@ -414,14 +414,14 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
     ## Evaluation ##
     ################
 
-    # will be used to evaluate blocks; defined in sub-classes
+    # will be used to evaluate modules; defined in sub-classes
     evaluation_type = None
     # first arg is "self", unfortunately; TODO: get rid of that somehow
     evaluator = None
 
     @staticmethod
     def find_label_func(*_args, **_kwargs):
-        """Function used to extract "label" from a prediction/result of a block's .run method.
+        """Function used to extract "label" from a prediction/result of a module's .run method.
         Define if you wish to have more specific evaluation metrics. Implemented in subclass.
         """
         raise NotImplementedError("Func not implemented")
@@ -429,7 +429,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
     @staticmethod
     def find_label_data_func(*_args, **_kwargs):
         """Function used to extract data belonging to class "label" from a prediction/result
-        of a block's .run method. Define if you wish to have more specific evaluation metrics.
+        of a module's .run method. Define if you wish to have more specific evaluation metrics.
         Implemented in subclass.
         """
         raise NotImplementedError("Func not implemented")
@@ -453,7 +453,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             preprocess_func:  method
                 Function used as proxy for any preliminary steps that need to be taken to run the
                 model on the input text. This helper function ultimately leads to the input to this
-                module and may involve executing other blocks.
+                module and may involve executing other modules.
             detailed_metrics: boolean (Optional, defaults to False)
                 Only for 'keywords'. Include partial scores and scores over every text in document.
             labels:  list (Optional, defaults to None)
@@ -674,7 +674,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
 
         Returns:
             list
-                List of labels in the format of the block_type that is being called.
+                List of labels in the format of the module_type that is being called.
         """
         error(
             "<COR01455940E>",
@@ -690,12 +690,12 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             preprocess_func:  method
                 Function used as proxy for any preliminary steps that need to be taken to run the
                 model on the input text. This helper function ultimately leads to the input to this
-                module and may involve executing other blocks.
+                module and may involve executing other modules.
             *args, **kwargs: dict
                 Optional keyword arguments for prediction set extraction.
         Returns:
             list
-                List of labels in the format of the block_type that is being called.
+                List of labels in the format of the module_type that is being called.
         """
         error(
             "<COR95693719E>",

@@ -273,7 +273,7 @@ class TaskPredictRPC(CaikitRPCBase):
     @property
     def module_list(self) -> List[Type[ModuleBase]]:
         """Returns the list of all caikit.core.modules that this RPC will be for. These should all
-        be of the same ai-problem, e.g. my_caikit_library.[blocks | workflows].classification
+        be of the same ai-problem, e.g. my_caikit_library.modules.classification
         """
         return self._module_list
 

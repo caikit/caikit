@@ -1,5 +1,5 @@
 """
-A block meant to flex a bit of the protobufs primitive support
+A module meant to flex a bit of the protobufs primitive support
 """
 # Standard
 from typing import List

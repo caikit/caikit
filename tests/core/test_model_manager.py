@@ -56,9 +56,9 @@ class TestModelManager(TestCaseBase):
         cls.resource_path = os.path.join(cls.fixtures_dir, "dummy_resource")
 
         # Binary buffers of zip archives, for mocking downloads
-        cls.block_zip_path = os.path.join(cls.fixtures_dir, "dummy_module.zip")
-        with open(cls.block_zip_path, "rb") as f:
-            cls.block_archive_buffer = f.read()
+        cls.module_zip_path = os.path.join(cls.fixtures_dir, "dummy_module.zip")
+        with open(cls.module_zip_path, "rb") as f:
+            cls.module_archive_buffer = f.read()
 
     @pytest.fixture
     def global_load_path(self):
@@ -69,16 +69,16 @@ class TestModelManager(TestCaseBase):
         with temp_config({"load_path": test_load_path}):
             yield
 
-    def test_load_can_return_a_block(self):
+    def test_load_can_return_a_module(self):
         model = caikit.core.load(self.model_path)
         self.assertIsInstance(model, caikit.core.ModuleBase)
 
-    def test_load_can_load_a_block_as_a_singleton(self):
+    def test_load_can_load_a_module_as_a_singleton(self):
         model1 = caikit.core.load(self.singleton_model_path, load_singleton=True)
         model2 = caikit.core.load(self.singleton_model_path, load_singleton=True)
         assert model1 is model2
 
-    def test_load_can_load_a_block_with_singleton_disabled(self):
+    def test_load_can_load_a_module_with_singleton_disabled(self):
         model1 = caikit.core.load(self.singleton_model_path, load_singleton=True)
         model2 = caikit.core.load(self.singleton_model_path, load_singleton=False)
         assert model1 is not model2
@@ -105,7 +105,7 @@ class TestModelManager(TestCaseBase):
     def test_extract(self):
         with tempfile.TemporaryDirectory() as tempdir:
             extract_path = caikit.core.extract(
-                self.block_zip_path, tempdir, force_overwrite=True
+                self.module_zip_path, tempdir, force_overwrite=True
             )
             self.assertEqual(extract_path, tempdir)
             self.assertTrue(os.path.isdir(extract_path))
@@ -134,18 +134,18 @@ class TestModelManager(TestCaseBase):
 
     def test_load_model_with_artifacts_from_zip_str(self):
         """Test that we can load a model archive [extracts to temp_dir/...] with artifacts."""
-        model = caikit.core.load(self.block_zip_path)
+        model = caikit.core.load(self.module_zip_path)
         self.assertIsInstance(model, caikit.core.ModuleBase)
 
     def test_load_model_with_artifacts_from_bytes(self):
         """Test that we can load a bytes object as a model, even if it has artifacts."""
-        model_bytes = caikit.core.load(self.block_zip_path).as_bytes()
+        model_bytes = caikit.core.load(self.module_zip_path).as_bytes()
         model = caikit.core.load(model_bytes)
         self.assertIsInstance(model, caikit.core.ModuleBase)
 
     def test_load_model_with_artifacts_from_file_like(self):
         """Test that we can load a file-like object as a model, even if it has artifacts."""
-        model_bytesio = caikit.core.load(self.block_zip_path).as_file_like_object()
+        model_bytesio = caikit.core.load(self.module_zip_path).as_file_like_object()
         model = caikit.core.load(model_bytesio)
         self.assertIsInstance(model, caikit.core.ModuleBase)
 

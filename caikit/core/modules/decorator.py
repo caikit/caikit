@@ -38,7 +38,7 @@ log = alog.use_channel("MODTYP")
 error = error_handler.get(log)
 
 
-# This is used by individual caikit.module implementations, like a block
+# This is used by individual caikit.module implementations,
 # to define what backend type models they can support at load time.
 SUPPORTED_LOAD_BACKENDS_VAR_NAME = "SUPPORTED_LOAD_BACKENDS"
 

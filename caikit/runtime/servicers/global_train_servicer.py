@@ -99,7 +99,7 @@ class GlobalTrainServicer:
         super()
 
     def Train(self, request, *_, **__) -> TrainingJob:
-        """Global predict RPC -- Mocks the invocation of a Caikit Library block.train()
+        """Global predict RPC -- Mocks the invocation of a Caikit Library module.train()
         method for a loaded Caikit Library model
         Args:
             request(object):

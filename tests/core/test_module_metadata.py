@@ -179,7 +179,7 @@ def test_load_can_be_called_directly_with_non_standard_kwargs(sample_model_path)
 
 # pylint: disable=redefined-outer-name
 def test_parent_class_loads_work(sample_model_path):
-    """This test ensures that our metadata injector works on blocks that inherit from other
+    """This test ensures that our metadata injector works on modules that inherit from other
     classes"""
     model = SampleModule.load(sample_model_path)
 

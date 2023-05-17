@@ -203,7 +203,7 @@ def validate_data_model(
         # that we can construct an object of the Caikit Library CDM that matches
         # the specified field type, and that said Caikit Library object has a
         # to_proto method defined. No need to check for proto primitives here since
-        # all Caikit library blocks/workflows should return well formed "predict" messages
+        # all Caikit library modules should return well formed "predict" messages
         # from the data model.
         output_class = method.output_type.name
         caikit_Library_class = validate_caikit_library_class_exists(cdm, output_class)

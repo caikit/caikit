@@ -28,7 +28,7 @@ error = error_handler.get(log)
 
 
 class ModuleConfig(aconfig.Config):
-    """Config object used by all blocks for config loading, saving, etc."""
+    """Config object used by all modules for config loading, saving, etc."""
 
     # keys that are not allowed at the top-level module configuration (reserved for internal use)
     reserved_keys = ["model_path"]
