@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Shared functionality and interfaces used by *all* modules, i.e., all blocks and workflows.
+"""Shared functionality and interfaces used by *all* moduless.
 """
 
 # TODO: Review to see if the lines in this file can be reduced or
@@ -62,7 +62,7 @@ MODULE_BACKEND_REGISTRY = {}
 
 
 class ModuleBase(metaclass=_ModuleBaseMeta):
-    """Abstract base class from which all Blocks and Workflows should inherit."""
+    """Abstract base class from which all modules should inherit."""
 
     def __init__(self):
         """Construct a new model."""

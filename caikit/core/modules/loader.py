@@ -54,7 +54,7 @@ class ModuleLoader:
         return tuple(getattr(self.config, arg) for arg in args)
 
     def load_module(self, module_paths_key, load_singleton=False):
-        """Load a CaikitCore module from a workflow config.module_paths specification.
+        """Load a CaikitCore module from a module config.module_paths specification.
 
         Args:
             module_paths_key:  str
@@ -63,10 +63,9 @@ class ModuleLoader:
                 singleton load flag to pass to individual module loads
         """
         # Load module from a given relative path
-        # Can be updated to load from a block/resource key
         if "module_paths" not in self.config:
             error(
-                "<COR08580509E>", KeyError("Missing `module_paths` in workflow config!")
+                "<COR08580509E>", KeyError("Missing `module_paths` in module config!")
             )
 
         if module_paths_key not in self.config.module_paths:

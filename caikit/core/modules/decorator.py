@@ -27,13 +27,12 @@ import semver
 import alog
 
 # Local
+from ..registries import module_backend_registry, module_backend_types, module_registry
 from .base import ModuleBase
 from caikit.core import data_model as dm
-
 from caikit.core.task import TaskBase
 from caikit.core.toolkit.errors import error_handler
 import caikit.core
-from ..registries import module_registry, module_backend_registry, module_backend_types
 
 log = alog.use_channel("MODTYP")
 error = error_handler.get(log)

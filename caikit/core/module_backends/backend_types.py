@@ -23,7 +23,7 @@ from typing import Any, Dict, Optional, Type
 import alog
 
 # Local
-from ..registries import module_backend_types, module_backend_classes
+from ..registries import module_backend_classes, module_backend_types
 from ..toolkit.errors import error_handler
 from ..toolkit.wip_decorator import Action, WipCategory, work_in_progress
 from .base import BackendBase

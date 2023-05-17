@@ -32,8 +32,9 @@ import alog
 # Local
 from .module_backends import backend_types, module_backend_config
 from .module_backends.base import SharedLoadBackendBase
-from .modules.base import MODULE_BACKEND_REGISTRY, MODULE_REGISTRY, ModuleBase
+from .modules.base import ModuleBase
 from .modules.config import ModuleConfig
+from .registries import module_backend_registry, module_registry
 from .toolkit.errors import error_handler
 from caikit.config import get_config
 from caikit.core.modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
@@ -54,7 +55,7 @@ def get_valid_module_ids():
     """
     return {
         module_id: model_class.__name__
-        for module_id, model_class in MODULE_REGISTRY.items()
+        for module_id, model_class in module_registry().items()
     }
 
 
@@ -88,7 +89,7 @@ class ModelManager:
                 Indicates whether this model should be loaded as a singleton.
 
         Returns:
-            subclass of blocks.base.BlockBase
+            subclass of caikit.modules.ModuleBase
                 Model object that is loaded, configured, and ready for prediction.
         """
         error.type_check("<COR98255724E>", bool, load_singleton=load_singleton)
@@ -218,7 +219,7 @@ class ModelManager:
                         log.debug2("Loading ModuleConfig from %s", module_path)
                         module_config = ModuleConfig.load(module_path)
                         module_id = module_config.module_id
-                        module_implementations = MODULE_BACKEND_REGISTRY.get(
+                        module_implementations = module_backend_registry().get(
                             module_id, {}
                         )
                         log.debug2(

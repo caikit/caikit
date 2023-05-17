@@ -21,7 +21,6 @@ import pytest
 
 # Local
 from caikit.core import LocalBackend
-from caikit.core.module import MODULE_BACKEND_REGISTRY, MODULE_REGISTRY, ModuleBase
 from caikit.core.module_backends import BackendBase, backend_types
 
 # Add mock backend
@@ -31,6 +30,8 @@ from caikit.core.module_backends.module_backend_config import (
     _CONFIGURED_LOAD_BACKENDS,
     _CONFIGURED_TRAIN_BACKENDS,
 )
+from caikit.core.modules.base import ModuleBase
+from caikit.core.registries import module_backend_registry, module_registry
 
 
 class MockBackend(BackendBase):
@@ -99,19 +100,21 @@ def reset_backend_types():
 @pytest.fixture
 def reset_module_backend_registry():
     """Fixture that will reset the module distribution registry if a test modifies them"""
-    module_registry = {key: val for key, val in MODULE_BACKEND_REGISTRY.items()}
+    orig_module_backend_registry = {
+        key: val for key, val in module_backend_registry().items()
+    }
     yield
-    MODULE_BACKEND_REGISTRY.clear()
-    MODULE_BACKEND_REGISTRY.update(module_registry)
+    module_backend_registry().clear()
+    module_backend_registry().update(orig_module_backend_registry)
 
 
 @pytest.fixture
 def reset_module_registry():
     """Fixture that will reset caikit.core module registry if a test modifies it"""
-    module_registry = {key: val for key, val in MODULE_REGISTRY.items()}
+    orig_module_registry = {key: val for key, val in module_registry().items()}
     yield
-    MODULE_REGISTRY.clear()
-    MODULE_REGISTRY.update(module_registry)
+    module_registry().clear()
+    module_registry().update(orig_module_registry)
 
 
 @pytest.fixture

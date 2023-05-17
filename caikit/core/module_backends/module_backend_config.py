@@ -20,11 +20,14 @@ import copy
 import alog
 
 # Local
-from ..modules.base import MODULE_BACKEND_REGISTRY
+from ..registries import (
+    module_backend_classes,
+    module_backend_registry,
+    module_backend_types,
+)
 from caikit.config import get_config
 from caikit.core.module_backends.base import BackendBase
 from caikit.core.toolkit.errors import error_handler
-from ..registries import module_backend_types, module_backend_classes
 
 log = alog.use_channel("CONF")
 error = error_handler.get(log)
@@ -149,7 +152,7 @@ def _configure_backend_overrides(backend: str, backend_instance: object):
             used to merge / iteratively configure the backend
     """
     # Go through all the modules registered with particular backend
-    for module_id, module_type_mapping in MODULE_BACKEND_REGISTRY.items():
+    for module_id, module_type_mapping in module_backend_registry().items():
         if backend in module_type_mapping:
             # check if it contains any special config
             config = module_type_mapping[backend].backend_config_override

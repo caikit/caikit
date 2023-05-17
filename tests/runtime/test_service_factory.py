@@ -190,7 +190,7 @@ import sample_lib
 
 MODULE_LIST = [
     module_class
-    for module_class in caikit.core.MODULE_REGISTRY.values()
+    for module_class in caikit.core.registries.module_registry().values()
     if module_class.__module__.partition(".")[0] == "sample_lib"
 ]
 
