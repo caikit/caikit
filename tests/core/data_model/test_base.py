@@ -232,8 +232,7 @@ def test_compiled_proto_oneof():
         # Construct with the oneof name
         inst = dm.ThingOne(foo=1)
         assert inst.foo == 1
-        # TODO: This will need to be uncommented once type introspection works!
-        # assert inst.which_oneof("foo") == "fooint"
+        assert inst.which_oneof("foo") == "fooint"
 
         # Construct with field name
         inst = dm.ThingOne(foostr="asdf")

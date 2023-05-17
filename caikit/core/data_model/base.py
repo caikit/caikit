@@ -21,13 +21,14 @@
 
 # Standard
 from enum import Enum
-from typing import Optional, Type, Union
+from typing import Any, Dict, Optional, Type, Union
 import base64
 import json
 
 # Third Party
 from google.protobuf import json_format
 from google.protobuf.descriptor import Descriptor
+from google.protobuf.internal import type_checkers as proto_type_checkers
 from google.protobuf.message import Message as ProtoMessageType
 
 # First Party
@@ -313,11 +314,13 @@ class _DataBaseMetaClass(type):
             # If the backend says that this attribute should be cached, set it
             # as an attribute on the class
             if backend.cache_attribute(field, attr_val):
-                setattr(self, private_name, attr_val)
+                setattr(self, field, attr_val)
 
             # Return the value found by the backend
             return attr_val
 
+        # If this is a oneof, add an extra layer of wrapping to check
+        # which_oneof before returning a valid result
         if oneof_name:
 
             def _oneof_property_getter(self):
@@ -415,26 +418,19 @@ class DataBase(metaclass=_DataBaseMetaClass):
         """Handle attribute setting for oneofs and named fields with delegation
         to backends as needed
         """
-        # If this is the name of a oneof field, set the oneof itself
+        # If setting a oneof directly, remove any oneof information
         cls = self.__class__
+        if name in cls._fields_oneofs_map:
+            self._get_which_oneof_dict().pop(name, None)
+
+        # If this is the name of a oneof field, set the oneof itself
         if oneof_name := cls._fields_to_oneof.get(name):
-            which_oneof = getattr(self, _DataBaseMetaClass._WHICH_ONEOF_ATTR, None)
-            if which_oneof is None:
-                super().__setattr__(_DataBaseMetaClass._WHICH_ONEOF_ATTR, {})
-                which_oneof = getattr(self, _DataBaseMetaClass._WHICH_ONEOF_ATTR)
-            which_oneof[oneof_name] = name
-            setattr(self, oneof_name, val)
+            self._get_which_oneof_dict()[oneof_name] = name
+            name = oneof_name
 
-        # If this is the name of a oneof, determine the variant of the oneof
-        # that this value corresponds too. Sometimes this cannot be done if the
-        # oneof has field types that are not differentiated by type!
-        elif oneof_fields := cls._fields_oneofs_map.get(name):
-            # DEBUG -- Still need to set which_oneof
-            super().__setattr__(f"_{name}", val)
-
-        # If attempting to set one of the named fields, instead set the private
-        # version of the attribute.
-        elif name in cls.fields:
+        # If attempting to set one of the named fields or a oneof, instead set
+        # the private version of the attribute.
+        if name in cls.fields or name in cls._fields_oneofs_map:
             super().__setattr__(f"_{name}", val)
         else:
             super().__setattr__(name, val)
@@ -481,7 +477,73 @@ class DataBase(metaclass=_DataBaseMetaClass):
         """Get the name of the oneof field set for the given oneof or None if no
         field is set
         """
-        return getattr(self, _DataBaseMetaClass._WHICH_ONEOF_ATTR, {}).get(oneof_name)
+        # If the internal dict is already set, use that information
+        which_oneof = self._get_which_oneof_dict()
+        if current_val := which_oneof.get(oneof_name):
+            return current_val
+
+        # Get the current value for the oneof and introspect which field its
+        # type matches
+        oneof_val = getattr(self, oneof_name)
+        which_field = self._infer_which_oneof(oneof_name, oneof_val)
+        if which_field is not None:
+            which_oneof[oneof_name] = which_field
+        return which_field
+
+    @classmethod
+    def _infer_which_oneof(cls, oneof_name: str, oneof_val: Any) -> Optional[str]:
+        """Check each candidate field within the oneof to see if it's a type
+        match
+
+        NOTE: In the case where fields within a oneof have the same type, the
+          first field whose type matches will be used!
+        """
+        for field_name in cls._fields_oneofs_map.get(oneof_name, []):
+            if cls._is_valid_type_for_field(field_name, oneof_val):
+                return field_name
+
+    def _get_which_oneof_dict(self) -> Dict[str, str]:
+        which_oneof = getattr(self, _DataBaseMetaClass._WHICH_ONEOF_ATTR, None)
+        if which_oneof is None:
+            super().__setattr__(_DataBaseMetaClass._WHICH_ONEOF_ATTR, {})
+            which_oneof = getattr(self, _DataBaseMetaClass._WHICH_ONEOF_ATTR)
+        return which_oneof
+
+    @classmethod
+    def _is_valid_type_for_field(cls, field_name: str, val: Any) -> bool:
+        """Check whether the given value is valid for the given field"""
+        field_descriptor = cls._proto_class.DESCRIPTOR.fields_by_name[field_name]
+
+        if val is None:
+            return False
+
+        # If it's a data object or an enum and the descriptors match, it's a
+        # good type
+        if (
+            isinstance(val, DataBase)
+            and field_descriptor.message_type == val.get_proto_class().DESCRIPTOR
+        ) or (
+            isinstance(val, Enum)
+            and field_descriptor.enum_type == val.get_proto_class().DESCRIPTOR
+        ):
+            return True
+
+        # If it's a data object or an enum and the descriptors don't match, it's
+        # a bad type
+        if field_descriptor.type in [
+            field_descriptor.TYPE_MESSAGE,
+            field_descriptor.TYPE_ENUM,
+        ]:
+            return False
+
+        # If it's a primitive, use protobuf type checkers
+        checker = proto_type_checkers.GetTypeChecker(field_descriptor)
+        try:
+            checker.CheckValue(val)
+            return True
+        except TypeError:
+            pass
+        return False
 
     @classmethod
     def from_binary_buffer(cls, buf):

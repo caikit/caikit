@@ -404,24 +404,21 @@ def test_dataobject_with_oneof():
     foo2 = BazObj(data_stream=BazObj.Foo(data=["some", "foo"]))
     assert foo2.data_stream.data == ["some", "foo"]
     assert foo2.bar is None
-    # TODO: Once we're introspecting which_oneof, these can be uncommented
-    # assert foo2.foo is foo2.data_stream
-    # assert foo2.which_oneof("data_stream") == "foo"
+    assert foo2.foo is foo2.data_stream
+    assert foo2.which_oneof("data_stream") == "foo"
 
     # Assign with oneof name
     foo2.data_stream = BazObj.Bar(data="asdf")
     assert foo2.foo is None
-    # TODO: Once we're introspecting which_oneof, these can be uncommented
-    # assert foo2.bar is foo2.data_stream
-    # assert foo2.which_oneof("data_stream") == "bar"
+    assert foo2.bar is foo2.data_stream
+    assert foo2.which_oneof("data_stream") == "bar"
 
     # Construct with positional oneof name
     foo2 = BazObj(BazObj.Foo(data=["some", "foo"]))
     assert foo2.data_stream.data == ["some", "foo"]
     assert foo2.bar is None
-    # TODO: Once we're introspecting which_oneof, these can be uncommented
-    # assert foo2.foo is foo2.data_stream
-    # assert foo2.which_oneof("data_stream") == "foo"
+    assert foo2.foo is foo2.data_stream
+    assert foo2.which_oneof("data_stream") == "foo"
 
     # Invalid constructors
     with pytest.raises(TypeError):
