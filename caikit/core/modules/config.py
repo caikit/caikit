@@ -44,7 +44,6 @@ class ModuleConfig(aconfig.Config):
             The following keys are reserved and *must not* be specified at the top level of a
             configuration:
 
-            module_id - reserved for storing the module id
             model_path - reserved for storing the original location where the model was loaded from
         """
         super().__init__(config_dict, override_env_vars=False)
@@ -60,16 +59,18 @@ class ModuleConfig(aconfig.Config):
                         "This is for internal use only.".format(reserved_key)
                     ),
                 )
+        log.debug(f"FFFFFFFF{self}")
 
         # 🌶️🌶️🌶️: Backwards compatibility for old-style `blocks`, `workflows`, and `resources`
-        if not hasattr(self, "module_id"):
-            if hasattr(self, "block_id"):
+        if not self.module_id:
+            log.debug("No module ID found in config, looking for legacy IDs")
+            if self.block_id:
                 log.debug("Detected legacy block_id in config")
                 self.module_id = self.block_id
-            elif hasattr(self, "workflow_id"):
+            elif self.workflow_id:
                 log.debug("Detected legacy workflow_id in config")
                 self.module_id = self.block_id
-            elif hasattr(self, "resource_id"):
+            elif self.resource_id:
                 log.debug("Detected legacy resource_id in config")
                 self.module_id = self.resource_id
 
