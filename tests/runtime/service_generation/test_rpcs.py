@@ -14,34 +14,38 @@
 
 """Tests for the rpc objects that hold our in-memory representation of
 what an RPC for a service looks like"""
+# Standard
 import uuid
 
-import caikit.core
-from caikit.core import TaskBase, BlockBase
+# Local
+from caikit.core import BlockBase, TaskBase
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
-from caikit.runtime.service_generation.signature_parsing import CaikitCoreModuleMethodSignature
-from sample_lib.data_model import SampleTask, SampleOutputType
+from caikit.runtime.service_generation.signature_parsing import (
+    CaikitCoreModuleMethodSignature,
+)
+from sample_lib.data_model import SampleOutputType, SampleTask
+import caikit.core
 
 
 def test_task_inference_rpc_with_all_optional_params():
-
-    @caikit.core.task(required_parameters={"str_val": str}, output_type=SampleOutputType)
+    @caikit.core.task(
+        required_parameters={"str_val": str}, output_type=SampleOutputType
+    )
     class TestTask(TaskBase):
         pass
 
     @caikit.core.block(
-        id=str(uuid.uuid4()),
-        name="testest",
-        version="9.9.9",
-        task=SampleTask
+        id=str(uuid.uuid4()), name="testest", version="9.9.9", task=SampleTask
     )
     class TestBlock(BlockBase):
-
-        def run(self, str_val = "I have a default"):
+        def run(self, str_val="I have a default"):
             pass
 
-    rpc = TaskPredictRPC(task=("foo", "bar"), method_signatures=[CaikitCoreModuleMethodSignature(TestBlock, "run")], primitive_data_model_types=[])
+    rpc = TaskPredictRPC(
+        task=("foo", "bar"),
+        method_signatures=[CaikitCoreModuleMethodSignature(TestBlock, "run")],
+        primitive_data_model_types=[],
+    )
 
     data_model = rpc.create_request_data_model(package_name="blah")
     assert data_model is not None
-
