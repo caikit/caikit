@@ -21,9 +21,10 @@ import tempfile
 import aconfig
 
 # Local
-from caikit.core import ModuleConfig, module
+from caikit.core import ModuleConfig
 from caikit.core.module_backends.module_backend_config import configured_load_backends
 from caikit.core.modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
+from caikit.core.registries import module_backend_registry
 
 # pylint: disable=import-error
 from sample_lib.data_model.sample import SampleInputType, SampleTask
@@ -86,7 +87,7 @@ def configure_alternate_backend_impl():
 
 def test_load_evaluation_dataset(fixtures_dir):
     assert isinstance(
-        module.ModuleBase._load_evaluation_dataset(
+        ModuleBase._load_evaluation_dataset(
             os.path.join(fixtures_dir, "dummy_dataset.json")
         ),
         list,
@@ -137,8 +138,8 @@ def test_isinstance(model_config):
 def test_init_and_members():
     config = ModuleConfig(
         {
-            "block_id": "123",
-            "block_class": "caikit.core.blocks.dummy.Dummy",
+            "module_id": "123",
+            "module_class": "caikit.core.modules.dummy.Dummy",
             "name": "Dummy Block",
             "string": "hello",
             "integer": 1,
@@ -151,8 +152,8 @@ def test_init_and_members():
         }
     )
 
-    assert config.block_id == "123"
-    assert config.block_class == "caikit.core.blocks.dummy.Dummy"
+    assert config.module_id == "123"
+    assert config.module_class == "caikit.core.modules.dummy.Dummy"
     assert isinstance(config.string, str)
     assert config.string == "hello"
     assert isinstance(config.integer, int)
@@ -171,8 +172,8 @@ def test_reserved_keys():
             ModuleConfig(
                 {
                     reserved_key: "x",
-                    "block_class": "caikit.core.blocks.dummy.Dummy",
-                    "name": "Dummy Workflow",
+                    "module_class": "caikit.core.modules.dummy.Dummy",
+                    "name": "Dummy Module",
                 }
             )
 
@@ -241,7 +242,8 @@ def test_can_get_module_id(reset_globals):
     """Test we can get registered module from registry"""
     _, DummyBar = configure_alternate_backend_impl()
     assert (
-        caikit.core.MODULE_BACKEND_REGISTRY.get(DUMMY_MODULE_ID)
+        module_backend_registry()
+        .get(DUMMY_MODULE_ID)
         .get(MockBackend.backend_type)
         .impl_class
         == DummyBar
@@ -257,8 +259,8 @@ def test_module_id_registration_for_backend(reset_globals):
 def test_module_registry_for_backend_type(reset_globals):
     """Test backend is properly registered in the module registry"""
     _ = configure_alternate_backend_impl()
-    assert DUMMY_MODULE_ID in MODULE_BACKEND_REGISTRY
-    assert MockBackend.backend_type in MODULE_BACKEND_REGISTRY[DUMMY_MODULE_ID]
+    assert DUMMY_MODULE_ID in module_backend_registry()
+    assert MockBackend.backend_type in module_backend_registry()[DUMMY_MODULE_ID]
 
 
 def test_duplicate_registration_raises(reset_globals):
@@ -294,10 +296,6 @@ def test_class_attributes(reset_globals):
     assert DummyBar.MODULE_NAME
     assert DummyBar.MODULE_VERSION
     assert DummyBar.MODULE_CLASS
-    assert DummyBar.BLOCK_ID == DummyFoo.BLOCK_ID
-    assert DummyBar.BLOCK_NAME
-    assert DummyBar.BLOCK_VERSION
-    assert DummyBar.BLOCK_CLASS
     assert DummyBar.PRODUCER_ID
 
     # No configured modules before configure

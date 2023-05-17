@@ -230,17 +230,17 @@ def setup_saved_model(mock_backend_class):
 @caikit.core.modules.module(
     id="non-distributed", name="non distributed mod", version="0.0.1", task=SampleTask
 )
-class NonDistributedBlock(caikit.core.ModuleBase):
+class NonDistributedModule(caikit.core.ModuleBase):
     @classmethod
     def load(cls, *args, **kwargs):
         return cls()
 
     def save(self, model_path):
-        block_saver = caikit.core.blocks.BlockSaver(
+        module_saver = caikit.core.modules.ModuleSaver(
             self,
             model_path=model_path,
         )
-        with block_saver:
+        with module_saver:
             pass
 
 
@@ -373,19 +373,8 @@ def test_singleton_cache_with_different_backend(reset_globals):
 
 def test_get_module_class():
     """Test to verify get_module_class function can return appropriate module class"""
-    # Block
-    config = {"block_id": "foo", "block_class": "Foo"}
-    module_config = caikit.core.module.ModuleConfig(config)
-    assert caikit.core.ModelManager.get_module_class_from_config(module_config) == "Foo"
-
-    # Workflow
-    config = {"workflow_id": "foo", "workflow_class": "Foo"}
-    module_config = caikit.core.module.ModuleConfig(config)
-    assert caikit.core.ModelManager.get_module_class_from_config(module_config) == "Foo"
-
-    # Resource
-    config = {"resource_id": "foo", "resource_class": "Foo"}
-    module_config = caikit.core.module.ModuleConfig(config)
+    config = {"module_id": "foo", "module_class": "Foo"}
+    module_config = caikit.core.modules.ModuleConfig(config)
     assert caikit.core.ModelManager.get_module_class_from_config(module_config) == "Foo"
 
 
@@ -393,10 +382,10 @@ def test_fall_back_to_local(reset_globals):
     """Make sure that if LOCAL is enabled and a given module doesn't have any
     registered backends, the default caikit.core.load is used.
     """
-    with temp_saved_model(NonDistributedBlock()) as model_path:
+    with temp_saved_model(NonDistributedModule()) as model_path:
         model = caikit.core.load(model_path)
 
-    assert isinstance(model, NonDistributedBlock)
+    assert isinstance(model, NonDistributedModule)
 
 
 def test_load_fails_on_no_supported_backend(reset_globals):
@@ -414,7 +403,7 @@ def test_load_fails_on_no_supported_backend(reset_globals):
         }
     ):
         configure()
-        with temp_saved_model(NonDistributedBlock()) as model_path:
+        with temp_saved_model(NonDistributedModule()) as model_path:
             with pytest.raises(ValueError):
                 caikit.core.load(model_path)
 
@@ -505,7 +494,7 @@ def test_load_must_return_model():
     ModuleBase, and will raise TypeError if it is not.
     """
 
-    @caikit.core.block("00110203-baad-beef-0809-0a0b0c0d0e0f", "FunkyBlock", "0.0.1")
+    @caikit.core.module("00110203-baad-beef-0809-0a0b0c0d0e0f", "FunkyModule", "0.0.1")
     class _FunkyModel(SampleModule):
         @classmethod
         def load(cls, model_path):

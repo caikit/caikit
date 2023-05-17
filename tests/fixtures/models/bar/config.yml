@@ -1,5 +1,5 @@
-block_class: sample_lib.modules.other_task.other_implementation.OtherModule
-block_id: 33221100-0405-0607-0809-0a0b02dd0e0f
+module_class: sample_lib.modules.other_task.other_implementation.OtherModule
+module_id: 33221100-0405-0607-0809-0a0b02dd0e0f
 created: "2023-03-28 16:34:58.720898"
 name: OtherModule
 sample_lib_version: 1.2.3

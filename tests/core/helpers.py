@@ -31,7 +31,12 @@ from caikit.core.module_backends.module_backend_config import (
     _CONFIGURED_TRAIN_BACKENDS,
 )
 from caikit.core.modules.base import ModuleBase
-from caikit.core.registries import module_backend_registry, module_registry
+from caikit.core.registries import (
+    module_backend_classes,
+    module_backend_registry,
+    module_backend_types,
+    module_registry,
+)
 
 
 class MockBackend(BackendBase):
@@ -84,17 +89,13 @@ backend_types.register_backend_type(TestLoader)
 @pytest.fixture
 def reset_backend_types():
     """Fixture that will reset the backend types if a test modifies them"""
-    base_backend_types = {
-        key: val for key, val in backend_types.MODULE_BACKEND_TYPES.items()
-    }
-    base_backend_fns = {
-        key: val for key, val in backend_types.MODULE_BACKEND_CONFIG_FUNCTIONS.items()
-    }
+    base_backend_types = {key: val for key, val in module_backend_types().items()}
+    base_backend_classes = {key: val for key, val in module_backend_classes().items()}
     yield
-    backend_types.MODULE_BACKEND_TYPES.clear()
-    backend_types.MODULE_BACKEND_TYPES.update(base_backend_types)
-    backend_types.MODULE_BACKEND_CONFIG_FUNCTIONS.clear()
-    backend_types.MODULE_BACKEND_CONFIG_FUNCTIONS.update(base_backend_fns)
+    module_backend_types().clear()
+    module_backend_types().update(base_backend_types)
+    module_backend_classes().clear()
+    module_backend_classes().update(base_backend_classes)
 
 
 @pytest.fixture
