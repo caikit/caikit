@@ -60,14 +60,6 @@ class TestModelManager(TestCaseBase):
         with open(cls.block_zip_path, "rb") as f:
             cls.block_archive_buffer = f.read()
 
-        zipfile = os.path.join(cls.fixtures_dir, "dummy_workflow.zip")
-        with open(zipfile, "rb") as f:
-            cls.workflow_archive_buffer = f.read()
-
-        zipfile = os.path.join(cls.fixtures_dir, "dummy_resource.zip")
-        with open(zipfile, "rb") as f:
-            cls.resource_archive_buffer = f.read()
-
     @pytest.fixture
     def global_load_path(self):
         """Set load_path prior to importing caikit.core."""
@@ -175,17 +167,10 @@ class TestModelManager(TestCaseBase):
         model = caikit.core.load("foo")
         self.assertIsInstance(model, caikit.core.ModuleBase)
 
-    def test_import_block_registry(self):
-        """Make sure that the BLOCK_REGISTRY can be imported from model_manager"""
+    def test_import_module_registry(self):
+        """Make sure that the MODULE_REGISTRY can be imported from model_manager"""
         # pylint: disable = import-outside-toplevel,no-name-in-module,unused-import
-
-    def test_import_workflow_registry(self):
-        """Make sure that the WORKFLOW_REGISTRY can be imported from model_manager"""
-        # pylint: disable = import-outside-toplevel,no-name-in-module,unused-import
-
-    def test_import_resource_registry(self):
-        """Make sure that the RESOURCE_REGISTRY can be imported from model_manager"""
-        # pylint: disable = import-outside-toplevel,no-name-in-module,unused-import
+        from caikit.core.model_manager import module_registry  # isort: skip
 
 
 # Pytest tests #########################################################
@@ -369,13 +354,6 @@ def test_singleton_cache_with_different_backend(reset_globals):
         _ = caikit.core.load(dummy_model_path, load_singleton=True)
 
         assert len(caikit.core.MODEL_MANAGER.get_singleton_model_cache_info()) == 2
-
-
-def test_get_module_class():
-    """Test to verify get_module_class function can return appropriate module class"""
-    config = {"module_id": "foo", "module_class": "Foo"}
-    module_config = caikit.core.modules.ModuleConfig(config)
-    assert caikit.core.ModelManager.get_module_class_from_config(module_config) == "Foo"
 
 
 def test_fall_back_to_local(reset_globals):
