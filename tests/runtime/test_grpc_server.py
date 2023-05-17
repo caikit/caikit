@@ -184,7 +184,7 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
     sample_train_service,
     sample_inference_service,
 ):
-    """Test RPC CaikitRuntime.BlocksSampleTaskSampleModuleTrain successful response"""
+    """Test RPC CaikitRuntime.ModulesSampleTaskSampleModuleTrain successful response"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(
@@ -197,7 +197,7 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
             model_name=model_name, training_data=training_data
         )
     )
-    actual_response = train_stub.BlocksSampleTaskSampleModuleTrain(train_request)
+    actual_response = train_stub.ModulesSampleTaskSampleModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
     # give the trained model time to load
@@ -271,7 +271,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
             model_name="Bar Training", batch_size=100, training_data=training_data
         )
     )
-    actual_response = train_stub.BlocksOtherTaskOtherModuleTrain(train_request)
+    actual_response = train_stub.ModulesOtherTaskOtherModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, "Bar Training")
 
     # give the trained model time to load
@@ -304,7 +304,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
 def test_train_fake_module_ok_response_with_datastream_jsondata(
     train_stub, inference_stub, sample_train_service, sample_inference_service
 ):
-    """Test RPC CaikitRuntime.BlocksSampleTaskSampleModuleTrainRequest successful response with training data json type"""
+    """Test RPC CaikitRuntime.ModulesSampleTaskSampleModuleTrainRequest successful response with training data json type"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(
@@ -320,7 +320,7 @@ def test_train_fake_module_ok_response_with_datastream_jsondata(
         )
     )
 
-    actual_response = train_stub.BlocksSampleTaskSampleModuleTrain(train_request)
+    actual_response = train_stub.ModulesSampleTaskSampleModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
     # give the trained model time to load
@@ -344,7 +344,7 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
     sample_inference_service,
     sample_csv_file,
 ):
-    """Test RPC CaikitRuntime.BlocksSampleTaskSampleModuleTrainRequest successful response with training data file type"""
+    """Test RPC CaikitRuntime.ModulesSampleTaskSampleModuleTrainRequest successful response with training data file type"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         file=stream_type.File(filename=sample_csv_file)
@@ -357,7 +357,7 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
         )
     )
 
-    actual_response = train_stub.BlocksSampleTaskSampleModuleTrain(train_request)
+    actual_response = train_stub.ModulesSampleTaskSampleModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
     # give the trained model time to load
