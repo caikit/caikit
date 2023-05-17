@@ -31,7 +31,7 @@ class ModuleConfig(aconfig.Config):
     """Config object used by all blocks for config loading, saving, etc."""
 
     # keys that are not allowed at the top-level module configuration (reserved for internal use)
-    reserved_keys = "model_path"
+    reserved_keys = ["model_path"]
 
     def __init__(self, config_dict):
         """Construct a new module configuration object from a dictionary of config options.
@@ -59,7 +59,6 @@ class ModuleConfig(aconfig.Config):
                         "This is for internal use only.".format(reserved_key)
                     ),
                 )
-        log.debug(f"FFFFFFFF{self}")
 
         # 🌶️🌶️🌶️: Backwards compatibility for old-style `blocks`, `workflows`, and `resources`
         if not self.module_id:

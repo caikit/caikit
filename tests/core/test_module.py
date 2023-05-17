@@ -167,7 +167,7 @@ def test_init_and_members():
 
 
 def test_reserved_keys():
-    for reserved_key in ("module_id", "model_path"):
+    for reserved_key in ("model_path",):
         with pytest.raises(KeyError):
             ModuleConfig(
                 {
@@ -383,4 +383,4 @@ def test_base_module_in_decorator(reset_globals):
     class DummyFoo(caikit.core.ModuleBase):
         pass
 
-    assert DummyLocal in list(caikit.core.MODULE_REGISTRY.values())
+    assert DummyLocal in list(module_registry().values())
