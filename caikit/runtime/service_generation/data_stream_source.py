@@ -13,7 +13,6 @@
 # limitations under the License.
 
 # Standard
-from dataclasses import dataclass
 from datetime import datetime
 from glob import glob
 from typing import Any, List, Optional, Type, Union
@@ -310,7 +309,9 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
             try:
                 orig_init(self, *args, **kwargs)
             except TypeError as err:
-                raise CaikitRuntimeException(grpc.StatusCode.INVALID_ARGUMENT, str(err))
+                raise CaikitRuntimeException(
+                    grpc.StatusCode.INVALID_ARGUMENT, str(err)
+                ) from err
             DataStreamSourceBase.__init__(self)
 
         setattr(data_object, "__init__", __init__)

@@ -107,11 +107,11 @@ class _DataBaseMetaClass(type):
                     for field in oneof.fields
                 ]
                 fields = tuple(
-                    [
+                    (
                         field
                         for field in proto_class.DESCRIPTOR.fields_by_name
                         if field not in all_oneof_fields
-                    ]
+                    )
                 ) + tuple(proto_class.DESCRIPTOR.oneofs_by_name)
 
             # Otherwise, we need to get the fields from a "special" attribute

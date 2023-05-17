@@ -325,16 +325,17 @@ def _make_oneof_init(cls):
                     error(
                         "<COR09282193E>",
                         TypeError(
-                            "Received conflicting oneof positional and keyword arguments for {}/{}".format(
+                            "Received conflicting oneof args/kwargs for {}/{}".format(
                                 oneof_name,
                                 field_name,
                             )
                         ),
                     )
 
-                other_oneof_fields = filter(
-                    lambda fld: fld != field_name,
-                    [oneof_name] + oneofs_to_fields[oneof_name],
+                other_oneof_fields = (
+                    field
+                    for field in [oneof_name] + oneofs_to_fields[oneof_name]
+                    if field != field_name
                 )
                 if any(field in kwargs for field in other_oneof_fields):
                     error(
