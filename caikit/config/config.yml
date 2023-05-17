@@ -169,7 +169,7 @@ inference_plugin:
             entity-mentions_rbr: 1.8
             sentiment_cnn: 2.73
             syntax_izumo: 43000
-            fake_block: 2
+            fake_module: 2
 
 ### Libraries configuration
 libraries:
