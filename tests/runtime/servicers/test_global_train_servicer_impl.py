@@ -194,7 +194,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
     ).to_proto()
 
     training_request = (
-        sample_train_service.messages.WorkflowsSampleTaskSampleWorkflowTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskCompositeModuleTrainRequest(
             model_name="AnotherWidget_Training",
             sample_block=sample_model,
         )
@@ -211,8 +211,8 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
     ).result()
 
     assert (
-        training_result.WORKFLOW_CLASS
-        == "sample_lib.workflows.sample_task.sample_implementation.SampleWorkflow"
+        training_result.MODULE_CLASS
+        == "sample_lib.modules.sample_task.composite_module.CompositeModule"
     )
 
     # give the trained model time to load
@@ -348,7 +348,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_but_not_loaded_s
         model_id=model_id
     ).to_proto()
     request = (
-        sample_train_service.messages.WorkflowsSampleTaskSampleWorkflowTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskCompositeModuleTrainRequest(
             model_name="AnotherWidget_Training",
             sample_block=sample_model,
         )

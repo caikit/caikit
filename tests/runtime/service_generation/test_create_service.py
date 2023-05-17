@@ -59,18 +59,6 @@ def test_create_inference_rpcs_for_multiple_modules_of_same_type():
     assert sample_lib.modules.other_task.OtherModule in rpcs[1].module_list
 
 
-def test_create_inference_rpcs_with_module_and_workflow():
-    module_list = [
-        sample_lib.modules.sample_task.SampleModule,
-        sample_lib.workflows.sample_task.SampleWorkflow,
-    ]
-    rpcs = create_inference_rpcs(module_list)
-    # only 1 RPC
-    assert len(rpcs) == 1
-    assert sample_lib.modules.sample_task.SampleModule in rpcs[0].module_list
-    assert sample_lib.workflows.sample_task.SampleWorkflow in rpcs[0].module_list
-
-
 def test_create_inference_rpcs_remove_non_primitive_modules():
     # NOTE: This requires Gadget to be in config since other modules do not have methods - TODO fix?
     module_list = [
