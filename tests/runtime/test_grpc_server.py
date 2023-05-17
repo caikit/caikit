@@ -384,8 +384,6 @@ def test_train_fake_module_error_response_with_unloaded_model(
             model_id=random_test_id()
         ).to_proto()
 
-        print(dir(sample_train_service.messages))
-
         train_request = (
             sample_train_service.messages.ModulesSampleTaskCompositeModuleTrainRequest(
                 model_name=random_test_id(), sample_block=sample_model
