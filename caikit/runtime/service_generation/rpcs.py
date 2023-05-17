@@ -17,7 +17,7 @@ This package has classes that will serialize a python interface to a protocol bu
 Typically used for `caikit.core.module`s that expose .train and .run functions.
 """
 # Standard
-from typing import Any, Dict, List, Optional, Tuple, Type, get_args
+from typing import Any, Dict, List, Optional, Tuple, Type, Union, get_args, get_origin
 import abc
 import copy
 
@@ -321,14 +321,17 @@ class _RequestMessage:
         else:
             last_used_number = 0
 
-        for _, (item_name, p) in enumerate(params.items()):
+        for _, (item_name, typ) in enumerate(params.items()):
             if item_name in existing_fields:
                 # if field existed previously, get the original number from there
                 num = existing_fields[item_name]
             else:
                 num = last_used_number + 1
-                last_used_number += 1
-            self.triples.append((p, item_name, num))
+                if get_origin(typ) == Union:
+                    last_used_number += len(get_args(typ))
+                else:
+                    last_used_number += 1
+            self.triples.append((typ, item_name, num))
 
         self.triples.sort(key=lambda x: x[2])
 
