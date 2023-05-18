@@ -54,6 +54,7 @@ class OtherBlock(caikit.core.BlockBase):
         batch_size: int = 64,
     ) -> "OtherBlock":
         """Sample training method that produces a trained model"""
+        assert type(sample_input) == SampleInputType or str
         # Barf if we were incorrectly passed data not in datastream format
         assert type(training_data) == DataStream
         assert batch_size > 0
