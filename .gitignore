@@ -22,3 +22,7 @@ tests/protos/*
 
 # Tox envs
 .tox
+
+# Sphinx generated files
+docs/api/
+docs/_build/
