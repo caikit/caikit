@@ -267,7 +267,10 @@ def test_train_fake_block_does_not_change_another_instance_model_of_block(
     ).to_proto()
 
     train_request = sample_train_service.messages.BlocksOtherTaskOtherBlockTrainRequest(
-        model_name="Bar Training", batch_size=100, training_data=training_data
+        model_name="Bar Training",
+        sample_inputsampleinputtype=SampleInputType(name="Gabe").to_proto(),
+        batch_size=100,
+        training_data=training_data,
     )
     actual_response = train_stub.BlocksOtherTaskOtherBlockTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, "Bar Training")
