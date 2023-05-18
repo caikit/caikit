@@ -434,6 +434,29 @@ def test_dataobject_with_oneof():
         BazObj(foo=BazObj.Foo(), bar=BazObj.Bar())
 
 
+def test_dataobject_with_same_type_of_oneof():
+    """Make sure that using a Union to create a oneof with the same types works as expected"""
+
+    @dataobject
+    class Foo(DataObjectBase):
+        foo: Union[
+            Annotated[bool, FieldNumber(10), OneofField("foo_bool1")],
+            Annotated[bool, FieldNumber(20), OneofField("foo_bool2")],
+        ]
+
+    # if the fields are of the same type, then by default the first one is set
+    foo1 = Foo(True)
+    assert foo1.which_oneof("foo") == "foo_bool1"
+    assert foo1.foo_bool1
+    assert foo1.foo_bool2 == None
+
+    # unless set explicitly
+    foo2 = Foo(foo_bool2=True)
+    assert foo2.which_oneof("foo") == "foo_bool2"
+    assert foo2.foo_bool1 == None
+    assert foo2.foo_bool2
+
+
 def test_dataobject_round_trip_json():
     """Make sure that a dataobject class can serialize to/from json"""
 
