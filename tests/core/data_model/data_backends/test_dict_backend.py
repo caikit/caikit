@@ -128,6 +128,19 @@ def test_dict_backend_repeated_sub_message():
         assert sub_msg2.bar == data_dict["some_foos"][1]["bar"]
 
 
+def test_dict_backend_oneof():
+    """Make sure that a oneof can be correctly accessed from a backend"""
+    with temp_data_model(make_proto_def({"Foo": {"foo": "Union[str, int]"}})) as dm:
+        assert hasattr(dm, "Foo")
+        assert issubclass(dm.Foo, DataBase)
+
+        data_dict = {"foo": "asdf"}
+        backend = DictBackend(data_dict)
+        msg = dm.Foo.from_backend(backend)
+        assert msg.foo == "asdf"
+        assert msg.which_oneof("foo") == "foostr"
+
+
 def test_dict_backend_invalid_field_error():
     """Make sure that an AttributeError is raised if an invalid field is
     requested
