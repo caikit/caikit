@@ -233,18 +233,39 @@ def build_caikit_library_request_dict(
 
     log.debug("valid kwarg names: %s", valid_kwarg_names)
     cdm = get_data_model()
+    # pylint: disable=too-many-nested-blocks
     try:
         log.debug2(
             "We are looping though these fields: %s",
             [field.name for field in request.DESCRIPTOR.fields],
         )
         for field in request.DESCRIPTOR.fields:
-
-            log.debug2("processing field: %s", field.name)
+            field_name = field.name
+            field_value = None
+            log.debug2("processing field: %s", field_name)
+            # check for oneofs
+            if field.containing_oneof:
+                # if field is part of a oneof, get the containing oneof name
+                oneof_name = field.containing_oneof.name
+                # check for optional oneofs
+                if len(field.containing_oneof.fields) != 1 or oneof_name != f"_{field_name}":
+                    # if not optional, check if the field is the one set in the oneof
+                    if request.WhichOneof(oneof_name) == field_name:
+                        # check if the field is actually a valid argument
+                        if oneof_name not in valid_kwarg_names:
+                            continue
+                        # it's a valid argument, get the field_value
+                        field_value = getattr(request, field_name)
+                        # change the field_name to be of the oneof name
+                        field_name = oneof_name
+                    # this is not the set field in the oneof
+                    else:
+                        continue
             #  Need to not pass in any arg that is not supported by the function
-            if field.name not in valid_kwarg_names:
+            elif field_name not in valid_kwarg_names:
                 continue
-            field_value = getattr(request, field.name)
+            if field_value is None:
+                field_value = getattr(request, field_name)
             if is_protobuf_primitive_field(field):
                 # We don't need to convert this field to a Caikit Library CDM instance
                 # We also don't set the field if it is an int 0, which happens by default
@@ -254,19 +275,19 @@ def build_caikit_library_request_dict(
                 log.debug2(
                     "<RUN51658873D>",
                     "Field name [%s] with value [%s] is a primitive of type [%s]",
-                    field.name,
+                    field_name,
                     field_value,
                     type(field_value),
                 )
                 try:
                     # optional primitive
-                    if request.HasField(field.name):
-                        caikit_library_request_dict[field.name] = field_value
+                    if request.HasField(field_name):
+                        caikit_library_request_dict[field_name] = field_value
                 except ValueError as e:
                     # non-optional primitives and iterables
                     log.debug2(
                         "failed to check HasField on field %s, error: %s",
-                        field.name,
+                        field_name,
                         e,
                     )
                     # iterables
@@ -274,25 +295,25 @@ def build_caikit_library_request_dict(
                         if len(field_value) != 0:
                             # cast only if it's actually a list
                             if not isinstance(field_value, (str, bytes)):
-                                if "training_data" in field.name:
+                                if "training_data" in field_name:
                                     caikit_library_request_dict[
-                                        field.name
+                                        field_name
                                     ] = DataStream.from_iterable(field_value)
                                 else:
-                                    caikit_library_request_dict[field.name] = list(
+                                    caikit_library_request_dict[field_name] = list(
                                         field_value
                                     )
                             # if not, pass it as is. (non-optional str & bytes)
                             else:
-                                caikit_library_request_dict[field.name] = field_value
+                                caikit_library_request_dict[field_name] = field_value
                     # non-iterable primitives
                     else:
-                        caikit_library_request_dict[field.name] = field_value
+                        caikit_library_request_dict[field_name] = field_value
             else:
                 log.debug2(
                     "<RUN55658873D>",
                     "field is not primitive: %s (%s) type(%s)",
-                    field.name,
+                    field_name,
                     field_value,
                     type(field_value),
                 )
@@ -322,16 +343,16 @@ def build_caikit_library_request_dict(
                             instance = caikit_library_class.from_proto(field_item)
                             instances.append(instance)
 
-                        if "training_data" in field.name:
+                        if "training_data" in field_name:
                             data_stream = DataStream.from_iterable(instances)
-                            caikit_library_request_dict[field.name] = data_stream
+                            caikit_library_request_dict[field_name] = data_stream
                         else:
-                            caikit_library_request_dict[field.name] = field_value
+                            caikit_library_request_dict[field_name] = field_value
                 else:
                     log.debug2(
                         "<RUN55258876D>",
                         "field is not primitive, and also not an Iterable: %s (%s) type(%s)",
-                        field.name,
+                        field_name,
                         field_value,
                         type(field_value),
                     )
@@ -339,14 +360,14 @@ def build_caikit_library_request_dict(
                     stream_source = get_data_stream_source(field_value)
                     if stream_source:
                         caikit_library_request_dict[
-                            field.name
+                            field_name
                         ] = stream_source.to_data_stream()
 
                     else:
                         log.debug2(
                             "<RUN64546176D>",
                             "field should not have stream source: %s (%s) type(%s)",
-                            field.name,
+                            field_name,
                             field_value,
                             type(field_value),
                         )
@@ -363,7 +384,7 @@ def build_caikit_library_request_dict(
                                     field_value.model_id
                                 )
                                 caikit_library_request_dict[
-                                    field.name
+                                    field_name
                                 ] = model_retrieved
                         else:
                             # Now get the Caikit Library CDM class of the same
@@ -377,7 +398,7 @@ def build_caikit_library_request_dict(
                             # field's name as the key (since, by convention, the
                             # argument name to the block run function will be
                             # the same as the field name)
-                            caikit_library_request_dict[field.name] = instance
+                            caikit_library_request_dict[field_name] = instance
 
         log.debug2(
             "caikit_library_request_dict returned is: %s", caikit_library_request_dict

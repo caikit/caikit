@@ -203,6 +203,8 @@ class ModuleClassTrainRPC(CaikitRPCBase):
             # elif type_helpers._is_dict(typ):
             #     new_params[name] = typ
             else:
+                # going to be removed in later PRs so placeholder for lint
+                assert primitive_data_model_types
                 new_params[name] = typ
 
         return CustomSignature(
