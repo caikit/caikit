@@ -420,6 +420,11 @@ def test_dataobject_with_oneof():
     assert foo2.foo is foo2.data_stream
     assert foo2.which_oneof("data_stream") == "foo"
 
+    foo3 = BazObj()
+    assert foo3.foo is None
+    assert foo3.bar is None
+    assert foo3.data_stream is None
+    assert foo3.which_oneof("data_stream") == None
     # Invalid constructors
     with pytest.raises(TypeError):
         BazObj(BazObj.Foo(), foo=BazObj.Foo())
