@@ -18,6 +18,7 @@ import sys
 # Local
 from ..core.data_model import render_dataobject_protos
 from .service_factory import ServicePackageFactory
+import caikit
 
 
 def dump_services(output_dir: str):
@@ -46,4 +47,7 @@ def dump_services(output_dir: str):
 if __name__ == "__main__":
     assert len(sys.argv) == 2, f"Usage: {sys.argv[0]} <output_dir>"
     out_dir = sys.argv[1]
+    # Set up logging so users can set LOG_LEVEL etc
+    caikit.core.toolkit.logging.configure()
+
     dump_services(out_dir)
