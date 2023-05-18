@@ -248,7 +248,10 @@ def build_caikit_library_request_dict(
                 # if field is part of a oneof, get the containing oneof name
                 oneof_name = field.containing_oneof.name
                 # check for optional oneofs
-                if len(field.containing_oneof.fields) != 1 or oneof_name != f"_{field_name}":
+                if (
+                    len(field.containing_oneof.fields) != 1
+                    or oneof_name != f"_{field_name}"
+                ):
                     # if not optional, check if the field is the one set in the oneof
                     if request.WhichOneof(oneof_name) == field_name:
                         # check if the field is actually a valid argument
