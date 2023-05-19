@@ -233,39 +233,45 @@ def build_caikit_library_request_dict(
 
     log.debug("valid kwarg names: %s", valid_kwarg_names)
     cdm = get_data_model()
-    # pylint: disable=too-many-nested-blocks
     try:
         log.debug2(
             "We are looping though these fields: %s",
             [field.name for field in request.DESCRIPTOR.fields],
         )
+        # get all oneof fields excluding from optional oneofs
+        one_of_fields = []
+        for oneof_name, oneof in request.DESCRIPTOR.oneofs_by_name.items():
+            one_of_fields.extend(
+                [
+                    field.name
+                    for field in oneof.fields
+                    if len(oneof.fields) != 1
+                    or oneof_name != f"_{oneof.fields[0].name}"
+                ]
+            )
         for field in request.DESCRIPTOR.fields:
             field_name = field.name
             field_value = None
             log.debug2("processing field: %s", field_name)
+
             # check for oneofs
-            if field.containing_oneof:
-                # if field is part of a oneof, get the containing oneof name
+            if field_name in one_of_fields:
+                # get the containing oneof name
                 oneof_name = field.containing_oneof.name
-                # check for optional oneofs
-                if (
-                    len(field.containing_oneof.fields) != 1
-                    or oneof_name != f"_{field_name}"
-                ):
-                    # if not optional, check if the field is the one set in the oneof
-                    if request.WhichOneof(oneof_name) == field_name:
-                        # check if the field is actually a valid argument
-                        if oneof_name not in valid_kwarg_names:
-                            continue
-                        # it's a valid argument, get the field_value
-                        field_value = getattr(request, field_name)
-                        # change the field_name to be of the oneof name
-                        field_name = oneof_name
-                    # this is not the set field in the oneof
-                    else:
-                        continue
+                # Check if the field is the one set in the oneof
+                if request.WhichOneof(oneof_name) == field_name:
+                    # get the field_value
+                    field_value = getattr(request, field_name)
+                    # change the field_name to be of the oneof name
+                    log.debug3(
+                        "changing field name %s to be of the oneof: %s",
+                        field_name,
+                        oneof_name,
+                    )
+                    field_name = oneof_name
+
             #  Need to not pass in any arg that is not supported by the function
-            elif field_name not in valid_kwarg_names:
+            if field_name not in valid_kwarg_names:
                 continue
             if field_value is None:
                 field_value = getattr(request, field_name)
