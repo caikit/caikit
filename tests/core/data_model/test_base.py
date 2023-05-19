@@ -24,6 +24,7 @@ import pytest
 # Local
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.data_backends.base import DataModelBackendBase
+from caikit.core.data_model.dataobject import DataObjectBase
 from tests.data_model_helpers import (
     justify_script_string,
     make_proto_def,
@@ -130,6 +131,8 @@ def test_derived_class_no_import_side_effects():
                     class FakeDescriptor:
                         fields = []
                         fields_by_name = {}
+                        oneofs_by_name = {}
+                        oneofs = []
                         name = "Baz"
                         full_name = "foo.bar.Baz"
 
@@ -159,6 +162,86 @@ def test_derived_class_no_import_side_effects():
         lib = importlib.import_module(".".join([mod_name, "object"]))
         assert hasattr(lib, "Object")
         assert issubclass(lib.Object, DataBase)
+
+
+def test_compiled_proto_init():
+    """Make sure that support for 'compiled' protos works cleanly without using
+    the dataobject wrapper
+    """
+    # pylint: disable=duplicate-code
+    with temp_data_model(
+        make_proto_def(
+            {
+                "ThingOne": {
+                    "foo": str,
+                    "bar": int,
+                }
+            },
+            mock_compiled=True,
+        )
+    ) as dm:
+        assert isinstance(dm.ThingOne, type)
+        assert issubclass(dm.ThingOne, DataBase)
+        assert not issubclass(dm.ThingOne, DataObjectBase)
+        assert dm.ThingOne.fields == ("foo", "bar")
+
+        # Test construction with positional args
+        inst = dm.ThingOne("foo", 1)
+        assert inst.foo == "foo"
+        assert inst.bar == 1
+
+        # Test construction with keyword args
+        inst = dm.ThingOne(foo="foo", bar=1)
+        assert inst.foo == "foo"
+        assert inst.bar == 1
+
+        # Test defaulting to None
+        inst = dm.ThingOne()
+        assert inst.foo is None
+        assert inst.bar is None
+
+        # Test error cases for construction
+        with pytest.raises(TypeError):
+            dm.ThingOne("foo", foo="bar")
+        with pytest.raises(TypeError):
+            dm.ThingOne(widget="qewr")
+        with pytest.raises(TypeError):
+            dm.ThingOne("foo", 1, 2)
+
+
+def test_compiled_proto_oneof():
+    """Make sure that support for 'compiled' protos works cleanly without using
+    the dataobject wrapper
+    """
+    # pylint: disable=duplicate-code
+    with temp_data_model(
+        make_proto_def(
+            {
+                "ThingOne": {
+                    "foo": "Union[str, int]",
+                }
+            },
+            mock_compiled=True,
+        )
+    ) as dm:
+        assert isinstance(dm.ThingOne, type)
+        assert issubclass(dm.ThingOne, DataBase)
+        assert not issubclass(dm.ThingOne, DataObjectBase)
+        assert set(dm.ThingOne.fields) == {"foostr", "fooint"}
+
+        # Construct with the oneof name
+        inst = dm.ThingOne(foo=1)
+        assert inst.foo == 1
+        assert inst.which_oneof("foo") == "fooint"
+
+        # Construct with field name
+        inst = dm.ThingOne(foostr="asdf")
+        assert inst.foo == "asdf"
+        assert inst.which_oneof("foo") == "foostr"
+
+        # Conflicting args
+        with pytest.raises(TypeError):
+            dm.ThingOne(foo=1, fooster="asdf")
 
 
 ##################
@@ -222,6 +305,26 @@ def test_uncached_backend():
         msg.bar
         assert backend.access_count("foo") == 2
         assert backend.access_count("bar") == 3
+
+
+def test_invalid_attribute_no_backend():
+    """Make sure that when created without a backend and without proper
+    initialization, an AttributeError is raised
+    """
+    # pylint: disable=duplicate-code
+    with temp_data_model(
+        make_proto_def(
+            {
+                "ThingOne": {
+                    "foo": str,
+                    "bar": int,
+                }
+            }
+        )
+    ) as dm:
+        msg = dm.ThingOne.__new__(dm.ThingOne)
+        with pytest.raises(AttributeError):
+            msg.foo
 
 
 ##################

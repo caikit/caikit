@@ -78,7 +78,7 @@ class CaikitRPCBase(abc.ABC):
         attrs = copy.copy(self.request.default_map)
         attrs["__annotations__"] = {**properties, **optional_properties}
 
-        if not properties and optional_properties:
+        if not properties and not optional_properties:
             log.warning(
                 "No arguments found for request %s. Cannot generate rpc",
                 self.request.name,
