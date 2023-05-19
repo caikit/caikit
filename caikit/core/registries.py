@@ -14,8 +14,8 @@
 """
 Single spot for all global shared state access
 
-(Shining the light on the shared state so that we can clean it up and re-home it)
-This SHOULD NOT import anything else from caikit outside the toolkit error handler
+This should not import anything else from caikit outside the toolkit error handler, many parts of
+caikit need to access this state so that would easily cause an import cycle.
 """
 
 # Standard
@@ -39,10 +39,31 @@ MODULE_BACKEND_REGISTRY = {}
 
 
 def module_registry() -> Dict[str, "caikit.core.ModuleBase"]:
+    """Returns the dictionary of decorated @modules that have been imported.
+    Used to map module IDs to the concrete class implementations to load and run.
+
+    Structure is
+    Dict[ module_id, module_class ]
+
+    Returns:
+        Dict[str, caikit.core.ModuleBase]
+            The module registry
+    """
     return MODULE_REGISTRY
 
 
-def module_backend_registry() -> Dict[str, Dict["caikit.core.BackendBase", Tuple]]:
+def module_backend_registry() -> Dict[str, Dict[str, Tuple["caikit.core.ModuleBase", Dict]]]:
+    """Returns the module backend registry. This adds more nesting to the module registry,
+    providing a dictionary of backend type name -> (backend module impl class, config dict)
+
+    Structure is
+    Dict[ module_id, Dict[ backend_type, Tuple[ backend_impl_class, backend_config_dict ] ] ]
+
+    Returns:
+        Dict[str, Dict[str, Tuple["caikit.core.BackendBase", Dict]]]
+            The module backend registry
+    """
+    #TODO: put a real data structure here instead of nested dicts
     return MODULE_BACKEND_REGISTRY
 
 
@@ -65,6 +86,13 @@ MODULE_BACKEND_TYPES = _AttrAccessBackendDict()
 
 
 def module_backend_types() -> Dict[str, str]:
+    """Returns the "enum" of module backend types. This is a dict where the keys and values
+    are identical, and each are the string names of a backend type.
+
+    Returns:
+        Dict[str, str]:
+            The module backend type enum
+    """
     return MODULE_BACKEND_TYPES
 
 
@@ -72,4 +100,11 @@ MODULE_BACKEND_CLASSES: Dict[str, Type["caikit.core.BackendBase"]] = {}
 
 
 def module_backend_classes() -> Dict[str, Type["caikit.core.BackendBase"]]:
+    """Returns the mapping of backend type name to concrete backend class
+
+    Returns:
+        Dict[str, Type["caikit.core.BackendBase"]]:
+            The module backend class registry
+    """
+
     return MODULE_BACKEND_CLASSES
