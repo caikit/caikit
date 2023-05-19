@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Single spot where stick accessors for global shared state
+Single spot for all global shared state access
 
 (Shining the light on the shared state so that we can clean it up and re-home it)
 This SHOULD NOT import anything else from caikit outside the toolkit error handler
