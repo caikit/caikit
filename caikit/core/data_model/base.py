@@ -618,9 +618,12 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
             elif field in cls._fields_message:
                 if proto.HasField(field):
-                    contained_class = cls.get_class_for_proto(proto_attr)
-                    contained_obj = contained_class.from_proto(proto_attr)
-                    kwargs[field] = contained_obj
+                    if isinstance(proto_attr, struct_pb2.Struct):
+                        kwargs[field] = json_dict.struct_to_dict(proto_attr)
+                    else:
+                        contained_class = cls.get_class_for_proto(proto_attr)
+                        contained_obj = contained_class.from_proto(proto_attr)
+                        kwargs[field] = contained_obj
 
             elif field in cls._fields_message_repeated:
                 elements = []
