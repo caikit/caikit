@@ -26,7 +26,7 @@ import base64
 import json
 
 # Third Party
-from google.protobuf import json_format
+from google.protobuf import json_format, struct_pb2
 from google.protobuf.descriptor import Descriptor
 from google.protobuf.internal import type_checkers as proto_type_checkers
 from google.protobuf.message import Message as ProtoMessageType
@@ -36,7 +36,7 @@ import alog
 
 # Local
 from ..toolkit.errors import error_handler
-from . import enums
+from . import enums, json_dict
 
 log = alog.use_channel("DATAM")
 error = error_handler.get(log)
@@ -752,7 +752,10 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
             elif field in self._fields_message:
                 subproto = getattr(proto, field)
-                attr.fill_proto(subproto)
+                if isinstance(subproto, struct_pb2.Struct):
+                    subproto.CopyFrom(json_dict.dict_to_struct(attr))
+                else:
+                    attr.fill_proto(subproto)
 
             elif field in self._fields_message_repeated:
                 subproto = getattr(proto, field)
