@@ -273,6 +273,14 @@ def _register_module_implementation(
     core_class = module_registry().get(module_id)
     if core_class is None:
         # TODO! Inject a dummy entry that will raise on usage
+        # Info level log: this is normal behavior if backend module is imported
+        # before the base module
+        log.info(
+            "<COR86369940I>",
+            "No core class found for new backend %s with module ID %s",
+            implementation_class.__name__,
+            module_id,
+        )
         pass  # pragma: no cover
 
     # Do the registration!
