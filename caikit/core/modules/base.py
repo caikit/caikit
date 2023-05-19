@@ -39,7 +39,6 @@ import alog
 from ..data_model import DataBase, DataStream
 from ..toolkit import fileio
 from ..toolkit.errors import DataValidationError, error_handler
-from ..toolkit.wip_decorator import WipCategory, work_in_progress
 from .meta import _ModuleBaseMeta
 from caikit import core
 
@@ -64,7 +63,6 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
     #############
 
     @property
-    @work_in_progress(category=WipCategory.WIP)
     def metadata(self) -> Dict[str, Any]:
         """This module's metadata.
 

@@ -54,7 +54,9 @@ def module_registry() -> Dict[str, "caikit.core.ModuleBase"]:
     return MODULE_REGISTRY
 
 
-def module_backend_registry() -> Dict[str, Dict[str, Tuple["caikit.core.ModuleBase", Dict]]]:
+def module_backend_registry() -> Dict[
+    str, Dict[str, Tuple["caikit.core.ModuleBase", Dict]]
+]:
     """🌶️🌶️🌶️ This returns global state that should only be mutated if you know what you're doing!
 
     Returns the module backend registry. This adds more nesting to the module registry,
@@ -67,7 +69,7 @@ def module_backend_registry() -> Dict[str, Dict[str, Tuple["caikit.core.ModuleBa
         Dict[str, Dict[str, Tuple["caikit.core.BackendBase", Dict]]]
             The module backend registry
     """
-    #TODO: put a real data structure here instead of nested dicts
+    # TODO: put a real data structure here instead of nested dicts
     return MODULE_BACKEND_REGISTRY
 
 
