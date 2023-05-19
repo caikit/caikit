@@ -136,7 +136,9 @@ class _ModuleBaseMeta(abc.ABCMeta):
                 # Call the original .load function to load the module
                 module = real_load.__func__(clz, *args, **kwargs)
 
-                module.metadata.update(module_config)
+                # defer any "is this really a module" logic until after the load call
+                if hasattr(module, "metadata") and module_config:
+                    module.metadata.update(module_config)
 
                 return module
 
