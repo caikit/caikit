@@ -39,7 +39,9 @@ MODULE_BACKEND_REGISTRY = {}
 
 
 def module_registry() -> Dict[str, "caikit.core.ModuleBase"]:
-    """Returns the dictionary of decorated @modules that have been imported.
+    """🌶️🌶️🌶️ This returns global state that should only be mutated if you know what you're doing!
+
+    Returns the dictionary of decorated @modules that have been imported.
     Used to map module IDs to the concrete class implementations to load and run.
 
     Structure is
@@ -53,7 +55,9 @@ def module_registry() -> Dict[str, "caikit.core.ModuleBase"]:
 
 
 def module_backend_registry() -> Dict[str, Dict[str, Tuple["caikit.core.ModuleBase", Dict]]]:
-    """Returns the module backend registry. This adds more nesting to the module registry,
+    """🌶️🌶️🌶️ This returns global state that should only be mutated if you know what you're doing!
+
+    Returns the module backend registry. This adds more nesting to the module registry,
     providing a dictionary of backend type name -> (backend module impl class, config dict)
 
     Structure is
@@ -86,7 +90,9 @@ MODULE_BACKEND_TYPES = _AttrAccessBackendDict()
 
 
 def module_backend_types() -> Dict[str, str]:
-    """Returns the "enum" of module backend types. This is a dict where the keys and values
+    """🌶️🌶️🌶️ This returns global state that should only be mutated if you know what you're doing!
+
+    Returns the "enum" of module backend types. This is a dict where the keys and values
     are identical, and each are the string names of a backend type.
 
     Returns:
@@ -100,7 +106,9 @@ MODULE_BACKEND_CLASSES: Dict[str, Type["caikit.core.BackendBase"]] = {}
 
 
 def module_backend_classes() -> Dict[str, Type["caikit.core.BackendBase"]]:
-    """Returns the mapping of backend type name to concrete backend class
+    """🌶️🌶️🌶️ This returns global state that should only be mutated if you know what you're doing!
+
+    Returns the mapping of backend type name to concrete backend class
 
     Returns:
         Dict[str, Type["caikit.core.BackendBase"]]:
