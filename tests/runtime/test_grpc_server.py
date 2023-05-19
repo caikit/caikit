@@ -281,7 +281,7 @@ def test_train_fake_block_does_not_change_another_instance_model_of_block(
 
     # make sure the trained model can run inference, and the batch size 100 was used
     predict_request = sample_inference_service.messages.OtherTaskRequest(
-        sample_input=HAPPY_PATH_INPUT
+        sample_inputsampleinputtype=HAPPY_PATH_INPUT
     )
     trained_inference_response = inference_stub.OtherTaskPredict(
         predict_request, metadata=[("mm-model-id", actual_response.model_name)]

@@ -170,7 +170,7 @@ def test_global_train_other_task(
 
     inference_response = sample_predict_servicer.Predict(
         sample_inference_service.messages.OtherTaskRequest(
-            sample_input=SampleInputType(name="Gabe").to_proto()
+            sample_inputsampleinputtype=SampleInputType(name="Gabe").to_proto()
         ),
         Fixtures.build_context(training_response.model_name),
     )
