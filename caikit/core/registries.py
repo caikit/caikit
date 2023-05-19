@@ -25,7 +25,7 @@ from typing import Any, Dict, Tuple, Type
 import alog
 
 # Local
-from caikit.core.toolkit.errors import error_handler
+from .toolkit.errors import error_handler
 
 log = alog.use_channel("REGISTRIES")
 error = error_handler.get(log)

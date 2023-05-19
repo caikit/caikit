@@ -27,13 +27,13 @@ import uuid
 import alog
 
 # Local
+from ..modules.config import ModuleConfig
+from ..toolkit import ObjectSerializer
+from ..toolkit.errors import error_handler
+from ..toolkit.wip_decorator import TempDisableWIP
 from .base import ModuleBase
 from .loader import ModuleLoader
 from caikit.config import get_config
-from caikit.core.modules.config import ModuleConfig
-from caikit.core.toolkit import ObjectSerializer
-from caikit.core.toolkit.errors import error_handler
-from caikit.core.toolkit.wip_decorator import TempDisableWIP
 
 log = alog.use_channel("MODULE_SAVE")
 error = error_handler.get(log)
