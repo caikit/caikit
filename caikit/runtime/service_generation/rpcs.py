@@ -200,11 +200,9 @@ class ModuleClassTrainRPC(CaikitRPCBase):
             elif type_helpers.is_model_type(typ):
                 # Found a model pointer
                 new_params[name] = ModelPointer
-            # elif type_helpers._is_dict(typ):
-            #     new_params[name] = typ
-            else:
-                # going to be removed in later PRs so placeholder for lint
-                assert primitive_data_model_types
+            elif primitives.is_primitive_type(
+                arg_type=typ, primitive_data_model_types=primitive_data_model_types
+            ):
                 new_params[name] = typ
 
         return CustomSignature(
