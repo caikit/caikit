@@ -281,7 +281,6 @@ def _register_module_implementation(
             implementation_class.__name__,
             module_id,
         )
-        pass  # pragma: no cover
 
     # Do the registration!
     module_type_mapping = module_backend_registry().setdefault(module_id, {})
