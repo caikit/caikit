@@ -35,7 +35,7 @@ from caikit.core.toolkit import ObjectSerializer
 from caikit.core.toolkit.errors import error_handler
 from caikit.core.toolkit.wip_decorator import TempDisableWIP
 
-log = alog.use_channel("MODULE")
+log = alog.use_channel("MODULE_SAVE")
 error = error_handler.get(log)
 
 

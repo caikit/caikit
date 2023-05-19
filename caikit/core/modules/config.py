@@ -14,16 +14,17 @@
 
 # Standard
 import os
+import warnings
 
 # First Party
 import aconfig
 import alog
 
 # Local
-from caikit.core import toolkit
-from caikit.core.toolkit.errors import error_handler
+from .. import toolkit
+from ..toolkit.errors import error_handler
 
-log = alog.use_channel("MODULE")
+log = alog.use_channel("MODULE_CFG")
 error = error_handler.get(log)
 
 
@@ -62,7 +63,10 @@ class ModuleConfig(aconfig.Config):
 
         # 🌶️🌶️🌶️: Backwards compatibility for old-style `blocks`, `workflows`, and `resources`
         if not self.module_id:  # pylint: disable=access-member-before-definition
-            log.debug("No module ID found in config, looking for legacy IDs")
+            warnings.warn(
+                "No module_id found in config. Re-save the block to use module_id",
+                DeprecationWarning,
+            )  # actual warning or just log.warning?
             if self.block_id:
                 log.debug("Detected legacy block_id in config")
                 self.module_id = self.block_id

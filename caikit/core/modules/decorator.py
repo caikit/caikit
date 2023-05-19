@@ -27,14 +27,14 @@ import semver
 import alog
 
 # Local
+from ..data_model import ProducerId
 from ..registries import module_backend_registry, module_backend_types, module_registry
+from ..task import TaskBase
+from ..toolkit.errors import error_handler
 from .base import ModuleBase
-from caikit.core import data_model as dm
-from caikit.core.task import TaskBase
-from caikit.core.toolkit.errors import error_handler
 import caikit.core
 
-log = alog.use_channel("MODTYP")
+log = alog.use_channel("MODULE_DEC")
 error = error_handler.get(log)
 
 
@@ -160,7 +160,7 @@ def module(
         cls_.MODULE_VERSION = version  # Module Version == Module Type Version
         classname = f"{cls_.__module__}.{cls_.__qualname__}"
         cls_.MODULE_CLASS = classname
-        cls_.PRODUCER_ID = dm.ProducerId(cls_.MODULE_NAME, cls_.MODULE_VERSION)
+        cls_.PRODUCER_ID = ProducerId(cls_.MODULE_NAME, cls_.MODULE_VERSION)
 
         # Tasks: check to see if a super-class has one as well and that they match:
         tasks = {

@@ -27,7 +27,7 @@ from .config import ModuleConfig
 from caikit import core
 from caikit.core.toolkit.errors import error_handler
 
-log = alog.use_channel("MODULE")
+log = alog.use_channel("MODULE_LOAD")
 error = error_handler.get(log)
 
 

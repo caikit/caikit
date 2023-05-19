@@ -36,13 +36,12 @@ import types
 import alog
 
 # Local
+from ..data_model import DataBase, DataStream
+from ..toolkit import fileio
+from ..toolkit.errors import DataValidationError, error_handler
+from ..toolkit.wip_decorator import WipCategory, work_in_progress
 from .meta import _ModuleBaseMeta
 from caikit import core
-from caikit.core import data_model as dm
-from caikit.core.data_model import DataStream
-from caikit.core.toolkit import fileio
-from caikit.core.toolkit.errors import DataValidationError, error_handler
-from caikit.core.toolkit.wip_decorator import WipCategory, work_in_progress
 
 log = alog.use_channel("MODULE")
 error = error_handler.get(log)
@@ -370,10 +369,10 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             protobufs
                 A DataBase object.
         """
-        error.type_check("<COR98214589E>", dm.DataStream, data_stream=data_stream)
+        error.type_check("<COR98214589E>", DataStream, data_stream=data_stream)
         # Ensure that no args/kwargs are DataStreams, since these get passed to stream()
         run_argvals = list(args) + list(kwargs.values())
-        if any(isinstance(arg, dm.DataStream) for arg in run_argvals):
+        if any(isinstance(arg, DataStream) for arg in run_argvals):
             error(
                 "<COR28828273E>",
                 ValueError(
@@ -381,7 +380,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
                 ),
             )
         # TODO: Add .run_batch() integration
-        return dm.DataStream(
+        return DataStream(
             lambda: (self.run(data_item, *args, **kwargs) for data_item in data_stream)
         )
 
@@ -540,13 +539,13 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
                 "<COR28071103E>",
                 ValueError("Generator types are incompatible with .run_batch"),
             )
-        if isinstance(arg, dm.DataStream):
+        if isinstance(arg, DataStream):
             error(
                 "<COR75305604E>",
                 ValueError("Data streams are incompatible with .run_batch"),
             )
         if isinstance(arg, (tuple, list)):
-            return all(isinstance(obj, (str, dm.base.DataBase)) for obj in arg)
+            return all(isinstance(obj, (str, DataBase)) for obj in arg)
         return False
 
     def _validate_and_extract_batch_size(self, *args, **kwargs):

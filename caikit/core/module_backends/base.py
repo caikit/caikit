@@ -25,7 +25,7 @@ import abc
 import aconfig
 
 # Local
-from caikit.core.modules import ModuleBase
+from ..modules import ModuleBase
 
 
 class BackendBase(abc.ABC):

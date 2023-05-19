@@ -34,10 +34,10 @@ from .module_backends import backend_types, module_backend_config
 from .module_backends.base import SharedLoadBackendBase
 from .modules.base import ModuleBase
 from .modules.config import ModuleConfig
+from .modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
 from .registries import module_backend_registry, module_registry
 from .toolkit.errors import error_handler
 from caikit.config import get_config
-from caikit.core.modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
 
 log = alog.use_channel("MDLMNG")
 error = error_handler.get(log)

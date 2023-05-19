@@ -25,9 +25,9 @@ from ..registries import (
     module_backend_registry,
     module_backend_types,
 )
+from ..toolkit.errors import error_handler
 from .base import BackendBase
 from caikit.config import get_config
-from caikit.core.toolkit.errors import error_handler
 
 log = alog.use_channel("CONF")
 error = error_handler.get(log)
