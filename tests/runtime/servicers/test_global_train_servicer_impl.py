@@ -484,7 +484,7 @@ def test_global_train_aborts_long_running_trains(
     request_timeout = 10
 
     with patch(
-        "sample_lib.blocks.sample_task.sample_implementation.SampleBlock.train",
+        f"{SampleBlock.__module__}.{SampleBlock.train.__qualname__}",
         never_respond,
     ):
         train_thread.start()
