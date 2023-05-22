@@ -17,16 +17,14 @@ and download and load them.
 
 # Standard
 from contextlib import contextmanager
+from unittest import mock
+from unittest.mock import MagicMock
 import os
 import tempfile
 import uuid
 
 # Local
-from unittest import mock
-from unittest.mock import MagicMock
-
 from caikit.core.module_backends import module_backend_config
-
 from caikit.core.module_backends.module_backend_config import (
     configure,
     configured_load_backends,
@@ -429,9 +427,13 @@ def test_module_backend_instance_is_passed_to_load_classmethod(reset_globals):
             model = caikit.core.load(dummy_model_path)
 
             load_backends = module_backend_config.configured_load_backends()
-            expected_load_backend = [be for be in load_backends if be.backend_type == backend_types.MOCK][0]
+            expected_load_backend = [
+                be for be in load_backends if be.backend_type == backend_types.MOCK
+            ][0]
 
-            mock_load.assert_called_with(dummy_model_path, **{"load_backend": expected_load_backend})
+            mock_load.assert_called_with(
+                dummy_model_path, **{"load_backend": expected_load_backend}
+            )
 
 
 def test_preferred_backend_disabled(reset_globals):

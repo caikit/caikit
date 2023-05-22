@@ -265,7 +265,8 @@ def test_load_distributed_impl():
                     )
 
                 @classmethod
-                def load(cls, model_load_path) -> "DistributedGadget":
+                def load(cls, model_load_path, **kwargs) -> "DistributedGadget":
+                    # NOTE: kwargs needed here for load_backend
                     config = ModuleConfig.load(model_load_path)
                     return cls(bar=config.bar)
 
