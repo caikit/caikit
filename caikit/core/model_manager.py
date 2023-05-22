@@ -262,6 +262,7 @@ class ModelManager:
                         loaded_model = module_backend_impl.load(
                             module_path,
                             *args,
+                            load_backend=load_backend,
                             **kwargs,
                         )
                         if loaded_model is not None:

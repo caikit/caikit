@@ -17,11 +17,14 @@ and download and load them.
 
 # Standard
 from contextlib import contextmanager
+from unittest import mock
+from unittest.mock import MagicMock
 import os
 import tempfile
 import uuid
 
 # Local
+from caikit.core.module_backends import module_backend_config
 from caikit.core.module_backends.module_backend_config import (
     configure,
     configured_load_backends,
@@ -403,6 +406,34 @@ def test_preferred_backend_enabled(reset_globals):
         dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
         model = caikit.core.load(dummy_model_path)
         assert isinstance(model, DummyBar)
+
+
+def test_module_backend_instance_is_passed_to_load_classmethod(reset_globals):
+    """When an alternate module implementation is loaded via a backend, the concrete
+    instance of the module backend is passed to .load via the load_backend kwarg.
+    """
+    _, DummyBar = setup_saved_model(MockBackend)
+    with temp_config(
+        {
+            "module_backends": {
+                "load_priority": [{"type": backend_types.MOCK}],
+            }
+        }
+    ):
+        configure()
+        with mock.patch.object(DummyBar, "load", MagicMock()) as mock_load:
+            mock_load.return_value = DummyBar()
+            dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
+            model = caikit.core.load(dummy_model_path)
+
+            load_backends = module_backend_config.configured_load_backends()
+            expected_load_backend = [
+                be for be in load_backends if be.backend_type == backend_types.MOCK
+            ][0]
+
+            mock_load.assert_called_with(
+                dummy_model_path, **{"load_backend": expected_load_backend}
+            )
 
 
 def test_preferred_backend_disabled(reset_globals):
