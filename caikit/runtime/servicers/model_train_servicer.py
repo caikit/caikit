@@ -59,7 +59,9 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
             request_dict = request.request_dict
 
             # get the model to train
-            train_module = caikit.core.MODULE_REGISTRY.get(request_dict["train_module"])
+            train_module = caikit.core.registries.module_registry().get(
+                request_dict["train_module"]
+            )
             log.debug("<RUN76043064D>", "train_module: %s", train_module)
             if train_module is None:
                 raise CaikitRuntimeException(

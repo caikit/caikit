@@ -18,7 +18,7 @@ what an RPC for a service looks like"""
 import uuid
 
 # Local
-from caikit.core import BlockBase, TaskBase
+from caikit.core import ModuleBase, TaskBase
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
 from caikit.runtime.service_generation.signature_parsing import (
     CaikitCoreModuleMethodSignature,
@@ -34,16 +34,16 @@ def test_task_inference_rpc_with_all_optional_params():
     class TestTask(TaskBase):
         pass
 
-    @caikit.core.block(
+    @caikit.core.module(
         id=str(uuid.uuid4()), name="testest", version="9.9.9", task=SampleTask
     )
-    class TestBlock(BlockBase):
+    class TestModule(ModuleBase):
         def run(self, str_val="I have a default"):
             pass
 
     rpc = TaskPredictRPC(
         task=("foo", "bar"),
-        method_signatures=[CaikitCoreModuleMethodSignature(TestBlock, "run")],
+        method_signatures=[CaikitCoreModuleMethodSignature(TestModule, "run")],
         primitive_data_model_types=[],
     )
 

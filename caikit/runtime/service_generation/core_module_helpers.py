@@ -35,13 +35,12 @@ class ModuleInfo:
 def get_module_info(ck_module: Type[ModuleBase]) -> Optional[ModuleInfo]:
     """Determine the name for the module type for this Caikit Core Module. This
     is defined as the name string of the parent python module above the
-    immediate parent. This is done so that Modules of type block and workflow
-    can end up in the same `module type` if they implement the same logical
-    problem.
+    immediate parent. This is done so that Modules can end up in the same `module type`
+    if they implement the same logical problem.
 
     The logic here assumes one of several conventions is followed for the Module
     1. The Module is declared in a python module named
-        `<library>.<block/workflow>.<module type>`
+        `<library>.modules.<module type>`
     2. The module derives from a base class that itself derives from one of the
         known type-hierarchy derived from `ModuleBase`.
     """

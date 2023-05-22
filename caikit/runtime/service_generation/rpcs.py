@@ -35,13 +35,13 @@ from .signature_parsing.module_signature import (
     CaikitCoreModuleMethodSignature,
     CustomSignature,
 )
+from caikit.core import ModuleBase
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import (
     DataObjectBase,
     _DataObjectBaseMetaClass,
     dataobject,
 )
-from caikit.core.module import ModuleBase
 from caikit.interfaces.runtime.data_model import ModelPointer, TrainingJob
 from caikit.runtime.service_generation.data_stream_source import make_data_stream_source
 
@@ -168,9 +168,9 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         """Helper function to convert from the name of a module to the name of the
         request RPC message
 
-        Example: self.clz._module__ = sample_lib.blocks.sample_task.sample_implementation
+        Example: self.clz._module__ = sample_lib.modules.sample_task.sample_implementation
 
-        return: BlocksSampleTaskSampleBlockTrainRequest
+        return: BlocksSampleTaskSampleModuleTrainRequest
 
         """
         module_split = self.clz.__module__.split(".")
@@ -273,7 +273,7 @@ class TaskPredictRPC(CaikitRPCBase):
     @property
     def module_list(self) -> List[Type[ModuleBase]]:
         """Returns the list of all caikit.core.modules that this RPC will be for. These should all
-        be of the same ai-problem, e.g. my_caikit_library.[blocks | workflows].classification
+        be of the same ai-problem, e.g. my_caikit_library.modules.classification
         """
         return self._module_list
 

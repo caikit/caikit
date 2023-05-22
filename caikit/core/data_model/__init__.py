@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-"""Common data model containing all data structures that are passed in and out of blocks.
+"""Common data model containing all data structures that are passed in and out of modules.
 """
 
 # Local

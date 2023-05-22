@@ -265,18 +265,8 @@ def fixtures_dir():
 
 
 @pytest.fixture
-def block_fixtures_dir(fixtures_dir):
-    yield os.path.join(fixtures_dir, "blocks")
-
-
-@pytest.fixture
-def resource_fixtures_dir(fixtures_dir):
-    yield os.path.join(fixtures_dir, "resources")
-
-
-@pytest.fixture
-def workflow_fixtures_dir(fixtures_dir):
-    yield os.path.join(fixtures_dir, "workflows")
+def modules_fixtures_dir(fixtures_dir):
+    yield os.path.join(fixtures_dir, "modules")
 
 
 @pytest.fixture

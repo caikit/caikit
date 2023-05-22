@@ -32,7 +32,7 @@ import alog
 
 # Local
 from caikit import get_config
-from caikit.core.module import ModuleBase
+from caikit.core import ModuleBase
 from caikit.interfaces.runtime.data_model import TrainingJob
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.model_management.training_manager import TrainingManager
@@ -99,7 +99,7 @@ class GlobalTrainServicer:
         super()
 
     def Train(self, request, *_, **__) -> TrainingJob:
-        """Global predict RPC -- Mocks the invocation of a Caikit Library block.train()
+        """Global predict RPC -- Mocks the invocation of a Caikit Library module.train()
         method for a loaded Caikit Library model
         Args:
             request(object):
@@ -114,8 +114,8 @@ class GlobalTrainServicer:
 
         try:
             with alog.ContextLog(log.debug, outer_scope_name):
-                # BlocksSampleTaskSampleBlockTrainRequest
-                # getattr(importlib.import_module("sample_lib.blocks.sample_task"), "SampleBlock")
+                # BlocksSampleTaskSampleModuleTrainRequest
+                # getattr(importlib.import_module("sample_lib.modules.sample_task"), "SampleModule")
                 # TODO: fixme - temporary workaround for now
                 desc_name = desc_name.replace("TrainRequest", "")
                 split = re.split("(?<=.)(?=[A-Z])", desc_name)
@@ -128,7 +128,7 @@ class GlobalTrainServicer:
                         f"{''.join(split[2:])}",
                     )
                 except Exception:  # pylint: disable=broad-exception-caught
-                    for mod in caikit.core.MODULE_REGISTRY.values():
+                    for mod in caikit.core.registries.module_registry().values():
                         module_split = mod.__module__.split(".")
                         train_request_for_mod = snake_to_upper_camel(
                             f"{module_split[1]}_{module_split[2]}_{mod.__name__}"

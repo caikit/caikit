@@ -7,7 +7,7 @@ import pytest
 
 # Local
 from caikit.core import TaskBase, task
-from sample_lib import SampleBlock
+from sample_lib import SampleModule
 from sample_lib.data_model.sample import SampleInputType, SampleOutputType, SampleTask
 import caikit.core
 
@@ -51,19 +51,19 @@ def test_task_decorator_validates_output_is_data_model():
 
 
 def test_task_is_set_on_module_classes():
-    assert hasattr(SampleBlock, "TASK_CLASS")
-    assert SampleBlock.TASK_CLASS == SampleTask
+    assert hasattr(SampleModule, "TASK_CLASS")
+    assert SampleModule.TASK_CLASS == SampleTask
 
 
-def test_task_can_be_inferred_from_parent_block():
-    @caikit.core.blocks.block(id="foobar", name="Stuff", version="0.0.1")
-    class Stuff(SampleBlock):
+def test_task_can_be_inferred_from_parent_module():
+    @caikit.core.modules.module(id="foobar", name="Stuff", version="0.0.1")
+    class Stuff(SampleModule):
         pass
 
-    assert Stuff.TASK_CLASS == SampleBlock.TASK_CLASS
+    assert Stuff.TASK_CLASS == SampleModule.TASK_CLASS
 
 
-def test_task_cannot_conflict_with_parent_block():
+def test_task_cannot_conflict_with_parent_module():
     @task(
         required_parameters={"foo": SampleInputType},
         output_type=SampleOutputType,
@@ -73,16 +73,16 @@ def test_task_cannot_conflict_with_parent_block():
 
     with pytest.raises(TypeError, match="but superclass has"):
 
-        @caikit.core.blocks.block(
+        @caikit.core.modules.module(
             id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
         )
-        class Stuff(SampleBlock):
+        class Stuff(SampleModule):
             pass
 
 
-def test_task_is_not_required_for_blocks():
-    @caikit.core.blocks.block(id=str(uuid.uuid4()), name="Stuff", version="0.0.1")
-    class Stuff(caikit.core.blocks.base.BlockBase):
+def test_task_is_not_required_for_modules():
+    @caikit.core.modules.module(id=str(uuid.uuid4()), name="Stuff", version="0.0.1")
+    class Stuff(caikit.core.ModuleBase):
         pass
 
     assert Stuff.TASK_CLASS is None

@@ -92,4 +92,4 @@ class Fixtures:
 
     @staticmethod
     def get_good_model_type():
-        return "fake_block"
+        return "fake_module"
