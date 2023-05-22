@@ -45,10 +45,58 @@ def to_primitive_signature(
     primitives = {}
     log.debug("Building primitive signature for %s", signature)
     for arg, arg_type in signature.items():
-        if is_primitive_type(arg_type, primitive_data_model_types):
-            primitives[arg] = arg_type
+        primitive_arg_type = handle_primitives_in_union(
+            primitive_data_model_types, arg_type
+        )
+        if primitive_arg_type:
+            primitives[arg] = primitive_arg_type
 
     return primitives
+
+
+def handle_primitives_in_union(
+    primitive_data_model_types: List[str], arg_type: Type
+) -> Type:
+    """Handles various primitive arg types from a Union:
+    Union[supported_type, unsupported_type] -> returns only the supported_type
+    Union[supported_type1, supported_type2] -> returns the union which creates the oneof
+    Union[supported_type1, supported_type2, unsupported_type] ->
+        returns the first primitive object in the Union
+    """
+    if _is_primitive_type(arg_type, primitive_data_model_types):
+        if typing.get_origin(arg_type) == Union:
+            union_primitives = [
+                union_val
+                for union_val in typing.get_args(arg_type)
+                if _is_primitive_type(union_val, primitive_data_model_types)
+            ]
+            # if all are primitives, return the union (which will create a oneof)
+            if len(union_primitives) == len(typing.get_args(arg_type)):
+                return arg_type
+            # if there's only 1 primitive found, return that
+            if len(union_primitives) == 1:
+                return union_primitives[0]
+            # otherwise, try to get the primitive dm objects in the Union
+            dm_types = [
+                arg
+                for arg in union_primitives
+                if inspect.isclass(arg) and issubclass(arg, DataBase)
+            ]
+            # if there are multiple, pick the first one
+            if len(dm_types) > 0:
+                log.debug2(
+                    "Picking first data model type %s in union primitives %s",
+                    dm_types,
+                    union_primitives,
+                )
+                return dm_types[0]
+            log.debug(
+                "Just picking first primitive type %s in union",
+                union_primitives[0],
+            )
+            return union_primitives[0]
+        return arg_type
+    log.debug("Skipping non-primitive argument type [%s]", arg_type)
 
 
 def extract_data_model_type_from_union(arg_type: Type) -> Type:
@@ -98,7 +146,7 @@ def is_primitive_method(
     return all(
         [
             (
-                is_primitive_type(arg_type, primitive_data_model_types)
+                _is_primitive_type(arg_type, primitive_data_model_types)
                 or _is_optional_type(arg_type)
             )
             for arg_type in method.parameters.values()
@@ -106,7 +154,7 @@ def is_primitive_method(
     )
 
 
-def is_primitive_type(arg_type: Type, primitive_data_model_types: List[str]) -> bool:
+def _is_primitive_type(arg_type: Type, primitive_data_model_types: List[str]) -> bool:
     """
     Returns True is arg_type is in PROTO_TYPE_MAP(float, int, bool, str, bytes)
     Or if it's an imported Caikit library primitive.
@@ -130,7 +178,7 @@ def is_primitive_type(arg_type: Type, primitive_data_model_types: List[str]) -> 
         # pylint: disable=use-a-generator
         return any(
             [
-                is_primitive_type(arg, primitive_data_model_types)
+                _is_primitive_type(arg, primitive_data_model_types)
                 for arg in typing.get_args(arg_type)
             ]
         )
