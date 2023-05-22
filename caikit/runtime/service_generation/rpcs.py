@@ -328,7 +328,7 @@ class _RequestMessage:
                 num = existing_fields[item_name]
             else:
                 num = last_used_number + 1
-                if get_origin(typ) == Union:
+                if get_origin(typ) is Union:
                     last_used_number += len(get_args(typ))
                 else:
                     last_used_number += 1
