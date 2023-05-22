@@ -34,7 +34,7 @@ from .data_model import DataObjectBase, dataobject
 from .model_manager import *
 from .module_backends import *
 from .module_backends.module_backend_config import configure as backend_configure
-from .modules import ModuleBase, ModuleConfig, module
+from .modules import ModuleBase, ModuleConfig, ModuleLoader, ModuleSaver, module
 from .task import TaskBase, task
 from .toolkit import *
 
