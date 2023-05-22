@@ -13,4 +13,4 @@
 # limitations under the License.
 # # Local
 # Local
-from .hf_block import HuggingFaceSentimentBlock
+from .hf_module import HuggingFaceSentimentModule

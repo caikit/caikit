@@ -24,17 +24,17 @@ import pytest
 # Local
 from caikit.config import get_config
 from caikit.core import ModuleConfig
-from caikit.core.blocks import base, block
 from caikit.core.module_backends import backend_types
+from caikit.core.modules import base, module
 from caikit.runtime.model_management.batcher import Batcher
 from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from sample_lib.blocks.sample_task import SampleBlock
 from sample_lib.data_model import SampleInputType, SampleOutputType
+from sample_lib.modules.sample_task import SampleModule
 from tests.conftest import random_test_id, temp_config
 from tests.core.helpers import MockBackend
 from tests.fixtures import Fixtures
-import caikit.core.blocks
+import caikit.core
 
 ## Helpers #####################################################################
 
@@ -65,7 +65,7 @@ def test_load_model_ok_response(model_loader):
         model_type=Fixtures.get_good_model_type(),
     )
     assert loaded_model.module() is not None
-    assert isinstance(loaded_model.module(), base.BlockBase)
+    assert isinstance(loaded_model.module(), base.ModuleBase)
     assert model_id == loaded_model.id()
     assert Fixtures.get_good_model_type() == loaded_model.type()
     assert Fixtures.get_good_model_path() == loaded_model.path()
@@ -83,7 +83,7 @@ def test_load_model_archive(model_loader):
         model_type=Fixtures.get_good_model_type(),
     )
     assert loaded_model.module() is not None
-    assert isinstance(loaded_model.module(), base.BlockBase)
+    assert isinstance(loaded_model.module(), base.ModuleBase)
 
 
 def test_load_model_error_not_found_response(model_loader):
@@ -167,10 +167,10 @@ def test_with_batching(model_loader):
     model = model_loader.load_model(
         "load_with_batch",
         Fixtures.get_good_model_path(),
-        model_type="fake_batch_block",
+        model_type="fake_batch_module",
     ).module()
     assert isinstance(model, Batcher)
-    assert model._batch_size == get_config().runtime.batching.fake_batch_block.size
+    assert model._batch_size == get_config().runtime.batching.fake_batch_module.size
 
     # Make sure another model loads without batching
     model = model_loader.load_model(
@@ -225,62 +225,62 @@ def test_with_batching_collect_delay(model_loader):
 
 def test_load_distributed_impl():
     """Make sure that when configured, an alternate distributed
-    implementation of a block can be loaded
+    implementation of a module can be loaded
     """
 
-    reg_copy = copy.deepcopy(caikit.core.module.MODULE_REGISTRY)
-    backend_registry_copy = copy.deepcopy(caikit.core.module.MODULE_BACKEND_REGISTRY)
+    reg_copy = copy.deepcopy(caikit.core.registries.module_registry())
+    backend_registry_copy = copy.deepcopy(
+        caikit.core.registries.module_backend_registry()
+    )
     # 🌶️🌶️🌶️: the MODULE_BACKEND_REGISTRY can't be easily patched since two separate modules hold
-    # an imported reference to it and one edits it (module_type.py) while the other reads it
+    # an imported reference to it and one edits it (decorator.py) while the other reads it
     # (model_manager.py)
 
-    with mock.patch.object(caikit.core.module, "MODULE_REGISTRY", reg_copy):
+    with mock.patch.object(caikit.core.registries, "MODULE_REGISTRY", reg_copy):
         with mock.patch.object(
-            caikit.core.module_type, "MODULE_BACKEND_REGISTRY", backend_registry_copy
+            caikit.core.registries,
+            "MODULE_BACKEND_REGISTRY",
+            backend_registry_copy,
         ):
-            with mock.patch.object(
-                caikit.core.model_manager,
-                "MODULE_BACKEND_REGISTRY",
-                backend_registry_copy,
-            ):
 
-                @block(
-                    base_module=SampleBlock,
-                    backend_type=backend_types.MOCK,
-                    backend_config_override={"bar1": 1},
-                )
-                class DistributedGadget(caikit.core.blocks.base.BlockBase):
-                    """An alternate implementation of a Gadget"""
+            @module(
+                base_module=SampleModule,
+                backend_type=backend_types.MOCK,
+                backend_config_override={"bar1": 1},
+            )
+            class DistributedGadget(caikit.core.ModuleBase):
+                """An alternate implementation of a Gadget"""
 
-                    SUPPORTED_LOAD_BACKENDS = [
-                        MockBackend.backend_type,
-                        backend_types.LOCAL,
-                    ]
+                SUPPORTED_LOAD_BACKENDS = [
+                    MockBackend.backend_type,
+                    backend_types.LOCAL,
+                ]
 
-                    def __init__(self, bar):
-                        self.bar = bar
+                def __init__(self, bar):
+                    self.bar = bar
 
-                    def run(self, sample_input: SampleInputType) -> SampleOutputType:
-                        return SampleOutputType(
-                            greeting=f"hello distributed {sample_input.name}"
-                        )
+                def run(self, sample_input: SampleInputType) -> SampleOutputType:
+                    return SampleOutputType(
+                        greeting=f"hello distributed {sample_input.name}"
+                    )
 
-                    @classmethod
-                    def load(cls, model_load_path) -> "DistributedGadget":
-                        config = ModuleConfig.load(model_load_path)
-                        return cls(bar=config.bar)
+                @classmethod
+                def load(cls, model_load_path, **kwargs) -> "DistributedGadget":
+                    # NOTE: kwargs needed here for load_backend
+                    config = ModuleConfig.load(model_load_path)
+                    return cls(bar=config.bar)
 
-                with tempfile.TemporaryDirectory() as model_path:
-                    # Create and save the model directly with the local impl
-                    SampleBlock().save(model_path)
+            with tempfile.TemporaryDirectory() as model_path:
+                # Create and save the model directly with the local impl
+                SampleModule().save(model_path)
 
-                    model_type = "gadget"
+                model_type = "gadget"
 
-                    with temp_model_loader() as model_loader:
-                        # Load the distributed version
-                        model = model_loader.load_model(
-                            random_test_id(),
-                            model_path,
-                            model_type=model_type,
-                        ).module()
-                        assert isinstance(model, DistributedGadget)
+                with temp_model_loader() as model_loader:
+                    # Load the distributed version
+                    model = model_loader.load_model(
+                        random_test_id(),
+                        model_path,
+                        model_type=model_type,
+                    ).module()
+                    assert isinstance(model, DistributedGadget)

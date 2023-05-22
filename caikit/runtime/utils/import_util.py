@@ -76,7 +76,7 @@ def get_data_model(config: aconfig.Config = None) -> UnifiedDataModel:
 
     NOTE: This function also has the side-effect of importing each of the
         caikit_library libraries for the first time, causing their modules to
-        be registered with the caikit.core MODULE_REGISTRY. It is a critical
+        be registered with the caikit.core module registry. It is a critical
         step in initializing the set of modules that can be loaded by this
         running server instance.
 
@@ -108,7 +108,7 @@ def get_data_model(config: aconfig.Config = None) -> UnifiedDataModel:
     # all the libraries which will register all the modules and that happens
     # in get_dynamic_module above
     base_lib_names = set()
-    for module_class in caikit.core.MODULE_REGISTRY.values():
+    for module_class in caikit.core.registries.module_registry().values():
         lib_name = module_class.__module__.partition(".")[0]
         if lib_name not in lib_names:
             # This module is from a library not mentioned

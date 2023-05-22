@@ -215,12 +215,12 @@ HAPPY_PATH_INPUT = SampleInputType(name="Gabe").to_proto()
 def test_global_predict_build_caikit_library_request_dict_creates_caikit_core_run_kwargs(
     sample_inference_service,
 ):
-    """Test that build_caikit_library_request_dict creates block run kwargs from RPC msg"""
+    """Test that build_caikit_library_request_dict creates module run kwargs from RPC msg"""
     request_dict = build_caikit_library_request_dict(
         sample_inference_service.messages.SampleTaskRequest(
             sample_input=HAPPY_PATH_INPUT
         ),
-        sample_lib.blocks.sample_task.SampleBlock().run,
+        sample_lib.modules.sample_task.SampleModule().run,
     )
 
     # No self or "throw", throw was not set and the throw parameter contains a default value
@@ -234,12 +234,12 @@ def test_global_predict_build_caikit_library_request_dict_strips_invalid_run_kwa
     sample_inference_service,
 ):
     """Global predict build_caikit_library_request_dict strips invalid run kwargs from request"""
-    # Sample block doesn't take the `int_type` or `bool_type` params
+    # Sample module doesn't take the `int_type` or `bool_type` params
     request_dict = build_caikit_library_request_dict(
         sample_inference_service.messages.SampleTaskRequest(
             sample_input=HAPPY_PATH_INPUT, int_type=5, bool_type=True
         ),
-        sample_lib.blocks.sample_task.SampleBlock().run,
+        sample_lib.modules.sample_task.SampleModule().run,
     )
 
     expected_arguments = {"sample_input"}
@@ -253,7 +253,7 @@ def test_global_predict_build_caikit_library_request_dict_strips_empty_list_from
     """Global predict build_caikit_library_request_dict strips empty list from request"""
     request_dict = build_caikit_library_request_dict(
         sample_inference_service.messages.SampleTaskRequest(int_type=5, list_type=[]),
-        sample_lib.blocks.sample_task.SamplePrimitiveBlock().run,
+        sample_lib.modules.sample_task.SamplePrimitiveModule().run,
     )
 
     assert "list_type" not in request_dict.keys()
@@ -340,17 +340,17 @@ def test_global_predict_build_caikit_library_request_dict_works_for_repeated_fie
 def test_global_train_build_caikit_library_request_dict_creates_caikit_core_run_kwargs_not_fail_when_optional_proto_field_not_exist(
     sample_train_service,
 ):
-    """Global train build_caikit_library_request_dict creates block run kwargs from RPC msg
+    """Global train build_caikit_library_request_dict creates module run kwargs from RPC msg
     and if not passed in request, it creates the fields with default values"""
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=random_test_id()  # not having batch_size, and training_data
         )
     )
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        sample_lib.blocks.sample_task.SampleBlock().train,
+        sample_lib.modules.sample_task.SampleModule().train,
     )
 
     expected_arguments = {"training_data"}
@@ -373,14 +373,14 @@ def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_r
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(jsondata=stream_type.JsonData(data=[])).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=random_test_id(), training_data=training_data
         )
     )
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        sample_lib.blocks.sample_task.SampleBlock().train,
+        sample_lib.modules.sample_task.SampleModule().train,
     )
 
     # model_name is not expected to be passed through
@@ -396,15 +396,17 @@ def test_global_train_build_caikit_library_request_dict_works_for_repeated_field
 
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(jsondata=stream_type.JsonData(data=[])).to_proto()
-    train_request = sample_train_service.messages.BlocksSampleTaskListBlockTrainRequest(
-        model_name=random_test_id(),
-        training_data=training_data,
-        poison_pills=["Bob Marley", "Bunny Livingston"],
+    train_request = (
+        sample_train_service.messages.ModulesSampleTaskListModuleTrainRequest(
+            model_name=random_test_id(),
+            training_data=training_data,
+            poison_pills=["Bob Marley", "Bunny Livingston"],
+        )
     )
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        sample_lib.blocks.sample_task.ListBlock().train,
+        sample_lib.modules.sample_task.ListModule().train,
     )
 
     # model_name is not expected to be passed through
@@ -424,19 +426,21 @@ def test_global_train_build_caikit_library_request_dict_ok_with_DataStreamSource
         jsondata=stream_type.JsonData(data=[100, 120])
     ).to_proto()
 
-    train_request = sample_train_service.messages.BlocksOtherTaskOtherBlockTrainRequest(
-        model_name="Bar Training",
-        sample_inputsampleinputtype=SampleInputType(name="Gabe").to_proto(),
-        batch_size=100,
-        training_data=training_data,
+    train_request = (
+        sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
+            model_name="Bar Training",
+            sample_inputsampleinputtype=SampleInputType(name="Gabe").to_proto(),
+            batch_size=100,
+            training_data=training_data,
+        )
     )
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        sample_lib.blocks.other_task.OtherBlock().train,
+        sample_lib.modules.other_task.OtherModule().train,
     )
 
     expected_arguments = set(
-        sample_lib.blocks.other_task.OtherBlock().train.__code__.co_varnames
+        sample_lib.modules.other_task.OtherModule().train.__code__.co_varnames
     )
     expected_arguments.remove("cls")
 
@@ -453,7 +457,7 @@ def test_global_train_build_caikit_library_request_dict_ok_with_data_stream_file
         file=stream_type.File(filename=sample_csv_file)
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=random_test_id(),
             training_data=training_data,
         )
@@ -461,7 +465,7 @@ def test_global_train_build_caikit_library_request_dict_ok_with_data_stream_file
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        sample_lib.blocks.sample_task.SampleBlock().train,
+        sample_lib.modules.sample_task.SampleModule().train,
     )
 
     # model_name is not expected to be passed through
@@ -478,15 +482,17 @@ def test_global_train_build_caikit_library_request_dict_ok_with_training_data_as
     training_data = stream_type(
         listoffiles=stream_type.ListOfFiles(files=[sample_csv_file, sample_json_file])
     ).to_proto()
-    train_request = sample_train_service.messages.BlocksSampleTaskListBlockTrainRequest(
-        model_name=random_test_id(),
-        training_data=training_data,
-        poison_pills=["Bob Marley", "Bunny Livingston"],
+    train_request = (
+        sample_train_service.messages.ModulesSampleTaskListModuleTrainRequest(
+            model_name=random_test_id(),
+            training_data=training_data,
+            poison_pills=["Bob Marley", "Bunny Livingston"],
+        )
     )
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        sample_lib.blocks.sample_task.ListBlock().train,
+        sample_lib.modules.sample_task.ListModule().train,
     )
 
     # model_name is not expected to be passed through
@@ -517,7 +523,7 @@ def test_build_caikit_library_request_dict_works_when_data_stream_directory_incl
             directory=stream_type.Directory(dirname=tempdir, extension="json")
         ).to_proto()
         train_request = (
-            sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+            sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
                 model_name=random_test_id(),
                 training_data=training_data,
             )
@@ -526,7 +532,7 @@ def test_build_caikit_library_request_dict_works_when_data_stream_directory_incl
         # no error because at least 1 json file exists within the provided dir
         caikit.core_request = build_caikit_library_request_dict(
             train_request,
-            sample_lib.blocks.sample_task.SampleBlock().train,
+            sample_lib.modules.sample_task.SampleModule().train,
         )
 
 
@@ -541,7 +547,7 @@ def test_build_caikit_library_request_dict_raises_invalid_data_stream_source_fil
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(file=stream_type.File(filename="abc.blah")).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=random_test_id(),
             training_data=training_data,
         )
@@ -550,7 +556,7 @@ def test_build_caikit_library_request_dict_raises_invalid_data_stream_source_fil
     with pytest.raises(CaikitRuntimeException) as e:
         caikit.core_request = build_caikit_library_request_dict(
             train_request,
-            sample_lib.blocks.sample_task.SampleBlock().train,
+            sample_lib.modules.sample_task.SampleModule().train,
         )
 
     assert "Invalid .blah data source file" in e.value.message
@@ -569,7 +575,7 @@ def test_build_caikit_library_request_dict_raises_invalid_data_stream_source_fil
         )
         training_data = stream_type(file=stream_type.File(filename=fname)).to_proto()
         train_request = (
-            sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+            sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
                 model_name="Foo Bar Training",
                 training_data=training_data,
             )
@@ -578,7 +584,7 @@ def test_build_caikit_library_request_dict_raises_invalid_data_stream_source_fil
         with pytest.raises(CaikitRuntimeException) as e:
             caikit.core_request = build_caikit_library_request_dict(
                 train_request,
-                sample_lib.blocks.sample_task.SampleBlock().train,
+                sample_lib.modules.sample_task.SampleModule().train,
             )
 
         assert "Extension not supported" in e.value.message
@@ -594,7 +600,7 @@ def test_build_caikit_library_request_dict_raises_when_data_stream_file_passes_a
         directory=stream_type.Directory(dirname=sample_csv_file)
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name="Foo Bar Training",
             training_data=training_data,
         )
@@ -603,7 +609,7 @@ def test_build_caikit_library_request_dict_raises_when_data_stream_file_passes_a
     with pytest.raises(CaikitRuntimeException) as e:
         caikit.core_request = build_caikit_library_request_dict(
             train_request,
-            sample_lib.blocks.sample_task.SampleBlock().train,
+            sample_lib.modules.sample_task.SampleModule().train,
         )
 
     assert "Invalid json directory source file" in e.value.message
@@ -626,7 +632,7 @@ def test_build_caikit_library_request_dict_raises_when_data_stream_directory_pas
             directory=stream_type.Directory(dirname=tempdir, extension="txt")
         ).to_proto()
         train_request = (
-            sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+            sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
                 model_name=random_test_id(),
                 training_data=training_data,
             )
@@ -635,7 +641,7 @@ def test_build_caikit_library_request_dict_raises_when_data_stream_directory_pas
         with pytest.raises(CaikitRuntimeException) as e:
             caikit.core_request = build_caikit_library_request_dict(
                 train_request,
-                sample_lib.blocks.sample_task.SampleBlock().train,
+                sample_lib.modules.sample_task.SampleModule().train,
             )
 
         # TODO: change this message once it's implemented
@@ -659,7 +665,7 @@ def test_build_caikit_library_request_dict_raises_when_data_stream_directory_pas
             directory=stream_type.Directory(dirname=tempdir, extension="json")
         ).to_proto()
         train_request = (
-            sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+            sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
                 model_name=random_test_id(),
                 training_data=training_data,
             )
@@ -668,7 +674,7 @@ def test_build_caikit_library_request_dict_raises_when_data_stream_directory_pas
         with pytest.raises(CaikitRuntimeException) as e:
             caikit.core_request = build_caikit_library_request_dict(
                 train_request,
-                sample_lib.blocks.sample_task.SampleBlock().train,
+                sample_lib.modules.sample_task.SampleModule().train,
             )
 
         assert "contains no source files with extension" in e.value.message

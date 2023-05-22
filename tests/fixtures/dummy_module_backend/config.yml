@@ -1,0 +1,8 @@
+# a dummy configuration yaml
+module_id: foo
+model_backend: MOCK
+module_class: "DummyBar"
+name: Dummy config file.
+version: 0.1.0
+# This can also be loaded as singleton
+unique_hash: foobarbaz

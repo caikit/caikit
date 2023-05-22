@@ -31,7 +31,7 @@ import alog
 
 # Local
 from caikit import get_config
-from caikit.core.module import ModuleBase
+from caikit.core import ModuleBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingInfoResponse,
@@ -234,7 +234,7 @@ class ServicePackageFactory:
         clean_modules = set()
         modules = [
             module_class
-            for module_class in caikit.core.MODULE_REGISTRY.values()
+            for module_class in caikit.core.registries.module_registry().values()
             if module_class.__module__.partition(".")[0] == lib
         ]
         log.debug("Found all modules %s for library %s.", modules, lib)

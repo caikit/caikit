@@ -98,8 +98,6 @@ runtime:
     # Configuration items for service generation
     service_generation:
         enabled: true
-        module_types:
-            included: ["blocks", "workflows"]
         module_guids:
             included: []
             excluded: []
@@ -119,7 +117,7 @@ runtime:
         default:
             size: 0
             collect_delay_s: 0.0
-        fake_batch_block:
+        fake_batch_module:
             size: 10
 
     metering:
@@ -171,7 +169,7 @@ inference_plugin:
             entity-mentions_rbr: 1.8
             sentiment_cnn: 2.73
             syntax_izumo: 43000
-            fake_block: 2
+            fake_module: 2
 
 ### Libraries configuration
 libraries:

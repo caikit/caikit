@@ -29,8 +29,8 @@ class TestRPCMeter(unittest.TestCase):
         """This method runs before each test begins to run"""
         self.rpc_meter = RPCMeter()
         # Note: These are not real classes in sample_lib
-        self.another_widget_type = "<class 'sample_lib.blocks.sample_task.sample_implementation.AnotherWidget'>"
-        self.another_fidget_type = "<class 'sample_lib.blocks.sample_task.sample_implementation.AnotherFidget'>"
+        self.another_widget_type = "<class 'sample_lib.modules.sample_task.sample_implementation.AnotherWidget'>"
+        self.another_fidget_type = "<class 'sample_lib.modules.sample_task.sample_implementation.AnotherFidget'>"
 
     def test_update_metrics(self):
         pool = ThreadPool(1000)

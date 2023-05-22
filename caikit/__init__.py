@@ -10,4 +10,4 @@ from . import core, interfaces
 from .config import configure, get_config
 
 # Expose model management at the top level
-from .core import extract, load, resolve_and_load
+from .core import extract, load, module, resolve_and_load

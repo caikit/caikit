@@ -23,7 +23,7 @@ import grpc
 
 # Local
 from caikit import get_config
-from caikit.core.blocks.base import BlockBase
+from caikit.core.modules import ModuleBase
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -214,7 +214,7 @@ class TestModelManager(unittest.TestCase):
             model_type=Fixtures.get_good_model_type(),
         )
         model = self.model_manager.retrieve_model(model_id)
-        self.assertIsInstance(model, BlockBase)
+        self.assertIsInstance(model, ModuleBase)
         self.assertEqual(len(self.model_manager.loaded_models), 1)
 
     def test_retrieve_model_raises_error_for_not_found_model(self):
@@ -339,10 +339,10 @@ class TestModelManager(unittest.TestCase):
             self.assertEqual(context.exception.status_code, grpc.StatusCode.NOT_FOUND)
             self.assertEqual(len(self.model_manager.loaded_models), 0)
 
-    def test_retrieve_model_returns_the_block_from_the_model_loader(self):
+    def test_retrieve_model_returns_the_module_from_the_model_loader(self):
         """Test that a loaded model can be retrieved"""
         model_id = random_test_id()
-        expected_block = "this is definitely a stub block"
+        expected_module = "this is definitely a stub module"
         mock_sizer = MagicMock()
         mock_loader = MagicMock()
 
@@ -350,12 +350,12 @@ class TestModelManager(unittest.TestCase):
             with patch.object(self.model_manager, "model_sizer", mock_sizer):
                 mock_sizer.get_model_size.return_value = 1
                 mock_loader.load_model.return_value = (
-                    LoadedModel.Builder().module(expected_block).build()
+                    LoadedModel.Builder().module(expected_module).build()
                 )
                 self.model_manager.load_model(model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE)
 
                 model = self.model_manager.retrieve_model(model_id)
-                self.assertEqual(expected_block, model)
+                self.assertEqual(expected_module, model)
 
     def test_get_model_size_returns_size_from_model_sizer(self):
         """Test that loading a model stores the size from the ModelSizer"""

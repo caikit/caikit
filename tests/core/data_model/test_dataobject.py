@@ -24,7 +24,9 @@ import os
 import tempfile
 
 # Third Party
+from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pool, message
+import numpy as np
 import pytest
 
 # First Party
@@ -650,3 +652,42 @@ def test_enum_value_dereference():
     assert inst.to_proto().foo == FooEnum.FOO.value
     assert inst.to_dict()["foo"] == FooEnum.FOO.name
     assert json.loads(inst.to_json())["foo"] == FooEnum.FOO.name
+
+
+def test_np_dtypes():
+    """Make sure that numpy dtype types can be used in dataobjects"""
+
+    @dataobject
+    class Foo(DataObjectBase):
+        int32: np.int32
+        int64: np.int64
+        uint32: np.uint32
+        uint64: np.uint64
+        float32: np.float32
+        float64: np.float64
+
+    descriptor = Foo._proto_class.DESCRIPTOR
+    assert (
+        descriptor.fields_by_name["int32"].type
+        == _descriptor.FieldDescriptor.TYPE_INT32
+    )
+    assert (
+        descriptor.fields_by_name["int64"].type
+        == _descriptor.FieldDescriptor.TYPE_INT64
+    )
+    assert (
+        descriptor.fields_by_name["uint32"].type
+        == _descriptor.FieldDescriptor.TYPE_UINT32
+    )
+    assert (
+        descriptor.fields_by_name["uint64"].type
+        == _descriptor.FieldDescriptor.TYPE_UINT64
+    )
+    assert (
+        descriptor.fields_by_name["float32"].type
+        == _descriptor.FieldDescriptor.TYPE_FLOAT
+    )
+    assert (
+        descriptor.fields_by_name["float64"].type
+        == _descriptor.FieldDescriptor.TYPE_DOUBLE
+    )

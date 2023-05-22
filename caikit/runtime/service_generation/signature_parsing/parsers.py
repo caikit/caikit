@@ -23,8 +23,8 @@ import alog
 
 # Local
 from . import docstrings
+from caikit.core import ModuleBase
 from caikit.core.data_model.base import DataBase
-from caikit.core.module import ModuleBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("SIG-PARSING")

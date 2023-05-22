@@ -30,17 +30,12 @@ import zipfile
 import alog
 
 # Local
-from . import module_backend_config
-from .module import (
-    _MODULE_TYPES,
-    MODULE_BACKEND_REGISTRY,
-    MODULE_REGISTRY,
-    ModuleBase,
-    ModuleConfig,
-)
-from .module_backends import backend_types
+from .module_backends import backend_types, module_backend_config
 from .module_backends.base import SharedLoadBackendBase
-from .module_type import SUPPORTED_LOAD_BACKENDS_VAR_NAME
+from .modules.base import ModuleBase
+from .modules.config import ModuleConfig
+from .modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
+from .registries import module_backend_registry, module_registry
 from .toolkit.errors import error_handler
 from caikit.config import get_config
 
@@ -55,12 +50,12 @@ __all__ = [
 
 
 def get_valid_module_ids():
-    """Get a dictionary mapping all module (block and workflow) IDs to the
-    string names of the implementing classes.
+    """Get a dictionary mapping all module IDs to the string names of the
+    implementing classes.
     """
     return {
         module_id: model_class.__name__
-        for module_id, model_class in MODULE_REGISTRY.items()
+        for module_id, model_class in module_registry().items()
     }
 
 
@@ -94,7 +89,7 @@ class ModelManager:
                 Indicates whether this model should be loaded as a singleton.
 
         Returns:
-            subclass of blocks.base.BlockBase
+            subclass of caikit.core.modules.ModuleBase
                 Model object that is loaded, configured, and ready for prediction.
         """
         error.type_check("<COR98255724E>", bool, load_singleton=load_singleton)
@@ -139,7 +134,7 @@ class ModelManager:
                 Indicates whether this model should be loaded as a singleton.
 
         Returns:
-            subclass of blocks.base.BlockBase
+            subclass of caikit.core.modules.ModuleBase
                 Model object that is loaded, configured, and ready for prediction.
         """
         # Short-circuit the loading process if the path does not exist
@@ -155,7 +150,7 @@ class ModelManager:
 
             # Using the module_path as a key, look for an instance preloaded in the
             # singleton cache if desired
-            # 🌶🌶🌶 This doesn't work for nested blocks
+            # 🌶🌶🌶 This doesn't work for nested modules
             # TODO: think about bringing back the `unique_hash` or `tracking_id`
             if singleton_entry := (
                 load_singleton and self.singleton_module_cache.get(module_path)
@@ -224,7 +219,7 @@ class ModelManager:
                         log.debug2("Loading ModuleConfig from %s", module_path)
                         module_config = ModuleConfig.load(module_path)
                         module_id = module_config.module_id
-                        module_implementations = MODULE_BACKEND_REGISTRY.get(
+                        module_implementations = module_backend_registry().get(
                             module_id, {}
                         )
                         log.debug2(
@@ -267,6 +262,7 @@ class ModelManager:
                         loaded_model = module_backend_impl.load(
                             module_path,
                             *args,
+                            load_backend=load_backend,
                             **kwargs,
                         )
                         if loaded_model is not None:
@@ -305,7 +301,7 @@ class ModelManager:
                 Indicates whether this model should be loaded as a singleton.
 
         Returns:
-            subclass of blocks.base.BlockBase
+            subclass of caikit.core.modules.ModuleBase
                 Model object that is loaded, configured, and ready for prediction.
         """
         with tempfile.TemporaryDirectory() as extract_path:
@@ -394,14 +390,14 @@ class ModelManager:
     ):
         """Try our best to load a model, given a path or a name. Simply returns any loaded model
         passed in. This exists to ease the burden on workflow developers who need to accept
-        individual blocks in their API, where users may have references to custom models or may only
-        have the ability to give the name of a stock model.
+        individual modules in their API, where users may have references to custom models or may
+        only have the ability to give the name of a stock model.
 
         Args:
             path_or_name_or_model_reference (str, ModuleBase): Either a
                 - Path to a model on disk
                 - Name of a model that the catalog knows about
-                - Loaded module (e.g. block or workflow)
+                - Loaded module
             **kwargs: Any keyword arguments to pass along to ModelManager.load()
                       or ModelManager.download()
                 e.g. parent_dir
@@ -493,23 +489,3 @@ class ModelManager:
         # If module_backend is None, then we will assume that this model is not loadable in
         # any other backend
         return getattr(backend_impl, SUPPORTED_LOAD_BACKENDS_VAR_NAME, [])
-
-    @classmethod
-    def get_module_class_from_config(cls, module_config):
-        """Utility function to fetch module class information
-        from ModuleConfig
-
-        Args:
-            module_config: caikit.core.module.ModuleConfig
-                Configuration for caikit.core module
-        Returns:
-            str: name of the module_class
-        """
-        module_class = ""
-        for module_type in _MODULE_TYPES:
-            module_class_name = "{}_class".format(module_type.lower())
-            if module_class_name in module_config:
-                module_class = module_config.get(module_class_name)
-                break
-
-        return module_class
