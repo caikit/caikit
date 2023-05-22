@@ -259,6 +259,7 @@ class ModelManager:
                             load_backend.backend_type,
                             module_backend_impl.__name__,
                         )
+                        # TODO: Pass load_backend as kwarg here
                         loaded_model = module_backend_impl.load(
                             module_path,
                             *args,
