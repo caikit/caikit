@@ -15,10 +15,10 @@
 dicts as protobuf Struct objects
 """
 # Standard
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 # Third Party
-from google.protobuf import struct_pb2  # import ListValue, NullValue, Struct, Value
+from google.protobuf import struct_pb2
 
 # Type hints for JSON serializable dicts
 JsonDictValue = Union[
@@ -33,10 +33,37 @@ JsonDictValue = Union[
 JsonDict = Dict[str, JsonDictValue]
 
 
-def dict_to_struct(dictionary: JsonDict) -> struct_pb2.Struct:
+def dict_to_struct(
+    dictionary: JsonDict,
+    struct_class: Optional[type] = None,
+    value_class: Optional[type] = None,
+    list_value_class: Optional[type] = None,
+) -> struct_pb2.Struct:
     """Convert a python dict to a protobuf Struct"""
-    return struct_pb2.Struct(
-        fields={key: _value_to_struct_value(value) for key, value in dictionary.items()}
+    if struct_class is None:
+        struct_class = struct_pb2.Struct
+        value_class = struct_pb2.Value
+        list_value_class = struct_pb2.ListValue
+    else:
+        if value_class is None:
+            value_class = struct_class.DESCRIPTOR.file.pool.FindMessageTypeByName(
+                "google.protobuf.Value"
+            )._concrete_class
+        if list_value_class is None:
+            list_value_class = struct_class.DESCRIPTOR.file.pool.FindMessageTypeByName(
+                "google.protobuf.ListValue"
+            )._concrete_class
+
+    return struct_class(
+        fields={
+            key: _value_to_struct_value(
+                value,
+                struct_class=struct_class,
+                value_class=value_class,
+                list_value_class=list_value_class,
+            )
+            for key, value in dictionary.items()
+        }
     )
 
 
@@ -48,26 +75,41 @@ def struct_to_dict(struct: struct_pb2.Struct) -> JsonDict:
 ## Implementation Details ######################################################
 
 
-def _value_to_struct_value(value):
+def _value_to_struct_value(value, struct_class, value_class, list_value_class):
     """Recursive helper to convert python values to struct values"""
     if value is None:
-        struct_value = struct_pb2.Value(null_value=struct_pb2.NullValue.NULL_VALUE)
+        struct_value = value_class(null_value=struct_pb2.NullValue.NULL_VALUE)
     elif isinstance(value, dict):
-        struct_value = struct_pb2.Value(struct_value=dict_to_struct(value))
+        struct_value = value_class(
+            struct_value=dict_to_struct(
+                value,
+                struct_class=struct_class,
+                value_class=value_class,
+                list_value_class=list_value_class,
+            )
+        )
     elif isinstance(value, list):
-        struct_value = struct_pb2.Value(
-            list_value=struct_pb2.ListValue(
-                values=(_value_to_struct_value(item) for item in value)
+        struct_value = value_class(
+            list_value=list_value_class(
+                values=(
+                    _value_to_struct_value(
+                        item,
+                        struct_class=struct_class,
+                        value_class=value_class,
+                        list_value_class=list_value_class,
+                    )
+                    for item in value
+                )
             )
         )
     elif isinstance(value, bool):
-        struct_value = struct_pb2.Value(bool_value=value)
+        struct_value = value_class(bool_value=value)
     elif isinstance(value, int):
-        struct_value = struct_pb2.Value(number_value=value)
+        struct_value = value_class(number_value=value)
     elif isinstance(value, float):
-        struct_value = struct_pb2.Value(number_value=value)
+        struct_value = value_class(number_value=value)
     elif isinstance(value, str):
-        struct_value = struct_pb2.Value(string_value=value)
+        struct_value = value_class(string_value=value)
     else:
         raise ValueError(f"Unsupported value type: {type(value)}")
     return struct_value
