@@ -140,16 +140,14 @@ def test_global_train_other_task(
     batch_size = 42
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
     training_data = stream_type(jsondata=stream_type.JsonData(data=[1])).to_proto()
-    train_request = (
-        sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
-            model_name="Other module Training",
-            training_data=training_data,
-            # either of the below lines work since it's a Union now
-            # TODO create a separate test, lazy
-            # sample_inputsampleinputtype=SampleInputType(name="Gabe").to_proto(),
-            sample_inputstr="sample",
-            batch_size=batch_size,
-        )
+    train_request = sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
+        model_name="Other module Training",
+        training_data=training_data,
+        # either of the below lines work since it's a Union now
+        # TODO create a separate test, lazy
+        # sample_inputsampleinputtype=SampleInputType(name="Gabe").to_proto(),
+        sample_inputstr="sample",
+        batch_size=batch_size,
     )
 
     training_response = sample_train_servicer.Train(train_request)
