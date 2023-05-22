@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-"""Data streams for lazily loading, munging and passing data through multiple blocks or workflows.
+"""Data streams for lazily loading, munging and passing data through multiple modules.
 """
 
 # Standard
@@ -55,7 +55,7 @@ class DataStream(Generic[T]):
     generated lazily (unless the `.eager` method is called) so that each data item in a series of
     data streams is produced as it is accessed.  This allows processing datasets that are too large
     to fit into memory.  A number of functional style methods are provided for manipulating and
-    munging data streams and the `.stream` method on blocks and workflows can also be used to
+    munging data streams and the `.stream` method on modules can also be used to
     process data streams.
 
     The `DataStream` class is really just a generic wrapper around functions that produce python
@@ -86,7 +86,7 @@ class DataStream(Generic[T]):
         Notes:
             The constructor of `DataStream` is not usually invoked directly.  The typical use case
             is to construct a data stream using one of the `.from_` class methods or else from the
-            `.stream` method of a block or workflow or by extending the `DataStream` class.
+            `.stream` method of a module or by extending the `DataStream` class.
 
             Lexical closures, generators and iterators are all important to understand when writing
             a new `generator_func`.  Consider reviewing these topics before writing custom generator

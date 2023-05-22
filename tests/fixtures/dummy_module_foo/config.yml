@@ -1,0 +1,7 @@
+# a dummy configuration yaml
+module_id: "foo"
+module_class: "DummyFoo"
+name: "Dummy config file."
+version: "0.1.0"
+# This can also be loaded as singleton
+unique_hash: "foofoofoo"

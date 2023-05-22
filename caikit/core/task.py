@@ -20,10 +20,10 @@ import typing
 from alog import alog
 
 # Local
-from caikit.core.data_model import DataStream
-from caikit.core.data_model.base import DataBase
-from caikit.core.signature_parsing import CaikitMethodSignature
-from caikit.core.toolkit.errors import error_handler
+from .data_model import DataStream
+from .data_model.base import DataBase
+from .signature_parsing import CaikitMethodSignature
+from .toolkit.errors import error_handler
 
 log = alog.use_channel("TASK_BASE")
 error = error_handler.get(log)

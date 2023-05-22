@@ -24,8 +24,9 @@ import yaml
 import alog
 
 # Local
-from ..module import MODULE_REGISTRY, ModuleBase
-from ..module_config import ModuleConfig
+from ..modules.base import ModuleBase
+from ..modules.config import ModuleConfig
+from ..registries import module_registry
 from ..toolkit.errors import error_handler
 from .backend_types import register_backend_type
 from .base import SharedLoadBackendBase, SharedTrainBackendBase
@@ -67,7 +68,7 @@ class LocalBackend(SharedLoadBackendBase, SharedTrainBackendBase):
             log.debug("Unable to load local model config from [%s]", model_path)
             return None
         module_id = model_config.module_id
-        module_class = MODULE_REGISTRY.get(module_id)
+        module_class = module_registry().get(module_id)
         if module_class is not None:
             return module_class.load(model_path, *args, **kwargs)
         log.warning(

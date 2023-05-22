@@ -22,9 +22,9 @@ import inspect
 import alog
 
 # Local
+from ..data_model.base import DataBase
+from ..modules import ModuleBase
 from . import docstrings
-from caikit.core.data_model.base import DataBase
-from caikit.core.module import ModuleBase
 
 log = alog.use_channel("SIG-PARSING")
 

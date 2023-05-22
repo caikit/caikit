@@ -20,6 +20,9 @@
 # disable warnings, initialize the JVM and configure logging in a specific order
 # pylint: disable=wrong-import-position,wrong-import-order
 
+# NOTE: There are cyclic imports due to the "import *"s here, when modules then
+# "import core"
+
 # Standard
 # We're filtering (most) warnings for now
 import warnings as _warnings
@@ -27,19 +30,13 @@ import warnings as _warnings
 _warnings.filterwarnings("ignore")
 
 # Local
-# must import toolkit first since we need alog to be set up before it is used
-from . import blocks, data_model, module, module_config, resources, toolkit, workflows
-from .blocks.base import BlockBase, block
 from .data_model import DataObjectBase, dataobject
 from .model_manager import *
-from .module import *
-from .module_backend_config import configure as backend_configure
 from .module_backends import *
-from .module_config import ModuleConfig
-from .resources.base import ResourceBase, resource
+from .module_backends.module_backend_config import configure as backend_configure
+from .modules import ModuleBase, ModuleConfig, module
 from .task import TaskBase, task
 from .toolkit import *
-from .workflows.base import WorkflowBase, workflow
 
 # Configure the global model wrangling functions
 MODEL_MANAGER = ModelManager()
