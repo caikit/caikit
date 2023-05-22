@@ -618,7 +618,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
             elif field in cls._fields_message:
                 if proto.HasField(field):
-                    if isinstance(proto_attr, struct_pb2.Struct):
+                    if proto_attr.DESCRIPTOR.full_name == "google.protobuf.Struct":
                         kwargs[field] = json_dict.struct_to_dict(proto_attr)
                     else:
                         contained_class = cls.get_class_for_proto(proto_attr)
@@ -755,8 +755,10 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
             elif field in self._fields_message:
                 subproto = getattr(proto, field)
-                if isinstance(subproto, struct_pb2.Struct):
-                    subproto.CopyFrom(json_dict.dict_to_struct(attr))
+                if subproto.DESCRIPTOR.full_name == "google.protobuf.Struct":
+                    subproto.CopyFrom(
+                        json_dict.dict_to_struct(attr, subproto.__class__)
+                    )
                 else:
                     attr.fill_proto(subproto)
 
