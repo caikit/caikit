@@ -25,18 +25,26 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.8', '3.9', '3.10' , '3.11']
+        python-version:
+          - setup: '3.8'
+            tox: 'py38'
+          - setup: '3.9'
+            tox: 'py39'
+          - setup: '3.10'
+            tox: 'py310'
+          - setup: '3.11'
+            tox: 'py311'
 
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version.setup }}
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ matrix.python-version.setup }}
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r setup_requirements.txt
       - name: Build and test with tox
-        run: tox -e ${{ matrix.python-version }}
-    
+        run: tox -e ${{ matrix.python-version.tox }}
+
