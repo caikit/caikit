@@ -25,7 +25,7 @@ import tempfile
 
 # Third Party
 from google.protobuf import descriptor as _descriptor
-from google.protobuf import descriptor_pool, message
+from google.protobuf import descriptor_pb2, descriptor_pool, message, struct_pb2
 import numpy as np
 import pytest
 
@@ -43,6 +43,7 @@ from caikit.core.data_model.dataobject import (
     _AUTO_GEN_PROTO_CLASSES,
     render_dataobject_protos,
 )
+from caikit.core.data_model.json_dict import JsonDict
 from caikit.core.toolkit.isa import isprotobufenum
 
 ## Helpers #####################################################################
@@ -54,6 +55,9 @@ def temp_dpool():
     dpool = descriptor_pool.DescriptorPool()
     global_dpool = descriptor_pool._DEFAULT
     descriptor_pool._DEFAULT = dpool
+    fd = descriptor_pb2.FileDescriptorProto()
+    struct_pb2.DESCRIPTOR.CopyToProto(fd)
+    dpool.Add(fd)
     yield dpool
     # pylint: disable=duplicate-code
     descriptor_pool._DEFAULT = global_dpool
@@ -727,3 +731,32 @@ def test_np_dtypes():
         descriptor.fields_by_name["float64"].type
         == _descriptor.FieldDescriptor.TYPE_DOUBLE
     )
+
+
+def test_dataobject_jsondict(temp_dpool):
+    """Make sure that a JsonDict type is handled correctly in a dataobject"""
+
+    @dataobject
+    class Foo(DataObjectBase):
+        js_dict: JsonDict
+
+    # Make sure the field has the right type
+    Struct = temp_dpool.FindMessageTypeByName("google.protobuf.Struct")
+    assert Foo._proto_class.DESCRIPTOR.fields_by_name["js_dict"].message_type == Struct
+
+    # Make sure dict is preserved on init
+    js_dict = {"foo": {"bar": [1, 2, 3]}}
+    foo = Foo(js_dict)
+    assert foo.js_dict == js_dict
+
+    # Make sure conversion to struct happens on to_proto
+    foo_proto = foo.to_proto()
+    assert set(foo_proto.js_dict.fields.keys()) == set(js_dict.keys())
+    assert foo_proto.js_dict.fields["foo"].struct_value
+    assert set(foo_proto.js_dict.fields["foo"].struct_value.fields.keys()) == set(
+        js_dict["foo"].keys()
+    )
+
+    # Make sure conversion back to dict happens on from_proto
+    foo2 = Foo.from_proto(foo_proto)
+    assert foo2.js_dict == foo.js_dict
