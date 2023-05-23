@@ -598,10 +598,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
             if field in cls._fields_primitive or field in cls._fields_enum:
                 # special case for oneofs
-                if field in cls._fields_to_oneof:
-                    if proto.HasField(field):
-                        kwargs[field] = proto_attr
-                else:
+                if field not in cls._fields_to_oneof or proto.HasField(field):
                     kwargs[field] = proto_attr
             elif (
                 field in cls._fields_primitive_repeated
