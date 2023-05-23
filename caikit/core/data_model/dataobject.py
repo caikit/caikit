@@ -19,7 +19,7 @@ model objects inline without manually defining the protobufs representation
 
 # Standard
 from enum import Enum
-from typing import Any, Callable, Dict, List, Type, Union, get_args, get_origin
+from typing import Any, Callable, List, Type, Union, get_args, get_origin
 import dataclasses
 
 # Third Party

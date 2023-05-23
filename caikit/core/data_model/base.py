@@ -26,7 +26,7 @@ import base64
 import json
 
 # Third Party
-from google.protobuf import json_format, struct_pb2
+from google.protobuf import json_format
 from google.protobuf.descriptor import Descriptor
 from google.protobuf.internal import type_checkers as proto_type_checkers
 from google.protobuf.message import Message as ProtoMessageType
