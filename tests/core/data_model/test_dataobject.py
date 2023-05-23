@@ -458,6 +458,24 @@ def test_dataobject_with_same_type_of_oneof():
     assert foo2.foo_bool1 == None
     assert foo2.foo_bool2
 
+def test_dataobject_oneof_proto_round_trip():
+
+    @dataobject
+    @dataclass
+    class Foo(DataObjectBase):
+        foo: Union[
+            Annotated[int, FieldNumber(10), OneofField("foo_int")],
+            Annotated[float, FieldNumber(20), OneofField("foo_float")],
+        ]
+
+    foo1 = Foo(foo_int=2)
+    proto_repr_foo = foo1.to_proto()
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+    
+    foo1 = Foo(foo=2)
+    proto_repr_foo = foo1.to_proto()
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+
 
 def test_dataobject_round_trip_json():
     """Make sure that a dataobject class can serialize to/from json"""
