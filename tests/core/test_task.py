@@ -138,7 +138,7 @@ def test_task_validation_throws_on_missing_parameter():
     class SomeTask(TaskBase):
         pass
 
-    with pytest.raises(TypeError, match="Required parameter foo not in signature"):
+    with pytest.raises(TypeError, match="Required parameters .*foo.* not in signature"):
 
         @caikit.core.module(
             id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
@@ -158,7 +158,7 @@ def test_task_validation_throws_on_wrong_parameter_type():
 
     with pytest.raises(
         TypeError,
-        match="Required parameter foo has type .*str.* but type .*int.* is required",
+        match="Parameter foo has type .*str.* but type .*int.* is required",
     ):
 
         @caikit.core.module(
