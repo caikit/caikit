@@ -36,6 +36,7 @@ import types
 import alog
 
 # Local
+from .loader import ModuleLoader
 from ..data_model import DataBase, DataStream
 from ..toolkit import fileio
 from ..toolkit.errors import DataValidationError, error_handler
@@ -106,12 +107,17 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
 
     @classmethod
     @alog.logged_function(log.debug)
-    def load(cls, *args, **kwargs):
-        """Load a model."""
-        error(
-            "<COR92634437E>",
-            NotImplementedError("This is not available in this module."),
-        )
+    def load(cls, model_path, *args, **kwargs):
+        """Load a new instance of workflow from a given model_path
+
+        Args:
+            model_path: str
+                Path to workflow
+        Returns:
+            caikit.core.workflows.base.WorkflowBase
+                A new instance of any given implementation of WorkflowBase
+        """
+        return cls._load(ModuleLoader(model_path), *args, **kwargs)
 
     @classmethod
     def _load(cls, module_loader, *args, **kwargs):
