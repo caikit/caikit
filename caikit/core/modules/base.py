@@ -36,10 +36,10 @@ import types
 import alog
 
 # Local
-from .loader import ModuleLoader
 from ..data_model import DataBase, DataStream
 from ..toolkit import fileio
 from ..toolkit.errors import DataValidationError, error_handler
+from .loader import ModuleLoader
 from .meta import _ModuleBaseMeta
 from caikit import core
 
