@@ -45,7 +45,6 @@ OOM_EXIT_CODE = 137
 # executors, so ThreadPoolExecutors and ProcessPoolExecutors, but
 # ProcessPoolExecutor doesn't support `fork` start method
 class TrainSaveExecutorBase(abc.ABC):
-
     @abc.abstractmethod
     def train_and_save_model(self, *args, **kwargs):
         """Function to kick off training a model based and saving
