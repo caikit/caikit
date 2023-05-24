@@ -28,7 +28,7 @@ import grpc
 import alog
 
 # Local
-from caikit.core.module import ModuleBase
+from caikit.core.modules import ModuleBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.work_management.destroyable_thread import DestroyableThread
 import caikit.core
