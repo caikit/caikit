@@ -17,39 +17,19 @@ Shared registry of known backend types
 """
 
 # Standard
-from typing import Any, Dict, Optional, Type
+from typing import Optional, Type
 
 # First Party
 import alog
 
 # Local
+from ..registries import module_backend_classes, module_backend_types
 from ..toolkit.errors import error_handler
 from ..toolkit.wip_decorator import Action, WipCategory, work_in_progress
 from .base import BackendBase
 
 log = alog.use_channel("BCKENDTYP")
 error = error_handler.get(log)
-
-## Backend Type Extensible Enum ################################################
-
-
-class _AttrAccessDict(dict):
-    """Simple extension on a dict that allows attribute access in addition to
-    index lookup
-    """
-
-    def __getattr__(self, name: str) -> Any:
-        """Alias to index lookup"""
-        error.value_check(
-            "<COR85015051E>", name in self, "backend type {} not registered", name
-        )
-        return self[name]
-
-
-# "enum" holding known backend types. This is implemented as a dict so that it
-# can be extended as needed by downstream libraries.
-MODULE_BACKEND_TYPES = _AttrAccessDict()
-MODULE_BACKEND_CONFIG_FUNCTIONS: Dict[int, Type[BackendBase]] = {}
 
 
 ## Public ######################################################################
@@ -91,9 +71,11 @@ def register_backend_type(config_class: Optional[Type[BackendBase]] = None):
     # Add to the global registries
     # NOTE: This only contains a module name and does not contain an object of the backend module
     # The object of the "configured" backend module is generated using caikit.config.configure
-    if type_name not in MODULE_BACKEND_TYPES:
-        MODULE_BACKEND_TYPES[type_name] = type_name
-        MODULE_BACKEND_CONFIG_FUNCTIONS[type_name] = config_class
+    backend_types = module_backend_types()
+    backend_classes = module_backend_classes()
+    if type_name not in backend_types:
+        backend_types[type_name] = type_name
+        backend_classes[type_name] = config_class
 
 
 def __getattr__(name):
@@ -101,4 +83,4 @@ def __getattr__(name):
     mapping
     """
     if not name.startswith("_"):
-        return getattr(MODULE_BACKEND_TYPES, name)
+        return getattr(module_backend_types(), name)

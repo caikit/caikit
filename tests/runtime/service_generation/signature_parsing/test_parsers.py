@@ -67,51 +67,51 @@ def test_get_output_type_name():
     empty_sign = inspect.Signature(return_annotation=inspect.Signature.empty)
     assert (
         get_output_type_name(
-            module_class=sample_lib.blocks.sample_task.SampleBlock,
+            module_class=sample_lib.modules.sample_task.SampleModule,
             fn_signature=empty_sign,
-            fn=sample_lib.blocks.sample_task.SampleBlock.run,
+            fn=sample_lib.modules.sample_task.SampleModule.run,
         )
         == sample_lib.data_model.SampleOutputType
     )
 
     # Test that we use type annotation to deduct output type
-    inner_block_run_method_ptr = getattr(
-        sample_lib.blocks.sample_task.InnerBlock, "run"
+    inner_module_run_method_ptr = getattr(
+        sample_lib.modules.sample_task.InnerModule, "run"
     )
-    fn_sign = inspect.signature(inner_block_run_method_ptr)
+    fn_sign = inspect.signature(inner_module_run_method_ptr)
     assert (
         get_output_type_name(
-            module_class=sample_lib.blocks.sample_task.InnerBlock,
+            module_class=sample_lib.modules.sample_task.InnerModule,
             fn_signature=fn_sign,
-            fn=sample_lib.blocks.sample_task.InnerBlock.run,
+            fn=sample_lib.modules.sample_task.InnerModule.run,
         )
         == sample_lib.data_model.SampleOutputType
     )
 
     # Test that we use type annotation to deduct output type is return annotation is a string
-    def _run(self, some_input: str) -> "InnerBlock":
+    def _run(self, some_input: str) -> "InnerModule":
         pass
 
     fn_sign = inspect.signature(_run)
     assert (
         get_output_type_name(
-            module_class=sample_lib.blocks.sample_task.InnerBlock,
+            module_class=sample_lib.modules.sample_task.InnerModule,
             fn_signature=fn_sign,
-            fn=sample_lib.blocks.sample_task.InnerBlock.run,
+            fn=sample_lib.modules.sample_task.InnerModule.run,
         )
-        == sample_lib.blocks.sample_task.InnerBlock
+        == sample_lib.modules.sample_task.InnerModule
     )
 
     # Test that we return None if type annotation as a string that doesn't match module class name
-    def _run2(self, some_input: str) -> "AStringThatsNotInnerBlock":
+    def _run2(self, some_input: str) -> "AStringThatsNotInnerModule":
         pass
 
     fn_sign = inspect.signature(_run2)
     assert (
         get_output_type_name(
-            module_class=sample_lib.blocks.sample_task.InnerBlock,
+            module_class=sample_lib.modules.sample_task.InnerModule,
             fn_signature=fn_sign,
-            fn=sample_lib.blocks.sample_task.InnerBlock.run,
+            fn=sample_lib.modules.sample_task.InnerModule.run,
         )
         == None
     )
@@ -119,9 +119,9 @@ def test_get_output_type_name():
     # User doesn't provide any type annotation or docstring, return None
     assert (
         get_output_type_name(
-            module_class=sample_lib.blocks.sample_task.InnerBlock,
+            module_class=sample_lib.modules.sample_task.InnerModule,
             fn_signature=empty_sign,
-            fn=sample_lib.blocks.sample_task.InnerBlock.run,
+            fn=sample_lib.modules.sample_task.InnerModule.run,
         )
         == None
     )
@@ -130,18 +130,18 @@ def test_get_output_type_name():
     with patch("docstring_parser.parse", side_effect=ParseError("mocked error")):
         assert (
             get_output_type_name(
-                module_class=sample_lib.blocks.sample_task.InnerBlock,
+                module_class=sample_lib.modules.sample_task.InnerModule,
                 fn_signature=empty_sign,
-                fn=sample_lib.blocks.sample_task.InnerBlock.run,
+                fn=sample_lib.modules.sample_task.InnerModule.run,
             )
             == None
         )
 
 
-def test_get_argument_types_with_real_block():
-    """Quick check that we get the right type for our sample block"""
+def test_get_argument_types_with_real_module():
+    """Quick check that we get the right type for our sample module"""
     assert (
-        get_argument_types(sample_lib.blocks.sample_task.SampleBlock.run)[
+        get_argument_types(sample_lib.modules.sample_task.SampleModule.run)[
             "sample_input"
         ]
         == sample_lib.data_model.SampleInputType
@@ -150,7 +150,7 @@ def test_get_argument_types_with_real_block():
     # Test that if a ParseError was raised with docstring.parsers, we could still parse from type annotation
     with patch("docstring_parser.parse", side_effect=ParseError("mocked error")):
         assert (
-            get_argument_types(sample_lib.blocks.sample_task.SampleBlock.run)[
+            get_argument_types(sample_lib.modules.sample_task.SampleModule.run)[
                 "sample_input"
             ]
             == sample_lib.data_model.SampleInputType

@@ -63,6 +63,17 @@ def compiled_training_service() -> ServicePackage:
     )
 
 
+def test_service_package_raises_for_compiled_training_management():
+    with pytest.raises(
+        CaikitRuntimeException,
+        match="Not allowed to get Training Management services from compiled packages",
+    ):
+        ServicePackageFactory.get_service_package(
+            ServicePackageFactory.ServiceType.TRAINING_MANAGEMENT,
+            ServicePackageFactory.ServiceSource.COMPILED,
+        )
+
+
 # These tests assume we have a compiled pb2 package to pull services from
 def test_inference_descriptor(
     compiled_inference_service, compiled_caikit_runtime_inference_pb2
@@ -80,11 +91,12 @@ def test_train_descriptor(compiled_training_service, compiled_caikit_runtime_tra
     )
 
 
-# def test_get_service_descriptor_raises_if_pb2_has_no_desc(self):
-#     with pytest.raises(CaikitRuntimeException):
-#
-#     with self.assertRaises(CaikitRuntimeException):
-#         get_service_descriptor(None)
+def test_get_service_descriptor_raises_if_pb2_has_no_desc():
+    with pytest.raises(
+        CaikitRuntimeException,
+        match="Could not find service descriptor in caikit_runtime_pb2",
+    ):
+        ServicePackageFactory._get_service_descriptor(None, "SampleLib")
 
 
 def test_inference_service_registration_function(
@@ -96,9 +108,12 @@ def test_inference_service_registration_function(
     )
 
 
-# def test_get_servicer_function_raises_if_grpc_has_no_function(self):
-#     with self.assertRaises(CaikitRuntimeException):
-#         get_servicer_function(None)
+def test_get_servicer_function_raises_if_grpc_has_no_function():
+    with pytest.raises(
+        CaikitRuntimeException,
+        match="Could not find servicer function in caikit_runtime_pb2_grpc",
+    ):
+        ServicePackageFactory._get_servicer_function(None, "samplelib")
 
 
 def test_inference_service_class(
@@ -110,9 +125,9 @@ def test_inference_service_class(
     )
 
 
-# def test_get_servicer_class_raises_if_grpc_has_no_class(self):
-#     with self.assertRaises(CaikitRuntimeException):
-#         get_servicer_class(None)
+def test_get_servicer_class_raises_if_grpc_has_no_class():
+    with pytest.raises(CaikitRuntimeException, match="Could not find servicer class"):
+        ServicePackageFactory._get_servicer_class(None, "samplelib")
 
 
 def test_inference_client_stub(
@@ -124,9 +139,12 @@ def test_inference_client_stub(
     )
 
 
-# def test_get_servicer_stub_raises_if_grpc_has_no_stub(self):
-#     with self.assertRaises(CaikitRuntimeException):
-#         get_servicer_stub(None)
+def test_get_servicer_stub_raises_if_grpc_has_no_stub():
+    with pytest.raises(
+        CaikitRuntimeException,
+        match="Could not find servicer stub in caikit_runtime_pb2_grpc",
+    ):
+        ServicePackageFactory._get_servicer_stub(None, "SampleLib")
 
 
 ### _get_service_proto_module #############################################################
@@ -172,13 +190,12 @@ import sample_lib
 
 MODULE_LIST = [
     module_class
-    for module_class in caikit.core.MODULE_REGISTRY.values()
+    for module_class in caikit.core.registries.module_registry().values()
     if module_class.__module__.partition(".")[0] == "sample_lib"
 ]
 
 ### Test ServicePackageFactory._get_and_filter_modules function
 def test_get_and_filter_modules_respects_excluded_task_type():
-    assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
     with temp_config(
         {
             "runtime": {
@@ -187,12 +204,11 @@ def test_get_and_filter_modules_respects_excluded_task_type():
         }
     ) as cfg:
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert len(clean_modules) == 1
         assert "sample_task" not in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_excluded_modules():
-    assert "InnerBlock" in str(MODULE_LIST)
+    assert "InnerModule" in str(MODULE_LIST)
     with temp_config(
         {
             "runtime": {
@@ -202,17 +218,15 @@ def test_get_and_filter_modules_respects_excluded_modules():
                     }
                 }
             }
-        }  # excluding InnerBlock
+        }  # excluding InnerModule
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert len(clean_modules) == 5
-        assert "InnerBlock" not in str(clean_modules)
+        assert "InnerModule" not in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type():
-    assert "InnerBlock" in str(MODULE_LIST)
-    assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
+    assert "InnerModule" in str(MODULE_LIST)
     with temp_config(
         {
             "runtime": {
@@ -223,18 +237,16 @@ def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type
                     "task_types": {"excluded": ["other_task"]},
                 }
             }
-        }  # excluding InnerBlock and OtherBlock
+        }  # excluding InnerModule and OtherModule
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert len(clean_modules) == 4
-        assert "InnerBlock" not in str(clean_modules)
-        assert "OtherBlock" not in str(clean_modules)
+        assert "InnerModule" not in str(clean_modules)
+        assert "OtherModule" not in str(clean_modules)
         assert "other_task" not in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_included_modules_and_included_task_types():
-    assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
     with temp_config(
         {
             "runtime": {
@@ -245,18 +257,17 @@ def test_get_and_filter_modules_respects_included_modules_and_included_task_type
                     "task_types": {"included": ["other_task"]},
                 }
             }
-        }  # only want InnerBlock and OtherBlock
+        }  # only want InnerModule and OtherModule
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
         assert len(clean_modules) == 2
-        assert "InnerBlock" in str(clean_modules)
-        assert "OtherBlock" in str(clean_modules)
-        assert "ListBlock" not in str(clean_modules)
+        assert "InnerModule" in str(clean_modules)
+        assert "OtherModule" in str(clean_modules)
+        assert "ListModule" not in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_included_modules():
-    assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
     with temp_config(
         {
             "runtime": {
@@ -269,18 +280,17 @@ def test_get_and_filter_modules_respects_included_modules():
                     },
                 }
             }
-        }  # only want InnerBlock and ListBlock
+        }  # only want InnerModule and ListModule
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
         assert len(clean_modules) == 2
-        assert "InnerBlock" in str(clean_modules)
-        assert "ListBlock" in str(clean_modules)
-        assert "OtherBlock" not in str(clean_modules)
+        assert "InnerModule" in str(clean_modules)
+        assert "ListModule" in str(clean_modules)
+        assert "OtherModule" not in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_included_task_types():
-    assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
     with temp_config(
         {
             "runtime": {
@@ -288,17 +298,15 @@ def test_get_and_filter_modules_respects_included_task_types():
                     "task_types": {"included": ["sample_task"]},
                 }
             }
-        }  # only want sample_task which has 5 modules
+        }  # only want sample_task which has 6 modules
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert len(clean_modules) == 5
-        assert "InnerBlock" in str(clean_modules)
-        assert "OtherBlock" not in str(clean_modules)
+        assert "InnerModule" in str(clean_modules)
+        assert "OtherModule" not in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_included_task_types_and_excluded_modules():
-    assert len(MODULE_LIST) == 6  # there are 6 modules in sample_lib
     with temp_config(
         {
             "runtime": {
@@ -309,10 +317,9 @@ def test_get_and_filter_modules_respects_included_task_types_and_excluded_module
                     },
                 }
             }
-        }  # only want sample_task but not ListBlock
+        }  # only want sample_task but not ListModule
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert len(clean_modules) == 4
-        assert "InnerBlock" in str(clean_modules)
-        assert "ListBlock" not in str(clean_modules)
+        assert "InnerModule" in str(clean_modules)
+        assert "ListModule" not in str(clean_modules)

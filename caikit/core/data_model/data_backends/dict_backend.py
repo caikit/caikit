@@ -63,7 +63,10 @@ class DictBackend(DataModelBackendBase):
         #   being used correctly.
 
         # Make sure the name is a valid field on the given class
-        if name not in data_model_class.fields:
+        if (
+            name not in data_model_class.fields
+            and name not in data_model_class._fields_oneofs_map
+        ):
             error(
                 "<COR85037211E>",
                 AttributeError(

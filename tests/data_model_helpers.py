@@ -147,24 +147,61 @@ def _get_proto_val_name(field_val) -> str:
     raise RuntimeError(f"Invalid field type specifier: {field_val}")
 
 
-def make_proto_def(message_specs: Dict[str, dict], pkg_suffix: str = None) -> str:
+def make_proto_def(
+    message_specs: Dict[str, dict],
+    pkg_suffix: str = None,
+    mock_compiled: bool = False,
+) -> str:
     """Helper for writing a syntatically correct protobufs file"""
     if pkg_suffix is None:
         pkg_suffix = _random_package_suffix()
     package_name = f"{caikit.core.data_model.CAIKIT_DATA_MODEL}.{pkg_suffix}"
     out = justify_script_string(
         """
-        from typing import Dict, List
-        from caikit.core.data_model import DataObjectBase, dataobject
-
+        from typing import Dict, List, Union
         """
     )
-    for message_name, message_spec in message_specs.items():
-        msg_str = (
-            f'\n@dataobject("{package_name}")\nclass {message_name}(DataObjectBase):\n'
+    if mock_compiled:
+        out += justify_script_string(
+            """
+            from caikit.core.data_model import DataBase
+            from py_to_proto import dataclass_to_proto, descriptor_to_message_class
+            from dataclasses import dataclass
+            """
         )
+    else:
+        out += "\nfrom caikit.core.data_model import DataObjectBase, dataobject\n"
+    for message_name, message_spec in message_specs.items():
+        type_annotations = ""
         for field_name, field_type in message_spec.items():
-            msg_str += f"    {field_name}: {_get_proto_val_name(field_type)}\n"
-        msg_str += "\n"
+            type_annotations += f"    {field_name}: {_get_proto_val_name(field_type)}\n"
+
+        # Manually create the proto class and use the precompiled proto style
+        if mock_compiled:
+            dataclass_name = f"_{message_name}"
+            proto_name = f"{dataclass_name}_proto"
+            msg_str = f"\n@dataclass\nclass {dataclass_name}:\n"
+            msg_str += type_annotations
+            msg_str += justify_script_string(
+                f"""
+
+                {proto_name} = descriptor_to_message_class(
+                    dataclass_to_proto(
+                        dataclass_={dataclass_name},
+                        package="{package_name}",
+                        name="{message_name}",
+                    )
+                )
+
+                class {message_name}(DataBase):
+                    _proto_class = {proto_name}
+                """
+            )
+
+        # Add as a dataobject
+        else:
+            msg_str = f'\n@dataobject("{package_name}")\nclass {message_name}(DataObjectBase):\n'
+            msg_str += type_annotations
+
         out += msg_str
     return out

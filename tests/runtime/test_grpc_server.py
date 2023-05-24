@@ -55,7 +55,7 @@ from sample_lib.data_model import (
     SampleOutputType,
     SampleTrainingType,
 )
-from tests.conftest import temp_config
+from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
 import caikit
 import sample_lib
@@ -138,15 +138,15 @@ def test_model_train(runtime_grpc_server):
     result = TrainingManager.get_instance().training_futures[training_id].result()
 
     assert (
-        result.BLOCK_CLASS
-        == "sample_lib.blocks.sample_task.sample_implementation.SampleBlock"
+        result.MODULE_CLASS
+        == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
     )
     # Fields with defaults have expected values
     assert result.batch_size == 64
     assert result.learning_rate == 0.0015
 
 
-def test_predict_fake_block_ok_response(
+def test_predict_fake_module_ok_response(
     loaded_model_id, runtime_grpc_server, sample_inference_service
 ):
     """Test RPC CaikitRuntime.WidgetPredict successful response"""
@@ -160,7 +160,7 @@ def test_predict_fake_block_ok_response(
     assert actual_response == HAPPY_PATH_RESPONSE
 
 
-def test_predict_fake_block_error_response(
+def test_predict_fake_module_error_response(
     runtime_grpc_server, sample_inference_service
 ):
     """Test RPC CaikitRuntime.WidgetPredict error response"""
@@ -178,26 +178,26 @@ def test_predict_fake_block_error_response(
 
 
 ####### End-to-end tests for train a model and then predict with it
-def test_train_fake_block_ok_response_and_can_predict_with_trained_model(
+def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
     train_stub,
     inference_stub,
     sample_train_service,
     sample_inference_service,
 ):
-    """Test RPC CaikitRuntime.BlocksSampleTaskSampleBlockTrain successful response"""
+    """Test RPC CaikitRuntime.ModulesSampleTaskSampleModuleTrain successful response"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(
             data=[SampleTrainingType(1), SampleTrainingType(2)]
         )
     ).to_proto()
-    model_name = "Foo Bar Training"
+    model_name = random_test_id()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=model_name, training_data=training_data
         )
     )
-    actual_response = train_stub.BlocksSampleTaskSampleBlockTrain(train_request)
+    actual_response = train_stub.ModulesSampleTaskSampleModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
     # give the trained model time to load
@@ -214,7 +214,7 @@ def test_train_fake_block_ok_response_and_can_predict_with_trained_model(
     assert inference_response == HAPPY_PATH_RESPONSE
 
 
-def test_train_fake_block_ok_response_with_loaded_model_can_predict_with_trained_model(
+def test_train_fake_module_ok_response_with_loaded_model_can_predict_with_trained_model(
     loaded_model_id,
     train_stub,
     inference_stub,
@@ -225,13 +225,13 @@ def test_train_fake_block_ok_response_with_loaded_model_can_predict_with_trained
     sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
         model_id=loaded_model_id
     ).to_proto()
-    model_name = "Foo Bar Training"
+    model_name = random_test_id()
     train_request = (
-        sample_train_service.messages.WorkflowsSampleTaskSampleWorkflowTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskCompositeModuleTrainRequest(
             model_name=model_name, sample_block=sample_model
         )
     )
-    actual_response = train_stub.WorkflowsSampleTaskSampleWorkflowTrain(train_request)
+    actual_response = train_stub.ModulesSampleTaskCompositeModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
     # give the trained model time to load
@@ -248,7 +248,7 @@ def test_train_fake_block_ok_response_with_loaded_model_can_predict_with_trained
     assert inference_response == HAPPY_PATH_RESPONSE
 
 
-def test_train_fake_block_does_not_change_another_instance_model_of_block(
+def test_train_fake_module_does_not_change_another_instance_model_of_block(
     other_loaded_model_id,
     sample_int_file,
     train_stub,
@@ -256,20 +256,22 @@ def test_train_fake_block_does_not_change_another_instance_model_of_block(
     sample_train_service,
     sample_inference_service,
 ):
-    """This test: original "stock" OtherBlock model has batch size 42 (see fixtures/models/bar.yml),
-    we then train a custom OtherBlock model with batch size 100,
+    """This test: original "stock" OtherModule model has batch size 42 (see fixtures/models/bar.yml),
+    we then train a custom OtherModule model with batch size 100,
     then we make a predict to each, they should have the correct batch size"""
 
-    # Train an OtherBlock with batch size 100
+    # Train an OtherModule with batch size 100
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
     training_data = stream_type(
         file=stream_type.File(filename=sample_int_file)
     ).to_proto()
 
-    train_request = sample_train_service.messages.BlocksOtherTaskOtherBlockTrainRequest(
-        model_name="Bar Training", batch_size=100, training_data=training_data
+    train_request = (
+        sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
+            model_name="Bar Training", batch_size=100, training_data=training_data
+        )
     )
-    actual_response = train_stub.BlocksOtherTaskOtherBlockTrain(train_request)
+    actual_response = train_stub.ModulesOtherTaskOtherModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, "Bar Training")
 
     # give the trained model time to load
@@ -288,7 +290,7 @@ def test_train_fake_block_does_not_change_another_instance_model_of_block(
     ).to_proto()
     assert trained_inference_response == expected_trained_inference_response
 
-    # make sure the previously loaded OtherBlock model still has batch size 42
+    # make sure the previously loaded OtherModule model still has batch size 42
     original_inference_response = inference_stub.OtherTaskPredict(
         predict_request, metadata=[("mm-model-id", other_loaded_model_id)]
     )
@@ -299,26 +301,26 @@ def test_train_fake_block_does_not_change_another_instance_model_of_block(
 
 
 ##### Test different datastream types #####
-def test_train_fake_block_ok_response_with_datastream_jsondata(
+def test_train_fake_module_ok_response_with_datastream_jsondata(
     train_stub, inference_stub, sample_train_service, sample_inference_service
 ):
-    """Test RPC CaikitRuntime.BlocksSampleTaskSampleBlockTrainRequest successful response with training data json type"""
+    """Test RPC CaikitRuntime.ModulesSampleTaskSampleModuleTrainRequest successful response with training data json type"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(
             data=[SampleTrainingType(1), SampleTrainingType(2)]
         )
     ).to_proto()
-    model_name = "Foo Bar Training with json data"
+    model_name = random_test_id()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=model_name,
             batch_size=42,
             training_data=training_data,
         )
     )
 
-    actual_response = train_stub.BlocksSampleTaskSampleBlockTrain(train_request)
+    actual_response = train_stub.ModulesSampleTaskSampleModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
     # give the trained model time to load
@@ -335,27 +337,27 @@ def test_train_fake_block_ok_response_with_datastream_jsondata(
     assert inference_response == HAPPY_PATH_RESPONSE
 
 
-def test_train_fake_block_ok_response_with_datastream_csv_file(
+def test_train_fake_module_ok_response_with_datastream_csv_file(
     train_stub,
     inference_stub,
     sample_train_service,
     sample_inference_service,
     sample_csv_file,
 ):
-    """Test RPC CaikitRuntime.BlocksSampleTaskSampleBlockTrainRequest successful response with training data file type"""
+    """Test RPC CaikitRuntime.ModulesSampleTaskSampleModuleTrainRequest successful response with training data file type"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         file=stream_type.File(filename=sample_csv_file)
     ).to_proto()
-    model_name = "Foo Bar Training with file data"
+    model_name = random_test_id()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=model_name,
             training_data=training_data,
         )
     )
 
-    actual_response = train_stub.BlocksSampleTaskSampleBlockTrain(train_request)
+    actual_response = train_stub.ModulesSampleTaskSampleModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
     # give the trained model time to load
@@ -373,21 +375,21 @@ def test_train_fake_block_ok_response_with_datastream_csv_file(
 
 
 #### Error cases for train tests #####
-def test_train_fake_block_error_response_with_unloaded_model(
+def test_train_fake_module_error_response_with_unloaded_model(
     train_stub, sample_train_service
 ):
     """Test RPC CaikitRuntime.WorkflowsSampleTaskSampleWorkflowTrain error response because sample model is not loaded"""
     with pytest.raises(grpc.RpcError) as context:
         sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
-            model_id="some_id"
+            model_id=random_test_id()
         ).to_proto()
 
         train_request = (
-            sample_train_service.messages.WorkflowsSampleTaskSampleWorkflowTrainRequest(
-                model_name="Foo Bar Training", sample_block=sample_model
+            sample_train_service.messages.ModulesSampleTaskCompositeModuleTrainRequest(
+                model_name=random_test_id(), sample_block=sample_model
             )
         )
-        train_stub.WorkflowsSampleTaskSampleWorkflowTrain(train_request)
+        train_stub.ModulesSampleTaskCompositeModuleTrain(train_request)
     assert context.value.code() == grpc.StatusCode.NOT_FOUND
 
 
@@ -728,7 +730,7 @@ def test_metrics_stored_after_server_interrupt(
             assert data[0]["batch_size"] == 1
             assert len(data[0]["model_type_counters"]) == 1
             assert data[0]["model_type_counters"] == {
-                "<class 'sample_lib.blocks.sample_task.sample_implementation.SampleBlock'>": 1
+                "<class 'sample_lib.modules.sample_task.sample_implementation.SampleModule'>": 1
             }
 
 
@@ -743,7 +745,8 @@ def test_out_of_range_port(sample_inference_service):
                 "port": free_high_port,
                 "find_available_port": False,
             }
-        }
+        },
+        merge_strategy="merge",
     ):
         with RuntimeGRPCServer(
             inference_service=sample_inference_service,

@@ -17,26 +17,19 @@ from unittest.mock import MagicMock, patch
 import os
 import shutil
 import unittest
-import uuid
 
 # Third Party
 import grpc
 
 # Local
 from caikit import get_config
-from caikit.core.blocks.base import BlockBase
-from caikit.core.module_backend_config import _CONFIGURED_BACKENDS, configure
+from caikit.core.modules import ModuleBase
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import get_dynamic_module
-from tests.conftest import temp_config
+from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
-
-
-def _random_test_id():
-    return "test-any-model-" + str(uuid.uuid4())
-
 
 get_dynamic_module("caikit.core")
 ANY_MODEL_TYPE = "test-any-model-type"
@@ -94,7 +87,9 @@ class TestModelManager(unittest.TestCase):
                 os.path.join(tempdir, "model2.zip"),
             )
             ModelManager._ModelManager__instance = None
-            with temp_config({"runtime": {"local_models_dir": tempdir}}):
+            with temp_config(
+                {"runtime": {"local_models_dir": tempdir}}, merge_strategy="merge"
+            ):
                 self.model_manager = ModelManager()
 
                 self.assertEqual(len(self.model_manager.loaded_models), 2)
@@ -121,7 +116,7 @@ class TestModelManager(unittest.TestCase):
         """Test load model's model does not exist when the loader throws"""
         with self.assertRaises(CaikitRuntimeException) as context:
             self.model_manager.load_model(
-                model_id=_random_test_id(),
+                model_id=random_test_id(),
                 local_model_path=Fixtures().get_invalid_model_archive_path(),
                 model_type="categories_esa",
             )
@@ -131,7 +126,7 @@ class TestModelManager(unittest.TestCase):
 
     def test_load_model_map_insertion(self):
         """Test if loaded model is correctly added to map storing model data"""
-        model = _random_test_id()
+        model = random_test_id()
         self.model_manager.load_model(
             model_id=model,
             local_model_path=Fixtures.get_good_model_path(),
@@ -142,12 +137,12 @@ class TestModelManager(unittest.TestCase):
     def test_load_model_count(self):
         """Test if multiple loaded models are added to map storing model data"""
         self.model_manager.load_model(
-            model_id=_random_test_id(),
+            model_id=random_test_id(),
             local_model_path=Fixtures.get_good_model_path(),
             model_type=Fixtures.get_good_model_type(),
         )
         self.model_manager.load_model(
-            model_id=_random_test_id(),
+            model_id=random_test_id(),
             local_model_path=Fixtures.get_good_model_path(),
             model_type=Fixtures.get_good_model_type(),
         )
@@ -205,21 +200,21 @@ class TestModelManager(unittest.TestCase):
     def test_unload_model_not_loaded_response(self):
         """Test unload model for model not loaded does NOT throw an error"""
         try:
-            self.model_manager.unload_model(model_id=_random_test_id())
+            self.model_manager.unload_model(model_id=random_test_id())
         except Exception:
             self.fail("Unload for a model that does not exist threw an error!")
 
     # TODO: If this is refactored to pytest, the loaded_model_id fixture can be used
     def test_retrieve_model_returns_loaded_model(self):
         """Test that a loaded model can be retrieved"""
-        model_id = _random_test_id()
+        model_id = random_test_id()
         Fixtures.load_model(
             model_id=model_id,
             local_model_path=Fixtures.get_good_model_path(),
             model_type=Fixtures.get_good_model_type(),
         )
         model = self.model_manager.retrieve_model(model_id)
-        self.assertIsInstance(model, BlockBase)
+        self.assertIsInstance(model, ModuleBase)
         self.assertEqual(len(self.model_manager.loaded_models), 1)
 
     def test_retrieve_model_raises_error_for_not_found_model(self):
@@ -230,7 +225,7 @@ class TestModelManager(unittest.TestCase):
 
     def test_model_size_ok_response(self):
         """Test if loaded model correctly returns model size"""
-        model = _random_test_id()
+        model = random_test_id()
         self.model_manager.load_model(
             model_id=model,
             local_model_path=Fixtures.get_good_model_path(),
@@ -253,7 +248,7 @@ class TestModelManager(unittest.TestCase):
     def test_estimate_model_size_ok_response_on_loaded_model(self):
         """Test if loaded model correctly returns model size"""
         self.model_manager.load_model(
-            model_id=_random_test_id(),
+            model_id=random_test_id(),
             local_model_path=Fixtures.get_good_model_path(),
             model_type=Fixtures.get_good_model_type(),
         )
@@ -294,7 +289,7 @@ class TestModelManager(unittest.TestCase):
         """Test if error in predict model size on unknown model path"""
         with self.assertRaises(CaikitRuntimeException) as context:
             self.model_manager.estimate_model_size(
-                model_id=_random_test_id(),
+                model_id=random_test_id(),
                 local_model_path="no_exist.zip",
                 model_type="categories_esa",
             )
@@ -309,7 +304,7 @@ class TestModelManager(unittest.TestCase):
         at a later time)."""
         mock_loader = MagicMock()
         mock_sizer = MagicMock()
-        model_id = _random_test_id()
+        model_id = random_test_id()
         expected_model_size = 1234
 
         with patch.object(self.model_manager, "model_loader", mock_loader):
@@ -338,16 +333,16 @@ class TestModelManager(unittest.TestCase):
 
             with self.assertRaises(CaikitRuntimeException) as context:
                 self.model_manager.load_model(
-                    _random_test_id(), ANY_MODEL_PATH, ANY_MODEL_TYPE
+                    random_test_id(), ANY_MODEL_PATH, ANY_MODEL_TYPE
                 )
 
             self.assertEqual(context.exception.status_code, grpc.StatusCode.NOT_FOUND)
             self.assertEqual(len(self.model_manager.loaded_models), 0)
 
-    def test_retrieve_model_returns_the_block_from_the_model_loader(self):
+    def test_retrieve_model_returns_the_module_from_the_model_loader(self):
         """Test that a loaded model can be retrieved"""
-        model_id = _random_test_id()
-        expected_block = "this is definitely a stub block"
+        model_id = random_test_id()
+        expected_module = "this is definitely a stub module"
         mock_sizer = MagicMock()
         mock_loader = MagicMock()
 
@@ -355,19 +350,19 @@ class TestModelManager(unittest.TestCase):
             with patch.object(self.model_manager, "model_sizer", mock_sizer):
                 mock_sizer.get_model_size.return_value = 1
                 mock_loader.load_model.return_value = (
-                    LoadedModel.Builder().module(expected_block).build()
+                    LoadedModel.Builder().module(expected_module).build()
                 )
                 self.model_manager.load_model(model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE)
 
                 model = self.model_manager.retrieve_model(model_id)
-                self.assertEqual(expected_block, model)
+                self.assertEqual(expected_module, model)
 
     def test_get_model_size_returns_size_from_model_sizer(self):
         """Test that loading a model stores the size from the ModelSizer"""
         mock_loader = MagicMock()
         mock_sizer = MagicMock()
         expected_model_size = 1234
-        model_id = _random_test_id()
+        model_id = random_test_id()
 
         with patch.object(self.model_manager, "model_loader", mock_loader):
             with patch.object(self.model_manager, "model_sizer", mock_sizer):
@@ -383,7 +378,7 @@ class TestModelManager(unittest.TestCase):
         """Test that estimating a model size uses the ModelSizer"""
         mock_sizer = MagicMock()
         expected_model_size = 5678
-        model_id = _random_test_id()
+        model_id = random_test_id()
 
         with patch.object(self.model_manager, "model_sizer", mock_sizer):
             mock_sizer.get_model_size.return_value = expected_model_size
@@ -395,7 +390,7 @@ class TestModelManager(unittest.TestCase):
     def test_estimate_model_size_throws_if_model_sizer_throws(self):
         """Test that estimating a model size uses the ModelSizer"""
         mock_sizer = MagicMock()
-        model_id = _random_test_id()
+        model_id = random_test_id()
 
         with patch.object(self.model_manager, "model_sizer", mock_sizer):
             mock_sizer.get_model_size.side_effect = CaikitRuntimeException(

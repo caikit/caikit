@@ -15,7 +15,7 @@
 # Standard
 from datetime import datetime
 from glob import glob
-from typing import Any, Optional, Type
+from typing import Any, List, Optional, Type, Union
 import os
 import sys
 
@@ -24,6 +24,7 @@ from google.protobuf.message import Message as ProtoMessageType
 import grpc
 
 # First Party
+from py_to_proto.dataclass_to_proto import Annotated, OneofField
 import alog
 
 # Local
@@ -31,6 +32,7 @@ from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import (
     DataObjectBase,
     _DataObjectBaseMetaClass,
+    _make_oneof_init,
     dataobject,
 )
 from caikit.core.data_model.streams.data_stream import DataStream
@@ -63,16 +65,6 @@ class DataStreamSourceBase(DataStream):
     def __init__(self):
         """Validate oneof semantics"""
         super().__init__(lambda: self.to_data_stream().generator_func())
-        self._set_fields = {
-            f.name: getattr(self, f.name)
-            for f in self.get_proto_class().DESCRIPTOR.oneofs[0].fields
-            if getattr(self, f.name) is not None
-        }
-        if len(self._set_fields) > 1:
-            raise CaikitRuntimeException(
-                grpc.StatusCode.INVALID_ARGUMENT,
-                f"Multiple oneof fields set: {self._set_fields.keys()}",
-            )
 
     def __getstate__(self) -> bytes:
         """A DataStreamSource is pickled by serializing its source
@@ -88,11 +80,7 @@ class DataStreamSourceBase(DataStream):
         oneof members.
         """
         new_inst = self.__class__.from_binary_buffer(pickle_bytes)
-        new_inst_dict = new_inst.__dict__
-        self.__dict__.update(new_inst_dict)
-        for field_descriptor in self.get_proto_class().DESCRIPTOR.oneofs[0].fields:
-            field_name = field_descriptor.name
-            setattr(self, field_name, getattr(new_inst, field_name))
+        setattr(self, new_inst.which_oneof("data_stream"), new_inst.data_stream)
 
     # pylint: disable=too-many-return-statements
     def to_data_stream(self) -> DataStream:
@@ -216,65 +204,92 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
     if data_element_type not in _DATA_STREAM_SOURCE_TYPES:
         cls_name = _make_data_stream_source_type_name(data_element_type)
         log.debug("Creating DataStreamSource[%s] -> %s", data_element_type, cls_name)
-        element_type = (
-            data_element_type.get_proto_class().DESCRIPTOR
-            if isinstance(data_element_type, type)
-            and issubclass(data_element_type, DataBase)
-            else _NATIVE_TYPE_TO_JTD[data_element_type]
+
+        # Set up the "sub classes." In python, this is the same as creating a
+        # standalone class with a __qualname__ that nests it under a parent
+        # class. We do this outside the declaration of the parent class so that
+        # these classes can be referenced within the Union annotation for the
+        # outer class itself.
+        package = "caikit_data_model.runtime"
+        JsonData = dataobject(package=package, name=f"{cls_name}JsonData")(
+            _DataObjectBaseMetaClass.__new__(
+                _DataObjectBaseMetaClass,
+                name="JsonData",
+                bases=(DataObjectBase,),
+                attrs={
+                    "__annotations__": {"data": List[data_element_type]},
+                    "__qualname__": f"{cls_name}.JsonData",
+                },
+            ),
         )
-        schema = {
-            "properties": {
-                "data_stream": {
-                    "discriminator": "data_reference_type",
-                    "mapping": {
-                        "JsonData": {
-                            "properties": {
-                                "data": {
-                                    "elements": {"type": element_type},
-                                },
-                            },
-                        },
-                        "File": {"properties": {"filename": {"type": "string"}}},
-                        "ListOfFiles": {
-                            "properties": {
-                                "files": {
-                                    "elements": {"type": "string"},
-                                },
-                            },
-                        },
-                        "Directory": {
-                            "properties": {
-                                "dirname": {"type": "string"},
-                                "extension": {"type": "string"},
-                            }
-                        },
+        File = dataobject(package=package, name=f"{cls_name}File")(
+            _DataObjectBaseMetaClass.__new__(
+                _DataObjectBaseMetaClass,
+                name="File",
+                bases=(DataObjectBase,),
+                attrs={
+                    "__annotations__": {"filename": str},
+                    "__qualname__": f"{cls_name}.File",
+                },
+            ),
+        )
+        ListOfFiles = dataobject(package=package, name=f"{cls_name}ListOfFiles")(
+            _DataObjectBaseMetaClass.__new__(
+                _DataObjectBaseMetaClass,
+                name="ListOfFiles",
+                bases=(DataObjectBase,),
+                attrs={
+                    "__annotations__": {"files": List[str]},
+                    "__qualname__": f"{cls_name}.ListOfFiles",
+                },
+            ),
+        )
+        Directory = dataobject(package=package, name=f"{cls_name}Directory")(
+            _DataObjectBaseMetaClass.__new__(
+                _DataObjectBaseMetaClass,
+                name="Directory",
+                bases=(DataObjectBase,),
+                attrs={
+                    "__annotations__": {
+                        "dirname": str,
+                        "extension": str,
                     },
-                }
-            }
-        }
-        # TODO: Once full oneof support is implemented, this can move to using
-        #   the proper @dataclass style. In the meantime, the "schema" version
-        #   that uses JTD is still supported so that this oneof can be
-        #   dynamically declared. In order to make this work, the
-        #   _DataObjectBaseMetaClass needs to pre-know the right set of field
-        #   names for the oneof fields as if this were a dataclass. The values
-        #   of these annotations are unused since this will never be made into a
-        #   true @dataclass.
-        annotations = {
-            name.lower(): None
-            for name in schema["properties"]["data_stream"]["mapping"]
-        }
-        data_object = dataobject(schema=schema, package="caikit_data_model.runtime",)(
+                    "__qualname__": f"{cls_name}.Directory",
+                },
+            ),
+        )
+
+        # Create the outer class that encapsulates the Union (oneof) or the
+        # various types of input sources
+        data_object = dataobject(package=package)(
             _DataObjectBaseMetaClass.__new__(
                 _DataObjectBaseMetaClass,
                 name=cls_name,
                 bases=(DataObjectBase, DataStreamSourceBase),
                 attrs={
                     "ELEMENT_TYPE": data_element_type,
-                    "__annotations__": annotations,
+                    JsonData.__name__: JsonData,
+                    File.__name__: File,
+                    ListOfFiles.__name__: ListOfFiles,
+                    Directory.__name__: Directory,
+                    "__annotations__": {
+                        "data_stream": Union[
+                            Annotated[JsonData, OneofField(JsonData.__name__.lower())],
+                            Annotated[File, OneofField(File.__name__.lower())],
+                            Annotated[
+                                ListOfFiles, OneofField(ListOfFiles.__name__.lower())
+                            ],
+                            Annotated[
+                                Directory, OneofField(Directory.__name__.lower())
+                            ],
+                        ],
+                    },
                 },
             )
         )
+
+        # Add this data stream source to the common data model and the module
+        # where it was declared
         setattr(
             caikit.interfaces.common.data_model,
             cls_name,
@@ -288,10 +303,15 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
 
         # Add an init that sequences the initialization so that
         # DataStreamSourceBase is initialized after DataBase
-        orig_init = _DataObjectBaseMetaClass._make_init(data_object.fields)
+        orig_init = _make_oneof_init(data_object)
 
         def __init__(self, *args, **kwargs):
-            orig_init(self, *args, **kwargs)
+            try:
+                orig_init(self, *args, **kwargs)
+            except TypeError as err:
+                raise CaikitRuntimeException(
+                    grpc.StatusCode.INVALID_ARGUMENT, str(err)
+                ) from err
             DataStreamSourceBase.__init__(self)
 
         setattr(data_object, "__init__", __init__)

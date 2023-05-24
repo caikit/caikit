@@ -37,4 +37,7 @@ jobs:
         run: tox -e fmt
       - name: Run pylint
         run: tox -e lint
-
+      - name: Setup Graphviz # `graphviz/dot` is required for the import checker
+        uses: ts-graphviz/setup-graphviz@v1
+      - name: Enforce import rules
+        run: tox -e imports

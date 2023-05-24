@@ -17,9 +17,8 @@
 """
 
 # Standard
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 import os
-import threading
 
 # First Party
 import aconfig
@@ -35,7 +34,8 @@ BASE_CONFIG_PATH = os.path.realpath(
 _CONFIG: aconfig.Config = aconfig.Config({})
 # An immutable view into the core config object, to be passed to callers
 _IMMUTABLE_CONFIG: aconfig.ImmutableConfig = aconfig.ImmutableConfig({})
-_CONFIG_LOCK: threading.Lock = threading.Lock()
+# Little helper type for signatures
+_CONFIG_TYPE = Union[dict, aconfig.Config]
 
 
 def get_config() -> aconfig.Config:
@@ -71,26 +71,27 @@ def configure(
 
     cfg = aconfig.Config(_CONFIG)
     if config_yml_path:
-        cfg = merge_configs(cfg, aconfig.Config.from_yaml(config_yml_path))
-    if config_dict:
-        cfg = merge_configs(cfg, aconfig.Config(config_dict))
+        new_config = aconfig.Config.from_yaml(config_yml_path)
+    else:
+        new_config = aconfig.Config(config_dict)
+
+    cfg = merge_configs(cfg, new_config, _get_merge_strategy(new_config))
 
     cfg = _merge_extra_files(cfg)
     _update_global_config(cfg)
 
 
 def _update_global_config(cfg: aconfig.Config):
-    """Updates the caikit config and creates a new immutable view of it to be shared via
+    """Replaces the caikit config and creates a new immutable view of it to be shared via
     get_config().
-    Locked because who the heck knows if merge_configs() is threadsafe.
     """
     # pylint: disable=global-statement
     global _IMMUTABLE_CONFIG
-    # Update the config by merging the new updates over the existing config
-    with _CONFIG_LOCK:
-        # Locked just in case `configure()` is called concurrently for any reason
-        merge_configs(_CONFIG, cfg)
-        _IMMUTABLE_CONFIG = aconfig.ImmutableConfig(_CONFIG, override_env_vars=False)
+    # pylint: disable=global-statement
+    global _CONFIG
+    _CONFIG = cfg
+    # Set override_env_vars=False because we want the immutable config to be an exact copy
+    _IMMUTABLE_CONFIG = aconfig.ImmutableConfig(_CONFIG, override_env_vars=False)
 
 
 def _merge_extra_files(config: aconfig.Config) -> aconfig.Config:
@@ -111,11 +112,17 @@ def _merge_extra_files(config: aconfig.Config) -> aconfig.Config:
                 }
             )
             new_overrides = aconfig.Config.from_yaml(file, override_env_vars=True)
-            config = merge_configs(config, new_overrides)
+            config = merge_configs(
+                config, new_overrides, _get_merge_strategy(new_overrides)
+            )
     return config
 
 
-def merge_configs(base: Optional[dict], overrides: Optional[dict]) -> dict:
+def merge_configs(
+    base: Optional[_CONFIG_TYPE],
+    overrides: Optional[_CONFIG_TYPE],
+    merge_strategy: str = "merge",
+) -> _CONFIG_TYPE:
     """Helper to perform a deep merge of the overrides into the base. The merge
     is done in place, but the resulting dict is also returned for convenience.
     The merge logic is quite simple: If both the base and overrides have a key
@@ -126,6 +133,10 @@ def merge_configs(base: Optional[dict], overrides: Optional[dict]) -> dict:
             The base config that will be updated with the overrides
         overrides: Optional[dict]
             The override config
+        merge_strategy: str
+            The merging strategy, either `merge` or `override`
+            `override` will replace values in base with those from overrides
+            `merge` will deep-merge dictionaries and prepend-merge lists
     Returns:
         merged: dict
             The merged results of overrides merged onto base
@@ -136,18 +147,29 @@ def merge_configs(base: Optional[dict], overrides: Optional[dict]) -> dict:
     if overrides is None:
         return base or {}
 
+    if merge_strategy == "override":
+        base.update(overrides)
+        return base
+
     # Do the deep merge
     for key, value in overrides.items():
         if (
             key not in base
-            or not isinstance(base[key], dict)
-            or not isinstance(value, dict)
+            or not isinstance(base[key], (dict, list))
+            or not isinstance(value, (dict, list))
         ):
             base[key] = value
+        elif isinstance(value, list):
+            # merge lists by prepending new one
+            base[key] = value + base[key]
         else:
-            base[key] = merge_configs(base[key], value)
+            base[key] = merge_configs(base[key], value, merge_strategy)
 
     return base
+
+
+def _get_merge_strategy(cfg: _CONFIG_TYPE) -> str:
+    return cfg.get("merge_strategy", "merge")
 
 
 # Run initial configuration with the base config

@@ -27,25 +27,20 @@ import pytest
 # Local
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from sample_lib.blocks.sample_task import SampleBlock
 from sample_lib.data_model import SampleInputType, SampleOutputType
+from sample_lib.modules.sample_task import SampleModule
 from tests.fixtures import Fixtures
 import sample_lib
-
-
-def _random_test_id():
-    return "test-any-model-" + str(uuid.uuid4())
-
 
 HAPPY_PATH_INPUT = SampleInputType(name="Gabe").to_proto()
 HAPPY_PATH_RESPONSE = SampleOutputType(greeting="Hello Gabe").to_proto()
 
 
-def test_calling_predict_should_raise_if_block_raises(
+def test_calling_predict_should_raise_if_module_raises(
     sample_inference_service, sample_predict_servicer, loaded_model_id
 ):
     with pytest.raises(CaikitRuntimeException) as context:
-        # SampleBlocks will raise a RuntimeError if the throw flag is set
+        # SampleModules will raise a RuntimeError if the throw flag is set
         request = sample_inference_service.messages.SampleTaskRequest(
             sample_input=HAPPY_PATH_INPUT, throw=True
         )
@@ -59,11 +54,11 @@ def test_calling_predict_should_raise_if_block_raises(
 def test_invalid_input_to_a_valid_caikit_core_class_method_raises(
     loaded_model_id, sample_inference_service, sample_predict_servicer
 ):
-    """Test that a caikit.core block that gets an unexpected input value errors in an expected way"""
+    """Test that a caikit.core module that gets an unexpected input value errors in an expected way"""
     with pytest.raises(CaikitRuntimeException) as context:
-        # SampleBlocks will raise a ValueError if the poison pill name is given
+        # SampleModules will raise a ValueError if the poison pill name is given
         request = sample_inference_service.messages.SampleTaskRequest(
-            sample_input=SampleInputType(name=SampleBlock.POISON_PILL_NAME).to_proto(),
+            sample_input=SampleInputType(name=SampleModule.POISON_PILL_NAME).to_proto(),
         )
         sample_predict_servicer.Predict(
             request, Fixtures.build_context(loaded_model_id)
@@ -172,7 +167,7 @@ def test_metering_predict_rpc_counter(sample_inference_service, loaded_model_id)
         assert data[0]["batch_size"] == 20
         assert len(data[0]["model_type_counters"]) == 1
         assert data[0]["model_type_counters"] == {
-            "<class 'sample_lib.blocks.sample_task.sample_implementation.SampleBlock'>": 20
+            "<class 'sample_lib.modules.sample_task.sample_implementation.SampleModule'>": 20
         }
     finally:
         sample_predict_servicer.rpc_meter.end_writer_thread()
@@ -218,7 +213,7 @@ def test_metering_write_to_metrics_file_twice(
         assert data[0]["batch_size"] == 1
         assert len(data[0]["model_type_counters"]) == 1
         assert data[0]["model_type_counters"] == {
-            "<class 'sample_lib.blocks.sample_task.sample_implementation.SampleBlock'>": 1
+            "<class 'sample_lib.modules.sample_task.sample_implementation.SampleModule'>": 1
         }
     finally:
         sample_predict_servicer.rpc_meter.end_writer_thread()

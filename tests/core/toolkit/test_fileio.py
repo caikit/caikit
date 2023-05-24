@@ -27,11 +27,13 @@ from tests.base import TestCaseBase
 class TestFeatureExtractor(TestCaseBase):
     def setUp(self):
         self.yaml_filename = os.path.join(
-            self.fixtures_dir, "dummy_block", "config.yml"
+            self.fixtures_dir, "dummy_module", "config.yml"
         )
-        self.json_filename = os.path.join(self.fixtures_dir, "dummy_block", "data.json")
+        self.json_filename = os.path.join(
+            self.fixtures_dir, "dummy_module", "data.json"
+        )
         self.pickle_filename = os.path.join(
-            self.fixtures_dir, "dummy_block", "data.pkl"
+            self.fixtures_dir, "dummy_module", "data.pkl"
         )
         self.csv_filename = os.path.join(self.fixtures_dir, "sample.csv")
 

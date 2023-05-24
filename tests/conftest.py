@@ -51,6 +51,10 @@ import sample_lib
 logging.configure()
 
 
+def random_test_id():
+    return "test-any-model-" + _random_id()
+
+
 @pytest.fixture(autouse=True, scope="session")
 def test_environment():
     """The most important fixture: This runs caikit configuration with the base test config overrides"""
@@ -182,7 +186,7 @@ def other_loaded_model_id(other_good_model_path) -> str:
 
 
 @contextmanager
-def temp_config(config_overrides: dict):
+def temp_config(config_overrides: dict, merge_strategy="override"):
     """Temporarily edit the caikit config in a mock context"""
     existing_config = copy.deepcopy(getattr(caikit.config.config, "_CONFIG"))
     # Patch out the internal config, starting with a fresh copy of the current config
@@ -192,11 +196,12 @@ def temp_config(config_overrides: dict):
         with patch.object(caikit.config.config, "_IMMUTABLE_CONFIG", None):
             # Run our config overrides inside the patch
             if config_overrides:
+                config_overrides["merge_strategy"] = merge_strategy
                 caikit.configure(config_dict=config_overrides)
             else:
                 # or just slap some random uuids in there. Barf, but we need to call `.configure()`
                 caikit.configure(config_dict={str(uuid.uuid4()): str(uuid.uuid4())})
-            # Yield to the test with the new overriden config
+            # Yield to the test with the new overridden config
             yield get_config()
 
 
@@ -252,6 +257,21 @@ def sample_int_file() -> str:
         handle.write(content)
         handle.flush()
         yield handle.name
+
+
+@pytest.fixture
+def fixtures_dir():
+    yield os.path.join(os.path.dirname(os.path.realpath(__file__)), "fixtures")
+
+
+@pytest.fixture
+def modules_fixtures_dir(fixtures_dir):
+    yield os.path.join(fixtures_dir, "modules")
+
+
+@pytest.fixture
+def toolkit_fixtures_dir(fixtures_dir):
+    yield os.path.join(fixtures_dir, "toolkit")
 
 
 # IMPLEMENTATION DETAILS ############################################################

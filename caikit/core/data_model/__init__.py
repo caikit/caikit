@@ -13,11 +13,12 @@
 # limitations under the License.
 
 
-"""Common data model containing all data structures that are passed in and out of blocks.
+"""Common data model containing all data structures that are passed in and out of modules.
 """
 
 # Local
 from . import base, data_backends, enums, producer, protobufs
+from .base import DataBase
 from .dataobject import (
     CAIKIT_DATA_MODEL,
     DataObjectBase,

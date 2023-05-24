@@ -103,7 +103,7 @@ class GlobalTrainServicer:
         super()
 
     def Train(self, request, context, *_, **__) -> TrainingJob:
-        """Global predict RPC -- Mocks the invocation of a Caikit Library block.train()
+        """Global predict RPC -- Mocks the invocation of a Caikit Library module.train()
         method for a loaded Caikit Library model
         Args:
             request(object):
@@ -118,8 +118,8 @@ class GlobalTrainServicer:
 
         try:
             with alog.ContextLog(log.debug, outer_scope_name):
-                # BlocksSampleTaskSampleBlockTrainRequest
-                # getattr(importlib.import_module("sample_lib.blocks.sample_task"), "SampleBlock")
+                # ModulesSampleTaskSampleModuleTrainRequest
+                # getattr(importlib.import_module("sample_lib.modules.sample_task"), "SampleModule")
                 # TODO: fixme - temporary workaround for now
                 desc_name = desc_name.replace("TrainRequest", "")
                 split = re.split("(?<=.)(?=[A-Z])", desc_name)
@@ -133,7 +133,7 @@ class GlobalTrainServicer:
                     )
 
                 except Exception:  # pylint: disable=broad-exception-caught
-                    for mod in caikit.core.MODULE_REGISTRY.values():
+                    for mod in caikit.core.registries.module_registry().values():
                         module_split = mod.__module__.split(".")
                         train_request_for_mod = snake_to_upper_camel(
                             f"{module_split[1]}_{module_split[2]}_{mod.__name__}"
@@ -260,7 +260,7 @@ class GlobalTrainServicer:
 
         context.add_callback(rpc_termination_callback)
 
-        # if requested, block until the training completes
+        # if requested, module until the training completes
         if wait:
             with alog.ContextTimer(log.debug, "Training %s complete in: ", training_id):
                 thread_future.result()

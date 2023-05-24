@@ -24,11 +24,13 @@ import os
 import tempfile
 
 # Third Party
+from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pool, message
+import numpy as np
 import pytest
 
 # First Party
-from py_to_proto.dataclass_to_proto import Annotated, OneofField
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber, OneofField
 
 # Local
 from caikit.core import (  # NOTE: Imported from the top to validate
@@ -58,7 +60,7 @@ def temp_dpool():
 
 
 @pytest.fixture(autouse=True)
-def reset_globals():
+def reset_global_protobuf_registry():
     """Reset the global registry of generated protos"""
     prev_auto_gen_proto_classes = copy.copy(_AUTO_GEN_PROTO_CLASSES)
     prev_class_registry = copy.copy(_DataBaseMetaClass.class_registry)
@@ -111,22 +113,6 @@ def test_dataobject_native_types():
     inst = Foo()
     assert inst.foo is None
     assert inst.bar is None
-
-
-def test_dataobject_jtd():
-    """Make sure that a simple usage of dataobject using a full JTD schema works
-    as expected
-    """
-
-    @dataobject(schema={"properties": {"foo": {"type": "string"}}})
-    class Foo(DataObjectBase):
-        foo: str
-
-    assert check_field_type(Foo.get_proto_class(), "foo", "TYPE_STRING")
-    inst = Foo(foo="test")
-    assert inst.foo == "test"
-    inst = Foo()
-    assert inst.foo is None
 
 
 def test_dataobject_nested_objects():
@@ -279,15 +265,6 @@ def test_dataobject_obj_refs_with_optional_types():
         )
 
 
-def test_dataobject_invalid_schema():
-    """Make sure that a ValueError is raised on an invalid schema"""
-    with pytest.raises(ValueError):
-        # pylint: disable=unused-variable
-        @dataobject(schema="Foo")
-        class Foo:
-            pass
-
-
 def test_dataobject_additional_methods():
     """Make sure that additional methods on wrapped classes (for messages and
     enums) are preserved
@@ -372,136 +349,142 @@ def test_render_dataobject_protos_no_dir():
         }
 
 
-def test_dataobject_with_discriminator():
-    """Make sure that adding a discriminator works as expected"""
+def test_dataobject_with_oneof():
+    """Make sure that using a Union to create a oneof works as expected"""
 
-    @dataobject(
-        schema={
-            "properties": {
-                "data_stream": {
-                    "discriminator": "data_reference_type",
-                    "mapping": {
-                        "Foo": {
-                            "properties": {
-                                "data": {
-                                    "elements": {"type": "string"},
-                                },
-                            },
-                        },
-                        "Bar": {"properties": {"data": {"type": "string"}}},
-                        "Baz": {
-                            "properties": {
-                                "data": {
-                                    "elements": {"type": "string"},
-                                },
-                            },
-                        },
-                        "Bat": {
-                            "properties": {
-                                "data1": {"type": "string"},
-                                "data2": {"type": "string"},
-                            }
-                        },
-                    },
-                }
-            }
-        }
-    )
+    @dataobject
     class BazObj(DataObjectBase):
-        foo: str
-        bar: str
-        baz: str
-        bat: str
+        @dataobject
+        class Foo(DataObjectBase):
+            data: List[str]
 
-    # proto tests
+        @dataobject
+        class Bar(DataObjectBase):
+            data: str
+
+        data_stream: Union[
+            Annotated[Foo, FieldNumber(1), OneofField("foo")],
+            Annotated[Bar, FieldNumber(2), OneofField("bar")],
+        ]
+
+    # Construct with oneof field name
     foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))
+    assert isinstance(foo1.data_stream, BazObj.Foo)
+    assert foo1.which_oneof("data_stream") == "foo"
+    assert foo1.foo is foo1.data_stream
+    assert foo1.bar is None
+
+    # Test other oneof field name
+    bar1 = BazObj(bar=BazObj.Bar(data="world"))
+    assert isinstance(bar1.data_stream, BazObj.Bar)
+    assert bar1.which_oneof("data_stream") == "bar"
+    assert bar1.bar is bar1.data_stream
+    assert bar1.foo is None
+
+    # Test proto round trip
     proto_repr_foo = foo1.to_proto()
     assert proto_repr_foo.foo.data == ["hello"]
     assert BazObj.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
-
-    bar1 = BazObj(foo=BazObj.Foo(data=["hello"]), bar=BazObj.Bar(data="world"))
     proto_repr_bar = bar1.to_proto()
     assert proto_repr_bar.bar.data == "world"
 
-    # json tests
-    foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))
+    # Test json round trip
     json_repr_foo = foo1.to_json()
     assert json.loads(json_repr_foo) == {
         "foo": {"data": ["hello"]},
         "bar": None,
-        "baz": None,
-        "bat": None,
     }
+    assert BazObj.from_json(json_repr_foo) == foo1
+
+    # Test setattr
+    foo1.bar = BazObj.Bar(data="it's a bar")
+    assert foo1.which_oneof("data_stream") == "bar"
+    assert foo1.data_stream is foo1.bar
+    assert foo1.foo is None
+
+    # Construct with oneof name
+    foo2 = BazObj(data_stream=BazObj.Foo(data=["some", "foo"]))
+    assert foo2.data_stream.data == ["some", "foo"]
+    assert foo2.bar is None
+    assert foo2.foo is foo2.data_stream
+    assert foo2.which_oneof("data_stream") == "foo"
+
+    # Assign with oneof name
+    foo2.data_stream = BazObj.Bar(data="asdf")
+    assert foo2.foo is None
+    assert foo2.bar is foo2.data_stream
+    assert foo2.which_oneof("data_stream") == "bar"
+
+    # Construct with positional oneof name
+    foo2 = BazObj(BazObj.Foo(data=["some", "foo"]))
+    assert foo2.data_stream.data == ["some", "foo"]
+    assert foo2.bar is None
+    assert foo2.foo is foo2.data_stream
+    assert foo2.which_oneof("data_stream") == "foo"
+
+    foo3 = BazObj()
+    assert foo3.foo is None
+    assert foo3.bar is None
+    assert foo3.data_stream is None
+    assert foo3.which_oneof("data_stream") == None
+    # Invalid constructors
+    with pytest.raises(TypeError):
+        BazObj(BazObj.Foo(), foo=BazObj.Foo())
+    with pytest.raises(TypeError):
+        BazObj(data_stream=BazObj.Foo(), foo=BazObj.Foo())
+    with pytest.raises(TypeError):
+        BazObj(foo=BazObj.Foo(), bar=BazObj.Bar())
 
 
-# TODO --- This test is currently broken
-#
-# The reason this test is broken is because of the difference between how proto
-# and dataclass treat oneofs. In proto, the name of the oneof is just a label
-# and the elements of the oneof are concrete fields, only one of which may be
-# set at a given time. In a dataclass, a Union field holds the name of the field
-# as the property and the various definitions of that field are all accessed via
-# the name of the Union field.
-#
-# To fix this, we need to figure out the fully-supported oneof semantics for
-# caikit. My gut is that we should support the union of the two where accessing
-# the union/oneof by name gets you whichever of the individual fields is set and
-# accessing any of the individual fields gets you the value iff that is the
-# field within the oneof that's set. The catch is that this would require proper
-# "which oneof" semantics to handle the case where the type of the field does
-# not uniquely identify the sub-field (i.e. oneof delineated by name, not type)
-##
-# def test_dataobject_with_oneof():
-#     """Make sure that using a Union to create a oneof works as expected"""
+def test_dataobject_with_same_type_of_oneof():
+    """Make sure that using a Union to create a oneof with the same types works as expected"""
 
-#     @dataobject
-#     class BazObj:
-#         @dataobject
-#         class Foo:
-#             data: List[str]
+    @dataobject
+    class Foo(DataObjectBase):
+        foo: Union[
+            Annotated[bool, FieldNumber(10), OneofField("foo_bool1")],
+            Annotated[bool, FieldNumber(20), OneofField("foo_bool2")],
+        ]
 
-#         @dataobject
-#         class Bar:
-#             data: str
+    # if the fields are of the same type, then by default the first one is set
+    foo1 = Foo(True)
+    assert foo1.which_oneof("foo") == "foo_bool1"
+    assert foo1.foo_bool1
+    assert foo1.foo_bool2 == None
 
-#         @dataobject
-#         class Baz:
-#             data: List[str]
+    # unless set explicitly
+    foo2 = Foo(foo_bool2=True)
+    assert foo2.which_oneof("foo") == "foo_bool2"
+    assert foo2.foo_bool1 == None
+    assert foo2.foo_bool2
 
-#         @dataobject
-#         class Bat:
-#             data1: str
-#             data2: str
 
-#         data_stream: Union[
-#             Annotated[Foo, OneofField("foo")],
-#             Annotated[Bar, OneofField("bar")],
-#             Annotated[Baz, OneofField("baz")],
-#             Annotated[Bat, OneofField("bat")],
-#         ]
+def test_dataobject_primitive_oneof_round_trips():
+    @dataobject
+    class Foo(DataObjectBase):
+        foo: Union[
+            Annotated[int, FieldNumber(10), OneofField("foo_int")],
+            Annotated[float, FieldNumber(20), OneofField("foo_float")],
+        ]
 
-#     #DEBUG -------------- SOMETHING BROKEN HERE!!!
-#     breakpoint()
+    # proto round trip
+    foo1 = Foo(foo_int=2)
+    assert foo1.which_oneof("foo") == "foo_int"
+    proto_repr_foo = foo1.to_proto()
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
-#     # proto tests
-#     foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))
-#     proto_repr_foo = foo1.to_proto()
-#     assert proto_repr_foo.foo.data == ["hello"]
-#     assert BazObj.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+    foo2 = Foo(foo=2)
+    assert foo2.which_oneof("foo") == "foo_int"
+    proto_repr_foo = foo2.to_proto()
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
-#     bar1 = BazObj(foo=BazObj.Foo(data=["hello"]), bar=BazObj.Bar(data="world"))
-#     proto_repr_bar = bar1.to_proto()
-#     assert proto_repr_bar.bar.data == "world"
-
-#     # json tests
-#     foo1 = BazObj(foo=BazObj.Foo(data=["hello"]))
-#     json_repr_foo = foo1.to_json()
-#     assert json.loads(json_repr_foo) == {
-#         "foo": {"data": ["hello"]},
-#         "bar": None,
-#         "baz": None,
-#         "bat": None,
-#     }
+    # json round trip
+    json_repr_foo = foo1.to_json()
+    assert json.loads(json_repr_foo) == {
+        "foo_int": 2,
+        "foo_float": None,
+    }
+    assert Foo.from_json(json_repr_foo) == foo1
 
 
 def test_dataobject_round_trip_json():
@@ -669,3 +652,70 @@ def test_dataobject_dataclass_default_factory():
     inst = Foo()
     assert inst.foo is not None
     assert inst.foo == []
+
+
+def test_enum_value_dereference():
+    """Make sure that enum value objects can be used to instantiate data model
+    objects and that they are correctly dereferenced in to_proto, to_dict, and
+    to_json
+    """
+
+    @dataobject
+    class FooEnum(Enum):
+        FOO = 1
+        BAR = 2
+
+    @dataobject
+    class Foo(DataObjectBase):
+        foo: FooEnum
+
+    # Create an instance with an enum value object
+    inst = Foo(foo=FooEnum.FOO)
+    assert inst.to_proto().foo == FooEnum.FOO.value
+    assert inst.to_dict()["foo"] == FooEnum.FOO.name
+    assert json.loads(inst.to_json())["foo"] == FooEnum.FOO.name
+
+    # Create an instance with an integer value
+    inst = Foo(foo=FooEnum.FOO.value)
+    assert inst.to_proto().foo == FooEnum.FOO.value
+    assert inst.to_dict()["foo"] == FooEnum.FOO.name
+    assert json.loads(inst.to_json())["foo"] == FooEnum.FOO.name
+
+
+def test_np_dtypes():
+    """Make sure that numpy dtype types can be used in dataobjects"""
+
+    @dataobject
+    class Foo(DataObjectBase):
+        int32: np.int32
+        int64: np.int64
+        uint32: np.uint32
+        uint64: np.uint64
+        float32: np.float32
+        float64: np.float64
+
+    descriptor = Foo._proto_class.DESCRIPTOR
+    assert (
+        descriptor.fields_by_name["int32"].type
+        == _descriptor.FieldDescriptor.TYPE_INT32
+    )
+    assert (
+        descriptor.fields_by_name["int64"].type
+        == _descriptor.FieldDescriptor.TYPE_INT64
+    )
+    assert (
+        descriptor.fields_by_name["uint32"].type
+        == _descriptor.FieldDescriptor.TYPE_UINT32
+    )
+    assert (
+        descriptor.fields_by_name["uint64"].type
+        == _descriptor.FieldDescriptor.TYPE_UINT64
+    )
+    assert (
+        descriptor.fields_by_name["float32"].type
+        == _descriptor.FieldDescriptor.TYPE_FLOAT
+    )
+    assert (
+        descriptor.fields_by_name["float64"].type
+        == _descriptor.FieldDescriptor.TYPE_DOUBLE
+    )

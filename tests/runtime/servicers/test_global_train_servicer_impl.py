@@ -25,26 +25,18 @@ import pytest
 # Local
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from sample_lib.blocks.sample_task.sample_implementation import SampleBlock
 from sample_lib.data_model.sample import (
     OtherOutputType,
     SampleInputType,
     SampleOutputType,
     SampleTrainingType,
 )
-from tests.conftest import temp_config
+from sample_lib.modules.sample_task.sample_implementation import SampleModule
+from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
 import caikit.core
 
 ## Helpers #####################################################################
-
-
-def _random_test_id():
-    return "test-any-model-" + str(uuid.uuid4())
-
-
-def _random_training_id():
-    return "training-" + str(uuid.uuid4())
 
 
 def _primitives_function(
@@ -66,12 +58,6 @@ def _primitives_function(
     sint64_field,
 ):
     pass
-
-
-HAPPY_PATH_RESPONSE = caikit.interfaces.runtime.data_model.TrainingJob(
-    model_name="Foo Bar Training",
-    training_id=_random_training_id(),
-)
 
 
 @pytest.fixture(autouse=True, params=[True, False])
@@ -103,9 +89,10 @@ def test_global_train_sample_task(
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
+    model_name = random_test_id()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name="Foo Bar Training",
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
+            model_name=model_name,
             batch_size=42,
             training_data=training_data,
         )
@@ -114,7 +101,8 @@ def test_global_train_sample_task(
     training_response = sample_train_servicer.Train(
         train_request, Fixtures.build_context("foo")
     )
-    assert training_response.model_name == "Foo Bar Training"
+    assert training_response.model_name == model_name
+
     assert training_response.training_id is not None
     assert isinstance(training_response.training_id, str)
 
@@ -123,8 +111,8 @@ def test_global_train_sample_task(
     ).result()
     assert result.batch_size == 42
     assert (
-        result.BLOCK_CLASS
-        == "sample_lib.blocks.sample_task.sample_implementation.SampleBlock"
+        result.MODULE_CLASS
+        == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
     )
 
     # give the trained model time to load
@@ -158,17 +146,20 @@ def test_global_train_other_task(
     batch_size = 42
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
     training_data = stream_type(jsondata=stream_type.JsonData(data=[1])).to_proto()
-    train_request = sample_train_service.messages.BlocksOtherTaskOtherBlockTrainRequest(
-        model_name="Other block Training",
-        training_data=training_data,
-        sample_input=SampleInputType(name="Gabe").to_proto(),
-        batch_size=batch_size,
+    train_request = (
+        sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
+            model_name="Other module Training",
+            training_data=training_data,
+            sample_input=SampleInputType(name="Gabe").to_proto(),
+            batch_size=batch_size,
+        )
     )
 
     training_response = sample_train_servicer.Train(
         train_request, Fixtures.build_context("foo")
     )
-    assert training_response.model_name == "Other block Training"
+    assert training_response.model_name == "Other module Training"
+
     assert training_response.training_id is not None
     assert isinstance(training_response.training_id, str)
 
@@ -177,8 +168,8 @@ def test_global_train_other_task(
     ).result()
     assert result.batch_size == batch_size
     assert (
-        result.BLOCK_CLASS
-        == "sample_lib.blocks.other_task.other_implementation.OtherBlock"
+        result.MODULE_CLASS
+        == "sample_lib.modules.other_task.other_implementation.OtherModule"
     )
 
     # give the trained model time to load
@@ -212,7 +203,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
     ).to_proto()
 
     training_request = (
-        sample_train_service.messages.WorkflowsSampleTaskSampleWorkflowTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskCompositeModuleTrainRequest(
             model_name="AnotherWidget_Training",
             sample_block=sample_model,
         )
@@ -231,8 +222,8 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
     ).result()
 
     assert (
-        training_result.WORKFLOW_CLASS
-        == "sample_lib.workflows.sample_task.sample_implementation.SampleWorkflow"
+        training_result.MODULE_CLASS
+        == "sample_lib.modules.sample_task.composite_module.CompositeModule"
     )
 
     # give the trained model time to load
@@ -263,8 +254,8 @@ def test_run_train_job_works_with_wait(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name="Foo Bar Training",
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
+            model_name=random_test_id(),
             batch_size=42,
             training_data=training_data,
         )
@@ -273,7 +264,7 @@ def test_run_train_job_works_with_wait(
     with TemporaryDirectory() as tmp_dir:
         training_response = servicer.run_training_job(
             train_request,
-            SampleBlock,
+            SampleModule,
             training_id="dummy-training-id",
             training_output_dir=tmp_dir,
             context=Fixtures.build_context("foo"),
@@ -303,7 +294,7 @@ def test_run_train_job_works_with_no_autoload(sample_train_service):
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=str(uuid.uuid4()),
             batch_size=42,
             training_data=training_data,
@@ -316,7 +307,7 @@ def test_run_train_job_works_with_no_autoload(sample_train_service):
     with TemporaryDirectory() as tmp_dir:
         training_response = servicer.run_training_job(
             train_request,
-            SampleBlock,
+            SampleModule,
             training_id="dummy-training-id",
             training_output_dir=tmp_dir,
             context=Fixtures.build_context("foo"),
@@ -333,7 +324,7 @@ def test_run_train_job_works_with_autoload(sample_train_service):
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name=str(uuid.uuid4()),
             batch_size=42,
             training_data=training_data,
@@ -346,7 +337,7 @@ def test_run_train_job_works_with_autoload(sample_train_service):
     with TemporaryDirectory() as tmp_dir:
         training_response = servicer.run_training_job(
             train_request,
-            SampleBlock,
+            SampleModule,
             training_id="dummy-training-id-2",
             training_output_dir=tmp_dir,
             context=Fixtures.build_context("foo"),
@@ -365,13 +356,13 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_but_not_loaded_s
     sample_train_service, sample_train_servicer
 ):
     """Global train of TrainRequest raises when calling a train function that requires another loaded model, but model is not loaded"""
-    model_id = _random_test_id()
+    model_id = random_test_id()
 
     sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
         model_id=model_id
     ).to_proto()
     request = (
-        sample_train_service.messages.WorkflowsSampleTaskSampleWorkflowTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskCompositeModuleTrainRequest(
             model_name="AnotherWidget_Training",
             sample_block=sample_model,
         )
@@ -386,14 +377,14 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_but_not_loaded_s
 def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_block(
     sample_train_service, sample_train_servicer
 ):
-    """Test that if a block raises a ValueError, we should surface it to the user in a helpful way"""
+    """Test that if a module raises a ValueError, we should surface it to the user in a helpful way"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name="Foo Bar Training",
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
+            model_name=random_test_id(),
             batch_size=999,
             training_data=training_data,
         )
@@ -414,14 +405,14 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_blo
 def test_global_train_returns_exit_code_with_oom(
     sample_train_service, sample_train_servicer
 ):
-    """Test that if block goes into OOM we are able to surface error code"""
+    """Test that if module goes into OOM we are able to surface error code"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
-            model_name="Foo Bar Training",
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
+            model_name=random_test_id(),
             batch_size=42,
             training_data=training_data,
             oom_exit=True,
@@ -451,7 +442,7 @@ def test_global_train_aborts_long_running_trains(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleBlockTrainRequest(
+        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
             model_name="Foo Bar Training",
             batch_size=42,
             training_data=training_data,
@@ -484,7 +475,7 @@ def test_global_train_aborts_long_running_trains(
     request_timeout = 10
 
     with patch(
-        f"{SampleBlock.__module__}.{SampleBlock.train.__qualname__}",
+        f"{SampleModule.__module__}.{SampleModule.train.__qualname__}",
         never_respond,
     ):
         train_thread.start()

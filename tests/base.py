@@ -29,9 +29,7 @@ class TestCaseBase(unittest.TestCase):
     # common reference to the place where we put our fixtures, because a ton of tests use this
     fixtures_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "fixtures")
     # Other things that we use often
-    block_fixtures_dir = os.path.join(fixtures_dir, "blocks")
-    resource_fixtures_dir = os.path.join(fixtures_dir, "resources")
-    workflow_fixtures_dir = os.path.join(fixtures_dir, "workflows")
+    modules_fixtures_dir = os.path.join(fixtures_dir, "modules")
     toolkit_fixtures_dir = os.path.join(fixtures_dir, "toolkit")
 
     def __init__(self, *args, **kwargs):

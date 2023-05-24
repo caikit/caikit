@@ -18,3 +18,9 @@ runtime:
 inference_plugin:
     model_mesh:
         runtime_version: mock
+
+module_backends:
+    load_priority:
+        # There is a 'MOCK' backend type defined in our test helpers
+        - type: MOCK
+        - type: LOCAL

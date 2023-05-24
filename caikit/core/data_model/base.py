@@ -20,13 +20,15 @@
 # pylint: disable=no-member
 
 # Standard
-from typing import Optional, Type, Union
+from enum import Enum
+from typing import Any, Dict, Optional, Type, Union
 import base64
 import json
 
 # Third Party
 from google.protobuf import json_format
 from google.protobuf.descriptor import Descriptor
+from google.protobuf.internal import type_checkers as proto_type_checkers
 from google.protobuf.message import Message as ProtoMessageType
 
 # First Party
@@ -58,6 +60,11 @@ class _DataBaseMetaClass(type):
     # construction.
     _FWD_DECL_FIELDS = "__fwd_decl_fields__"
 
+    # Special instance attributes that an instance of a class derived from
+    # DataBase may have. These are added to __slots__.
+    _BACKEND_ATTR = "_backend"
+    _WHICH_ONEOF_ATTR = "_which_oneof"
+
     def __new__(mcs, name, bases, attrs):
         """When constructing a new data model class, we set the 'fields' class variable from the
         protobufs descriptor and then set the '__slots__' magic class attribute to fields.  This
@@ -69,29 +76,43 @@ class _DataBaseMetaClass(type):
         protobufs, it can be named in the tuple class variable _private_slots and will
         automatically be added to __slots__.
         """
-        # Get all fields in protobufs with same name as class,
-        # except for DataBase, which has no matching protobufs
-        fields = ()
 
-        # Protobufs fields can be divided into these categories, which are used to automatically
-        # determine appropriate behavior in a number of methods
-        fields_enum_map = {}
-        fields_enum_rev = {}
-        _fields_message = ()
-        _fields_message_repeated = ()
-        _fields_enum = ()
-        _fields_enum_repeated = ()
-        _fields_primitive = ()
-        _fields_primitive_repeated = ()
-        _fields_map = ()
+        # Protobufs fields can be divided into these categories, which are used
+        # to automatically determine appropriate behavior in a number of methods
+        attrs["full_name"] = name
+        attrs["fields_enum_map"] = {}
+        attrs["fields_enum_rev"] = {}
+        attrs["_fields_oneofs_map"] = {}
+        attrs["_fields_to_oneof"] = {}
+        attrs["_fields_map"] = ()
+        attrs["_fields_message"] = ()
+        attrs["_fields_message_repeated"] = ()
+        attrs["_fields_enum"] = ()
+        attrs["_fields_enum_repeated"] = ()
+        attrs["_fields_primitive"] = ()
+        attrs["_fields_primitive_repeated"] = ()
+
+        # Look for the set of fields either from a predefined protobuf class or
+        # from a forward declaration from @dataobject
+        fields = ()
         proto_class = None
-        full_name = name
         if name not in ["DataBase", "DataObjectBase"]:
             # Look for a precompiled proto class and if found, parse its
             # descriptor
             proto_class = attrs.get("_proto_class")
             if proto_class is not None:
-                fields = tuple(proto_class.DESCRIPTOR.fields_by_name)
+                all_oneof_fields = [
+                    field.name
+                    for oneof in proto_class.DESCRIPTOR.oneofs
+                    for field in oneof.fields
+                ]
+                fields = tuple(
+                    (
+                        field
+                        for field in proto_class.DESCRIPTOR.fields_by_name
+                        if field not in all_oneof_fields
+                    )
+                ) + tuple(proto_class.DESCRIPTOR.oneofs_by_name)
 
             # Otherwise, we need to get the fields from a "special" attribute
             else:
@@ -102,9 +123,11 @@ class _DataBaseMetaClass(type):
                 error.value_check(
                     "<COR49310991E>",
                     fields is not None,
+                    "No proto class found for {}",
                     name,
-                    msg="No proto class found for {}",
                 )
+        attrs["fields"] = fields
+        attrs["_proto_class"] = proto_class
 
         # Look if any private slots are declared as class variables
         private_slots = attrs.setdefault("_private_slots", ())
@@ -112,25 +135,12 @@ class _DataBaseMetaClass(type):
         # Class slots are fields + private slots, this prevents other
         # member attributes from being set and also improves performance
         attrs["__slots__"] = tuple(
-            [f"_{field}" for field in fields] + list(private_slots) + ["_backend"]
+            [f"_{field}" for field in fields]
+            + list(private_slots)
+            + [mcs._BACKEND_ATTR, mcs._WHICH_ONEOF_ATTR]
         )
 
-        # Set fields class variable for reference
-        # these are valuable for validating attributes and
-        # also for recursively converting to and from protobufs
-        attrs["full_name"] = full_name
-        attrs["fields"] = fields
-        attrs["fields_enum_map"] = fields_enum_map
-        attrs["fields_enum_rev"] = fields_enum_rev
-        attrs["_fields_map"] = _fields_map
-        attrs["_fields_message"] = _fields_message
-        attrs["_fields_message_repeated"] = _fields_message_repeated
-        attrs["_fields_enum"] = _fields_enum
-        attrs["_fields_enum_repeated"] = _fields_enum_repeated
-        attrs["_fields_primitive"] = _fields_primitive
-        attrs["_fields_primitive_repeated"] = _fields_primitive_repeated
-        attrs["_proto_class"] = proto_class
-
+        # Create the instance of the type
         instance = super().__new__(mcs, name, bases, attrs)
 
         # If there's a valid proto class, perform proto descriptor parsing
@@ -151,7 +161,10 @@ class _DataBaseMetaClass(type):
         # nested messages that have matching names
         cls.full_name = cls._proto_class.DESCRIPTOR.full_name
 
-        # all fields
+        # preserve old fields for _make_property_getter later
+        old_fields = cls.fields
+
+        # overwrite to only have proto-specific fields present
         cls.fields = tuple(cls._proto_class.DESCRIPTOR.fields_by_name)
 
         # map from all enum fields to their enum classes
@@ -166,6 +179,21 @@ class _DataBaseMetaClass(type):
             field.name: getattr(enums, field.enum_type.name + "Rev")
             for field in cls._proto_class.DESCRIPTOR.fields
             if field.enum_type is not None
+        }
+
+        # mapping of all oneofs and the fields that are part of them
+        # NOTE: protobuf makes an interesting use of oneof to wrap types that
+        #   should be explicitly optional. We don't want to consider these
+        #   oneofs in the general oneof handling.
+        cls._fields_oneofs_map = {
+            oneof_name: [field.name for field in oneof.fields]
+            for oneof_name, oneof in cls._proto_class.DESCRIPTOR.oneofs_by_name.items()
+            if len(oneof.fields) != 1 or oneof.name != f"_{oneof.fields[0].name}"
+        }
+        cls._fields_to_oneof = {
+            field_name: oneof_name
+            for (oneof_name, oneof_fields) in cls._fields_oneofs_map.items()
+            for field_name in oneof_fields
         }
 
         # all repeated fields
@@ -212,8 +240,10 @@ class _DataBaseMetaClass(type):
             _fields_message_all
         )
 
+        # enums that are not repeated
         cls._fields_enum = frozenset(_fields_enum_all).difference(fields_repeated)
 
+        # enums that are repeated
         cls._fields_enum_repeated = frozenset(_fields_enum_all).intersection(
             fields_repeated
         )
@@ -233,9 +263,21 @@ class _DataBaseMetaClass(type):
         #   registry shared for all
         _DataBaseMetaClass.class_registry[cls.full_name] = cls
 
-        # Add properties that use the underlying backend
-        for field in cls.fields:
-            setattr(cls, field, mcs._make_property_getter(field))
+        # Add properties that use the underlying backend. Also add fields that
+        # existed in old_fields for supporting oneofs
+        # see https://github.com/caikit/caikit/pull/107 for details
+        for field in set(cls.fields + tuple(old_fields)):
+
+            # If the field is the name of a field within a oneof and it was not
+            # in the old fields, the data is held under the oneof's name if this
+            # is the set value for the oneof
+            if oneof_name := cls._fields_to_oneof.get(field):
+                setattr(cls, field, mcs._make_property_getter(field, oneof_name))
+
+            # If the field is a plain field or the name of a oneof, it will be
+            # accessed directly
+            else:
+                setattr(cls, field, mcs._make_property_getter(field))
 
         # If there is not already an __init__ function defined, make one
         current_init = cls.__init__
@@ -243,15 +285,14 @@ class _DataBaseMetaClass(type):
             setattr(cls, "__init__", mcs._make_init(cls.fields))
 
     @classmethod
-    def _make_property_getter(mcs, field):
+    def _make_property_getter(mcs, field, oneof_name=None):
         """This helper creates an @property attribute getter for the given field
 
         NOTE: This needs to live as a standalone function in order for the given
             field name to be properly bound to the closure for the attrs
         """
-        private_name = f"_{field}"
+        private_name = f"_{field}" if oneof_name is None else oneof_name
 
-        @property
         def _property_getter(self):
             # Check to see if the private name is defined and just return it if
             # it is
@@ -260,17 +301,35 @@ class _DataBaseMetaClass(type):
                 return current
 
             # If not currently set, delegate to the backend
-            attr_val = self._backend.get_attribute(self.__class__, field)
+            backend = self.backend
+            if backend is None:
+                error(
+                    "<COR66616239E>",
+                    AttributeError(
+                        f"{type(self)} missing attribute {field} and no backend set"
+                    ),
+                )
+            attr_val = backend.get_attribute(self.__class__, field)
 
             # If the backend says that this attribute should be cached, set it
             # as an attribute on the class
-            if self._backend.cache_attribute(field, attr_val):
-                setattr(self, private_name, attr_val)
+            if backend.cache_attribute(field, attr_val):
+                setattr(self, field, attr_val)
 
             # Return the value found by the backend
             return attr_val
 
-        return _property_getter
+        # If this is a oneof, add an extra layer of wrapping to check
+        # which_oneof before returning a valid result
+        if oneof_name:
+
+            def _oneof_property_getter(self):
+                if self.which_oneof(oneof_name) == field:
+                    return _property_getter(self)
+
+            return property(_oneof_property_getter)
+
+        return property(_property_getter)
 
     @staticmethod
     def _make_init(fields):
@@ -292,6 +351,12 @@ class _DataBaseMetaClass(type):
             num_fields = len(fields)
             used_fields = []
 
+            # If the proto has oneofs, set up which_oneof
+            which_oneof = {}
+            cls = self.__class__
+            if cls._fields_oneofs_map:
+                setattr(self, _DataBaseMetaClass._WHICH_ONEOF_ATTR, which_oneof)
+
             if num_args + num_kwargs > num_fields:
                 error(
                     "<COR71444420E>",
@@ -306,7 +371,16 @@ class _DataBaseMetaClass(type):
 
             if num_kwargs > 0:  # Do a quick check for performance reason
                 for field_name, field_val in kwargs.items():
-                    if field_name not in fields:
+
+                    # If this is a oneof field, alias to the oneof name
+                    if oneof_name := cls._fields_to_oneof.get(field_name):
+                        which_oneof[oneof_name] = field_name
+                        field_name = oneof_name
+
+                    if (
+                        field_name not in fields
+                        and field_name not in cls._fields_oneofs_map
+                    ):
                         error(
                             "<COR71444421E>", TypeError(f"Unknown field {field_name}")
                         )
@@ -321,7 +395,10 @@ class _DataBaseMetaClass(type):
             # Default all unspecified fields to None
             if num_fields > 0:  # Do a quick check for performance reason
                 for field_name in fields:
-                    if field_name not in used_fields:
+                    if (
+                        field_name not in used_fields
+                        and field_name not in cls._fields_to_oneof
+                    ):
                         setattr(self, field_name, None)
 
         # Set docstring to the method explicitly
@@ -338,10 +415,22 @@ class DataBase(metaclass=_DataBaseMetaClass):
     """
 
     def __setattr__(self, name, val):
-        """If attempting to set one of the named fields, instead set the
-        "private" version of the attribute.
+        """Handle attribute setting for oneofs and named fields with delegation
+        to backends as needed
         """
-        if name in self.__class__.fields:
+        # If setting a oneof directly, remove any oneof information
+        cls = self.__class__
+        if name in cls._fields_oneofs_map:
+            self._get_which_oneof_dict().pop(name, None)
+
+        # If this is the name of a oneof field, set the oneof itself
+        if oneof_name := cls._fields_to_oneof.get(name):
+            self._get_which_oneof_dict()[oneof_name] = name
+            name = oneof_name
+
+        # If attempting to set one of the named fields or a oneof, instead set
+        # the private version of the attribute.
+        if name in cls.fields or name in cls._fields_oneofs_map:
             super().__setattr__(f"_{name}", val)
         else:
             super().__setattr__(name, val)
@@ -377,8 +466,84 @@ class DataBase(metaclass=_DataBaseMetaClass):
     @classmethod
     def from_backend(cls, backend):
         instance = cls.__new__(cls)
-        setattr(instance, "_backend", backend)
+        setattr(instance, _DataBaseMetaClass._BACKEND_ATTR, backend)
         return instance
+
+    @property
+    def backend(self) -> Optional["DataModelBackendBase"]:
+        return getattr(self, _DataBaseMetaClass._BACKEND_ATTR, None)
+
+    def which_oneof(self, oneof_name: str) -> Optional[str]:
+        """Get the name of the oneof field set for the given oneof or None if no
+        field is set
+        """
+        # If the internal dict is already set, use that information
+        which_oneof = self._get_which_oneof_dict()
+        if current_val := which_oneof.get(oneof_name):
+            return current_val
+
+        # Get the current value for the oneof and introspect which field its
+        # type matches
+        oneof_val = getattr(self, oneof_name)
+        which_field = self._infer_which_oneof(oneof_name, oneof_val)
+        if which_field is not None:
+            which_oneof[oneof_name] = which_field
+        return which_field
+
+    @classmethod
+    def _infer_which_oneof(cls, oneof_name: str, oneof_val: Any) -> Optional[str]:
+        """Check each candidate field within the oneof to see if it's a type
+        match
+
+        NOTE: In the case where fields within a oneof have the same type, the
+          first field whose type matches will be used!
+        """
+        for field_name in cls._fields_oneofs_map.get(oneof_name, []):
+            if cls._is_valid_type_for_field(field_name, oneof_val):
+                return field_name
+
+    def _get_which_oneof_dict(self) -> Dict[str, str]:
+        which_oneof = getattr(self, _DataBaseMetaClass._WHICH_ONEOF_ATTR, None)
+        if which_oneof is None:
+            super().__setattr__(_DataBaseMetaClass._WHICH_ONEOF_ATTR, {})
+            which_oneof = getattr(self, _DataBaseMetaClass._WHICH_ONEOF_ATTR)
+        return which_oneof
+
+    @classmethod
+    def _is_valid_type_for_field(cls, field_name: str, val: Any) -> bool:
+        """Check whether the given value is valid for the given field"""
+        field_descriptor = cls._proto_class.DESCRIPTOR.fields_by_name[field_name]
+
+        if val is None:
+            return False
+
+        # If it's a data object or an enum and the descriptors match, it's a
+        # good type
+        if (
+            isinstance(val, DataBase)
+            and field_descriptor.message_type == val.get_proto_class().DESCRIPTOR
+        ) or (
+            isinstance(val, Enum)
+            and field_descriptor.enum_type == val.get_proto_class().DESCRIPTOR
+        ):
+            return True
+
+        # If it's a data object or an enum and the descriptors don't match, it's
+        # a bad type
+        if field_descriptor.type in [
+            field_descriptor.TYPE_MESSAGE,
+            field_descriptor.TYPE_ENUM,
+        ]:
+            return False
+
+        # If it's a primitive, use protobuf type checkers
+        checker = proto_type_checkers.GetTypeChecker(field_descriptor)
+        try:
+            checker.CheckValue(val)
+            return True
+        except TypeError:
+            pass
+        return False
 
     @classmethod
     def from_binary_buffer(cls, buf):
@@ -407,12 +572,12 @@ class DataBase(metaclass=_DataBaseMetaClass):
             protobufs
                 A DataBase object.
         """
-        if cls.__name__ != proto.DESCRIPTOR.name:
+        if cls._proto_class.DESCRIPTOR.name != proto.DESCRIPTOR.name:
             error(
                 "<COR71783894E>",
                 ValueError(
                     "class name `{}` does not match protobufs name `{}`".format(
-                        cls.__name__, proto.DESCRIPTOR.name
+                        cls._proto_class.DESCRIPTOR.name, proto.DESCRIPTOR.name
                     )
                 ),
             )
@@ -432,8 +597,9 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 )
 
             if field in cls._fields_primitive or field in cls._fields_enum:
-                kwargs[field] = proto_attr
-
+                # special case for oneofs
+                if field not in cls._fields_to_oneof or proto.HasField(field):
+                    kwargs[field] = proto_attr
             elif (
                 field in cls._fields_primitive_repeated
                 or field in cls._fields_enum_repeated
@@ -560,9 +726,13 @@ class DataBase(metaclass=_DataBaseMetaClass):
             if attr is None:
                 continue
 
-            if field in self._fields_primitive or field in self._fields_enum:
+            if field in self._fields_primitive:
                 setattr(proto, field, attr)
-
+            elif field in self._fields_enum:
+                if isinstance(attr, Enum):
+                    setattr(proto, field, attr.value)
+                else:
+                    setattr(proto, field, attr)
             elif field in self._fields_map:
                 subproto = getattr(proto, field)
                 for key, value in attr.items():
@@ -649,7 +819,9 @@ class DataBase(metaclass=_DataBaseMetaClass):
             # if field is an enum, do the reverse lookup from int -> str
             enum_rev = self.fields_enum_rev.get(field)
             if enum_rev is not None:
-                return enum_rev[attr]
+                return (
+                    enum_rev[attr.value] if isinstance(attr, Enum) else enum_rev[attr]
+                )
 
         if field in self._fields_enum_repeated:
             # if field is an enum, do the reverse lookup from int -> str
