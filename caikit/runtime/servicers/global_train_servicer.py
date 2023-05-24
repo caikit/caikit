@@ -248,13 +248,17 @@ class GlobalTrainServicer:
 
         self.training_map[training_id] = thread_future
 
-        # Add callback to register cancellation of training
-        def cancel_future(*args, **kwargs):
+        # Add callback to register termination of training
+        def rpc_termination_callback(*args, **kwargs):
+            """Function to be called when the RPC is terminated.
+            This can happen when the training is completed or
+            when we receive a cancellation request.
+            """
             if thread_future.running() and not event.is_set():
-                response = thread_future.cancel()
+                _ = thread_future.cancel()
                 event.set()
 
-        context.add_callback(cancel_future)
+        context.add_callback(rpc_termination_callback)
 
         # if requested, block until the training completes
         if wait:

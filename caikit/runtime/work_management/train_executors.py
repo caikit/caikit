@@ -80,9 +80,6 @@ class TrainSaveExecutorBase(abc.ABC):
             ):
                 model.save(model_path)
 
-        except Exception as ex:
-            raise ex
-
         finally:
             # Indicate training is done
             event.is_completed = True
@@ -97,6 +94,10 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
         self.is_completed = False
 
     def __del__(self):
+        """
+            NOTE: This is NOT how execution should be cancelled.
+            This function is designed to make sure cleanup happens.
+        """
         self.cancel()
 
     def train_and_save_model(
@@ -217,6 +218,10 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
         self.__event = event
 
     def __del__(self):
+        """
+            NOTE: This is NOT how execution should be cancelled.
+            This function is designed to make sure cleanup happens.
+        """
         self.cancel()
 
     def train_and_save_model(self, *args, **kwargs):
