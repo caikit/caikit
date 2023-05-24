@@ -392,7 +392,6 @@ def test_dataobject_with_oneof():
     json_repr_foo = foo1.to_json()
     assert json.loads(json_repr_foo) == {
         "foo": {"data": ["hello"]},
-        "bar": None,
     }
     assert BazObj.from_json(json_repr_foo) == foo1
 
@@ -478,11 +477,13 @@ def test_dataobject_primitive_oneof_round_trips():
     proto_repr_foo = foo2.to_proto()
     assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
+    # dict round trip
+    assert foo1.to_dict() == {"foo_int": 2}
+
     # json round trip
     json_repr_foo = foo1.to_json()
     assert json.loads(json_repr_foo) == {
         "foo_int": 2,
-        "foo_float": None,
     }
     assert Foo.from_json(json_repr_foo) == foo1
 
