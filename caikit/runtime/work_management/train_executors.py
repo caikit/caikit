@@ -232,20 +232,24 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
         self._worker.join()
 
         if self._worker.is_alive():
-            # if worker is still alive then wait for it to finish or
-            # terminate
-            self.__event.wait()
-
-        if self._worker.is_alive() and self.__event.is_set():
-            # Since we are using process here, we cannot rely on
-            # checking is_complete flag to be available to check if
-            # the training was completed or cancelled. Therefore,
-            # we will check if worker is alive and event is set.
-            # This does create an edge case, were if the thread is done
-            # naturally and at the exact same time, the request is cancelled
-            # but in that case, the training is anyways already finished
-            # so that shouldn't create huge problems
-            self.cancel()
+            if self.__event.is_set():
+                # Since we are using process here, we cannot rely on
+                # checking is_complete flag to be available to check if
+                # the training was completed or cancelled. Therefore,
+                # we will check if worker is alive and event is set.
+                # This does create an edge case, were if the thread is done
+                # naturally and at the exact same time, the request is cancelled
+                # but in that case, the training is anyways already finished
+                # so that shouldn't create huge problems
+                self.cancel()
+            else:
+                # if worker is still alive then wait for it to finish or
+                # terminate
+                self.__event.wait()
+        else:
+            # worker is not alive anymore, set the event flag to mark "completion"
+            if not self.__event.is_set():
+               self.__event.set()
 
         # If an error occurred, reraise it here
         # TODO: Make sure the stack trace is preserved
