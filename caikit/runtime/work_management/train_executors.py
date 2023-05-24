@@ -95,8 +95,8 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
 
     def __del__(self):
         """
-            NOTE: This is NOT how execution should be cancelled.
-            This function is designed to make sure cleanup happens.
+        NOTE: This is NOT how execution should be cancelled.
+        This function is designed to make sure cleanup happens.
         """
         self.cancel()
 
@@ -219,8 +219,8 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
 
     def __del__(self):
         """
-            NOTE: This is NOT how execution should be cancelled.
-            This function is designed to make sure cleanup happens.
+        NOTE: This is NOT how execution should be cancelled.
+        This function is designed to make sure cleanup happens.
         """
         self.cancel()
 
