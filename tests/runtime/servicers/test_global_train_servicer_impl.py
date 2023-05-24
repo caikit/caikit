@@ -374,7 +374,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_but_not_loaded_s
     assert f"Model '{model_id}' not loaded" == context.value.message
 
 
-def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_block(
+def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_module(
     sample_train_service, sample_train_servicer
 ):
     """Test that if a module raises a ValueError, we should surface it to the user in a helpful way"""
@@ -442,7 +442,7 @@ def test_global_train_aborts_long_running_trains(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     train_request = (
-        sample_train_service.messages.BlocksSampleTaskSampleModuleTrainRequest(
+        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
             model_name="Foo Bar Training",
             batch_size=42,
             training_data=training_data,

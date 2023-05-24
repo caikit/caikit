@@ -228,7 +228,9 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
         # Assign args and kwargs to self._worker
         self._worker.set_args(*args, event=self.__event, **kwargs)
 
-        self._worker.run()
+        self._worker.start()
+        self._worker.join()
+
         self.__event.wait()
 
         if self._worker.is_alive() and self.__event.is_set():
@@ -241,6 +243,9 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             # but in that case, the training is anyways already finished
             # so that shouldn't create huge problems
             self.cancel()
+        elif not self._worker.is_alive():
+            # worker is not alive thus set the event to signal completion
+            self.__event.set()
 
         # If an error occurred, reraise it here
         # TODO: Make sure the stack trace is preserved
