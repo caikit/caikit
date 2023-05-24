@@ -17,7 +17,6 @@ from typing import Type
 import abc
 import multiprocessing
 import os
-import threading
 import traceback
 
 # Third Party
@@ -46,8 +45,6 @@ OOM_EXIT_CODE = 137
 # executors, so ThreadPoolExecutors and ProcessPoolExecutors, but
 # ProcessPoolExecutor doesn't support `fork` start method
 class TrainSaveExecutorBase(abc.ABC):
-    def __init__(self, event) -> None:
-        self.__event = event
 
     @abc.abstractmethod
     def train_and_save_model(self, *args, **kwargs):
@@ -100,6 +97,7 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
         """
         self.cancel()
 
+    # pylint: disable=arguments-differ
     def train_and_save_model(
         self,
         module_class: Type[ModuleBase],
@@ -214,6 +212,8 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             target=TrainSaveExecutorBase.train_and_save,
         )
 
+        # Following is left there for future yse
+        # pylint: disable=unused-private-member
         self.__proc_id = self._worker.pid
         self.__event = event
 
@@ -276,5 +276,5 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
 
         raise CaikitRuntimeException(
             StatusCode.CANCELLED,
-            f"Training request terminated",
+            "Training request terminated",
         )

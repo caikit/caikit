@@ -175,7 +175,7 @@ class GlobalTrainServicer:
                 "error_id": err.id,
             }
             log.warning({**log_dict, **e.metadata})
-            raise e
+            raise err
 
         # Duplicate code in global_predict_servicer
         # pylint: disable=duplicate-code
@@ -249,7 +249,7 @@ class GlobalTrainServicer:
         self.training_map[training_id] = thread_future
 
         # Add callback to register termination of training
-        def rpc_termination_callback(*args, **kwargs):
+        def rpc_termination_callback(*_args, **_kwargs):
             """Function to be called when the RPC is terminated.
             This can happen when the training is completed or
             when we receive a cancellation request.
