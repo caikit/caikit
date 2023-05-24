@@ -167,3 +167,19 @@ def test_task_validation_throws_on_wrong_parameter_type():
         class Stuff(caikit.core.ModuleBase):
             def run(self, foo: str) -> SampleOutputType:
                 pass
+
+
+def test_task_validation_passes_when_module_has_correct_run_signature():
+    @task(
+        required_parameters={"foo": int},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+    )
+    class SomeModule(caikit.core.ModuleBase):
+        def run(self, foo: int, bar: str) -> SampleOutputType:
+            pass
