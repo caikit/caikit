@@ -29,7 +29,7 @@ import alog
 
 # Local
 from caikit.runtime.model_management.batcher import Batcher
-from sample_lib.data_model import SampleOutputType, SampleTask
+from sample_lib.data_model import SampleOutputType
 import caikit.core
 
 ## Helpers #####################################################################
@@ -48,7 +48,7 @@ DUMMY_MODEL = os.path.realpath(
 
 
 @caikit.core.module(
-    "7464f684-58e3-4e99-9a58-1c5bc085472b", "slow sample module", "0.0.1", SampleTask
+    "7464f684-58e3-4e99-9a58-1c5bc085472b", "slow sample module", "0.0.1"
 )
 class SlowSampleModule(caikit.core.ModuleBase):
     """This module is just a wrapper around another module that will inject a
@@ -76,7 +76,6 @@ class SlowSampleModule(caikit.core.ModuleBase):
     "19b126aa-b55b-4349-94f1-d676f3e12c9b",
     "Really silly bunch of bobs!",
     "0.0.1",
-    SampleTask,
 )
 class StubModule(caikit.core.ModuleBase):
     # NOTE: The initial implementation had "num_bobs" which expected an int.

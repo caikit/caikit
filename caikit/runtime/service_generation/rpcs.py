@@ -31,10 +31,7 @@ import alog
 # Local
 from . import primitives, type_helpers
 from .compatibility_checker import ApiFieldNames
-from .signature_parsing.module_signature import (
-    CaikitCoreModuleMethodSignature,
-    CustomSignature,
-)
+from .data_stream_source import make_data_stream_source
 from caikit.core import ModuleBase
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import (
@@ -42,8 +39,8 @@ from caikit.core.data_model.dataobject import (
     _DataObjectBaseMetaClass,
     dataobject,
 )
+from caikit.core.signature_parsing import CaikitMethodSignature, CustomSignature
 from caikit.interfaces.runtime.data_model import ModelPointer, TrainingJob
-from caikit.runtime.service_generation.data_stream_source import make_data_stream_source
 
 log = alog.use_channel("RPC-SERIALIZERS")
 
@@ -115,13 +112,13 @@ class ModuleClassTrainRPC(CaikitRPCBase):
 
     def __init__(
         self,
-        method_signature: CaikitCoreModuleMethodSignature,
+        method_signature: CaikitMethodSignature,
         primitive_data_model_types: List[str],
     ):
         """Initialize a .proto generator with a single module to convert
 
         Args:
-            method_signature (CaikitCoreModuleMethodSignature): The module method signature to
+            method_signature (CaikitMethodSignature): The module method signature to
             generate an RPC for
 
             primitive_data_model_types: List[str]
@@ -181,7 +178,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
     @staticmethod
     def _mutate_method_signature_for_training(
         signature, primitive_data_model_types: List[str]
-    ) -> Optional[CaikitCoreModuleMethodSignature]:
+    ) -> Optional[CaikitMethodSignature]:
         # Change return type for async training interface
         return_type = TrainingJob
 
@@ -219,7 +216,7 @@ class TaskPredictRPC(CaikitRPCBase):
     def __init__(
         self,
         task: Tuple[str, str],
-        method_signatures: List[CaikitCoreModuleMethodSignature],
+        method_signatures: List[CaikitMethodSignature],
         primitive_data_model_types: List[str],
     ):
         """Initialize a .proto generator with all modules of a given task to convert
@@ -228,7 +225,7 @@ class TaskPredictRPC(CaikitRPCBase):
             task (Tuple[str, str]): The library / ai-problem-task combo that describes the task
                 type. For example: ("my_caikit_library", "classification")
 
-            method_signatures (List[CaikitCoreModuleMethodSignature]): The list of method
+            method_signatures (List[CaikitMethodSignature]): The list of method
                 signatures from concrete modules implementing this task
 
             primitive_data_model_types: List[str]

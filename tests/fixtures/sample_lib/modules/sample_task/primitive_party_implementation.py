@@ -5,14 +5,12 @@ A module meant to flex a bit of the protobufs primitive support
 from typing import List
 
 # Local
-from ...data_model.sample import SampleOutputType, SampleTask
+from ...data_model.sample import SampleOutputType
 from caikit.core.modules import ModuleSaver
 import caikit.core
 
 
-@caikit.core.module(
-    "00112233-0405-0607-0809-0a0b02dd0e0f", "SampleModule", "0.0.1", SampleTask
-)
+@caikit.core.module("00112233-0405-0607-0809-0a0b02dd0e0f", "SampleModule", "0.0.1")
 class SamplePrimitiveModule(caikit.core.ModuleBase):
     def __init__(self):
         super().__init__()

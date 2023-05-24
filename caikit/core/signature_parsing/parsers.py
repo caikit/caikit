@@ -22,10 +22,9 @@ import inspect
 import alog
 
 # Local
+from ..data_model.base import DataBase
+from ..modules import ModuleBase
 from . import docstrings
-from caikit.core import ModuleBase
-from caikit.core.data_model.base import DataBase
-from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("SIG-PARSING")
 
@@ -60,11 +59,7 @@ def get_output_type_name(
             return fn_signature.return_annotation
 
     # Check the docstring
-    type_from_docstring = None
-    try:
-        type_from_docstring = docstrings.get_return_type(fn)
-    except CaikitRuntimeException:
-        log.warning("Failed to parse the docstring for %s", fn)
+    type_from_docstring = docstrings.get_return_type(fn)
 
     if type_from_docstring:
         return type_from_docstring
@@ -138,14 +133,15 @@ def _get_argument_type(
     if dm_type_from_known_arg_types:
         # Not checking if this is optional: These known types should never be optional (maybe...?)
         # This could totally be incorrect!
+        log.info(
+            "Using well known type %s for parameter name %s",
+            dm_type_from_known_arg_types,
+            arg.name,
+        )
         return dm_type_from_known_arg_types
 
     # Check docstring for optional arg
-    optional_arg = False
-    try:
-        optional_arg = docstrings.is_optional(module_method, arg.name)
-    except CaikitRuntimeException:
-        log.warning("Failed to parse the docstring for %s", module_method)
+    optional_arg = docstrings.is_optional(module_method, arg.name)
 
     # Look for a type annotation
     if arg.annotation != inspect.Parameter.empty:
@@ -162,11 +158,7 @@ def _get_argument_type(
         return default_type
 
     # Parse docstring
-    type_from_docstring = None
-    try:
-        type_from_docstring = docstrings.get_arg_type(module_method, arg.name)
-    except CaikitRuntimeException:
-        log.warning("Failed to parse the docstring for %s", module_method)
+    type_from_docstring = docstrings.get_arg_type(module_method, arg.name)
     if type_from_docstring:
         if optional_arg:
             return Optional[type_from_docstring]
