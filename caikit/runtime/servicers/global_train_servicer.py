@@ -255,8 +255,9 @@ class GlobalTrainServicer:
             when we receive a cancellation request.
             """
             if thread_future.running() and not event.is_set():
-                _ = thread_future.cancel()
                 event.set()
+                _ = thread_future.cancel()
+
 
         context.add_callback(rpc_termination_callback)
 
@@ -283,7 +284,6 @@ class GlobalTrainServicer:
 
             def target(*args, **kwargs):
                 runnable_executor.train_and_save_model(*args, **kwargs)
-                print("Reached here")
                 return self._load_trained_model(model_name, model_path)
 
         else:

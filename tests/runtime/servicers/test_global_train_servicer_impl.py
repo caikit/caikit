@@ -433,7 +433,6 @@ def test_global_train_returns_exit_code_with_oom(
 
 #####################################################################
 
-# NOTE: This test was commented out in the original unittest.TestCase impl - leaving as is
 def test_global_train_aborts_long_running_trains(
     sample_train_service, sample_train_servicer
 ):
@@ -450,7 +449,7 @@ def test_global_train_aborts_long_running_trains(
         )
     )
 
-    # sample_train_servicer.use_subprocess = False
+    # sample_train_servicer.use_subprocess = True
     if sample_train_servicer.use_subprocess:
         test_event = multiprocessing.Event()
     else:
