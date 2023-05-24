@@ -14,6 +14,7 @@
 
 # Standard
 from typing import Callable, Dict, List, Type, Union
+import typing
 
 # First Party
 from alog import alog
@@ -21,6 +22,7 @@ from alog import alog
 # Local
 from .data_model import DataStream
 from .data_model.base import DataBase
+from .signature_parsing import CaikitMethodSignature
 from .toolkit.errors import error_handler
 
 log = alog.use_channel("TASK_BASE")
@@ -42,9 +44,43 @@ class TaskBase:
     """
 
     @classmethod
-    def validate_run_signature(cls) -> bool:
-        # TODO: implement
-        pass
+    def validate_run_signature(cls, signature: CaikitMethodSignature) -> None:
+        if not signature.parameters:
+            raise ValueError(
+                "Task could not be validated, no .run parameters were provided"
+            )
+        if signature.return_type is None:
+            raise ValueError(
+                "Task could not be validated, no .run return type was provided"
+            )
+
+        missing_required_params = [
+            parameter_name
+            for parameter_name in cls.get_required_parameters()
+            if parameter_name not in signature.parameters
+        ]
+        if missing_required_params:
+            raise TypeError(
+                f"Required parameters {missing_required_params} not in signature for module: "
+                f"{signature.module}"
+            )
+
+        type_mismatch_errors = []
+        for parameter_name, parameter_type in cls.get_required_parameters().items():
+            signature_type = signature.parameters[parameter_name]
+            if parameter_type != signature_type:
+                if typing.get_origin(
+                    signature_type
+                ) == typing.Union and parameter_type in typing.get_args(signature_type):
+                    continue
+                type_mismatch_errors.append(
+                    f"Parameter {parameter_name} has type {signature_type} but type \
+                        {parameter_type} is required"
+                )
+        if type_mismatch_errors:
+            raise TypeError(
+                f"Wrong types provided for parameters to {signature.module}: {type_mismatch_errors}"
+            )
 
     @classmethod
     def get_required_parameters(cls) -> Dict[str, ValidInputTypes]:

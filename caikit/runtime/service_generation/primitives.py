@@ -25,9 +25,9 @@ import typing
 import alog
 
 # Local
-from .signature_parsing.module_signature import CaikitCoreModuleMethodSignature
 from .type_helpers import PROTO_TYPE_MAP
 from caikit.core.data_model.base import DataBase
+from caikit.core.signature_parsing.module_signature import CaikitMethodSignature
 
 log = alog.use_channel("MODULE_PRIMS")
 
@@ -122,7 +122,7 @@ def extract_data_model_type_from_union(arg_type: Type) -> Type:
 
 
 def is_primitive_method(
-    method: CaikitCoreModuleMethodSignature, primitive_data_model_types: List[str]
+    method: CaikitMethodSignature, primitive_data_model_types: List[str]
 ) -> bool:
     """Determine if the arguments to the module's run function meet the criteria
     for being a "primitive" interface this means that all **non-optional** arguments
@@ -130,7 +130,7 @@ def is_primitive_method(
     (b) a language-primitive type.
 
     Args:
-        method (CaikitCoreModuleMethodSignature): The method signature of the "primitive"
+        method (CaikitMethodSignature): The method signature of the "primitive"
             data model types for each library
     """
 

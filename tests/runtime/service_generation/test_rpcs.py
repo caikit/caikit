@@ -19,10 +19,8 @@ import uuid
 
 # Local
 from caikit.core import ModuleBase, TaskBase
+from caikit.core.signature_parsing import CaikitMethodSignature
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
-from caikit.runtime.service_generation.signature_parsing import (
-    CaikitCoreModuleMethodSignature,
-)
 from sample_lib.data_model import SampleOutputType, SampleTask
 import caikit.core
 
@@ -35,15 +33,15 @@ def test_task_inference_rpc_with_all_optional_params():
         pass
 
     @caikit.core.module(
-        id=str(uuid.uuid4()), name="testest", version="9.9.9", task=SampleTask
+        id=str(uuid.uuid4()), name="testest", version="9.9.9", task=TestTask
     )
     class TestModule(ModuleBase):
-        def run(self, str_val="I have a default"):
+        def run(self, str_val="I have a default") -> SampleOutputType:
             pass
 
     rpc = TaskPredictRPC(
         task=("foo", "bar"),
-        method_signatures=[CaikitCoreModuleMethodSignature(TestModule, "run")],
+        method_signatures=[CaikitMethodSignature(TestModule, "run")],
         primitive_data_model_types=[],
     )
 

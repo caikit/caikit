@@ -21,13 +21,12 @@ import tempfile
 import aconfig
 
 # Local
-from caikit.core import ModuleConfig
+from caikit.core import ModuleConfig, ModuleLoader
 from caikit.core.module_backends.module_backend_config import configured_load_backends
 from caikit.core.modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
-from caikit.core.registries import module_backend_registry
 
 # pylint: disable=import-error
-from sample_lib.data_model.sample import SampleInputType, SampleTask
+from sample_lib.data_model.sample import SampleInputType
 
 # Unit Test Infrastructure
 from tests.conftest import temp_config
@@ -61,9 +60,7 @@ def configure_alternate_backend_impl():
     """Function to register a new backend type and register a module implementation
     of existing caikit.core module"""
 
-    @caikit.core.modules.module(
-        id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1", task=SampleTask
-    )
+    @caikit.core.modules.module(id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1")
     class DummyFoo(caikit.core.ModuleBase):
         pass
 
@@ -100,9 +97,20 @@ def test_init_available():
     assert isinstance(model, caikit.core.ModuleBase)
 
 
-def test_load_not_implemented():
+def test_underscore_load_not_implemented():
     with pytest.raises(NotImplementedError):
-        caikit.core.ModuleBase.load()
+        caikit.core.ModuleBase._load(None)
+
+
+def test_load_delegates_to_underscore_load(good_model_path):
+    @caikit.core.modules.module(id="blah", name="dummy base", version="0.0.1")
+    class DummyFoo(caikit.core.ModuleBase):
+        @classmethod
+        def _load(cls, module_loader, **kwargs):
+            assert isinstance(module_loader, ModuleLoader)
+            return "foo"
+
+    assert DummyFoo.load(good_model_path) == "foo"
 
 
 def test_run_not_implemented(base_module_instance):
@@ -329,9 +337,7 @@ def test_override_load_supported_backend(reset_globals):
     """Test if the class can successfully define its own backends
     that it supports load from"""
 
-    @caikit.core.modules.module(
-        id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1", task=SampleTask
-    )
+    @caikit.core.modules.module(id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1")
     class DummyFoo(caikit.core.ModuleBase):
         pass
 
@@ -367,9 +373,7 @@ def test_base_module_in_decorator(reset_globals):
     backend_types.register_backend_type(BazBackend)
     backend_types.register_backend_type(FooBackend)
 
-    @caikit.core.modules.module(
-        id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1", task=SampleTask
-    )
+    @caikit.core.modules.module(id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1")
     class DummyLocal(caikit.core.ModuleBase):
         pass
 
