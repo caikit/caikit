@@ -37,6 +37,7 @@ import alog
 # Local
 from ..toolkit.errors import error_handler
 from . import enums, json_dict
+from .data_backends.base import OneofFieldVal
 
 log = alog.use_channel("DATAM")
 error = error_handler.get(log)
@@ -309,6 +310,11 @@ class _DataBaseMetaClass(type):
                     ),
                 )
             attr_val = backend.get_attribute(self.__class__, field)
+            if isinstance(attr_val, OneofFieldVal):
+                log.debug2("Got a OneofFieldVal from the backend")
+                assert field in self.__class__._fields_oneofs_map
+                self._get_which_oneof_dict()[field] = attr_val.which_oneof
+                attr_val = attr_val.val
 
             # If the backend says that this attribute should be cached, set it
             # as an attribute on the class
@@ -483,6 +489,13 @@ class DataBase(metaclass=_DataBaseMetaClass):
         # Get the current value for the oneof and introspect which field its
         # type matches
         oneof_val = getattr(self, oneof_name)
+
+        # Re-check in case the getattr pulled a OneofFieldVal that populated the
+        # which_oneof dict with knowledge from the backend
+        if current_val := which_oneof.get(oneof_name):
+            return current_val
+
+        # Try to figure out the field based on the type
         which_field = self._infer_which_oneof(oneof_name, oneof_val)
         if which_field is not None:
             which_oneof[oneof_name] = which_field
