@@ -114,7 +114,7 @@ class DenseMatrix(DataObjectBase):
         # an Embedding data model object from a binary buffer, because we may be calling from_proto
         # on objects where dtype wasn't yet added to the data model, and protobuf gives strings
         # the default value of empty.
-        if len(dtype) > 0:
+        if len(dtype) == 0:
             dtype = signature(self.__init__).parameters["dtype"].default
         # check that the dtype is a string representing a numpy data type
         try:
@@ -320,7 +320,7 @@ class SparseMatrix(DataObjectBase):
         # an Embedding data model object from a binary buffer, because we may be calling from_proto
         # on objects where dtype wasn't yet added to the data model, and protobuf gives strings
         # the default value of empty.
-        if len(dtype) > 0:
+        if len(dtype) == 0:
             dtype = signature(self.__init__).parameters["dtype"].default
         # check that the dtype is a string representing a numpy data type
         try:
