@@ -94,7 +94,7 @@ tox
 Running tests against a single Python version can be done with:
 
 ```sh
-tox -e 3.9
+tox -e py
 ```
 
 ### Coding style

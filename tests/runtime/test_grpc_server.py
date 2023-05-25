@@ -268,7 +268,10 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
 
     train_request = (
         sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
-            model_name="Bar Training", batch_size=100, training_data=training_data
+            model_name="Bar Training",
+            sample_inputsampleinputtype=SampleInputType(name="Gabe").to_proto(),
+            batch_size=100,
+            training_data=training_data,
         )
     )
     actual_response = train_stub.ModulesOtherTaskOtherModuleTrain(train_request)
@@ -280,7 +283,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
 
     # make sure the trained model can run inference, and the batch size 100 was used
     predict_request = sample_inference_service.messages.OtherTaskRequest(
-        sample_input=HAPPY_PATH_INPUT
+        sample_inputsampleinputtype=HAPPY_PATH_INPUT
     )
     trained_inference_response = inference_stub.OtherTaskPredict(
         predict_request, metadata=[("mm-model-id", actual_response.model_name)]

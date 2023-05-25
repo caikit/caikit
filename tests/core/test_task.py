@@ -86,3 +86,100 @@ def test_task_is_not_required_for_modules():
         pass
 
     assert Stuff.TASK_CLASS is None
+
+
+def test_task_validation_throws_on_no_params():
+    @task(
+        required_parameters={"foo": int},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    with pytest.raises(
+        ValueError,
+        match="Task could not be validated, no .run parameters were provided",
+    ):
+
+        @caikit.core.module(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class Stuff(caikit.core.ModuleBase):
+            def run(self) -> SampleOutputType:
+                pass
+
+
+def test_task_validation_throws_on_no_return_type():
+    @task(
+        required_parameters={"foo": int},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    with pytest.raises(
+        ValueError,
+        match="Task could not be validated, no .run return type was provided",
+    ):
+
+        @caikit.core.module(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class Stuff(caikit.core.ModuleBase):
+            def run(self, foo: int):
+                pass
+
+
+def test_task_validation_throws_on_missing_parameter():
+    @task(
+        required_parameters={"foo": int},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    with pytest.raises(TypeError, match="Required parameters .*foo.* not in signature"):
+
+        @caikit.core.module(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class Stuff(caikit.core.ModuleBase):
+            def run(self, bar: str) -> SampleOutputType:
+                pass
+
+
+def test_task_validation_throws_on_wrong_parameter_type():
+    @task(
+        required_parameters={"foo": int},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    with pytest.raises(
+        TypeError,
+        match="Parameter foo has type .*str.* but type .*int.* is required",
+    ):
+
+        @caikit.core.module(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class Stuff(caikit.core.ModuleBase):
+            def run(self, foo: str) -> SampleOutputType:
+                pass
+
+
+def test_task_validation_passes_when_module_has_correct_run_signature():
+    @task(
+        required_parameters={"foo": int},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+    )
+    class SomeModule(caikit.core.ModuleBase):
+        def run(self, foo: int, bar: str) -> SampleOutputType:
+            pass

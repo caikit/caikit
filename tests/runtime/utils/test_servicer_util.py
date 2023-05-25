@@ -428,7 +428,10 @@ def test_global_train_build_caikit_library_request_dict_ok_with_DataStreamSource
 
     train_request = (
         sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
-            model_name="Bar Training", batch_size=100, training_data=training_data
+            model_name="Bar Training",
+            sample_inputsampleinputtype=SampleInputType(name="Gabe").to_proto(),
+            batch_size=100,
+            training_data=training_data,
         )
     )
     caikit.core_request = build_caikit_library_request_dict(

@@ -28,8 +28,8 @@ from ... import get_config
 from .core_module_helpers import get_module_info
 from .primitives import is_primitive_method
 from .rpcs import CaikitRPCBase, ModuleClassTrainRPC, TaskPredictRPC
-from .signature_parsing.module_signature import CaikitCoreModuleMethodSignature
 from caikit.core import ModuleBase
+from caikit.core.signature_parsing.module_signature import CaikitMethodSignature
 
 log = alog.use_channel("CREATE-RPCS")
 
@@ -94,7 +94,7 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
             )
             continue
 
-        signature = CaikitCoreModuleMethodSignature(ck_module, TRAIN_FUNCTION_NAME)
+        signature = CaikitMethodSignature(ck_module, TRAIN_FUNCTION_NAME)
         log.debug(
             "Function signature for %s::%s [%s -> %s]",
             ck_module,
@@ -123,7 +123,7 @@ def _remove_non_primitive_modules(
     primitive_modules = []
     # If the module is not "primitive" we won't include it
     for ck_module in modules:
-        signature = CaikitCoreModuleMethodSignature(ck_module, "run")
+        signature = CaikitMethodSignature(ck_module, "run")
         if signature.parameters and signature.return_type:
             if not is_primitive_method(signature, primitive_data_model_types):
                 log.debug("Skipping non-primitive module %s", ck_module)
@@ -144,7 +144,7 @@ def _create_rpcs_for_modules(
 
     for ck_module in modules:
         module_info = get_module_info(ck_module)
-        signature = CaikitCoreModuleMethodSignature(ck_module, fname)
+        signature = CaikitMethodSignature(ck_module, fname)
         # Group each module by its task
         if module_info is not None:
             task_groups.setdefault((module_info.library, module_info.type), []).append(
