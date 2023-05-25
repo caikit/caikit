@@ -67,6 +67,11 @@ class TestCaseBase(unittest.TestCase):
             file_contents = file_handle.read()
         self.assertEqual(str(obj), file_contents)
 
+    def validate_fields(self, obj):
+        """Validate that the data model object, obj, has set all fields
+        listed in obj.fields, which correspond to the protobuf fields.
+        """
+        return all((hasattr(obj, field) for field in obj.fields))
 
 def skip_in_wheel_test(cls):
     """In some cases (scripts, model evaluation), the code may not be shipped as part of the

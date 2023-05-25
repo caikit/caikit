@@ -23,7 +23,6 @@ import alog
 # Local
 from ....core.data_model import DataObjectBase, dataobject
 from ...common.data_model import ProducerId
-from . import enums
 
 log = alog.use_channel("DATAM")
 
@@ -221,7 +220,7 @@ class LangCode(Enum):
     LANG_ZH_TW = 7868
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class LangDetectPrediction(DataObjectBase):
     """****************************************************************************
     This file houses common data-structure related to lang detect"""
@@ -235,7 +234,7 @@ class LangDetectPrediction(DataObjectBase):
         """Constructor to instantiate a new object
 
         Args:
-            lang_code: dm.enums.LangCode
+            lang_code: dm.LangCode
             producer_id: ProducerId
         """
         self.lang_code = lang_code
@@ -243,10 +242,10 @@ class LangDetectPrediction(DataObjectBase):
 
     def to_string(self):
         """Utility function to convert lang-code to a lang-code string"""
-        return enums.LangCodeRev[self.lang_code]
+        return LangCode(self.lang_code).name
 
     def to_iso_format(self):
         """Utility function to convert lang-code to ISO 639-1
         formatted lang-code string
         """
-        return enums.LangCodeRev[self.lang_code].split("_")[1]
+        return self.to_string().split("_")[1]

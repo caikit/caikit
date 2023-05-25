@@ -33,7 +33,7 @@ log = alog.use_channel("DATAM")
 error = error_handler.get(log)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class TopicPhrase(DataObjectBase):
     text: Annotated[str, FieldNumber(1)]
     distance: Annotated[float, FieldNumber(2)]
@@ -60,7 +60,7 @@ class TopicPhrase(DataObjectBase):
         self.distance = distance
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class Topic(DataObjectBase):
     name: Annotated[str, FieldNumber(1)]
     score: Annotated[float, FieldNumber(2)]
@@ -117,7 +117,7 @@ class Topic(DataObjectBase):
         self.producer_id = producer_id
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class TopicsPrediction(DataObjectBase):
     topics: Annotated[List[Topic], FieldNumber(1)]
 

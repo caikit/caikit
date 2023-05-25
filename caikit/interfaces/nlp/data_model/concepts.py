@@ -31,7 +31,7 @@ log = alog.use_channel("DATAM")
 error = error_handler.get(log)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class Concept(DataObjectBase):
     """A single concept."""
 
@@ -84,7 +84,7 @@ class Concept(DataObjectBase):
         return self.relevance < other.relevance
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class ConceptsPrediction(DataObjectBase):
     """A concepts prediction generated from a document and consisting multiple concepts."""
 

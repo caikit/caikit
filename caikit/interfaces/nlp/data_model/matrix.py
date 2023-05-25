@@ -68,7 +68,7 @@ def _stack_vectors(mat_iter, stack_func, allow_matrices):
     return stack_func(data_arrs)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class DenseMatrix(DataObjectBase):
     data: Annotated[List[float], FieldNumber(1)]
     rows: Annotated[np.uint32, FieldNumber(2)]
@@ -247,7 +247,7 @@ class DenseMatrix(DataObjectBase):
         return _stack_vectors(mat_list, stack_func, allow_matrices)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class SparseMatrix(DataObjectBase):
     data: Annotated[List[float], FieldNumber(1)]
     indices: Annotated[List[np.uint32], FieldNumber(2)]

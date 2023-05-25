@@ -34,7 +34,7 @@ log = alog.use_channel("DATAM")
 error = error_handler.get(log)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class Vectorization(DataObjectBase):
     data: Annotated[matrix.SparseMatrix, FieldNumber(1)]
     vocab_to_idx: Annotated[Dict[str, int], FieldNumber(2)]
@@ -180,7 +180,7 @@ class Vectorization(DataObjectBase):
         return [key for (key, _) in sorted_kv_pairs]
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class VectorizationPrediction(DataObjectBase):
     data: Annotated[matrix.SparseMatrix, FieldNumber(1)]
     producer_id: Annotated[ProducerId, FieldNumber(2)]

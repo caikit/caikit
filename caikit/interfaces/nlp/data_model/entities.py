@@ -33,7 +33,7 @@ from . import syntax, text_primitives
 log = alog.use_channel("DATAM")
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class EntityMentionType(Enum):
     """
     Enum for mention type.
@@ -46,7 +46,7 @@ class EntityMentionType(Enum):
     MENTT_NONE = 4
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class EntityMentionClass(Enum):
     """
     Enum for mention class.
@@ -61,7 +61,7 @@ class EntityMentionClass(Enum):
 error = error_handler.get(log)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class EntityMention(DataObjectBase):
     """Representation of an entity mention with an extracted type and a confidence score."""
 
@@ -260,7 +260,7 @@ class EntityMention(DataObjectBase):
         return True
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class EntityMentionsPrediction(DataObjectBase):
     """An entity mentions prediction generated from a document and consisting of multiple entity mentions."""
 
@@ -364,7 +364,7 @@ class EntityMentionsPrediction(DataObjectBase):
         return EntityMentionsPrediction(resolved_mentions)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class EntityDisambiguation(DataObjectBase):
     """Entity disambiguation links an entity to external or additional resources."""
 
@@ -399,7 +399,7 @@ class EntityDisambiguation(DataObjectBase):
         self.dbpedia_resource = "" if dbpedia_resource is None else dbpedia_resource
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class Entity(DataObjectBase):
     """Message representing a merged entity aggregated from one or more mentions.
 
@@ -468,7 +468,7 @@ class Entity(DataObjectBase):
         self.disambiguation = disambiguation
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class EntitiesPrediction(DataObjectBase):
     """An entities prediction generated from a document and consisting of multiple entities."""
 
@@ -525,7 +525,7 @@ class EntitiesPrediction(DataObjectBase):
         ]
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class EntityMentionAnnotation(DataObjectBase):
     """An Entity Mention Annotation consisting of text, type and span of mention."""
 
@@ -560,7 +560,7 @@ class EntityMentionAnnotation(DataObjectBase):
         )
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class EntityMentionsTrainRecord(DataObjectBase):
     """A train record consisting of raw text and entity mentions."""
 

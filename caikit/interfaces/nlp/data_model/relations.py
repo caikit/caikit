@@ -30,7 +30,7 @@ log = alog.use_channel("DATAM")
 error = error_handler.get(log)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class RelationMention(DataObjectBase):
     """Representation of a relationship mention."""
 
@@ -112,7 +112,7 @@ class RelationMention(DataObjectBase):
         )
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class RelationMentionsPrediction(DataObjectBase):
     """Representation of a list of relationship mentions."""
 
@@ -167,7 +167,7 @@ class RelationMentionsPrediction(DataObjectBase):
         ]
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class Relation(DataObjectBase):
     """Representation of a relation between entities.
     Entity representation with RelationMention is subject to change with a possible EntityPrediction"""
@@ -222,7 +222,7 @@ class Relation(DataObjectBase):
         self.confidence = confidence
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class RelationsPrediction(DataObjectBase):
     """Representation of a list of relations between entities."""
 

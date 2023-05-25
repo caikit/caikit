@@ -31,7 +31,7 @@ log = alog.use_channel("DATAM")
 error = error_handler.get(log)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class Span(DataObjectBase):
     """Span within a given body of text represented as start and end.
     This is the fundamental data structure for representing a region of text.
@@ -196,7 +196,7 @@ class Span(DataObjectBase):
         return self.begin < other.end and other.begin < self.end
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class NGram(DataObjectBase):
     texts: Annotated[List[str], FieldNumber(1)]
     relevance: Annotated[float, FieldNumber(2)]

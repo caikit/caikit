@@ -1,13 +1,18 @@
-# *****************************************************************#
-# (C) Copyright IBM Corporation 2020.                             #
-#                                                                 #
-# The source code for this program is not published or otherwise  #
-# divested of its trade secrets, irrespective of what has been    #
-# deposited with the U.S. Copyright Office.                       #
-# *****************************************************************#
+# Copyright The Caikit Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # Local
-from . import utils
 from caikit.interfaces.nlp import data_model as dm
 
 # Unit Test Infrastructure
@@ -18,13 +23,13 @@ class TestSentiment(TestCaseBase):
     def setUp(self):
         self.sentiment = dm.Sentiment(
             score=0.89,
-            label=dm.enums.SentimentLabel.SENT_POSITIVE,
+            label=dm.SentimentLabel.SENT_POSITIVE.value,
             mixed=False,
             target="unit tests",
         )
 
         self.sentiment_minimal = dm.Sentiment(
-            score=0.67, label=dm.enums.SentimentLabel.SENT_NEUTRAL
+            score=0.67, label=dm.SentimentLabel.SENT_NEUTRAL.value
         )
 
         self.sentiment_prob = dm.SentimentProb(positive=0.4, neutral=0.2, negative=0.4)
@@ -36,17 +41,17 @@ class TestSentiment(TestCaseBase):
 
         self.aggregated_sentiment = dm.AggregatedSentiment(
             score=0.67,
-            label=dm.enums.SentimentLabel.SENT_NEUTRAL,
+            label=dm.SentimentLabel.SENT_NEUTRAL.value,
             mixed=False,
             sentiment_mentions=[self.sentiment_mention],
         )
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.sentiment))
-        self.assertTrue(utils.validate_fields(self.sentiment_minimal))
-        self.assertTrue(utils.validate_fields(self.sentiment_prob))
-        self.assertTrue(utils.validate_fields(self.sentiment_mention))
-        self.assertTrue(utils.validate_fields(self.aggregated_sentiment))
+        self.assertTrue(self.validate_fields(self.sentiment))
+        self.assertTrue(self.validate_fields(self.sentiment_minimal))
+        self.assertTrue(self.validate_fields(self.sentiment_prob))
+        self.assertTrue(self.validate_fields(self.sentiment_mention))
+        self.assertTrue(self.validate_fields(self.aggregated_sentiment))
 
     def test_from_proto_and_back_Sentiment(self):
         new = dm.Sentiment.from_proto(self.sentiment.to_proto())
@@ -157,21 +162,21 @@ class TestSentimentPrediction(TestCaseBase):
 
         sentiment_doc = dm.AggregatedSentiment(
             score=0.67,
-            label=dm.enums.SentimentLabel.SENT_NEUTRAL,
+            label=dm.SentimentLabel.SENT_NEUTRAL.value,
             mixed=False,
             sentiment_mentions=[sentiment_mention],
         )
 
         sentiment_targ1 = dm.AggregatedSentiment(
             score=-0.50,
-            label=dm.enums.SentimentLabel.SENT_NEGATIVE,
+            label=dm.SentimentLabel.SENT_NEGATIVE.value,
             mixed=False,
             sentiment_mentions=[sentiment_mention],
         )
 
         sentiment_targ2 = dm.AggregatedSentiment(
             score=0.00,
-            label=dm.enums.SentimentLabel.SENT_NEUTRAL,
+            label=dm.SentimentLabel.SENT_NEUTRAL.value,
             mixed=False,
             sentiment_mentions=[sentiment_mention],
         )
@@ -188,7 +193,7 @@ class TestSentimentPrediction(TestCaseBase):
         )
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.SentimentPrediction))
+        self.assertTrue(self.validate_fields(self.SentimentPrediction))
 
     def test_from_proto_and_back_TargetsSentimentPrediction(self):
         new = dm.TargetsSentimentPrediction.from_proto(

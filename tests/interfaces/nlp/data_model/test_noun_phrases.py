@@ -1,13 +1,16 @@
-# *****************************************************************#
-# (C) Copyright IBM Corporation 2020.                             #
-#                                                                 #
-# The source code for this program is not published or otherwise  #
-# divested of its trade secrets, irrespective of what has been    #
-# deposited with the U.S. Copyright Office.                       #
-# *****************************************************************#
-
-# Third Party
-import utils
+# Copyright The Caikit Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # Local
 from caikit.interfaces.nlp import data_model as dm
@@ -22,8 +25,8 @@ class TestNounPhrase(TestCaseBase):
         self.noun_phrase_minimal = dm.NounPhrase((0, 20))
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.noun_phrase))
-        self.assertTrue(utils.validate_fields(self.noun_phrase_minimal))
+        self.assertTrue(self.validate_fields(self.noun_phrase))
+        self.assertTrue(self.validate_fields(self.noun_phrase_minimal))
 
     def test_from_proto_and_back(self):
         new = dm.NounPhrase.from_proto(self.noun_phrase.to_proto())

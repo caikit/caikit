@@ -1,14 +1,17 @@
-# *****************************************************************#
-# (C) Copyright IBM Corporation 2020.                             #
-#                                                                 #
-# The source code for this program is not published or otherwise  #
-# divested of its trade secrets, irrespective of what has been    #
-# deposited with the U.S. Copyright Office.                       #
-# *****************************************************************#
+# Copyright The Caikit Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-# Third Party
-import numpy as np
-import utils
 
 # Local
 from caikit.interfaces.nlp import data_model as dm
@@ -24,7 +27,7 @@ class TestEmotion(TestCaseBase):
         )
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.emotion))
+        self.assertTrue(self.validate_fields(self.emotion))
 
     def test_from_proto_and_back(self):
         new = dm.Emotion.from_proto(self.emotion.to_proto())
@@ -53,7 +56,7 @@ class TestEmotionMention(TestCaseBase):
         )
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.emotion_mention))
+        self.assertTrue(self.validate_fields(self.emotion_mention))
 
     def test_from_proto_and_back(self):
         new = dm.EmotionMention.from_proto(self.emotion_mention.to_proto())
@@ -108,7 +111,7 @@ class TestAggregatedEmotionPrediction(TestCaseBase):
         )
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.emotion_prediction))
+        self.assertTrue(self.validate_fields(self.emotion_prediction))
 
     def test_from_proto_and_back(self):
         new = dm.AggregatedEmotionPrediction.from_proto(
@@ -185,7 +188,7 @@ class TestEmotionPrediction(TestCaseBase):
         )
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.agg_emotion))
+        self.assertTrue(self.validate_fields(self.agg_emotion))
 
     def test_from_proto_and_back(self):
         new = dm.EmotionPrediction.from_proto(self.agg_emotion.to_proto())

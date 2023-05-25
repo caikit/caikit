@@ -37,7 +37,7 @@ from . import text_primitives
 log = alog.use_channel("DATAM")
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class PartOfSpeech(Enum):
     """
     Enum for the Universal POS tag set.
@@ -64,7 +64,7 @@ class PartOfSpeech(Enum):
     POS_X = 17
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class DependencyRelation(Enum):
     """
     Enum for the Universal Dependency Relation tag set.
@@ -140,7 +140,7 @@ class DependencyRelation(Enum):
     DEP_OBL_TMOD = 63
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class SyntaxParser(Enum):
     """
     Syntax analysis parsers that can be invoked.
@@ -157,7 +157,7 @@ class SyntaxParser(Enum):
 error = error_handler.get(log)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class Dependency(DataObjectBase):
     """Structure containing information needed for a dependency parse between tokens
     within a single document."""
@@ -208,7 +208,7 @@ class Dependency(DataObjectBase):
         return proto
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class Token(DataObjectBase):
     """Representation of a token and associated annotations."""
 
@@ -312,7 +312,7 @@ class Token(DataObjectBase):
         return len(self.span)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class Sentence(DataObjectBase):
     """Representation of a sentence and associated annotations."""
 
@@ -358,7 +358,7 @@ class Sentence(DataObjectBase):
         return self.span.text
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class Paragraph(DataObjectBase):
     """Representation of a paragraph and any associated annotations."""
 
@@ -404,7 +404,7 @@ class Paragraph(DataObjectBase):
         return self.span.text
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class RawDocument(DataObjectBase):
     """Representation of a raw (unprocessed) document."""
 
@@ -459,12 +459,12 @@ class RawDocument(DataObjectBase):
     from_file = load_txt
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class HTMLTagSpansList(DataObjectBase):
     span_list: Annotated[List[text_primitives.Span], FieldNumber(1)]
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class DetagPrediction(DataObjectBase):
     """HTML document representation"""
 
@@ -641,7 +641,7 @@ class DetagPrediction(DataObjectBase):
                         )
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class SyntaxParserSpec(DataObjectBase):
     parsers: Annotated[List[SyntaxParser], FieldNumber(1)]
 
@@ -703,7 +703,7 @@ class SyntaxParserSpec(DataObjectBase):
         return [self.izumo_map_rev[parser] for parser in self.parsers]
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class SyntaxPrediction(DataObjectBase):
     """Representation of a document that has had syntax analysis applied
     potentially including tokenization, sentence splitting NP chunking,

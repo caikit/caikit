@@ -31,7 +31,7 @@ log = alog.use_channel("DATAM")
 error = error_handler.get(log)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class SentimentLabel(Enum):
     """
     The full set of labels that can be applied as a top-level sentiment classification.
@@ -43,7 +43,7 @@ class SentimentLabel(Enum):
     SENT_POSITIVE = 3
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class Sentiment(DataObjectBase):
     """The full sentiment result expressed in a given context (document or target)"""
 
@@ -61,7 +61,7 @@ class Sentiment(DataObjectBase):
             score:  float
                 The sentiment score in the range of [-1, 1].  A negative value indicates negative
                 sentiment and a positive value indicates positive sentiment.
-            label:  int (enums.SentimentLabel)
+            label:  int (SentimentLabel)
                 The enum label for this sentiment, e.g., `SENT_UNSET`, `SENT_POSITIVE`,
                 `SENT_NEGATIVE` or `SENT_NEUTRAL`.
             mixed:  bool
@@ -75,7 +75,7 @@ class Sentiment(DataObjectBase):
             -1.0 <= score <= 1.0,
             "`score` of `{}` is not between -1 and 1".format(score),
         )
-        error.type_check("<NLP84706804E>", SentimentLabel, label=label)
+        error.type_check("<NLP84706804E>", int, label=label)
         error.type_check("<NLP76211808E>", bool, mixed=mixed)
         error.type_check("<NLP26615773E>", str, target=target)
 
@@ -86,7 +86,7 @@ class Sentiment(DataObjectBase):
         self.target = target
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class AtomicSentiment(DataObjectBase):
     """An individual, atomic sentiment mention over a given region of the input (could be a sentence, a paragraph, a section of text within a sentence, etc.)"""
 
@@ -105,7 +105,7 @@ class AtomicSentiment(DataObjectBase):
                 The sentiment score in the range of [-1, 1].  A negative value
                 indicates negative sentiment and a positive value indicates
                 positive sentiment.
-            label:  int (enums.SentimentLabel)
+            label:  int (SentimentLabel)
                 The enum label for this sentiment, e.g., SENT_UNSET, SENT_POSITIVE,
                 SENT_NEGATIVE, SENT_NEUTRAL.
         """
@@ -123,7 +123,7 @@ class AtomicSentiment(DataObjectBase):
         self.label = label
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class AggregateSentimentPrediction(DataObjectBase):
     """A aggregate sentiment prediction for a number of atomic sentiments within the document."""
 
@@ -137,10 +137,10 @@ class AggregateSentimentPrediction(DataObjectBase):
     """A sentiment prediction for either a document or a target."""
 
     label_dict = {
-        enums.SentimentLabel["SENT_UNSET"]: "Unset",
-        enums.SentimentLabel["SENT_NEGATIVE"]: "Negative",
-        enums.SentimentLabel["SENT_NEUTRAL"]: "Neutral",
-        enums.SentimentLabel["SENT_POSITIVE"]: "Positive",
+        SentimentLabel(SentimentLabel.SENT_UNSET.value): "Unset",
+        SentimentLabel(SentimentLabel.SENT_NEGATIVE.value): "Negative",
+        SentimentLabel(SentimentLabel.SENT_NEUTRAL.value): "Neutral",
+        SentimentLabel(SentimentLabel.SENT_POSITIVE.value): "Positive",
     }
 
     def __init__(
@@ -159,7 +159,7 @@ class AggregateSentimentPrediction(DataObjectBase):
                 The sentiment score in the range of [-1, 1].  A negative value
                 indicates negative sentiment and a positive value indicates
                 positive sentiment.
-            label:  int (enums.SentimentLabel)
+            label:  int (SentimentLabel)
                 Overall (aggregated) label
                 The enum label for this sentiment, e.g., SENT_UNSET, SENT_POSITIVE,
                 SENT_NEGATIVE, SENT_NEUTRAL.
@@ -233,7 +233,7 @@ class AggregateSentimentPrediction(DataObjectBase):
         ]
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class SentimentProb(DataObjectBase):
     """An individual, "atomic" sentiment mention over a given region of the input (could be a sentence, a paragraph, a section of text within a sentence, etc.)"""
 
@@ -285,7 +285,7 @@ class SentimentProb(DataObjectBase):
         self.negative = negative
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class SentimentMention(DataObjectBase):
     span: Annotated[text_primitives.Span, FieldNumber(1)]
     sentimentprob: Annotated[SentimentProb, FieldNumber(2)]
@@ -311,7 +311,7 @@ class SentimentMention(DataObjectBase):
         self.sentimentprob = sentimentprob
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class AggregatedSentiment(DataObjectBase):
     """A sentiment prediction for a number of atomic sentiments within the document."""
 
@@ -353,7 +353,7 @@ class AggregatedSentiment(DataObjectBase):
             -1.0 <= score <= 1.0,
             "`score` of `{}` is not between -1 and 1".format(score),
         )
-        error.type_check("<NLP38599343E>", SentimentLabel, label=label)
+        error.type_check("<NLP38599343E>", int, label=label)
         error.type_check("<NLP83382639E>", bool, mixed=mixed)
 
         error.type_check_all(
@@ -372,7 +372,7 @@ class AggregatedSentiment(DataObjectBase):
         )
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class TargetsSentimentPrediction(DataObjectBase):
     targeted_sentiments: Annotated[Dict[str, AggregatedSentiment], FieldNumber(1)]
     producer_id: Annotated[ProducerId, FieldNumber(2)]
@@ -406,7 +406,7 @@ class TargetsSentimentPrediction(DataObjectBase):
         self.producer_id = producer_id
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class SentimentPrediction(DataObjectBase):
     """The return type for all `sentiment` blocks
 
@@ -419,10 +419,10 @@ class SentimentPrediction(DataObjectBase):
     """A sentiment prediction for either a document or a target."""
 
     label_dict = {
-        enums.SentimentLabel["SENT_UNSET"]: "Unset",
-        enums.SentimentLabel["SENT_NEGATIVE"]: "Negative",
-        enums.SentimentLabel["SENT_NEUTRAL"]: "Neutral",
-        enums.SentimentLabel["SENT_POSITIVE"]: "Positive",
+        SentimentLabel(SentimentLabel.SENT_UNSET.value): "Unset",
+        SentimentLabel(SentimentLabel.SENT_NEGATIVE.value): "Negative",
+        SentimentLabel(SentimentLabel.SENT_NEUTRAL.value): "Neutral",
+        SentimentLabel(SentimentLabel.SENT_POSITIVE.value): "Positive",
     }
 
     def __init__(self, document_sentiment, targeted_sentiments, producer_id):

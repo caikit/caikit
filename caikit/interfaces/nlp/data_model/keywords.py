@@ -33,7 +33,7 @@ log = alog.use_channel("DATAM")
 error = error_handler.get(log)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class Keyword(DataObjectBase):
     """A single keyword extraction from a document"""
 
@@ -132,7 +132,7 @@ class Keyword(DataObjectBase):
         return self.relevance < other.relevance
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class KeywordsPrediction(DataObjectBase):
     """The full set of keywords extracted for a document"""
 

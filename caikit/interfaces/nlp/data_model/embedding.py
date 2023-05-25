@@ -33,7 +33,7 @@ log = alog.use_channel("DATAM")
 error = error_handler.get(log)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class Embedding(DataObjectBase):
     """An Embedding object, acts as a lookup table, usually mapping
     the vocabulary to vectors. Note that the `data` property on Embedding/EmbeddingPrediction is a
@@ -206,7 +206,7 @@ class Embedding(DataObjectBase):
         return [key for (key, _) in sorted_kv_pairs]
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class EmbeddingPrediction(DataObjectBase):
     data: Annotated[matrix.DenseMatrix, FieldNumber(1)]
     offsets: Annotated[List[np.uint32], FieldNumber(2)]

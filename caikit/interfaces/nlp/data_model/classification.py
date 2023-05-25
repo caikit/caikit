@@ -34,7 +34,7 @@ from ...common.data_model import ProducerId
 log = alog.use_channel("DATAM")
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class ModelType(Enum):
     """
     A single hierarchical NLC prediction.
@@ -47,7 +47,7 @@ class ModelType(Enum):
 error = error_handler.get(log)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class ClassInfo(DataObjectBase):
     class_name: Annotated[str, FieldNumber(1)]
     confidence: Annotated[float, FieldNumber(2)]
@@ -82,7 +82,7 @@ class ClassInfo(DataObjectBase):
         return self.confidence < other.confidence
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class ClassificationPrediction(DataObjectBase):
     """A Classification prediction generated from a document and consisting multiple classes."""
 
@@ -114,7 +114,7 @@ class ClassificationPrediction(DataObjectBase):
         self.producer_id = producer_id
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class ClassificationTrainRecord(DataObjectBase):
     """A Classification Training record consisting of a single train instance."""
 

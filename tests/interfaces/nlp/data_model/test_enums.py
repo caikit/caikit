@@ -1,37 +1,43 @@
-# *****************************************************************#
-# (C) Copyright IBM Corporation 2020.                             #
-#                                                                 #
-# The source code for this program is not published or otherwise  #
-# divested of its trade secrets, irrespective of what has been    #
-# deposited with the U.S. Copyright Office.                       #
-# *****************************************************************#
+# Copyright The Caikit Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # Third Party
-from watson_nlp import data_model
 
 # Local
+from caikit.interfaces.nlp import data_model
+
 # Unit Test Infrastructure
 from tests.base import TestCaseBase
 
 
 class TestEnums(TestCaseBase):
     def test_forward_lookups(self):
-        self.assertEqual(data_model.PartOfSpeech["POS_UNSET"], 0)
-        self.assertEqual(data_model.PartOfSpeech.POS_UNSET, 0)
+        self.assertEqual(data_model.PartOfSpeech(0).value, 0)
+        self.assertEqual(data_model.PartOfSpeech.POS_UNSET.value, 0)
 
-        self.assertEqual(data_model.DependencyRelation["DEP_OTHER"], 0)
-        self.assertEqual(data_model.DependencyRelation.DEP_OTHER, 0)
+        self.assertEqual(data_model.DependencyRelation(0).value, 0)
+        self.assertEqual(data_model.DependencyRelation.DEP_OTHER.value, 0)
 
     def test_reverse_lookups(self):
-        self.assertEqual(data_model.PartOfSpeechRev[0], "POS_UNSET")
+        self.assertEqual(data_model.PartOfSpeech(0).name, "POS_UNSET")
         self.assertEqual(
-            data_model.PartOfSpeechRev[data_model.PartOfSpeech.POS_UNSET], "POS_UNSET"
+            data_model.PartOfSpeech(data_model.PartOfSpeech.POS_UNSET.value).name, 
+            "POS_UNSET"
         )
 
-        self.assertEqual(data_model.DependencyRelationRev[0], "DEP_OTHER")
+        self.assertEqual(data_model.DependencyRelation(0).name, "DEP_OTHER")
         self.assertEqual(
-            data_model.DependencyRelationRev[
-                data_model.DependencyRelation["DEP_OTHER"]
-            ],
-            "DEP_OTHER",
+            data_model.DependencyRelation(data_model.DependencyRelation(0).value).name,
+            "DEP_OTHER"
         )

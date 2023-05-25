@@ -30,7 +30,7 @@ log = alog.use_channel("DATAM")
 error = error_handler.get(log)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class Emotion(DataObjectBase):
     """The full emotion expressed in a given context"""
 
@@ -111,7 +111,7 @@ class Emotion(DataObjectBase):
         self.sadness = sadness
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class EmotionMention(DataObjectBase):
     """An individual, atomic emotion mention over a given region of the input (could be a sentence, a paragraph, a section of text within a sentence, etc.)"""
 
@@ -135,7 +135,7 @@ class EmotionMention(DataObjectBase):
         self.emotion = emotion
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class AggregatedEmotionPrediction(DataObjectBase):
     """An emotion prediction for either a document or a target"""
 
@@ -171,7 +171,7 @@ class AggregatedEmotionPrediction(DataObjectBase):
         self.emotion_mentions = emotion_mentions
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class EmotionPrediction(DataObjectBase):
     """An emotion prediction for a document and zero or more targets."""
 

@@ -1,18 +1,23 @@
-# *****************************************************************#
-# (C) Copyright IBM Corporation 2020.                             #
-#                                                                 #
-# The source code for this program is not published or otherwise  #
-# divested of its trade secrets, irrespective of what has been    #
-# deposited with the U.S. Copyright Office.                       #
-# *****************************************************************#
+# Copyright The Caikit Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # Third Party
-from watson_core import DataValidationError
-import numpy as np
-import utils
 
 # Local
 from caikit.interfaces.nlp import data_model as dm
+from caikit.core.toolkit.errors import DataValidationError
+
 
 # Unit Test Infrastructure
 from tests.base import TestCaseBase
@@ -25,8 +30,8 @@ class TestEntityMention(TestCaseBase):
             "Person",
             producer_id=dm.ProducerId("Test", "1.0.0"),
             confidence=0.314159,
-            mention_type=dm.enums.EntityMentionType.MENTT_NOM,
-            mention_class=dm.enums.EntityMentionClass.MENTC_SPC,
+            mention_type=dm.EntityMentionType.MENTT_NOM.value,
+            mention_class=dm.EntityMentionClass.MENTC_SPC.value,
             role="developer",
         )
 
@@ -48,7 +53,7 @@ class TestEntityMention(TestCaseBase):
         self.mention_minimal = dm.EntityMention((10, 20), "person")
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.mention))
+        self.assertTrue(self.validate_fields(self.mention))
 
     def test_from_proto_and_back(self):
         new = dm.EntityMention.from_proto(self.mention.to_proto())
@@ -292,7 +297,7 @@ class TestEntityMentionsPrediction(TestCaseBase):
         )
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.mentions_prediction))
+        self.assertTrue(self.validate_fields(self.mentions_prediction))
 
     def test_from_proto_and_back(self):
         new = dm.EntityMentionsPrediction.from_proto(
@@ -383,8 +388,8 @@ class TestEntityDisambiguation(TestCaseBase):
         self.disambig_minimal = dm.EntityDisambiguation("Barack Obama")
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.disambig))
-        self.assertTrue(utils.validate_fields(self.disambig_minimal))
+        self.assertTrue(self.validate_fields(self.disambig))
+        self.assertTrue(self.validate_fields(self.disambig_minimal))
 
     def test_from_proto_and_back(self):
         new = dm.EntityDisambiguation.from_proto(self.disambig.to_proto())
@@ -424,8 +429,8 @@ class TestEntity(TestCaseBase):
         )
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.entity))
-        self.assertTrue(utils.validate_fields(self.entity_minimal))
+        self.assertTrue(self.validate_fields(self.entity))
+        self.assertTrue(self.validate_fields(self.entity_minimal))
 
     def test_from_proto_and_back(self):
         new = dm.Entity.from_proto(self.entity.to_proto())
@@ -457,7 +462,7 @@ class TestEntitiesPrediction(TestCaseBase):
         )
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.entities_prediction))
+        self.assertTrue(self.validate_fields(self.entities_prediction))
 
     def test_from_proto_and_back(self):
         new = dm.EntitiesPrediction.from_proto(self.entities_prediction.to_proto())
@@ -480,7 +485,7 @@ class TestEntityMentionAnnotation(TestCaseBase):
         )
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.entity_mentions_annotation))
+        self.assertTrue(self.validate_fields(self.entity_mentions_annotation))
 
     def test_from_proto_and_back(self):
         new = dm.EntityMentionAnnotation.from_proto(
@@ -509,7 +514,7 @@ class TestEntityMentionsTrainRecord(TestCaseBase):
         )
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.entity_mentions_train_record))
+        self.assertTrue(self.validate_fields(self.entity_mentions_train_record))
 
     def test_from_proto_and_back(self):
         new = dm.EntityMentionsTrainRecord.from_proto(

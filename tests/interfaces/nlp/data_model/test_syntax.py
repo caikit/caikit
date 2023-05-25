@@ -1,16 +1,21 @@
-# *****************************************************************#
-# (C) Copyright IBM Corporation 2020.                             #
-#                                                                 #
-# The source code for this program is not published or otherwise  #
-# divested of its trade secrets, irrespective of what has been    #
-# deposited with the U.S. Copyright Office.                       #
-# *****************************************************************#
+# Copyright The Caikit Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # Standard
 import os
 
 # Local
-from . import utils
 from caikit.interfaces.nlp import data_model as dm
 
 # Unit Test Infrastructure
@@ -21,16 +26,16 @@ import caikit
 class TestDependency(TestCaseBase):
     def setUp(self):
         self.dependency = dm.Dependency(
-            relation=dm.enums.DependencyRelation.DEP_OBJ, identifier=0, head=99
+            relation=dm.DependencyRelation.DEP_OBJ, identifier=0, head=99
         )
 
         self.dependency_minimal = dm.Dependency(
-            relation=dm.enums.DependencyRelation["DEP_ACL"], identifier=1
+            relation=dm.DependencyRelation.DEP_ACL, identifier=1
         )
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.dependency))
-        self.assertTrue(utils.validate_fields(self.dependency_minimal))
+        self.assertTrue(self.validate_fields(self.dependency))
+        self.assertTrue(self.validate_fields(self.dependency_minimal))
 
     def test_from_proto_and_back(self):
         new = dm.Dependency.from_proto(self.dependency.to_proto())
@@ -58,20 +63,20 @@ class TestDependency(TestCaseBase):
 class TestToken(TestCaseBase):
     def setUp(self):
         dependency = dm.Dependency(
-            relation=dm.enums.DependencyRelation.DEP_ACL, identifier=1
+            relation=dm.DependencyRelation.DEP_ACL, identifier=1
         )
         self.token = dm.Token(
             dm.Span(0, 7, text="testing"),
             lemma="test",
-            part_of_speech=dm.enums.PartOfSpeech.POS_ADJ,
+            part_of_speech=dm.PartOfSpeech.POS_ADJ,
             dependency=dependency,
         )
 
         self.token_minimal = dm.Token(dm.Span(0, 10))
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.token))
-        self.assertTrue(utils.validate_fields(self.token_minimal))
+        self.assertTrue(self.validate_fields(self.token))
+        self.assertTrue(self.validate_fields(self.token_minimal))
 
     def test_from_proto_and_back(self):
         new = dm.Token.from_proto(self.token.to_proto())
@@ -120,8 +125,8 @@ class TestSentence(TestCaseBase):
         self.sentence_minimal = dm.Sentence((0, 20))
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.sentence))
-        self.assertTrue(utils.validate_fields(self.sentence_minimal))
+        self.assertTrue(self.validate_fields(self.sentence))
+        self.assertTrue(self.validate_fields(self.sentence_minimal))
 
     def test_from_proto_and_back(self):
         new = dm.Sentence.from_proto(self.sentence.to_proto())
@@ -148,8 +153,8 @@ class TestParagraph(TestCaseBase):
         self.paragraph_minimal = dm.Paragraph((0, 20))
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.paragraph))
-        self.assertTrue(utils.validate_fields(self.paragraph_minimal))
+        self.assertTrue(self.validate_fields(self.paragraph))
+        self.assertTrue(self.validate_fields(self.paragraph_minimal))
 
     def test_from_proto_and_back(self):
         new = dm.Paragraph.from_proto(self.paragraph.to_proto())
@@ -187,9 +192,9 @@ class TestRawDocument(TestCaseBase):
         self.assertEqual(load_txt_doc.producer_id.name, "linux.txt")
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.raw_doc))
-        self.assertTrue(utils.validate_fields(self.raw_doc_minimal))
-        self.assertTrue(utils.validate_fields(self.raw_doc_long))
+        self.assertTrue(self.validate_fields(self.raw_doc))
+        self.assertTrue(self.validate_fields(self.raw_doc_minimal))
+        self.assertTrue(self.validate_fields(self.raw_doc_long))
 
     def test_from_proto_and_back(self):
         new = dm.RawDocument.from_proto(self.raw_doc.to_proto())
@@ -235,7 +240,7 @@ class TestDetagPrediction(TestCaseBase):
         )
 
     def test_fields(self):
-        self.assertTrue(utils.validate_fields(self.html_doc))
+        self.assertTrue(self.validate_fields(self.html_doc))
 
     def test_from_proto_and_back(self):
         html_doc_clone = dm.DetagPrediction.from_proto(self.html_doc.to_proto())
@@ -344,10 +349,10 @@ class TestSyntaxPrediction(TestCaseBase):
 
     def test_fields(self):
         """Test that all fields in the protobuf are present."""
-        self.assertTrue(utils.validate_fields(self.syntax))
-        self.assertTrue(utils.validate_fields(self.syntax_minimal))
+        self.assertTrue(self.validate_fields(self.syntax))
+        self.assertTrue(self.validate_fields(self.syntax_minimal))
         for syntax_empty in self.syntax_empties:
-            self.assertTrue(utils.validate_fields(syntax_empty))
+            self.assertTrue(self.validate_fields(syntax_empty))
 
     def test_from_proto_and_back(self):
         """Test that converting to protobuf and back results in the original data structure."""
@@ -430,7 +435,7 @@ class TestSyntaxPrediction(TestCaseBase):
 
         for pos_token, token in zip(pos_tokens, self.syntax.tokens):
             self.assertEqual(
-                pos_token, dm.enums.PartOfSpeechRev[token.part_of_speech.value]
+                pos_token, dm.PartOfSpeech(token.part_of_speech.value).name
             )
 
     def test_get_POS_token_texts_empty_syntax(self):

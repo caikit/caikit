@@ -36,7 +36,7 @@ log = alog.use_channel("DATAM")
 error = error_handler.get(log)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class PropertyListValueBool(DataObjectBase):
     val: Annotated[List[bool], FieldNumber(1)]
 
@@ -50,7 +50,7 @@ class PropertyListValueBool(DataObjectBase):
         self.val = val
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class PropertyListValueStr(DataObjectBase):
     val: Annotated[List[str], FieldNumber(1)]
 
@@ -64,7 +64,7 @@ class PropertyListValueStr(DataObjectBase):
         self.val = val
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class PropertyListValueFloat(DataObjectBase):
     val: Annotated[List[float], FieldNumber(1)]
 
@@ -78,7 +78,7 @@ class PropertyListValueFloat(DataObjectBase):
         self.val = val
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class PropertyListValueInt(DataObjectBase):
     val: Annotated[List[np.int32], FieldNumber(1)]
 
@@ -92,7 +92,7 @@ class PropertyListValueInt(DataObjectBase):
         self.val = val
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class PropertyListValueSpan(DataObjectBase):
     val: Annotated[List[text_primitives.Span], FieldNumber(1)]
 
@@ -106,7 +106,7 @@ class PropertyListValueSpan(DataObjectBase):
         self.val = val
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class ViewPropertyValue(DataObjectBase):
     """Value type encoding the acceptable types for a view property value."""
 
@@ -292,7 +292,7 @@ class ViewPropertyValue(DataObjectBase):
         )
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class ViewProperty(DataObjectBase):
     aql_property: Annotated[Dict[str, ViewPropertyValue], FieldNumber(1)]
 
@@ -366,7 +366,7 @@ class ViewProperty(DataObjectBase):
         return val_types_match
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class View(DataObjectBase):
     name: Annotated[str, FieldNumber(1)]
     properties: Annotated[List[ViewProperty], FieldNumber(2)]
@@ -428,7 +428,7 @@ class View(DataObjectBase):
         ]
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class RulesPrediction(DataObjectBase):
     views: Annotated[List[View], FieldNumber(1)]
     producer_id: Annotated[ProducerId, FieldNumber(2)]

@@ -30,7 +30,7 @@ log = alog.use_channel("DATAM")
 error = error_handler.get(log)
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class NounPhrase(DataObjectBase):
     """Representation of a noun phrase and any associated annotations."""
 
@@ -66,7 +66,7 @@ class NounPhrase(DataObjectBase):
         return self.span.text
 
 
-@dataobject(package="watson_core_data_model.nlp")
+@dataobject(package="caikit_data_model.nlp")
 class NounPhrasesPrediction(DataObjectBase):
     """The full set of noun phrases extracted for a document"""
 
