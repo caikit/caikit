@@ -18,7 +18,7 @@ collection of caikit.core derived libraries
 
 # Standard
 from enum import Enum
-from typing import List, Type
+from typing import List, Type, Dict
 
 # First Party
 import alog
@@ -28,7 +28,7 @@ from ... import get_config
 from .core_module_helpers import get_module_info
 from .primitives import is_primitive_method
 from .rpcs import CaikitRPCBase, ModuleClassTrainRPC, TaskPredictRPC
-from caikit.core import ModuleBase
+from caikit.core import ModuleBase, TaskBase
 from caikit.core.signature_parsing.module_signature import CaikitMethodSignature
 
 log = alog.use_channel("CREATE-RPCS")
@@ -140,16 +140,7 @@ def _create_rpcs_for_modules(
 ) -> List[CaikitRPCBase]:
     """Create the RPCs for each module"""
     rpcs = []
-    task_groups = {}
-
-    for ck_module in modules:
-        module_info = get_module_info(ck_module)
-        signature = CaikitMethodSignature(ck_module, fname)
-        # Group each module by its task
-        if module_info is not None:
-            task_groups.setdefault((module_info.library, module_info.type), []).append(
-                signature
-            )
+    task_groups = _group_modules_by_task(modules, fname)
 
     # Create the RPC for each task
     for task, task_methods in task_groups.items():
@@ -168,3 +159,16 @@ def _create_rpcs_for_modules(
                 )
 
     return rpcs
+
+
+def _group_modules_by_task(modules: List[Type[ModuleBase]], fname: str) -> Dict[Type[TaskBase], List[Type[ModuleBase]]]:
+    task_groups = {}
+    for ck_module in modules:
+        module_info = get_module_info(ck_module)
+        signature = CaikitMethodSignature(ck_module, fname)
+        # Group each module by its task
+        if module_info is not None:
+            task_groups.setdefault((module_info.library, module_info.type), []).append(
+                signature
+            )
+    return task_groups
