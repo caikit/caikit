@@ -170,11 +170,12 @@ class ClassificationTrainRecord(DataObjectBase):
             try:
                 return cls.from_json(data_obj)
             except (ValueError, TypeError) as e:
-                raise DataValidationError(e, item_number=data_item_number)
+                raise DataValidationError(e, item_number=data_item_number) from e
 
         elif isinstance(data_obj, collections.abc.Sequence):
             if len(data_obj) < 2:
-                message = "Expected data item {} to have a mimimum of 2 elements but contained {} elements".format(
+                message = "Expected data item {} to have a mimimum of 2 \
+                    elements but contained {} elements".format(
                     data_item_number, len(data_obj)
                 )
                 raise DataValidationError(message, item_number=data_item_number)
@@ -189,4 +190,4 @@ class ClassificationTrainRecord(DataObjectBase):
             try:
                 return cls(text=text, labels=labels)
             except (ValueError, TypeError) as e:
-                raise DataValidationError(e, item_number=data_item_number)
+                raise DataValidationError(e, item_number=data_item_number) from e

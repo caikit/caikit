@@ -22,7 +22,7 @@ from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
 import alog
 
 # Local
-from ....core.data_model import DataObjectBase, dataobject, enums, protobufs
+from ....core.data_model import DataObjectBase, dataobject
 from ....core.toolkit.errors import error_handler
 from ...common.data_model import ProducerId
 from . import text_primitives
@@ -88,7 +88,10 @@ class Sentiment(DataObjectBase):
 
 @dataobject(package="caikit_data_model.nlp")
 class AtomicSentiment(DataObjectBase):
-    """An individual, atomic sentiment mention over a given region of the input (could be a sentence, a paragraph, a section of text within a sentence, etc.)"""
+    """An individual, atomic sentiment mention over a given region of the 
+       input (could be a sentence, a paragraph, a section of text within 
+       a sentence, etc.)
+    """
 
     span: Annotated[text_primitives.Span, FieldNumber(1)]
     score: Annotated[float, FieldNumber(2)]
@@ -235,7 +238,9 @@ class AggregateSentimentPrediction(DataObjectBase):
 
 @dataobject(package="caikit_data_model.nlp")
 class SentimentProb(DataObjectBase):
-    """An individual, "atomic" sentiment mention over a given region of the input (could be a sentence, a paragraph, a section of text within a sentence, etc.)"""
+    """An individual, "atomic" sentiment mention over a given region of 
+       the input (could be a sentence, a paragraph, a section of text 
+       within a sentence, etc.)"""
 
     positive: Annotated[float, FieldNumber(1)]
     neutral: Annotated[float, FieldNumber(2)]
@@ -333,7 +338,8 @@ class AggregatedSentiment(DataObjectBase):
             mixed:  bool, default=False
                 (optional)True if the sentiment is *both* positive and negative.
             sentiment_mentions: (list(SentimentMetion)), default=None
-                (optional)Individual atomic sentiment that went into producing the aggregated sentiment
+                (optional)Individual atomic sentiment that went into producing the 
+                aggregated sentiment
         """
         if isinstance(score, self._proto_class):
             log.debug2("Handling input protobufs.AggregatedSentiment")
@@ -345,7 +351,7 @@ class AggregatedSentiment(DataObjectBase):
             # If the field value is a nested message (i.e. a list wrapper), we
             # need to convert that too.
             for sm in sentiment_mentions_component:
-                submsg_class_name, submsg_class = self._get_class_for_proto(sm)
+                submsg_class = self._get_class_for_proto(sm)
                 sentiment_mentions.append(submsg_class.from_proto(sm))
 
         error.value_check(
@@ -410,7 +416,8 @@ class TargetsSentimentPrediction(DataObjectBase):
 class SentimentPrediction(DataObjectBase):
     """The return type for all `sentiment` blocks
 
-    A sentiment towards a document and optionally specific sentiment targets from within that document."""
+    A sentiment towards a document and optionally specific sentiment 
+    targets from within that document."""
 
     document_sentiment: Annotated[AggregatedSentiment, FieldNumber(1)]
     targeted_sentiments: Annotated[TargetsSentimentPrediction, FieldNumber(2)]
@@ -429,9 +436,11 @@ class SentimentPrediction(DataObjectBase):
         """Construct a new sentiment prediction.
         Args:
             document_sentiment: (sentiment)
-                Individual sentiment predictions that went into producing the aggregated document sentiment
+                Individual sentiment predictions that went into producing the 
+                aggregated document sentiment
             targeted_sentiments: TargetsSentimentPrediction
-                Mapping from target string to computed sentiment for the given target
+                Mapping from target string to computed sentiment for the 
+                given target
             producer_id:  ProducerId or None
                 The block that produced this emotion prediction.
         """

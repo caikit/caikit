@@ -114,12 +114,12 @@ class DenseMatrix(DataObjectBase):
         # an Embedding data model object from a binary buffer, because we may be calling from_proto
         # on objects where dtype wasn't yet added to the data model, and protobuf gives strings
         # the default value of empty.
-        if not len(dtype):
+        if len(dtype) > 0:
             dtype = signature(self.__init__).parameters["dtype"].default
         # check that the dtype is a string representing a numpy data type
         try:
             np.dtype(dtype)
-        except TypeError as e:
+        except TypeError:
             error(
                 "<NLP13830871E>",
                 TypeError("arg [dtype] has invalid value: " + str(dtype)),
@@ -209,10 +209,10 @@ class DenseMatrix(DataObjectBase):
         return cls(data, rows, cols, dtype)
 
     def to_dict(self):
-        """Override for json serialization, since we use numpy types to represent matrices, which are
-        not JSON serializable. We convert to float since this is the more generic data type that we can
-        use in the protobuf. By default, python's float type is np.float64, so there is no type
-        mapping in that case. If the original numpy type is different, we convert back.
+        """Override for json serialization, since we use numpy types to represent matrices, which 
+        are not JSON serializable. We convert to float since this is the more generic data type
+        that we can use in the protobuf. By default, python's float type is np.float64, so there
+        is no type mapping in that case. If the original numpy type is different, we convert back.
         """
         return {
             "data": [float(datum) for datum in self.data],
@@ -320,12 +320,12 @@ class SparseMatrix(DataObjectBase):
         # an Embedding data model object from a binary buffer, because we may be calling from_proto
         # on objects where dtype wasn't yet added to the data model, and protobuf gives strings
         # the default value of empty.
-        if not len(dtype):
+        if len(dtype) > 0:
             dtype = signature(self.__init__).parameters["dtype"].default
         # check that the dtype is a string representing a numpy data type
         try:
             np.dtype(dtype)
-        except TypeError as e:
+        except TypeError:
             error(
                 "<NLP50343527E>",
                 TypeError(f"arg [dtype] has invalid value: {str(dtype)}"),
@@ -416,9 +416,9 @@ class SparseMatrix(DataObjectBase):
         return cls(tup_data, tup_indices, tup_indptr, rows, cols, dtype)
 
     def to_dict(self):
-        """Override for json serialization, since we use numpy types to represent matrices, which are
-        not JSON serializable (by default, python's float type is np.float64, so there is no type
-        mapping in that case).
+        """Override for json serialization, since we use numpy types to represent matrices, 
+        which are not JSON serializable (by default, python's float type is np.float64, so 
+        there is no type mapping in that case).
         """
         return {
             "data": [float(datum) for datum in self.data],

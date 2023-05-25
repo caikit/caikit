@@ -231,13 +231,12 @@ class ViewPropertyValue(DataObjectBase):
             return self.value.to_dict()
 
         # Handle nested lists of
-        elif isinstance(self.value, list):
+        if isinstance(self.value, list):
             return [v.to_dict() if hasattr(v, "to_dict") else v for v in self.value]
 
         # Handle raw primitives. Note that this does not return a dict and is
         # therefore only for the recursion.
-        else:
-            return self.value
+        return self.value
 
     @classmethod
     @alog.logged_function(log.debug3)
@@ -256,7 +255,7 @@ class ViewPropertyValue(DataObjectBase):
         if isinstance(proto_field, protobufs.Span):
             return cls(text_primitives.Span(proto_field.begin, proto_field.end))
 
-        elif isinstance(
+        if isinstance(
             proto_field,
             (
                 protobufs.PropertyListValueInt,
@@ -267,11 +266,10 @@ class ViewPropertyValue(DataObjectBase):
         ):
             return cls(list(proto_field.val))
 
-        elif isinstance(proto_field, protobufs.PropertyListValueSpan):
+        if isinstance(proto_field, protobufs.PropertyListValueSpan):
             return cls([text_primitives.Span.from_proto(v) for v in proto_field.val])
 
-        else:
-            return cls(proto_field)
+        return cls(proto_field)
 
     @staticmethod
     def is_valid_aql_primitive(val):
@@ -390,8 +388,7 @@ class View(DataObjectBase):
         def to_view_property(aql_property):
             if isinstance(aql_property, dict):
                 return ViewProperty(aql_property)
-            else:
-                return aql_property
+            return aql_property
 
         properties = [to_view_property(v) for v in properties]
 
@@ -410,8 +407,7 @@ class View(DataObjectBase):
         """Return list of property values matching the property name."""
         if self.properties:
             return list(self.properties[0].aql_property.keys())
-        else:
-            return []
+        return []
 
     def property(self, property_name):
         """Return list of property values matching the property name."""

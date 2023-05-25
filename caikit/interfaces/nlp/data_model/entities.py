@@ -262,12 +262,14 @@ class EntityMention(DataObjectBase):
 
 @dataobject(package="caikit_data_model.nlp")
 class EntityMentionsPrediction(DataObjectBase):
-    """An entity mentions prediction generated from a document and consisting of multiple entity mentions."""
+    """An entity mentions prediction generated from a document and consisting 
+    of multiple entity mentions."""
 
     mentions: Annotated[List[EntityMention], FieldNumber(1)]
     producer_id: Annotated[ProducerId, FieldNumber(2)]
 
-    """An entity mentions prediction contains a number of entity mentions extracted from a document."""
+    """An entity mentions prediction contains a number of entity mentions extracted 
+    from a document."""
 
     def __init__(self, mentions, producer_id=None):
         """Construct a new EntityMentionsPrediction.
@@ -306,7 +308,8 @@ class EntityMentionsPrediction(DataObjectBase):
         return [mention.text for mention in self.mentions]
 
     def get_mention_pairs(self):
-        """Returns a list of all mentions in as tuples with the format (mention_text, mention_type)."""
+        """Returns a list of all mentions in as tuples with the format 
+        (mention_text, mention_type)."""
         return [(mention.text, mention.type) for mention in self.mentions]
 
     @alog.logged_function(log.debug)
@@ -632,4 +635,4 @@ class EntityMentionsTrainRecord(DataObjectBase):
             try:
                 return cls.from_json(data_obj)
             except (ValueError, TypeError) as e:
-                raise DataValidationError(e, item_number=data_item_number)
+                raise DataValidationError(e, item_number=data_item_number) from e

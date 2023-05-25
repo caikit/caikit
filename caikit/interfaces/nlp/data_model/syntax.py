@@ -520,11 +520,18 @@ class DetagPrediction(DataObjectBase):
                 index of list -> detagged text index
                 value for index -> HTML text index
             tag_offsets: List[int]
-                List of unique indices in the detagged text where the original HTML tags were located. Specifically, they point to the end of a tag (the index after ">" in "<tag>").
-                When detagging, multiple HTML tags could point to the same offset (for example when tags are nested "<title><p>This is text</title></p>"), which is why we have removed duplicates in this list.
+                List of unique indices in the detagged text where the original HTML tags were 
+                located. Specifically, they point to the end of a tag (the index after ">" in 
+                "<tag>"). When detagging, multiple HTML tags could point to the same offset 
+                (for example when tags are nested "<title><p>This is text</title></p>"), 
+                which is why we have removed duplicates in this list.
             tag_names_to_spans: Dict[str, List[text_primitives.Span]]
-                A mapping of tag names to all the locations of such tag in the HTML document, represented as a list of spans. Mainly exposed for debugging purposes.
-                For example: `{'p': [(10, 16), (20, 22)]}` would tell us that the opening tag '<p>' is located at indices 10 and 20, and that the end tag '</p>'s are located at positions 16 and 22, closing the corresponding tags at 10 and 20, respectively.
+                A mapping of tag names to all the locations of such tag in the HTML document, 
+                represented as a list of spans. Mainly exposed for debugging purposes.
+                For example: `{'p': [(10, 16), (20, 22)]}` would tell us that the opening 
+                tag '<p>' is located at indices 10 and 20, and that the end tag '</p>'s are 
+                located at positions 16 and 22, closing the corresponding tags at 10 and 20, 
+                respectively.
             producer_id:  ProducerId or None
                 The block that produced this object.
         """
@@ -591,8 +598,7 @@ class DetagPrediction(DataObjectBase):
             if hasattr(detagged_doc, "text"):
                 remapped_doc.text = self.html
             return remapped_doc
-        else:
-            return detagged_doc
+        return detagged_doc
 
     def _update_spans(self, remap_obj, detagged_obj):
         """For every iterable object except str, do a depth first search on Span simultaneously on
@@ -671,7 +677,7 @@ class SyntaxParserSpec(DataObjectBase):
         """
         error.type_check_all("<NLP01572687E>", str, int, parsers=parsers)
 
-        self.parsers = list()
+        self.parsers = []
         for parser in parsers:
             # if parser is an integer, assume its an enum
             if isinstance(parser, int):
@@ -1034,7 +1040,8 @@ class SyntaxPrediction(DataObjectBase):
             data_model.Sentence
                 Sentence which contains the span, None if no sentence is found
             boolean
-                False if the sentence returned fully contains the span, True if the given span overlaps in multiple sentences
+                False if the sentence returned fully contains the span, 
+                True if the given span overlaps in multiple sentences
         """
         min_index = 0
         max_index = len(self.sentences) - 1
@@ -1045,14 +1052,13 @@ class SyntaxPrediction(DataObjectBase):
             sentence = self.sentences[mid_index]
             if span in sentence.span:
                 return sentence, overlap_found
+            if span.overlaps(sentence.span):
+                overlap_found = True
+                return sentence, overlap_found
+            if span > sentence.span:
+                min_index += 1
             else:
-                if span.overlaps(sentence.span):
-                    overlap_found = True
-                    return sentence, overlap_found
-                if span > sentence.span:
-                    min_index += 1
-                else:
-                    max_index -= 1
+                max_index -= 1
         return None, overlap_found
 
     def __len__(self):

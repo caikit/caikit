@@ -25,7 +25,7 @@ import alog
 
 # Local
 from ....core.data_model import DataObjectBase, dataobject
-from ....core.toolkit import error_handler
+from ....core.toolkit.errors import error_handler
 from ...common.data_model import ProducerId
 from .text_primitives import NGram
 
