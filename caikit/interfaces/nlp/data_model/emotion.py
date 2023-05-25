@@ -113,8 +113,8 @@ class Emotion(DataObjectBase):
 
 @dataobject(package="caikit_data_model.nlp")
 class EmotionMention(DataObjectBase):
-    """An individual, atomic emotion mention over a given region of the 
-    input (could be a sentence, a paragraph, a section of text within 
+    """An individual, atomic emotion mention over a given region of the
+    input (could be a sentence, a paragraph, a section of text within
     a sentence, etc.)"""
 
     span: Annotated[text_primitives.Span, FieldNumber(1)]

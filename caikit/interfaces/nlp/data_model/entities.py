@@ -262,7 +262,7 @@ class EntityMention(DataObjectBase):
 
 @dataobject(package="caikit_data_model.nlp")
 class EntityMentionsPrediction(DataObjectBase):
-    """An entity mentions prediction generated from a document and consisting 
+    """An entity mentions prediction generated from a document and consisting
     of multiple entity mentions."""
 
     mentions: Annotated[List[EntityMention], FieldNumber(1)]
@@ -308,7 +308,7 @@ class EntityMentionsPrediction(DataObjectBase):
         return [mention.text for mention in self.mentions]
 
     def get_mention_pairs(self):
-        """Returns a list of all mentions in as tuples with the format 
+        """Returns a list of all mentions in as tuples with the format
         (mention_text, mention_type)."""
         return [(mention.text, mention.type) for mention in self.mentions]
 

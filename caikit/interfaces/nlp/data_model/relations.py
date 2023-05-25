@@ -170,7 +170,7 @@ class RelationMentionsPrediction(DataObjectBase):
 @dataobject(package="caikit_data_model.nlp")
 class Relation(DataObjectBase):
     """Representation of a relation between entities.
-    Entity representation with RelationMention is subject to change with a 
+    Entity representation with RelationMention is subject to change with a
     possible EntityPrediction"""
 
     entity1: Annotated[entities.Entity, FieldNumber(1)]

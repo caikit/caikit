@@ -209,7 +209,7 @@ class DenseMatrix(DataObjectBase):
         return cls(data, rows, cols, dtype)
 
     def to_dict(self):
-        """Override for json serialization, since we use numpy types to represent matrices, which 
+        """Override for json serialization, since we use numpy types to represent matrices, which
         are not JSON serializable. We convert to float since this is the more generic data type
         that we can use in the protobuf. By default, python's float type is np.float64, so there
         is no type mapping in that case. If the original numpy type is different, we convert back.
@@ -416,8 +416,8 @@ class SparseMatrix(DataObjectBase):
         return cls(tup_data, tup_indices, tup_indptr, rows, cols, dtype)
 
     def to_dict(self):
-        """Override for json serialization, since we use numpy types to represent matrices, 
-        which are not JSON serializable (by default, python's float type is np.float64, so 
+        """Override for json serialization, since we use numpy types to represent matrices,
+        which are not JSON serializable (by default, python's float type is np.float64, so
         there is no type mapping in that case).
         """
         return {

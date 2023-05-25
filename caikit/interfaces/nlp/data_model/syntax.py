@@ -520,17 +520,17 @@ class DetagPrediction(DataObjectBase):
                 index of list -> detagged text index
                 value for index -> HTML text index
             tag_offsets: List[int]
-                List of unique indices in the detagged text where the original HTML tags were 
-                located. Specifically, they point to the end of a tag (the index after ">" in 
-                "<tag>"). When detagging, multiple HTML tags could point to the same offset 
-                (for example when tags are nested "<title><p>This is text</title></p>"), 
+                List of unique indices in the detagged text where the original HTML tags were
+                located. Specifically, they point to the end of a tag (the index after ">" in
+                "<tag>"). When detagging, multiple HTML tags could point to the same offset
+                (for example when tags are nested "<title><p>This is text</title></p>"),
                 which is why we have removed duplicates in this list.
             tag_names_to_spans: Dict[str, List[text_primitives.Span]]
-                A mapping of tag names to all the locations of such tag in the HTML document, 
+                A mapping of tag names to all the locations of such tag in the HTML document,
                 represented as a list of spans. Mainly exposed for debugging purposes.
-                For example: `{'p': [(10, 16), (20, 22)]}` would tell us that the opening 
-                tag '<p>' is located at indices 10 and 20, and that the end tag '</p>'s are 
-                located at positions 16 and 22, closing the corresponding tags at 10 and 20, 
+                For example: `{'p': [(10, 16), (20, 22)]}` would tell us that the opening
+                tag '<p>' is located at indices 10 and 20, and that the end tag '</p>'s are
+                located at positions 16 and 22, closing the corresponding tags at 10 and 20,
                 respectively.
             producer_id:  ProducerId or None
                 The block that produced this object.
@@ -1040,7 +1040,7 @@ class SyntaxPrediction(DataObjectBase):
             data_model.Sentence
                 Sentence which contains the span, None if no sentence is found
             boolean
-                False if the sentence returned fully contains the span, 
+                False if the sentence returned fully contains the span,
                 True if the given span overlaps in multiple sentences
         """
         min_index = 0

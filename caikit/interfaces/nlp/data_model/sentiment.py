@@ -88,9 +88,9 @@ class Sentiment(DataObjectBase):
 
 @dataobject(package="caikit_data_model.nlp")
 class AtomicSentiment(DataObjectBase):
-    """An individual, atomic sentiment mention over a given region of the 
-       input (could be a sentence, a paragraph, a section of text within 
-       a sentence, etc.)
+    """An individual, atomic sentiment mention over a given region of the
+    input (could be a sentence, a paragraph, a section of text within
+    a sentence, etc.)
     """
 
     span: Annotated[text_primitives.Span, FieldNumber(1)]
@@ -238,9 +238,9 @@ class AggregateSentimentPrediction(DataObjectBase):
 
 @dataobject(package="caikit_data_model.nlp")
 class SentimentProb(DataObjectBase):
-    """An individual, "atomic" sentiment mention over a given region of 
-       the input (could be a sentence, a paragraph, a section of text 
-       within a sentence, etc.)"""
+    """An individual, "atomic" sentiment mention over a given region of
+    the input (could be a sentence, a paragraph, a section of text
+    within a sentence, etc.)"""
 
     positive: Annotated[float, FieldNumber(1)]
     neutral: Annotated[float, FieldNumber(2)]
@@ -338,7 +338,7 @@ class AggregatedSentiment(DataObjectBase):
             mixed:  bool, default=False
                 (optional)True if the sentiment is *both* positive and negative.
             sentiment_mentions: (list(SentimentMetion)), default=None
-                (optional)Individual atomic sentiment that went into producing the 
+                (optional)Individual atomic sentiment that went into producing the
                 aggregated sentiment
         """
         if isinstance(score, self._proto_class):
@@ -416,7 +416,7 @@ class TargetsSentimentPrediction(DataObjectBase):
 class SentimentPrediction(DataObjectBase):
     """The return type for all `sentiment` blocks
 
-    A sentiment towards a document and optionally specific sentiment 
+    A sentiment towards a document and optionally specific sentiment
     targets from within that document."""
 
     document_sentiment: Annotated[AggregatedSentiment, FieldNumber(1)]
@@ -436,10 +436,10 @@ class SentimentPrediction(DataObjectBase):
         """Construct a new sentiment prediction.
         Args:
             document_sentiment: (sentiment)
-                Individual sentiment predictions that went into producing the 
+                Individual sentiment predictions that went into producing the
                 aggregated document sentiment
             targeted_sentiments: TargetsSentimentPrediction
-                Mapping from target string to computed sentiment for the 
+                Mapping from target string to computed sentiment for the
                 given target
             producer_id:  ProducerId or None
                 The block that produced this emotion prediction.

@@ -127,7 +127,7 @@ class ClusteringPrediction(DataObjectBase):
         """Override for filling proto on clustering predictions - this is necessary because we
         need to serialize two numpy arrays - cluster_ids and costs. This is accomplished by:
         (a) converting cluster ids to a list
-        (b) converting costs to a DenseMatrix data model object and then converting that to 
+        (b) converting costs to a DenseMatrix data model object and then converting that to
             protobuf.
 
         Args:
@@ -152,8 +152,8 @@ class ClusteringPrediction(DataObjectBase):
 
     @classmethod
     def from_proto(cls, proto):
-        """Override for creating an instance of this class from a ClusteringPrediction 
-        protobuf class instance. Note that the a DenseMatrix is loaded onto the costs 
+        """Override for creating an instance of this class from a ClusteringPrediction
+        protobuf class instance. Note that the a DenseMatrix is loaded onto the costs
         property as a numpy array for convenience. Similarly, a list is loaded onto the
         cluster_ids property as a a numpy array.
 
