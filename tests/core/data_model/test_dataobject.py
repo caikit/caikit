@@ -381,6 +381,13 @@ def test_dataobject_with_oneof():
     assert bar1.bar is bar1.data_stream
     assert bar1.foo is None
 
+    # Test to_dict
+    dict_repr_foo = foo1.to_dict()
+    assert dict_repr_foo == {
+        "foo": {"data": ["hello"]},
+    }
+    assert dict_repr_foo["foo"]["data"] == ["hello"]
+
     # Test proto round trip
     proto_repr_foo = foo1.to_proto()
     assert proto_repr_foo.foo.data == ["hello"]
@@ -477,7 +484,7 @@ def test_dataobject_primitive_oneof_round_trips():
     proto_repr_foo = foo2.to_proto()
     assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
-    # dict round trip
+    # dict test
     assert foo1.to_dict() == {"foo_int": 2}
 
     # json round trip
