@@ -26,6 +26,7 @@ import tempfile
 # Third Party
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pb2, descriptor_pool, message, struct_pb2
+from google.protobuf.message_factory import MessageFactory
 import numpy as np
 import pytest
 
@@ -58,6 +59,14 @@ def temp_dpool():
     fd = descriptor_pb2.FileDescriptorProto()
     struct_pb2.DESCRIPTOR.CopyToProto(fd)
     dpool.Add(fd)
+    # HACK! Doing this _appears_ to solve the mysterious segfault cause by using
+    #   Struct inside a temporary descriptor pool. The inspiration for this was
+    #   https://github.com/protocolbuffers/protobuf/issues/12047
+    mf = MessageFactory(dpool)
+    msgs = mf.GetMessages([fd.name])
+    _ = msgs["google.protobuf.Struct"]
+    _ = msgs["google.protobuf.Value"]
+    _ = msgs["google.protobuf.ListValue"]
     yield dpool
     # pylint: disable=duplicate-code
     descriptor_pool._DEFAULT = global_dpool
@@ -733,7 +742,8 @@ def test_np_dtypes():
     )
 
 
-def test_dataobject_jsondict(temp_dpool):
+@pytest.mark.parametrize("run_num", range(500))
+def test_dataobject_jsondict(temp_dpool, run_num):
     """Make sure that a JsonDict type is handled correctly in a dataobject"""
 
     @dataobject
