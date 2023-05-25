@@ -39,6 +39,10 @@ There are 2 user profiles who leverage Caikit:
 
 Check out the [Text Sentiment example](examples/text-sentiment/) to understand how to load and infer a model using Caikit.
 
+## Contributing
+
+Check out our [contributing](CONTRIBUTING.md) guide to learn how to contribute to Caikit.
+
 ## Code of conduct
 
 Participation in the Caikit community is governed by the [Code of Conduct](CODE-OF-CONDUCT.md).
