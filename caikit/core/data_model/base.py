@@ -267,7 +267,6 @@ class _DataBaseMetaClass(type):
         # existed in old_fields for supporting oneofs
         # see https://github.com/caikit/caikit/pull/107 for details
         for field in set(cls.fields + tuple(old_fields)):
-
             # If the field is the name of a field within a oneof and it was not
             # in the old fields, the data is held under the oneof's name if this
             # is the set value for the oneof
@@ -371,7 +370,6 @@ class _DataBaseMetaClass(type):
 
             if num_kwargs > 0:  # Do a quick check for performance reason
                 for field_name, field_val in kwargs.items():
-
                     # If this is a oneof field, alias to the oneof name
                     if oneof_name := cls._fields_to_oneof.get(field_name):
                         which_oneof[oneof_name] = field_name
@@ -775,7 +773,15 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
     def to_dict(self) -> dict:
         """Convert to a dictionary representation."""
-        return {field: self._field_to_dict_element(field) for field in self.fields}
+        # maintain a list of fields to convert to dict, special handling for oneofs
+        fields_to_dict = []
+        for field in self.fields:
+            if (
+                not field in self._fields_to_oneof
+                or self.which_oneof(self._fields_to_oneof[field]) == field
+            ):
+                fields_to_dict.append(field)
+        return {field: self._field_to_dict_element(field) for field in fields_to_dict}
 
     def to_json(self, **kwargs) -> str:
         """Convert to a json representation."""
