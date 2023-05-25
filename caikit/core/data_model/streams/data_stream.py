@@ -168,28 +168,28 @@ class DataStream(Generic[T]):
         """
         error.file_check("<COR32600575E>", filename)
 
-        def generator_func():
-            # open the file (closure around `filename`)
-            with open(filename, mode="rb") as json_fh:
-                log.debug2("Loading JSON array file: {}".format(filename))
-                lines = json_fh.readlines()
+        return cls(cls._from_jsonl_generator, filename)
 
-                try:
-                    for line in lines:
-                        if line.strip():  # ignore empty lines
-                            yield json.loads(line)
-                except json.JSONDecodeError as e:
-                    error(
-                        "<COR55596551E>",
-                        ValueError(f"Invalid JSON object in `{line}`, error: {e.msg}"),
-                    )
-                except TypeError:
-                    error(
-                        "<COR35596551E>",
-                        ValueError("Invalid JSON object in `{}`".format(line)),
-                    )
+    @classmethod
+    def _from_jsonl_generator(cls, filename):
+        with open(filename, mode="rb") as json_fh:
+            log.debug2("Loading JSON array file: {}".format(filename))
+            lines = json_fh.readlines()
 
-        return cls(generator_func)
+            try:
+                for line in lines:
+                    if line.strip():  # ignore empty lines
+                        yield json.loads(line)
+            except json.JSONDecodeError as e:
+                error(
+                    "<COR55596551E>",
+                    ValueError(f"Invalid JSON object in `{line}`, error: {e.msg}"),
+                )
+            except TypeError:
+                error(
+                    "<COR35596551E>",
+                    ValueError("Invalid JSON object in `{}`".format(line)),
+                )
 
     @classmethod
     def from_json_array(cls, filename: str) -> "DataStream[Dict]":
