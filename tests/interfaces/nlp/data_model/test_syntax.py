@@ -62,9 +62,7 @@ class TestDependency(TestCaseBase):
 
 class TestToken(TestCaseBase):
     def setUp(self):
-        dependency = dm.Dependency(
-            relation=dm.DependencyRelation.DEP_ACL, identifier=1
-        )
+        dependency = dm.Dependency(relation=dm.DependencyRelation.DEP_ACL, identifier=1)
         self.token = dm.Token(
             dm.Span(0, 7, text="testing"),
             lemma="test",

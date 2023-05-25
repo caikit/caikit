@@ -16,8 +16,6 @@
 # Standard
 import re
 
-# Third Party
-
 # Local
 from caikit.interfaces.nlp import data_model as dm
 

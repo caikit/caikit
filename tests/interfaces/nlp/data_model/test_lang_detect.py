@@ -21,9 +21,7 @@ from tests.base import TestCaseBase
 
 class TestLangDetect(TestCaseBase):
     def setUp(self):
-        self.lang_detect = dm.LangDetectPrediction(
-            lang_code=dm.LangCode.LANG_EN.value
-        )
+        self.lang_detect = dm.LangDetectPrediction(lang_code=dm.LangCode.LANG_EN.value)
 
     def test_fields(self):
         self.assertTrue(self.validate_fields(self.lang_detect))

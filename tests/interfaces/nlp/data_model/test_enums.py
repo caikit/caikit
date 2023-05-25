@@ -32,12 +32,12 @@ class TestEnums(TestCaseBase):
     def test_reverse_lookups(self):
         self.assertEqual(data_model.PartOfSpeech(0).name, "POS_UNSET")
         self.assertEqual(
-            data_model.PartOfSpeech(data_model.PartOfSpeech.POS_UNSET.value).name, 
-            "POS_UNSET"
+            data_model.PartOfSpeech(data_model.PartOfSpeech.POS_UNSET.value).name,
+            "POS_UNSET",
         )
 
         self.assertEqual(data_model.DependencyRelation(0).name, "DEP_OTHER")
         self.assertEqual(
             data_model.DependencyRelation(data_model.DependencyRelation(0).value).name,
-            "DEP_OTHER"
+            "DEP_OTHER",
         )

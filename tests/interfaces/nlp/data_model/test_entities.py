@@ -15,9 +15,8 @@
 # Third Party
 
 # Local
-from caikit.interfaces.nlp import data_model as dm
 from caikit.core.toolkit.errors import DataValidationError
-
+from caikit.interfaces.nlp import data_model as dm
 
 # Unit Test Infrastructure
 from tests.base import TestCaseBase

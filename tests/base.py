@@ -73,6 +73,7 @@ class TestCaseBase(unittest.TestCase):
         """
         return all((hasattr(obj, field) for field in obj.fields))
 
+
 def skip_in_wheel_test(cls):
     """In some cases (scripts, model evaluation), the code may not be shipped as part of the
     compiled wheel. In these situations, we only run the tests in unit tests, not in wheel tests.
