@@ -254,10 +254,12 @@ class GlobalTrainServicer:
             This can happen when the training is completed or
             when we receive a cancellation request.
             """
+            thread_future = self.training_map[training_id]
             if thread_future.running() and not event.is_set():
                 event.set()
+                thread_future.runnable_executor.cancel()
                 _ = thread_future.cancel()
-
+            thread_future.done()
 
         context.add_callback(rpc_termination_callback)
 
@@ -290,6 +292,11 @@ class GlobalTrainServicer:
             target = runnable_executor.train_and_save_model
 
         future = self.executor.submit(target, **kwargs)
+
+        # Assign runnable_executor to future so that we can interact with
+        # executor later on, in case needed. This is currently getting
+        # used for terminating the request
+        future.runnable_executor = runnable_executor
 
         return future
 

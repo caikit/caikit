@@ -433,6 +433,7 @@ def test_global_train_returns_exit_code_with_oom(
 
 #####################################################################
 
+
 def test_global_train_aborts_long_running_trains(
     sample_train_service, sample_train_servicer
 ):
@@ -440,16 +441,17 @@ def test_global_train_aborts_long_running_trains(
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
+    training_id = random_test_id()
+
     train_request = (
         sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
-            model_name="Foo Bar Training",
+            model_name=training_id,
             batch_size=42,
             training_data=training_data,
-            oom_exit=True,
+            oom_exit=False,
         )
     )
 
-    # sample_train_servicer.use_subprocess = True
     if sample_train_servicer.use_subprocess:
         test_event = multiprocessing.Event()
     else:
@@ -473,15 +475,17 @@ def test_global_train_aborts_long_running_trains(
     # to avoid tests from hanging
     request_timeout = 10
 
-    with patch(
+    with pytest.raises(CaikitRuntimeException) as exception, patch(
         f"{SampleModule.__module__}.{SampleModule.train.__qualname__}",
         never_respond,
     ):
+
         train_thread.start()
         test_event.wait()
         # Simulate a timeout or client abort
         context.cancel()
         train_thread.join(request_timeout)
 
-    # Make sure the training job actually stopped
-    assert not train_thread.is_alive()
+        # Make sure the training job actually stopped
+        assert not train_thread.is_alive()
+    assert f"Training request terminated!" in str(exception.value.message)

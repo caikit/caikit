@@ -173,6 +173,12 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
     def cancel(self) -> None:
         """Function to abort train and save operation on the executor"""
         self._worker.destroy()
+        log.error("<RUN50125604E>", "Training cancelled.")
+
+        raise CaikitRuntimeException(
+            StatusCode.CANCELLED,
+            "Training request terminated!",
+        )
 
 
 class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
@@ -187,9 +193,14 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             but does not regenerate the service APIs
         """
 
-        def __init__(self, *args, **kwargs):
+        def __init__(self, event, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.error = None
+            self.__event = event
+
+        def __del__(self):
+            if not self.__event.is_set():
+                self.__event.set()
 
         def set_args(self, *args, **kwargs):
             self._args = args
@@ -208,12 +219,9 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
     def __init__(self, event) -> None:
 
         self._worker = self._ErrorCaptureProcess(
+            event=event,
             target=TrainSaveExecutorBase.train_and_save,
         )
-
-        # Following is left there for future yse
-        # pylint: disable=unused-private-member
-        self.__proc_id = self._worker.pid
         self.__event = event
 
     def __del__(self):
@@ -221,39 +229,38 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
         NOTE: This is NOT how execution should be cancelled.
         This function is designed to make sure cleanup happens.
         """
-        self.cancel()
+        self._cleanup()
+
+    def _cleanup(self):
+        """Function to clearup running workers"""
+        if self._worker.is_alive():
+            self._worker.terminate()
+        self._worker.close()
 
     def train_and_save_model(self, *args, **kwargs):
 
         # Assign args and kwargs to self._worker
         self._worker.set_args(*args, event=self.__event, **kwargs)
-
         self._worker.start()
-        self._worker.join()
 
-        if self._worker.is_alive():
-            if self.__event.is_set():
-                # Since we are using process here, we cannot rely on
-                # checking is_complete flag to be available to check if
-                # the training was completed or cancelled. Therefore,
-                # we will check if worker is alive and event is set.
-                # This does create an edge case, were if the thread is done
-                # naturally and at the exact same time, the request is cancelled
-                # but in that case, the training is anyways already finished
-                # so that shouldn't create huge problems
-                self.cancel()
-            else:
-                # if worker is still alive then wait for it to finish or
-                # terminate
-                self.__event.wait()
+        if self._worker.is_alive() and self.__event.is_set():
+            # Since we are using process here, we cannot rely on
+            # checking is_complete flag to be available to check if
+            # the training was completed or cancelled. Therefore,
+            # we will check if worker is alive and event is set.
+            # This does create an edge case, were if the thread is done
+            # naturally and at the exact same time, the request is cancelled
+            # but in that case, the training is anyways already finished
+            # so that shouldn't create huge problems
+            self.cancel()
         else:
-            # worker is not alive anymore, set the event flag to mark "completion"
-            if not self.__event.is_set():
-               self.__event.set()
+            self._worker.join()
+            self.__event.set()
+
+        self.__event.wait()
 
         # If an error occurred, reraise it here
         # TODO: Make sure the stack trace is preserved
-
         if self._worker.error is not None:
             if isinstance(self._worker.error, CaikitRuntimeException):
                 raise self._worker.error
@@ -274,15 +281,19 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
                     grpc.StatusCode.UNKNOWN,
                     f"Training process died with exit code {self._worker.exitcode}",
                 )
+
             raise exception
 
+        self._cleanup()
+
     def cancel(self):
-        self._worker.terminate()
-        self._worker.close()
+
+        if self._worker.is_alive():
+            self._worker.terminate()
 
         log.error("<RUN57624710E>", "Training cancelled.")
 
         raise CaikitRuntimeException(
             StatusCode.CANCELLED,
-            "Training request terminated",
+            "Training request terminated!",
         )
