@@ -17,7 +17,7 @@ This package has classes that will serialize a python interface to a protocol bu
 Typically used for `caikit.core.module`s that expose .train and .run functions.
 """
 # Standard
-from typing import Any, Dict, List, Optional, Tuple, Type, get_args
+from typing import Any, Dict, List, Optional, Tuple, Type, Union, get_args, get_origin
 import abc
 import copy
 
@@ -31,10 +31,7 @@ import alog
 # Local
 from . import primitives, type_helpers
 from .compatibility_checker import ApiFieldNames
-from .signature_parsing.module_signature import (
-    CaikitCoreModuleMethodSignature,
-    CustomSignature,
-)
+from .data_stream_source import make_data_stream_source
 from caikit.core import ModuleBase
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import (
@@ -42,8 +39,8 @@ from caikit.core.data_model.dataobject import (
     _DataObjectBaseMetaClass,
     dataobject,
 )
+from caikit.core.signature_parsing import CaikitMethodSignature, CustomSignature
 from caikit.interfaces.runtime.data_model import ModelPointer, TrainingJob
-from caikit.runtime.service_generation.data_stream_source import make_data_stream_source
 
 log = alog.use_channel("RPC-SERIALIZERS")
 
@@ -115,13 +112,13 @@ class ModuleClassTrainRPC(CaikitRPCBase):
 
     def __init__(
         self,
-        method_signature: CaikitCoreModuleMethodSignature,
+        method_signature: CaikitMethodSignature,
         primitive_data_model_types: List[str],
     ):
         """Initialize a .proto generator with a single module to convert
 
         Args:
-            method_signature (CaikitCoreModuleMethodSignature): The module method signature to
+            method_signature (CaikitMethodSignature): The module method signature to
             generate an RPC for
 
             primitive_data_model_types: List[str]
@@ -181,7 +178,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
     @staticmethod
     def _mutate_method_signature_for_training(
         signature, primitive_data_model_types: List[str]
-    ) -> Optional[CaikitCoreModuleMethodSignature]:
+    ) -> Optional[CaikitMethodSignature]:
         # Change return type for async training interface
         return_type = TrainingJob
 
@@ -201,7 +198,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
                 # Found a model pointer
                 new_params[name] = ModelPointer
             else:
-                new_params[name] = primitives.extract_primitive_type_from_union(
+                new_params[name] = primitives.handle_primitives_in_union(
                     arg_type=typ,
                     primitive_data_model_types=primitive_data_model_types,
                 )
@@ -219,7 +216,7 @@ class TaskPredictRPC(CaikitRPCBase):
     def __init__(
         self,
         task: Tuple[str, str],
-        method_signatures: List[CaikitCoreModuleMethodSignature],
+        method_signatures: List[CaikitMethodSignature],
         primitive_data_model_types: List[str],
     ):
         """Initialize a .proto generator with all modules of a given task to convert
@@ -228,7 +225,7 @@ class TaskPredictRPC(CaikitRPCBase):
             task (Tuple[str, str]): The library / ai-problem-task combo that describes the task
                 type. For example: ("my_caikit_library", "classification")
 
-            method_signatures (List[CaikitCoreModuleMethodSignature]): The list of method
+            method_signatures (List[CaikitMethodSignature]): The list of method
                 signatures from concrete modules implementing this task
 
             primitive_data_model_types: List[str]
@@ -322,14 +319,17 @@ class _RequestMessage:
         else:
             last_used_number = 0
 
-        for _, (item_name, p) in enumerate(params.items()):
+        for _, (item_name, typ) in enumerate(params.items()):
             if item_name in existing_fields:
                 # if field existed previously, get the original number from there
                 num = existing_fields[item_name]
             else:
                 num = last_used_number + 1
-                last_used_number += 1
-            self.triples.append((p, item_name, num))
+                if get_origin(typ) is Union:
+                    last_used_number += len(get_args(typ))
+                else:
+                    last_used_number += 1
+            self.triples.append((typ, item_name, num))
 
         self.triples.sort(key=lambda x: x[2])
 

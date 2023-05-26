@@ -29,6 +29,7 @@ import alog
 # Local
 from ..data_model import ProducerId
 from ..registries import module_backend_registry, module_backend_types, module_registry
+from ..signature_parsing import CaikitMethodSignature
 from ..task import TaskBase
 from ..toolkit.errors import error_handler
 from .base import ModuleBase
@@ -185,11 +186,15 @@ def module(
                 )
             cls_.TASK_CLASS = parent_task
         else:
-            if not task:
-                # TODO: raise once @tasks are integrated into service generation
-                # raise TypeError(f"task argument is required for @{cls}")
-                pass
             cls_.TASK_CLASS = task
+
+        # Parse the `train` and `run` signatures
+        cls_.RUN_SIGNATURE = CaikitMethodSignature(cls_, "run")
+        cls_.TRAIN_SIGNATURE = CaikitMethodSignature(cls_, "train")
+
+        # If the module has a task, validate it:
+        if cls_.TASK_CLASS:
+            cls_.TASK_CLASS.validate_run_signature(cls_.RUN_SIGNATURE)
 
         # If no backend support described in the class, add current backend
         # as the only backend that can load models trained by this module

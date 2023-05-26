@@ -25,9 +25,9 @@ import typing
 import alog
 
 # Local
-from .signature_parsing.module_signature import CaikitCoreModuleMethodSignature
 from .type_helpers import PROTO_TYPE_MAP
 from caikit.core.data_model.base import DataBase
+from caikit.core.signature_parsing.module_signature import CaikitMethodSignature
 
 log = alog.use_channel("MODULE_PRIMS")
 
@@ -45,7 +45,7 @@ def to_primitive_signature(
     primitives = {}
     log.debug("Building primitive signature for %s", signature)
     for arg, arg_type in signature.items():
-        primitive_arg_type = extract_primitive_type_from_union(
+        primitive_arg_type = handle_primitives_in_union(
             primitive_data_model_types, arg_type
         )
         if primitive_arg_type:
@@ -54,10 +54,15 @@ def to_primitive_signature(
     return primitives
 
 
-def extract_primitive_type_from_union(
+def handle_primitives_in_union(
     primitive_data_model_types: List[str], arg_type: Type
 ) -> Type:
-    """Returns the primitive arg type from a Union if found"""
+    """Handles various primitive arg types from a Union:
+    Union[supported_type, unsupported_type] -> returns only the supported_type
+    Union[supported_type1, supported_type2] -> returns the union which creates the oneof
+    Union[supported_type1, supported_type2, unsupported_type] ->
+        returns the first primitive object in the Union
+    """
     if _is_primitive_type(arg_type, primitive_data_model_types):
         if typing.get_origin(arg_type) == Union:
             union_primitives = [
@@ -65,6 +70,9 @@ def extract_primitive_type_from_union(
                 for union_val in typing.get_args(arg_type)
                 if _is_primitive_type(union_val, primitive_data_model_types)
             ]
+            # if all are primitives, return the union (which will create a oneof)
+            if len(union_primitives) == len(typing.get_args(arg_type)):
+                return arg_type
             # if there's only 1 primitive found, return that
             if len(union_primitives) == 1:
                 return union_primitives[0]
@@ -122,7 +130,7 @@ def extract_data_model_type_from_union(arg_type: Type) -> Type:
 
 
 def is_primitive_method(
-    method: CaikitCoreModuleMethodSignature, primitive_data_model_types: List[str]
+    method: CaikitMethodSignature, primitive_data_model_types: List[str]
 ) -> bool:
     """Determine if the arguments to the module's run function meet the criteria
     for being a "primitive" interface this means that all **non-optional** arguments
@@ -130,7 +138,7 @@ def is_primitive_method(
     (b) a language-primitive type.
 
     Args:
-        method (CaikitCoreModuleMethodSignature): The method signature of the "primitive"
+        method (CaikitMethodSignature): The method signature of the "primitive"
             data model types for each library
     """
 

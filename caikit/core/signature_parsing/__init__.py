@@ -12,6 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Local
-from .docstrings import *
-from .module_signature import *
-from .parsers import *
+from .module_signature import CaikitMethodSignature, CustomSignature

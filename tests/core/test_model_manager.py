@@ -193,9 +193,7 @@ def setup_saved_model(mock_backend_class):
 
     backend_types.register_backend_type(LocalBackend)
 
-    @caikit.core.modules.module(
-        id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1", task=SampleTask
-    )
+    @caikit.core.modules.module(id=DUMMY_MODULE_ID, name="dummy base", version="0.0.1")
     class DummyFoo(caikit.core.ModuleBase):
         @classmethod
         def load(cls, *args, **kwargs):
@@ -216,7 +214,7 @@ def setup_saved_model(mock_backend_class):
 
 
 @caikit.core.modules.module(
-    id="non-distributed", name="non distributed mod", version="0.0.1", task=SampleTask
+    id="non-distributed", name="non distributed mod", version="0.0.1"
 )
 class NonDistributedModule(caikit.core.ModuleBase):
     @classmethod
