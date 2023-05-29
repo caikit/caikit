@@ -24,5 +24,4 @@ tests/protos/*
 .tox
 
 # Sphinx generated files
-docs/api/
-docs/_build/
+_build/
