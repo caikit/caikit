@@ -27,7 +27,7 @@ from py_to_proto.dataclass_to_proto import Annotated, FieldNumber, OneofField
 import alog
 
 # Local
-from ....core.data_model import DataObjectBase, dataobject, protobufs
+from ....core.data_model import DataObjectBase, dataobject
 from ....core.toolkit.errors import error_handler
 from ...common.data_model import ProducerId
 from . import text_primitives
@@ -133,7 +133,7 @@ class ViewPropertyValue(DataObjectBase):
                 The raw value to use for this entry.
         """
         if not isinstance(
-            val, protobufs.ViewPropertyValue
+            val, ViewPropertyValue
         ) and not ViewPropertyValue.is_valid_aql_primitive(val):
             error(
                 "<NLP98988709E>",
@@ -142,8 +142,8 @@ class ViewPropertyValue(DataObjectBase):
                 ),
             )
 
-        if isinstance(val, protobufs.ViewPropertyValue):
-            log.debug2("Handling input protobufs.ViewPropertyValue")
+        if isinstance(val, ViewPropertyValue):
+            log.debug2("Handling input ViewPropertyValue")
             val_field = val.WhichOneof("value")
             if val_field is None:
                 val = None
@@ -252,21 +252,21 @@ class ViewPropertyValue(DataObjectBase):
         else:
             proto_field = getattr(proto, val_field)
 
-        if isinstance(proto_field, protobufs.Span):
+        if isinstance(proto_field, text_primitives.Span):
             return cls(text_primitives.Span(proto_field.begin, proto_field.end))
 
         if isinstance(
             proto_field,
             (
-                protobufs.PropertyListValueInt,
-                protobufs.PropertyListValueFloat,
-                protobufs.PropertyListValueStr,
-                protobufs.PropertyListValueBool,
+                PropertyListValueInt,
+                PropertyListValueFloat,
+                PropertyListValueStr,
+                PropertyListValueBool,
             ),
         ):
             return cls(list(proto_field.val))
 
-        if isinstance(proto_field, protobufs.PropertyListValueSpan):
+        if isinstance(proto_field, PropertyListValueSpan):
             return cls([text_primitives.Span.from_proto(v) for v in proto_field.val])
 
         return cls(proto_field)
