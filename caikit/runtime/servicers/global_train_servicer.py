@@ -25,7 +25,7 @@ import traceback
 
 # Third Party
 from google.protobuf.descriptor import FieldDescriptor
-from grpc import StatusCode
+from grpc import ServicerContext, StatusCode
 
 # First Party
 import alog
@@ -75,7 +75,11 @@ class GlobalTrainServicer:
         self.auto_load_trained_model = (
             caikit_config.runtime.training.auto_load_trained_model
         )
+
+        self.auto_load_trained_model = True
+
         self.use_subprocess = caikit_config.runtime.training.use_subprocess
+        # self.use_subprocess = True
 
         # TODO: think about if we really want to do this here:
         self.cdm = get_data_model()
@@ -208,7 +212,7 @@ class GlobalTrainServicer:
         model,
         training_id,
         training_output_dir,
-        context,
+        context: ServicerContext,
         wait=False,
     ) -> TrainingJob:
         """Builds the request dict for calling the train function asynchronously,
@@ -227,11 +231,11 @@ class GlobalTrainServicer:
 
         # If running with a subprocess, set the target, events and args accordingly
         if self.use_subprocess:
-            event = multiprocessing.Event()
-            target = SubProcessTrainSaveExecutor(event)
+            cancel_event = multiprocessing.Event()
+            target = SubProcessTrainSaveExecutor(cancel_event)
         else:
-            event = threading.Event()
-            target = LocalTrainSaveExecutor(event)
+            cancel_event = threading.Event()
+            target = LocalTrainSaveExecutor(cancel_event)
 
         log.debug2(
             "Training with %s",
@@ -248,25 +252,33 @@ class GlobalTrainServicer:
 
         self.training_map[training_id] = thread_future
 
-        # Add callback to register termination of training
-        def rpc_termination_callback(*_args, **_kwargs):
-            """Function to be called when the RPC is terminated.
-            This can happen when the training is completed or
-            when we receive a cancellation request.
-            """
-            thread_future = self.training_map[training_id]
-            if thread_future.running() and not event.is_set():
-                event.set()
-                thread_future.runnable_executor.cancel()
-                _ = thread_future.cancel()
-            thread_future.done()
-
-        context.add_callback(rpc_termination_callback)
-
         # if requested, module until the training completes
         if wait:
             with alog.ContextTimer(log.debug, "Training %s complete in: ", training_id):
                 thread_future.result()
+
+
+        # Add callback to register termination of training
+        def rpc_termination_callback():
+            """Function to be called when the RPC is terminated.
+            This can happen when the training is completed or
+            when we receive a cancellation request.
+            """
+            for event in target.events:
+                event.set()
+
+        callback_registered = context.add_callback(rpc_termination_callback)
+
+        if not callback_registered:
+            log.warning(
+                "<RUN54118242W>",
+                "Failed to register rpc termination callback, aborting rpc",
+            )
+            raise CaikitRuntimeException(
+                StatusCode.ABORTED,
+                "Could not register RPC callback, call has likely terminated.",
+            )
+
 
         # return TrainingJob object
         return TrainingJob(
@@ -285,20 +297,15 @@ class GlobalTrainServicer:
         if self.auto_load_trained_model:
 
             def target(*args, **kwargs):
+                print("Configuring train and save model fn")
                 runnable_executor.train_and_save_model(*args, **kwargs)
+                print("model fully trained - reached here")
                 return self._load_trained_model(model_name, model_path)
 
         else:
             target = runnable_executor.train_and_save_model
 
-        future = self.executor.submit(target, **kwargs)
-
-        # Assign runnable_executor to future so that we can interact with
-        # executor later on, in case needed. This is currently getting
-        # used for terminating the request
-        future.runnable_executor = runnable_executor
-
-        return future
+        return self.executor.submit(target, **kwargs)
 
     def _get_model_path(
         self,

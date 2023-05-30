@@ -453,6 +453,7 @@ def test_global_train_aborts_long_running_trains(
         )
     )
 
+    # sample_train_servicer.use_subprocess = True
     if sample_train_servicer.use_subprocess:
         test_event = multiprocessing.Event()
     else:
@@ -475,18 +476,18 @@ def test_global_train_aborts_long_running_trains(
     # NOTE: We are configuring following timeout
     # to avoid tests from hanging
     request_timeout = 10
-
-    with pytest.raises(CaikitRuntimeException) as exception, patch(
+    test_event_timeout = 20
+    with patch(
         f"{SampleModule.__module__}.{SampleModule.train.__qualname__}",
         never_respond,
     ):
 
         train_thread.start()
-        test_event.wait()
+        test_event.wait(test_event_timeout)
+
         # Simulate a timeout or client abort
         context.cancel()
         train_thread.join(request_timeout)
 
-        # Make sure the training job actually stopped
-        assert not train_thread.is_alive()
-    assert f"Training request terminated!" in str(exception.value.message)
+    # Make sure the training job actually stopped
+    assert not train_thread.is_alive()

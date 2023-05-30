@@ -17,6 +17,7 @@ from typing import Type
 import abc
 import multiprocessing
 import os
+import threading
 import traceback
 
 # Third Party
@@ -45,49 +46,58 @@ OOM_EXIT_CODE = 137
 # executors, so ThreadPoolExecutors and ProcessPoolExecutors, but
 # ProcessPoolExecutor doesn't support `fork` start method
 class TrainSaveExecutorBase(abc.ABC):
-    @abc.abstractmethod
-    def train_and_save_model(self, *args, **kwargs):
-        """Function to kick off training a model based and saving
-        the resultant model
-        """
 
     @abc.abstractmethod
     def cancel(self):
         """Function to abort train and save operation on the executor"""
 
+    @abc.abstractmethod
+    def train_and_save_model(self, *args, **kwargs):
+        """Method to run train and save function(s) on the executor
+        """
+
     @staticmethod
-    def train_and_save(
-        module_class: Type[ModuleBase], model_path: str, event, *args, **kwargs
+    def _train_and_save(
+        module_class: Type[ModuleBase],
+        model_path: str,
+        *args,
+        **kwargs
     ):
         """Default implementation of train and save method using module_class"""
 
-        try:
-            with alog.ContextTimer(
-                log.debug, "Done training %s in: ", module_class.__name__
-            ):
-                model = module_class.train(*args, **kwargs)
+        print("=============== In base train save executor =====")
 
-            # Save it
-            with alog.ContextTimer(
-                log.debug,
-                "Done saving %s to %s in: ",
-                module_class.__name__,
-                model_path,
-            ):
-                model.save(model_path)
+        error.type_check("<RUN41176398E>", str, model_path=model_path)
 
-        finally:
-            # Indicate training is done
-            event.is_completed = True
-            event.set()
+        with alog.ContextTimer(
+            log.debug, "Done training %s in: ", module_class.__name__
+        ):
+            model = module_class.train(*args, **kwargs)
+
+        # Save it
+        with alog.ContextTimer(
+            log.debug,
+            "Done saving %s to %s in: ",
+            module_class.__name__,
+            model_path,
+        ):
+            model.save(model_path)
+
+        log.info(f"model saved successfully at {model_path}")
+
 
 
 class LocalTrainSaveExecutor(TrainSaveExecutorBase):
-    def __init__(self, event) -> None:
-        self.__event = event
+    def __init__(self, cancel_event) -> None:
+        self.complete_event = threading.Event()
+
+        # collect all events
+        self.events = [cancel_event, self.complete_event]
+
         # NOTE: worker is assigned at a later stage for Local
         self._worker = None
-        self.is_completed = False
+
+        self.__cancel_event = cancel_event
 
     def __del__(self):
         """
@@ -108,31 +118,35 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
         subprocess if needed
         """
 
+        print("=============== In local train save executor =====")
+
+        args += (module_class, model_path)
         try:
             # Train it
             with alog.ContextTimer(
                 log.debug, "Done training %s in: ", module_class.__name__
             ):
-
                 self._worker = DestroyableThread(
-                    self.__event,
-                    TrainSaveExecutorBase.train_and_save,
-                    module_class,
+                    self.complete_event,
+                    TrainSaveExecutorBase._train_and_save,
                     *args,
-                    model_path=model_path,
-                    event=self.__event,
                     **kwargs,
                 )
                 self._worker.start()
-                self.__event.wait()
+                self.complete_event.wait()
 
-                if not hasattr(self.__event, "is_completed"):
+                if self.__cancel_event.is_set():
+                    print("======= in work run cancel event function =====")
+                    print("complete event: ", self.complete_event.is_set())
                     self.cancel()
 
                 self._worker.join()
+
                 # Fetch the results or throw error if the
                 # task threw exception
-                self._worker.get_or_throw()
+                return self._worker.get_or_throw()
+
+
 
         # Handle errors as CaikitRuntime errors with appropriate error codes
         except CaikitRuntimeException as e:
@@ -173,13 +187,13 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
     def cancel(self) -> None:
         """Function to abort train and save operation on the executor"""
         self._worker.destroy()
+
         log.error("<RUN50125604E>", "Training cancelled.")
 
         raise CaikitRuntimeException(
             StatusCode.CANCELLED,
             "Training request terminated!",
         )
-
 
 class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
     class _ErrorCaptureProcess(multiprocessing.get_context("fork").Process):
@@ -189,22 +203,14 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
         NOTE: We explicitly use "fork" here for two reasons:
             1. It's faster
             2. Due to the auto-generated classes with stream sources, "spawn"
-            can result in missing classes since it performs a full re-import,
-            but does not regenerate the service APIs
+               can result in missing classes since it performs a full re-import,
+               but does not regenerate the service APIs
         """
 
-        def __init__(self, event, *args, **kwargs):
+        def __init__(self, *args, event=None, **kwargs):
             super().__init__(*args, **kwargs)
             self.error = None
-            self.__event = event
-
-        def __del__(self):
-            if not self.__event.is_set():
-                self.__event.set()
-
-        def set_args(self, *args, **kwargs):
-            self._args = args
-            self._kwargs = kwargs
+            self._completion_event = event
 
         def run(self, *args, **kwargs):
             try:
@@ -216,13 +222,17 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             except Exception as err:
                 self.error = err
 
-    def __init__(self, event) -> None:
+            finally:
+                self._completion_event
 
-        self._worker = self._ErrorCaptureProcess(
-            event=event,
-            target=TrainSaveExecutorBase.train_and_save,
-        )
-        self.__event = event
+    def __init__(self, cancel_event) -> None:
+
+        self.complete_event = multiprocessing.Event()
+
+        self.events = [cancel_event, self.complete_event]
+        self._worker = None
+
+        self.__cancel_event = cancel_event
 
     def __del__(self):
         """
@@ -237,13 +247,26 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             self._worker.terminate()
         self._worker.close()
 
-    def train_and_save_model(self, *args, **kwargs):
+    def train_and_save_model(
+            self,
+            module_class: Type[ModuleBase],
+            model_path: str,
+            *args,
+            **kwargs):
+
+        print("=============== In subprocess train save executor =====")
+
+        self._worker = self._ErrorCaptureProcess(
+            event=self.complete_event,
+            target=TrainSaveExecutorBase._train_and_save,
+            args=(module_class, model_path), kwargs=kwargs
+        )
 
         # Assign args and kwargs to self._worker
-        self._worker.set_args(*args, event=self.__event, **kwargs)
+        # self._worker.set_args(module_class, model_path, *args, **kwargs)
         self._worker.start()
 
-        if self._worker.is_alive() and self.__event.is_set():
+        if self.__cancel_event.is_set(): # and self.__event.is_set():
             # Since we are using process here, we cannot rely on
             # checking is_complete flag to be available to check if
             # the training was completed or cancelled. Therefore,
@@ -252,12 +275,11 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             # naturally and at the exact same time, the request is cancelled
             # but in that case, the training is anyways already finished
             # so that shouldn't create huge problems
+            print("reached in subprocess cancel event")
             self.cancel()
-        else:
-            self._worker.join()
-            self.__event.set()
 
-        self.__event.wait()
+        self._worker.join()
+
 
         # If an error occurred, reraise it here
         # TODO: Make sure the stack trace is preserved
@@ -286,10 +308,13 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
 
         self._cleanup()
 
+        return
+
     def cancel(self):
 
         if self._worker.is_alive():
             self._worker.terminate()
+            self._worker.close()
 
         log.error("<RUN57624710E>", "Training cancelled.")
 
