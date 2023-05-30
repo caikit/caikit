@@ -23,7 +23,11 @@ import time
 import uuid
 
 # Third Party
+from google.protobuf.descriptor_pool import DescriptorPool
 from grpc_health.v1 import health_pb2, health_pb2_grpc
+from grpc_reflection.v1alpha.proto_reflection_descriptor_database import (
+    ProtoReflectionDescriptorDatabase,
+)
 import grpc
 import pytest
 import tls_test_tools
@@ -756,6 +760,22 @@ def test_out_of_range_port(sample_inference_service):
             training_service=None,
         ) as server:
             _assert_connection(grpc.insecure_channel(f"localhost:{free_high_port}"))
+
+
+def test_reflection_enabled(runtime_grpc_server):
+    """This pings the reflection API to ensure we can list the caikit services that are running"""
+    # See https://github.com/grpc/grpc/blob/master/doc/python/server_reflection.md
+    channel = runtime_grpc_server.make_local_channel()
+    reflection_db = ProtoReflectionDescriptorDatabase(channel)
+
+    desc_pool = DescriptorPool(reflection_db)
+    service_desc = desc_pool.FindServiceByName(
+        "caikit.runtime.SampleLib.SampleLibService"
+    )
+    method_desc = service_desc.FindMethodByName(
+        "caikit.runtime.SampleLib.SampleLibService/SampleTaskPredict"
+    )
+    assert method_desc is not None
 
 
 # Test implementation details #########################
