@@ -742,9 +742,14 @@ def test_np_dtypes():
     )
 
 
-@pytest.mark.parametrize("run_num", range(500))
+@pytest.mark.parametrize("run_num", range(100))
 def test_dataobject_jsondict(temp_dpool, run_num):
-    """Make sure that a JsonDict type is handled correctly in a dataobject"""
+    """Make sure that a JsonDict type is handled correctly in a dataobject
+
+    NOTE: This test is repeated 100x due to a strange segfault in `upb` that it
+        can trigger. The workaround above in `temp_dpool` should solve it, but
+        we retain the repetition to catch anything that's missed.
+    """
 
     @dataobject
     class Foo(DataObjectBase):
