@@ -93,11 +93,8 @@ runtime:
     # gRPC Server shutdown grace period
     server_shutdown_grace_period_seconds: 45
 
-    compiled_proto_module_dir: unused
-
     # Configuration items for service generation
     service_generation:
-        enabled: true
         module_guids:
             included: []
             excluded: []

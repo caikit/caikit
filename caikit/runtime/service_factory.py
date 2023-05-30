@@ -17,7 +17,6 @@ from enum import Enum
 from types import ModuleType
 from typing import Callable, Set, Type
 import dataclasses
-import inspect
 
 # Third Party
 import google.protobuf.descriptor
@@ -111,51 +110,10 @@ class ServicePackageFactory:
                 concrete Servicer implementation to a protobufs Service and grpc Server
         """
         if source == cls.ServiceSource.COMPILED:
-            # Use our import_utils to extract the correct bits out of a set of compiled pb2
-            # packages
-            lib_name = cls._get_lib_name_for_servicer()
-
-            if service_type == cls.ServiceType.INFERENCE:
-                # 🌶️🌶️🌶️! hardcoded service names
-                compiled_pb2_package = cls._get_compiled_proto_module(
-                    "caikit_runtime_pb2"
-                )
-                compiled_pb2_grpc_package = cls._get_compiled_proto_module(
-                    "caikit_runtime_pb2_grpc"
-                )
-            elif service_type == cls.ServiceType.TRAINING_MANAGEMENT:
-                raise CaikitRuntimeException(
-                    grpc.StatusCode.INTERNAL,
-                    "Not allowed to get Training Management services from compiled packages",
-                )
-            else:  # elif  service_type == cls.ServiceType.TRAINING:
-                # (using final _else_ for static analysis happiness)
-                # 🌶️🌶️🌶️! hardcoded service names
-                compiled_pb2_package = cls._get_compiled_proto_module(
-                    "caikit_runtime_train_pb2"
-                )
-                compiled_pb2_grpc_package = cls._get_compiled_proto_module(
-                    "caikit_runtime_train_pb2_grpc"
-                )
-
-            # Dynamically create a new module to hold all the service's messages
-            client_module = ModuleType(
-                "ClientMessages", "Package with service message class implementations"
-            )
-            for k, v in compiled_pb2_package.__dict__.items():
-                if inspect.isclass(v) and issubclass(
-                    v, google.protobuf.message.Message
-                ):
-                    setattr(client_module, k, v)
-
-            return ServicePackage(
-                service=cls._get_servicer_class(compiled_pb2_grpc_package, lib_name),
-                descriptor=cls._get_service_descriptor(compiled_pb2_package, lib_name),
-                registration_function=cls._get_servicer_function(
-                    compiled_pb2_grpc_package, lib_name
-                ),
-                stub_class=cls._get_servicer_stub(compiled_pb2_grpc_package, lib_name),
-                messages=client_module,
+            # Disallow service generation for compiled modules
+            raise CaikitRuntimeException(
+                grpc.StatusCode.UNIMPLEMENTED,
+                "Service generation is not implemented for compiled service source",
             )
 
         if service_type == cls.ServiceType.TRAINING_MANAGEMENT:
@@ -317,25 +275,6 @@ class ServicePackageFactory:
         )
 
     @staticmethod
-    def _get_servicer_function(
-        caikit_runtime_pb2_grpc,
-        lib_name,
-    ) -> Callable[[google.protobuf.service.Service, grpc.Server], None]:
-        """Get ServiceServicer function from caikit_runtime_pb2_grpc module"""
-        servicer = f"add_{lib_name}ServiceServicer_to_server"
-        train_servicer = f"add_{lib_name}TrainingServiceServicer_to_server"
-
-        if hasattr(caikit_runtime_pb2_grpc, servicer):
-            return getattr(caikit_runtime_pb2_grpc, servicer)
-        if hasattr(caikit_runtime_pb2_grpc, train_servicer):
-            return getattr(caikit_runtime_pb2_grpc, train_servicer)
-
-        raise CaikitRuntimeException(
-            grpc.StatusCode.INTERNAL,
-            "Could not find servicer function in caikit_runtime_pb2_grpc",
-        )
-
-    @staticmethod
     def _get_servicer_class(
         caikit_runtime_pb2_grpc,
         lib_name,
@@ -381,32 +320,3 @@ class ServicePackageFactory:
         lib_names = import_util.clean_lib_names(get_config().runtime.library)
         assert len(lib_names) == 1, "Only 1 caikit library supported for now"
         return snake_to_upper_camel(lib_names[0].replace("caikit_", ""))
-
-    @staticmethod
-    def _get_compiled_proto_module(
-        module: str,
-        config=None,
-    ) -> ModuleType:
-        """
-        Dynamically import the compiled service module. This is accomplished via dynamic
-        import on the RUNTIME_COMPILED_PROTO_MODULE_DIR's environment variable.
-
-        Args:
-            config(aconfig.Config): caikit configuration
-
-        Returns:
-            (module): Handle to the module after dynamic import
-        """
-        if not config:
-            config = get_config()
-        module_dir = config.runtime.compiled_proto_module_dir
-        service_proto_gen_module = import_util.get_dynamic_module(module, module_dir)
-        if service_proto_gen_module is None:
-            message = (
-                "Unable to load compiled proto module: %s within dir %s"
-                % (module)
-                % (module_dir)
-            )
-            log.error("<RUN22291313E>", message)
-            raise CaikitRuntimeException(grpc.StatusCode.INTERNAL, message)
-        return service_proto_gen_module
