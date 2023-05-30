@@ -14,7 +14,7 @@
 """A generic module to help Predict and Train servicers
 """
 # Standard
-from typing import Any, Callable, Dict, Iterable
+from typing import Any, Callable, Dict, Iterable, Type
 import traceback
 
 # Third Party
@@ -26,7 +26,9 @@ import grpc
 import alog
 
 # Local
-from caikit.core.data_model.streams.data_stream import DataStream
+from caikit.core.data_model.base import DataBase
+from caikit.core.signature_parsing import CaikitMethodSignature
+from caikit.interfaces.runtime.data_model.training_management import ModelPointer
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_generation.data_stream_source import get_data_stream_source
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -211,209 +213,53 @@ def validate_data_model(
 
 
 def build_caikit_library_request_dict(
-    request, model_function: Callable
+    request,
+    module_signature: CaikitMethodSignature,
 ) -> Dict[str, Any]:
     """
-    build the caikit_library_request_dict.
+    Build the request kwargs dict.
 
-    Basically it is:
-
-    1. Removing zero values for other primitive
-    2. Removing any arg that is not supported by the model_function
-    3. "from-protoing" any non-primitive fields (example - message is "from-protoed")
     """
-    caikit_library_request_dict = {}
-    valid_kwarg_names = set(model_function.__code__.co_varnames)
-    # remove self in case it's present
-    if "self" in valid_kwarg_names:
-        valid_kwarg_names.remove("self")
-    # remove cls in case it's present
-    if "cls" in valid_kwarg_names:
-        valid_kwarg_names.remove("cls")
-
-    log.debug("valid kwarg names: %s", valid_kwarg_names)
-    cdm = get_data_model()
     try:
-        log.debug2(
-            "We are looping though these fields: %s",
-            [field.name for field in request.DESCRIPTOR.fields],
-        )
-        # get all oneof fields excluding from optional oneofs
-        one_of_fields = []
-        for oneof_name, oneof in request.DESCRIPTOR.oneofs_by_name.items():
-            one_of_fields.extend(
-                [
-                    field.name
-                    for field in oneof.fields
-                    if len(oneof.fields) != 1
-                    or oneof_name != f"_{oneof.fields[0].name}"
-                ]
-            )
-        for field in request.DESCRIPTOR.fields:
-            field_name = field.name
-            field_value = None
-            log.debug2("processing field: %s", field_name)
+        # Request messages are data model objects so .from_proto can be used
+        # request_data_model_class = getattr(self._inference_service.data_model, type(request).__name__)
+        request_data_model_class = DataBase.get_class_for_proto(request)
+        request_data_model = request_data_model_class.from_proto(request)
 
-            # check for oneofs
-            if field_name in one_of_fields:
-                # get the containing oneof name
-                oneof_name = field.containing_oneof.name
-                # Check if the field is the one set in the oneof
-                if request.WhichOneof(oneof_name) == field_name:
-                    # get the field_value
-                    field_value = getattr(request, field_name)
-                    # change the field_name to be of the oneof name
-                    log.debug3(
-                        "changing field name %s to be of the oneof: %s",
-                        field_name,
-                        oneof_name,
-                    )
-                    field_name = oneof_name
+        # Initialize kwargs from data model fields
+        kwargs_dict = request_data_model.to_dict()
 
-            #  Need to not pass in any arg that is not supported by the function
-            if field_name not in valid_kwarg_names:
-                continue
-            if field_value is None:
-                field_value = getattr(request, field_name)
-            if is_protobuf_primitive_field(field):
-                # We don't need to convert this field to a Caikit Library CDM instance
-                # We also don't set the field if it is an int 0, which happens by default
-                # if a value is left empty, otherwise we would be sending values like 0 for limit
-                # bool is a subclass of int (https://docs.python.org/3/library/functions.html#bool)
-                # so this needs to be handled separately
-                log.debug2(
-                    "<RUN51658873D>",
-                    "Field name [%s] with value [%s] is a primitive of type [%s]",
-                    field_name,
-                    field_value,
-                    type(field_value),
-                )
-                try:
-                    # optional primitive
-                    if request.HasField(field_name):
-                        caikit_library_request_dict[field_name] = field_value
-                except ValueError as e:
-                    # non-optional primitives and iterables
-                    log.debug2(
-                        "failed to check HasField on field %s, error: %s",
-                        field_name,
-                        e,
-                    )
-                    # iterables
-                    if isinstance(field_value, Iterable):
-                        if len(field_value) != 0:
-                            # cast only if it's actually a list
-                            if not isinstance(field_value, (str, bytes)):
-                                if "training_data" in field_name:
-                                    caikit_library_request_dict[
-                                        field_name
-                                    ] = DataStream.from_iterable(field_value)
-                                else:
-                                    caikit_library_request_dict[field_name] = list(
-                                        field_value
-                                    )
-                            # if not, pass it as is. (non-optional str & bytes)
-                            else:
-                                caikit_library_request_dict[field_name] = field_value
-                    # non-iterable primitives
-                    else:
-                        caikit_library_request_dict[field_name] = field_value
-            else:
-                log.debug2(
-                    "<RUN55658873D>",
-                    "field is not primitive: %s (%s) type(%s)",
-                    field_name,
-                    field_value,
-                    type(field_value),
-                )
-                # iterables
-                if isinstance(field_value, Iterable):
-                    if len(field_value) != 0:
-                        # We sure we want a DataStream? - after huddling
-                        # with Joe and Travis, it seems reasonable to assume
-                        # we will return a DataStream for all non-primitive
-                        # iterables. Perhaps if there was guaranteed type
-                        # annotation, we could be smart about it and deal with
-                        # it better in the future.
+        # 1. Remove any fields not in request
+        unset_field_names = [
+            field_name
+            for field_name in request.fields
+            if not request.HasField(field_name)
+        ]
+        for unset_field_name in unset_field_names:
+            if unset_field_name in kwargs_dict:
+                kwargs_dict.pop(unset_field_name)
 
-                        # the list of instances to create a DataStream object
-                        # with intentionally not using list comprehension for
-                        # ease of reading
-                        instances = []
-                        for field_item in field_value:
-                            # Start by getting the class name for this
-                            # particular field (e.g., RawDocument)
-                            class_name = type(field_item).DESCRIPTOR.name
-                            # get the Caikit Library CDM class of the same name
-                            caikit_library_class = getattr(cdm, class_name)
-                            # Use the Caikit Library CDM class's from_proto
-                            # method to turn our protobufs field message into an
-                            # instance of the Caikit Library CDM class
-                            instance = caikit_library_class.from_proto(field_item)
-                            instances.append(instance)
+        # 2. Remove any fields not in the module signature
+        absent_field_names = [
+            k for k in kwargs_dict.keys() if k not in module_signature.parameters.keys()
+        ]
+        for absent_field_name in absent_field_names:
+            if absent_field_name in kwargs_dict:
+                kwargs_dict.pop(absent_field_name)
 
-                        if "training_data" in field_name:
-                            data_stream = DataStream.from_iterable(instances)
-                            caikit_library_request_dict[field_name] = data_stream
-                        else:
-                            caikit_library_request_dict[field_name] = field_value
-                else:
-                    log.debug2(
-                        "<RUN55258876D>",
-                        "field is not primitive, and also not an Iterable: %s (%s) type(%s)",
-                        field_name,
-                        field_value,
-                        type(field_value),
-                    )
-                    # if it's a custom datastream dataobject
-                    stream_source = get_data_stream_source(field_value)
-                    if stream_source:
-                        caikit_library_request_dict[
-                            field_name
-                        ] = stream_source.to_data_stream()
+        # 3. Model Pointers
+        for field_name, field_value in kwargs_dict.items():
+            # TODO: should this be subclass?
+            if isinstance(field_value, ModelPointer):
+                log.debug2("field_value is a ModelPointer obj")
+                model_manager = ModelManager.get_instance()
+                model_retrieved = model_manager.retrieve_model(field_value.model_id)
+                kwargs_dict[field_name] = model_retrieved
+        # TODO: anything else need special treatment?
 
-                    else:
-                        log.debug2(
-                            "<RUN64546176D>",
-                            "field should not have stream source: %s (%s) type(%s)",
-                            field_name,
-                            field_value,
-                            type(field_value),
-                        )
-                        # Start by getting the class name for this particular
-                        # field (e.g., RawDocument)
-                        class_name = type(field_value).DESCRIPTOR.name
+        log.debug2("caikit_library_request_dict returned is: %s", kwargs_dict)
 
-                        # special case for model pointer
-                        if class_name == "ModelPointer":
-                            log.debug2("field_value is a ModelPointer obj")
-                            if field_value.model_id:
-                                model_manager = ModelManager.get_instance()
-                                model_retrieved = model_manager.retrieve_model(
-                                    field_value.model_id
-                                )
-                                caikit_library_request_dict[
-                                    field_name
-                                ] = model_retrieved
-                        else:
-                            # Now get the Caikit Library CDM class of the same
-                            # name
-                            caikit_library_class = getattr(cdm, class_name)
-                            # Use the Caikit Library CDM class's from_proto
-                            # method to turn our protobufs field message into an
-                            # instance of the Caikit Library CDM class
-                            instance = caikit_library_class.from_proto(field_value)
-                            # Add to the request dictionary, using the message
-                            # field's name as the key (since, by convention, the
-                            # argument name to the module run function will be
-                            # the same as the field name)
-                            caikit_library_request_dict[field_name] = instance
-
-        log.debug2(
-            "caikit_library_request_dict returned is: %s", caikit_library_request_dict
-        )
-
-        return caikit_library_request_dict
+        return kwargs_dict
 
     except CaikitRuntimeException as e:
         log.warning(
@@ -437,3 +283,189 @@ def build_caikit_library_request_dict(
         raise CaikitRuntimeException(
             grpc.StatusCode.INVALID_ARGUMENT, "Could not deserialize request"
         ) from e
+
+    # valid_kwarg_names = set(model_function.__code__.co_varnames)
+    # # remove self in case it's present
+    # if "self" in valid_kwarg_names:
+    #     valid_kwarg_names.remove("self")
+    # # remove cls in case it's present
+    # if "cls" in valid_kwarg_names:
+    #     valid_kwarg_names.remove("cls")
+
+    # log.debug("valid kwarg names: %s", valid_kwarg_names)
+    # cdm = get_data_model()
+    # try:
+    #     log.debug2(
+    #         "We are looping though these fields: %s",
+    #         [field.name for field in request.DESCRIPTOR.fields],
+    #     )
+    #     # get all oneof fields excluding from optional oneofs
+    #     one_of_fields = []
+    #     for oneof_name, oneof in request.DESCRIPTOR.oneofs_by_name.items():
+    #         one_of_fields.extend(
+    #             [
+    #                 field.name
+    #                 for field in oneof.fields
+    #                 if len(oneof.fields) != 1
+    #                 or oneof_name != f"_{oneof.fields[0].name}"
+    #             ]
+    #         )
+    #     for field in request.DESCRIPTOR.fields:
+    #         field_name = field.name
+    #         field_value = None
+    #         log.debug2("processing field: %s", field_name)
+
+    #         # check for oneofs
+    #         if field_name in one_of_fields:
+    #             # get the containing oneof name
+    #             oneof_name = field.containing_oneof.name
+    #             # Check if the field is the one set in the oneof
+    #             if request.WhichOneof(oneof_name) == field_name:
+    #                 # get the field_value
+    #                 field_value = getattr(request, field_name)
+    #                 # change the field_name to be of the oneof name
+    #                 log.debug3(
+    #                     "changing field name %s to be of the oneof: %s",
+    #                     field_name,
+    #                     oneof_name,
+    #                 )
+    #                 field_name = oneof_name
+
+    #         #  Need to not pass in any arg that is not supported by the function
+    #         if field_name not in valid_kwarg_names:
+    #             continue
+    #         if field_value is None:
+    #             field_value = getattr(request, field_name)
+    #         if is_protobuf_primitive_field(field):
+    #             # We don't need to convert this field to a Caikit Library CDM instance
+    #             # We also don't set the field if it is an int 0, which happens by default
+    #             # if a value is left empty, otherwise we would be sending values like 0 for limit
+    #             # bool is a subclass of int (https://docs.python.org/3/library/functions.html#bool)
+    #             # so this needs to be handled separately
+    #             log.debug2(
+    #                 "<RUN51658873D>",
+    #                 "Field name [%s] with value [%s] is a primitive of type [%s]",
+    #                 field_name,
+    #                 field_value,
+    #                 type(field_value),
+    #             )
+    #             try:
+    #                 # optional primitive
+    #                 if request.HasField(field_name):
+    #                     caikit_library_request_dict[field_name] = field_value
+    #             except ValueError as e:
+    #                 # non-optional primitives and iterables
+    #                 log.debug2(
+    #                     "failed to check HasField on field %s, error: %s",
+    #                     field_name,
+    #                     e,
+    #                 )
+    #                 # iterables
+    #                 if isinstance(field_value, Iterable):
+    #                     if len(field_value) != 0:
+    #                         # cast only if it's actually a list
+    #                         if not isinstance(field_value, (str, bytes)):
+    #                             if "training_data" in field_name:
+    #                                 caikit_library_request_dict[
+    #                                     field_name
+    #                                 ] = DataStream.from_iterable(field_value)
+    #                             else:
+    #                                 caikit_library_request_dict[field_name] = list(
+    #                                     field_value
+    #                                 )
+    #                         # if not, pass it as is. (non-optional str & bytes)
+    #                         else:
+    #                             caikit_library_request_dict[field_name] = field_value
+    #                 # non-iterable primitives
+    #                 else:
+    #                     caikit_library_request_dict[field_name] = field_value
+    #         else:
+    #             log.debug2(
+    #                 "<RUN55658873D>",
+    #                 "field is not primitive: %s (%s) type(%s)",
+    #                 field_name,
+    #                 field_value,
+    #                 type(field_value),
+    #             )
+    #             # iterables
+    #             if isinstance(field_value, Iterable):
+    #                 if len(field_value) != 0:
+    #                     # We sure we want a DataStream? - after huddling
+    #                     # with Joe and Travis, it seems reasonable to assume
+    #                     # we will return a DataStream for all non-primitive
+    #                     # iterables. Perhaps if there was guaranteed type
+    #                     # annotation, we could be smart about it and deal with
+    #                     # it better in the future.
+
+    #                     # the list of instances to create a DataStream object
+    #                     # with intentionally not using list comprehension for
+    #                     # ease of reading
+    #                     instances = []
+    #                     for field_item in field_value:
+    #                         # Start by getting the class name for this
+    #                         # particular field (e.g., RawDocument)
+    #                         class_name = type(field_item).DESCRIPTOR.name
+    #                         # get the Caikit Library CDM class of the same name
+    #                         caikit_library_class = getattr(cdm, class_name)
+    #                         # Use the Caikit Library CDM class's from_proto
+    #                         # method to turn our protobufs field message into an
+    #                         # instance of the Caikit Library CDM class
+    #                         instance = caikit_library_class.from_proto(field_item)
+    #                         instances.append(instance)
+
+    #                     if "training_data" in field_name:
+    #                         data_stream = DataStream.from_iterable(instances)
+    #                         caikit_library_request_dict[field_name] = data_stream
+    #                     else:
+    #                         caikit_library_request_dict[field_name] = field_value
+    #             else:
+    #                 log.debug2(
+    #                     "<RUN55258876D>",
+    #                     "field is not primitive, and also not an Iterable: %s (%s) type(%s)",
+    #                     field_name,
+    #                     field_value,
+    #                     type(field_value),
+    #                 )
+    #                 # if it's a custom datastream dataobject
+    #                 stream_source = get_data_stream_source(field_value)
+    #                 if stream_source:
+    #                     caikit_library_request_dict[
+    #                         field_name
+    #                     ] = stream_source.to_data_stream()
+
+    #                 else:
+    #                     log.debug2(
+    #                         "<RUN64546176D>",
+    #                         "field should not have stream source: %s (%s) type(%s)",
+    #                         field_name,
+    #                         field_value,
+    #                         type(field_value),
+    #                     )
+    #                     # Start by getting the class name for this particular
+    #                     # field (e.g., RawDocument)
+    #                     class_name = type(field_value).DESCRIPTOR.name
+
+    #                     # special case for model pointer
+    #                     if class_name == "ModelPointer":
+    #                         log.debug2("field_value is a ModelPointer obj")
+    #                         if field_value.model_id:
+    #                             model_manager = ModelManager.get_instance()
+    #                             model_retrieved = model_manager.retrieve_model(
+    #                                 field_value.model_id
+    #                             )
+    #                             caikit_library_request_dict[
+    #                                 field_name
+    #                             ] = model_retrieved
+    #                     else:
+    #                         # Now get the Caikit Library CDM class of the same
+    #                         # name
+    #                         caikit_library_class = getattr(cdm, class_name)
+    #                         # Use the Caikit Library CDM class's from_proto
+    #                         # method to turn our protobufs field message into an
+    #                         # instance of the Caikit Library CDM class
+    #                         instance = caikit_library_class.from_proto(field_value)
+    #                         # Add to the request dictionary, using the message
+    #                         # field's name as the key (since, by convention, the
+    #                         # argument name to the module run function will be
+    #                         # the same as the field name)
+    #                         caikit_library_request_dict[field_name] = instance
