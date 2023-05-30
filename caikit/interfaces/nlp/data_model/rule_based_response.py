@@ -426,8 +426,8 @@ class View(DataObjectBase):
 
 @dataobject(package="caikit_data_model.nlp")
 class RulesPrediction(DataObjectBase):
-    views: Annotated[List[View], FieldNumber(1)]
-    producer_id: Annotated[ProducerId, FieldNumber(2)]
+    producer_id: Annotated[ProducerId, FieldNumber(1)]
+    views: Annotated[List[View], FieldNumber(2)]
 
     def __init__(self, views, producer_id=None):
         """
