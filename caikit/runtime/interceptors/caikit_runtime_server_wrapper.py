@@ -137,17 +137,18 @@ class CaikitRuntimeServerWrapper(grpc.Server):
             A function that takes a gRPC request message and ServicerContext, and safely invokes
             the provided RPC.
         """
+        if rpc is None:
+            message = "Programming error, RPC is None!"
+            log.error("<RUN33322123E>", message)
+            raise CaikitRuntimeException(grpc.StatusCode.INTERNAL, message)
 
-        if rpc is not None:
-            if rpc.__name__ == "safe_rpc_call":
-                return rpc
-            log.info(
-                "<RUN33333123I>",
-                "Wrapping safe rpc for %s",
-                rpc.__name__,
-            )
-        else:
-            log.info("<RUN33322123I>", "Wrapping safe rpc for %s", rpc)
+        if rpc.__name__ == "safe_rpc_call":
+            return rpc
+        log.info(
+            "<RUN33333123I>",
+            "Wrapping safe rpc for %s",
+            rpc.__name__,
+        )
 
         def safe_rpc_call(request, context):
             """This function should be used to safely invoke an RPC. If used, it adds automatic
@@ -225,13 +226,8 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                     # Now, swap out the original unary-unary callable with our
                     # generic predict method, and add this newly re-routed RPC
                     # method handler to the dict of (method, handler) pairs
-                    rerouted_rpc_method_handlers[
-                        method
-                    ] = grpc.unary_unary_rpc_method_handler(
-                        self.safe_rpc_wrapper(self._global_predict),
-                        request_deserializer=original_rpc_handler.request_deserializer,
-                        response_serializer=original_rpc_handler.response_serializer,
-                    )
+                    safe_rpc_handler = self._make_new_handler(original_rpc_handler)
+                    rerouted_rpc_method_handlers[method] = safe_rpc_handler
                     log.info(
                         "<RUN30032825I>",
                         "Re-routing RPC %s from %s to %s",
@@ -247,13 +243,10 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                     # unary-unary RPC handler method, but will wrap it in a
                     # safe RPC call
                     original_rpc_handler = handler.service(DummyHandlerCallDetails(fqm))
-                    unintercepted_rpc_method_handlers[
-                        method
-                    ] = grpc.unary_unary_rpc_method_handler(
-                        self.safe_rpc_wrapper(original_rpc_handler.unary_unary),
-                        request_deserializer=original_rpc_handler.request_deserializer,
-                        response_serializer=original_rpc_handler.response_serializer,
+                    safe_rpc_handler = self._make_new_handler(
+                        original_rpc_handler, replace_with_global_predict=False
                     )
+                    unintercepted_rpc_method_handlers[method] = safe_rpc_handler
 
                 # Now that we have re-rerouted all of the original RPC method
                 # handlers to the global predict RPC method handler, it is time
@@ -279,14 +272,42 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                 for method in handler._method_handlers:
                     # Wrap the RPC handler for this method in a safe RPC call
                     original_rpc_handler = handler._method_handlers[method]
-                    safe_rpc_handler = grpc.unary_unary_rpc_method_handler(
-                        self.safe_rpc_wrapper(original_rpc_handler.unary_unary),
-                        request_deserializer=original_rpc_handler.request_deserializer,
-                        response_serializer=original_rpc_handler.response_serializer,
+                    safe_rpc_handler = self._make_new_handler(
+                        original_rpc_handler, replace_with_global_predict=False
                     )
                     handler._method_handlers[method] = safe_rpc_handler
 
                 self._server.add_generic_rpc_handlers(generic_rpc_handlers)
+
+    def _make_new_handler(self, original_rpc_handler, replace_with_global_predict=True):
+        if original_rpc_handler.unary_unary:
+            return grpc.unary_unary_rpc_method_handler(
+                self.safe_rpc_wrapper(
+                    self._global_predict
+                    if replace_with_global_predict
+                    else original_rpc_handler.unary_unary
+                ),
+                request_deserializer=original_rpc_handler.request_deserializer,
+                response_serializer=original_rpc_handler.response_serializer,
+            )
+        if original_rpc_handler.unary_stream:
+            return grpc.unary_stream_rpc_method_handler(
+                self.safe_rpc_wrapper(original_rpc_handler.unary_stream),
+                request_deserializer=original_rpc_handler.request_deserializer,
+                response_serializer=original_rpc_handler.response_serializer,
+            )
+        if original_rpc_handler.stream_unary:
+            return grpc.stream_unary_rpc_method_handler(
+                self.safe_rpc_wrapper(original_rpc_handler.stream_unary),
+                request_deserializer=original_rpc_handler.request_deserializer,
+                response_serializer=original_rpc_handler.response_serializer,
+            )
+        # Else, it's stream-stream
+        return grpc.stream_stream_rpc_method_handler(
+            self.safe_rpc_wrapper(original_rpc_handler.stream_stream),
+            request_deserializer=original_rpc_handler.request_deserializer,
+            response_serializer=original_rpc_handler.response_serializer,
+        )
 
     # **************************************************************************
     # Pass-through (i.e., unchanged) grpc.Server methods

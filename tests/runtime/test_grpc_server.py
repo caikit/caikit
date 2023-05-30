@@ -772,9 +772,7 @@ def test_reflection_enabled(runtime_grpc_server):
     service_desc = desc_pool.FindServiceByName(
         "caikit.runtime.SampleLib.SampleLibService"
     )
-    method_desc = service_desc.FindMethodByName(
-        "caikit.runtime.SampleLib.SampleLibService/SampleTaskPredict"
-    )
+    method_desc = service_desc.FindMethodByName("SampleTaskPredict")
     assert method_desc is not None
 
 
