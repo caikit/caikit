@@ -19,6 +19,7 @@ from typing import Dict, List, Optional, Union
 
 # Third Party
 from google.protobuf import struct_pb2
+from google.protobuf.message_factory import GetMessageClass
 
 # Type hints for JSON serializable dicts
 JsonDictValue = Union[
@@ -46,13 +47,17 @@ def dict_to_struct(
         list_value_class = struct_pb2.ListValue
     else:
         if value_class is None:
-            value_class = struct_class.DESCRIPTOR.file.pool.FindMessageTypeByName(
-                "google.protobuf.Value"
-            )._concrete_class
+            value_class = GetMessageClass(
+                struct_class.DESCRIPTOR.file.pool.FindMessageTypeByName(
+                    "google.protobuf.Value"
+                )
+            )
         if list_value_class is None:
-            list_value_class = struct_class.DESCRIPTOR.file.pool.FindMessageTypeByName(
-                "google.protobuf.ListValue"
-            )._concrete_class
+            list_value_class = GetMessageClass(
+                struct_class.DESCRIPTOR.file.pool.FindMessageTypeByName(
+                    "google.protobuf.ListValue"
+                )
+            )
 
     return struct_class(
         fields={
