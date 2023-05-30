@@ -60,6 +60,11 @@ def test_environment():
     """The most important fixture: This runs caikit configuration with the base test config overrides"""
     test_config_path = os.path.join(FIXTURES_DIR, "config", "config.yml")
     caikit.configure(test_config_path)
+    # import the mock backend that is specified in the config
+    # This is required to run any test that loads a model
+    # Local
+    from tests.core.helpers import MockBackend
+
     yield
     # No cleanup required...?
 
