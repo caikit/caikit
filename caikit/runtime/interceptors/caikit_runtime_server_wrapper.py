@@ -16,6 +16,7 @@
 import traceback
 
 # Third Party
+from grpc._utilities import RpcMethodHandler
 from prometheus_client import Gauge
 import grpc
 
@@ -279,7 +280,11 @@ class CaikitRuntimeServerWrapper(grpc.Server):
 
                 self._server.add_generic_rpc_handlers(generic_rpc_handlers)
 
-    def _make_new_handler(self, original_rpc_handler, replace_with_global_predict=True):
+    def _make_new_handler(
+        self,
+        original_rpc_handler: RpcMethodHandler,
+        replace_with_global_predict: bool = True,
+    ):
         if original_rpc_handler.unary_unary:
             return grpc.unary_unary_rpc_method_handler(
                 self.safe_rpc_wrapper(
