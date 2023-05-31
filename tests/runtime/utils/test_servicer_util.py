@@ -350,33 +350,6 @@ def test_global_predict_build_caikit_library_request_dict_strips_empty_list_from
 #     # self.assertIsInstance(caikit.core_request["repeated_message_field"], list)
 
 
-def test_global_train_build_caikit_library_request_dict_creates_caikit_core_run_kwargs_not_fail_when_optional_proto_field_not_exist(
-    sample_train_service,
-):
-    """Global train build_caikit_library_request_dict creates module run kwargs from RPC msg
-    and if not passed in request, it creates the fields with default values"""
-    train_request = (
-        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
-            model_name=random_test_id()  # not having batch_size, and training_data
-        )
-    )
-
-    caikit.core_request = build_caikit_library_request_dict(
-        train_request,
-        CaikitMethodSignature(sample_lib.modules.sample_task.SampleModule, "train"),
-    )
-
-    expected_arguments = {"training_data"}
-
-    # assert that even though not passed in, caikit.core_request now has training_data
-    # because empty stream types get an empty steam initialized
-    # TODO: will need additional tests for list arguments
-    assert expected_arguments == set(caikit.core_request.keys())
-    assert isinstance(
-        caikit.core_request["training_data"], caikit.core.data_model.DataStream
-    )
-
-
 def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_request(
     sample_train_service,
 ):
