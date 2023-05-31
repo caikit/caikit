@@ -14,12 +14,12 @@
 """A generic module to help Predict and Train servicers
 """
 # Standard
-from typing import Any, Callable, Dict, Iterable, Type
+from typing import Any, Callable, Dict, Iterable, Type, Union
 import traceback
 
 # Third Party
-from google.protobuf.descriptor import FieldDescriptor
-import google.protobuf.descriptor
+from google.protobuf.descriptor import Descriptor, FieldDescriptor, ServiceDescriptor
+from google.protobuf.message import Message as ProtoMessageType
 import grpc
 
 # First Party
@@ -143,7 +143,7 @@ def snake_to_upper_camel(string: str) -> str:
 
 
 def validate_data_model(
-    service_descriptor: google.protobuf.descriptor.ServiceDescriptor,
+    service_descriptor: ServiceDescriptor,
 ):
     """Validate the Caikit Library Common Data Model (CDM) against a service descriptor
     that defines the RPCs that this class must support at predict/train time.
@@ -213,7 +213,7 @@ def validate_data_model(
 
 
 def build_caikit_library_request_dict(
-    request,
+    request: Union[Descriptor, ProtoMessageType],
     module_signature: CaikitMethodSignature,
 ) -> Dict[str, Any]:
     """
@@ -227,21 +227,37 @@ def build_caikit_library_request_dict(
         request_data_model = request_data_model_class.from_proto(request)
 
         # Initialize kwargs from data model fields
-        kwargs_dict = request_data_model.to_dict()
+        kwargs_dict = {
+            field_name: getattr(request_data_model, field_name)
+            for field_name in request_data_model.fields
+        }
 
         # 1. Remove any fields not in request
-        unset_field_names = [
-            field_name
-            for field_name in request.fields
-            if not request.HasField(field_name)
-        ]
+        unset_field_names = []
+        for field in request.DESCRIPTOR.fields:
+            try:
+                if not request.HasField(field.name):
+                    unset_field_names.append(field.name)
+            except ValueError as e:
+                log.debug2(
+                    "failed to check HasField on field %s, error: %s",
+                    field.name,
+                    e,
+                )
+                # Remove empty iterables since we cannot distinguish between
+                # unset and empty repeated fields
+                field_value = getattr(request, field.name)
+                if isinstance(field_value, Iterable) and len(field_value) == 0:
+                    unset_field_names.append(field.name)
         for unset_field_name in unset_field_names:
             if unset_field_name in kwargs_dict:
                 kwargs_dict.pop(unset_field_name)
 
         # 2. Remove any fields not in the module signature
         absent_field_names = [
-            k for k in kwargs_dict.keys() if k not in module_signature.parameters.keys()
+            field
+            for field in kwargs_dict.keys()
+            if field not in module_signature.parameters.keys()
         ]
         for absent_field_name in absent_field_names:
             if absent_field_name in kwargs_dict:
