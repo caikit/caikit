@@ -20,6 +20,7 @@ Typically used for `caikit.core.module`s that expose .train and .run functions.
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, get_args, get_origin
 import abc
 import copy
+from caikit.core import TaskBase
 
 # First Party
 from py_to_proto.dataclass_to_proto import (  # NOTE: Imported from here for compatibility
@@ -215,7 +216,8 @@ class TaskPredictRPC(CaikitRPCBase):
 
     def __init__(
         self,
-        task: Tuple[str, str],
+        task: Type[TaskBase],
+        # task: Tuple[str, str],
         method_signatures: List[CaikitMethodSignature],
         primitive_data_model_types: List[str],
     ):
@@ -282,7 +284,8 @@ class TaskPredictRPC(CaikitRPCBase):
         """Helper function to convert the pair of library name and task name to
         a request message name
         """
-        return snake_to_upper_camel(f"{self.task[1]}_Request")
+        # return snake_to_upper_camel(f"{self.task[1]}_Request")
+        return snake_to_upper_camel(f"{self.task.__name__}_Request")
 
     def _task_to_rpc_name(self) -> str:
         """Helper function to convert the pair of library name and task name
@@ -293,7 +296,8 @@ class TaskPredictRPC(CaikitRPCBase):
         return: SampleTaskPredict
         """
 
-        return snake_to_upper_camel(f"{self.task[1]}_Predict")
+        # return snake_to_upper_camel(f"{self.task[1]}_Predict")
+        return snake_to_upper_camel(f"{self.task.__name__}_Predict")
 
 
 class _RequestMessage:

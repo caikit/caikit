@@ -164,11 +164,17 @@ def _create_rpcs_for_modules(
 def _group_modules_by_task(modules: List[Type[ModuleBase]], fname: str) -> Dict[Type[TaskBase], List[Type[ModuleBase]]]:
     task_groups = {}
     for ck_module in modules:
-        module_info = get_module_info(ck_module)
-        signature = CaikitMethodSignature(ck_module, fname)
-        # Group each module by its task
-        if module_info is not None:
-            task_groups.setdefault((module_info.library, module_info.type), []).append(
-                signature
-            )
+        #----------Added task name------------
+        # ck_module_task_name = None
+        if ck_module.TASK_CLASS:
+            ck_module_task_name = ck_module.TASK_CLASS.__name__
+
+            signature = CaikitMethodSignature(ck_module, fname)
+            
+            # Change: Passed task name below in task_groups
+            if ck_module_task_name is not None:
+                # task_groups.setdefault((ck_module_task_name, ck_module_task_name), []).append(
+                task_groups.setdefault(ck_module.TASK_CLASS, []).append(
+                    signature
+                )    
     return task_groups
