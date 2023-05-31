@@ -11,17 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# Standard
 import uuid
 
-import caikit
 # Local
 from caikit.runtime.service_generation.create_service import (
     create_inference_rpcs,
     create_training_rpcs,
 )
-import sample_lib
-from sample_lib.data_model import SampleTask, SampleInputType, SampleOutputType
+from sample_lib.data_model import SampleInputType, SampleOutputType, SampleTask
 from sample_lib.modules import SampleModule
+import caikit
+import sample_lib
 
 ## Setup ########################################################################
 
@@ -35,7 +36,9 @@ untrainable_module_class = sample_lib.modules.sample_task.SamplePrimitiveModule
 
 def test_create_inference_rpcs_uses_task_from_module_decorator():
     # make a new module with SampleTask
-    @caikit.module(id=str(uuid.uuid4()), name="something", version="0.0.0", task=SampleTask)
+    @caikit.module(
+        id=str(uuid.uuid4()), name="something", version="0.0.0", task=SampleTask
+    )
     class NewModule(caikit.core.ModuleBase):
         def run(self, sample_input: SampleInputType) -> SampleOutputType:
             pass

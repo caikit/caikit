@@ -18,14 +18,13 @@ collection of caikit.core derived libraries
 
 # Standard
 from enum import Enum
-from typing import List, Type, Dict
+from typing import Dict, List, Type
 
 # First Party
 import alog
 
 # Local
 from ... import get_config
-from .core_module_helpers import get_module_info
 from .primitives import is_primitive_method
 from .rpcs import CaikitRPCBase, ModuleClassTrainRPC, TaskPredictRPC
 from caikit.core import ModuleBase, TaskBase
@@ -161,20 +160,20 @@ def _create_rpcs_for_modules(
     return rpcs
 
 
-def _group_modules_by_task(modules: List[Type[ModuleBase]], fname: str) -> Dict[Type[TaskBase], List[Type[ModuleBase]]]:
+def _group_modules_by_task(
+    modules: List[Type[ModuleBase]], fname: str
+) -> Dict[Type[TaskBase], List[Type[ModuleBase]]]:
     task_groups = {}
     for ck_module in modules:
-        #----------Added task name------------
+        # ----------Added task name------------
         # ck_module_task_name = None
         if ck_module.TASK_CLASS:
             ck_module_task_name = ck_module.TASK_CLASS.__name__
 
             signature = CaikitMethodSignature(ck_module, fname)
-            
+
             # Change: Passed task name below in task_groups
             if ck_module_task_name is not None:
                 # task_groups.setdefault((ck_module_task_name, ck_module_task_name), []).append(
-                task_groups.setdefault(ck_module.TASK_CLASS, []).append(
-                    signature
-                )    
+                task_groups.setdefault(ck_module.TASK_CLASS, []).append(signature)
     return task_groups

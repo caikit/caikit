@@ -17,10 +17,9 @@ This package has classes that will serialize a python interface to a protocol bu
 Typically used for `caikit.core.module`s that expose .train and .run functions.
 """
 # Standard
-from typing import Any, Dict, List, Optional, Tuple, Type, Union, get_args, get_origin
+from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
 import abc
 import copy
-from caikit.core import TaskBase
 
 # First Party
 from py_to_proto.dataclass_to_proto import (  # NOTE: Imported from here for compatibility
@@ -33,7 +32,7 @@ import alog
 from . import primitives, type_helpers
 from .compatibility_checker import ApiFieldNames
 from .data_stream_source import make_data_stream_source
-from caikit.core import ModuleBase
+from caikit.core import ModuleBase, TaskBase
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import (
     DataObjectBase,
