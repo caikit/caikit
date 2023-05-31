@@ -120,7 +120,7 @@ def runtime_grpc_server(
     grpc_thread = threading.Thread(
         target=server.start,
     )
-    grpc_thread.setDaemon(False)
+    grpc_thread.daemon = False
     grpc_thread.start()
     _check_server_readiness(server)
     yield server

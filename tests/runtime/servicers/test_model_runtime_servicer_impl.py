@@ -14,6 +14,14 @@
 # Standard
 from threading import Event, Thread
 from unittest.mock import MagicMock, patch
+
+try:
+    # Standard
+    from test.support.threading_helper import catch_threading_exception
+except (NameError, ModuleNotFoundError):
+    from tests.base import catch_threading_exception
+
+# Standard
 import time
 import unittest
 
@@ -21,6 +29,7 @@ import unittest
 from caikit import get_config
 from caikit.runtime.protobufs import model_runtime_pb2
 from caikit.runtime.servicers.model_runtime_servicer import ModelRuntimeServicerImpl
+from caikit.runtime.types.aborted_exception import AbortedException
 from tests.fixtures import Fixtures
 
 
@@ -89,10 +98,14 @@ class TestModelRuntimeServicerImpl(unittest.TestCase):
         mock_manager.load_model.side_effect = never_return
         load_thread = Thread(target=self.servicer.loadModel, args=(request, context))
 
-        with patch.object(self.servicer, "model_manager", mock_manager):
-            load_thread.start()
-            started.wait()
-            context.cancel()
-            load_thread.join(10)
+        with catch_threading_exception() as cm:
+            with patch.object(self.servicer, "model_manager", mock_manager):
+                load_thread.start()
+                started.wait()
+                context.cancel()
+                load_thread.join(10)
 
-        self.assertFalse(load_thread.is_alive())
+            self.assertFalse(load_thread.is_alive())
+
+            # Make sure the correct exception was raised
+            assert cm.exc_type == AbortedException
