@@ -109,13 +109,13 @@ class TestRulesPrediction(TestCaseBase):
                             {
                                 "aql_property": {
                                     "k1": 1,
-                                    "k2": [{"begin": 1, "end": 2, "text": ""}],
+                                    "k2": {"val": [{"begin": 1, "end": 2, "text": ""}]},
                                 }
                             },
                             {
                                 "aql_property": {
                                     "k1": 2,
-                                    "k2": [{"begin": 3, "end": 4, "text": ""}],
+                                    "k2": {"val": [{"begin": 3, "end": 4, "text": ""}]},
                                 }
                             },
                         ],
@@ -152,13 +152,13 @@ class TestRulesPrediction(TestCaseBase):
                             {
                                 "aql_property": {
                                     "k1": 1,
-                                    "k2": [{"begin": 1, "end": 2, "text": ""}],
+                                    "k2": { "val": [{"begin": 1, "end": 2, "text": ""}]},
                                 }
                             },
                             {
                                 "aql_property": {
                                     "k1": 2,
-                                    "k2": [{"begin": 3, "end": 4, "text": ""}],
+                                    "k2": { "val": [{"begin": 3, "end": 4, "text": ""}]},
                                 }
                             },
                         ],
