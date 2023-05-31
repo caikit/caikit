@@ -27,15 +27,12 @@ def dump_services(output_dir: str):
     """
     inf_svc = ServicePackageFactory.get_service_package(
         ServicePackageFactory.ServiceType.INFERENCE,
-        ServicePackageFactory.ServiceSource.GENERATED,
     )
     train_svc = ServicePackageFactory.get_service_package(
         ServicePackageFactory.ServiceType.TRAINING,
-        ServicePackageFactory.ServiceSource.GENERATED,
     )
     train_mgt_svc = ServicePackageFactory.get_service_package(
         ServicePackageFactory.ServiceType.TRAINING_MANAGEMENT,
-        ServicePackageFactory.ServiceSource.GENERATED,
     )
 
     render_dataobject_protos(output_dir)

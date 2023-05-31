@@ -60,6 +60,11 @@ def test_environment():
     """The most important fixture: This runs caikit configuration with the base test config overrides"""
     test_config_path = os.path.join(FIXTURES_DIR, "config", "config.yml")
     caikit.configure(test_config_path)
+    # import the mock backend that is specified in the config
+    # This is required to run any test that loads a model
+    # Local
+    from tests.core.helpers import MockBackend
+
     yield
     # No cleanup required...?
 
@@ -69,7 +74,6 @@ def sample_inference_service(render_protos) -> ServicePackage:
     """Service package pointing to `sample_lib` for testing"""
     inference_service = ServicePackageFactory().get_service_package(
         ServicePackageFactory.ServiceType.INFERENCE,
-        ServicePackageFactory.ServiceSource.GENERATED,
     )
     if render_protos:
         render_dataobject_protos("tests/protos")
@@ -90,7 +94,6 @@ def sample_train_service(render_protos) -> ServicePackage:
     """Service package pointing to `sample_lib` for testing"""
     training_service = ServicePackageFactory().get_service_package(
         ServicePackageFactory.ServiceType.TRAINING,
-        ServicePackageFactory.ServiceSource.GENERATED,
     )
     if render_protos:
         render_dataobject_protos("tests/protos")
@@ -115,7 +118,7 @@ def runtime_grpc_server(
     grpc_thread = threading.Thread(
         target=server.start,
     )
-    grpc_thread.setDaemon(False)
+    grpc_thread.daemon = False
     grpc_thread.start()
     _check_server_readiness(server)
     yield server

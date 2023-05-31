@@ -62,6 +62,7 @@ backend_types.register_backend_type(MockBackend)
 # Add a new shared load backend that tests can use
 class TestLoader(SharedLoadBackendBase):
     backend_type = "TESTLOADER"
+    __test__ = False
 
     def load(self, model_path: str, *args, **kwargs) -> Optional[ModuleBase]:
         # allow config.model_type to control whether this loader barfs
