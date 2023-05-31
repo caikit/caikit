@@ -109,13 +109,13 @@ class TestRulesPrediction(TestCaseBase):
                             {
                                 "aql_property": {
                                     "k1": 1,
-                                    "k2": {"val": [{"begin": 1, "end": 2, "text": ""}]},
+                                    "k2": [{"begin": 1, "end": 2, "text": ""}],
                                 }
                             },
                             {
                                 "aql_property": {
                                     "k1": 2,
-                                    "k2": {"val": [{"begin": 3, "end": 4, "text": ""}]},
+                                    "k2": [{"begin": 3, "end": 4, "text": ""}],
                                 }
                             },
                         ],
@@ -152,13 +152,13 @@ class TestRulesPrediction(TestCaseBase):
                             {
                                 "aql_property": {
                                     "k1": 1,
-                                    "k2": { "val": [{"begin": 1, "end": 2, "text": ""}]},
+                                    "k2": [{"begin": 1, "end": 2, "text": ""}],
                                 }
                             },
                             {
                                 "aql_property": {
                                     "k1": 2,
-                                    "k2": { "val": [{"begin": 3, "end": 4, "text": ""}]},
+                                    "k2": [{"begin": 3, "end": 4, "text": ""}],
                                 }
                             },
                         ],
@@ -350,11 +350,11 @@ class TestView(TestCaseBase):
         msg = dm.View("TestView", [d1, d2])
         self.assertListEqual(msg.property("k1"), [1, 2])
         self.assertListEqual(msg.property("k2"), ["asdf", "qwer"])
-        self.assertListEqual([ v.val for v in msg.property("k3") ], [[dm.Span(1, 2)], [dm.Span(3, 4)]])
+        self.assertListEqual(msg.property("k3"), [[dm.Span(1, 2)], [dm.Span(3, 4)]])
         with self.assertRaises(ValueError):
             msg.property("k4")
 
-    ## Error Caser Tests ##
+    ## Error Case Tests ##
 
     def construct_non_str_name(self):
         """Test that a non-str name is rejected"""
@@ -528,7 +528,7 @@ class TestViewPropertyValue(TestCaseBase):
                 self.assertIsNotNone(stored_val)
 
             # Make sure the stored _val is equivalent to val
-            if hasattr(msg.value, "val"):
+            if isinstance(val, list):
                 self.assertEqual(val, msg.value.val)
             else:
                 self.assertEqual(val, msg.value)
@@ -546,14 +546,9 @@ class TestViewPropertyValue(TestCaseBase):
         with self.subTest("Serialize with to_dict"):
             if hasattr(val, "to_dict"):
                 assert_equal_fn(msg.to_dict(), val.to_dict())
-            elif isinstance(val, list) and hasattr(msg.value, "val"):
-                self.assertListEqual(
-                    msg.value.to_dict()["val"],
-                    [v.to_dict() if hasattr(v, "to_dict") else v for v in val],
-                )
             elif isinstance(val, list):
                 self.assertListEqual(
-                    msg.value.to_dict(),
+                    msg.to_dict(),
                     [v.to_dict() if hasattr(v, "to_dict") else v for v in val],
                 )
             else:
@@ -573,17 +568,13 @@ class TestViewPropertyValue(TestCaseBase):
                 )
             else:  # Primitives
                 js_val = json.dumps(val)
-
-            if hasattr(msg.value, "val"):
-                self.assertEqual(json.dumps(json.loads(msg.value.to_json())["val"]), js_val)
-            else:
-                self.assertEqual(msg.to_json(), js_val)
+            self.assertEqual(msg.to_json(), js_val)
 
         # Make sure to_proto/from_proto round trips
         with self.subTest("Round trip with to_proto / from_proto"):
             proto = msg.to_proto()
             round_trip_msg = dm.ViewPropertyValue.from_proto(proto)
-            if hasattr(round_trip_msg.value, "val"):
+            if isinstance(val, list):
                 assert_equal_fn(val, round_trip_msg.value.val)
             else:
                 assert_equal_fn(val, round_trip_msg.value)
@@ -623,19 +614,19 @@ class TestViewPropertyValue(TestCaseBase):
     def test_None(self):
         self._test_type(None, "")
 
-    ## Error Caser Tests ##
+    ## Error Case Tests ##
 
     def test_invalid_type_dict(self):
         with self.assertRaises(TypeError):
-            msg = dm.ViewPropertyValue({"key": 1})
+            dm.ViewPropertyValue({"key": 1})
 
     def test_invalid_type_list_invalid(self):
         with self.assertRaises(TypeError):
-            msg = dm.ViewPropertyValue([{"key": 1}])
+            dm.ViewPropertyValue([{"key": 1}])
 
     def test_invalid_type_list_mixed(self):
         with self.assertRaises(TypeError):
-            msg = dm.ViewPropertyValue([1, {"key": 1}])
+            dm.ViewPropertyValue([1, {"key": 1}])
 
     def test_from_proto_invalid_type(self):
         with self.assertRaises(TypeError):
