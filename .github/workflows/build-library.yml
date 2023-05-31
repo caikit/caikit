@@ -47,4 +47,14 @@ jobs:
           python -m pip install -r setup_requirements.txt
       - name: Build and test with tox
         run: tox -e ${{ matrix.python-version.tox }}
+      - name: Publish coverage 
+        if: ${{ matrix.python-version.setup == '3.11' }}
+        uses: orgoro/coverage@v3.1
+        with:
+            coverageFile: coverage-py311.xml
+            token: ${{ secrets.GITHUB_TOKEN }}
+            thresholdAll: 0.0
+            thresholdNew: 0.8
+            thresholdModified: 0.0
+
 
