@@ -209,7 +209,15 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
                 self.error = err
 
             finally:
-                self._completion_event
+                self._completion_event.set()
+
+        def join(self, timeout=None):
+            """
+            Wait until child process terminates
+            """
+            super().join()
+            if not self._completion_event.is_set():
+                self._completion_event.set()
 
     def __init__(self, cancel_event) -> None:
 
@@ -245,11 +253,19 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             kwargs=kwargs,
         )
 
-        # Assign args and kwargs to self._worker
-        # self._worker.set_args(module_class, model_path, *args, **kwargs)
         self._worker.start()
 
-        if self.__cancel_event.is_set():  # and self.__event.is_set():
+        # FIXME: Bad version of accomplishing conditional check between
+        # processing kill and process completion which is required
+        # for cases when process gets killed by OS
+        while True:
+            if self._worker.exitcode:
+                self.complete_event.set()
+                break
+            elif self.complete_event.is_set():
+                break
+
+        if self.__cancel_event.is_set():
             # Since we are using process here, we cannot rely on
             # checking is_complete flag to be available to check if
             # the training was completed or cancelled. Therefore,

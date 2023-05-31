@@ -453,7 +453,7 @@ def test_global_train_aborts_long_running_trains(
         )
     )
 
-    # sample_train_servicer.use_subprocess = True
+    sample_train_servicer.use_subprocess = True
     if sample_train_servicer.use_subprocess:
         test_event = multiprocessing.Event()
     else:

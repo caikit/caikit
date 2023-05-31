@@ -259,7 +259,8 @@ class GlobalTrainServicer:
             when we receive a cancellation request.
             """
             for event in target.events:
-                event.set()
+                if not event.is_set():
+                    event.set()
 
         # if requested, wait for training to complete, thus
         # allowing different servicers to cancel the request
