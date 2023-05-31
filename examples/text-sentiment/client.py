@@ -21,7 +21,6 @@ from text_sentiment.data_model import TextInput
 
 inference_service = ServicePackageFactory().get_service_package(
     ServicePackageFactory.ServiceType.INFERENCE,
-    ServicePackageFactory.ServiceSource.GENERATED,
 )
 
 port = 8085
