@@ -14,6 +14,7 @@
 
 
 # Local
+from caikit.interfaces.common.data_model import ProducerId
 from caikit.interfaces.nlp import data_model as dm
 
 # Unit Test Infrastructure
@@ -184,7 +185,7 @@ class TestEmotionPrediction(TestCaseBase):
         )
         self.agg_emotion = dm.EmotionPrediction(
             emotion_predictions=[emotion_prediction1, emotion_prediction2],
-            producer_id=dm.ProducerId(name="Test", version="1.0.0"),
+            producer_id=ProducerId(name="Test", version="1.0.0"),
         )
 
     def test_fields(self):

@@ -16,6 +16,7 @@
 import itertools
 
 # Local
+from caikit.interfaces.common.data_model import ProducerId
 from caikit.interfaces.nlp import data_model as dm
 
 # Unit Test Infrastructure
@@ -116,7 +117,7 @@ class TestKeywordsPrediction(TestCaseBase):
 
         self.keywords_prediction = dm.KeywordsPrediction(
             keywords=[self.keyword2, self.keyword1],
-            producer_id=dm.ProducerId("Test", "1.2.3"),
+            producer_id=ProducerId("Test", "1.2.3"),
         )
 
     def test_fields(self):

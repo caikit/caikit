@@ -18,6 +18,7 @@ import os
 import numpy as np
 
 # Local
+from caikit.interfaces.common.data_model import ProducerId
 from caikit.interfaces.nlp import data_model as dm
 
 # Unit Test Infrastructure
@@ -46,15 +47,15 @@ class TestEmbeddingPrediction(TestCaseBase):
         self.emb_pred_with_offsets = dm.EmbeddingPrediction(
             data=self.numpy_2d,
             offsets=(0, 3),
-            producer_id=dm.ProducerId("Test", "1.2.3"),
+            producer_id=ProducerId("Test", "1.2.3"),
         )
         self.emb_pred_without_offsets = dm.EmbeddingPrediction(
-            data=self.numpy_2d, producer_id=dm.ProducerId("Test", "1.2.3")
+            data=self.numpy_2d, producer_id=ProducerId("Test", "1.2.3")
         )
         self.embed = dm.Embedding(
             data=self.numpy_2d,
             vocab_to_idx=self.vocab_to_idx,
-            producer_id=dm.ProducerId("EmbedTest", "1.2.3"),
+            producer_id=ProducerId("EmbedTest", "1.2.3"),
         )
         self.tokens = ["its", "very", "windy", "today"]
 
@@ -149,7 +150,7 @@ class TestEmbeddingPrediction(TestCaseBase):
         embed = dm.Embedding(
             data=self.numpy_2d,
             vocab_to_idx=vocab_to_idx,
-            producer_id=dm.ProducerId("EmbedTest", "1.2.3"),
+            producer_id=ProducerId("EmbedTest", "1.2.3"),
         )
         ordered_vocab = embed.get_ordered_vocab()
         self.assertTrue(isinstance(ordered_vocab, list))

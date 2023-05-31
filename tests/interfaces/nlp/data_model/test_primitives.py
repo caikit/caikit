@@ -14,6 +14,7 @@
 
 
 # Local
+from caikit.interfaces.common.data_model import ProducerId
 from caikit.interfaces.nlp import data_model as dm
 
 # Unit Test Infrastructure
@@ -156,17 +157,17 @@ class TestNGram(TestCaseBase):
 
 class TestProducerId(TestCaseBase):
     def setUp(self):
-        self.producer_id = dm.ProducerId(name="TestProducer", version="1.0.0")
+        self.producer_id = ProducerId(name="TestProducer", version="1.0.0")
 
     def test_fields(self):
         self.assertTrue(self.validate_fields(self.producer_id))
 
     def test_from_proto_and_back(self):
-        new = dm.ProducerId.from_proto(self.producer_id.to_proto())
+        new = ProducerId.from_proto(self.producer_id.to_proto())
         self.assertEqual(new.name, self.producer_id.name)
         self.assertEqual(new.version, self.producer_id.version)
 
     def test_from_json_and_back(self):
-        new = dm.ProducerId.from_json(self.producer_id.to_json())
+        new = ProducerId.from_json(self.producer_id.to_json())
         self.assertEqual(new.name, self.producer_id.name)
         self.assertEqual(new.version, self.producer_id.version)

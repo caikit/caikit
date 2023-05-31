@@ -17,6 +17,7 @@
 import re
 
 # Local
+from caikit.interfaces.common.data_model import ProducerId
 from caikit.interfaces.nlp import data_model as dm
 
 # Unit Test Infrastructure
@@ -116,7 +117,7 @@ class TestConceptPrediction(TestCaseBase):
                 dm.Concept("AIX", 0.8),
                 dm.Concept("Z/OS", 0.5),
             ],
-            producer_id=dm.ProducerId("BiLSTM Concepts", "0.1"),
+            producer_id=ProducerId("BiLSTM Concepts", "0.1"),
         )
 
     def test_empty_concepts(self):

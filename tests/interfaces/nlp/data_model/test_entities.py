@@ -16,6 +16,7 @@
 
 # Local
 from caikit.core.toolkit.errors import DataValidationError
+from caikit.interfaces.common.data_model import ProducerId
 from caikit.interfaces.nlp import data_model as dm
 
 # Unit Test Infrastructure
@@ -27,16 +28,16 @@ class TestEntityMention(TestCaseBase):
         self.mention = dm.EntityMention(
             (10, 20),
             "Person",
-            producer_id=dm.ProducerId("Test", "1.0.0"),
+            producer_id=ProducerId("Test", "1.0.0"),
             confidence=0.314159,
             mention_type=dm.EntityMentionType.MENTT_NOM.value,
             mention_class=dm.EntityMentionClass.MENTC_SPC.value,
             role="developer",
         )
 
-        self.producer_this = dm.ProducerId(name="this", version="0.0.1")
-        self.producer_other = dm.ProducerId(name="other", version="0.0.1")
-        self.producer_long = dm.ProducerId(name="long", version="0.0.1")
+        self.producer_this = ProducerId(name="this", version="0.0.1")
+        self.producer_other = ProducerId(name="other", version="0.0.1")
+        self.producer_long = ProducerId(name="long", version="0.0.1")
 
         self.this_mention = dm.EntityMention(
             (40, 45), "number", producer_id=self.producer_this
@@ -261,11 +262,11 @@ class TestEntityMentionsPrediction(TestCaseBase):
 
         self.mentions_prediction = dm.EntityMentionsPrediction(
             mentions=[mention1, mention2, mention3],
-            producer_id=dm.ProducerId(name="Test", version="1.0.0"),
+            producer_id=ProducerId(name="Test", version="1.0.0"),
         )
 
-        self.producer_4a = dm.ProducerId(name="4a", version="0.0.1")
-        self.producer_4b = dm.ProducerId(name="4b", version="0.0.1")
+        self.producer_4a = ProducerId(name="4a", version="0.0.1")
+        self.producer_4b = ProducerId(name="4b", version="0.0.1")
         self.mention4a = dm.EntityMention(
             (40, 45), "number", producer_id=self.producer_4a
         )
@@ -275,7 +276,7 @@ class TestEntityMentionsPrediction(TestCaseBase):
 
         self.ments_pred_conflict = dm.EntityMentionsPrediction(
             mentions=[mention1, mention2, mention3, self.mention4a, self.mention4b],
-            producer_id=dm.ProducerId(name="Test2", version="1.0.0"),
+            producer_id=ProducerId(name="Test2", version="1.0.0"),
         )
 
     def test___add__(self):
@@ -457,7 +458,7 @@ class TestEntitiesPrediction(TestCaseBase):
                 )
             ]
             * 3,
-            producer_id=dm.ProducerId(name="Test", version="1.0.0"),
+            producer_id=ProducerId(name="Test", version="1.0.0"),
         )
 
     def test_fields(self):

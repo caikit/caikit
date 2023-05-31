@@ -38,25 +38,83 @@ from . import (
     topics,
     vectorization,
 )
-from .abstractive_summary import *
-from .categories import *
-from .classification import *
-from .clustering import *
-from .concepts import *
-from .embedding import *
-from .emotion import *
-from .entities import *
-from .keywords import *
-from .lang_detect import *
-from .matrix import *
-from .noun_phrases import *
-from .relations import *
-from .rule_based_response import *
-from .sentiment import *
-from .syntax import *
-from .target_mentions import *
-from .text_generation import *
-from .text_primitives import *
-from .text_similarity import *
-from .topics import *
-from .vectorization import *
+from .abstractive_summary import AbstractiveSummary
+from .categories import CategoriesPrediction, Category, RelevantText
+from .classification import (
+    ClassificationPrediction,
+    ClassificationTrainRecord,
+    ClassInfo,
+    ModelType,
+)
+from .clustering import ClusteringPrediction
+from .concepts import Concept, ConceptsPrediction
+from .embedding import Embedding, EmbeddingPrediction
+from .emotion import (
+    AggregatedEmotionPrediction,
+    Emotion,
+    EmotionMention,
+    EmotionPrediction,
+)
+from .entities import (
+    EntitiesPrediction,
+    Entity,
+    EntityDisambiguation,
+    EntityMention,
+    EntityMentionAnnotation,
+    EntityMentionClass,
+    EntityMentionsPrediction,
+    EntityMentionsTrainRecord,
+    EntityMentionType,
+)
+from .keywords import Keyword, KeywordsPrediction
+from .lang_detect import LangCode, LangDetectPrediction
+from .matrix import DenseMatrix, SparseMatrix
+from .noun_phrases import NounPhrase, NounPhrasesPrediction
+from .relations import (
+    Relation,
+    RelationMention,
+    RelationMentionsPrediction,
+    RelationsPrediction,
+)
+from .rule_based_response import (
+    PropertyListValueBool,
+    PropertyListValueFloat,
+    PropertyListValueInt,
+    PropertyListValueSpan,
+    PropertyListValueStr,
+    RulesPrediction,
+    View,
+    ViewProperty,
+    ViewPropertyValue,
+)
+from .sentiment import (
+    AggregatedSentiment,
+    AggregateSentimentPrediction,
+    AtomicSentiment,
+    Sentiment,
+    SentimentLabel,
+    SentimentMention,
+    SentimentPrediction,
+    SentimentProb,
+    TargetsSentimentPrediction,
+)
+from .syntax import (
+    Dependency,
+    DependencyRelation,
+    DetagPrediction,
+    HTMLTagSpansList,
+    Paragraph,
+    PartOfSpeech,
+    RawDocument,
+    Sentence,
+    SyntaxParser,
+    SyntaxParserSpec,
+    SyntaxPrediction,
+    Token,
+)
+from .target_mentions import TargetMentions, TargetMentionsPrediction, TargetPhrases
+from .text_generation import GeneratedResult, StopReason
+from .text_primitives import NGram, Span
+from .text_similarity import TextSimilarityPrediction
+from .topics import Topic, TopicPhrase, TopicsPrediction
+from .vectorization import Vectorization, VectorizationPrediction

@@ -16,6 +16,7 @@
 # Third Party
 
 # Local
+from caikit.interfaces.common.data_model import ProducerId
 from caikit.interfaces.nlp import data_model as dm
 
 # Unit Test Infrastructure
@@ -106,7 +107,7 @@ class TestCategoriesPrediction(TestCaseBase):
                 dm.Category(["computer", "operating system", "Linux"], 0.23),
                 dm.Category(["computer", "operating system", "AIX"], 0.11),
             ],
-            producer_id=dm.ProducerId("Test", "1.2.3"),
+            producer_id=ProducerId("Test", "1.2.3"),
         )
 
         self.categories_prediction_minimal = dm.CategoriesPrediction(

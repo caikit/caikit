@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # Local
+from caikit.interfaces.common.data_model import ProducerId
 from caikit.interfaces.nlp import data_model as dm
 
 # Unit Test Infrastructure
@@ -183,13 +184,13 @@ class TestSentimentPrediction(TestCaseBase):
 
         self.TargetsSentimentPrediction = dm.TargetsSentimentPrediction(
             targeted_sentiments={"traffic": sentiment_targ1, "cython": sentiment_targ2},
-            producer_id=dm.ProducerId(name="Test", version="1.0.0"),
+            producer_id=ProducerId(name="Test", version="1.0.0"),
         )
 
         self.SentimentPrediction = dm.SentimentPrediction(
             document_sentiment=sentiment_doc,
             targeted_sentiments=self.TargetsSentimentPrediction,
-            producer_id=dm.ProducerId(name="Test", version="1.0.0"),
+            producer_id=ProducerId(name="Test", version="1.0.0"),
         )
 
     def test_fields(self):
