@@ -507,6 +507,26 @@ def test_dataobject_primitive_oneof_round_trips():
     assert Foo.from_json(json_repr_foo) == foo1
 
 
+def test_dataobject_oneof_int_over_float():
+    """Make sure that when inferring the which field from the python type, int
+    values are correctly assigned to int fields
+    """
+
+    @dataobject
+    class Foo(DataObjectBase):
+        value: Union[
+            # NOTE: The order matters here. Since float is declared first, it
+            #   would naturally occur before int without correct sorting
+            Annotated[float, OneofField("float_val")],
+            Annotated[int, OneofField("int_val")],
+        ]
+
+    foo_int = Foo(123)
+    assert foo_int.which_oneof("value") == "int_val"
+    foo_float = Foo(1.23)
+    assert foo_float.which_oneof("value") == "float_val"
+
+
 def test_dataobject_round_trip_json():
     """Make sure that a dataobject class can serialize to/from json"""
 

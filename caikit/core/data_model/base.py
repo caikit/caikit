@@ -27,7 +27,7 @@ import json
 
 # Third Party
 from google.protobuf import json_format
-from google.protobuf.descriptor import Descriptor
+from google.protobuf.descriptor import Descriptor, FieldDescriptor
 from google.protobuf.internal import type_checkers as proto_type_checkers
 from google.protobuf.message import Message as ProtoMessageType
 
@@ -64,6 +64,16 @@ class _DataBaseMetaClass(type):
     # DataBase may have. These are added to __slots__.
     _BACKEND_ATTR = "_backend"
     _WHICH_ONEOF_ATTR = "_which_oneof"
+
+    # When inferring which field in a oneof a given value should be used for
+    # base don the python type, we need to check integral types first so that
+    # int values don't accidentally get assigned to float fields. This is the
+    # list of protobuf type values that are integers.
+    _PROTO_INT_TYPES = [
+        val
+        for name, val in vars(FieldDescriptor).items()
+        if name.startswith("TYPE_") and "INT" in name
+    ]
 
     def __new__(mcs, name, bases, attrs):
         """When constructing a new data model class, we set the 'fields' class variable from the
@@ -496,7 +506,16 @@ class DataBase(metaclass=_DataBaseMetaClass):
         NOTE: In the case where fields within a oneof have the same type, the
           first field whose type matches will be used!
         """
-        for field_name in cls._fields_oneofs_map.get(oneof_name, []):
+        # Sort the fields so that int types come first to avoid collisions with
+        # float types
+        ordered_fields = sorted(
+            cls._fields_oneofs_map.get(oneof_name, []),
+            key=lambda field_name: 0
+            if cls._proto_class.DESCRIPTOR.fields_by_name[field_name].type
+            in _DataBaseMetaClass._PROTO_INT_TYPES
+            else 1,
+        )
+        for field_name in ordered_fields:
             if cls._is_valid_type_for_field(field_name, oneof_val):
                 return field_name
 
