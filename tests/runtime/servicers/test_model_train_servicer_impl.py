@@ -80,7 +80,8 @@ def test_model_train_no_training_params_raises(sample_model_train_servicer, outp
         training_output_dir=os.path.join(output_dir, training_id),
     )
     with pytest.raises(CaikitRuntimeException):
-        sample_model_train_servicer.Run(model_train_request)
+        context = Fixtures.build_context("foo")
+        sample_model_train_servicer.Run(model_train_request, context)
 
 
 def test_model_train_no_train_module_raises(sample_model_train_servicer, output_dir):
@@ -95,7 +96,8 @@ def test_model_train_no_train_module_raises(sample_model_train_servicer, output_
         training_output_dir=os.path.join(output_dir, training_id),
     )
     with pytest.raises(CaikitRuntimeException):
-        sample_model_train_servicer.Run(model_train_request)
+        context = Fixtures.build_context("foo")
+        sample_model_train_servicer.Run(model_train_request, context)
 
 
 def test_model_train_incorrect_train_params_raises(
@@ -113,7 +115,8 @@ def test_model_train_incorrect_train_params_raises(
         training_output_dir=os.path.join(output_dir, training_id),
     )
     with pytest.raises(CaikitRuntimeException):
-        sample_model_train_servicer.Run(model_train_request)
+        context = Fixtures.build_context("foo")
+        sample_model_train_servicer.Run(model_train_request, context)
 
 
 def test_model_train_incorrect_train_module_raises(
@@ -130,7 +133,9 @@ def test_model_train_incorrect_train_module_raises(
         training_output_dir=os.path.join(output_dir, training_id),
     )
     with pytest.raises(CaikitRuntimeException) as e:
-        sample_model_train_servicer.Run(model_train_request)
+        context = Fixtures.build_context("foo")
+        sample_model_train_servicer.Run(model_train_request, context)
+
     assert "Model Train not able to parse module for this Train Request" in str(e.value)
     assert e.value.status_code == grpc.StatusCode.INVALID_ARGUMENT
 
@@ -151,7 +156,9 @@ def test_model_train_incorrect_train_request_raises(
     )
     with clear_messages_from_servicer(sample_model_train_servicer):
         with pytest.raises(CaikitRuntimeException) as e:
-            sample_model_train_servicer.Run(model_train_request)
+            context = Fixtures.build_context("foo")
+            sample_model_train_servicer.Run(model_train_request, context)
+
         assert "Model Train not able to create a request" in str(e.value)
         assert e.value.status_code == grpc.StatusCode.INTERNAL
 

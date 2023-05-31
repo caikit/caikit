@@ -471,6 +471,7 @@ def test_global_train_aborts_long_running_trains(
         # calls the module import directly, which is making patching module hackery
         target=sample_train_servicer.Train,
         args=(train_request, context),
+        kwargs={"wait": True},
     )
 
     # NOTE: We are configuring following timeout

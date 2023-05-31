@@ -76,10 +76,7 @@ class GlobalTrainServicer:
             caikit_config.runtime.training.auto_load_trained_model
         )
 
-        self.auto_load_trained_model = True
-
         self.use_subprocess = caikit_config.runtime.training.use_subprocess
-        # self.use_subprocess = True
 
         # TODO: think about if we really want to do this here:
         self.cdm = get_data_model()
@@ -106,13 +103,15 @@ class GlobalTrainServicer:
         )
         super()
 
-    def Train(self, request, context, *_, **__) -> TrainingJob:
+    def Train(self, request, context, *_, wait=False, **__) -> TrainingJob:
         """Global predict RPC -- Mocks the invocation of a Caikit Library module.train()
         method for a loaded Caikit Library model
         Args:
             request(object):
                 A deserialized RPC request message
             context(grpc.ServicerContext): Context object (contains request metadata, etc)
+            wait(bool):
+                Wait for the training request to complete
         Returns:
             caikit.interfaces.runtime.data_model.TrainingJob:
                 A TrainingJob data model response object
@@ -161,6 +160,7 @@ class GlobalTrainServicer:
                     training_id=training_id,
                     training_output_dir=self.training_output_dir,
                     context=context,
+                    wait=wait,
                 )
 
         except CaikitRuntimeException as e:
@@ -252,13 +252,7 @@ class GlobalTrainServicer:
 
         self.training_map[training_id] = thread_future
 
-        # if requested, module until the training completes
-        if wait:
-            with alog.ContextTimer(log.debug, "Training %s complete in: ", training_id):
-                thread_future.result()
-
-
-        # Add callback to register termination of training
+        # Create a callback to register termination of training
         def rpc_termination_callback():
             """Function to be called when the RPC is terminated.
             This can happen when the training is completed or
@@ -267,18 +261,34 @@ class GlobalTrainServicer:
             for event in target.events:
                 event.set()
 
-        callback_registered = context.add_callback(rpc_termination_callback)
+        # if requested, wait for training to complete, thus
+        # allowing different servicers to cancel the request
+        # in case needed. This does make this call synchronous,
+        # but that is the intent of this function, since for async request
+        # we have the async function below.
+        # TODO: In future, for the case where we want to execute the training
+        # in async manner, we would implement a separate "cancel" / "delete"
+        # API which would integrate with different training backends
+        # as per their interface requirements.
+        if wait:
+            # NOTE: callback registration needs to be before
+            # waiting for the future, otherwise request will wait before registering
+            # callback
+            # Add callback for termination of request
+            callback_registered = context.add_callback(rpc_termination_callback)
 
-        if not callback_registered:
-            log.warning(
-                "<RUN54118242W>",
-                "Failed to register rpc termination callback, aborting rpc",
-            )
-            raise CaikitRuntimeException(
-                StatusCode.ABORTED,
-                "Could not register RPC callback, call has likely terminated.",
-            )
+            if not callback_registered:
+                log.warning(
+                    "<RUN54118242W>",
+                    "Failed to register rpc termination callback, aborting rpc",
+                )
+                raise CaikitRuntimeException(
+                    StatusCode.ABORTED,
+                    "Could not register RPC callback, call has likely terminated.",
+                )
 
+            with alog.ContextTimer(log.debug, "Training %s complete in: ", training_id):
+                thread_future.result()
 
         # return TrainingJob object
         return TrainingJob(
@@ -297,9 +307,7 @@ class GlobalTrainServicer:
         if self.auto_load_trained_model:
 
             def target(*args, **kwargs):
-                print("Configuring train and save model fn")
                 runnable_executor.train_and_save_model(*args, **kwargs)
-                print("model fully trained - reached here")
                 return self._load_trained_model(model_name, model_path)
 
         else:

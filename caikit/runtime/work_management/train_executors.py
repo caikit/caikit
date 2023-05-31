@@ -22,7 +22,6 @@ import traceback
 
 # Third Party
 from grpc import StatusCode
-import grpc
 
 # First Party
 import alog
@@ -46,26 +45,19 @@ OOM_EXIT_CODE = 137
 # executors, so ThreadPoolExecutors and ProcessPoolExecutors, but
 # ProcessPoolExecutor doesn't support `fork` start method
 class TrainSaveExecutorBase(abc.ABC):
-
     @abc.abstractmethod
     def cancel(self):
         """Function to abort train and save operation on the executor"""
 
     @abc.abstractmethod
     def train_and_save_model(self, *args, **kwargs):
-        """Method to run train and save function(s) on the executor
-        """
+        """Method to run train and save function(s) on the executor"""
 
     @staticmethod
     def _train_and_save(
-        module_class: Type[ModuleBase],
-        model_path: str,
-        *args,
-        **kwargs
+        module_class: Type[ModuleBase], model_path: str, *args, **kwargs
     ):
         """Default implementation of train and save method using module_class"""
-
-        print("=============== In base train save executor =====")
 
         error.type_check("<RUN41176398E>", str, model_path=model_path)
 
@@ -83,8 +75,7 @@ class TrainSaveExecutorBase(abc.ABC):
         ):
             model.save(model_path)
 
-        log.info(f"model saved successfully at {model_path}")
-
+        log.info("model saved successfully at {}".format(model_path))
 
 
 class LocalTrainSaveExecutor(TrainSaveExecutorBase):
@@ -118,8 +109,6 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
         subprocess if needed
         """
 
-        print("=============== In local train save executor =====")
-
         args += (module_class, model_path)
         try:
             # Train it
@@ -136,8 +125,6 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
                 self.complete_event.wait()
 
                 if self.__cancel_event.is_set():
-                    print("======= in work run cancel event function =====")
-                    print("complete event: ", self.complete_event.is_set())
                     self.cancel()
 
                 self._worker.join()
@@ -145,8 +132,6 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
                 # Fetch the results or throw error if the
                 # task threw exception
                 return self._worker.get_or_throw()
-
-
 
         # Handle errors as CaikitRuntime errors with appropriate error codes
         except CaikitRuntimeException as e:
@@ -194,6 +179,7 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
             StatusCode.CANCELLED,
             "Training request terminated!",
         )
+
 
 class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
     class _ErrorCaptureProcess(multiprocessing.get_context("fork").Process):
@@ -247,26 +233,23 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             self._worker.terminate()
         self._worker.close()
 
+    # pylint: disable=arguments-differ
     def train_and_save_model(
-            self,
-            module_class: Type[ModuleBase],
-            model_path: str,
-            *args,
-            **kwargs):
-
-        print("=============== In subprocess train save executor =====")
+        self, module_class: Type[ModuleBase], model_path: str, *args, **kwargs
+    ):
 
         self._worker = self._ErrorCaptureProcess(
             event=self.complete_event,
             target=TrainSaveExecutorBase._train_and_save,
-            args=(module_class, model_path), kwargs=kwargs
+            args=(module_class, model_path),
+            kwargs=kwargs,
         )
 
         # Assign args and kwargs to self._worker
         # self._worker.set_args(module_class, model_path, *args, **kwargs)
         self._worker.start()
 
-        if self.__cancel_event.is_set(): # and self.__event.is_set():
+        if self.__cancel_event.is_set():  # and self.__event.is_set():
             # Since we are using process here, we cannot rely on
             # checking is_complete flag to be available to check if
             # the training was completed or cancelled. Therefore,
@@ -275,11 +258,9 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             # naturally and at the exact same time, the request is cancelled
             # but in that case, the training is anyways already finished
             # so that shouldn't create huge problems
-            print("reached in subprocess cancel event")
             self.cancel()
 
         self._worker.join()
-
 
         # If an error occurred, reraise it here
         # TODO: Make sure the stack trace is preserved
@@ -287,7 +268,7 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             if isinstance(self._worker.error, CaikitRuntimeException):
                 raise self._worker.error
             raise CaikitRuntimeException(
-                grpc.StatusCode.INTERNAL,
+                StatusCode.INTERNAL,
                 "Error caught in training subprocess",
             ) from self._worker.error
 
@@ -295,12 +276,12 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
         if self._worker.exitcode and self._worker.exitcode != os.EX_OK:
             if self._worker.exitcode == OOM_EXIT_CODE:
                 exception = CaikitRuntimeException(
-                    grpc.StatusCode.RESOURCE_EXHAUSTED,
+                    StatusCode.RESOURCE_EXHAUSTED,
                     "Training process died with OOM error!",
                 )
             else:
                 exception = CaikitRuntimeException(
-                    grpc.StatusCode.UNKNOWN,
+                    StatusCode.UNKNOWN,
                     f"Training process died with exit code {self._worker.exitcode}",
                 )
 
@@ -308,13 +289,11 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
 
         self._cleanup()
 
-        return
-
     def cancel(self):
 
         if self._worker.is_alive():
             self._worker.terminate()
-            self._worker.close()
+        self._worker.close()
 
         log.error("<RUN57624710E>", "Training cancelled.")
 

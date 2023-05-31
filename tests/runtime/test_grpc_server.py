@@ -194,7 +194,8 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
     model_name = random_test_id()
     train_request = (
         sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
-            model_name=model_name, training_data=training_data
+            model_name=model_name,
+            training_data=training_data,
         )
     )
 
