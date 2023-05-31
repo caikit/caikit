@@ -21,13 +21,13 @@
 
 # Standard
 from enum import Enum
-from typing import Any, Dict, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 import base64
 import json
 
 # Third Party
 from google.protobuf import json_format
-from google.protobuf.descriptor import Descriptor, FieldDescriptor
+from google.protobuf.descriptor import Descriptor, FieldDescriptor, OneofDescriptor
 from google.protobuf.internal import type_checkers as proto_type_checkers
 from google.protobuf.message import Message as ProtoMessageType
 
@@ -66,10 +66,11 @@ class _DataBaseMetaClass(type):
     _WHICH_ONEOF_ATTR = "_which_oneof"
 
     # When inferring which field in a oneof a given value should be used for
-    # base don the python type, we need to check integral types first so that
-    # int values don't accidentally get assigned to float fields. This is the
-    # list of protobuf type values that are integers.
-    _PROTO_INT_TYPES = [
+    # based on the python type, we need to check types in order with bool first,
+    # ints next, then floats values that fit a "more flexible" type don't
+    # accidentally get assigned to the wrong field. These are the lists of int
+    # and bool type values in protobuf.
+    _PROTO_TYPE_ORDER = [FieldDescriptor.TYPE_BOOL] + [
         val
         for name, val in vars(FieldDescriptor).items()
         if name.startswith("TYPE_") and "INT" in name
@@ -195,8 +196,12 @@ class _DataBaseMetaClass(type):
         # NOTE: protobuf makes an interesting use of oneof to wrap types that
         #   should be explicitly optional. We don't want to consider these
         #   oneofs in the general oneof handling.
+
+        # Sort the names of the fields in this map to ensure that ordering is
+        # correct such that bool < int < float
+
         cls._fields_oneofs_map = {
-            oneof_name: [field.name for field in oneof.fields]
+            oneof_name: mcs._sorted_oneof_field_names(oneof)
             for oneof_name, oneof in cls._proto_class.DESCRIPTOR.oneofs_by_name.items()
             if len(oneof.fields) != 1 or oneof.name != f"_{oneof.fields[0].name}"
         }
@@ -413,6 +418,23 @@ class _DataBaseMetaClass(type):
         setattr(__init__, "__doc__", docstring)
         return __init__
 
+    @classmethod
+    def _sorted_oneof_field_names(mcs, oneof: OneofDescriptor) -> List[str]:
+        """Helper to get the list of oneof fields while ensuring field names are
+        sorted such that bool < int < float. This ensures that when iterating
+        fields for which_oneof inference, lower-precedence types take
+        precedence.
+        """
+        return [
+            field.name
+            for field in sorted(
+                oneof.fields,
+                key=lambda fld: mcs._PROTO_TYPE_ORDER.index(fld.type)
+                if fld.type in mcs._PROTO_TYPE_ORDER
+                else len(mcs._PROTO_TYPE_ORDER),
+            )
+        ]
+
 
 class DataBase(metaclass=_DataBaseMetaClass):
     """Base class for all structures in the data model.
@@ -506,16 +528,9 @@ class DataBase(metaclass=_DataBaseMetaClass):
         NOTE: In the case where fields within a oneof have the same type, the
           first field whose type matches will be used!
         """
-        # Sort the fields so that int types come first to avoid collisions with
-        # float types
-        ordered_fields = sorted(
-            cls._fields_oneofs_map.get(oneof_name, []),
-            key=lambda field_name: 0
-            if cls._proto_class.DESCRIPTOR.fields_by_name[field_name].type
-            in _DataBaseMetaClass._PROTO_INT_TYPES
-            else 1,
-        )
-        for field_name in ordered_fields:
+        # NOTE: The list of field names are guaranteed to be sorted so that
+        #   bool < int < float
+        for field_name in cls._fields_oneofs_map.get(oneof_name, []):
             if cls._is_valid_type_for_field(field_name, oneof_val):
                 return field_name
 
@@ -553,6 +568,11 @@ class DataBase(metaclass=_DataBaseMetaClass):
         ]:
             return False
 
+        # If the field is a bool field, only accept python bools. Proto is ok to
+        # accept ints, but we are stricter than that.
+        if field_descriptor.type == field_descriptor.TYPE_BOOL:
+            return isinstance(val, bool)
+
         # If it's a primitive, use protobuf type checkers
         checker = proto_type_checkers.GetTypeChecker(field_descriptor)
         try:
@@ -589,6 +609,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
             protobufs
                 A DataBase object.
         """
+        error.type_check("<COR45207671E>", ProtoMessageType, proto=proto)
         if cls._proto_class.DESCRIPTOR.name != proto.DESCRIPTOR.name:
             error(
                 "<COR71783894E>",

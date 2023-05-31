@@ -507,9 +507,9 @@ def test_dataobject_primitive_oneof_round_trips():
     assert Foo.from_json(json_repr_foo) == foo1
 
 
-def test_dataobject_oneof_int_over_float():
-    """Make sure that when inferring the which field from the python type, int
-    values are correctly assigned to int fields
+def test_dataobject_oneof_numeric_type_precedence():
+    """Make sure that when inferring the which field from the python type, the
+    value of bool < int < float is respected
     """
 
     @dataobject
@@ -519,8 +519,11 @@ def test_dataobject_oneof_int_over_float():
             #   would naturally occur before int without correct sorting
             Annotated[float, OneofField("float_val")],
             Annotated[int, OneofField("int_val")],
+            Annotated[bool, OneofField("bool_val")],
         ]
 
+    foo_bool = Foo(True)
+    assert foo_bool.which_oneof("value") == "bool_val"
     foo_int = Foo(123)
     assert foo_int.which_oneof("value") == "int_val"
     foo_float = Foo(1.23)
