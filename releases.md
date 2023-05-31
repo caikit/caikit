@@ -5,12 +5,14 @@ This process is a work-in-progress until the first major release of the project.
 The process will utimately aim to have:
 
 - A published release date for the first caikit major release, upon the availability of the first beta release
-- A well-known cyclical release dates for caikit minor and patch releases, upon the availability of the first caikit major release
+- A well-known cycle of release dates for caikit minor and patch releases, upon the availability of the first caikit major release
 - Minor releases backwards compatible with respect to the API, upon the availability of the first caikit major release
 
 ## Semantic versioning
 
 caikit versions are expressed as x.y.z, where x is the major version, y is the minor version, and z is the patch version, following [Semantic Versioning](https://semver.org/spec/v2.0.0.html) terminology.
+
+**Note:** One key principle of semantic versioning is that breaking API changes will only be deliverd in a major release. While all care will be taken to respect this, there may be a scenario (for example, a security fix or a bug fix) where we would have to break the AI for a non major release. This would only be considered if no other alternative is available.
 
 ## Patch releases
 
@@ -30,7 +32,7 @@ Minor releases contain security and bug fixes as well as new features.
 
 **Note:** They will be backwards compatible with respect to the API, upon the availability of the first caikit major release. Until then, they will break the API.
 
-Minor releases should be done every other week inbetween path releases on a Wednesday (assuming there are changes since the last release).
+Minor releases should be done every other week in-between patch releases on a Wednesday (assuming there are changes since the last release).
 
 Extra minor releases can be added to the schedule when needed.  However:
 
