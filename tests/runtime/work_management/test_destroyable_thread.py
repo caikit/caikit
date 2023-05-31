@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
+try:
+    # Standard
+    from test.support.threading_helper import catch_threading_exception
+except (NameError, ModuleNotFoundError):
+    from tests.base import catch_threading_exception
+
+# Standard
 import threading
 import time
 import unittest
 
 # Local
+from caikit.runtime.types.thread_destroyed_exception import ThreadDestroyedException
 from caikit.runtime.work_management.destroyable_thread import DestroyableThread
 
 
@@ -86,11 +94,15 @@ class TestDestroyableThread(unittest.TestCase):
     def test_threads_will_not_execute_if_destroyed_before_starting(self):
         thread = DestroyableThread(threading.Event(), lambda: time.sleep(1000))
 
-        thread.destroy()
-        thread.start()
-        thread.join(1)
+        with catch_threading_exception() as cm:
+            thread.destroy()
+            thread.start()
+            thread.join(1)
 
-        self.assertFalse(thread.is_alive())
+            self.assertFalse(thread.is_alive())
+
+            # Make sure the correct exception was raised
+            assert cm.exc_type == ThreadDestroyedException
 
     def test_event_is_set_on_completion(self):
         event = threading.Event()

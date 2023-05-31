@@ -26,7 +26,7 @@ import tempfile
 # Third Party
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pb2, descriptor_pool, message, struct_pb2
-from google.protobuf.message_factory import MessageFactory
+from google.protobuf.message_factory import GetMessageClassesForFiles
 import numpy as np
 import pytest
 
@@ -62,8 +62,7 @@ def temp_dpool():
     # HACK! Doing this _appears_ to solve the mysterious segfault cause by using
     #   Struct inside a temporary descriptor pool. The inspiration for this was
     #   https://github.com/protocolbuffers/protobuf/issues/12047
-    mf = MessageFactory(dpool)
-    msgs = mf.GetMessages([fd.name])
+    msgs = GetMessageClassesForFiles([fd.name], dpool)
     _ = msgs["google.protobuf.Struct"]
     _ = msgs["google.protobuf.Value"]
     _ = msgs["google.protobuf.ListValue"]
