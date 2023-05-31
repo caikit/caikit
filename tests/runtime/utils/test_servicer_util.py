@@ -366,7 +366,7 @@ def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_r
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        CaikitMethodSignature(sample_lib.modules.sample_task.SampleModule, "train"),
+        sample_lib.modules.sample_task.SampleModule.TRAIN_SIGNATURE,
     )
 
     # model_name is not expected to be passed through
@@ -392,7 +392,7 @@ def test_global_train_build_caikit_library_request_dict_works_for_repeated_field
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        CaikitMethodSignature(sample_lib.modules.sample_task.ListModule, "train"),
+        sample_lib.modules.sample_task.ListModule.TRAIN_SIGNATURE
     )
 
     # model_name is not expected to be passed through
@@ -422,7 +422,7 @@ def test_global_train_build_caikit_library_request_dict_ok_with_DataStreamSource
     )
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        CaikitMethodSignature(sample_lib.modules.other_task.OtherModule, "train"),
+        sample_lib.modules.other_task.OtherModule.TRAIN_SIGNATURE,
     )
 
     expected_arguments = {"batch_size", "training_data"}
@@ -448,7 +448,7 @@ def test_global_train_build_caikit_library_request_dict_ok_with_data_stream_file
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        CaikitMethodSignature(sample_lib.modules.sample_task.SampleModule, "train"),
+        sample_lib.modules.sample_task.SampleModule.TRAIN_SIGNATURE,
     )
 
     # model_name is not expected to be passed through
@@ -475,7 +475,7 @@ def test_global_train_build_caikit_library_request_dict_ok_with_training_data_as
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        CaikitMethodSignature(sample_lib.modules.sample_task.ListModule, "train"),
+        sample_lib.modules.sample_task.ListModule.TRAIN_SIGNATURE,
     )
 
     # model_name is not expected to be passed through
@@ -515,7 +515,7 @@ def test_build_caikit_library_request_dict_works_when_data_stream_directory_incl
         # no error because at least 1 json file exists within the provided dir
         caikit.core_request = build_caikit_library_request_dict(
             train_request,
-            CaikitMethodSignature(sample_lib.modules.sample_task.SampleModule, "train"),
+            sample_lib.modules.sample_task.SampleModule.TRAIN_SIGNATURE,
         )
 
 
@@ -539,7 +539,7 @@ def test_build_caikit_library_request_dict_raises_invalid_data_stream_source_fil
     with pytest.raises(CaikitRuntimeException) as e:
         caikit.core_request = build_caikit_library_request_dict(
             train_request,
-            CaikitMethodSignature(sample_lib.modules.sample_task.SampleModule, "train"),
+            sample_lib.modules.sample_task.SampleModule.TRAIN_SIGNATURE,
         )
 
     assert "Invalid .blah data source file" in e.value.message
@@ -567,9 +567,7 @@ def test_build_caikit_library_request_dict_raises_invalid_data_stream_source_fil
         with pytest.raises(CaikitRuntimeException) as e:
             caikit.core_request = build_caikit_library_request_dict(
                 train_request,
-                CaikitMethodSignature(
-                    sample_lib.modules.sample_task.SampleModule, "train"
-                ),
+                sample_lib.modules.sample_task.SampleModule.TRAIN_SIGNATURE,
             )
 
         assert "Extension not supported" in e.value.message
@@ -594,7 +592,7 @@ def test_build_caikit_library_request_dict_raises_when_data_stream_file_passes_a
     with pytest.raises(CaikitRuntimeException) as e:
         caikit.core_request = build_caikit_library_request_dict(
             train_request,
-            CaikitMethodSignature(sample_lib.modules.sample_task.SampleModule, "train"),
+            sample_lib.modules.sample_task.SampleModule.TRAIN_SIGNATURE,
         )
 
     assert "Invalid json directory source file" in e.value.message
@@ -626,9 +624,7 @@ def test_build_caikit_library_request_dict_raises_when_data_stream_directory_pas
         with pytest.raises(CaikitRuntimeException) as e:
             caikit.core_request = build_caikit_library_request_dict(
                 train_request,
-                CaikitMethodSignature(
-                    sample_lib.modules.sample_task.SampleModule, "train"
-                ),
+                sample_lib.modules.sample_task.SampleModule.TRAIN_SIGNATURE,
             )
 
         # TODO: change this message once it's implemented
@@ -661,9 +657,7 @@ def test_build_caikit_library_request_dict_raises_when_data_stream_directory_pas
         with pytest.raises(CaikitRuntimeException) as e:
             caikit.core_request = build_caikit_library_request_dict(
                 train_request,
-                CaikitMethodSignature(
-                    sample_lib.modules.sample_task.SampleModule, "train"
-                ),
+                sample_lib.modules.sample_task.SampleModule.TRAIN_SIGNATURE,
             )
 
         assert "contains no source files with extension" in e.value.message
