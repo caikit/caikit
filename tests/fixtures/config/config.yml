@@ -1,7 +1,6 @@
 # Config for tests
 runtime:
     find_available_port: true
-    compiled_proto_module_dir: tests.fixtures.protobufs
 
     metering:
         # Switch on metering by default
