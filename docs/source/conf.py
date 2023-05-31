@@ -14,7 +14,7 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../../"))
+sys.path.insert(0, os.path.abspath(os.path.join("..", "..")))
 
 
 # -- Project information -----------------------------------------------------
@@ -49,8 +49,8 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "caikit/config"]
 # Language of source code to parse
 autoapi_type = "python"
 
-# Source code to parse to generate API docs relative to 'docs' directory
-autoapi_dirs = ["../../caikit"]
+# Source code to parse to generate API docs relative to 'docs/source' directory
+autoapi_dirs = [os.path.join("..", "..", "caikit")]
 
 
 # -- Options for HTML output -------------------------------------------------
