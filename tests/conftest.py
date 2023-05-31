@@ -69,7 +69,6 @@ def sample_inference_service(render_protos) -> ServicePackage:
     """Service package pointing to `sample_lib` for testing"""
     inference_service = ServicePackageFactory().get_service_package(
         ServicePackageFactory.ServiceType.INFERENCE,
-        ServicePackageFactory.ServiceSource.GENERATED,
     )
     if render_protos:
         render_dataobject_protos("tests/protos")
@@ -90,7 +89,6 @@ def sample_train_service(render_protos) -> ServicePackage:
     """Service package pointing to `sample_lib` for testing"""
     training_service = ServicePackageFactory().get_service_package(
         ServicePackageFactory.ServiceType.TRAINING,
-        ServicePackageFactory.ServiceSource.GENERATED,
     )
     if render_protos:
         render_dataobject_protos("tests/protos")

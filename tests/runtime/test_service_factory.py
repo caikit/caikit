@@ -24,23 +24,10 @@ from caikit.runtime.service_factory import ServicePackageFactory
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from tests.conftest import temp_config
 import caikit
-
-
-def test_service_package_raises_for_compiled_source():
-    with pytest.raises(
-        CaikitRuntimeException,
-        match="Service generation is not implemented for compiled service source",
-    ):
-        ServicePackageFactory.get_service_package(
-            ServicePackageFactory.ServiceType.TRAINING,
-            ServicePackageFactory.ServiceSource.COMPILED,
-        )
-
+import sample_lib
 
 ### Private method tests #############################################################
 
-# Local
-import sample_lib
 
 MODULE_LIST = [
     module_class

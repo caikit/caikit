@@ -85,16 +85,8 @@ class ServicePackageFactory:
         TRAINING = 2  # Training service for the GlobalTrainServicer
         TRAINING_MANAGEMENT = 3
 
-    class ServiceSource(Enum):
-        COMPILED = 1  # Pull from a protoc-compiled _pb2 module
-        GENERATED = 2  # Generate a service definition by inspecting the library's APIs
-
     @classmethod
-    def get_service_package(
-        cls,
-        service_type: ServiceType,
-        source: ServiceSource,
-    ) -> ServicePackage:
+    def get_service_package(cls, service_type: ServiceType) -> ServicePackage:
         """Public factory API. Returns a service package of the requested type, from the
         configured source.
 
@@ -102,20 +94,11 @@ class ServicePackageFactory:
             service_type (ServicePackageFactory.ServiceType): The type of service to build,
                 to match the servicer implementation that will handle it. e.g. the
                 GlobalPredictServicer expects an "INFERENCE" service
-            source (ServicePackageFactory.ServiceSource): Describes where the service artifacts
-                should be pulled from or how they should be constructed
 
         Returns:
             ServicePackage: A container with properties referencing everything you need to bind a
                 concrete Servicer implementation to a protobufs Service and grpc Server
         """
-        if source == cls.ServiceSource.COMPILED:
-            # Disallow service generation for compiled modules
-            raise CaikitRuntimeException(
-                grpc.StatusCode.UNIMPLEMENTED,
-                "Service generation is not implemented for compiled service source",
-            )
-
         if service_type == cls.ServiceType.TRAINING_MANAGEMENT:
             grpc_service = json_to_service(
                 name=TRAINING_MANAGEMENT_SERVICE_NAME,
@@ -131,58 +114,55 @@ class ServicePackageFactory:
                 messages=None,  # we don't need messages here
             )
 
-        if source == cls.ServiceSource.GENERATED:
-            # First make sure we import the data model for the correct library
-            # !!!! This will use the `caikit_library` config
-            _ = import_util.get_data_model()
+        # First make sure we import the data model for the correct library
+        # !!!! This will use the `caikit_library` config
+        _ = import_util.get_data_model()
 
-            caikit_config = get_config()
-            lib = caikit_config.runtime.library
-            ai_domain_name = snake_to_upper_camel(lib.replace("caikit_", ""))
-            package_name = f"caikit.runtime.{ai_domain_name}"
+        caikit_config = get_config()
+        lib = caikit_config.runtime.library
+        ai_domain_name = snake_to_upper_camel(lib.replace("caikit_", ""))
+        package_name = f"caikit.runtime.{ai_domain_name}"
 
-            # Then do API introspection to come up with all the API definitions to support
-            clean_modules = ServicePackageFactory._get_and_filter_modules(
-                caikit_config, lib
-            )
+        # Then do API introspection to come up with all the API definitions to support
+        clean_modules = ServicePackageFactory._get_and_filter_modules(
+            caikit_config, lib
+        )
 
-            if service_type == cls.ServiceType.INFERENCE:
-                task_rpc_list = service_generation.create_inference_rpcs(clean_modules)
-                service_name = f"{ai_domain_name}Service"
-            else:  # service_type == cls.ServiceType.TRAINING
-                task_rpc_list = service_generation.create_training_rpcs(clean_modules)
-                service_name = f"{ai_domain_name}TrainingService"
+        if service_type == cls.ServiceType.INFERENCE:
+            task_rpc_list = service_generation.create_inference_rpcs(clean_modules)
+            service_name = f"{ai_domain_name}Service"
+        else:  # service_type == cls.ServiceType.TRAINING
+            task_rpc_list = service_generation.create_training_rpcs(clean_modules)
+            service_name = f"{ai_domain_name}TrainingService"
 
-            task_rpc_list = [
-                rpc for rpc in task_rpc_list if rpc.return_type is not None
-            ]
+        task_rpc_list = [rpc for rpc in task_rpc_list if rpc.return_type is not None]
 
-            request_data_models = [
-                rpc.create_request_data_model(package_name) for rpc in task_rpc_list
-            ]
+        request_data_models = [
+            rpc.create_request_data_model(package_name) for rpc in task_rpc_list
+        ]
 
-            client_module = ModuleType(
-                "ClientMessages",
-                "Package with service message class implementations",
-            )
+        client_module = ModuleType(
+            "ClientMessages",
+            "Package with service message class implementations",
+        )
 
-            for dm_class in request_data_models:
-                # We need the message class that data model serializes to
-                setattr(client_module, dm_class.__name__, type(dm_class().to_proto()))
+        for dm_class in request_data_models:
+            # We need the message class that data model serializes to
+            setattr(client_module, dm_class.__name__, type(dm_class().to_proto()))
 
-            rpc_jsons = [rpc.create_rpc_json(package_name) for rpc in task_rpc_list]
-            service_json = {"service": {"rpcs": rpc_jsons}}
-            grpc_service = json_to_service(
-                name=service_name, package=package_name, json_service_def=service_json
-            )
+        rpc_jsons = [rpc.create_rpc_json(package_name) for rpc in task_rpc_list]
+        service_json = {"service": {"rpcs": rpc_jsons}}
+        grpc_service = json_to_service(
+            name=service_name, package=package_name, json_service_def=service_json
+        )
 
-            return ServicePackage(
-                service=grpc_service.service_class,
-                descriptor=grpc_service.descriptor,
-                registration_function=grpc_service.registration_function,
-                stub_class=grpc_service.client_stub_class,
-                messages=client_module,
-            )
+        return ServicePackage(
+            service=grpc_service.service_class,
+            descriptor=grpc_service.descriptor,
+            registration_function=grpc_service.registration_function,
+            stub_class=grpc_service.client_stub_class,
+            messages=client_module,
+        )
 
     # Implementation details for pure python service packages #
     @staticmethod
