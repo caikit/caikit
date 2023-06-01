@@ -24,8 +24,10 @@ import time
 import unittest
 
 # Local
-from caikit.runtime.types.thread_destroyed_exception import ThreadDestroyedException
-from caikit.runtime.work_management.destroyable_thread import DestroyableThread
+from caikit.runtime.work_management.destroyable_thread import (
+    DestroyableThread,
+    ThreadDestroyedException,
+)
 
 
 class TestDestroyableThread(unittest.TestCase):

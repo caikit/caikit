@@ -20,10 +20,18 @@ import traceback
 # First Party
 import alog
 
-# Local
-from caikit.runtime.types.thread_destroyed_exception import ThreadDestroyedException
-
 log = alog.use_channel("DESTROY-THRD")
+
+
+class ThreadDestroyedException(RuntimeError):
+    """Exception raised inside a DestroyableThread when it is destroyed by the thread managing
+    its lifecycle."""
+
+    def __init__(self):
+        super().__init__(
+            "Work thread intentionally destroyed by its lifecycle manager. "
+            "This exception was not raised by the code running in this thread."
+        )
 
 
 # pylint: disable=too-many-instance-attributes
