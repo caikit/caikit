@@ -6,7 +6,7 @@ from ...data_model.sample import SampleOutputType
 import caikit.core
 
 
-@caikit.core.module("00110203-baad-beef-0809-0a0b02dd0e0f", "SampleModule", "0.0.1")
+@caikit.core.module("00110203-baad-beef-0809-0a0b02dd0e0f", "InnerModule", "0.0.1")
 class InnerModule(caikit.core.ModuleBase):
     def __init__(self, batch_size=64, learning_rate=0.0015):
         super().__init__()
