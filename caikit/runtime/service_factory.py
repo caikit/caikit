@@ -204,6 +204,10 @@ class ServicePackageFactory:
             # Only create for modules from defined included and exclusion list
 
             if not ck_module.TASK_CLASS:
+                log.debug(
+                    "Skipping module %s with no task",
+                    ck_module,
+                )
                 continue
 
             if (
@@ -211,14 +215,18 @@ class ServicePackageFactory:
                 and ck_module.TASK_CLASS.__name__ in excluded_task_types
             ):
                 log.debug(
-                    "Skipping module %s of type %s",
+                    "Skipping module %s with excluded task %s",
                     ck_module,
                     ck_module.TASK_CLASS.__name__,
                 )
                 continue
 
             if excluded_modules and ck_module.MODULE_ID in excluded_modules:
-                log.debug("Skipping module %s of id %s", ck_module, ck_module.MODULE_ID)
+                log.debug(
+                    "Skipping module %s with excluded id %s",
+                    ck_module,
+                    ck_module.MODULE_ID,
+                )
                 continue
 
             # no inclusions specified means include everything

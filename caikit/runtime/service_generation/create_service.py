@@ -80,6 +80,7 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
 
     for ck_module in modules:
         if not ck_module.TASK_CLASS:
+            log.debug("Skipping module %s with no task", ck_module)
             continue
 
         # If this train function has not been changed from the base, skip it as
