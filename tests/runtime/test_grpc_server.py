@@ -193,10 +193,13 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
     model_name = random_test_id()
     train_request = (
         sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
-            model_name=model_name, training_data=training_data
+            model_name=model_name,
+            training_data=training_data,
         )
     )
+
     actual_response = train_stub.ModulesSampleTaskSampleModuleTrain(train_request)
+
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
     # give the trained model time to load

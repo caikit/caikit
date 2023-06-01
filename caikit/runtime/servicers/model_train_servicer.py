@@ -42,7 +42,7 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
         self._training_service = training_service
         self._gts = GlobalTrainServicer(self._training_service)
 
-    def Run(self, request, context=None):
+    def Run(self, request, context):
         """`Run` RPC -- launches a training job.
         Args:
             request(process_pb2.ProcessRequest):
@@ -90,11 +90,13 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
             )
             # make the train call
             log.debug("Training output dir: %s", request.training_output_dir)
+
             training_response = self._gts.run_training_job(
                 request=train_message_request,
                 model=train_module,
                 training_id=request.trainingID,
                 training_output_dir=request.training_output_dir,
+                context=context,
                 wait=True,
             )
             log.debug("<RUN00837184D>", "training_response: %s", training_response)
