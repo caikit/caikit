@@ -199,14 +199,12 @@ def test_get_and_filter_modules_respects_excluded_task_type():
     with temp_config(
         {
             "runtime": {
-                "service_generation": {"task_types": {"excluded": ["sample_task"]}}
+                "service_generation": {"task_types": {"excluded": ["SampleTask"]}}
             }
         }
     ) as cfg:
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        # print("-------------- CHECK -------------------", clean_modules)
-        # assert "sample_task" not in str(clean_modules)
-        assert "sample_task" not in str(clean_modules)
+        assert "SampleTask" not in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_excluded_modules():
@@ -236,7 +234,7 @@ def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type
                     "module_guids": {
                         "excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]
                     },
-                    "task_types": {"excluded": ["other_task"]},
+                    "task_types": {"excluded": ["OtherTask"]},
                 }
             }
         }  # excluding InnerModule and OtherModule
@@ -245,7 +243,7 @@ def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
         assert "InnerModule" not in str(clean_modules)
         assert "OtherModule" not in str(clean_modules)
-        assert "other_task" not in str(clean_modules)
+        assert "OtherTask" not in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_included_modules_and_included_task_types():
@@ -256,7 +254,7 @@ def test_get_and_filter_modules_respects_included_modules_and_included_task_type
                     "module_guids": {
                         "included": ["00110203-baad-beef-0809-0a0b02dd0e0f"]
                     },
-                    "task_types": {"included": ["other_task"]},
+                    "task_types": {"included": ["OtherTask"]},
                 }
             }
             # }  # only want InnerModule and OtherModule
@@ -301,7 +299,7 @@ def test_get_and_filter_modules_respects_included_task_types():
         {
             "runtime": {
                 "service_generation": {
-                    "task_types": {"included": ["sample_task"]},
+                    "task_types": {"included": ["SampleTask"]},
                 }
             }
         }  # only want sample_task which has 6 modules
@@ -317,7 +315,7 @@ def test_get_and_filter_modules_respects_included_task_types_and_excluded_module
         {
             "runtime": {
                 "service_generation": {
-                    "task_types": {"included": ["sample_task"]},
+                    "task_types": {"included": ["SampleTask"]},
                     "module_guids": {
                         "excluded": ["00af2203-0405-0607-0263-0a0b02dd0c2f"]
                     },
