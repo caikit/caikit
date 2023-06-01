@@ -11,9 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 # Have pylint ignore Class XXXX has no YYYY member so that we can use gRPC enums.
 # pylint: disable=E1101
 # Standard
+from contextlib import contextmanager
 from dataclasses import dataclass
 from unittest import mock
 import json
@@ -55,10 +57,12 @@ from sample_lib.data_model import (
     SampleOutputType,
     SampleTrainingType,
 )
-from tests.conftest import random_test_id, temp_config
+from tests.conftest import random_test_id, runtime_grpc_test_server, temp_config
 from tests.fixtures import Fixtures
 import caikit
 import sample_lib
+
+## Helpers #####################################################################
 
 log = alog.use_channel("TEST-SERVE-I")
 
@@ -74,6 +78,9 @@ def is_good_train_response(actual_response, expected, model_name):
     assert actual_response.training_id is not None
     assert isinstance(actual_response.training_id, str)
     assert actual_response.model_name == model_name
+
+
+## Tests #######################################################################
 
 
 def test_model_train(runtime_grpc_server):
@@ -103,7 +110,9 @@ def test_model_train(runtime_grpc_server):
             ),
         },
         training_input_dir="training_input_dir",
-        training_output_dir=os.path.join("test", "training_output", training_id),
+        training_output_dir=os.path.join(
+            runtime_grpc_server.workdir, "training_output", training_id
+        ),
     )
     training_response = model_train_stub.Run(model_train_request)
     assert isinstance(training_response, process_pb2.ProcessResponse)
@@ -633,7 +642,7 @@ def test_tls(sample_inference_service):
     tls_config = TLSConfig(
         server=KeyPair(cert=tls_cert, key=tls_key), client=KeyPair(cert="", key="")
     )
-    with RuntimeGRPCServer(
+    with runtime_grpc_test_server(
         inference_service=sample_inference_service,
         training_service=None,
         tls_config_override=tls_config,
@@ -650,7 +659,7 @@ def test_mtls(sample_inference_service):
     tls_config = TLSConfig(
         server=KeyPair(cert=tls_cert, key=tls_key), client=KeyPair(cert=ca_cert, key="")
     )
-    with RuntimeGRPCServer(
+    with runtime_grpc_test_server(
         inference_service=sample_inference_service,
         training_service=None,
         tls_config_override=tls_config,
@@ -690,7 +699,7 @@ def test_certs_can_be_loaded_as_files(sample_inference_service, tmp_path):
         server=KeyPair(cert=tls_cert_path, key=tls_key_path),
         client=KeyPair(cert=ca_cert_path, key=""),
     )
-    with RuntimeGRPCServer(
+    with runtime_grpc_test_server(
         inference_service=sample_inference_service,
         training_service=None,
         tls_config_override=tls_config,
@@ -706,7 +715,7 @@ def test_metrics_stored_after_server_interrupt(
 ):
     """This tests the gRPC server's behaviour when interrupted"""
 
-    with RuntimeGRPCServer(
+    with runtime_grpc_test_server(
         inference_service=sample_inference_service,
         training_service=None,
     ) as server:
@@ -753,7 +762,7 @@ def test_out_of_range_port(sample_inference_service):
         },
         merge_strategy="merge",
     ):
-        with RuntimeGRPCServer(
+        with runtime_grpc_test_server(
             inference_service=sample_inference_service,
             training_service=None,
         ) as server:

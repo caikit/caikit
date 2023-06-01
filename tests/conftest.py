@@ -106,26 +106,49 @@ def sample_train_servicer(sample_train_service) -> GlobalTrainServicer:
     yield servicer
 
 
+@contextmanager
+def runtime_grpc_test_server(*args, **kwargs):
+    """Helper to wrap creation of RuntimeGRPCServer in temporary configurations"""
+    with tempfile.TemporaryDirectory() as workdir:
+        temp_log_dir = os.path.join(workdir, "metering_logs")
+        temp_save_dir = os.path.join(workdir, "training_output")
+        os.makedirs(temp_log_dir)
+        os.makedirs(temp_save_dir)
+        with temp_config(
+            {
+                "runtime": {
+                    "metering": {"log_dir": temp_log_dir},
+                    "training": {"output_dir": temp_save_dir},
+                }
+            },
+            "merge",
+        ):
+            with RuntimeGRPCServer(*args, **kwargs) as server:
+                # Give tests access to the workdir
+                server.workdir = workdir
+                yield server
+
+
 @pytest.fixture(scope="session")
 def runtime_grpc_server(
     sample_inference_service, sample_train_service
 ) -> RuntimeGRPCServer:
-    server = RuntimeGRPCServer(
+    with runtime_grpc_test_server(
         inference_service=sample_inference_service,
         training_service=sample_train_service,
-    )
+    ) as server:
 
-    grpc_thread = threading.Thread(
-        target=server.start,
-    )
-    grpc_thread.daemon = False
-    grpc_thread.start()
-    _check_server_readiness(server)
-    yield server
+        grpc_thread = threading.Thread(
+            target=server.start,
+        )
+        grpc_thread.daemon = False
+        grpc_thread.start()
+        _check_server_readiness(server)
+        yield server
 
-    # teardown
-    server.stop(0)
-    grpc_thread.join()
+        # teardown
+        server.stop(0)
+        grpc_thread.join()
 
 
 @pytest.fixture(scope="session")
