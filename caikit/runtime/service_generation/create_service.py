@@ -57,10 +57,6 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
 
     rpcs = []
 
-    primitive_data_model_types = (
-        get_config().runtime.service_generation.primitive_data_model_types
-    )
-
     for ck_module in modules:
         if not ck_module.TASK_CLASS:
             log.debug("Skipping module %s with no task", ck_module)
@@ -91,7 +87,7 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
         )
         with alog.ContextLog(log.debug, "Generating train RPC for %s", ck_module):
             try:
-                rpcs.append(ModuleClassTrainRPC(signature, primitive_data_model_types))
+                rpcs.append(ModuleClassTrainRPC(signature))
                 log.debug("Successfully generated train RPC for %s", ck_module)
             except Exception as err:  # pylint: disable=broad-exception-caught
                 log.warning(

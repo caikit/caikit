@@ -98,7 +98,6 @@ runtime:
         module_guids:
             included: []
             excluded: []
-        primitive_data_model_types: []
         task_types:
             included: []
             excluded: []

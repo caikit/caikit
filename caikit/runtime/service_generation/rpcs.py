@@ -113,21 +113,16 @@ class ModuleClassTrainRPC(CaikitRPCBase):
     def __init__(
         self,
         method_signature: CaikitMethodSignature,
-        primitive_data_model_types: List[str],
     ):
         """Initialize a .proto generator with a single module to convert
 
         Args:
             method_signature (CaikitMethodSignature): The module method signature to
             generate an RPC for
-
-            primitive_data_model_types: List[str]
-                List of primitive data model types for a caikit_* library, such as
-                caikit.interfaces.nlp.data_model.RawDocument for nlp domains
         """
         self.clz: Type[ModuleBase] = method_signature.module
         self._method = ModuleClassTrainRPC._mutate_method_signature_for_training(
-            method_signature, primitive_data_model_types
+            method_signature
         )
         self.name = self._module_class_to_rpc_name()
 
@@ -176,9 +171,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         )
 
     @staticmethod
-    def _mutate_method_signature_for_training(
-        signature, primitive_data_model_types: List[str]
-    ) -> Optional[CaikitMethodSignature]:
+    def _mutate_method_signature_for_training(signature: CaikitMethodSignature) -> Optional[CaikitMethodSignature]:
         # Change return type for async training interface
         return_type = TrainingJob
 
@@ -224,10 +217,6 @@ class TaskPredictRPC(CaikitRPCBase):
 
             method_signatures (List[CaikitMethodSignature]): The list of method
                 signatures from concrete modules implementing this task
-
-            primitive_data_model_types: List[str]
-                List of primitive data model types for a caikit_* library, such as
-                caikit.interfaces.nlp.data_model.RawDocument for nlp domains
         """
         self.task = task
         self._module_list = [method.module for method in method_signatures]
