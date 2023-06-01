@@ -43,7 +43,7 @@ from caikit.core.data_model.dataobject import (
     _AUTO_GEN_PROTO_CLASSES,
     render_dataobject_protos,
 )
-from caikit.core.data_model.json_dict import JsonDict, _get_message_class
+from caikit.core.data_model.json_dict import JsonDict
 from caikit.core.toolkit.isa import isprotobufenum
 
 ## Helpers #####################################################################
@@ -58,12 +58,29 @@ def temp_dpool():
     fd = descriptor_pb2.FileDescriptorProto()
     struct_pb2.DESCRIPTOR.CopyToProto(fd)
     dpool.Add(fd)
-    # HACK! Doing this _appears_ to solve the mysterious segfault cause by using
-    #   Struct inside a temporary descriptor pool. The inspiration for this was
-    #   https://github.com/protocolbuffers/protobuf/issues/12047
-    _ = _get_message_class(dpool.FindMessageTypeByName("google.protobuf.Struct"))
-    _ = _get_message_class(dpool.FindMessageTypeByName("google.protobuf.Value"))
-    _ = _get_message_class(dpool.FindMessageTypeByName("google.protobuf.ListValue"))
+
+    ##
+    # HACK! Doing this _appears_ to solve the mysterious segfault cause by
+    # using Struct inside a temporary descriptor pool. The inspiration for this
+    # was:
+    #
+    # https://github.com/protocolbuffers/protobuf/issues/12047
+    #
+    # NOTE: This only works for protobuf 4.X (and as far as we know, it's not
+    #     needed for 3.X)
+    ##
+    try:
+        # Third Party
+        from google.protobuf.message_factory import GetMessageClassesForFiles
+
+        msgs = GetMessageClassesForFiles([fd.name], dpool)
+        _ = msgs["google.protobuf.Struct"]
+        _ = msgs["google.protobuf.Value"]
+        _ = msgs["google.protobuf.ListValue"]
+
+    # Nothing to do for protobuf 3.X
+    except ImportError:
+        pass
     yield dpool
     # pylint: disable=duplicate-code
     descriptor_pool._DEFAULT = global_dpool
