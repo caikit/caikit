@@ -46,14 +46,9 @@ class ServiceType(Enum):
 
 def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
     """Handles the logic to create all the RPCs for inference"""
-
-    primitive_data_model_types = (
-        get_config().runtime.service_generation.primitive_data_model_types
-    )
-
     # Create the RPCs for each module
     return _create_rpcs_for_modules(
-        modules, primitive_data_model_types
+        modules
     )
 
 
@@ -110,7 +105,6 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
 
 def _create_rpcs_for_modules(
     modules: List[Type[ModuleBase]],
-    primitive_data_model_types: List[str],
 ) -> List[CaikitRPCBase]:
     """Create the RPCs for each module"""
     rpcs = []
@@ -121,7 +115,7 @@ def _create_rpcs_for_modules(
         with alog.ContextLog(log.debug, "Generating task RPC for %s", task):
             try:
                 rpcs.append(
-                    TaskPredictRPC(task, task_methods, primitive_data_model_types)
+                    TaskPredictRPC(task, task_methods)
                 )
                 log.debug("Successfully generated task RPC for %s", task)
             except Exception as err:  # pylint: disable=broad-exception-caught
@@ -137,7 +131,7 @@ def _create_rpcs_for_modules(
 
 def _group_modules_by_task(
     modules: List[Type[ModuleBase]]
-) -> Dict[Type[TaskBase], List[Type[ModuleBase]]]:
+) -> Dict[Type[TaskBase], List[CaikitMethodSignature]]:
     task_groups = {}
     for ck_module in modules:
         if ck_module.TASK_CLASS:

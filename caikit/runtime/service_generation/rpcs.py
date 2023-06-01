@@ -216,7 +216,6 @@ class TaskPredictRPC(CaikitRPCBase):
         self,
         task: Type[TaskBase],
         method_signatures: List[CaikitMethodSignature],
-        primitive_data_model_types: List[str],
     ):
         """Initialize a .proto generator with all modules of a given task to convert
 
@@ -240,7 +239,7 @@ class TaskPredictRPC(CaikitRPCBase):
         for method in method_signatures:
             default_parameters.update(method.default_parameters)
             primitive_arg_dict = primitives.to_primitive_signature(
-                method.parameters, primitive_data_model_types
+                method.parameters
             )
             for arg_name, arg_type in primitive_arg_dict.items():
                 current_val = parameters_dict.get(arg_name, arg_type)

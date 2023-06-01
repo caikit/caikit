@@ -42,7 +42,6 @@ def test_task_inference_rpc_with_all_optional_params():
     rpc = TaskPredictRPC(
         task=TestTask,
         method_signatures=[CaikitMethodSignature(TestModule, "run")],
-        primitive_data_model_types=[],
     )
 
     data_model = rpc.create_request_data_model(package_name="blah")

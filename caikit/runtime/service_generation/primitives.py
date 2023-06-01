@@ -32,7 +32,7 @@ log = alog.use_channel("MODULE_PRIMS")
 
 
 def to_primitive_signature(
-    signature: Dict[str, Type], primitive_data_model_types: List[str]
+    signature: Dict[str, Type]
 ) -> Dict[str, Type]:
     """Returns dictionary of primitive types only
     If there is a Union, pick the primitive type
