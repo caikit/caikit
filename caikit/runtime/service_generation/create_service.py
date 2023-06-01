@@ -84,6 +84,11 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
         #
         # HACK alert! I'm struggling to find the right way to identify this
         #   condition, so for now, we'll use the string repr
+
+        # -------------------- Addition for test case to check if module has task or not ----------------
+        if not ck_module.TASK_CLASS:
+            continue
+
         train_fn = getattr(ck_module, TRAIN_FUNCTION_NAME)
         if str(train_fn).startswith(f"<bound method ModuleBase.{TRAIN_FUNCTION_NAME}"):
             log.debug(
