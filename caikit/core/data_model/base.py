@@ -20,6 +20,7 @@
 # pylint: disable=no-member
 
 # Standard
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Optional, Type, Union
 import base64
@@ -37,7 +38,6 @@ import alog
 # Local
 from ..toolkit.errors import error_handler
 from . import enums, json_dict
-from .data_backends.base import OneofFieldVal
 
 log = alog.use_channel("DATAM")
 error = error_handler.get(log)
@@ -310,7 +310,7 @@ class _DataBaseMetaClass(type):
                     ),
                 )
             attr_val = backend.get_attribute(self.__class__, field)
-            if isinstance(attr_val, OneofFieldVal):
+            if isinstance(attr_val, self.__class__.OneofFieldVal):
                 log.debug2("Got a OneofFieldVal from the backend")
                 assert field in self.__class__._fields_oneofs_map
                 self._get_which_oneof_dict()[field] = attr_val.which_oneof
@@ -417,6 +417,15 @@ class DataBase(metaclass=_DataBaseMetaClass):
         All leaves in the hierarchy of derived classes should have a corresponding protobufs class
         defined in the interface definitions.  If not, an exception will be thrown at runtime.
     """
+
+    @dataclass
+    class OneofFieldVal:
+        """Helper struct that backends can use to return information about
+        values in oneofs along with which of the oneofs is currently valid
+        """
+
+        val: Any
+        which_oneof: str
 
     def __setattr__(self, name, val):
         """Handle attribute setting for oneofs and named fields with delegation
