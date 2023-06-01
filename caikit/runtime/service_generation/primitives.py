@@ -129,31 +129,6 @@ def extract_data_model_type_from_union(arg_type: Type) -> Type:
     return arg_type
 
 
-def is_primitive_method(
-    method: CaikitMethodSignature, primitive_data_model_types: List[str]
-) -> bool:
-    """Determine if the arguments to the module's run function meet the criteria
-    for being a "primitive" interface this means that all **non-optional** arguments
-    types must be either (a) a primitive data model type for the given library or
-    (b) a language-primitive type.
-
-    Args:
-        method (CaikitMethodSignature): The method signature of the "primitive"
-            data model types for each library
-    """
-
-    # pylint: disable=use-a-generator
-    return all(
-        [
-            (
-                _is_primitive_type(arg_type, primitive_data_model_types)
-                or _is_optional_type(arg_type)
-            )
-            for arg_type in method.parameters.values()
-        ]
-    )
-
-
 def _is_primitive_type(arg_type: Type, primitive_data_model_types: List[str]) -> bool:
     """
     Returns True is arg_type is in PROTO_TYPE_MAP(float, int, bool, str, bytes)

@@ -25,7 +25,6 @@ import alog
 
 # Local
 from ... import get_config
-from .primitives import is_primitive_method
 from .rpcs import CaikitRPCBase, ModuleClassTrainRPC, TaskPredictRPC
 from caikit.core import ModuleBase, TaskBase
 from caikit.core.signature_parsing.module_signature import CaikitMethodSignature
@@ -53,20 +52,12 @@ def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase
     )
 
     rpcs = []
-    # Inference specific logic:
-    # Remove non-primitive modules (including modules that return None type)
-    primitive_modules = _remove_non_primitive_modules(
-        modules, primitive_data_model_types
-    )
+
 
     # Create the RPCs for each module
-    rpcs.extend(
-        _create_rpcs_for_modules(
-            primitive_modules, primitive_data_model_types, INFERENCE_FUNCTION_NAME
-        )
+    return _create_rpcs_for_modules(
+        modules, primitive_data_model_types, INFERENCE_FUNCTION_NAME
     )
-
-    return rpcs
 
 
 def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
@@ -118,23 +109,6 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
                     exc_info=True,
                 )
     return rpcs
-
-
-def _remove_non_primitive_modules(
-    modules: List[Type[ModuleBase]],
-    primitive_data_model_types: List[str],
-) -> List[Type[ModuleBase]]:
-    primitive_modules = []
-    # If the module is not "primitive" we won't include it
-    for ck_module in modules:
-        signature = CaikitMethodSignature(ck_module, "run")
-        if signature.parameters and signature.return_type:
-            if not is_primitive_method(signature, primitive_data_model_types):
-                log.debug("Skipping non-primitive module %s", ck_module)
-                continue
-
-            primitive_modules.append(ck_module)
-    return primitive_modules
 
 
 def _create_rpcs_for_modules(
