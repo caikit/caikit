@@ -29,7 +29,7 @@ from py_to_proto.dataclass_to_proto import (  # NOTE: Imported from here for com
 import alog
 
 # Local
-from . import primitives, type_helpers
+from . import protoable, type_helpers
 from .compatibility_checker import ApiFieldNames
 from .data_stream_source import make_data_stream_source
 from caikit.core import ModuleBase, TaskBase
@@ -193,7 +193,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
                 # Found a model pointer
                 new_params[name] = ModelPointer
             else:
-                new_params[name] = primitives.handle_primitives_in_union(
+                new_params[name] = protoable.handle_protoables_in_union(
                     arg_type=typ,
                 )
 
@@ -229,7 +229,7 @@ class TaskPredictRPC(CaikitRPCBase):
         default_parameters = {}
         for method in method_signatures:
             default_parameters.update(method.default_parameters)
-            primitive_arg_dict = primitives.to_primitive_signature(method.parameters)
+            primitive_arg_dict = protoable.to_protoable_signature(method.parameters)
             for arg_name, arg_type in primitive_arg_dict.items():
                 current_val = parameters_dict.get(arg_name, arg_type)
                 # TODO: raise runtime error here instead of assert!
@@ -248,7 +248,7 @@ class TaskPredictRPC(CaikitRPCBase):
         return_types = {method.return_type for method in method_signatures}
         assert len(return_types) == 1, f"Found multiple return types for task [{task}]"
         return_type = list(return_types)[0]
-        self.return_type = primitives.extract_data_model_type_from_union(return_type)
+        self.return_type = protoable.extract_data_model_type_from_union(return_type)
 
         # Create the rpc name based on the module type
         self.name = self._task_to_rpc_name()

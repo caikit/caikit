@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This file contains our logic about what constitutes a "primitive" for RPC generation purposes
+This file contains our logic about what constitutes a proto-able for RPC generation purposes
 """
 
 # Standard
@@ -27,68 +27,74 @@ import alog
 from .type_helpers import PROTO_TYPE_MAP
 from caikit.core.data_model.base import DataBase
 
-log = alog.use_channel("MODULE_PRIMS")
+log = alog.use_channel("PROTOABLES")
 
 
-def to_primitive_signature(signature: Dict[str, Type]) -> Dict[str, Type]:
-    """Returns dictionary of primitive types only
-    If there is a Union, pick the primitive type
+def to_protoable_signature(signature: Dict[str, Type]) -> Dict[str, Type]:
+    """Returns dictionary of protoable types only
+    If there is a Union, pick the protoable type
 
     Args:
         signature: Dict[str, Type]
             module signature of parameters and types
     """
-    primitives = {}
-    log.debug("Building primitive signature for %s", signature)
+    protoables = {}
+    log.debug("Building protoable signature for %s", signature)
     for arg, arg_type in signature.items():
-        primitive_arg_type = handle_primitives_in_union(arg_type)
-        if primitive_arg_type:
-            primitives[arg] = primitive_arg_type
+        protoable_type = handle_protoables_in_union(arg_type)
+        if protoable_type:
+            protoables[arg] = protoable_type
 
-    return primitives
+    return protoables
 
 
-def handle_primitives_in_union(arg_type: Type) -> Type:
-    """Handles various primitive arg types from a Union:
-    Union[supported_type, unsupported_type] -> returns only the supported_type
-    Union[supported_type1, supported_type2] -> returns the union which creates the oneof
-    Union[supported_type1, supported_type2, unsupported_type] ->
-        returns the first primitive object in the Union
+def handle_protoables_in_union(arg_type: Type) -> Type:
+    """Handles various protoable arg types from a Union.
+
+    If arg_type is a union, then this will return the union back if all types in it are proto-able,
+    or the first proto-able arg type if the union has non-protoable arg types.
+
+    If arg_type is not a union nor protoable at all, this returns None.
+
+    Examples:
+    Union[protoable_type, non_protoable_type] -> protoable_type
+    Union[protoable_type_1, protoable_type_2] -> Union[protoable_type_1, protoable_type_2]
+    Union[protoable_type_1, protoable_type_2, non_protoable_type] -> protoable_type_1
     """
-    if _is_primitive_type(arg_type):
+    if is_protoable_type(arg_type):
         if typing.get_origin(arg_type) == Union:
-            union_primitives = [
+            union_protoables = [
                 union_val
                 for union_val in typing.get_args(arg_type)
-                if _is_primitive_type(union_val)
+                if is_protoable_type(union_val)
             ]
-            # if all are primitives, return the union (which will create a oneof)
-            if len(union_primitives) == len(typing.get_args(arg_type)):
+            # if all are protoable, return the union (which will create a oneof)
+            if len(union_protoables) == len(typing.get_args(arg_type)):
                 return arg_type
-            # if there's only 1 primitive found, return that
-            if len(union_primitives) == 1:
-                return union_primitives[0]
-            # otherwise, try to get the primitive dm objects in the Union
+            # if there's only 1 protoable found, return that
+            if len(union_protoables) == 1:
+                return union_protoables[0]
+            # otherwise, try to get the data model objects in the Union
             dm_types = [
                 arg
-                for arg in union_primitives
+                for arg in union_protoables
                 if inspect.isclass(arg) and issubclass(arg, DataBase)
             ]
             # if there are multiple, pick the first one
             if len(dm_types) > 0:
                 log.debug2(
-                    "Picking first data model type %s in union primitives %s",
+                    "Picking first data model type %s in union protoables %s",
                     dm_types,
-                    union_primitives,
+                    union_protoables,
                 )
                 return dm_types[0]
             log.debug(
-                "Just picking first primitive type %s in union",
-                union_primitives[0],
+                "Just picking first protoable type %s in union",
+                union_protoables[0],
             )
-            return union_primitives[0]
+            return union_protoables[0]
         return arg_type
-    log.debug("Skipping non-primitive argument type [%s]", arg_type)
+    log.debug("Skipping non-protoable argument type [%s]", arg_type)
 
 
 def extract_data_model_type_from_union(arg_type: Type) -> Type:
@@ -121,16 +127,16 @@ def extract_data_model_type_from_union(arg_type: Type) -> Type:
     return arg_type
 
 
-def _is_primitive_type(arg_type: Type) -> bool:
+def is_protoable_type(arg_type: Type) -> bool:
     """
     Returns True is arg_type is in PROTO_TYPE_MAP(float, int, bool, str, bytes)
     Or if it's an imported Caikit data model class.
     Or if it's a Union of at least one of those.
     Or if it's a List of one of those.
     False otherwise"""
-    primitive_set = list(PROTO_TYPE_MAP.keys())
+    proto_primitive_set = list(PROTO_TYPE_MAP.keys())
 
-    if arg_type in primitive_set:
+    if arg_type in proto_primitive_set:
         return True
     if isinstance(arg_type, type) and issubclass(arg_type, DataBase):
         return True
@@ -139,14 +145,14 @@ def _is_primitive_type(arg_type: Type) -> bool:
         log.debug2("Arg is List")
         # check that list is not nested
         if len(typing.get_args(arg_type)) == 1:
-            return typing.get_args(arg_type)[0] in primitive_set
+            return typing.get_args(arg_type)[0] in proto_primitive_set
         # TODO: that check is always true
         log.debug2("Arg is a list more than one type")
 
     if typing.get_origin(arg_type) == Union:
         log.debug2("Arg is Union")
         # pylint: disable=use-a-generator
-        return any([_is_primitive_type(arg) for arg in typing.get_args(arg_type)])
+        return any([is_protoable_type(arg) for arg in typing.get_args(arg_type)])
 
-    log.debug2("Arg is not primitive, arg_type: %s", arg_type)
+    log.debug2("Arg is not protoable, arg_type: %s", arg_type)
     return False
