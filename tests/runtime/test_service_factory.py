@@ -259,7 +259,7 @@ def test_get_and_filter_modules_respects_included_modules_and_included_task_type
                     "task_types": {"included": ["other_task"]},
                 }
             }
-        # }  # only want InnerModule and OtherModule
+            # }  # only want InnerModule and OtherModule
         }  # only want OtherModule and not InnerModule
     ) as cfg:
 
@@ -284,7 +284,7 @@ def test_get_and_filter_modules_respects_included_modules():
                     },
                 }
             }
-        # }  # only want InnerModule and ListModule
+            # }  # only want InnerModule and ListModule
         }  # only want ListModule and not InnerModule
     ) as cfg:
 

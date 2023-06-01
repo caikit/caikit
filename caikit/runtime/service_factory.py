@@ -17,7 +17,8 @@ from enum import Enum
 from types import ModuleType
 from typing import Callable, Set, Type
 import dataclasses
-import inspect, re
+import inspect
+import re
 
 # Third Party
 import google.protobuf.descriptor
@@ -37,7 +38,8 @@ from caikit.interfaces.runtime.data_model import (
     TrainingInfoResponse,
 )
 from caikit.runtime import service_generation
-from caikit.runtime.service_generation.core_module_helpers import get_module_info
+
+# from caikit.runtime.service_generation.core_module_helpers import get_module_info
 from caikit.runtime.service_generation.rpcs import snake_to_upper_camel
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils import import_util
@@ -262,29 +264,26 @@ class ServicePackageFactory:
             and caikit_config.runtime.service_generation.module_guids
             and caikit_config.runtime.service_generation.module_guids.excluded
         )
-        print("------------------CHECK 0-------------", len(modules), included_task_types, excluded_task_types)
+
         for ck_module in modules:
             # Only create for modules from defined included and exclusion list
-            module_info = get_module_info(ck_module)
+            # module_info = get_module_info(ck_module) # Not used
 
             # --------------Changes added ----------------------
             if not ck_module.TASK_CLASS:
                 continue
-            # module_info_task = None
-            # if ck_module.TASK_CLASS:
-            #     module_info_task = ck_module.TASK_CLASS.__name__
-            #     module_info_task = re.sub(r'(?<!^)(?=[A-Z])', '_', module_info_task).lower()
+            module_info_task = None
+            if ck_module.TASK_CLASS:
+                module_info_task = ck_module.TASK_CLASS.__name__
+                module_info_task = re.sub(
+                    r"(?<!^)(?=[A-Z])", "_", module_info_task
+                ).lower()
 
-            # print("--------------CHECK 1 --------------", ck_module, ck_module.TASK_CLASS)
-            # print("--------------CHECK 2 --------------", ck_module.__module__, ck_module.__mro__)
-            # print("--------------CHECK 3 --------------", module_info.type, module_info_task)
+            # if excluded_task_types and module_info.type in excluded_task_types:
+            #     log.debug("Skipping module %s of type %s", ck_module, module_info.type)
 
-
-            if excluded_task_types and module_info.type in excluded_task_types:
-                log.debug("Skipping module %s of type %s", ck_module, module_info.type)
-
-            # if excluded_task_types and not module_info_task and module_info_task in excluded_task_types:
-            #     log.debug("Skipping module %s of type %s", ck_module, module_info_task)
+            if excluded_task_types and module_info_task in excluded_task_types:
+                log.debug("Skipping module %s of type %s", ck_module, module_info_task)
                 continue
 
             if excluded_modules and ck_module.MODULE_ID in excluded_modules:
@@ -300,8 +299,9 @@ class ServicePackageFactory:
             # if inclusion is specified, use that
             else:
                 if (included_modules and ck_module.MODULE_ID in included_modules) or (
-                    included_task_types and module_info.type in included_task_types
-                    # included_task_types and module_info_task and module_info_task in included_task_types
+                    included_task_types
+                    # and module_info.type in included_task_types
+                    and module_info_task in included_task_types
                 ):
                     clean_modules.add(ck_module)
 
