@@ -26,7 +26,6 @@ import tempfile
 # Third Party
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pb2, descriptor_pool, message, struct_pb2
-from google.protobuf.message_factory import GetMessageClassesForFiles
 import numpy as np
 import pytest
 
@@ -44,7 +43,7 @@ from caikit.core.data_model.dataobject import (
     _AUTO_GEN_PROTO_CLASSES,
     render_dataobject_protos,
 )
-from caikit.core.data_model.json_dict import JsonDict
+from caikit.core.data_model.json_dict import JsonDict, _get_message_class
 from caikit.core.toolkit.isa import isprotobufenum
 
 ## Helpers #####################################################################
@@ -62,10 +61,9 @@ def temp_dpool():
     # HACK! Doing this _appears_ to solve the mysterious segfault cause by using
     #   Struct inside a temporary descriptor pool. The inspiration for this was
     #   https://github.com/protocolbuffers/protobuf/issues/12047
-    msgs = GetMessageClassesForFiles([fd.name], dpool)
-    _ = msgs["google.protobuf.Struct"]
-    _ = msgs["google.protobuf.Value"]
-    _ = msgs["google.protobuf.ListValue"]
+    _ = _get_message_class(dpool.FindMessageTypeByName("google.protobuf.Struct"))
+    _ = _get_message_class(dpool.FindMessageTypeByName("google.protobuf.Value"))
+    _ = _get_message_class(dpool.FindMessageTypeByName("google.protobuf.ListValue"))
     yield dpool
     # pylint: disable=duplicate-code
     descriptor_pool._DEFAULT = global_dpool
