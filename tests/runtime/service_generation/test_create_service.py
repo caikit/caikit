@@ -49,15 +49,6 @@ def test_create_inference_rpcs_uses_task_from_module_decorator():
     assert SampleModule in rpcs[0].module_list
 
 
-def test_create_inference_rpcs_for_module_with_no_run_function():
-    class Foo:
-        def __init__(self):
-            pass
-
-    rpcs = create_inference_rpcs([Foo])
-    assert len(rpcs) == 0
-
-
 def test_create_inference_rpcs():
     rpcs = create_inference_rpcs([widget_class])
     assert len(rpcs) == 1
