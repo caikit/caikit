@@ -17,7 +17,6 @@ from enum import Enum
 from types import ModuleType
 from typing import Callable, Set, Type
 import dataclasses
-import inspect
 
 # Third Party
 import google.protobuf.descriptor
@@ -41,6 +40,9 @@ from caikit.runtime.service_generation.rpcs import snake_to_upper_camel
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils import import_util
 import caikit.core
+
+# import inspect
+
 
 log = alog.use_channel("SVC-FACTORY")
 
