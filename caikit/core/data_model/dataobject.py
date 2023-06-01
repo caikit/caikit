@@ -25,6 +25,7 @@ import dataclasses
 # Third Party
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
+from google.protobuf import struct_pb2
 from google.protobuf.internal.enum_type_wrapper import EnumTypeWrapper
 import numpy as np
 
@@ -37,11 +38,24 @@ import py_to_proto
 from ..toolkit.errors import error_handler
 from . import enums
 from .base import DataBase, _DataBaseMetaClass
+from .json_dict import JsonDict
 
 ## Globals #####################################################################
 
 log = alog.use_channel("SCHEMA")
 error = error_handler.get(log)
+
+# Type mapping for type hints in @dataobject classes
+DATAOBJECT_PY_TO_PROTO_TYPES = {
+    JsonDict: struct_pb2.Struct,
+    np.int32: _descriptor.FieldDescriptor.TYPE_INT32,
+    np.int64: _descriptor.FieldDescriptor.TYPE_INT64,
+    np.uint32: _descriptor.FieldDescriptor.TYPE_UINT32,
+    np.uint64: _descriptor.FieldDescriptor.TYPE_UINT64,
+    np.float32: _descriptor.FieldDescriptor.TYPE_FLOAT,
+    np.float64: _descriptor.FieldDescriptor.TYPE_DOUBLE,
+    **PY_TO_PROTO_TYPES,
+}
 
 # Common package prefix
 CAIKIT_DATA_MODEL = "caikit_data_model"
@@ -205,16 +219,6 @@ def render_dataobject_protos(interfaces_dir: str):
 
 
 ## Implementation Details ######################################################
-
-DATAOBJECT_PY_TO_PROTO_TYPES = {
-    np.int32: _descriptor.FieldDescriptor.TYPE_INT32,
-    np.int64: _descriptor.FieldDescriptor.TYPE_INT64,
-    np.uint32: _descriptor.FieldDescriptor.TYPE_UINT32,
-    np.uint64: _descriptor.FieldDescriptor.TYPE_UINT64,
-    np.float32: _descriptor.FieldDescriptor.TYPE_FLOAT,
-    np.float64: _descriptor.FieldDescriptor.TYPE_DOUBLE,
-    **PY_TO_PROTO_TYPES,
-}
 
 
 def _dataobject_to_proto(*args, **kwargs):

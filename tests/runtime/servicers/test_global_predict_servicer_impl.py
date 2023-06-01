@@ -13,6 +13,14 @@
 # limitations under the License.
 # Standard
 from unittest.mock import MagicMock, patch
+
+try:
+    # Standard
+    from test.support.threading_helper import catch_threading_exception
+except (NameError, ModuleNotFoundError):
+    from tests.base import catch_threading_exception
+
+# Standard
 import json
 import os
 import tempfile
@@ -26,6 +34,7 @@ import pytest
 
 # Local
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
+from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model import SampleInputType, SampleOutputType
 from sample_lib.modules.sample_task import SampleModule
@@ -108,16 +117,20 @@ def test_global_predict_aborts_long_running_predicts(
         ),
     )
 
-    # Patch in the mock manager and start the prediction
-    with patch.object(sample_predict_servicer, "_model_manager", mock_manager):
-        predict_thread.start()
-        dummy_model.started.wait()
-        # Simulate a timeout or client abort
-        context.cancel()
-        predict_thread.join(10)
+    with catch_threading_exception() as cm:
+        # Patch in the mock manager and start the prediction
+        with patch.object(sample_predict_servicer, "_model_manager", mock_manager):
+            predict_thread.start()
+            dummy_model.started.wait()
+            # Simulate a timeout or client abort
+            context.cancel()
+            predict_thread.join(10)
 
-    # Make sure the prediction actually stopped
-    assert not predict_thread.is_alive()
+        # Make sure the prediction actually stopped
+        assert not predict_thread.is_alive()
+
+        # Make sure the correct exception was raised
+        assert cm.exc_type == AbortedException
 
 
 def test_metering_ignore_unsuccessful_calls(
