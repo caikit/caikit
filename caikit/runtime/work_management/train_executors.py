@@ -211,21 +211,12 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             finally:
                 self._completion_event.set()
 
-        def join(self, timeout=None):
-            """
-            Wait until child process terminates
-            """
-            super().join()
-            if not self._completion_event.is_set():
-                self._completion_event.set()
-
     def __init__(self, cancel_event) -> None:
 
         self.complete_event = multiprocessing.Event()
-
         self.events = [cancel_event, self.complete_event]
-        self._worker = None
 
+        self._worker = None
         self.__cancel_event = cancel_event
 
     def __del__(self):
@@ -253,30 +244,54 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             kwargs=kwargs,
         )
 
+        def exit_code_handler():
+            """Function to wait for completion_event and fire up
+            cancellation (termination of subprocess) in case
+            cancel_event is triggered
+            """
+            self.complete_event.wait()
+
+            if self.__cancel_event.is_set():
+                # Since we are using process here, we cannot rely on
+                # checking is_complete flag to be available to check if
+                # the training was completed or cancelled. Therefore,
+                # we will check if worker is alive and event is set.
+                # This does create an edge case, were if the thread is done
+                # naturally and at the exact same time, the request is cancelled
+                # but in that case, the training is anyways already finished
+                # so that shouldn't create huge problems
+                self.cancel()
+
+        # Create a cancel thread which will be in "parallel" waiting for
+        # complete_event and will target cancellation of worker, in case
+        # cancellation event is set
+        cancellation_thread = threading.Thread(target=exit_code_handler)
+
+        # NOTE: Below order is crucial
         self._worker.start()
+        cancellation_thread.start()
 
-        # FIXME: Bad version of accomplishing conditional check between
-        # processing kill and process completion which is required
-        # for cases when process gets killed by OS
-        while True:
-            if self._worker.exitcode:
-                self.complete_event.set()
-                break
-            elif self.complete_event.is_set():
-                break
-
-        if self.__cancel_event.is_set():
-            # Since we are using process here, we cannot rely on
-            # checking is_complete flag to be available to check if
-            # the training was completed or cancelled. Therefore,
-            # we will check if worker is alive and event is set.
-            # This does create an edge case, were if the thread is done
-            # naturally and at the exact same time, the request is cancelled
-            # but in that case, the training is anyways already finished
-            # so that shouldn't create huge problems
-            self.cancel()
-
+        # Wait for worker to finish
+        # In case of cancellation, the worker will get terminated
+        # by the cancellation_thread and thus this will wait indefinitely
         self._worker.join()
+
+        # Check if worker has set exit code, if so, then
+        # that means job has finished either successfully
+        # or with exception including OOM.
+        if self._worker.exitcode:
+            # In case complete_event is not set, that means
+            # process exit without a handler, this would
+            # be the case for example when OS kills the process
+            if not self.complete_event.is_set():
+                # Notify cancel thread explicitly about it
+                # which is waiting on complete_event to be set
+                self.complete_event.set()
+
+        # Wait for cancel thread to finish
+        # this should happen instantly in either of cases:
+        # training is complete or cancellation is requested
+        cancellation_thread.join()
 
         # If an error occurred, reraise it here
         # TODO: Make sure the stack trace is preserved
@@ -303,6 +318,7 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
 
             raise exception
 
+        # Cleanup subprocess resources
         self._cleanup()
 
     def cancel(self):

@@ -203,7 +203,6 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
 
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
-    print("actual response: ", actual_response)
     # give the trained model time to load
     # TODO: no sleeps in tests!
     time.sleep(1)

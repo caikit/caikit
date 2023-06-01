@@ -266,7 +266,7 @@ class GlobalTrainServicer:
         # allowing different servicers to cancel the request
         # in case needed. This does make this call synchronous,
         # but that is the intent of this function, since for async request
-        # we have the async function below.
+        # we have separate function below returning futures.
         # TODO: In future, for the case where we want to execute the training
         # in async manner, we would implement a separate "cancel" / "delete"
         # API which would integrate with different training backends
