@@ -150,9 +150,3 @@ def _is_primitive_type(arg_type: Type) -> bool:
 
     log.debug2("Arg is not primitive, arg_type: %s", arg_type)
     return False
-
-
-def _is_optional_type(arg_type: Type):
-    if typing.get_origin(arg_type) == Union and type(None) in typing.get_args(arg_type):
-        return True
-    return False

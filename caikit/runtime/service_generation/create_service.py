@@ -17,7 +17,6 @@ collection of caikit.core derived libraries
 """
 
 # Standard
-from enum import Enum
 from typing import Dict, List, Type
 
 # First Party
@@ -32,21 +31,31 @@ log = alog.use_channel("CREATE-RPCS")
 
 ## Globals #####################################################################
 
-INFERENCE_FUNCTION_NAME = "run"
 TRAIN_FUNCTION_NAME = "train"
 
 ## Utilities ###################################################################
 
 
-class ServiceType(Enum):
-    INFERENCE = 1
-    TRAINING = 2
-
-
 def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
     """Handles the logic to create all the RPCs for inference"""
-    # Create the RPCs for each module
-    return _create_rpcs_for_modules(modules)
+    rpcs = []
+    task_groups = _group_modules_by_task(modules)
+
+    # Create the RPC for each task
+    for task, task_methods in task_groups.items():
+        with alog.ContextLog(log.debug, "Generating task RPC for %s", task):
+            try:
+                rpcs.append(TaskPredictRPC(task, task_methods))
+                log.debug("Successfully generated task RPC for %s", task)
+            except Exception as err:  # pylint: disable=broad-exception-caught
+                log.warning(
+                    "Cannot generate task rpc for %s: %s",
+                    task,
+                    err,
+                    exc_info=True,
+                )
+
+    return rpcs
 
 
 def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
@@ -64,7 +73,6 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
         #
         # HACK alert! I'm struggling to find the right way to identify this
         #   condition, so for now, we'll use the string repr
-
         train_fn = getattr(ck_module, TRAIN_FUNCTION_NAME)
         if str(train_fn).startswith(f"<bound method ModuleBase.{TRAIN_FUNCTION_NAME}"):
             log.debug(
@@ -74,6 +82,7 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
             )
             continue
 
+        # 🌶️🌶️🌶️ For some reason, using ck_module.TRAIN_SIGNATURE causes a test failure
         signature = CaikitMethodSignature(ck_module, TRAIN_FUNCTION_NAME)
         log.debug(
             "Function signature for %s::%s [%s -> %s]",
@@ -93,30 +102,6 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
                     err,
                     exc_info=True,
                 )
-    return rpcs
-
-
-def _create_rpcs_for_modules(
-    modules: List[Type[ModuleBase]],
-) -> List[CaikitRPCBase]:
-    """Create the RPCs for each module"""
-    rpcs = []
-    task_groups = _group_modules_by_task(modules)
-
-    # Create the RPC for each task
-    for task, task_methods in task_groups.items():
-        with alog.ContextLog(log.debug, "Generating task RPC for %s", task):
-            try:
-                rpcs.append(TaskPredictRPC(task, task_methods))
-                log.debug("Successfully generated task RPC for %s", task)
-            except Exception as err:  # pylint: disable=broad-exception-caught
-                log.warning(
-                    "Cannot generate task rpc for %s: %s",
-                    task,
-                    err,
-                    exc_info=True,
-                )
-
     return rpcs
 
 
