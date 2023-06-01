@@ -36,7 +36,11 @@ from caikit import get_config
 from caikit.runtime.interceptors.caikit_runtime_server_wrapper import (
     CaikitRuntimeServerWrapper,
 )
-from caikit.runtime.protobufs import model_runtime_pb2_grpc, process_pb2_grpc
+from caikit.runtime.protobufs import (
+    model_runtime_pb2,
+    model_runtime_pb2_grpc,
+    process_pb2_grpc,
+)
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
@@ -98,7 +102,6 @@ class RuntimeGRPCServer:
             server=self.server,
             global_predict=self._global_predict_servicer.Predict,
             intercepted_svc_descriptor=self.inference_service.descriptor,
-            excluded_methods=["/natural_language_understanding.CaikitRuntime/Echo"],
         )
         service_names.append(self.inference_service.descriptor.full_name)
 
@@ -114,7 +117,6 @@ class RuntimeGRPCServer:
                 server=self.server,
                 global_predict=global_train_servicer.Train,
                 intercepted_svc_descriptor=self.training_service.descriptor,
-                excluded_methods=None,
             )
             service_names.append(self.training_service.descriptor.full_name)
 
@@ -145,7 +147,9 @@ class RuntimeGRPCServer:
         model_runtime_pb2_grpc.add_ModelRuntimeServicer_to_server(
             ModelRuntimeServicerImpl(), self.server
         )
-        service_names.append("mmesh.ModelRuntime")
+        service_names.append(
+            model_runtime_pb2.DESCRIPTOR.services_by_name["ModelRuntime"].full_name
+        )
 
         # Add gRPC default health servicer.
         # We use the non-blocking implementation to avoid thread starvation.

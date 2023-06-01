@@ -24,11 +24,13 @@ import uuid
 
 # Third Party
 from google.protobuf.descriptor_pool import DescriptorPool
+from grpc._utilities import RpcMethodHandler
 from grpc_health.v1 import health_pb2, health_pb2_grpc
 from grpc_reflection.v1alpha.proto_reflection_descriptor_database import (
     ProtoReflectionDescriptorDatabase,
 )
 import grpc
+import grpc_health.v1.health_pb2_grpc
 import pytest
 import tls_test_tools
 
@@ -774,6 +776,59 @@ def test_reflection_enabled(runtime_grpc_server):
     )
     method_desc = service_desc.FindMethodByName("SampleTaskPredict")
     assert method_desc is not None
+
+
+def test_streaming_responses_work(runtime_grpc_server):
+    """This test uses the health check's Watch rpc to ensure that a unary->stream RPC functions
+    as expected."""
+    stub = health_pb2_grpc.HealthStub(runtime_grpc_server.make_local_channel())
+    req = health_pb2.HealthCheckRequest()
+    for response in stub.Watch(req):
+        assert response is not None
+        break
+
+
+def test_streaming_handlers_are_built_correctly(runtime_grpc_server):
+    """This is a very cheat-y test of a private method to check that we build our internal
+    handlers using the correct handler function"""
+
+    class FakeHandler:
+        pass
+
+    # NB: the unary_stream case is tested via health check watch in `test_streaming_responses_work`
+    # (unary_unary cases are checked in every other test)
+
+    stream_unary_handler = RpcMethodHandler(
+        request_streaming=True,
+        response_streaming=False,
+        request_deserializer="foo",
+        response_serializer="bar",
+        unary_unary=None,
+        stream_unary=FakeHandler,
+        unary_stream=None,
+        stream_stream=None,
+    )
+    new_handler = runtime_grpc_server.server._make_new_handler(
+        stream_unary_handler, replace_with_global_predict=False
+    )
+    assert new_handler.stream_unary is not None
+    assert new_handler.stream_unary.__name__ == "safe_rpc_call"
+
+    stream_stream_handler = RpcMethodHandler(
+        request_streaming=True,
+        response_streaming=True,
+        request_deserializer="foo",
+        response_serializer="bar",
+        unary_unary=None,
+        stream_unary=None,
+        unary_stream=None,
+        stream_stream=FakeHandler,
+    )
+    new_handler = runtime_grpc_server.server._make_new_handler(
+        stream_stream_handler, replace_with_global_predict=False
+    )
+    assert new_handler.stream_stream is not None
+    assert new_handler.stream_stream.__name__ == "safe_rpc_call"
 
 
 # Test implementation details #########################

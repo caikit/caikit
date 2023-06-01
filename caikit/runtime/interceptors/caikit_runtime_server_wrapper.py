@@ -43,9 +43,7 @@ class CaikitRuntimeServerWrapper(grpc.Server):
     instead.
     """
 
-    def __init__(
-        self, server, global_predict, intercepted_svc_descriptor, excluded_methods
-    ):
+    def __init__(self, server, global_predict, intercepted_svc_descriptor):
         """Initialize a new CaikitRuntimeServerWrapper
 
         Args:
@@ -53,20 +51,13 @@ class CaikitRuntimeServerWrapper(grpc.Server):
             global_predict(function): A function that will accept an arbitrary
                 gRPC request message and a grpc.ServicerContext, and return
                 a suitable gRPC response message
-            excluded_methods(list(string)): An optional list of fully-qualified
-                RPC methods to avoid intercepting (e.g.,
-                ['/natural_language_understanding.CaikitRuntime/Echo'])
         """
-
-        if not excluded_methods:
-            excluded_methods = []
 
         self._server = server
         self._global_predict = global_predict
         self._intercepted_svc_descriptor = intercepted_svc_descriptor
         self._intercepted_svc_name = self._intercepted_svc_descriptor.full_name
         self._intercepted_methods = []
-        self._unintercepted_methods = []
 
         for method in self._intercepted_svc_descriptor.methods:
             # Take the method short name (e.g., 'SyntaxIzumoPredict') and
@@ -74,14 +65,6 @@ class CaikitRuntimeServerWrapper(grpc.Server):
             # a fully qualified RPC method name that we wish to intercept
             # (e.g., '/natural_language_understanding.CaikitRuntime/SyntaxIzumoPredict')
             fqm = "/%s/%s" % (self._intercepted_svc_name, method.name)
-
-            if fqm in excluded_methods:
-                # We do not want to intercept this particular RPC
-                log.info(
-                    "<RUN59920454I>", "Bypassing interception of RPC method %s", fqm
-                )
-                self._unintercepted_methods.append((method.name, fqm))
-                continue
 
             log.info("<RUN81194024I>", "Intercepting RPC method %s", fqm)
             self._intercepted_methods.append((method.name, fqm))
@@ -111,18 +94,6 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                 of every RPC method intercepted by this server wrapper
         """
         return self._intercepted_methods
-
-    def unintercepted_methods(self):
-        """Get the list of un-intercepted (i.e., excluded) predict RPC methods
-
-        Returns:
-            list((string, string)):
-                A list of two-element tuples containing the short name (e.g.,
-                'Echo') and fully-qualified name (e.g.,
-                '/natural_language_understanding.CaikitRuntime/Echo')
-                of every RPC method *not* intercepted by this server wrapper
-        """
-        return self._unintercepted_methods
 
     @staticmethod
     def safe_rpc_wrapper(rpc):
@@ -237,26 +208,11 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                         rerouted_rpc_method_handlers[method].unary_unary,
                     )
 
-                unintercepted_rpc_method_handlers = {}
-                for method, fqm in self.unintercepted_methods():
-                    # For the collection of predict RPCs that we explicitly
-                    # do *not* wish to intercept, we will use the original
-                    # unary-unary RPC handler method, but will wrap it in a
-                    # safe RPC call
-                    original_rpc_handler = handler.service(DummyHandlerCallDetails(fqm))
-                    safe_rpc_handler = self._make_new_handler(
-                        original_rpc_handler, replace_with_global_predict=False
-                    )
-                    unintercepted_rpc_method_handlers[method] = safe_rpc_handler
-
-                # Now that we have re-rerouted all of the original RPC method
+                # Now that we have re-rerouted all the original RPC method
                 # handlers to the global predict RPC method handler, it is time
                 # to bind them to the underlying server that we are wrapping
-                all_rpc_handlers = dict(
-                    rerouted_rpc_method_handlers, **unintercepted_rpc_method_handlers
-                )
                 generic_handler = grpc.method_handlers_generic_handler(
-                    self.intercepted_service(), all_rpc_handlers
+                    self.intercepted_service(), rerouted_rpc_method_handlers
                 )
                 self._server.add_generic_rpc_handlers((generic_handler,))
                 log.info(
@@ -271,7 +227,8 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                 # along to the underlying gRPC server we are wrapping
                 assert isinstance(handler, grpc._utilities.DictionaryGenericHandler)
                 for method in handler._method_handlers:
-                    # Wrap the RPC handler for this method in a safe RPC call
+                    # Wrap the RPC handler for this method in a safe RPC call,
+                    # but do not replace the handler with a global handler
                     original_rpc_handler = handler._method_handlers[method]
                     safe_rpc_handler = self._make_new_handler(
                         original_rpc_handler, replace_with_global_predict=False
