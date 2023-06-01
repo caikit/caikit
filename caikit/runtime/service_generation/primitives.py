@@ -31,9 +31,7 @@ from caikit.core.data_model.base import DataBase
 log = alog.use_channel("MODULE_PRIMS")
 
 
-def to_primitive_signature(
-    signature: Dict[str, Type]
-) -> Dict[str, Type]:
+def to_primitive_signature(signature: Dict[str, Type]) -> Dict[str, Type]:
     """Returns dictionary of primitive types only
     If there is a Union, pick the primitive type
 
@@ -44,9 +42,7 @@ def to_primitive_signature(
     primitives = {}
     log.debug("Building primitive signature for %s", signature)
     for arg, arg_type in signature.items():
-        primitive_arg_type = handle_primitives_in_union(
-            arg_type
-        )
+        primitive_arg_type = handle_primitives_in_union(arg_type)
         if primitive_arg_type:
             primitives[arg] = primitive_arg_type
 
@@ -151,12 +147,7 @@ def _is_primitive_type(arg_type: Type) -> bool:
     if typing.get_origin(arg_type) == Union:
         log.debug2("Arg is Union")
         # pylint: disable=use-a-generator
-        return any(
-            [
-                _is_primitive_type(arg)
-                for arg in typing.get_args(arg_type)
-            ]
-        )
+        return any([_is_primitive_type(arg) for arg in typing.get_args(arg_type)])
 
     log.debug2("Arg is not primitive, arg_type: %s", arg_type)
     return False

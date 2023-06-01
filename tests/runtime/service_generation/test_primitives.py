@@ -12,71 +12,70 @@ from caikit.runtime.service_generation.primitives import (
 from sample_lib.data_model import SampleInputType, SampleOutputType
 
 
+# Class that does not have to/from_proto
+class NonProtoable:
+    pass
+
+
 def test_to_primitive_signature_raw():
     assert to_primitive_signature(
         signature={"name": str},
-        primitive_data_model_types=[],
     ) == {"name": str}
 
 
 def test_to_primitive_signature_union_raw():
     assert to_primitive_signature(
         signature={"name": Union[str, int]},
-        primitive_data_model_types=[],
     ) == {"name": Union[str, int]}
 
 
 def test_to_primitive_signature_dm():
     assert to_primitive_signature(
         signature={"name": SampleInputType},
-        primitive_data_model_types=["sample_lib.data_model.SampleInputType"],
     ) == {"name": SampleInputType}
 
 
 def test_to_primitive_signature_union_dm():
     assert to_primitive_signature(
         signature={"name": Union[SampleInputType, str]},
-        primitive_data_model_types=["sample_lib.data_model.SampleInputType"],
     ) == {"name": Union[SampleInputType, str]}
 
 
 def test_to_primitive_signature_unsupported_type_in_union():
     assert to_primitive_signature(
-        signature={"name": Union[SampleInputType, str]},
-        primitive_data_model_types=[],
+        signature={"name": Union[NonProtoable, str]},
     ) == {"name": str}
 
 
-def test_to_primitive_signature_no_dm_primitives_in_union():
+def test_to_primitive_signature_no_dm_types_in_union():
+    class AnotherNonProtoable:
+        pass
+
     assert to_primitive_signature(
-        signature={"name": Union[SampleInputType, SampleOutputType, str]},
-        primitive_data_model_types=[],
+        signature={"name": Union[NonProtoable, AnotherNonProtoable, str]},
     ) == {"name": str}
 
 
-def test_to_primitive_signature_multiple_primitives_in_union():
+def test_to_primitive_signature_multiple_types_in_union():
     """We have the first arg as a supported DM arg, and the last as
     a supported primitive arg. We return the first supported DM arg"""
     assert to_primitive_signature(
-        signature={"name": Union[SampleInputType, SampleOutputType, str]},
-        primitive_data_model_types=["sample_lib.data_model.SampleInputType"],
+        signature={"name": Union[SampleInputType, NonProtoable, str]},
     ) == {"name": SampleInputType}
 
 
-def test_to_primitive_signature_multiple_no_dm_primitives_in_union():
-    """We have 1 dm arg that's not supported, and 2 primitive args. We
+def test_to_primitive_signature_multiple_no_dm_types_in_union():
+    """We have the first arg that's not supported, and 2 primitive args. We
     return the first primitive arg"""
     assert to_primitive_signature(
-        signature={"name": Union[SampleInputType, str, int]},
-        primitive_data_model_types=[],
+        signature={"name": Union[NonProtoable, str, int]},
     ) == {"name": str}
 
 
-def test_to_primitive_signature_no_primitive():
+def test_to_primitive_signature_no_protoable_types():
     assert (
         to_primitive_signature(
-            signature={"name": SampleInputType},
-            primitive_data_model_types=[],
+            signature={"name": NonProtoable},
         )
         == {}
     )

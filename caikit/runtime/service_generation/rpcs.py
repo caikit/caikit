@@ -171,7 +171,9 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         )
 
     @staticmethod
-    def _mutate_method_signature_for_training(signature: CaikitMethodSignature) -> Optional[CaikitMethodSignature]:
+    def _mutate_method_signature_for_training(
+        signature: CaikitMethodSignature,
+    ) -> Optional[CaikitMethodSignature]:
         # Change return type for async training interface
         return_type = TrainingJob
 
@@ -227,9 +229,7 @@ class TaskPredictRPC(CaikitRPCBase):
         default_parameters = {}
         for method in method_signatures:
             default_parameters.update(method.default_parameters)
-            primitive_arg_dict = primitives.to_primitive_signature(
-                method.parameters
-            )
+            primitive_arg_dict = primitives.to_primitive_signature(method.parameters)
             for arg_name, arg_type in primitive_arg_dict.items():
                 current_val = parameters_dict.get(arg_name, arg_type)
                 # TODO: raise runtime error here instead of assert!

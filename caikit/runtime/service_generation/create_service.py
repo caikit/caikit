@@ -47,9 +47,7 @@ class ServiceType(Enum):
 def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
     """Handles the logic to create all the RPCs for inference"""
     # Create the RPCs for each module
-    return _create_rpcs_for_modules(
-        modules
-    )
+    return _create_rpcs_for_modules(modules)
 
 
 def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
@@ -110,9 +108,7 @@ def _create_rpcs_for_modules(
     for task, task_methods in task_groups.items():
         with alog.ContextLog(log.debug, "Generating task RPC for %s", task):
             try:
-                rpcs.append(
-                    TaskPredictRPC(task, task_methods)
-                )
+                rpcs.append(TaskPredictRPC(task, task_methods))
                 log.debug("Successfully generated task RPC for %s", task)
             except Exception as err:  # pylint: disable=broad-exception-caught
                 log.warning(
@@ -126,12 +122,14 @@ def _create_rpcs_for_modules(
 
 
 def _group_modules_by_task(
-    modules: List[Type[ModuleBase]]
+    modules: List[Type[ModuleBase]],
 ) -> Dict[Type[TaskBase], List[CaikitMethodSignature]]:
     task_groups = {}
     for ck_module in modules:
         if ck_module.TASK_CLASS:
             ck_module_task_name = ck_module.TASK_CLASS.__name__
             if ck_module_task_name is not None:
-                task_groups.setdefault(ck_module.TASK_CLASS, []).append(ck_module.RUN_SIGNATURE)
+                task_groups.setdefault(ck_module.TASK_CLASS, []).append(
+                    ck_module.RUN_SIGNATURE
+                )
     return task_groups
