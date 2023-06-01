@@ -82,8 +82,7 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
             )
             continue
 
-        # 🌶️🌶️🌶️ For some reason, using ck_module.TRAIN_SIGNATURE causes a test failure
-        signature = CaikitMethodSignature(ck_module, TRAIN_FUNCTION_NAME)
+        signature = ck_module.TRAIN_SIGNATURE
         log.debug(
             "Function signature for %s::%s [%s -> %s]",
             ck_module,
