@@ -110,8 +110,6 @@ class PropertyListValueSpan(DataObjectBase):
 class ViewPropertyValue(DataObjectBase):
     """Value type encoding the acceptable types for a view property value."""
 
-    _private_slots = ("value", "_active_val")
-
     value: Union[
         Annotated[str, OneofField("str_val"), FieldNumber(1)],
         Annotated[float, OneofField("float_val"), FieldNumber(2)],
@@ -126,150 +124,43 @@ class ViewPropertyValue(DataObjectBase):
     ]
 
     @alog.logged_function(log.debug3)
-    def __init__(self, val):
-        """
-        Args:
-            val:  str|float|int|bool|dm.Span|list(...)
-                The raw value to use for this entry.
-        """
-        if not isinstance(
-            val, ViewPropertyValue
-        ) and not ViewPropertyValue.is_valid_aql_primitive(val):
-            error(
-                "<NLP98988709E>",
-                TypeError(
-                    "Bad type for ViewPropertyValue: {}".format(type(val).__name__)
-                ),
-            )
-
-        if isinstance(val, ViewPropertyValue):
-            log.debug2("Handling input ViewPropertyValue")
-            val_field = val.WhichOneof("value")
-            if val_field is None:
-                val = None
-            else:
-                val = getattr(val, val_field)
-
-            # If the field value is a nested message (i.e. a list wrapper), we
-            # need to convert that too.
-            if isinstance(val, google.protobuf.message.Message):
-                submsg_class_name, submsg_class = self._get_class_for_proto(val)
-                log.debug2(
-                    "Sub value is a message. Converting to %s" % submsg_class_name
-                )
-                if (
-                    isinstance(submsg_class, type)
-                    and issubclass(DataObjectBase)
-                    and submsg_class_name == "Span"
-                ):
-                    val = submsg_class.from_proto(val)
-                else:
-                    val = submsg_class.from_proto(val).val
-
-        # Store the value directly
-        self.value = val
-
-        # Keep a reference to the active type val's key name
-        self._active_val = None
-
-        # Default all field options to None
-        self.str_val = None
-        self.float_val = None
-        self.int_val = None
-        self.bool_val = None
-        self.span_val = None
-        self.list_str_val = None
-        self.list_float_val = None
-        self.list_int_val = None
-        self.list_bool_val = None
-        self.list_span_val = None
-
-        # Basic types
-        # NOTE: isinstance(True, int) == True, so the bool check must come first
-        if isinstance(val, bool):
-            self.bool_val = val
-            self._active_val = "bool_val"
-        elif isinstance(val, str):
-            self.str_val = val
-            self._active_val = "str_val"
-        elif isinstance(val, float):
-            self.float_val = val
-            self._active_val = "float_val"
-        elif isinstance(val, int):
-            self.int_val = val
-            self._active_val = "int_val"
-        elif isinstance(val, text_primitives.Span):
-            self.span_val = val
-            self._active_val = "span_val"
-
-        # Repeated types
-        elif isinstance(val, list) and val:
+    def __post_init__(self):
+        """Perform type coercion to get the value into a proper datamodel object"""
+        val = self.value
+        if isinstance(val, list) and val:
             first_element = val[0]
             if isinstance(first_element, bool):
                 self.list_bool_val = PropertyListValueBool(val)
-                self._active_val = "list_bool_val"
             elif isinstance(first_element, str):
                 self.list_str_val = PropertyListValueStr(val)
-                self._active_val = "list_str_val"
             elif isinstance(first_element, float):
                 self.list_float_val = PropertyListValueFloat(val)
-                self._active_val = "list_float_val"
             elif isinstance(first_element, int):
                 self.list_int_val = PropertyListValueInt(val)
-                self._active_val = "list_int_val"
             elif isinstance(first_element, text_primitives.Span):
                 self.list_span_val = PropertyListValueSpan(val)
-                self._active_val = "list_span_val"
+
+        # Make sure the type is set correctly
+        if self.value is not None and not self.which_oneof("value"):
+            error("<NLP50960978E>", TypeError(f"Invalid type {type(self.value)}"))
 
     @alog.logged_function(log.debug3)
     def to_dict(self):
         """Override the default to_dict to return the raw python value. This allows both to_dict
         and to_json to appear as expected, rather than with nasty nested fields.
         """
+        # Handle nested lists of
+        which = self.which_oneof("value")
+        if which and which.startswith("list_"):
+            return [v.to_dict() if hasattr(v, "to_dict") else v for v in self.value.val]
+
         # Handle Span.to_dict()
         if hasattr(self.value, "to_dict"):
             return self.value.to_dict()
 
-        # Handle nested lists of
-        if isinstance(self.value, list):
-            return [v.to_dict() if hasattr(v, "to_dict") else v for v in self.value]
-
         # Handle raw primitives. Note that this does not return a dict and is
         # therefore only for the recursion.
         return self.value
-
-    @classmethod
-    @alog.logged_function(log.debug3)
-    def from_proto(cls, proto):
-        """Override the default from_proto behavior to handle all of the differnt types that could
-        be present in the proto message.
-        """
-        error.type_check("<NLP67382567E>", google.protobuf.message.Message, proto=proto)
-
-        val_field = proto.WhichOneof("value")
-        if val_field is None:
-            proto_field = None
-        else:
-            proto_field = getattr(proto, val_field)
-
-        if isinstance(proto_field, text_primitives.Span):
-            return cls(text_primitives.Span(proto_field.begin, proto_field.end))
-
-        if isinstance(
-            proto_field,
-            (
-                PropertyListValueInt,
-                PropertyListValueFloat,
-                PropertyListValueStr,
-                PropertyListValueBool,
-            ),
-        ):
-            return cls(list(proto_field.val))
-
-        if isinstance(proto_field, PropertyListValueSpan):
-            return cls([text_primitives.Span.from_proto(v) for v in proto_field.val])
-
-        return cls(proto_field)
 
     @staticmethod
     def is_valid_aql_primitive(val):
@@ -353,8 +244,8 @@ class ViewProperty(DataObjectBase):
         # Make sure value types match, excluding null values
         zipped_val_types = list(
             zip(
-                (e[1]._active_val for e in sorted_self),
-                (e[1]._active_val for e in sorted_other),
+                (e[1].which_oneof("value") for e in sorted_self),
+                (e[1].which_oneof("value") for e in sorted_other),
             )
         )
         val_types_match = all(a == b for a, b in zipped_val_types if a and b)
@@ -418,10 +309,11 @@ class View(DataObjectBase):
             property_name,
         )
 
-        return [
+        raw_values = [
             view_property.aql_property[property_name].value
             for view_property in self.properties
         ]
+        return [val.val if hasattr(val, "val") else val for val in raw_values]
 
 
 @dataobject(package="caikit_data_model.nlp")

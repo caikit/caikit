@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # Local
+from caikit.interfaces.common.data_model import ProducerId
 from caikit.interfaces.nlp import data_model as dm
 
 # Unit Test Infrastructure
@@ -74,7 +75,7 @@ class TestTopic(TestCaseBase):
             ngrams=[dm.NGram(texts=["foo", "bar", "baz"], relevance=0.0)],
             snippets=[dm.TopicPhrase(text="foo", distance=0.7)],
             sentences=[dm.TopicPhrase(text="foo", distance=0.7)],
-            producer_id=dm.ProducerId("TopicTest", "1.2.5"),
+            producer_id=ProducerId("TopicTest", "1.2.5"),
         )
 
     def test_fields(self):
@@ -100,7 +101,7 @@ class TestTopic(TestCaseBase):
             "ngrams": [dm.NGram(texts=["foo", "bar", "baz"], relevance=0.0)],
             "snippets": [dm.TopicPhrase(text="foo", distance=0.7)],
             "sentences": [dm.TopicPhrase(text="foo", distance=0.7)],
-            "producer_id": dm.ProducerId("TopicTest", "1.2.5"),
+            "producer_id": ProducerId("TopicTest", "1.2.5"),
         }
         # Individual overrides for each arg
         bad_arg_overrides = [
@@ -169,7 +170,7 @@ class TestTopicsPrediction(TestCaseBase):
             ngrams=[dm.NGram(texts=["foo", "bar", "baz"], relevance=0.0)],
             snippets=[dm.TopicPhrase(text="foo", distance=0.7)],
             sentences=[dm.TopicPhrase(text="foo", distance=0.7)],
-            producer_id=dm.ProducerId("TopicTest", "1.2.5"),
+            producer_id=ProducerId("TopicTest", "1.2.5"),
         )
         cls.topics_prediction = dm.TopicsPrediction([sample_topic])
 

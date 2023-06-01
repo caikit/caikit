@@ -16,6 +16,7 @@
 import numpy as np
 
 # Local
+from caikit.interfaces.common.data_model import ProducerId
 from caikit.interfaces.nlp import data_model as dm
 
 # Unit Test Infrastructure
@@ -31,7 +32,7 @@ class TestClusteringPrediction(TestCaseBase):
         self.clustering_prediction = dm.ClusteringPrediction(
             cluster_ids=cluster_ids,
             costs=costs,
-            producer_id=dm.ProducerId("Test", "1.2.3"),
+            producer_id=ProducerId("Test", "1.2.3"),
         )
 
     def test_fields(self):
@@ -57,7 +58,7 @@ class TestClusteringPrediction(TestCaseBase):
                 dm.ClusteringPrediction(
                     cluster_ids=list(self.clustering_prediction.cluster_ids),
                     costs=self.clustering_prediction.costs,
-                    producer_id=dm.ProducerId("Test", "1.2.3"),
+                    producer_id=ProducerId("Test", "1.2.3"),
                 )
             )
         )
@@ -68,7 +69,7 @@ class TestClusteringPrediction(TestCaseBase):
                 dm.ClusteringPrediction(
                     cluster_ids=tuple(self.clustering_prediction.cluster_ids),
                     costs=self.clustering_prediction.costs,
-                    producer_id=dm.ProducerId("Test", "1.2.3"),
+                    producer_id=ProducerId("Test", "1.2.3"),
                 )
             )
         )
@@ -80,7 +81,7 @@ class TestClusteringPrediction(TestCaseBase):
             dm.ClusteringPrediction(
                 self.clustering_prediction.cluster_ids,
                 new_costs,
-                producer_id=dm.ProducerId("Test", "1.2.3"),
+                producer_id=ProducerId("Test", "1.2.3"),
             )
 
     def test_invalid_cluster_id_negative(self):
@@ -90,7 +91,7 @@ class TestClusteringPrediction(TestCaseBase):
             dm.ClusteringPrediction(
                 new_cluster_ids,
                 self.clustering_prediction.costs,
-                producer_id=dm.ProducerId("Test", "1.2.3"),
+                producer_id=ProducerId("Test", "1.2.3"),
             )
 
     def test_invalid_cluster_id_too_high(self):
@@ -100,7 +101,7 @@ class TestClusteringPrediction(TestCaseBase):
             dm.ClusteringPrediction(
                 new_cluster_ids,
                 self.clustering_prediction.costs,
-                producer_id=dm.ProducerId("Test", "1.2.3"),
+                producer_id=ProducerId("Test", "1.2.3"),
             )
 
     def test_invalid_cluster_id_too_many(self):
@@ -109,5 +110,5 @@ class TestClusteringPrediction(TestCaseBase):
             dm.ClusteringPrediction(
                 new_cluster_ids,
                 self.clustering_prediction.costs,
-                producer_id=dm.ProducerId("Test", "1.2.3"),
+                producer_id=ProducerId("Test", "1.2.3"),
             )

@@ -18,6 +18,7 @@ import numpy as np
 
 # Local
 from caikit.core.toolkit.errors import DataValidationError
+from caikit.interfaces.common.data_model import ProducerId
 from caikit.interfaces.nlp import data_model as dm
 
 # Unit Test Infrastructure
@@ -61,7 +62,7 @@ class TestClassificationPrediction(TestCaseBase):
                 dm.ClassInfo("temperature", 0.71),
                 dm.ClassInfo("conditions", 0.98),
             ],
-            producer_id=dm.ProducerId("Test", "1.2.3"),
+            producer_id=ProducerId("Test", "1.2.3"),
         )
 
     def test_fields(self):

@@ -17,6 +17,7 @@ from scipy.sparse import csr_matrix
 import numpy as np
 
 # Local
+from caikit.interfaces.common.data_model import ProducerId
 from caikit.interfaces.nlp import data_model as dm
 
 # Unit Test Infrastructure
@@ -44,51 +45,51 @@ class TestVectorizationPrediction(TestCaseBase):
         self.vocab_to_idx = {"vector": 0, "vectorization": 1}
         # Then wrap the Scipy matrix in a VectorizationPrediction
         self.vec_pred = dm.VectorizationPrediction(
-            data=self.scipy_sparsemat, producer_id=dm.ProducerId("Test", "1.2.3")
+            data=self.scipy_sparsemat, producer_id=ProducerId("Test", "1.2.3")
         )
         self.vec = dm.Vectorization(
             data=self.scipy_sparsemat,
             vocab_to_idx=self.vocab_to_idx,
-            producer_id=dm.ProducerId("VectorTest", "1.2.4"),
+            producer_id=ProducerId("VectorTest", "1.2.4"),
         )
 
         self.vec_pred_int32 = dm.VectorizationPrediction(
             data=self.scipy_sparsemat,
             dtype=np.dtype("int32"),
-            producer_id=dm.ProducerId("Test", "1.2.3"),
+            producer_id=ProducerId("Test", "1.2.3"),
         )
 
         self.vec_float64 = dm.Vectorization(
             data=self.scipy_sparsemat,
             dtype=np.dtype("float64"),
             vocab_to_idx=self.vocab_to_idx,
-            producer_id=dm.ProducerId("VectorTest", "1.2.4"),
+            producer_id=ProducerId("VectorTest", "1.2.4"),
         )
 
         self.vec_pred_keep_dtype_int32 = dm.VectorizationPrediction(
             data=self.scipy_sparsemat_int32,
             keep_dtype=True,
-            producer_id=dm.ProducerId("Test", "1.2.3"),
+            producer_id=ProducerId("Test", "1.2.3"),
         )
         self.vec_keep_dtype_float64 = dm.Vectorization(
             data=self.scipy_sparsemat_float64,
             keep_dtype=True,
             vocab_to_idx=self.vocab_to_idx,
-            producer_id=dm.ProducerId("VectorTest", "1.2.4"),
+            producer_id=ProducerId("VectorTest", "1.2.4"),
         )
 
         self.vec_pred_keep_dtype_priority = dm.VectorizationPrediction(
             data=self.scipy_sparsemat,
             dtype=np.dtype("int32"),
             keep_dtype=True,
-            producer_id=dm.ProducerId("VectorTest", "1.2.4"),
+            producer_id=ProducerId("VectorTest", "1.2.4"),
         )
         self.vec_keep_dtype_priority = dm.Vectorization(
             data=self.scipy_sparsemat,
             dtype=np.dtype("float64"),
             keep_dtype=True,
             vocab_to_idx=self.vocab_to_idx,
-            producer_id=dm.ProducerId("VectorTest", "1.2.4"),
+            producer_id=ProducerId("VectorTest", "1.2.4"),
         )
 
     def test_from_proto_and_back(self):
@@ -148,7 +149,7 @@ class TestVectorizationPrediction(TestCaseBase):
         vec = dm.Vectorization(
             data=self.scipy_sparsemat,
             vocab_to_idx=vocab_to_idx,
-            producer_id=dm.ProducerId("VectorTest", "1.2.3"),
+            producer_id=ProducerId("VectorTest", "1.2.3"),
         )
         ordered_vocab = vec.get_ordered_vocab()
         self.assertTrue(isinstance(ordered_vocab, list))
@@ -179,7 +180,7 @@ class TestVectorizationPrediction(TestCaseBase):
             dm.VectorizationPrediction(
                 data=csr_matrix(np.eye(2)),
                 keep_dtype="yes",
-                producer_id=dm.ProducerId("Test", "1.2.3"),
+                producer_id=ProducerId("Test", "1.2.3"),
             )
 
     def test_invalid_set_dtype(self):
@@ -187,7 +188,7 @@ class TestVectorizationPrediction(TestCaseBase):
             dm.VectorizationPrediction(
                 data=csr_matrix(np.eye(2)),
                 dtype="int32",
-                producer_id=dm.ProducerId("Test", "1.2.3"),
+                producer_id=ProducerId("Test", "1.2.3"),
             )
 
     def test_vector_default_dtype(self):
@@ -214,7 +215,7 @@ class TestVectorizationPrediction(TestCaseBase):
                 data=csr_matrix(np.eye(2)),
                 keep_dtype="yes",
                 vocab_to_idx=self.vocab_to_idx,
-                producer_id=dm.ProducerId("Test", "1.2.3"),
+                producer_id=ProducerId("Test", "1.2.3"),
             )
 
     def test_vector_invalid_dtype(self):
@@ -223,7 +224,7 @@ class TestVectorizationPrediction(TestCaseBase):
                 data=csr_matrix(np.eye(2)),
                 dtype="int32",
                 vocab_to_idx=self.vocab_to_idx,
-                producer_id=dm.ProducerId("Test", "1.2.3"),
+                producer_id=ProducerId("Test", "1.2.3"),
             )
 
     def test_from_proto_and_back_custom_dtype(self):

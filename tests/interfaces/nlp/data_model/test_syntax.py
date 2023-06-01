@@ -16,6 +16,7 @@
 import os
 
 # Local
+from caikit.interfaces.common.data_model import ProducerId
 from caikit.interfaces.nlp import data_model as dm
 
 # Unit Test Infrastructure
@@ -176,7 +177,7 @@ class TestParagraph(TestCaseBase):
 class TestRawDocument(TestCaseBase):
     def setUp(self):
         self.raw_doc = dm.RawDocument(
-            "Hello World!", producer_id=dm.ProducerId("Test", "1.0")
+            "Hello World!", producer_id=ProducerId("Test", "1.0")
         )
         self.raw_doc_minimal = dm.RawDocument("Hello World!")
         self.linux_fixture_path = os.path.join(self.fixtures_dir, "linux.txt")
@@ -228,7 +229,7 @@ class TestDetagPrediction(TestCaseBase):
         self.text_doc = self.html_doc.text
         self.syntax = dm.SyntaxPrediction(
             text=self.html_doc.text,
-            producer_id=dm.ProducerId("Test", "1.0.0"),
+            producer_id=ProducerId("Test", "1.0.0"),
             tokens=[
                 dm.Token(dm.Span(0, 6, "Sample")),
                 dm.Token(dm.Span(7, 11, "Text")),
@@ -302,7 +303,7 @@ class TestDetagPrediction(TestCaseBase):
             self.html_doc.remap(
                 dm.SyntaxPrediction(
                     text="IamOneGiantTokenWithManyCharacters",
-                    producer_id=dm.ProducerId("Test", "1.0.0"),
+                    producer_id=ProducerId("Test", "1.0.0"),
                     tokens=[dm.Token(dm.Span(0, 34))],
                     sentences=[dm.Sentence((0, 34))],
                     paragraphs=[dm.Paragraph((0, 34))],
@@ -314,7 +315,7 @@ class TestSyntaxPrediction(TestCaseBase):
     def setUp(self):
         self.syntax = dm.SyntaxPrediction(
             text="Hello World!  I am HAL9000.",
-            producer_id=dm.ProducerId("Test", "1.0.0"),
+            producer_id=ProducerId("Test", "1.0.0"),
             tokens=[
                 # note: tokens and sentences are assumed sorted, since annotations produced by
                 # Izumo are sorted, and these objects are built by iterating on the output.
