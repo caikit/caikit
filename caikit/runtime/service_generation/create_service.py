@@ -24,7 +24,6 @@ from typing import Dict, List, Type
 import alog
 
 # Local
-from ... import get_config
 from .rpcs import CaikitRPCBase, ModuleClassTrainRPC, TaskPredictRPC
 from caikit.core import ModuleBase, TaskBase
 from caikit.core.signature_parsing.module_signature import CaikitMethodSignature

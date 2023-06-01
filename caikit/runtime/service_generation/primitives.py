@@ -16,9 +16,8 @@ This file contains our logic about what constitutes a "primitive" for RPC genera
 """
 
 # Standard
-from typing import Dict, List, Type, Union, get_args, get_origin
+from typing import Dict, Type, Union, get_args, get_origin
 import inspect
-import sys
 import typing
 
 # First Party
@@ -151,21 +150,6 @@ def _is_primitive_type(arg_type: Type) -> bool:
 
     log.debug2("Arg is not primitive, arg_type: %s", arg_type)
     return False
-
-
-def _get_library_dm_primitives(primitive_data_model_types) -> List[Type[DataBase]]:
-    """For a given caikit.* library name, determine the set of data model "primitives"."""
-
-    lib_dm_primitives = []
-    for primitive_name in primitive_data_model_types:
-        parts = primitive_name.split(".")
-        current = sys.modules.get(parts[0])
-        for part in parts[1:]:
-            current = getattr(current, part, None)
-        if current is not None:
-            lib_dm_primitives.append(current)
-    log.debug3("DM Primitives: %s", lib_dm_primitives)
-    return lib_dm_primitives
 
 
 def _is_optional_type(arg_type: Type):

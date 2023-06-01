@@ -1,5 +1,6 @@
 ## Tests #######################################################################
 # Standard
+from typing import Union
 import uuid
 
 # Third Party
@@ -40,7 +41,7 @@ def test_task_decorator_validates_class_extends_task_base():
 
 
 def test_task_decorator_validates_output_is_data_model():
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match=".*str.* is not a subclass"):
 
         @task(
             required_parameters={"sample_input": SampleInputType},
@@ -128,6 +129,43 @@ def test_task_validation_throws_on_no_return_type():
         class Stuff(caikit.core.ModuleBase):
             def run(self, foo: int):
                 pass
+
+
+def test_task_validation_throws_on_wrong_return_type():
+    @task(
+        required_parameters={"foo": int},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    with pytest.raises(
+        TypeError,
+        match="Wrong output type for module",
+    ):
+
+        @caikit.core.module(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class Stuff(caikit.core.ModuleBase):
+            def run(self, foo: int) -> SampleInputType:
+                pass
+
+
+def test_task_validation_accepts_union_outputs():
+    @task(
+        required_parameters={"foo": int},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+    )
+    class Stuff(caikit.core.ModuleBase):
+        def run(self, foo: int) -> Union[SampleOutputType, int, str]:
+            pass
 
 
 def test_task_validation_throws_on_missing_parameter():
