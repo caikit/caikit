@@ -120,7 +120,6 @@ def test_model_train(runtime_grpc_server):
     training_management_service: ServicePackage = (
         ServicePackageFactory().get_service_package(
             ServicePackageFactory.ServiceType.TRAINING_MANAGEMENT,
-            ServicePackageFactory.ServiceSource.GENERATED,
         )
     )
 

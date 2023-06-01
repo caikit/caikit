@@ -14,7 +14,7 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../"))
+sys.path.insert(0, os.path.abspath(os.path.join("..", "..")))
 
 
 # -- Project information -----------------------------------------------------
@@ -30,7 +30,9 @@ author = "The Caikit Authors"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx.ext.autodoc",
+    # Generate complete API docs by parsing source code
+    "autoapi.extension",
+    # Add links to source from generated docs
     "sphinx.ext.viewcode",
 ]
 
@@ -41,6 +43,14 @@ templates_path = ["_templates"]
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "caikit/config"]
+
+# -- autoapi configuration ---------------------------------------------------
+
+# Language of source code to parse
+autoapi_type = "python"
+
+# Source code to parse to generate API docs relative to 'docs/source' directory
+autoapi_dirs = [os.path.join("..", "..", "caikit")]
 
 
 # -- Options for HTML output -------------------------------------------------

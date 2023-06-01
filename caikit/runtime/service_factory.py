@@ -85,16 +85,8 @@ class ServicePackageFactory:
         TRAINING = 2  # Training service for the GlobalTrainServicer
         TRAINING_MANAGEMENT = 3
 
-    class ServiceSource(Enum):
-        COMPILED = 1  # Pull from a protoc-compiled _pb2 module
-        GENERATED = 2  # Generate a service definition by inspecting the library's APIs
-
     @classmethod
-    def get_service_package(
-        cls,
-        service_type: ServiceType,
-        source: ServiceSource,
-    ) -> ServicePackage:
+    def get_service_package(cls, service_type: ServiceType) -> ServicePackage:
         """Public factory API. Returns a service package of the requested type, from the
         configured source.
 
@@ -102,61 +94,11 @@ class ServicePackageFactory:
             service_type (ServicePackageFactory.ServiceType): The type of service to build,
                 to match the servicer implementation that will handle it. e.g. the
                 GlobalPredictServicer expects an "INFERENCE" service
-            source (ServicePackageFactory.ServiceSource): Describes where the service artifacts
-                should be pulled from or how they should be constructed
 
         Returns:
             ServicePackage: A container with properties referencing everything you need to bind a
                 concrete Servicer implementation to a protobufs Service and grpc Server
         """
-        if source == cls.ServiceSource.COMPILED:
-            # Use our import_utils to extract the correct bits out of a set of compiled pb2
-            # packages
-            lib_name = cls._get_lib_name_for_servicer()
-
-            if service_type == cls.ServiceType.INFERENCE:
-                # 🌶️🌶️🌶️! hardcoded service names
-                compiled_pb2_package = cls._get_compiled_proto_module(
-                    "caikit_runtime_pb2"
-                )
-                compiled_pb2_grpc_package = cls._get_compiled_proto_module(
-                    "caikit_runtime_pb2_grpc"
-                )
-            elif service_type == cls.ServiceType.TRAINING_MANAGEMENT:
-                raise CaikitRuntimeException(
-                    grpc.StatusCode.INTERNAL,
-                    "Not allowed to get Training Management services from compiled packages",
-                )
-            else:  # elif  service_type == cls.ServiceType.TRAINING:
-                # (using final _else_ for static analysis happiness)
-                # 🌶️🌶️🌶️! hardcoded service names
-                compiled_pb2_package = cls._get_compiled_proto_module(
-                    "caikit_runtime_train_pb2"
-                )
-                compiled_pb2_grpc_package = cls._get_compiled_proto_module(
-                    "caikit_runtime_train_pb2_grpc"
-                )
-
-            # Dynamically create a new module to hold all the service's messages
-            client_module = ModuleType(
-                "ClientMessages", "Package with service message class implementations"
-            )
-            for k, v in compiled_pb2_package.__dict__.items():
-                if inspect.isclass(v) and issubclass(
-                    v, google.protobuf.message.Message
-                ):
-                    setattr(client_module, k, v)
-
-            return ServicePackage(
-                service=cls._get_servicer_class(compiled_pb2_grpc_package, lib_name),
-                descriptor=cls._get_service_descriptor(compiled_pb2_package, lib_name),
-                registration_function=cls._get_servicer_function(
-                    compiled_pb2_grpc_package, lib_name
-                ),
-                stub_class=cls._get_servicer_stub(compiled_pb2_grpc_package, lib_name),
-                messages=client_module,
-            )
-
         if service_type == cls.ServiceType.TRAINING_MANAGEMENT:
             grpc_service = json_to_service(
                 name=TRAINING_MANAGEMENT_SERVICE_NAME,
@@ -172,58 +114,55 @@ class ServicePackageFactory:
                 messages=None,  # we don't need messages here
             )
 
-        if source == cls.ServiceSource.GENERATED:
-            # First make sure we import the data model for the correct library
-            # !!!! This will use the `caikit_library` config
-            _ = import_util.get_data_model()
+        # First make sure we import the data model for the correct library
+        # !!!! This will use the `caikit_library` config
+        _ = import_util.get_data_model()
 
-            caikit_config = get_config()
-            lib = caikit_config.runtime.library
-            ai_domain_name = snake_to_upper_camel(lib.replace("caikit_", ""))
-            package_name = f"caikit.runtime.{ai_domain_name}"
+        caikit_config = get_config()
+        lib = caikit_config.runtime.library
+        ai_domain_name = snake_to_upper_camel(lib.replace("caikit_", ""))
+        package_name = f"caikit.runtime.{ai_domain_name}"
 
-            # Then do API introspection to come up with all the API definitions to support
-            clean_modules = ServicePackageFactory._get_and_filter_modules(
-                caikit_config, lib
-            )
+        # Then do API introspection to come up with all the API definitions to support
+        clean_modules = ServicePackageFactory._get_and_filter_modules(
+            caikit_config, lib
+        )
 
-            if service_type == cls.ServiceType.INFERENCE:
-                task_rpc_list = service_generation.create_inference_rpcs(clean_modules)
-                service_name = f"{ai_domain_name}Service"
-            else:  # service_type == cls.ServiceType.TRAINING
-                task_rpc_list = service_generation.create_training_rpcs(clean_modules)
-                service_name = f"{ai_domain_name}TrainingService"
+        if service_type == cls.ServiceType.INFERENCE:
+            task_rpc_list = service_generation.create_inference_rpcs(clean_modules)
+            service_name = f"{ai_domain_name}Service"
+        else:  # service_type == cls.ServiceType.TRAINING
+            task_rpc_list = service_generation.create_training_rpcs(clean_modules)
+            service_name = f"{ai_domain_name}TrainingService"
 
-            task_rpc_list = [
-                rpc for rpc in task_rpc_list if rpc.return_type is not None
-            ]
+        task_rpc_list = [rpc for rpc in task_rpc_list if rpc.return_type is not None]
 
-            request_data_models = [
-                rpc.create_request_data_model(package_name) for rpc in task_rpc_list
-            ]
+        request_data_models = [
+            rpc.create_request_data_model(package_name) for rpc in task_rpc_list
+        ]
 
-            client_module = ModuleType(
-                "ClientMessages",
-                "Package with service message class implementations",
-            )
+        client_module = ModuleType(
+            "ClientMessages",
+            "Package with service message class implementations",
+        )
 
-            for dm_class in request_data_models:
-                # We need the message class that data model serializes to
-                setattr(client_module, dm_class.__name__, type(dm_class().to_proto()))
+        for dm_class in request_data_models:
+            # We need the message class that data model serializes to
+            setattr(client_module, dm_class.__name__, type(dm_class().to_proto()))
 
-            rpc_jsons = [rpc.create_rpc_json(package_name) for rpc in task_rpc_list]
-            service_json = {"service": {"rpcs": rpc_jsons}}
-            grpc_service = json_to_service(
-                name=service_name, package=package_name, json_service_def=service_json
-            )
+        rpc_jsons = [rpc.create_rpc_json(package_name) for rpc in task_rpc_list]
+        service_json = {"service": {"rpcs": rpc_jsons}}
+        grpc_service = json_to_service(
+            name=service_name, package=package_name, json_service_def=service_json
+        )
 
-            return ServicePackage(
-                service=grpc_service.service_class,
-                descriptor=grpc_service.descriptor,
-                registration_function=grpc_service.registration_function,
-                stub_class=grpc_service.client_stub_class,
-                messages=client_module,
-            )
+        return ServicePackage(
+            service=grpc_service.service_class,
+            descriptor=grpc_service.descriptor,
+            registration_function=grpc_service.registration_function,
+            stub_class=grpc_service.client_stub_class,
+            messages=client_module,
+        )
 
     # Implementation details for pure python service packages #
     @staticmethod
@@ -331,25 +270,6 @@ class ServicePackageFactory:
         )
 
     @staticmethod
-    def _get_servicer_function(
-        caikit_runtime_pb2_grpc,
-        lib_name,
-    ) -> Callable[[google.protobuf.service.Service, grpc.Server], None]:
-        """Get ServiceServicer function from caikit_runtime_pb2_grpc module"""
-        servicer = f"add_{lib_name}ServiceServicer_to_server"
-        train_servicer = f"add_{lib_name}TrainingServiceServicer_to_server"
-
-        if hasattr(caikit_runtime_pb2_grpc, servicer):
-            return getattr(caikit_runtime_pb2_grpc, servicer)
-        if hasattr(caikit_runtime_pb2_grpc, train_servicer):
-            return getattr(caikit_runtime_pb2_grpc, train_servicer)
-
-        raise CaikitRuntimeException(
-            grpc.StatusCode.INTERNAL,
-            "Could not find servicer function in caikit_runtime_pb2_grpc",
-        )
-
-    @staticmethod
     def _get_servicer_class(
         caikit_runtime_pb2_grpc,
         lib_name,
@@ -395,32 +315,3 @@ class ServicePackageFactory:
         lib_names = import_util.clean_lib_names(get_config().runtime.library)
         assert len(lib_names) == 1, "Only 1 caikit library supported for now"
         return snake_to_upper_camel(lib_names[0].replace("caikit_", ""))
-
-    @staticmethod
-    def _get_compiled_proto_module(
-        module: str,
-        config=None,
-    ) -> ModuleType:
-        """
-        Dynamically import the compiled service module. This is accomplished via dynamic
-        import on the RUNTIME_COMPILED_PROTO_MODULE_DIR's environment variable.
-
-        Args:
-            config(aconfig.Config): caikit configuration
-
-        Returns:
-            (module): Handle to the module after dynamic import
-        """
-        if not config:
-            config = get_config()
-        module_dir = config.runtime.compiled_proto_module_dir
-        service_proto_gen_module = import_util.get_dynamic_module(module, module_dir)
-        if service_proto_gen_module is None:
-            message = (
-                "Unable to load compiled proto module: %s within dir %s"
-                % (module)
-                % (module_dir)
-            )
-            log.error("<RUN22291313E>", message)
-            raise CaikitRuntimeException(grpc.StatusCode.INTERNAL, message)
-        return service_proto_gen_module

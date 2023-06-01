@@ -126,7 +126,6 @@ class RuntimeGRPCServer:
             training_management_service: ServicePackage = (
                 ServicePackageFactory.get_service_package(
                     ServicePackageFactory.ServiceType.TRAINING_MANAGEMENT,
-                    ServicePackageFactory.ServiceSource.GENERATED,
                 )
             )
 
@@ -335,18 +334,9 @@ def main():
     # Enable signal handling
     handle_terminations = True
 
-    # Assume we want compiled services for now
-    service_source = (
-        ServicePackageFactory.ServiceSource.GENERATED
-        if caikit_config.runtime.service_generation.enabled
-        else ServicePackageFactory.ServiceSource.COMPILED
-    )
-    log.debug("Running with service source: %s", service_source)
-
     # We should always be able to stand up an inference service
     inference_service: ServicePackage = ServicePackageFactory.get_service_package(
         ServicePackageFactory.ServiceType.INFERENCE,
-        service_source,
     )
 
     # But maybe not always a training service
@@ -355,7 +345,6 @@ def main():
             ServicePackage
         ] = ServicePackageFactory.get_service_package(
             ServicePackageFactory.ServiceType.TRAINING,
-            service_source,
         )
     except CaikitRuntimeException as e:
         log.warning("Cannot stand up training service, disabling training: %s", e)
