@@ -13,6 +13,10 @@
 # limitations under the License.
 
 """Unit tests for the service factory"""
+
+# Third Party
+import pytest
+
 # Local
 from caikit.runtime.service_factory import ServicePackageFactory
 from sample_lib.modules.sample_task import ListModule

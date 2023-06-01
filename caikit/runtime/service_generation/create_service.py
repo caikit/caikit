@@ -79,7 +79,6 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
     )
 
     for ck_module in modules:
-        # ------------Addition for test case to check if module has task or not ---------
         if not ck_module.TASK_CLASS:
             continue
 
@@ -170,15 +169,11 @@ def _group_modules_by_task(
 ) -> Dict[Type[TaskBase], List[Type[ModuleBase]]]:
     task_groups = {}
     for ck_module in modules:
-        # ----------Added task name------------
-        # ck_module_task_name = None
         if ck_module.TASK_CLASS:
             ck_module_task_name = ck_module.TASK_CLASS.__name__
 
             signature = CaikitMethodSignature(ck_module, fname)
 
-            # Change: Passed task name below in task_groups
             if ck_module_task_name is not None:
-                # task_groups.setdefault((ck_module_task_name, ck_module_task_name), []).append(
                 task_groups.setdefault(ck_module.TASK_CLASS, []).append(signature)
     return task_groups

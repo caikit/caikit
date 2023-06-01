@@ -41,9 +41,6 @@ from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils import import_util
 import caikit.core
 
-# import inspect
-
-
 log = alog.use_channel("SVC-FACTORY")
 
 TRAINING_MANAGEMENT_SERVICE_NAME = "TrainingManagement"
@@ -209,9 +206,6 @@ class ServicePackageFactory:
             if not ck_module.TASK_CLASS:
                 continue
 
-            # if excluded_task_types and module_info.type in excluded_task_types:
-            #     log.debug("Skipping module %s of type %s", ck_module, module_info.type)
-
             if (
                 excluded_task_types
                 and ck_module.TASK_CLASS.__name__ in excluded_task_types
@@ -237,7 +231,6 @@ class ServicePackageFactory:
             else:
                 if (included_modules and ck_module.MODULE_ID in included_modules) or (
                     included_task_types
-                    # and module_info.type in included_task_types
                     and ck_module.TASK_CLASS.__name__ in included_task_types
                 ):
                     clean_modules.add(ck_module)

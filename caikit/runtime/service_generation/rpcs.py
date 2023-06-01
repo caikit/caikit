@@ -216,15 +216,13 @@ class TaskPredictRPC(CaikitRPCBase):
     def __init__(
         self,
         task: Type[TaskBase],
-        # task: Tuple[str, str],
         method_signatures: List[CaikitMethodSignature],
         primitive_data_model_types: List[str],
     ):
         """Initialize a .proto generator with all modules of a given task to convert
 
         Args:
-            task (Tuple[str, str]): The library / ai-problem-task combo that describes the task
-                type. For example: ("my_caikit_library", "classification")
+            task (Type[TaskBase]): Task type
 
             method_signatures (List[CaikitMethodSignature]): The list of method
                 signatures from concrete modules implementing this task
@@ -283,7 +281,6 @@ class TaskPredictRPC(CaikitRPCBase):
         """Helper function to convert the pair of library name and task name to
         a request message name
         """
-        # return snake_to_upper_camel(f"{self.task[1]}_Request")
         return snake_to_upper_camel(f"{self.task.__name__}_Request")
 
     def _task_to_rpc_name(self) -> str:
@@ -294,8 +291,6 @@ class TaskPredictRPC(CaikitRPCBase):
 
         return: SampleTaskPredict
         """
-
-        # return snake_to_upper_camel(f"{self.task[1]}_Predict")
         return snake_to_upper_camel(f"{self.task.__name__}_Predict")
 
 

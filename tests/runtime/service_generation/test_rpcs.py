@@ -40,7 +40,6 @@ def test_task_inference_rpc_with_all_optional_params():
             pass
 
     rpc = TaskPredictRPC(
-        # task=("foo", "bar"),
         task=TestTask,
         method_signatures=[CaikitMethodSignature(TestModule, "run")],
         primitive_data_model_types=[],
