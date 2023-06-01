@@ -18,17 +18,16 @@ collection of caikit.core derived libraries
 
 # Standard
 from enum import Enum
-from typing import List, Type
+from typing import Dict, List, Type
 
 # First Party
 import alog
 
 # Local
 from ... import get_config
-from .core_module_helpers import get_module_info
 from .primitives import is_primitive_method
 from .rpcs import CaikitRPCBase, ModuleClassTrainRPC, TaskPredictRPC
-from caikit.core import ModuleBase
+from caikit.core import ModuleBase, TaskBase
 from caikit.core.signature_parsing.module_signature import CaikitMethodSignature
 
 log = alog.use_channel("CREATE-RPCS")
@@ -80,11 +79,16 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
     )
 
     for ck_module in modules:
+        if not ck_module.TASK_CLASS:
+            log.debug("Skipping module %s with no task", ck_module)
+            continue
+
         # If this train function has not been changed from the base, skip it as
         # a module that can't be trained
         #
         # HACK alert! I'm struggling to find the right way to identify this
         #   condition, so for now, we'll use the string repr
+
         train_fn = getattr(ck_module, TRAIN_FUNCTION_NAME)
         if str(train_fn).startswith(f"<bound method ModuleBase.{TRAIN_FUNCTION_NAME}"):
             log.debug(
@@ -140,16 +144,7 @@ def _create_rpcs_for_modules(
 ) -> List[CaikitRPCBase]:
     """Create the RPCs for each module"""
     rpcs = []
-    task_groups = {}
-
-    for ck_module in modules:
-        module_info = get_module_info(ck_module)
-        signature = CaikitMethodSignature(ck_module, fname)
-        # Group each module by its task
-        if module_info is not None:
-            task_groups.setdefault((module_info.library, module_info.type), []).append(
-                signature
-            )
+    task_groups = _group_modules_by_task(modules, fname)
 
     # Create the RPC for each task
     for task, task_methods in task_groups.items():
@@ -168,3 +163,18 @@ def _create_rpcs_for_modules(
                 )
 
     return rpcs
+
+
+def _group_modules_by_task(
+    modules: List[Type[ModuleBase]], fname: str
+) -> Dict[Type[TaskBase], List[Type[ModuleBase]]]:
+    task_groups = {}
+    for ck_module in modules:
+        if ck_module.TASK_CLASS:
+            ck_module_task_name = ck_module.TASK_CLASS.__name__
+
+            signature = CaikitMethodSignature(ck_module, fname)
+
+            if ck_module_task_name is not None:
+                task_groups.setdefault(ck_module.TASK_CLASS, []).append(signature)
+    return task_groups
