@@ -200,7 +200,6 @@ class ModuleClassTrainRPC(CaikitRPCBase):
             else:
                 new_params[name] = primitives.handle_primitives_in_union(
                     arg_type=typ,
-                    primitive_data_model_types=primitive_data_model_types,
                 )
 
         return CustomSignature(

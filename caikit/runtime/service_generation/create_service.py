@@ -51,12 +51,9 @@ def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase
         get_config().runtime.service_generation.primitive_data_model_types
     )
 
-    rpcs = []
-
-
     # Create the RPCs for each module
     return _create_rpcs_for_modules(
-        modules, primitive_data_model_types, INFERENCE_FUNCTION_NAME
+        modules, primitive_data_model_types
     )
 
 
@@ -114,11 +111,10 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
 def _create_rpcs_for_modules(
     modules: List[Type[ModuleBase]],
     primitive_data_model_types: List[str],
-    fname: str = INFERENCE_FUNCTION_NAME,
 ) -> List[CaikitRPCBase]:
     """Create the RPCs for each module"""
     rpcs = []
-    task_groups = _group_modules_by_task(modules, fname)
+    task_groups = _group_modules_by_task(modules)
 
     # Create the RPC for each task
     for task, task_methods in task_groups.items():
@@ -140,15 +136,12 @@ def _create_rpcs_for_modules(
 
 
 def _group_modules_by_task(
-    modules: List[Type[ModuleBase]], fname: str
+    modules: List[Type[ModuleBase]]
 ) -> Dict[Type[TaskBase], List[Type[ModuleBase]]]:
     task_groups = {}
     for ck_module in modules:
         if ck_module.TASK_CLASS:
             ck_module_task_name = ck_module.TASK_CLASS.__name__
-
-            signature = CaikitMethodSignature(ck_module, fname)
-
             if ck_module_task_name is not None:
-                task_groups.setdefault(ck_module.TASK_CLASS, []).append(signature)
+                task_groups.setdefault(ck_module.TASK_CLASS, []).append(ck_module.RUN_SIGNATURE)
     return task_groups
