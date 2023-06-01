@@ -18,7 +18,6 @@ from types import ModuleType
 from typing import Callable, Set, Type
 import dataclasses
 import inspect
-import re
 
 # Third Party
 import google.protobuf.descriptor
@@ -38,7 +37,6 @@ from caikit.interfaces.runtime.data_model import (
     TrainingInfoResponse,
 )
 from caikit.runtime import service_generation
-
 from caikit.runtime.service_generation.rpcs import snake_to_upper_camel
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils import import_util
@@ -273,8 +271,15 @@ class ServicePackageFactory:
             # if excluded_task_types and module_info.type in excluded_task_types:
             #     log.debug("Skipping module %s of type %s", ck_module, module_info.type)
 
-            if excluded_task_types and ck_module.TASK_CLASS.__name__ in excluded_task_types:
-                log.debug("Skipping module %s of type %s", ck_module, ck_module.TASK_CLASS.__name__)
+            if (
+                excluded_task_types
+                and ck_module.TASK_CLASS.__name__ in excluded_task_types
+            ):
+                log.debug(
+                    "Skipping module %s of type %s",
+                    ck_module,
+                    ck_module.TASK_CLASS.__name__,
+                )
                 continue
 
             if excluded_modules and ck_module.MODULE_ID in excluded_modules:
