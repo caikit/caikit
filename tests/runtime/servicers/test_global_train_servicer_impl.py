@@ -453,7 +453,7 @@ def test_global_train_aborts_long_running_trains(
         )
     )
 
-    sample_train_servicer.use_subprocess = True
+    # sample_train_servicer.use_subprocess = True
     if sample_train_servicer.use_subprocess:
         test_event = multiprocessing.Event()
     else:
@@ -466,13 +466,27 @@ def test_global_train_aborts_long_running_trains(
             time.sleep(0.01)
 
     context = Fixtures.build_context("test-any-unresponsive-model")
-    train_thread = threading.Thread(
-        # NOTE: We are not calling .Train function because this function
-        # calls the module import directly, which is making patching module hackery
-        target=sample_train_servicer.Train,
-        args=(train_request, context),
-        kwargs={"wait": True},
-    )
+
+    servicer = GlobalTrainServicer(training_service=sample_train_service)
+
+    with TemporaryDirectory() as tmp_dir:
+        training_id = "dummy-training-id"
+        training_output_dir = tmp_dir
+        context = Fixtures.build_context("foo")
+
+        train_thread = threading.Thread(
+            target=servicer.run_training_job,
+            args=(
+                train_request,
+                SampleModule,
+                training_id,
+                training_output_dir,
+                context,
+            ),
+            kwargs={
+                "wait": True,
+            },
+        )
 
     # NOTE: We are configuring following timeout
     # to avoid tests from hanging

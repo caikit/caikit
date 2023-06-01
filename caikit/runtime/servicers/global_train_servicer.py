@@ -103,15 +103,13 @@ class GlobalTrainServicer:
         )
         super()
 
-    def Train(self, request, context, *_, wait=False, **__) -> TrainingJob:
+    def Train(self, request, context, *_, **__) -> TrainingJob:
         """Global predict RPC -- Mocks the invocation of a Caikit Library module.train()
         method for a loaded Caikit Library model
         Args:
             request(object):
                 A deserialized RPC request message
             context(grpc.ServicerContext): Context object (contains request metadata, etc)
-            wait(bool):
-                Wait for the training request to complete
         Returns:
             caikit.interfaces.runtime.data_model.TrainingJob:
                 A TrainingJob data model response object
@@ -160,7 +158,6 @@ class GlobalTrainServicer:
                     training_id=training_id,
                     training_output_dir=self.training_output_dir,
                     context=context,
-                    wait=wait,
                 )
 
         except CaikitRuntimeException as e:
@@ -171,15 +168,6 @@ class GlobalTrainServicer:
             }
             log.warning({**log_dict, **e.metadata})
             raise e
-
-        except concurrent.futures.CancelledError as err:
-            log_dict = {
-                "log_code": "<RUN71530128W>",
-                "message": err.message,
-                "error_id": err.id,
-            }
-            log.warning({**log_dict, **e.metadata})
-            raise err
 
         # Duplicate code in global_predict_servicer
         # pylint: disable=duplicate-code
