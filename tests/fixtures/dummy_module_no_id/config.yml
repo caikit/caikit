@@ -1,0 +1,23 @@
+block_id: "00110203-0405-0607-0809-0a0b02dd0e0f"
+block_class: "sample_lib.modules.sample_task.sample_implementation.SampleModule"
+name: "Dummy config file."
+version: "4.0.2"
+description': "dummy model for testing"
+
+created: "2022-11-03 21:55:38.496338"
+
+tracking_id: ba67469f-281d-4250-915c-00111e0327a5
+
+train:
+    batch_size: 64
+    learning_rate: 0.0015
+    optim_method: "Rprop"
+
+predict:
+    batch_size: 128
+    aggregation_methods:
+        - one
+        - two
+        - three
+
+utf_text: "人工智能"
