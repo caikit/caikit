@@ -134,6 +134,9 @@ def is_protoable_type(arg_type: Type) -> bool:
 
     if typing.get_origin(arg_type) == list:
         log.debug2("Arg is List")
+        if len(typing.get_args(arg_type)) == 0:
+            log.debug2("List annotation has no type")
+            return False
         return typing.get_args(arg_type)[0] in proto_primitive_set
 
     if typing.get_origin(arg_type) == Union:

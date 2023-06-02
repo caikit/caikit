@@ -1,5 +1,5 @@
 # Standard
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 # Third Party
 import pytest
@@ -23,31 +23,37 @@ def test_to_primitive_signature_raw():
     ) == {"name": str}
 
 
-def test_to_primitive_signature_union_raw():
+def test_to_protoable_signature_union_raw():
     assert to_protoable_signature(
         signature={"name": Union[str, int]},
     ) == {"name": Union[str, int]}
 
 
-def test_to_primitive_signature_dm():
+def test_to_protoable_signature_lists():
+    assert to_protoable_signature(
+        signature={"good_list": List[str], "bad_list": List, "lowercase_l_list": list},
+    ) == {"good_list": List[str]}
+
+
+def test_to_protoable_signature_dm():
     assert to_protoable_signature(
         signature={"name": SampleInputType},
     ) == {"name": SampleInputType}
 
 
-def test_to_primitive_signature_union_dm():
+def test_to_protoable_signature_union_dm():
     assert to_protoable_signature(
         signature={"name": Union[SampleInputType, str]},
     ) == {"name": Union[SampleInputType, str]}
 
 
-def test_to_primitive_signature_unsupported_type_in_union():
+def test_to_protoable_signature_unsupported_type_in_union():
     assert to_protoable_signature(
         signature={"name": Union[NonProtoable, str]},
     ) == {"name": str}
 
 
-def test_to_primitive_signature_no_dm_types_in_union():
+def test_to_protoable_signature_no_dm_types_in_union():
     class AnotherNonProtoable:
         pass
 
@@ -56,7 +62,7 @@ def test_to_primitive_signature_no_dm_types_in_union():
     ) == {"name": str}
 
 
-def test_to_primitive_signature_multiple_types_in_union():
+def test_to_protoable_signature_multiple_types_in_union():
     """We have the first arg as a supported DM arg, and the last as
     a supported primitive arg. We return the first supported DM arg"""
     assert to_protoable_signature(
@@ -64,7 +70,7 @@ def test_to_primitive_signature_multiple_types_in_union():
     ) == {"name": SampleInputType}
 
 
-def test_to_primitive_signature_multiple_no_dm_types_in_union():
+def test_to_protoable_signature_multiple_no_dm_types_in_union():
     """We have the first arg that's not supported, and 2 primitive args. We
     return the first primitive arg"""
     assert to_protoable_signature(
@@ -72,7 +78,7 @@ def test_to_primitive_signature_multiple_no_dm_types_in_union():
     ) == {"name": str}
 
 
-def test_to_primitive_signature_no_protoable_types():
+def test_to_protoable_signature_no_protoable_types():
     assert (
         to_protoable_signature(
             signature={"name": NonProtoable},
