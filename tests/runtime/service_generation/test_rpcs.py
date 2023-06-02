@@ -19,7 +19,7 @@ import uuid
 
 # Local
 from caikit.core import ModuleBase, TaskBase
-from caikit.runtime.service_generation.rpcs import TaskPredictRPC
+from caikit.runtime.service_generation.rpcs import ModuleClassTrainRPC, TaskPredictRPC
 from sample_lib.data_model import SampleOutputType
 import caikit.core
 
@@ -45,3 +45,31 @@ def test_task_inference_rpc_with_all_optional_params():
 
     data_model = rpc.create_request_data_model(package_name="blah")
     assert data_model is not None
+
+    assert rpc.name == "TestTaskPredict"
+
+
+def test_module_train_rpc():
+    @caikit.core.task(
+        required_parameters={"str_val": str}, output_type=SampleOutputType
+    )
+    class TestTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()), name="testest", version="9.9.9", task=TestTask
+    )
+    class TestModule(ModuleBase):
+        def run(self, str_val: str) -> SampleOutputType:
+            pass
+
+        @classmethod
+        def train(cls, int_val: int, str_val: str) -> "TestModule":
+            pass
+
+    rpc = ModuleClassTrainRPC(method_signature=TestModule.TRAIN_SIGNATURE)
+
+    data_model = rpc.create_request_data_model(package_name="blah")
+    assert data_model is not None
+
+    assert rpc.name == "TestTaskTestModuleTrain"

@@ -16,10 +16,8 @@ from importlib.metadata import version
 from typing import Optional
 from uuid import uuid4
 import concurrent.futures
-import importlib
 import multiprocessing
 import os
-import re
 import threading
 import traceback
 
@@ -36,11 +34,11 @@ from caikit.interfaces.runtime.data_model import TrainingJob
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.model_management.training_manager import TrainingManager
 from caikit.runtime.service_factory import ServicePackage
+from caikit.runtime.service_generation.rpcs import ModuleClassTrainRPC
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import clean_lib_names, get_data_model
 from caikit.runtime.utils.servicer_util import (
     build_caikit_library_request_dict,
-    snake_to_upper_camel,
     validate_data_model,
 )
 from caikit.runtime.work_management.train_executors import (
@@ -119,25 +117,10 @@ class GlobalTrainServicer:
 
         try:
             with alog.ContextLog(log.debug, outer_scope_name):
-                # ModulesSampleTaskSampleModuleTrainRequest
-                # getattr(importlib.import_module("sample_lib.modules.sample_task"), "SampleModule")
-                # TODO: fixme - temporary workaround for now
-                desc_name = desc_name.replace("TrainRequest", "")
-                split = re.split("(?<=.)(?=[A-Z])", desc_name)
-                model = None
-                try:
-                    model = getattr(
-                        importlib.import_module(
-                            f"{self.library}.{split[0].lower()}.{split[1].lower()}"
-                        ),
-                        f"{''.join(split[2:])}",
-                    )
-
-                except Exception:  # pylint: disable=broad-exception-caught
-                    for mod in caikit.core.registries.module_registry().values():
-                        module_split = mod.__module__.split(".")
-                        train_request_for_mod = snake_to_upper_camel(
-                            f"{module_split[1]}_{module_split[2]}_{mod.__name__}"
+                for mod in caikit.core.registries.module_registry().values():
+                    if mod.TASK_CLASS:
+                        train_request_for_mod = (
+                            ModuleClassTrainRPC.module_class_to_req_name(mod)
                         )
                         if train_request_for_mod == desc_name:
                             model = mod

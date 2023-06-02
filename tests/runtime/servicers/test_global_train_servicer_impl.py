@@ -90,12 +90,10 @@ def test_global_train_sample_task(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
     model_name = random_test_id()
-    train_request = (
-        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
-            model_name=model_name,
-            batch_size=42,
-            training_data=training_data,
-        )
+    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+        model_name=model_name,
+        batch_size=42,
+        training_data=training_data,
     )
 
     training_response = sample_train_servicer.Train(
@@ -146,7 +144,7 @@ def test_global_train_other_task(
     batch_size = 42
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
     training_data = stream_type(jsondata=stream_type.JsonData(data=[1])).to_proto()
-    train_request = sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
+    train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
         model_name="Other module Training",
         training_data=training_data,
         # either of the below lines work since it's a Union now
@@ -204,7 +202,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
     ).to_proto()
 
     training_request = (
-        sample_train_service.messages.ModulesSampleTaskCompositeModuleTrainRequest(
+        sample_train_service.messages.SampleTaskCompositeModuleTrainRequest(
             model_name="AnotherWidget_Training",
             sample_block=sample_model,
         )
@@ -254,12 +252,10 @@ def test_run_train_job_works_with_wait(
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
-    train_request = (
-        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
-            model_name=random_test_id(),
-            batch_size=42,
-            training_data=training_data,
-        )
+    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+        model_name=random_test_id(),
+        batch_size=42,
+        training_data=training_data,
     )
     servicer = GlobalTrainServicer(training_service=sample_train_service)
     with TemporaryDirectory() as tmp_dir:
@@ -294,12 +290,10 @@ def test_run_train_job_works_with_no_autoload(sample_train_service):
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
-    train_request = (
-        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
-            model_name=str(uuid.uuid4()),
-            batch_size=42,
-            training_data=training_data,
-        )
+    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+        model_name=str(uuid.uuid4()),
+        batch_size=42,
+        training_data=training_data,
     )
     servicer = GlobalTrainServicer(training_service=sample_train_service)
     servicer.auto_load_trained_model = False
@@ -324,12 +318,10 @@ def test_run_train_job_works_with_autoload(sample_train_service):
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
-    train_request = (
-        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
-            model_name=str(uuid.uuid4()),
-            batch_size=42,
-            training_data=training_data,
-        )
+    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+        model_name=str(uuid.uuid4()),
+        batch_size=42,
+        training_data=training_data,
     )
     servicer = GlobalTrainServicer(training_service=sample_train_service)
     servicer.auto_load_trained_model = True
@@ -362,11 +354,9 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_but_not_loaded_s
     sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
         model_id=model_id
     ).to_proto()
-    request = (
-        sample_train_service.messages.ModulesSampleTaskCompositeModuleTrainRequest(
-            model_name="AnotherWidget_Training",
-            sample_block=sample_model,
-        )
+    request = sample_train_service.messages.SampleTaskCompositeModuleTrainRequest(
+        model_name="AnotherWidget_Training",
+        sample_block=sample_model,
     )
 
     with pytest.raises(CaikitRuntimeException) as context:
@@ -383,12 +373,10 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_mod
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
-    train_request = (
-        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
-            model_name=random_test_id(),
-            batch_size=999,
-            training_data=training_data,
-        )
+    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+        model_name=random_test_id(),
+        batch_size=999,
+        training_data=training_data,
     )
 
     with pytest.raises(CaikitRuntimeException) as context:
@@ -411,13 +399,11 @@ def test_global_train_returns_exit_code_with_oom(
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
-    train_request = (
-        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
-            model_name=random_test_id(),
-            batch_size=42,
-            training_data=training_data,
-            oom_exit=True,
-        )
+    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+        model_name=random_test_id(),
+        batch_size=42,
+        training_data=training_data,
+        oom_exit=True,
     )
 
     # Enable sub-processing for test
@@ -444,13 +430,11 @@ def test_global_train_aborts_long_running_trains(
     ).to_proto()
     training_id = random_test_id()
 
-    train_request = (
-        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
-            model_name=training_id,
-            batch_size=42,
-            training_data=training_data,
-            oom_exit=False,
-        )
+    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+        model_name=training_id,
+        batch_size=42,
+        training_data=training_data,
+        oom_exit=False,
     )
 
     # sample_train_servicer.use_subprocess = True

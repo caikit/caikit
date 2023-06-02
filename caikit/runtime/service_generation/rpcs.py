@@ -124,7 +124,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         self._method = ModuleClassTrainRPC._mutate_method_signature_for_training(
             method_signature
         )
-        self.name = self._module_class_to_rpc_name()
+        self.name = ModuleClassTrainRPC.module_class_to_rpc_name(self.clz)
 
         # Compute the mapping from argument name to type for the module's run
         log.debug3("Param Dict: %s", self._method.parameters)
@@ -133,7 +133,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         # Store the input and output protobuf message types for this RPC
         self.return_type = self._method.return_type
         self._req = _RequestMessage(
-            self._module_class_to_req_name(),
+            ModuleClassTrainRPC.module_class_to_req_name(self.clz),
             self._method.parameters,
             self._method.default_parameters,
         )
@@ -147,28 +147,26 @@ class ModuleClassTrainRPC(CaikitRPCBase):
     def request(self) -> "_RequestMessage":
         return self._req
 
-    def _module_class_to_rpc_name(self) -> str:
+    @staticmethod
+    def module_class_to_rpc_name(module_class: Type[ModuleBase]) -> str:
         """Helper function to convert from the name of a module to the name of the
         request RPC function
         """
-        module_split = self.clz.__module__.split(".")
         return snake_to_upper_camel(
-            f"{module_split[1]}_{module_split[2]}_{self.clz.__name__}_Train"
+            f"{module_class.TASK_CLASS.__name__}_{module_class.__name__}_Train"
         )
 
-    def _module_class_to_req_name(self) -> str:
+    @staticmethod
+    def module_class_to_req_name(module_class: Type[ModuleBase]) -> str:
         """Helper function to convert from the name of a module to the name of the
         request RPC message
 
         Example: self.clz._module__ = sample_lib.modules.sample_task.sample_implementation
 
-        return: BlocksSampleTaskSampleModuleTrainRequest
+        return: SampleTaskSampleModuleTrainRequest
 
         """
-        module_split = self.clz.__module__.split(".")
-        return snake_to_upper_camel(
-            f"{module_split[1]}_{module_split[2]}_{self.clz.__name__}_TrainRequest"
-        )
+        return f"{ModuleClassTrainRPC.module_class_to_rpc_name(module_class)}Request"
 
     @staticmethod
     def _mutate_method_signature_for_training(
