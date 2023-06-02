@@ -151,9 +151,8 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         """Helper function to convert from the name of a module to the name of the
         request RPC function
         """
-        module_split = self.clz.__module__.split(".")
         return snake_to_upper_camel(
-            f"{module_split[1]}_{module_split[2]}_{self.clz.__name__}_Train"
+            f"{self.clz.TASK_CLASS.__name__}_{self.clz.__name__}_Train"
         )
 
     def _module_class_to_req_name(self) -> str:

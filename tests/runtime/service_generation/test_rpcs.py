@@ -45,3 +45,30 @@ def test_task_inference_rpc_with_all_optional_params():
 
     data_model = rpc.create_request_data_model(package_name="blah")
     assert data_model is not None
+
+
+def test_module_train_rpc():
+    @caikit.core.task(
+        required_parameters={"str_val": str}, output_type=SampleOutputType
+    )
+    class TestTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()), name="testest", version="9.9.9", task=TestTask
+    )
+    class TestModule(ModuleBase):
+        def run(self, str_val: str) -> SampleOutputType:
+            pass
+
+    #     @classmethod
+    #     def train(cls, int_val: int, str_val: str) -> :
+    #
+    #
+    # rpc = TaskPredictRPC(
+    #     task=TestTask,
+    #     method_signatures=[TestModule.RUN_SIGNATURE],
+    # )
+    #
+    # data_model = rpc.create_request_data_model(package_name="blah")
+    # assert data_model is not None
