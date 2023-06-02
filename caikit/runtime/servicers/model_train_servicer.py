@@ -25,9 +25,9 @@ import alog
 # Local
 from caikit.runtime.protobufs import process_pb2, process_pb2_grpc
 from caikit.runtime.service_factory import ServicePackage
+from caikit.runtime.service_generation.rpcs import ModuleClassTrainRPC
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.utils.servicer_util import snake_to_upper_camel
 import caikit.core
 
 log = alog.use_channel("MT-SERVICR-I")
@@ -71,9 +71,7 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
 
             # prepare the model's train request
             training_params = json.loads(request_dict["training_params"])
-            request_name = snake_to_upper_camel(
-                f"{train_module.TASK_CLASS.__name__}_{train_module.__name__}_TrainRequest"
-            )
+            request_name = ModuleClassTrainRPC.module_class_to_req_name(train_module)
             log.debug("<RUN22972949D>", "request_name: %s", request_name)
 
             if not hasattr(self._training_service.messages, request_name):

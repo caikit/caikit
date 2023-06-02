@@ -36,6 +36,7 @@ from caikit.interfaces.runtime.data_model import TrainingJob
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.model_management.training_manager import TrainingManager
 from caikit.runtime.service_factory import ServicePackage
+from caikit.runtime.service_generation.rpcs import ModuleClassTrainRPC
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import clean_lib_names, get_data_model
 from caikit.runtime.utils.servicer_util import (
@@ -135,13 +136,13 @@ class GlobalTrainServicer:
 
                 except Exception:  # pylint: disable=broad-exception-caught
                     for mod in caikit.core.registries.module_registry().values():
-                        module_split = mod.__module__.split(".")
-                        train_request_for_mod = snake_to_upper_camel(
-                            f"{module_split[1]}_{module_split[2]}_{mod.__name__}"
-                        )
-                        if train_request_for_mod == desc_name:
-                            model = mod
-                            break
+                        if mod.TASK_CLASS:
+                            train_request_for_mod = (
+                                ModuleClassTrainRPC.module_class_to_req_name(mod)
+                            )
+                            if train_request_for_mod == desc_name:
+                                model = mod
+                                break
 
                 # At this point, if model is still None, we don't know the module this request
                 # is for
