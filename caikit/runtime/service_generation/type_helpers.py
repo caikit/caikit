@@ -19,15 +19,10 @@ Some type conversion helpers for going between python and protocol buffer interf
 from inspect import isclass
 from typing import Optional, Type, Union, get_args, get_origin
 
-# First Party
-import alog
-
 # Local
 from caikit.core import ModuleBase
 from caikit.core.data_model import DataStream
 import caikit.core
-
-log = alog.use_channel("PGEN-TYPEHLP")
 
 # Constants #########################################
 # The common prefix for all data model package names
