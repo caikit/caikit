@@ -17,15 +17,12 @@ collection of caikit.core derived libraries
 """
 
 # Standard
-from enum import Enum
 from typing import Dict, List, Type
 
 # First Party
 import alog
 
 # Local
-from ... import get_config
-from .primitives import is_primitive_method
 from .rpcs import CaikitRPCBase, ModuleClassTrainRPC, TaskPredictRPC
 from caikit.core import ModuleBase, TaskBase
 from caikit.core.signature_parsing.module_signature import CaikitMethodSignature
@@ -34,125 +31,21 @@ log = alog.use_channel("CREATE-RPCS")
 
 ## Globals #####################################################################
 
-INFERENCE_FUNCTION_NAME = "run"
 TRAIN_FUNCTION_NAME = "train"
 
 ## Utilities ###################################################################
 
 
-class ServiceType(Enum):
-    INFERENCE = 1
-    TRAINING = 2
-
-
 def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
     """Handles the logic to create all the RPCs for inference"""
-
-    primitive_data_model_types = (
-        get_config().runtime.service_generation.primitive_data_model_types
-    )
-
     rpcs = []
-    # Inference specific logic:
-    # Remove non-primitive modules (including modules that return None type)
-    primitive_modules = _remove_non_primitive_modules(
-        modules, primitive_data_model_types
-    )
-
-    # Create the RPCs for each module
-    rpcs.extend(
-        _create_rpcs_for_modules(
-            primitive_modules, primitive_data_model_types, INFERENCE_FUNCTION_NAME
-        )
-    )
-
-    return rpcs
-
-
-def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
-    """Handles the logic to create all the RPCs for training"""
-
-    rpcs = []
-
-    primitive_data_model_types = (
-        get_config().runtime.service_generation.primitive_data_model_types
-    )
-
-    for ck_module in modules:
-        if not ck_module.TASK_CLASS:
-            log.debug("Skipping module %s with no task", ck_module)
-            continue
-
-        # If this train function has not been changed from the base, skip it as
-        # a module that can't be trained
-        #
-        # HACK alert! I'm struggling to find the right way to identify this
-        #   condition, so for now, we'll use the string repr
-
-        train_fn = getattr(ck_module, TRAIN_FUNCTION_NAME)
-        if str(train_fn).startswith(f"<bound method ModuleBase.{TRAIN_FUNCTION_NAME}"):
-            log.debug(
-                "Skipping train API for %s with no %s function",
-                ck_module,
-                TRAIN_FUNCTION_NAME,
-            )
-            continue
-
-        signature = CaikitMethodSignature(ck_module, TRAIN_FUNCTION_NAME)
-        log.debug(
-            "Function signature for %s::%s [%s -> %s]",
-            ck_module,
-            TRAIN_FUNCTION_NAME,
-            signature.parameters,
-            signature.return_type,
-        )
-        with alog.ContextLog(log.debug, "Generating train RPC for %s", ck_module):
-            try:
-                rpcs.append(ModuleClassTrainRPC(signature, primitive_data_model_types))
-                log.debug("Successfully generated train RPC for %s", ck_module)
-            except Exception as err:  # pylint: disable=broad-exception-caught
-                log.warning(
-                    "Cannot generate train rpc for %s: %s",
-                    ck_module,
-                    err,
-                    exc_info=True,
-                )
-    return rpcs
-
-
-def _remove_non_primitive_modules(
-    modules: List[Type[ModuleBase]],
-    primitive_data_model_types: List[str],
-) -> List[Type[ModuleBase]]:
-    primitive_modules = []
-    # If the module is not "primitive" we won't include it
-    for ck_module in modules:
-        signature = CaikitMethodSignature(ck_module, "run")
-        if signature.parameters and signature.return_type:
-            if not is_primitive_method(signature, primitive_data_model_types):
-                log.debug("Skipping non-primitive module %s", ck_module)
-                continue
-
-            primitive_modules.append(ck_module)
-    return primitive_modules
-
-
-def _create_rpcs_for_modules(
-    modules: List[Type[ModuleBase]],
-    primitive_data_model_types: List[str],
-    fname: str = INFERENCE_FUNCTION_NAME,
-) -> List[CaikitRPCBase]:
-    """Create the RPCs for each module"""
-    rpcs = []
-    task_groups = _group_modules_by_task(modules, fname)
+    task_groups = _group_modules_by_task(modules)
 
     # Create the RPC for each task
     for task, task_methods in task_groups.items():
         with alog.ContextLog(log.debug, "Generating task RPC for %s", task):
             try:
-                rpcs.append(
-                    TaskPredictRPC(task, task_methods, primitive_data_model_types)
-                )
+                rpcs.append(TaskPredictRPC(task, task_methods))
                 log.debug("Successfully generated task RPC for %s", task)
             except Exception as err:  # pylint: disable=broad-exception-caught
                 log.warning(
@@ -165,16 +58,61 @@ def _create_rpcs_for_modules(
     return rpcs
 
 
+def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
+    """Handles the logic to create all the RPCs for training"""
+
+    rpcs = []
+
+    for ck_module in modules:
+        if not ck_module.TASK_CLASS:
+            log.debug("Skipping module %s with no task", ck_module)
+            continue
+
+        # If this train function has not been changed from the base, skip it as
+        # a module that can't be trained
+        #
+        # HACK alert! I'm struggling to find the right way to identify this
+        #   condition, so for now, we'll use the string repr
+        train_fn = getattr(ck_module, TRAIN_FUNCTION_NAME)
+        if str(train_fn).startswith(f"<bound method ModuleBase.{TRAIN_FUNCTION_NAME}"):
+            log.debug(
+                "Skipping train API for %s with no %s function",
+                ck_module,
+                TRAIN_FUNCTION_NAME,
+            )
+            continue
+
+        signature = ck_module.TRAIN_SIGNATURE
+        log.debug(
+            "Function signature for %s::%s [%s -> %s]",
+            ck_module,
+            TRAIN_FUNCTION_NAME,
+            signature.parameters,
+            signature.return_type,
+        )
+        with alog.ContextLog(log.debug, "Generating train RPC for %s", ck_module):
+            try:
+                rpcs.append(ModuleClassTrainRPC(signature))
+                log.debug("Successfully generated train RPC for %s", ck_module)
+            except Exception as err:  # pylint: disable=broad-exception-caught
+                log.warning(
+                    "Cannot generate train rpc for %s: %s",
+                    ck_module,
+                    err,
+                    exc_info=True,
+                )
+    return rpcs
+
+
 def _group_modules_by_task(
-    modules: List[Type[ModuleBase]], fname: str
-) -> Dict[Type[TaskBase], List[Type[ModuleBase]]]:
+    modules: List[Type[ModuleBase]],
+) -> Dict[Type[TaskBase], List[CaikitMethodSignature]]:
     task_groups = {}
     for ck_module in modules:
         if ck_module.TASK_CLASS:
             ck_module_task_name = ck_module.TASK_CLASS.__name__
-
-            signature = CaikitMethodSignature(ck_module, fname)
-
             if ck_module_task_name is not None:
-                task_groups.setdefault(ck_module.TASK_CLASS, []).append(signature)
+                task_groups.setdefault(ck_module.TASK_CLASS, []).append(
+                    ck_module.RUN_SIGNATURE
+                )
     return task_groups

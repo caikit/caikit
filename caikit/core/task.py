@@ -82,6 +82,18 @@ class TaskBase:
                 f"Wrong types provided for parameters to {signature.module}: {type_mismatch_errors}"
             )
 
+        if signature.return_type != cls.get_output_type():
+            # Wrong return type: Just check to make sure it's not
+            # `Union[expected_type, other_types]`
+            if typing.get_origin(signature.return_type) != Union or (
+                typing.get_origin(signature.return_type) == Union
+                and cls.get_output_type() not in typing.get_args(signature.return_type)
+            ):
+                raise TypeError(
+                    f"Wrong output type for module {signature.module}: "
+                    f"Found {signature.return_type} but expected {cls.get_output_type()}"
+                )
+
     @classmethod
     def get_required_parameters(cls) -> Dict[str, ValidInputTypes]:
         """Get the set of input types required by this task

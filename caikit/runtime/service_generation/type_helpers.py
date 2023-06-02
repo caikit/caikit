@@ -14,34 +14,13 @@
 """
 Some type conversion helpers for going between python and protocol buffer interfaces
 """
-
 # Standard
 from inspect import isclass
-from typing import Dict, Optional, Type, Union, get_args, get_origin
-
-# First Party
-# First party
-import alog
+from typing import Optional, Type, Union, get_args, get_origin
 
 # Local
 from caikit.core import ModuleBase
-from caikit.core.data_model import DataStream
-import caikit.core
-
-log = alog.use_channel("PGEN-TYPEHLP")
-
-# Constants #########################################
-# The common prefix for all data model package names
-caikit.core_DATA_MODEL_PREFIX = "caikit.core_data_model"
-
-# Mapping from native python types to the corresponding protobufs types
-PROTO_TYPE_MAP: Dict[Type, str] = {
-    float: "double",
-    int: "int32",
-    bool: "bool",
-    str: "string",
-    bytes: "bytes",
-}
+from caikit.core.data_model import DataBase, DataStream
 
 
 def has_data_stream(arg_type: Type) -> bool:
@@ -81,6 +60,10 @@ def is_model_type(arg_type: Type) -> bool:
             if isclass(typ) and issubclass(typ, ModuleBase):
                 return True
     return False
+
+
+def is_data_model_type(arg_type: Type) -> bool:
+    return isclass(arg_type) and issubclass(arg_type, DataBase)
 
 
 def _is_data_stream(arg_type: Type) -> bool:
