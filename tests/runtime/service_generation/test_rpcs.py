@@ -19,7 +19,7 @@ import uuid
 
 # Local
 from caikit.core import ModuleBase, TaskBase
-from caikit.runtime.service_generation.rpcs import TaskPredictRPC, ModuleClassTrainRPC
+from caikit.runtime.service_generation.rpcs import ModuleClassTrainRPC, TaskPredictRPC
 from sample_lib.data_model import SampleOutputType
 import caikit.core
 
@@ -64,12 +64,10 @@ def test_module_train_rpc():
             pass
 
         @classmethod
-        def train(cls, int_val: int, str_val: str) -> 'TestModule':
+        def train(cls, int_val: int, str_val: str) -> "TestModule":
             pass
 
-    rpc = ModuleClassTrainRPC(
-        method_signature=TestModule.TRAIN_SIGNATURE
-    )
+    rpc = ModuleClassTrainRPC(method_signature=TestModule.TRAIN_SIGNATURE)
 
     data_model = rpc.create_request_data_model(package_name="blah")
     assert data_model is not None

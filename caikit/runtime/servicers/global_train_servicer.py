@@ -119,7 +119,7 @@ class GlobalTrainServicer:
 
         try:
             with alog.ContextLog(log.debug, outer_scope_name):
-                # ModulesSampleTaskSampleModuleTrainRequest
+                # SampleTaskSampleModuleTrainRequest
                 # getattr(importlib.import_module("sample_lib.modules.sample_task"), "SampleModule")
                 # TODO: fixme - temporary workaround for now
                 desc_name = desc_name.replace("TrainRequest", "")
