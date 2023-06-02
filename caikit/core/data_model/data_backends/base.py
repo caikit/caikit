@@ -16,7 +16,6 @@
 """The base class for data model object backends"""
 
 # Standard
-from dataclasses import dataclass
 from typing import Any, Type, Union
 import abc
 

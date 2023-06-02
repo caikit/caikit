@@ -103,9 +103,10 @@ class DictBackend(DataModelBackendBase):
                 for entry in raw_value
             ]
 
-        # If the target attribure is a oneof name, look for the oneof name in the data dict first. If it exists, infer
-        # the right field name based on the type of the value and return the field name and the value. If oneof name isn't in the
-        # data dict, check for field name instead and return the right value
+        # If the target attribure is a oneof name, look for the oneof name in the data dict first.
+        # If it exists, infer the right field name based on the type of the value and return the
+        # field name and the value. If oneof name isn't in the data dict, check for field name
+        # instead and return the right value
         if name in data_model_class._fields_oneofs_map:
             if name in self._data_dict:
                 val = self._data_dict.get(name)
