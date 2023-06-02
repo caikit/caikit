@@ -17,15 +17,14 @@ This file contains our logic about what constitutes a proto-able for RPC generat
 
 # Standard
 from typing import Dict, Type, Union, get_args, get_origin
-import inspect
 import typing
 
 # First Party
 import alog
 
 # Local
-from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import DATAOBJECT_PY_TO_PROTO_TYPES
+from caikit.runtime.service_generation.type_helpers import is_data_model_type
 
 log = alog.use_channel("PROTOABLES")
 
@@ -75,11 +74,7 @@ def handle_protoables_in_union(arg_type: Type) -> Type:
             if len(union_protoables) == 1:
                 return union_protoables[0]
             # otherwise, try to get the data model objects in the Union
-            dm_types = [
-                arg
-                for arg in union_protoables
-                if inspect.isclass(arg) and issubclass(arg, DataBase)
-            ]
+            dm_types = [arg for arg in union_protoables if is_data_model_type(arg)]
             # if there are multiple, pick the first one
             if len(dm_types) > 0:
                 log.debug2(
@@ -105,16 +100,12 @@ def extract_data_model_type_from_union(arg_type: Type) -> Type:
     typing_args = get_args(arg_type)
 
     # If this is a data model type, no need to do anything
-    if isinstance(arg_type, type) and issubclass(arg_type, DataBase):
+    if is_data_model_type(arg_type):
         return arg_type
 
     # Handle Unions by looking for a data model object in the union
     if typing_origin is Union:
-        dm_types = [
-            arg
-            for arg in typing_args
-            if inspect.isclass(arg) and issubclass(arg, DataBase)
-        ]
+        dm_types = [arg for arg in typing_args if is_data_model_type(arg)]
         if dm_types:
             log.debug2(
                 "Found data model types in Union: [%s], taking first one", dm_types
@@ -138,7 +129,7 @@ def is_protoable_type(arg_type: Type) -> bool:
 
     if arg_type in proto_primitive_set:
         return True
-    if isinstance(arg_type, type) and issubclass(arg_type, DataBase):
+    if is_data_model_type(arg_type):
         return True
 
     if typing.get_origin(arg_type) == list:
