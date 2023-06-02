@@ -17,10 +17,9 @@ Some type conversion helpers for going between python and protocol buffer interf
 
 # Standard
 from inspect import isclass
-from typing import Dict, Optional, Type, Union, get_args, get_origin
+from typing import Optional, Type, Union, get_args, get_origin
 
 # First Party
-# First party
 import alog
 
 # Local
@@ -33,15 +32,6 @@ log = alog.use_channel("PGEN-TYPEHLP")
 # Constants #########################################
 # The common prefix for all data model package names
 caikit.core_DATA_MODEL_PREFIX = "caikit.core_data_model"
-
-# Mapping from native python types to the corresponding protobufs types
-PROTO_TYPE_MAP: Dict[Type, str] = {
-    float: "double",
-    int: "int32",
-    bool: "bool",
-    str: "string",
-    bytes: "bytes",
-}
 
 
 def has_data_stream(arg_type: Type) -> bool:
