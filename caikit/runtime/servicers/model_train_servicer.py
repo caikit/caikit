@@ -71,9 +71,8 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
 
             # prepare the model's train request
             training_params = json.loads(request_dict["training_params"])
-            module_split = train_module.__module__.split(".")
             request_name = snake_to_upper_camel(
-                f"{module_split[1]}_{module_split[2]}_{train_module.__name__}_TrainRequest"
+                f"{train_module.TASK_CLASS.__name__}_{train_module.__name__}_TrainRequest"
             )
             log.debug("<RUN22972949D>", "request_name: %s", request_name)
 

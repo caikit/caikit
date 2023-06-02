@@ -161,7 +161,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
 
         Example: self.clz._module__ = sample_lib.modules.sample_task.sample_implementation
 
-        return: BlocksSampleTaskSampleModuleTrainRequest
+        return: SampleTaskSampleModuleTrainRequest
 
         """
         return f"{self._module_class_to_rpc_name()}Request"
