@@ -26,7 +26,6 @@ import tempfile
 # Third Party
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pb2, descriptor_pool, message, struct_pb2
-from google.protobuf.message_factory import GetMessageClassesForFiles
 import numpy as np
 import pytest
 
@@ -59,13 +58,29 @@ def temp_dpool():
     fd = descriptor_pb2.FileDescriptorProto()
     struct_pb2.DESCRIPTOR.CopyToProto(fd)
     dpool.Add(fd)
-    # HACK! Doing this _appears_ to solve the mysterious segfault cause by using
-    #   Struct inside a temporary descriptor pool. The inspiration for this was
-    #   https://github.com/protocolbuffers/protobuf/issues/12047
-    msgs = GetMessageClassesForFiles([fd.name], dpool)
-    _ = msgs["google.protobuf.Struct"]
-    _ = msgs["google.protobuf.Value"]
-    _ = msgs["google.protobuf.ListValue"]
+
+    ##
+    # HACK! Doing this _appears_ to solve the mysterious segfault cause by
+    # using Struct inside a temporary descriptor pool. The inspiration for this
+    # was:
+    #
+    # https://github.com/protocolbuffers/protobuf/issues/12047
+    #
+    # NOTE: This only works for protobuf 4.X (and as far as we know, it's not
+    #     needed for 3.X)
+    ##
+    try:
+        # Third Party
+        from google.protobuf.message_factory import GetMessageClassesForFiles
+
+        msgs = GetMessageClassesForFiles([fd.name], dpool)
+        _ = msgs["google.protobuf.Struct"]
+        _ = msgs["google.protobuf.Value"]
+        _ = msgs["google.protobuf.ListValue"]
+
+    # Nothing to do for protobuf 3.X
+    except ImportError:
+        pass
     yield dpool
     # pylint: disable=duplicate-code
     descriptor_pool._DEFAULT = global_dpool

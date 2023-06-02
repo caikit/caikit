@@ -34,6 +34,9 @@ jobs:
             tox: 'py310'
           - setup: '3.11'
             tox: 'py311'
+          # Special matrix entry to ensure protobuf 3 compatibility
+          - setup: '3.8'
+            tox: 'proto3'
 
     steps:
       - uses: actions/checkout@v3
