@@ -16,10 +16,8 @@ from importlib.metadata import version
 from typing import Optional
 from uuid import uuid4
 import concurrent.futures
-import importlib
 import multiprocessing
 import os
-import re
 import threading
 import traceback
 
@@ -41,7 +39,6 @@ from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import clean_lib_names, get_data_model
 from caikit.runtime.utils.servicer_util import (
     build_caikit_library_request_dict,
-    snake_to_upper_camel,
     validate_data_model,
 )
 from caikit.runtime.work_management.train_executors import (
@@ -120,29 +117,14 @@ class GlobalTrainServicer:
 
         try:
             with alog.ContextLog(log.debug, outer_scope_name):
-                # SampleTaskSampleModuleTrainRequest
-                # getattr(importlib.import_module("sample_lib.modules.sample_task"), "SampleModule")
-                # TODO: fixme - temporary workaround for now
-                desc_name = desc_name.replace("TrainRequest", "")
-                split = re.split("(?<=.)(?=[A-Z])", desc_name)
-                model = None
-                try:
-                    model = getattr(
-                        importlib.import_module(
-                            f"{self.library}.{split[0].lower()}.{split[1].lower()}"
-                        ),
-                        f"{''.join(split[2:])}",
-                    )
-
-                except Exception:  # pylint: disable=broad-exception-caught
-                    for mod in caikit.core.registries.module_registry().values():
-                        if mod.TASK_CLASS:
-                            train_request_for_mod = (
-                                ModuleClassTrainRPC.module_class_to_req_name(mod)
-                            )
-                            if train_request_for_mod == desc_name:
-                                model = mod
-                                break
+                for mod in caikit.core.registries.module_registry().values():
+                    if mod.TASK_CLASS:
+                        train_request_for_mod = (
+                            ModuleClassTrainRPC.module_class_to_req_name(mod)
+                        )
+                        if train_request_for_mod == desc_name:
+                            model = mod
+                            break
 
                 # At this point, if model is still None, we don't know the module this request
                 # is for
