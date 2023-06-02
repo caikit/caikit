@@ -39,6 +39,7 @@ from caikit.core import (  # NOTE: Imported from the top to validate
 )
 from caikit.core.data_model import enums
 from caikit.core.data_model.base import DataBase, _DataBaseMetaClass
+from caikit.core.data_model.data_backends.dict_backend import DictBackend
 from caikit.core.data_model.dataobject import (
     _AUTO_GEN_PROTO_CLASSES,
     render_dataobject_protos,
@@ -520,6 +521,28 @@ def test_dataobject_primitive_oneof_round_trips():
         "foo_int": 2,
     }
     assert Foo.from_json(json_repr_foo) == foo1
+
+
+def test_dataobject_oneof_from_backend():
+    """Make sure that a oneof can be correctly accessed from a backend"""
+
+    @dataobject
+    class Foo(DataObjectBase):
+        foo: Union[int, str]
+
+    data_dict1 = {"fooint": 1234}
+    backend1 = DictBackend(data_dict1)
+    msg1 = Foo.from_backend(backend1)
+    assert msg1.foo == 1234
+    assert msg1.fooint == 1234
+    assert msg1.which_oneof("foo") == "fooint"
+
+    data_dict2 = {"foo": 1234}
+    backend2 = DictBackend(data_dict2)
+    msg2 = Foo.from_backend(backend2)
+    assert msg2.foo == 1234
+    assert msg2.fooint == 1234
+    assert msg2.which_oneof("foo") == "fooint"
 
 
 def test_dataobject_round_trip_json():
