@@ -129,7 +129,7 @@ def extract_data_model_type_from_union(arg_type: Type) -> Type:
 
 def is_protoable_type(arg_type: Type) -> bool:
     """
-    Returns True is arg_type is in PROTO_TYPE_MAP(float, int, bool, str, bytes)
+    Returns True if arg_type is in PROTO_TYPE_MAP(float, int, bool, str, bytes)
     Or if it's an imported Caikit data model class.
     Or if it's a Union of at least one of those.
     Or if it's a List of one of those.
