@@ -21,11 +21,11 @@ import inspect
 import typing
 
 # First Party
-from py_to_proto.dataclass_to_proto import PY_TO_PROTO_TYPES
 import alog
 
 # Local
 from caikit.core.data_model.base import DataBase
+from caikit.core.data_model.dataobject import DATAOBJECT_PY_TO_PROTO_TYPES
 
 log = alog.use_channel("PROTOABLES")
 
@@ -134,7 +134,7 @@ def is_protoable_type(arg_type: Type) -> bool:
     Or if it's a Union of at least one of those.
     Or if it's a List of one of those.
     False otherwise"""
-    proto_primitive_set = list(PY_TO_PROTO_TYPES.keys())
+    proto_primitive_set = list(DATAOBJECT_PY_TO_PROTO_TYPES.keys())
 
     if arg_type in proto_primitive_set:
         return True
