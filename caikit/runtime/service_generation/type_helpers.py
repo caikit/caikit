@@ -22,11 +22,6 @@ from typing import Optional, Type, Union, get_args, get_origin
 # Local
 from caikit.core import ModuleBase
 from caikit.core.data_model import DataStream
-import caikit.core
-
-# Constants #########################################
-# The common prefix for all data model package names
-caikit.core_DATA_MODEL_PREFIX = "caikit.core_data_model"
 
 
 def has_data_stream(arg_type: Type) -> bool:
