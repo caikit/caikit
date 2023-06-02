@@ -109,15 +109,15 @@ class DictBackend(DataModelBackendBase):
         # instead and return the right value
         if name in data_model_class._fields_oneofs_map:
             if name in self._data_dict:
-                val = self._data_dict.get(name)
+                val = self._data_dict[name]
                 which_oneof = data_model_class._infer_which_oneof(name, val)
                 return data_model_class.OneofFieldVal(val=val, which_oneof=which_oneof)
 
-            oneof_fields = data_model_class._fields_oneofs_map.get(name)
+            oneof_fields = data_model_class._fields_oneofs_map[name]
             for field in oneof_fields:
                 if field in self._data_dict:
                     return data_model_class.OneofFieldVal(
-                        val=self._data_dict.get(field), which_oneof=field
+                        val=self._data_dict[field], which_oneof=field
                     )
 
         return raw_value
