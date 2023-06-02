@@ -143,11 +143,7 @@ def is_protoable_type(arg_type: Type) -> bool:
 
     if typing.get_origin(arg_type) == list:
         log.debug2("Arg is List")
-        # check that list is not nested
-        if len(typing.get_args(arg_type)) == 1:
-            return typing.get_args(arg_type)[0] in proto_primitive_set
-        # TODO: that check is always true
-        log.debug2("Arg is a list more than one type")
+        return typing.get_args(arg_type)[0] in proto_primitive_set
 
     if typing.get_origin(arg_type) == Union:
         log.debug2("Arg is Union")
