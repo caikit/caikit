@@ -24,7 +24,7 @@ import time
 import unittest
 
 # Local
-from caikit.runtime.work_management.destroyable_thread import (
+from caikit.core.toolkit.destroyable_thread import (
     DestroyableThread,
     ThreadDestroyedException,
 )

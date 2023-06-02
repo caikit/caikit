@@ -29,8 +29,8 @@ import alog
 
 # Local
 from caikit.core.modules import ModuleBase
+from caikit.core.toolkit.destroyable_thread import DestroyableThread
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.work_management.destroyable_thread import DestroyableThread
 import caikit.core
 
 log = alog.use_channel("TRN_EXCTRS")

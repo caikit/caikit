@@ -18,8 +18,8 @@ import threading
 import alog
 
 # Local
+from caikit.core.toolkit.destroyable_thread import DestroyableThread
 from caikit.runtime.types.aborted_exception import AbortedException
-from caikit.runtime.work_management.destroyable_thread import DestroyableThread
 
 log = alog.use_channel("ABORT-ACTION")
 
