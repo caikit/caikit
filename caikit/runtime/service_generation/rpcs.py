@@ -164,10 +164,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         return: BlocksSampleTaskSampleModuleTrainRequest
 
         """
-        module_split = self.clz.__module__.split(".")
-        return snake_to_upper_camel(
-            f"{module_split[1]}_{module_split[2]}_{self.clz.__name__}_TrainRequest"
-        )
+        return f"{self._module_class_to_rpc_name()}Request"
 
     @staticmethod
     def _mutate_method_signature_for_training(
