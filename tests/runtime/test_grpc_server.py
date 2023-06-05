@@ -265,6 +265,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
     sample_int_file,
     train_stub,
     inference_stub,
+    training_management_stub,
     sample_train_service,
     sample_inference_service,
 ):
@@ -287,9 +288,20 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
     actual_response = train_stub.OtherTaskOtherModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, "Bar Training")
 
-    # give the trained model time to load
-    # TODO: no sleeps in tests!
-    time.sleep(1)
+    for i in range(10):
+        training_info_request = TrainingInfoRequest(
+            training_id=actual_response.training_id
+        )
+        training_management_response: TrainingInfoResponse = (
+            TrainingInfoResponse.from_proto(
+                training_management_stub.GetTrainingStatus(
+                    training_info_request.to_proto()
+                )
+            )
+        )
+        assert training_management_response.status != TrainingStatus.FAILED
+        if training_management_response.status == TrainingStatus.COMPLETED:
+            break
 
     # make sure the trained model can run inference, and the batch size 100 was used
     predict_request = sample_inference_service.messages.OtherTaskRequest(
