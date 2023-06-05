@@ -175,6 +175,15 @@ class TestModelManager(TestCaseBase):
         # pylint: disable = import-outside-toplevel,no-name-in-module,unused-import
         from caikit.core.model_manager import module_registry  # isort: skip
 
+    def test_load_model_with_no_module_id(self):
+        """Test that we can load a module with the legacy block_id instead of module_id, and that
+        a DeprecationWarning is raised.
+        """
+        model_path = os.path.join(self.fixtures_dir, DUMMY_NO_ID_MODEL_NAME)
+        with pytest.deprecated_call():
+            model = caikit.core.load(model_path)
+            self.assertIsInstance(model, caikit.core.ModuleBase)
+
 
 # Pytest tests #########################################################
 
@@ -185,6 +194,7 @@ DUMMY_MODULE_ID = "foo"
 TEST_DATA_PATH = os.path.join("tests", "fixtures")
 DUMMY_LOCAL_MODEL_NAME = "dummy_module_foo"
 DUMMY_BACKEND_MODEL_NAME = "dummy_module_backend"
+DUMMY_NO_ID_MODEL_NAME = "dummy_module_no_id"
 CONFIG_FILE_NAME = "config.yml"
 
 

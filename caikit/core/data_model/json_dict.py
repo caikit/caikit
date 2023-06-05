@@ -18,8 +18,7 @@ dicts as protobuf Struct objects
 from typing import Dict, List, Optional, Union
 
 # Third Party
-from google.protobuf import struct_pb2
-from google.protobuf.message_factory import GetMessageClass
+from google.protobuf import descriptor, message_factory, struct_pb2
 
 # Type hints for JSON serializable dicts
 JsonDictValue = Union[
@@ -47,13 +46,13 @@ def dict_to_struct(
         list_value_class = struct_pb2.ListValue
     else:
         if value_class is None:
-            value_class = GetMessageClass(
+            value_class = _get_message_class(
                 struct_class.DESCRIPTOR.file.pool.FindMessageTypeByName(
                     "google.protobuf.Value"
                 )
             )
         if list_value_class is None:
-            list_value_class = GetMessageClass(
+            list_value_class = _get_message_class(
                 struct_class.DESCRIPTOR.file.pool.FindMessageTypeByName(
                     "google.protobuf.ListValue"
                 )
@@ -136,3 +135,14 @@ def _struct_value_to_py(struct_value: struct_pb2.Value) -> JsonDictValue:
         return struct_to_dict(struct_value.struct_value)
     if which == "list_value":
         return [_struct_value_to_py(item) for item in struct_value.list_value.values]
+
+
+def _get_message_class(
+    desc: descriptor.Descriptor,
+) -> message_factory.message.Message:
+    """Helper to get the concrete protobuf class from a descriptor. This
+    supports compatibility between protobuf 3.X and 4.X
+    """
+    if hasattr(message_factory, "GetMessageClass"):
+        return message_factory.GetMessageClass(desc)  # pragma: no cover
+    return message_factory.MessageFactory().GetPrototype(desc)  # pragma: no cover

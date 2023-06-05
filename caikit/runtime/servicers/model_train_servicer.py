@@ -25,9 +25,9 @@ import alog
 # Local
 from caikit.runtime.protobufs import process_pb2, process_pb2_grpc
 from caikit.runtime.service_factory import ServicePackage
+from caikit.runtime.service_generation.rpcs import ModuleClassTrainRPC
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.utils.servicer_util import snake_to_upper_camel
 import caikit.core
 
 log = alog.use_channel("MT-SERVICR-I")
@@ -42,7 +42,7 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
         self._training_service = training_service
         self._gts = GlobalTrainServicer(self._training_service)
 
-    def Run(self, request, context=None):
+    def Run(self, request, context):
         """`Run` RPC -- launches a training job.
         Args:
             request(process_pb2.ProcessRequest):
@@ -71,10 +71,7 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
 
             # prepare the model's train request
             training_params = json.loads(request_dict["training_params"])
-            module_split = train_module.__module__.split(".")
-            request_name = snake_to_upper_camel(
-                f"{module_split[1]}_{module_split[2]}_{train_module.__name__}_TrainRequest"
-            )
+            request_name = ModuleClassTrainRPC.module_class_to_req_name(train_module)
             log.debug("<RUN22972949D>", "request_name: %s", request_name)
 
             if not hasattr(self._training_service.messages, request_name):
@@ -90,11 +87,13 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
             )
             # make the train call
             log.debug("Training output dir: %s", request.training_output_dir)
+
             training_response = self._gts.run_training_job(
                 request=train_message_request,
                 model=train_module,
                 training_id=request.trainingID,
                 training_output_dir=request.training_output_dir,
+                context=context,
                 wait=True,
             )
             log.debug("<RUN00837184D>", "training_response: %s", training_response)

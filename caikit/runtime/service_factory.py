@@ -36,7 +36,6 @@ from caikit.interfaces.runtime.data_model import (
     TrainingInfoResponse,
 )
 from caikit.runtime import service_generation
-from caikit.runtime.service_generation.core_module_helpers import get_module_info
 from caikit.runtime.service_generation.rpcs import snake_to_upper_camel
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils import import_util
@@ -203,13 +202,31 @@ class ServicePackageFactory:
 
         for ck_module in modules:
             # Only create for modules from defined included and exclusion list
-            module_info = get_module_info(ck_module)
-            if excluded_task_types and module_info.type in excluded_task_types:
-                log.debug("Skipping module %s of type %s", ck_module, module_info.type)
+
+            if not ck_module.TASK_CLASS:
+                log.debug(
+                    "Skipping module %s with no task",
+                    ck_module,
+                )
+                continue
+
+            if (
+                excluded_task_types
+                and ck_module.TASK_CLASS.__name__ in excluded_task_types
+            ):
+                log.debug(
+                    "Skipping module %s with excluded task %s",
+                    ck_module,
+                    ck_module.TASK_CLASS.__name__,
+                )
                 continue
 
             if excluded_modules and ck_module.MODULE_ID in excluded_modules:
-                log.debug("Skipping module %s of id %s", ck_module, ck_module.MODULE_ID)
+                log.debug(
+                    "Skipping module %s with excluded id %s",
+                    ck_module,
+                    ck_module.MODULE_ID,
+                )
                 continue
 
             # no inclusions specified means include everything
@@ -221,7 +238,8 @@ class ServicePackageFactory:
             # if inclusion is specified, use that
             else:
                 if (included_modules and ck_module.MODULE_ID in included_modules) or (
-                    included_task_types and module_info.type in included_task_types
+                    included_task_types
+                    and ck_module.TASK_CLASS.__name__ in included_task_types
                 ):
                     clean_modules.add(ck_module)
 

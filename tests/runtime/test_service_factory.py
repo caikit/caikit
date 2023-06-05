@@ -13,18 +13,15 @@
 # limitations under the License.
 
 """Unit tests for the service factory"""
-# Standard
-from types import ModuleType
 
 # Third Party
 import pytest
 
 # Local
 from caikit.runtime.service_factory import ServicePackageFactory
-from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from sample_lib.modules.sample_task import ListModule
 from tests.conftest import temp_config
 import caikit
-import sample_lib
 
 ### Private method tests #############################################################
 
@@ -40,12 +37,12 @@ def test_get_and_filter_modules_respects_excluded_task_type():
     with temp_config(
         {
             "runtime": {
-                "service_generation": {"task_types": {"excluded": ["sample_task"]}}
+                "service_generation": {"task_types": {"excluded": ["SampleTask"]}}
             }
         }
     ) as cfg:
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert "sample_task" not in str(clean_modules)
+        assert "SampleModule" not in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_excluded_modules():
@@ -54,16 +51,16 @@ def test_get_and_filter_modules_respects_excluded_modules():
         {
             "runtime": {
                 "service_generation": {
-                    "module_guids": {
-                        "excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]
-                    }
+                    "module_guids": {"excluded": [ListModule.MODULE_ID]}
                 }
             }
-        }  # excluding InnerModule
+        }
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert "InnerModule" not in str(clean_modules)
+        assert "ListModule" not in str(clean_modules)
+        assert "SampleModule" in str(clean_modules)
+        assert "OtherModule" in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type():
@@ -72,19 +69,17 @@ def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type
         {
             "runtime": {
                 "service_generation": {
-                    "module_guids": {
-                        "excluded": ["00110203-baad-beef-0809-0a0b02dd0e0f"]
-                    },
-                    "task_types": {"excluded": ["other_task"]},
+                    "module_guids": {"excluded": [ListModule.MODULE_ID]},
+                    "task_types": {"excluded": ["OtherTask"]},
                 }
             }
-        }  # excluding InnerModule and OtherModule
+        }
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert "InnerModule" not in str(clean_modules)
+        assert "ListModule" not in str(clean_modules)
         assert "OtherModule" not in str(clean_modules)
-        assert "other_task" not in str(clean_modules)
+        assert "SampleModule" in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_included_modules_and_included_task_types():
@@ -92,20 +87,17 @@ def test_get_and_filter_modules_respects_included_modules_and_included_task_type
         {
             "runtime": {
                 "service_generation": {
-                    "module_guids": {
-                        "included": ["00110203-baad-beef-0809-0a0b02dd0e0f"]
-                    },
-                    "task_types": {"included": ["other_task"]},
+                    "module_guids": {"included": [ListModule.MODULE_ID]},
+                    "task_types": {"included": ["OtherTask"]},
                 }
             }
-        }  # only want InnerModule and OtherModule
+        }
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
         assert len(clean_modules) == 2
-        assert "InnerModule" in str(clean_modules)
         assert "OtherModule" in str(clean_modules)
-        assert "ListModule" not in str(clean_modules)
+        assert "ListModule" in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_included_modules():
@@ -113,22 +105,16 @@ def test_get_and_filter_modules_respects_included_modules():
         {
             "runtime": {
                 "service_generation": {
-                    "module_guids": {
-                        "included": [
-                            "00110203-baad-beef-0809-0a0b02dd0e0f",
-                            "00af2203-0405-0607-0263-0a0b02dd0c2f",
-                        ]
-                    },
+                    "module_guids": {"included": [ListModule.MODULE_ID]},
                 }
             }
-        }  # only want InnerModule and ListModule
+        }
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert len(clean_modules) == 2
-        assert "InnerModule" in str(clean_modules)
+        assert len(clean_modules) == 1
         assert "ListModule" in str(clean_modules)
-        assert "OtherModule" not in str(clean_modules)
+        assert "SampleModule" not in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_included_task_types():
@@ -136,15 +122,17 @@ def test_get_and_filter_modules_respects_included_task_types():
         {
             "runtime": {
                 "service_generation": {
-                    "task_types": {"included": ["sample_task"]},
+                    "task_types": {"included": ["SampleTask"]},
                 }
             }
-        }  # only want sample_task which has 6 modules
+        }
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert "InnerModule" in str(clean_modules)
+        assert "SampleModule" in str(clean_modules)
         assert "OtherModule" not in str(clean_modules)
+        # InnerModule has no task
+        assert "InnerModule" not in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_included_task_types_and_excluded_modules():
@@ -152,15 +140,13 @@ def test_get_and_filter_modules_respects_included_task_types_and_excluded_module
         {
             "runtime": {
                 "service_generation": {
-                    "task_types": {"included": ["sample_task"]},
-                    "module_guids": {
-                        "excluded": ["00af2203-0405-0607-0263-0a0b02dd0c2f"]
-                    },
+                    "task_types": {"included": ["SampleTask"]},
+                    "module_guids": {"excluded": [ListModule.MODULE_ID]},
                 }
             }
-        }  # only want sample_task but not ListModule
+        }
     ) as cfg:
 
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert "InnerModule" in str(clean_modules)
+        assert "SampleModule" in str(clean_modules)
         assert "ListModule" not in str(clean_modules)

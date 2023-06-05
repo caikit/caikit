@@ -17,55 +17,43 @@ collection of caikit.core derived libraries
 """
 
 # Standard
-from enum import Enum
-from typing import List, Type
+from typing import Dict, List, Type
 
 # First Party
 import alog
 
 # Local
-from ... import get_config
-from .core_module_helpers import get_module_info
-from .primitives import is_primitive_method
 from .rpcs import CaikitRPCBase, ModuleClassTrainRPC, TaskPredictRPC
-from caikit.core import ModuleBase
+from caikit.core import ModuleBase, TaskBase
 from caikit.core.signature_parsing.module_signature import CaikitMethodSignature
 
 log = alog.use_channel("CREATE-RPCS")
 
 ## Globals #####################################################################
 
-INFERENCE_FUNCTION_NAME = "run"
 TRAIN_FUNCTION_NAME = "train"
 
 ## Utilities ###################################################################
 
 
-class ServiceType(Enum):
-    INFERENCE = 1
-    TRAINING = 2
-
-
 def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
     """Handles the logic to create all the RPCs for inference"""
-
-    primitive_data_model_types = (
-        get_config().runtime.service_generation.primitive_data_model_types
-    )
-
     rpcs = []
-    # Inference specific logic:
-    # Remove non-primitive modules (including modules that return None type)
-    primitive_modules = _remove_non_primitive_modules(
-        modules, primitive_data_model_types
-    )
+    task_groups = _group_modules_by_task(modules)
 
-    # Create the RPCs for each module
-    rpcs.extend(
-        _create_rpcs_for_modules(
-            primitive_modules, primitive_data_model_types, INFERENCE_FUNCTION_NAME
-        )
-    )
+    # Create the RPC for each task
+    for task, task_methods in task_groups.items():
+        with alog.ContextLog(log.debug, "Generating task RPC for %s", task):
+            try:
+                rpcs.append(TaskPredictRPC(task, task_methods))
+                log.debug("Successfully generated task RPC for %s", task)
+            except Exception as err:  # pylint: disable=broad-exception-caught
+                log.warning(
+                    "Cannot generate task rpc for %s: %s",
+                    task,
+                    err,
+                    exc_info=True,
+                )
 
     return rpcs
 
@@ -75,11 +63,11 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
 
     rpcs = []
 
-    primitive_data_model_types = (
-        get_config().runtime.service_generation.primitive_data_model_types
-    )
-
     for ck_module in modules:
+        if not ck_module.TASK_CLASS:
+            log.debug("Skipping module %s with no task", ck_module)
+            continue
+
         # If this train function has not been changed from the base, skip it as
         # a module that can't be trained
         #
@@ -94,7 +82,7 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
             )
             continue
 
-        signature = CaikitMethodSignature(ck_module, TRAIN_FUNCTION_NAME)
+        signature = ck_module.TRAIN_SIGNATURE
         log.debug(
             "Function signature for %s::%s [%s -> %s]",
             ck_module,
@@ -104,7 +92,7 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
         )
         with alog.ContextLog(log.debug, "Generating train RPC for %s", ck_module):
             try:
-                rpcs.append(ModuleClassTrainRPC(signature, primitive_data_model_types))
+                rpcs.append(ModuleClassTrainRPC(signature))
                 log.debug("Successfully generated train RPC for %s", ck_module)
             except Exception as err:  # pylint: disable=broad-exception-caught
                 log.warning(
@@ -116,55 +104,15 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
     return rpcs
 
 
-def _remove_non_primitive_modules(
+def _group_modules_by_task(
     modules: List[Type[ModuleBase]],
-    primitive_data_model_types: List[str],
-) -> List[Type[ModuleBase]]:
-    primitive_modules = []
-    # If the module is not "primitive" we won't include it
-    for ck_module in modules:
-        signature = CaikitMethodSignature(ck_module, "run")
-        if signature.parameters and signature.return_type:
-            if not is_primitive_method(signature, primitive_data_model_types):
-                log.debug("Skipping non-primitive module %s", ck_module)
-                continue
-
-            primitive_modules.append(ck_module)
-    return primitive_modules
-
-
-def _create_rpcs_for_modules(
-    modules: List[Type[ModuleBase]],
-    primitive_data_model_types: List[str],
-    fname: str = INFERENCE_FUNCTION_NAME,
-) -> List[CaikitRPCBase]:
-    """Create the RPCs for each module"""
-    rpcs = []
+) -> Dict[Type[TaskBase], List[CaikitMethodSignature]]:
     task_groups = {}
-
     for ck_module in modules:
-        module_info = get_module_info(ck_module)
-        signature = CaikitMethodSignature(ck_module, fname)
-        # Group each module by its task
-        if module_info is not None:
-            task_groups.setdefault((module_info.library, module_info.type), []).append(
-                signature
-            )
-
-    # Create the RPC for each task
-    for task, task_methods in task_groups.items():
-        with alog.ContextLog(log.debug, "Generating task RPC for %s", task):
-            try:
-                rpcs.append(
-                    TaskPredictRPC(task, task_methods, primitive_data_model_types)
+        if ck_module.TASK_CLASS:
+            ck_module_task_name = ck_module.TASK_CLASS.__name__
+            if ck_module_task_name is not None:
+                task_groups.setdefault(ck_module.TASK_CLASS, []).append(
+                    ck_module.RUN_SIGNATURE
                 )
-                log.debug("Successfully generated task RPC for %s", task)
-            except Exception as err:  # pylint: disable=broad-exception-caught
-                log.warning(
-                    "Cannot generate task rpc for %s: %s",
-                    task,
-                    err,
-                    exc_info=True,
-                )
-
-    return rpcs
+    return task_groups

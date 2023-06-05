@@ -21,6 +21,7 @@ import socket
 
 # Third Party
 from grpc_health.v1 import health, health_pb2_grpc
+from grpc_reflection.v1alpha import reflection
 from prometheus_client import start_http_server
 from py_grpc_prometheus.prometheus_server_interceptor import PromServerInterceptor
 import grpc
@@ -35,7 +36,11 @@ from caikit import get_config
 from caikit.runtime.interceptors.caikit_runtime_server_wrapper import (
     CaikitRuntimeServerWrapper,
 )
-from caikit.runtime.protobufs import model_runtime_pb2_grpc, process_pb2_grpc
+from caikit.runtime.protobufs import (
+    model_runtime_pb2,
+    model_runtime_pb2_grpc,
+    process_pb2_grpc,
+)
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
@@ -88,14 +93,17 @@ class RuntimeGRPCServer:
             interceptors=(PROMETHEUS_METRICS_INTERCEPTOR,),
         )
 
+        # Start tracking service names for reflection
+        service_names = [reflection.SERVICE_NAME]
+
         # Intercept an Inference Service
         self._global_predict_servicer = GlobalPredictServicer(self.inference_service)
         self.server = CaikitRuntimeServerWrapper(
             server=self.server,
             global_predict=self._global_predict_servicer.Predict,
             intercepted_svc_descriptor=self.inference_service.descriptor,
-            excluded_methods=["/natural_language_understanding.CaikitRuntime/Echo"],
         )
+        service_names.append(self.inference_service.descriptor.full_name)
 
         # Register inference service
         self.inference_service.registration_function(
@@ -109,8 +117,8 @@ class RuntimeGRPCServer:
                 server=self.server,
                 global_predict=global_train_servicer.Train,
                 intercepted_svc_descriptor=self.training_service.descriptor,
-                excluded_methods=None,
             )
+            service_names.append(self.training_service.descriptor.full_name)
 
             # Register training service
             self.training_service.registration_function(
@@ -128,6 +136,7 @@ class RuntimeGRPCServer:
                     ServicePackageFactory.ServiceType.TRAINING_MANAGEMENT,
                 )
             )
+            service_names.append(training_management_service.descriptor.full_name)
 
             training_management_service.registration_function(
                 TrainingManagementServicerImpl(), self.server
@@ -137,6 +146,9 @@ class RuntimeGRPCServer:
         model_runtime_pb2_grpc.add_ModelRuntimeServicer_to_server(
             ModelRuntimeServicerImpl(), self.server
         )
+        service_names.append(
+            model_runtime_pb2.DESCRIPTOR.services_by_name["ModelRuntime"].full_name
+        )
 
         # Add gRPC default health servicer.
         # We use the non-blocking implementation to avoid thread starvation.
@@ -145,6 +157,9 @@ class RuntimeGRPCServer:
             experimental_thread_pool=futures.ThreadPoolExecutor(max_workers=1),
         )
         health_pb2_grpc.add_HealthServicer_to_server(health_servicer, self.server)
+
+        # Finally enable service reflection after all services are added
+        reflection.enable_server_reflection(service_names, self.server)
 
         # Listen on a unix socket as well for model mesh.
         if self.config.runtime.unix_socket_path and os.path.exists(

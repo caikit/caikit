@@ -17,7 +17,7 @@ This package has classes that will serialize a python interface to a protocol bu
 Typically used for `caikit.core.module`s that expose .train and .run functions.
 """
 # Standard
-from typing import Any, Dict, List, Optional, Tuple, Type, Union, get_args, get_origin
+from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
 import abc
 import copy
 
@@ -29,10 +29,10 @@ from py_to_proto.dataclass_to_proto import (  # NOTE: Imported from here for com
 import alog
 
 # Local
-from . import primitives, type_helpers
+from . import protoable, type_helpers
 from .compatibility_checker import ApiFieldNames
 from .data_stream_source import make_data_stream_source
-from caikit.core import ModuleBase
+from caikit.core import ModuleBase, TaskBase
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import (
     DataObjectBase,
@@ -113,23 +113,18 @@ class ModuleClassTrainRPC(CaikitRPCBase):
     def __init__(
         self,
         method_signature: CaikitMethodSignature,
-        primitive_data_model_types: List[str],
     ):
         """Initialize a .proto generator with a single module to convert
 
         Args:
             method_signature (CaikitMethodSignature): The module method signature to
             generate an RPC for
-
-            primitive_data_model_types: List[str]
-                List of primitive data model types for a caikit_* library, such as
-                caikit.interfaces.nlp.data_model.RawDocument for nlp domains
         """
         self.clz: Type[ModuleBase] = method_signature.module
         self._method = ModuleClassTrainRPC._mutate_method_signature_for_training(
-            method_signature, primitive_data_model_types
+            method_signature
         )
-        self.name = self._module_class_to_rpc_name()
+        self.name = ModuleClassTrainRPC.module_class_to_rpc_name(self.clz)
 
         # Compute the mapping from argument name to type for the module's run
         log.debug3("Param Dict: %s", self._method.parameters)
@@ -138,7 +133,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         # Store the input and output protobuf message types for this RPC
         self.return_type = self._method.return_type
         self._req = _RequestMessage(
-            self._module_class_to_req_name(),
+            ModuleClassTrainRPC.module_class_to_req_name(self.clz),
             self._method.parameters,
             self._method.default_parameters,
         )
@@ -152,32 +147,30 @@ class ModuleClassTrainRPC(CaikitRPCBase):
     def request(self) -> "_RequestMessage":
         return self._req
 
-    def _module_class_to_rpc_name(self) -> str:
+    @staticmethod
+    def module_class_to_rpc_name(module_class: Type[ModuleBase]) -> str:
         """Helper function to convert from the name of a module to the name of the
         request RPC function
         """
-        module_split = self.clz.__module__.split(".")
         return snake_to_upper_camel(
-            f"{module_split[1]}_{module_split[2]}_{self.clz.__name__}_Train"
+            f"{module_class.TASK_CLASS.__name__}_{module_class.__name__}_Train"
         )
 
-    def _module_class_to_req_name(self) -> str:
+    @staticmethod
+    def module_class_to_req_name(module_class: Type[ModuleBase]) -> str:
         """Helper function to convert from the name of a module to the name of the
         request RPC message
 
         Example: self.clz._module__ = sample_lib.modules.sample_task.sample_implementation
 
-        return: BlocksSampleTaskSampleModuleTrainRequest
+        return: SampleTaskSampleModuleTrainRequest
 
         """
-        module_split = self.clz.__module__.split(".")
-        return snake_to_upper_camel(
-            f"{module_split[1]}_{module_split[2]}_{self.clz.__name__}_TrainRequest"
-        )
+        return f"{ModuleClassTrainRPC.module_class_to_rpc_name(module_class)}Request"
 
     @staticmethod
     def _mutate_method_signature_for_training(
-        signature, primitive_data_model_types: List[str]
+        signature: CaikitMethodSignature,
     ) -> Optional[CaikitMethodSignature]:
         # Change return type for async training interface
         return_type = TrainingJob
@@ -198,9 +191,8 @@ class ModuleClassTrainRPC(CaikitRPCBase):
                 # Found a model pointer
                 new_params[name] = ModelPointer
             else:
-                new_params[name] = primitives.handle_primitives_in_union(
+                new_params[name] = protoable.handle_protoables_in_union(
                     arg_type=typ,
-                    primitive_data_model_types=primitive_data_model_types,
                 )
 
         return CustomSignature(
@@ -215,22 +207,16 @@ class TaskPredictRPC(CaikitRPCBase):
 
     def __init__(
         self,
-        task: Tuple[str, str],
+        task: Type[TaskBase],
         method_signatures: List[CaikitMethodSignature],
-        primitive_data_model_types: List[str],
     ):
         """Initialize a .proto generator with all modules of a given task to convert
 
         Args:
-            task (Tuple[str, str]): The library / ai-problem-task combo that describes the task
-                type. For example: ("my_caikit_library", "classification")
+            task (Type[TaskBase]): Task type
 
             method_signatures (List[CaikitMethodSignature]): The list of method
                 signatures from concrete modules implementing this task
-
-            primitive_data_model_types: List[str]
-                List of primitive data model types for a caikit_* library, such as
-                caikit.interfaces.nlp.data_model.RawDocument for nlp domains
         """
         self.task = task
         self._module_list = [method.module for method in method_signatures]
@@ -241,9 +227,7 @@ class TaskPredictRPC(CaikitRPCBase):
         default_parameters = {}
         for method in method_signatures:
             default_parameters.update(method.default_parameters)
-            primitive_arg_dict = primitives.to_primitive_signature(
-                method.parameters, primitive_data_model_types
-            )
+            primitive_arg_dict = protoable.to_protoable_signature(method.parameters)
             for arg_name, arg_type in primitive_arg_dict.items():
                 current_val = parameters_dict.get(arg_name, arg_type)
                 # TODO: raise runtime error here instead of assert!
@@ -262,7 +246,7 @@ class TaskPredictRPC(CaikitRPCBase):
         return_types = {method.return_type for method in method_signatures}
         assert len(return_types) == 1, f"Found multiple return types for task [{task}]"
         return_type = list(return_types)[0]
-        self.return_type = primitives.extract_data_model_type_from_union(return_type)
+        self.return_type = protoable.extract_data_model_type_from_union(return_type)
 
         # Create the rpc name based on the module type
         self.name = self._task_to_rpc_name()
@@ -282,7 +266,7 @@ class TaskPredictRPC(CaikitRPCBase):
         """Helper function to convert the pair of library name and task name to
         a request message name
         """
-        return snake_to_upper_camel(f"{self.task[1]}_Request")
+        return snake_to_upper_camel(f"{self.task.__name__}_Request")
 
     def _task_to_rpc_name(self) -> str:
         """Helper function to convert the pair of library name and task name
@@ -292,8 +276,7 @@ class TaskPredictRPC(CaikitRPCBase):
 
         return: SampleTaskPredict
         """
-
-        return snake_to_upper_camel(f"{self.task[1]}_Predict")
+        return snake_to_upper_camel(f"{self.task.__name__}_Predict")
 
 
 class _RequestMessage:

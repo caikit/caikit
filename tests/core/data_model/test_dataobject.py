@@ -26,7 +26,6 @@ import tempfile
 # Third Party
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pb2, descriptor_pool, message, struct_pb2
-from google.protobuf.message_factory import GetMessageClassesForFiles
 import numpy as np
 import pytest
 
@@ -40,6 +39,7 @@ from caikit.core import (  # NOTE: Imported from the top to validate
 )
 from caikit.core.data_model import enums
 from caikit.core.data_model.base import DataBase, _DataBaseMetaClass
+from caikit.core.data_model.data_backends.dict_backend import DictBackend
 from caikit.core.data_model.dataobject import (
     _AUTO_GEN_PROTO_CLASSES,
     render_dataobject_protos,
@@ -59,13 +59,29 @@ def temp_dpool():
     fd = descriptor_pb2.FileDescriptorProto()
     struct_pb2.DESCRIPTOR.CopyToProto(fd)
     dpool.Add(fd)
-    # HACK! Doing this _appears_ to solve the mysterious segfault cause by using
-    #   Struct inside a temporary descriptor pool. The inspiration for this was
-    #   https://github.com/protocolbuffers/protobuf/issues/12047
-    msgs = GetMessageClassesForFiles([fd.name], dpool)
-    _ = msgs["google.protobuf.Struct"]
-    _ = msgs["google.protobuf.Value"]
-    _ = msgs["google.protobuf.ListValue"]
+
+    ##
+    # HACK! Doing this _appears_ to solve the mysterious segfault cause by
+    # using Struct inside a temporary descriptor pool. The inspiration for this
+    # was:
+    #
+    # https://github.com/protocolbuffers/protobuf/issues/12047
+    #
+    # NOTE: This only works for protobuf 4.X (and as far as we know, it's not
+    #     needed for 3.X)
+    ##
+    try:
+        # Third Party
+        from google.protobuf.message_factory import GetMessageClassesForFiles
+
+        msgs = GetMessageClassesForFiles([fd.name], dpool)
+        _ = msgs["google.protobuf.Struct"]
+        _ = msgs["google.protobuf.Value"]
+        _ = msgs["google.protobuf.ListValue"]
+
+    # Nothing to do for protobuf 3.X
+    except ImportError:
+        pass
     yield dpool
     # pylint: disable=duplicate-code
     descriptor_pool._DEFAULT = global_dpool
@@ -505,6 +521,28 @@ def test_dataobject_primitive_oneof_round_trips():
         "foo_int": 2,
     }
     assert Foo.from_json(json_repr_foo) == foo1
+
+
+def test_dataobject_oneof_from_backend():
+    """Make sure that a oneof can be correctly accessed from a backend"""
+
+    @dataobject
+    class Foo(DataObjectBase):
+        foo: Union[int, str]
+
+    data_dict1 = {"fooint": 1234}
+    backend1 = DictBackend(data_dict1)
+    msg1 = Foo.from_backend(backend1)
+    assert msg1.foo == 1234
+    assert msg1.fooint == 1234
+    assert msg1.which_oneof("foo") == "fooint"
+
+    data_dict2 = {"foo": 1234}
+    backend2 = DictBackend(data_dict2)
+    msg2 = Foo.from_backend(backend2)
+    assert msg2.foo == 1234
+    assert msg2.fooint == 1234
+    assert msg2.which_oneof("foo") == "fooint"
 
 
 def test_dataobject_round_trip_json():

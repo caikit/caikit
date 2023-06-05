@@ -65,11 +65,21 @@ def get_output_type_name(
         return type_from_docstring
 
     # If we get here, it means no annotation or docstring for type was provided
-    log.warning(
-        "Could not deduct output type from function %s for module class %s.",
-        fn_signature,
-        module_class.__name__,
-    )
+
+    # Warn unless this was a base function (e.g., don't warn if there is no train() override)
+    if fn.__module__ != ModuleBase.__module__:
+        log.warning(
+            "Could not deduct output type from function %s for module class %s.",
+            fn.__name__,
+            module_class.__name__,
+        )
+    else:
+        log.debug(
+            "Could not deduct output type from function %s for module class %s using %s.",
+            fn.__name__,
+            module_class.__name__,
+            fn.__qualname__,
+        )
 
 
 def get_argument_types(module_method: Callable) -> Dict[str, Type]:

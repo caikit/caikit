@@ -16,8 +16,11 @@
 """The base class for data model object backends"""
 
 # Standard
-from typing import Any, Type
+from typing import Any, Type, Union
 import abc
+
+# Local
+from ..base import DataBase
 
 # DataModelBackendBase #########################################################
 
@@ -28,7 +31,11 @@ class DataModelBackendBase(abc.ABC):
     """
 
     @abc.abstractmethod
-    def get_attribute(self, data_model_class: Type["DataBase"], name: str) -> Any:
+    def get_attribute(
+        self,
+        data_model_class: Type[DataBase],
+        name: str,
+    ) -> Union[Any, DataBase.OneofFieldVal]:
         """A data model backend must implement this in order to provide the
         frontend view the functionality needed to lazily extract data.
 
@@ -39,8 +46,9 @@ class DataModelBackendBase(abc.ABC):
                 The name of the attribute to access
 
         Returns:
-            value:  Any
-                The extracted attribute value
+            value:  Union[Any, OneofFieldVal]
+                The extracted attribute value or a OneofFieldVal that wraps the
+                field val with an indicator about the oneof field that is set.
         """
 
     # pylint: disable=unused-argument

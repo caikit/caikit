@@ -11,9 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 # Have pylint ignore Class XXXX has no YYYY member so that we can use gRPC enums.
 # pylint: disable=E1101
 # Standard
+from contextlib import contextmanager
 from dataclasses import dataclass
 from unittest import mock
 import json
@@ -23,7 +25,12 @@ import time
 import uuid
 
 # Third Party
+from google.protobuf.descriptor_pool import DescriptorPool
+from grpc._utilities import RpcMethodHandler
 from grpc_health.v1 import health_pb2, health_pb2_grpc
+from grpc_reflection.v1alpha.proto_reflection_descriptor_database import (
+    ProtoReflectionDescriptorDatabase,
+)
 import grpc
 import pytest
 import tls_test_tools
@@ -55,10 +62,12 @@ from sample_lib.data_model import (
     SampleOutputType,
     SampleTrainingType,
 )
-from tests.conftest import random_test_id, temp_config
+from tests.conftest import random_test_id, runtime_grpc_test_server, temp_config
 from tests.fixtures import Fixtures
 import caikit
 import sample_lib
+
+## Helpers #####################################################################
 
 log = alog.use_channel("TEST-SERVE-I")
 
@@ -74,6 +83,9 @@ def is_good_train_response(actual_response, expected, model_name):
     assert actual_response.training_id is not None
     assert isinstance(actual_response.training_id, str)
     assert actual_response.model_name == model_name
+
+
+## Tests #######################################################################
 
 
 def test_model_train(runtime_grpc_server):
@@ -103,7 +115,9 @@ def test_model_train(runtime_grpc_server):
             ),
         },
         training_input_dir="training_input_dir",
-        training_output_dir=os.path.join("test", "training_output", training_id),
+        training_output_dir=os.path.join(
+            runtime_grpc_server.workdir, "training_output", training_id
+        ),
     )
     training_response = model_train_stub.Run(model_train_request)
     assert isinstance(training_response, process_pb2.ProcessResponse)
@@ -183,7 +197,7 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
     sample_train_service,
     sample_inference_service,
 ):
-    """Test RPC CaikitRuntime.ModulesSampleTaskSampleModuleTrain successful response"""
+    """Test RPC CaikitRuntime.SampleTaskSampleModuleTrain successful response"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(
@@ -191,12 +205,13 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
         )
     ).to_proto()
     model_name = random_test_id()
-    train_request = (
-        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
-            model_name=model_name, training_data=training_data
-        )
+    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+        model_name=model_name,
+        training_data=training_data,
     )
-    actual_response = train_stub.ModulesSampleTaskSampleModuleTrain(train_request)
+
+    actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
+
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
     # give the trained model time to load
@@ -225,12 +240,10 @@ def test_train_fake_module_ok_response_with_loaded_model_can_predict_with_traine
         model_id=loaded_model_id
     ).to_proto()
     model_name = random_test_id()
-    train_request = (
-        sample_train_service.messages.ModulesSampleTaskCompositeModuleTrainRequest(
-            model_name=model_name, sample_block=sample_model
-        )
+    train_request = sample_train_service.messages.SampleTaskCompositeModuleTrainRequest(
+        model_name=model_name, sample_block=sample_model
     )
-    actual_response = train_stub.ModulesSampleTaskCompositeModuleTrain(train_request)
+    actual_response = train_stub.SampleTaskCompositeModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
     # give the trained model time to load
@@ -265,15 +278,13 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
         file=stream_type.File(filename=sample_int_file)
     ).to_proto()
 
-    train_request = (
-        sample_train_service.messages.ModulesOtherTaskOtherModuleTrainRequest(
-            model_name="Bar Training",
-            sample_inputsampleinputtype=SampleInputType(name="Gabe").to_proto(),
-            batch_size=100,
-            training_data=training_data,
-        )
+    train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
+        model_name="Bar Training",
+        sample_inputsampleinputtype=SampleInputType(name="Gabe").to_proto(),
+        batch_size=100,
+        training_data=training_data,
     )
-    actual_response = train_stub.ModulesOtherTaskOtherModuleTrain(train_request)
+    actual_response = train_stub.OtherTaskOtherModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, "Bar Training")
 
     # give the trained model time to load
@@ -306,7 +317,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
 def test_train_fake_module_ok_response_with_datastream_jsondata(
     train_stub, inference_stub, sample_train_service, sample_inference_service
 ):
-    """Test RPC CaikitRuntime.ModulesSampleTaskSampleModuleTrainRequest successful response with training data json type"""
+    """Test RPC CaikitRuntime.SampleTaskSampleModuleTrainRequest successful response with training data json type"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(
@@ -314,15 +325,13 @@ def test_train_fake_module_ok_response_with_datastream_jsondata(
         )
     ).to_proto()
     model_name = random_test_id()
-    train_request = (
-        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
-            model_name=model_name,
-            batch_size=42,
-            training_data=training_data,
-        )
+    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+        model_name=model_name,
+        batch_size=42,
+        training_data=training_data,
     )
 
-    actual_response = train_stub.ModulesSampleTaskSampleModuleTrain(train_request)
+    actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
     # give the trained model time to load
@@ -346,20 +355,18 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
     sample_inference_service,
     sample_csv_file,
 ):
-    """Test RPC CaikitRuntime.ModulesSampleTaskSampleModuleTrainRequest successful response with training data file type"""
+    """Test RPC CaikitRuntime.SampleTaskSampleModuleTrainRequest successful response with training data file type"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         file=stream_type.File(filename=sample_csv_file)
     ).to_proto()
     model_name = random_test_id()
-    train_request = (
-        sample_train_service.messages.ModulesSampleTaskSampleModuleTrainRequest(
-            model_name=model_name,
-            training_data=training_data,
-        )
+    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+        model_name=model_name,
+        training_data=training_data,
     )
 
-    actual_response = train_stub.ModulesSampleTaskSampleModuleTrain(train_request)
+    actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
     is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
 
     # give the trained model time to load
@@ -380,18 +387,18 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
 def test_train_fake_module_error_response_with_unloaded_model(
     train_stub, sample_train_service
 ):
-    """Test RPC CaikitRuntime.WorkflowsSampleTaskSampleWorkflowTrain error response because sample model is not loaded"""
+    """Test RPC CaikitRuntime.SampleTaskCompositeModuleTrain error response because sample model is not loaded"""
     with pytest.raises(grpc.RpcError) as context:
         sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
             model_id=random_test_id()
         ).to_proto()
 
         train_request = (
-            sample_train_service.messages.ModulesSampleTaskCompositeModuleTrainRequest(
+            sample_train_service.messages.SampleTaskCompositeModuleTrainRequest(
                 model_name=random_test_id(), sample_block=sample_model
             )
         )
-        train_stub.ModulesSampleTaskCompositeModuleTrain(train_request)
+        train_stub.SampleTaskCompositeModuleTrain(train_request)
     assert context.value.code() == grpc.StatusCode.NOT_FOUND
 
 
@@ -630,7 +637,7 @@ def test_tls(sample_inference_service):
     tls_config = TLSConfig(
         server=KeyPair(cert=tls_cert, key=tls_key), client=KeyPair(cert="", key="")
     )
-    with RuntimeGRPCServer(
+    with runtime_grpc_test_server(
         inference_service=sample_inference_service,
         training_service=None,
         tls_config_override=tls_config,
@@ -647,7 +654,7 @@ def test_mtls(sample_inference_service):
     tls_config = TLSConfig(
         server=KeyPair(cert=tls_cert, key=tls_key), client=KeyPair(cert=ca_cert, key="")
     )
-    with RuntimeGRPCServer(
+    with runtime_grpc_test_server(
         inference_service=sample_inference_service,
         training_service=None,
         tls_config_override=tls_config,
@@ -687,7 +694,7 @@ def test_certs_can_be_loaded_as_files(sample_inference_service, tmp_path):
         server=KeyPair(cert=tls_cert_path, key=tls_key_path),
         client=KeyPair(cert=ca_cert_path, key=""),
     )
-    with RuntimeGRPCServer(
+    with runtime_grpc_test_server(
         inference_service=sample_inference_service,
         training_service=None,
         tls_config_override=tls_config,
@@ -703,7 +710,7 @@ def test_metrics_stored_after_server_interrupt(
 ):
     """This tests the gRPC server's behaviour when interrupted"""
 
-    with RuntimeGRPCServer(
+    with runtime_grpc_test_server(
         inference_service=sample_inference_service,
         training_service=None,
     ) as server:
@@ -750,11 +757,78 @@ def test_out_of_range_port(sample_inference_service):
         },
         merge_strategy="merge",
     ):
-        with RuntimeGRPCServer(
+        with runtime_grpc_test_server(
             inference_service=sample_inference_service,
             training_service=None,
         ) as server:
             _assert_connection(grpc.insecure_channel(f"localhost:{free_high_port}"))
+
+
+def test_reflection_enabled(runtime_grpc_server):
+    """This pings the reflection API to ensure we can list the caikit services that are running"""
+    # See https://github.com/grpc/grpc/blob/master/doc/python/server_reflection.md
+    channel = runtime_grpc_server.make_local_channel()
+    reflection_db = ProtoReflectionDescriptorDatabase(channel)
+
+    desc_pool = DescriptorPool(reflection_db)
+    service_desc = desc_pool.FindServiceByName(
+        "caikit.runtime.SampleLib.SampleLibService"
+    )
+    method_desc = service_desc.FindMethodByName("SampleTaskPredict")
+    assert method_desc is not None
+
+
+def test_streaming_responses_work(runtime_grpc_server):
+    """This test uses the health check's Watch rpc to ensure that a unary->stream RPC functions
+    as expected."""
+    stub = health_pb2_grpc.HealthStub(runtime_grpc_server.make_local_channel())
+    req = health_pb2.HealthCheckRequest()
+    for response in stub.Watch(req):
+        assert response is not None
+        break
+
+
+def test_streaming_handlers_are_built_correctly(runtime_grpc_server):
+    """This is a very cheat-y test of a private method to check that we build our internal
+    handlers using the correct handler function"""
+
+    class FakeHandler:
+        pass
+
+    # NB: the unary_stream case is tested via health check watch in `test_streaming_responses_work`
+    # (unary_unary cases are checked in every other test)
+
+    stream_unary_handler = RpcMethodHandler(
+        request_streaming=True,
+        response_streaming=False,
+        request_deserializer="foo",
+        response_serializer="bar",
+        unary_unary=None,
+        stream_unary=FakeHandler,
+        unary_stream=None,
+        stream_stream=None,
+    )
+    new_handler = runtime_grpc_server.server._make_new_handler(
+        stream_unary_handler, replace_with_global_predict=False
+    )
+    assert new_handler.stream_unary is not None
+    assert new_handler.stream_unary.__name__ == "safe_rpc_call"
+
+    stream_stream_handler = RpcMethodHandler(
+        request_streaming=True,
+        response_streaming=True,
+        request_deserializer="foo",
+        response_serializer="bar",
+        unary_unary=None,
+        stream_unary=None,
+        unary_stream=None,
+        stream_stream=FakeHandler,
+    )
+    new_handler = runtime_grpc_server.server._make_new_handler(
+        stream_stream_handler, replace_with_global_predict=False
+    )
+    assert new_handler.stream_stream is not None
+    assert new_handler.stream_stream.__name__ == "safe_rpc_call"
 
 
 # Test implementation details #########################
