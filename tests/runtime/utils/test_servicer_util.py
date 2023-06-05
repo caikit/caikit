@@ -15,13 +15,11 @@
 # Standard
 import os
 import tempfile
-import uuid
 
 # Third Party
 import pytest
 
 # Local
-from caikit.core.signature_parsing import CaikitMethodSignature
 from caikit.runtime.protobufs import model_runtime_pb2
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import get_data_model
@@ -34,10 +32,10 @@ from caikit.runtime.utils.servicer_util import (
     validate_caikit_library_class_method_exists,
     validate_data_model,
 )
+from sample_lib import SamplePrimitiveModule
 from sample_lib.data_model import SampleInputType
 from tests.conftest import random_test_id
 from tests.fixtures import Fixtures
-from tests.fixtures.protobufs import primitive_party_pb2
 import caikit.core
 import caikit.interfaces
 import sample_lib
@@ -121,18 +119,28 @@ def test_servicer_util_build_proto_response_raises_on_garbage_response_type():
 
 
 # ---------------- Tests for is_protobuf_primitive_field --------------------
-def test_servicer_util_is_protobuf_primitive_returns_true_for_primitive_types():
+def test_servicer_util_is_protobuf_primitive_returns_true_for_primitive_types(
+    sample_inference_service,
+):
     """Test that is_protobuf_primitive_field is True when considering primitive types"""
-    for primitive_field in primitive_party_pb2._OPTIONALPRIMITIVES.fields:
-        assert True == is_protobuf_primitive_field(primitive_field)
+    assert is_protobuf_primitive_field(
+        sample_inference_service.messages.SampleTaskRequest().DESCRIPTOR.fields_by_name[
+            "int_type"
+        ]
+    )
 
 
-def test_servicer_util_is_protobuf_primitive_returns_false_for_custom_types():
+def test_servicer_util_is_protobuf_primitive_returns_false_for_custom_types(
+    sample_inference_service,
+):
     """Test that is_protobuf_primitive_field is False when considering message and
     enum types. This is essential for handling Caikit library CDM objects, which are
     generally defined in terms of messages"""
-    for primitive_field in primitive_party_pb2._NONPRIMITIVES.fields:
-        assert False == (is_protobuf_primitive_field(primitive_field))
+    assert not is_protobuf_primitive_field(
+        sample_inference_service.messages.SampleTaskRequest().DESCRIPTOR.fields_by_name[
+            "sample_input"
+        ]
+    )
 
 
 def test_servicer_util_is_protobuf_primitive_returns_false_for_instance_not_in_FieldDescriptor():
@@ -189,28 +197,6 @@ def test_servicer_util_will_not_validate_arbitrary_service_descriptor():
 
 
 # ---------------- Tests for build_caikit_library_request_dict --------------------
-class Primitives:
-    def _primitives_function(
-        self,
-        double_field,
-        float_field,
-        int64_field,
-        uint64_field,
-        int32_field,
-        fixed64_field,
-        fixed32_field,
-        bool_field,
-        string_field,
-        bytes_field,
-        uint32_field,
-        sfixed32_field,
-        sfixed64_field,
-        sint32_field,
-        sint64_field,
-    ):
-        pass
-
-
 HAPPY_PATH_INPUT = SampleInputType(name="Gabe").to_proto()
 
 
@@ -264,90 +250,39 @@ def test_global_predict_build_caikit_library_request_dict_strips_empty_list_from
     assert "int_type" in request_dict.keys()
 
 
-# def test_global_predict_build_caikit_library_request_dict_works_for_non_optional_primitives():
-#     """Global predict build_caikit_library_request_dict works for primitives"""
-#     request = primitive_party_pb2.NonOptionalPrimitives(
-#         bool_field=False,
-#         int64_field=10,
-#         float_field=0.0,
-#         bytes_field=b"",  # only field that is not passed through here
-#         string_field="not_empty",
-#     )
+def test_global_predict_build_caikit_library_request_dict_works_for_unset_primitives(
+    sample_inference_service,
+):
+    """Global predict build_caikit_library_request_dict works for primitives"""
+    request = sample_inference_service.messages.SampleTaskRequest()
 
-#     request_dict = build_caikit_library_request_dict(
-#         request, CaikitMethodSignature(Primitives, "_primitives_function")
-#     )
-#     # dict started with 15 keys (15 args)
-#     # Since these are non-optional, any field that is not an iterable
-#     # is passed through, any field that is an iterable (str or bytes)
-#     # is passed through only if len(field_value) != 0
-#     assert len(request_dict.keys()) == 14
-#     assert request_dict["float_field"] == 0.0
-#     assert request_dict["int64_field"] == 10
-#     assert request_dict["bool_field"] == False
-#     assert "string_field" in request_dict
-#     # TODO: Make sure to double check this later
-#     assert "bytes_field" not in request_dict
+    request_dict = build_caikit_library_request_dict(
+        request, SamplePrimitiveModule.RUN_SIGNATURE
+    )
+    # None of the primitive args should be there
+    assert len(request_dict.keys()) == 0
 
 
-# def test_global_predict_build_caikit_library_request_dict_works_for_unset_primitives():
-#     """Global predict build_caikit_library_request_dict works for primitives"""
-#     request = primitive_party_pb2.OptionalPrimitives()
+def test_global_predict_build_caikit_library_request_dict_works_for_set_primitives(
+    sample_inference_service,
+):
+    """Global predict build_caikit_library_request_dict works for primitives"""
+    request = sample_inference_service.messages.SampleTaskRequest(
+        int_type=5,
+        float_type=4.2,
+        str_type="moose",
+        bytes_type=b"foo",
+        list_type=["1", "2", "3"],
+    )
 
-#     request_dict = build_caikit_library_request_dict(
-#         request, CaikitMethodSignature(Primitives, "_primitives_function")
-#     )
-#     # dict started with 15 keys (15 args)
-#     # all fields that are unset are removed
-#     assert len(request_dict.keys()) == 0
-
-
-# def test_global_predict_build_caikit_library_request_dict_works_for_set_primitives():
-#     """Global predict build_caikit_library_request_dict works for primitives"""
-#     request = primitive_party_pb2.OptionalPrimitives(
-#         bool_field=False, int64_field=10, float_field=0.0
-#     )
-
-#     request_dict = build_caikit_library_request_dict(
-#         request, CaikitMethodSignature(Primitives, "_primitives_function")
-#     )
-#     # dict started with 15 keys (15 args)
-#     # we set the bool, int and float field, hence they should
-#     # be in the request object
-
-#     assert len(request_dict.keys()) == 3
-#     assert "float_field" in request_dict
-#     assert isinstance(request_dict["float_field"], float)
-#     assert "bool_field" in request_dict
-#     assert isinstance(request_dict["bool_field"], bool)
-#     assert "int64_field" in request_dict
-
-
-# def test_global_predict_build_caikit_library_request_dict_works_for_repeated_fields():
-#     """Global predict build_caikit_library_request_dict works for repeated fields"""
-
-#     # TODO: uncomment the repeated_message_field test when we have support for the repeated MessageType field
-
-#     request = primitive_party_pb2.Repeateds(repeated_string_field=["this is a string"])
-
-#     class Foo:
-#         def foo_function(
-#             self,
-#             repeated_string_field,
-#             # repeated_message_field
-#         ):
-#             pass
-
-#     request_dict = build_caikit_library_request_dict(
-#         request, CaikitMethodSignature(Foo, "foo_function")
-#     )
-#     # dict started with 1 key
-#     # we expect 1 list fields back int the dict
-#     assert len(request_dict.keys()) == 1
-#     assert "repeated_string_field" in request_dict
-#     assert isinstance(request_dict["repeated_string_field"], list)
-#     # self.assertTrue("repeated_message_field" in caikit.core_request)
-#     # self.assertIsInstance(caikit.core_request["repeated_message_field"], list)
+    request_dict = build_caikit_library_request_dict(
+        request, SamplePrimitiveModule.RUN_SIGNATURE
+    )
+    assert request_dict["int_type"] == 5
+    assert request_dict["float_type"] == 4.2
+    assert request_dict["str_type"] == "moose"
+    assert request_dict["bytes_type"] == b"foo"
+    assert request_dict["list_type"] == ["1", "2", "3"]
 
 
 def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_request(
