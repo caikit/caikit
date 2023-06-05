@@ -216,9 +216,16 @@ def build_caikit_library_request_dict(
     request: Union[Descriptor, ProtoMessageType],
     module_signature: CaikitMethodSignature,
 ) -> Dict[str, Any]:
-    """
-    Build the request kwargs dict.
+    """Build the request kwargs dict.
 
+    Args:
+        request (Union[Descriptor, ProtoMessageType]):
+            The request proto name or descriptor to deserialize from
+        module_signature (CaikitMethodSignature):
+            Module signature or metadata about method on a module
+
+    Returns:
+        kwargs dict
     """
     try:
         # Request messages are data model objects so .from_proto can be used
