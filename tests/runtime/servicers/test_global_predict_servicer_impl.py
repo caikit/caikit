@@ -79,7 +79,7 @@ def test_invalid_input_to_a_valid_caikit_core_class_method_raises(
 def test_global_predict_works_on_good_inputs(
     sample_inference_service, sample_predict_servicer, loaded_model_id
 ):
-    """Global predict of CategoriesEsaPredict returns a categories prediction"""
+    """Global predict of SampleTaskRequest returns a prediction"""
     response = sample_predict_servicer.Predict(
         sample_inference_service.messages.SampleTaskRequest(
             sample_input=HAPPY_PATH_INPUT
