@@ -387,8 +387,7 @@ def test_global_train_build_caikit_library_request_dict_works_for_repeated_field
     )
 
     caikit.core_request = build_caikit_library_request_dict(
-        train_request,
-        sample_lib.modules.sample_task.ListModule.TRAIN_SIGNATURE
+        train_request, sample_lib.modules.sample_task.ListModule.TRAIN_SIGNATURE
     )
 
     # model_name is not expected to be passed through

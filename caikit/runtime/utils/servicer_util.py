@@ -227,10 +227,7 @@ def build_caikit_library_request_dict(
         request_data_model = request_data_model_class.from_proto(request)
 
         # Initialize kwargs from data model fields
-        kwargs_dict = {
-            field_name: getattr(request_data_model, field_name)
-            for field_name in request_data_model.fields
-        }
+        kwargs_dict = request_data_model.to_kwargs()
 
         # 1. Remove any fields not in request
         unset_field_names = []
