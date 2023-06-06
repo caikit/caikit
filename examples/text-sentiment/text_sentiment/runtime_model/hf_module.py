@@ -19,7 +19,7 @@ import os
 from transformers import pipeline
 
 # Local
-from caikit.core import ModuleBase, ModuleLoader, ModuleSaver, module
+from caikit.core import ModuleBase, ModuleLoader, ModuleSaver, TaskBase, module, task
 from text_sentiment.data_model.classification import (
     ClassificationPrediction,
     ClassInfo,
@@ -27,7 +27,20 @@ from text_sentiment.data_model.classification import (
 )
 
 
-@module("8f72161-c0e4-49b0-8fd0-7587b3017a35", "HuggingFaceSentimentModule", "0.0.1")
+@task(
+    required_parameters={"text_input": TextInput},
+    output_type=ClassificationPrediction,
+)
+class HuggingFaceSentimentTask(TaskBase):
+    pass
+
+
+@module(
+    "8f72161-c0e4-49b0-8fd0-7587b3017a35",
+    "HuggingFaceSentimentModule",
+    "0.0.1",
+    HuggingFaceSentimentTask,
+)
 class HuggingFaceSentimentModule(ModuleBase):
     """Class to wrap sentiment analysis pipeline from HuggingFace"""
 
