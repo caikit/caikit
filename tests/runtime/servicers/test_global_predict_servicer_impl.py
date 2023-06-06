@@ -122,7 +122,7 @@ def test_global_predict_aborts_long_running_predicts(
         # Patch in the mock manager and start the prediction
         with patch.object(sample_predict_servicer, "_model_manager", mock_manager):
             predict_thread.start()
-            dummy_model.started.wait()
+            assert dummy_model.started.wait(2)
             # Simulate a timeout or client abort
             context.cancel()
             predict_thread.join(10)
