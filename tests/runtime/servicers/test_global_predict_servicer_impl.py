@@ -89,19 +89,20 @@ def test_global_predict_works_on_good_inputs(
     assert response == HAPPY_PATH_RESPONSE
 
 
+# @pytest.mark.skip()
 def test_global_predict_aborts_long_running_predicts(
     sample_inference_service, sample_predict_servicer
 ):
     mock_manager = MagicMock()
 
     # return a dummy model from the mock model manager
-    class UnresponsiveModel:
+    class UnresponsiveModel(SampleModule):
         started = threading.Event()
 
         def run(self, *args, **kwargs):
             self.started.set()
             while True:
-                time.sleep(0.01)
+                time.sleep(0.001)
 
     dummy_model = UnresponsiveModel()
     mock_manager.retrieve_model.return_value = dummy_model
