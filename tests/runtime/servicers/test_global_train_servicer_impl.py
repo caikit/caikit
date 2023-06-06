@@ -92,10 +92,6 @@ def test_global_train_sample_task(
         == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
     )
 
-    # give the trained model time to load
-    # TODO: no sleeps in tests!
-    # time.sleep(1)
-
     inference_response = sample_predict_servicer.Predict(
         sample_inference_service.messages.SampleTaskRequest(
             sample_input=SampleInputType(name="Gabe").to_proto()
@@ -150,10 +146,6 @@ def test_global_train_other_task(
         == "sample_lib.modules.other_task.other_implementation.OtherModule"
     )
 
-    # give the trained model time to load
-    # TODO: no sleeps in tests!
-    # time.sleep(1)
-
     inference_response = sample_predict_servicer.Predict(
         sample_inference_service.messages.OtherTaskRequest(
             sample_inputsampleinputtype=SampleInputType(name="Gabe").to_proto()
@@ -203,10 +195,6 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
         training_result.MODULE_CLASS
         == "sample_lib.modules.sample_task.composite_module.CompositeModule"
     )
-
-    # give the trained model time to load
-    # TODO: no sleeps in tests!
-    # time.sleep(1)
 
     # make sure the trained model can run inference
     inference_response = sample_predict_servicer.Predict(

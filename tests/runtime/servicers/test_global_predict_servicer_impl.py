@@ -89,7 +89,6 @@ def test_global_predict_works_on_good_inputs(
     assert response == HAPPY_PATH_RESPONSE
 
 
-# @pytest.mark.skip()
 def test_global_predict_aborts_long_running_predicts(
     sample_inference_service, sample_predict_servicer
 ):

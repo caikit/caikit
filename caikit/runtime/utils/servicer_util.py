@@ -273,7 +273,6 @@ def build_caikit_library_request_dict(
                 model_manager = ModelManager.get_instance()
                 model_retrieved = model_manager.retrieve_model(field_value.model_id)
                 kwargs_dict[field_name] = model_retrieved
-        # TODO: anything else need special treatment?
 
         log.debug2("caikit_library_request_dict returned is: %s", kwargs_dict)
 
