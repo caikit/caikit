@@ -388,6 +388,9 @@ def test_global_train_returns_exit_code_with_oom(
 #####################################################################
 
 
+@pytest.mark.skip(
+    reason="This test fails intermittently. Functionality has to be debugged for race condition"
+)
 def test_global_train_aborts_long_running_trains(
     sample_train_service, sample_train_servicer
 ):

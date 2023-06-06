@@ -267,7 +267,6 @@ def build_caikit_library_request_dict(
 
         # 3. Model Pointers
         for field_name, field_value in kwargs_dict.items():
-            # TODO: should this be subclass?
             if isinstance(field_value, ModelPointer):
                 log.debug2("field_value is a ModelPointer obj")
                 model_manager = ModelManager.get_instance()
