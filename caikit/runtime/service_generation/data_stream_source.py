@@ -43,16 +43,6 @@ import caikit
 # unnecessarily
 _DATA_STREAM_SOURCE_TYPES = {}
 
-# Python type -> jtd name
-_NATIVE_TYPE_TO_JTD = {
-    str: "string",
-    int: "int64",
-    float: "float64",
-    bytes: "bytes",
-    bool: "boolean",
-    datetime: "timestamp",
-}
-
 log = alog.use_channel("DSTRM-SRC")
 
 

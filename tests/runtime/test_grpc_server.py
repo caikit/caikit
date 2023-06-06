@@ -289,8 +289,9 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
     sample_train_service,
     sample_inference_service,
 ):
-    """This test: original "stock" OtherModule model has batch size 42 (see fixtures/models/bar.yml),
-    we then train a custom OtherModule model with batch size 100,
+    """This test: original "stock" OtherModule model has batch size 42
+    (See fixtures/models/bar/config.yml).
+    We then train a custom OtherModule model with batch size 100,
     then we make a predict to each, they should have the correct batch size"""
 
     # Train an OtherModule with batch size 100

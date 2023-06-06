@@ -38,6 +38,7 @@ import caikit.core
 
 ## Helpers #####################################################################
 
+
 @pytest.fixture(autouse=True, params=[True, False])
 def set_train_location(request):
     """This fixture ensures that all tests in this file will be run with both
