@@ -26,7 +26,12 @@ FROM gateway-base as gateway-build
 ## generic tgis proto just to install_deps so it makes the start faster
 
 COPY . .
-RUN python generate_protos.py
+RUN pip install caikit 
+RUN pip install transformers~=4.27.2
+RUN python3 generate_protos.py
+# remove because it is failing on...
+# ./gateway.go:109:26: undefined: TextSentiment.RegisterTextSentimentTrainingServiceHandlerFromEndpoint
+RUN rm -rf protos/*training*
 
 ARG GRPC_METADATA="mm-model-id"
 
