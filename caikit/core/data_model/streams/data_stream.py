@@ -125,8 +125,8 @@ class DataStream(Generic[T]):
             3
         """
         error.type_check("<COR88684982E>", Iterable, data=data)
-
-        return cls(lambda: iter(data))
+        print("data", data)
+        return cls(cls._from_iterable_generator, data)
 
     @classmethod
     def _from_iterable_generator(cls, data: typing.Iterable[T]):
