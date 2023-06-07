@@ -13,7 +13,9 @@
 # limitations under the License.
 
 # Standard
+import json
 import os
+import pickle
 
 # Local
 from caikit.core import data_model as core_dm
@@ -51,6 +53,23 @@ def build_test_augmentor(produces_none):
             return obj + 5
 
     return TestStreamAugmentor()
+
+
+def test_data_stream_from_jsonl_is_pickleable(tmp_path):
+    tmpdir = str(tmp_path)
+
+    data = [1, 2, 3, 4, 5, 6]
+    filepath = os.path.join(tmpdir, "foo.jsonl")
+    with open(filepath, "w") as f:
+        json.dump(data, f)
+
+    stream = core_dm.DataStream.from_jsonl(filepath)
+
+    pre_pickle_vals = list(stream)
+    pickled_stream = pickle.loads(pickle.dumps(stream))
+    post_pickle_vals = list(pickled_stream)
+
+    assert pre_pickle_vals == post_pickle_vals
 
 
 class TestDataStream(TestCaseBase):
