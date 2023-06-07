@@ -1,0 +1,50 @@
+FROM golang:1.19 as gateway-base
+
+RUN true && \
+    apt-get update && \
+    apt-get install -y \
+        unzip \
+        python3.9 \
+        python3-pip && \
+    apt-get upgrade -y && \
+    true
+
+ARG PROTOBUF_VERSION=3.15.8
+RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip
+RUN unzip protoc-${PROTOBUF_VERSION}-linux-x86_64.zip -d /protoc
+ENV PATH=${PATH}:/protoc/bin
+
+RUN rm protoc-${PROTOBUF_VERSION}-linux-x86_64.zip
+
+# RUN apt-get update && apt-get install -y --no-install-recommends git mercurial openssh-client subversion procps && rm -rf /var/lib/apt/lists/*
+# RUN /bin/sh -c true && apt-get update && apt-get install -y unzip python3.9 python3-pip && apt-get upgrade -y && true # buildkit
+# RUN set -eux; apt-get update; apt-get install -y --no-install-recommends g++ gcc libc6-dev make pkg-config ; rm -rf /var/lib/apt/lists/*
+
+RUN pip install grpc-gateway-wrapper
+
+FROM gateway-base as gateway-build
+## generic tgis proto just to install_deps so it makes the start faster
+
+COPY . .
+RUN python generate_protos.py
+
+ARG GRPC_METADATA="mm-model-id"
+
+RUN grpc-gateway-wrapper \
+        --proto_files protos/*.proto \
+        --metadata ${GRPC_METADATA} \
+        --output_dir . \
+        --install_deps
+  
+FROM registry.access.redhat.com/ubi8/ubi-minimal
+
+# Copy the gateway
+COPY --from=gateway-build /go/app /gateway
+COPY --from=gateway-build /go/swagger /swagger
+
+EXPOSE 8080
+
+ENV PROXY_ENDPOINT=${PROXY_ENDPOINT:-"localhost:8085"}
+ENV SERVE_PORT=${GATEWAY_PORT:-8080}
+
+CMD /gateway --swagger_path=/swagger
