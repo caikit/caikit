@@ -24,21 +24,14 @@ In each case, the model attempts to simulate one or more complex human processes
 
 ## Interface
 
-Currently, each module implements the following APIs, some of which can be considered core (implemented by all modules), such as `.__init__()`, `run()` and some which may not be present in all (like `.train()`). Additionally, modules come with some helper methods that are useful in analyzing block performance.
+Currently, each module implements the following APIs, some of which can be considered core (implemented by all modules), such as `.__init__()`, `load()`. Other APIs like `run()` and `train()` are implemented only when required (for example, when inference or training is requirted). Additionally, modules come with some helper methods that are useful in analyzing block performance.
 
 #### `__init__()`
 
 `__init__` is the initializer for the module class and should take only in-memory data structures, relevant to the module implementation. Since python does not have initializer overloading, having a primitive, in-memory initializer allows us to implement multiple ways of instantiating blocks by using class methods.
 
-#### `load()`
-
-`load` is a `classmethod` that loads the serialized AI model (directory, or `zip` file) by reading the `config.yml` and any artifacts into memory and then calls the module class' `__init__` method to create and return a new loaded instance of the model. The structure of `config.yml` is standardized to some extent, with some other pieces which can be specified as per class requirements.
-
 #### `run()`:
 Takes instances of classes defined as [data models](https://github.com/caikit/caikit/blob/main/docs/adrs/010-data-model-definition.md) as inputs and returns a single instance of [data model](https://github.com/caikit/caikit/blob/main/docs/adrs/010-data-model-definition.md) as output.
-
-Different algorithms of the same module type return the same type of output, but may take different kinds of inputs.
-This may feel a little overly prescriptive, but it allows us to keep things organized and also to have a generic server that can swap out different algorithms for a given module type.  
 
 **NOTE**: `run` is equivalent to various flavors of the `predict` method in other frameworks and we often use them in our verbiage interchangeably.
 
@@ -75,6 +68,10 @@ class MyModule:
 
 ```
 
+#### `load()`
+
+`load` is a `classmethod` that loads the serialized AI model (directory, or `zip` file) by reading the `config.yml` and any artifacts into memory and then calls the module class' `__init__` method to create and return a new loaded instance of the model. The structure of `config.yml` is standardized to some extent, with some other pieces which can be specified as per class requirements.
+
 #### `evaluate_quality()`
 
 This is a helper API, implemented at a module base level (`caikit.core.ModuleBase`) which allows module level
@@ -98,6 +95,10 @@ evaluator = caikit.toolkit.QualityEvaluator # (or specify a custom evaluator)
 6. `_extract_pred_set(dataset, pre_process_function)`: Instance method to get predicted results from the dataset's input, after running them against the loaded module.
 
 One can call a module's `.evaluate_quality(dataset_path, preprocess_func)` specifying the test dataset path, and internally the module type's base class methods will be triggered to obtain the gold labels and predicted labels, and perform evaluation to return quality metrics.
+
+#### `run_batch()`
+
+This is an interface method that allows module classes to implement algorithm-specific batching. By default, all modules inherit the base implementation of running a batch of requests through `run` sequentially, but for algorithms where a concrete batching implementation can provide throughput benefits, module classes may override this base implementation.
 
 ## Status
 
