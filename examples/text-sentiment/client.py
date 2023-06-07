@@ -32,8 +32,10 @@ client_stub = inference_service.stub_class(channel)
 
 for text in ["I am not feeling well today!", "Today is a nice sunny day"]:
     input_text_proto = TextInput(text=text).to_proto()
-    request = inference_service.messages.HfModuleRequest(text_input=input_text_proto)
-    response = client_stub.HfModulePredict(
+    request = inference_service.messages.HuggingFaceSentimentTaskRequest(
+        text_input=input_text_proto
+    )
+    response = client_stub.HuggingFaceSentimentTaskPredict(
         request, metadata=[("mm-model-id", "text_sentiment")]
     )
     print("Text:", text)
