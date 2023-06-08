@@ -15,9 +15,13 @@
 
 # Standard
 from enum import Enum
-from typing import List
+from typing import Optional
+
+# Third Party
+import numpy as np
 
 # First Party
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
 import alog
 
 # Local
@@ -29,7 +33,7 @@ log = alog.use_channel("DATAM")
 
 
 @dataobject(package=NLP_PACKAGE)
-class StopReason(Enum):
+class FinishReason(Enum):
     NOT_FINISHED = 0
     MAX_TOKENS = 1
     EOS_TOKEN = 2
@@ -40,7 +44,29 @@ class StopReason(Enum):
 
 @dataobject(package=NLP_PACKAGE)
 class GeneratedResult(DataObjectBase):
-    generated_text: str
-    generated_token_count: int
-    stop_reason: StopReason
-    producer_id: ProducerId
+    generated_text: Annotated[str, FieldNumber(1)]
+    generated_token_count: Annotated[int, FieldNumber(2)]
+    finish_reason: Annotated[FinishReason, FieldNumber(3)]
+    producer_id: Annotated[ProducerId, FieldNumber(4)]
+
+
+@dataobject(package=NLP_PACKAGE)
+class GeneratedToken(DataObjectBase):
+    text: Annotated[str, FieldNumber(1)]
+    id: Annotated[Optional[np.uint32], FieldNumber(2)]
+    logprob: Annotated[Optional[float], FieldNumber(3)]
+    special: Annotated[Optional[bool], FieldNumber(4)]
+
+
+@dataobject(package=NLP_PACKAGE)
+class StreamDetails(DataObjectBase):
+    finish_reason: Annotated[FinishReason, FieldNumber(1)]
+    generated_tokens: Annotated[np.uint32, FieldNumber(2)]
+    seed: Annotated[np.uint64, FieldNumber(3)]
+
+
+@dataobject(package=NLP_PACKAGE)
+class GeneratedStreamResult(DataObjectBase):
+    token: Annotated[GeneratedToken, FieldNumber(1)]
+    generated_text: Annotated[Optional[str], FieldNumber(2)]
+    details: Annotated[Optional[StreamDetails], FieldNumber(3)]

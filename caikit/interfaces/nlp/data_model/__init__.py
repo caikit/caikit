@@ -15,4 +15,10 @@
 # Local
 from . import package, text_generation
 from .package import NLP_PACKAGE
-from .text_generation import GeneratedResult, StopReason
+from .text_generation import (
+    FinishReason,
+    GeneratedResult,
+    GeneratedStreamResult,
+    GeneratedToken,
+    StreamDetails,
+)
