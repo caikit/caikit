@@ -11,21 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""This library defines the taxonomy of Data Model objects and Tasks for the
-entire CAIKit project. Data objects and tasks are grouped domain, making for a
-three-level hierarchy for models:
-
-problem domain -> task -> implementation
-
-This library intentionally does NOT define any implementations, as those are
-left to the domain implementation libraries.
+"""
+This module holds the Task definitions for all common NLP tasks
 """
 
-# First Party
-import import_tracker
+# Local
+from ...core import TaskBase, task
+from .data_model.text_generation import GeneratedResult
 
-# Import each domain with lazy import errors
-with import_tracker.lazy_import_errors():
-    # Local
-    from . import common, runtime
+
+@task(
+    required_parameters={"inputs": str},
+    output_type=GeneratedResult,
+)
+class TextGenerationTask(TaskBase):
+    """The Text Generation Task is responsible for taking input prompting text
+    and generating additional text from that prompt.
+    """
