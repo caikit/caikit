@@ -1,3 +1,5 @@
+[![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/7443/badge)](https://bestpractices.coreinfrastructure.org/projects/7443)
+
 # Caikit
 
 Caikit is an AI toolkit that enables users to manage models through a set of developer friendly APIs. It provides a consistent format for creating and using AI models against a wide variety of data domains and tasks.
