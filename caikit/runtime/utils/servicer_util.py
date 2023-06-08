@@ -262,8 +262,7 @@ def build_caikit_library_request_dict(
             if field not in module_signature.parameters.keys()
         ]
         for absent_field_name in absent_field_names:
-            if absent_field_name in kwargs_dict:
-                kwargs_dict.pop(absent_field_name)
+            kwargs_dict.pop(absent_field_name)
 
         # 3. Model Pointers
         for field_name, field_value in kwargs_dict.items():
