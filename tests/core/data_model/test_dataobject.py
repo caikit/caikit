@@ -834,3 +834,45 @@ def test_dataobject_to_kwargs(temp_dpool):
 
     # `type_union_val` is set here rather than the `type_union_val_str_val` internal oneof field name
     assert kwargs == {"int_val": 1, "type_union_val": "foo", "bar_val": bar}
+
+
+def test_dataobject_inheritance(temp_dpool):
+    """Make sure that dataobject classes can inherit from each other in the same
+    way that dataclasses can
+    """
+
+    @dataobject
+    class Base(DataObjectBase):
+        foo: int
+        bar: int
+
+    @dataobject
+    class Derived(Base):
+        bar: str
+        baz: str
+
+    # Validate Base
+    desc = Base.get_proto_class().DESCRIPTOR
+    fld = desc.fields_by_name["foo"]  # To save typing
+    assert "foo" in desc.fields_by_name
+    assert "bar" in desc.fields_by_name
+    assert "baz" not in desc.fields_by_name
+    assert desc.fields_by_name["foo"].type == fld.TYPE_INT64
+    assert desc.fields_by_name["bar"].type == fld.TYPE_INT64
+    inst = Derived(1, 2)
+    assert inst.foo == 1
+    assert inst.bar == 2
+
+    # Validate Derived
+    desc = Derived.get_proto_class().DESCRIPTOR
+    fld = desc.fields_by_name["foo"]  # To save typing
+    assert "foo" in desc.fields_by_name
+    assert "bar" in desc.fields_by_name
+    assert "baz" in desc.fields_by_name
+    assert desc.fields_by_name["foo"].type == fld.TYPE_INT64
+    assert desc.fields_by_name["bar"].type == fld.TYPE_STRING
+    assert desc.fields_by_name["baz"].type == fld.TYPE_STRING
+    inst = Derived(1, "asdf", "qwer")
+    assert inst.foo == 1
+    assert inst.bar == "asdf"
+    assert inst.baz == "qwer"
