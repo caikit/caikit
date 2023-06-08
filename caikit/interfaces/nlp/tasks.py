@@ -15,9 +15,12 @@
 This module holds the Task definitions for all common NLP tasks
 """
 
+# Standard
+from typing import Iterable
+
 # Local
 from ...core import TaskBase, task
-from .data_model.text_generation import GeneratedResult
+from .data_model.text_generation import GeneratedResult, GeneratedStreamResult
 
 
 @task(
@@ -27,4 +30,14 @@ from .data_model.text_generation import GeneratedResult
 class TextGenerationTask(TaskBase):
     """The Text Generation Task is responsible for taking input prompting text
     and generating additional text from that prompt.
+    """
+
+
+@task(
+    required_parameters={"inputs": str},
+    output_type=Iterable[GeneratedStreamResult],
+)
+class TextGenerationStreamTask(TaskBase):
+    """The Text Generation Stream Task is responsible for taking input prompting
+    text and iteratively producing output tokens in a stream.
     """
