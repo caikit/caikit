@@ -38,3 +38,8 @@ dependencies = [
 
 [project.urls]
 Source = "https://github.com/caikit/caikit"
+
+[tool.pytest.ini_options]
+markers = [
+    "examples: marks tests as e2e examples (deselect with '-m \"not examples\"')",
+]
