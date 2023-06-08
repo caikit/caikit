@@ -12,85 +12,75 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for the NLP task definitions"""
+# Standard
+from typing import Type
 
 # Third Party
 import pytest
 
 # Local
-from caikit.core import ModuleBase, module
-from caikit.interfaces.nlp import data_model as nlp_dm
+from caikit.core import ModuleBase, TaskBase, module
 from caikit.interfaces.nlp import tasks as nlp_tasks
 from tests.core.helpers import *
 
-
-def test_text_generation_valid_no_extra_arguments(reset_globals):
-    """Make sure that the text generation task binds to a module with the
-    required I/O types and no extra arguments
-    """
-
-    @module(id="foo", name="Foo", version="0.0.0", task=nlp_tasks.TextGenerationTask)
-    class Foo(ModuleBase):
-        def run(self, inputs: str) -> nlp_dm.GeneratedResult:
-            return nlp_dm.GeneratedResult()
+## Helpers #####################################################################
 
 
-def test_text_generation_valid_with_extra_arguments(reset_globals):
-    """Make sure that the text generation task binds to a module with the
-    required I/O types plus some extra input arguments
-    """
+## Tests #######################################################################
 
-    @module(id="foo", name="Foo", version="0.0.0", task=nlp_tasks.TextGenerationTask)
-    class Foo(ModuleBase):
+
+class InvalidType:
+    pass
+
+
+@pytest.mark.parametrize(
+    "task", (nlp_tasks.TextGenerationTask, nlp_tasks.TextGenerationStreamTask)
+)
+def test_tasks(reset_globals, task: Type[TaskBase]):
+    """Common tests for all tasks"""
+    # Only support single required param named "inputs"
+    assert set(task.get_required_parameters().keys()) == {"inputs"}
+    input_type = task.get_required_parameters()["inputs"]
+    output_type = task.get_output_type()
+
+    # Version with the right signature and nothing else
+    @module(id="foo1", name="Foo", version="0.0.0", task=task)
+    class Foo1(ModuleBase):
+        def run(self, inputs: input_type) -> output_type:
+            return output_type()
+
+    # Version with the right signature plus extra args
+    @module(id="foo2", name="Foo", version="0.0.0", task=task)
+    class Foo2(ModuleBase):
         def run(
             self,
-            inputs: str,
+            inputs: input_type,
             workit: bool,
             makeit: bool,
             doit: bool,
-        ) -> nlp_dm.GeneratedResult:
-            return nlp_dm.GeneratedResult()
+        ) -> output_type:
+            return output_type()
 
-
-def test_text_generation_missing_arguments(reset_globals):
-    """Make sure that the text generation task fails to bind without the
-    required input argument
-    """
-
+    # Version with missing required argument
     with pytest.raises(TypeError):
 
-        @module(
-            id="foo", name="Foo", version="0.0.0", task=nlp_tasks.TextGenerationTask
-        )
-        class Foo(ModuleBase):
-            def run(self, text: str) -> nlp_dm.GeneratedResult:
-                return nlp_dm.GeneratedResult()
+        @module(id="foo3", name="Foo", version="0.0.0", task=task)
+        class Foo3(ModuleBase):
+            def run(self, other_name: str) -> output_type:
+                return output_type()
 
-
-def test_text_generation_bad_argument_type(reset_globals):
-    """Make sure that the text generation task fails to bind when the required
-    input argument has the wrong type
-    """
-
+    # Version with bad required argument type
     with pytest.raises(TypeError):
 
-        @module(
-            id="foo", name="Foo", version="0.0.0", task=nlp_tasks.TextGenerationTask
-        )
-        class Foo(ModuleBase):
-            def run(self, inputs: int) -> nlp_dm.GeneratedResult:
-                return nlp_dm.GeneratedResult()
+        @module(id="foo4", name="Foo", version="0.0.0", task=task)
+        class Foo4(ModuleBase):
+            def run(self, inputs: InvalidType) -> output_type:
+                return output_type()
 
-
-def test_text_generation_invalid_return_type(reset_globals):
-    """Make sure that the text generation task fails to bind without the
-    required return type
-    """
-
+    # Version with bad return type
     with pytest.raises(TypeError):
 
-        @module(
-            id="foo", name="Foo", version="0.0.0", task=nlp_tasks.TextGenerationTask
-        )
+        @module(id="foo", name="Foo", version="0.0.0", task=task)
         class Foo(ModuleBase):
-            def run(self, inputs: str) -> str:
+            def run(self, inputs: input_type) -> InvalidType:
                 return "hi there"
