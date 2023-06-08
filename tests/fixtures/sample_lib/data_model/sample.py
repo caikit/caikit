@@ -1,6 +1,7 @@
 """
 Dummy data model object for testing
 """
+import typing
 
 # Local
 from caikit.core import DataObjectBase, TaskBase, dataobject, task
@@ -41,6 +42,14 @@ class SampleTrainingType(DataObjectBase):
 )
 class SampleTask(TaskBase):
     """A sample `task` for our test models"""
+
+
+@task(
+    required_parameters={"sample_input": SampleInputType},
+    output_type=typing.Iterable[SampleOutputType],
+)
+class StreamingTask(TaskBase):
+    """A streaming version of a task"""
 
 
 @task(
