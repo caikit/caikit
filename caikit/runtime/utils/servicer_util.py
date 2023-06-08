@@ -25,6 +25,8 @@ import grpc
 # First Party
 import alog
 
+import caikit.core
+from caikit.core.data_model import DataStream
 # Local
 from caikit.core.data_model.base import DataBase
 from caikit.core.signature_parsing import CaikitMethodSignature
@@ -74,6 +76,12 @@ def validate_caikit_library_class_method_exists(caikit_library_class, method_nam
 
 def build_proto_response(caikit_library_response):
     try:
+        if caikit.core.isiterable(caikit_library_response):
+            # probably a streaming rpc!
+            def _proto_generator():
+                for item in caikit_library_response:
+                    yield item.to_proto()
+            return iter(DataStream(_proto_generator))
         return caikit_library_response.to_proto()
     except Exception as e:
         log.warning(

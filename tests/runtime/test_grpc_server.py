@@ -196,6 +196,25 @@ def test_predict_fake_module_ok_response(
     assert actual_response == HAPPY_PATH_RESPONSE
 
 
+def test_predict_streaming_module(
+    loaded_streaming_model_id, runtime_grpc_server, sample_inference_service
+):
+    """Test RPC CaikitRuntime.WidgetPredict successful response"""
+    stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
+    predict_request = sample_inference_service.messages.StreamingTaskRequest(
+        sample_input=HAPPY_PATH_INPUT
+    )
+    stream = stub.SampleTaskPredict(
+        predict_request, metadata=[("mm-model-id", loaded_streaming_model_id)]
+    )
+
+    count = 0
+    for response in stream:
+        assert response == HAPPY_PATH_RESPONSE
+        count += 1
+    assert count == 10
+
+
 def test_predict_fake_module_error_response(
     runtime_grpc_server, sample_inference_service
 ):

@@ -185,6 +185,9 @@ def training_management_stub(runtime_grpc_server) -> Type:
 def good_model_path() -> str:
     return Fixtures.get_good_model_path()
 
+@pytest.fixture
+def streaming_model_path() -> str:
+    return os.path.join(os.path.dirname(__file__), "fixtures", "dummy_streaming_module")
 
 @pytest.fixture
 def other_good_model_path() -> str:
@@ -209,7 +212,23 @@ def sample_task_model_id(good_model_path) -> str:
 
 
 @pytest.fixture
-def other_task_model_id(other_good_model_path) -> str:
+def loaded_streaming_model_id(streaming_model_path) -> str:
+    """Loaded model ID using model manager load model implementation"""
+    model_id = _random_id()
+    model_manager = ModelManager.get_instance()
+    model_manager.load_model(
+        model_id,
+        local_model_path=streaming_model_path,
+        model_type=Fixtures.get_good_model_type(),
+    )
+    yield model_id
+
+    # teardown
+    model_manager.unload_model(model_id)
+
+
+@pytest.fixture
+def other_loaded_model_id(other_good_model_path) -> str:
     """Loaded model ID using model manager load model implementation"""
     model_id = _random_id()
     model_manager = ModelManager.get_instance()
