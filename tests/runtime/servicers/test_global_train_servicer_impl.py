@@ -454,7 +454,6 @@ def test_global_train_aborts_long_running_trains(
     servicer = GlobalTrainServicer(training_service=sample_train_service)
 
     with TemporaryDirectory() as tmp_dir:
-        training_id = "dummy-training-id"
         training_output_dir = tmp_dir
         context = Fixtures.build_context("foo")
 
