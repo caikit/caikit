@@ -16,6 +16,7 @@ This package has classes that will serialize a python interface to a protocol bu
 
 Typically used for `caikit.core.module`s that expose .train and .run functions.
 """
+import typing
 # Standard
 from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
 import abc
@@ -32,7 +33,7 @@ import alog
 from . import protoable, type_helpers
 from .compatibility_checker import ApiFieldNames
 from .data_stream_source import make_data_stream_source
-from caikit.core import ModuleBase, TaskBase
+from caikit.core import ModuleBase, TaskBase, isiterable
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import (
     DataObjectBase,
@@ -95,12 +96,18 @@ class CaikitRPCBase(abc.ABC):
 
     def create_rpc_json(self, package_name: str) -> Dict:
         """Return json snippet for the service definition of this RPC"""
-        output_type_name = self.return_type.get_proto_class().DESCRIPTOR.full_name
+        if isiterable(self.return_type):
+            output_type_name = typing.get_args(self.return_type)[0].get_proto_class().DESCRIPTOR.full_name
+            server_streaming = True
+        else:
+            output_type_name = self.return_type.get_proto_class().DESCRIPTOR.full_name
+            server_streaming = False
 
         rpc_json = {
             "name": f"{self.name}",
             "input_type": f"{package_name}.{self.request.name}",
             "output_type": output_type_name,
+            "server_streaming": server_streaming
         }
         return rpc_json
 
