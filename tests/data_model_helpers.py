@@ -36,7 +36,9 @@ import caikit.core
 
 @contextmanager
 def temp_dpool():
-    """Fixture to isolate the descriptor pool used in each test"""
+    """Fixture to isolate the descriptor pool used in each test
+    just a test
+    """
     dpool = descriptor_pool.DescriptorPool()
     global_dpool = descriptor_pool._DEFAULT
     descriptor_pool._DEFAULT = dpool
