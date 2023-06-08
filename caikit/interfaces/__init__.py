@@ -28,4 +28,4 @@ import import_tracker
 # Import each domain with lazy import errors
 with import_tracker.lazy_import_errors():
     # Local
-    from . import common, runtime
+    from . import common, nlp, runtime
