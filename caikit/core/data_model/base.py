@@ -813,6 +813,19 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 fields_to_dict.append(field)
         return {field: self._field_to_dict_element(field) for field in fields_to_dict}
 
+    def to_kwargs(self) -> dict:
+        """Convert to flat dictionary representation. (Like .to_dict, but not recursive)
+        This keeps the attribute names of any fields backed by oneofs, instead of using the
+        internal oneof field name
+        """
+        fields_to_dict = []
+        for field in self.fields:
+            if field not in self._fields_to_oneof:
+                fields_to_dict.append(field)
+            else:
+                fields_to_dict.append(self._fields_to_oneof[field])
+        return {field: getattr(self, field) for field in fields_to_dict}
+
     def to_json(self, **kwargs) -> str:
         """Convert to a json representation."""
 

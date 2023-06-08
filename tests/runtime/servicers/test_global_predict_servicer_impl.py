@@ -79,7 +79,7 @@ def test_invalid_input_to_a_valid_caikit_core_class_method_raises(
 def test_global_predict_works_on_good_inputs(
     sample_inference_service, sample_predict_servicer, loaded_model_id
 ):
-    """Global predict of CategoriesEsaPredict returns a categories prediction"""
+    """Global predict of SampleTaskRequest returns a prediction"""
     response = sample_predict_servicer.Predict(
         sample_inference_service.messages.SampleTaskRequest(
             sample_input=HAPPY_PATH_INPUT
@@ -95,13 +95,13 @@ def test_global_predict_aborts_long_running_predicts(
     mock_manager = MagicMock()
 
     # return a dummy model from the mock model manager
-    class UnresponsiveModel:
+    class UnresponsiveModel(SampleModule):
         started = threading.Event()
 
         def run(self, *args, **kwargs):
             self.started.set()
             while True:
-                time.sleep(0.01)
+                time.sleep(0.001)
 
     dummy_model = UnresponsiveModel()
     mock_manager.retrieve_model.return_value = dummy_model
@@ -121,7 +121,7 @@ def test_global_predict_aborts_long_running_predicts(
         # Patch in the mock manager and start the prediction
         with patch.object(sample_predict_servicer, "_model_manager", mock_manager):
             predict_thread.start()
-            dummy_model.started.wait()
+            assert dummy_model.started.wait(2)
             # Simulate a timeout or client abort
             context.cancel()
             predict_thread.join(10)

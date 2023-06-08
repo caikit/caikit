@@ -15,7 +15,6 @@ from caikit.core.data_model.streams.data_stream import DataStream
 from caikit.runtime.service_generation.data_stream_source import (
     DataStreamSourceBase,
     _make_data_stream_source_type_name,
-    get_data_stream_source,
     make_data_stream_source,
 )
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -132,14 +131,6 @@ def test_multiple_make_data_stream_source():
     proto_repr = ds.to_proto()
     assert ds.from_proto(proto_repr).to_proto() == proto_repr
     assert stream_type.from_proto(proto_repr).to_proto() == proto_repr
-
-
-def test_get_data_stream_source(sample_train_service):
-    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    ds = stream_type(jsondata=stream_type.JsonData(data=[SampleTrainingType(1)]))
-    # make sure you get the same type back after sending either as a protobuf message or normally
-    assert type(ds) is type(get_data_stream_source(ds.to_proto()))
-    assert type(ds) is type(get_data_stream_source(ds))
 
 
 def test_data_model_element_type(sample_train_service):

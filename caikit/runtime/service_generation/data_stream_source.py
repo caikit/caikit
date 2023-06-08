@@ -13,14 +13,12 @@
 # limitations under the License.
 
 # Standard
-from datetime import datetime
 from glob import glob
-from typing import Any, List, Optional, Type, Union
+from typing import Any, List, Type, Union
 import os
 import sys
 
 # Third Party
-from google.protobuf.message import Message as ProtoMessageType
 import grpc
 
 # First Party
@@ -43,16 +41,6 @@ import caikit
 # DataStreamSource wrappers so that the same message is not recreated
 # unnecessarily
 _DATA_STREAM_SOURCE_TYPES = {}
-
-# Python type -> jtd name
-_NATIVE_TYPE_TO_JTD = {
-    str: "string",
-    int: "int64",
-    float: "float64",
-    bytes: "bytes",
-    bool: "boolean",
-    datetime: "timestamp",
-}
 
 log = alog.use_channel("DSTRM-SRC")
 
@@ -320,18 +308,6 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
 
     # Return the global stream source object for this element type
     return _DATA_STREAM_SOURCE_TYPES[data_element_type]
-
-
-def get_data_stream_source(message: Any) -> Optional[Type[DataStreamSourceBase]]:
-    """Get the data stream source from the given message if possible"""
-    # If it's a protobuf message, alias to the corresponding DM class if
-    # possible
-    if isinstance(message, ProtoMessageType):
-        # NOTE: This is the _very_ naive implementation and is potentially quite
-        #   inefficient with the current from_proto implementation
-        message = DataBase.get_class_for_proto(message).from_proto(message)
-    if isinstance(message, DataStreamSourceBase):
-        return message
 
 
 def _make_data_stream_source_type_name(data_element_type: Type) -> str:

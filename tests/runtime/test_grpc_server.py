@@ -78,11 +78,33 @@ HAPPY_PATH_TRAIN_RESPONSE = TrainingJob(
 ).to_proto()
 
 
-def is_good_train_response(actual_response, expected, model_name):
+def is_good_train_response(
+    actual_response, expected, model_name, training_management_stub
+):
     assert dir(actual_response) == dir(expected)
     assert actual_response.training_id is not None
     assert isinstance(actual_response.training_id, str)
     assert actual_response.model_name == model_name
+
+    status = TrainingStatus.PROCESSING.value
+    i = 0
+    while status == TrainingStatus.PROCESSING.value:
+        training_info_request = TrainingInfoRequest(
+            training_id=actual_response.training_id
+        )
+        training_management_response: TrainingInfoResponse = (
+            TrainingInfoResponse.from_proto(
+                training_management_stub.GetTrainingStatus(
+                    training_info_request.to_proto()
+                )
+            )
+        )
+        status = training_management_response.status
+        assert status != TrainingStatus.FAILED.value
+        i += 1
+        assert i < 100, "Waited too long for training to complete"
+
+    assert status == TrainingStatus.COMPLETED.value
 
 
 ## Tests #######################################################################
@@ -196,6 +218,7 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
     inference_stub,
     sample_train_service,
     sample_inference_service,
+    training_management_stub,
 ):
     """Test RPC CaikitRuntime.SampleTaskSampleModuleTrain successful response"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
@@ -212,11 +235,9 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
 
     actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
 
-    is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
-
-    # give the trained model time to load
-    # TODO: no sleeps in tests!
-    time.sleep(1)
+    is_good_train_response(
+        actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name, training_management_stub
+    )
 
     # make sure the trained model can run inference
     predict_request = sample_inference_service.messages.SampleTaskRequest(
@@ -234,6 +255,7 @@ def test_train_fake_module_ok_response_with_loaded_model_can_predict_with_traine
     inference_stub,
     sample_train_service,
     sample_inference_service,
+    training_management_stub,
 ):
     """Test RPC CaikitRuntime.WorkflowsSampleTaskSampleWorkflowTrain successful response with a loaded model"""
     sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
@@ -244,11 +266,9 @@ def test_train_fake_module_ok_response_with_loaded_model_can_predict_with_traine
         model_name=model_name, sample_block=sample_model
     )
     actual_response = train_stub.SampleTaskCompositeModuleTrain(train_request)
-    is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
-
-    # give the trained model time to load
-    # TODO: no sleeps in tests!
-    time.sleep(1)
+    is_good_train_response(
+        actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name, training_management_stub
+    )
 
     # make sure the trained model can run inference
     predict_request = sample_inference_service.messages.SampleTaskRequest(
@@ -265,11 +285,13 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
     sample_int_file,
     train_stub,
     inference_stub,
+    training_management_stub,
     sample_train_service,
     sample_inference_service,
 ):
-    """This test: original "stock" OtherModule model has batch size 42 (see fixtures/models/bar.yml),
-    we then train a custom OtherModule model with batch size 100,
+    """This test: original "stock" OtherModule model has batch size 42
+    (See fixtures/models/bar/config.yml).
+    We then train a custom OtherModule model with batch size 100,
     then we make a predict to each, they should have the correct batch size"""
 
     # Train an OtherModule with batch size 100
@@ -285,11 +307,12 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
         training_data=training_data,
     )
     actual_response = train_stub.OtherTaskOtherModuleTrain(train_request)
-    is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, "Bar Training")
-
-    # give the trained model time to load
-    # TODO: no sleeps in tests!
-    time.sleep(1)
+    is_good_train_response(
+        actual_response,
+        HAPPY_PATH_TRAIN_RESPONSE,
+        "Bar Training",
+        training_management_stub,
+    )
 
     # make sure the trained model can run inference, and the batch size 100 was used
     predict_request = sample_inference_service.messages.OtherTaskRequest(
@@ -315,7 +338,11 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
 
 ##### Test different datastream types #####
 def test_train_fake_module_ok_response_with_datastream_jsondata(
-    train_stub, inference_stub, sample_train_service, sample_inference_service
+    train_stub,
+    inference_stub,
+    sample_train_service,
+    sample_inference_service,
+    training_management_stub,
 ):
     """Test RPC CaikitRuntime.SampleTaskSampleModuleTrainRequest successful response with training data json type"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
@@ -332,11 +359,9 @@ def test_train_fake_module_ok_response_with_datastream_jsondata(
     )
 
     actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
-    is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
-
-    # give the trained model time to load
-    # TODO: no sleeps in tests!
-    time.sleep(1)
+    is_good_train_response(
+        actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name, training_management_stub
+    )
 
     # make sure the trained model can run inference
     predict_request = sample_inference_service.messages.SampleTaskRequest(
@@ -354,6 +379,7 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
     sample_train_service,
     sample_inference_service,
     sample_csv_file,
+    training_management_stub,
 ):
     """Test RPC CaikitRuntime.SampleTaskSampleModuleTrainRequest successful response with training data file type"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
@@ -367,11 +393,9 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
     )
 
     actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
-    is_good_train_response(actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name)
-
-    # give the trained model time to load
-    # TODO: no sleeps in tests!
-    time.sleep(1)
+    is_good_train_response(
+        actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name, training_management_stub
+    )
 
     # make sure the trained model can run inference
     predict_request = sample_inference_service.messages.SampleTaskRequest(

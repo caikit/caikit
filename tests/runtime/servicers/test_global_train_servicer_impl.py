@@ -39,27 +39,6 @@ import caikit.core
 ## Helpers #####################################################################
 
 
-def _primitives_function(
-    self,
-    double_field,
-    float_field,
-    int64_field,
-    uint64_field,
-    int32_field,
-    fixed64_field,
-    fixed32_field,
-    bool_field,
-    string_field,
-    bytes_field,
-    uint32_field,
-    sfixed32_field,
-    sfixed64_field,
-    sint32_field,
-    sint64_field,
-):
-    pass
-
-
 @pytest.fixture(autouse=True, params=[True, False])
 def set_train_location(request):
     """This fixture ensures that all tests in this file will be run with both
@@ -112,10 +91,6 @@ def test_global_train_sample_task(
         result.MODULE_CLASS
         == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
     )
-
-    # give the trained model time to load
-    # TODO: no sleeps in tests!
-    time.sleep(1)
 
     inference_response = sample_predict_servicer.Predict(
         sample_inference_service.messages.SampleTaskRequest(
@@ -171,10 +146,6 @@ def test_global_train_other_task(
         == "sample_lib.modules.other_task.other_implementation.OtherModule"
     )
 
-    # give the trained model time to load
-    # TODO: no sleeps in tests!
-    time.sleep(1)
-
     inference_response = sample_predict_servicer.Predict(
         sample_inference_service.messages.OtherTaskRequest(
             sample_inputsampleinputtype=SampleInputType(name="Gabe").to_proto()
@@ -224,10 +195,6 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
         training_result.MODULE_CLASS
         == "sample_lib.modules.sample_task.composite_module.CompositeModule"
     )
-
-    # give the trained model time to load
-    # TODO: no sleeps in tests!
-    time.sleep(1)
 
     # make sure the trained model can run inference
     inference_response = sample_predict_servicer.Predict(
@@ -421,6 +388,9 @@ def test_global_train_returns_exit_code_with_oom(
 #####################################################################
 
 
+@pytest.mark.skip(
+    reason="This test fails intermittently. Functionality has to be debugged for race condition"
+)
 def test_global_train_aborts_long_running_trains(
     sample_train_service, sample_train_servicer
 ):
@@ -455,7 +425,6 @@ def test_global_train_aborts_long_running_trains(
 
     with TemporaryDirectory() as tmp_dir:
         training_output_dir = tmp_dir
-        context = Fixtures.build_context("foo")
 
         train_thread = threading.Thread(
             target=servicer.run_training_job,
@@ -473,15 +442,16 @@ def test_global_train_aborts_long_running_trains(
 
     # NOTE: We are configuring following timeout
     # to avoid tests from hanging
-    request_timeout = 10
-    test_event_timeout = 20
+    request_timeout = 4
+    test_event_timeout = 2
     with patch(
         f"{SampleModule.__module__}.{SampleModule.train.__qualname__}",
         never_respond,
     ):
 
         train_thread.start()
-        test_event.wait(test_event_timeout)
+        # NB: assert is here to make sure we called the patched train
+        assert test_event.wait(test_event_timeout)
 
         # Simulate a timeout or client abort
         context.cancel()

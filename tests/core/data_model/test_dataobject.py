@@ -812,3 +812,25 @@ def test_dataobject_jsondict(temp_dpool, run_num):
     # Make sure conversion back to dict happens on from_proto
     foo2 = Foo.from_proto(foo_proto)
     assert foo2.js_dict == foo.js_dict
+
+
+def test_dataobject_to_kwargs(temp_dpool):
+    """to_kwargs does a non-recursive version of to_dict"""
+
+    @dataobject
+    class Bar(DataObjectBase):
+        bar: int
+
+    @dataobject
+    class Foo(DataObjectBase):
+        int_val: int
+        type_union_val: Union[int, str]
+        bar_val: Bar
+
+    bar = Bar(bar=42)
+    foo = Foo(int_val=1, type_union_val="foo", bar_val=bar)
+
+    kwargs = foo.to_kwargs()
+
+    # `type_union_val` is set here rather than the `type_union_val_str_val` internal oneof field name
+    assert kwargs == {"int_val": 1, "type_union_val": "foo", "bar_val": bar}

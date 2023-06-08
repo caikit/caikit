@@ -167,6 +167,20 @@ def train_stub(sample_train_service, runtime_grpc_server) -> Type:
     return train_stub
 
 
+@pytest.fixture(scope="session")
+def training_management_stub(runtime_grpc_server) -> Type:
+    training_management_service: ServicePackage = (
+        ServicePackageFactory().get_service_package(
+            ServicePackageFactory.ServiceType.TRAINING_MANAGEMENT,
+        )
+    )
+
+    training_management_stub = training_management_service.stub_class(
+        runtime_grpc_server.make_local_channel()
+    )
+    return training_management_stub
+
+
 @pytest.fixture
 def good_model_path() -> str:
     return Fixtures.get_good_model_path()

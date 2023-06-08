@@ -24,12 +24,12 @@ class SamplePrimitiveModule(caikit.core.ModuleBase):
     def run(
         self,
         sample_input: SampleInputType,
-        bool_type: bool,
-        int_type: int,
-        float_type: float,
-        str_type: str,
-        bytes_type: bytes,
-        list_type: List[str],
+        bool_type: bool = True,
+        int_type: int = 42,
+        float_type: float = 34.0,
+        str_type: str = "moose",
+        bytes_type: bytes = b"",
+        list_type: List[str] = None,
     ) -> SampleOutputType:
         """This takes in a bunch of primitive types to ensure that we can pass those through the runtime server correctly."""
         assert isinstance(bool_type, bool)

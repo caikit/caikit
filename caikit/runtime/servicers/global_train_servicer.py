@@ -197,7 +197,7 @@ class GlobalTrainServicer:
         kwargs = {
             "module_class": model,
             "model_path": model_path,
-            **build_caikit_library_request_dict(request, model.train),
+            **build_caikit_library_request_dict(request, model.TRAIN_SIGNATURE),
         }
 
         # If running with a subprocess, set the target, events and args accordingly

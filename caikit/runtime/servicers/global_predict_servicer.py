@@ -148,12 +148,14 @@ class GlobalPredictServicer:
                 log.debug("<RUN52259029D>", "Retrieving model '%s'", model_id)
                 model = self._model_manager.retrieve_model(model_id)
 
+                model_class = type(model)
                 # Unmarshall the request object into the required module run argument(s)
                 with PREDICT_FROM_PROTO_SUMMARY.labels(
                     grpc_request=desc_name, model_id=model_id
                 ).time():
                     caikit_library_request = build_caikit_library_request_dict(
-                        request, model.run
+                        request,
+                        model_class.RUN_SIGNATURE,
                     )
 
                 # NB: we previously recorded the size of the request, and timed this module to

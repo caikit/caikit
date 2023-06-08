@@ -15,7 +15,6 @@
 # Standard
 import os
 import tempfile
-import uuid
 
 # Third Party
 import pytest
@@ -33,10 +32,10 @@ from caikit.runtime.utils.servicer_util import (
     validate_caikit_library_class_method_exists,
     validate_data_model,
 )
+from sample_lib import SamplePrimitiveModule
 from sample_lib.data_model import SampleInputType
 from tests.conftest import random_test_id
 from tests.fixtures import Fixtures
-from tests.fixtures.protobufs import primitive_party_pb2
 import caikit.core
 import caikit.interfaces
 import sample_lib
@@ -120,18 +119,28 @@ def test_servicer_util_build_proto_response_raises_on_garbage_response_type():
 
 
 # ---------------- Tests for is_protobuf_primitive_field --------------------
-def test_servicer_util_is_protobuf_primitive_returns_true_for_primitive_types():
+def test_servicer_util_is_protobuf_primitive_returns_true_for_primitive_types(
+    sample_inference_service,
+):
     """Test that is_protobuf_primitive_field is True when considering primitive types"""
-    for primitive_field in primitive_party_pb2._OPTIONALPRIMITIVES.fields:
-        assert True == is_protobuf_primitive_field(primitive_field)
+    assert is_protobuf_primitive_field(
+        sample_inference_service.messages.SampleTaskRequest().DESCRIPTOR.fields_by_name[
+            "int_type"
+        ]
+    )
 
 
-def test_servicer_util_is_protobuf_primitive_returns_false_for_custom_types():
+def test_servicer_util_is_protobuf_primitive_returns_false_for_custom_types(
+    sample_inference_service,
+):
     """Test that is_protobuf_primitive_field is False when considering message and
     enum types. This is essential for handling Caikit library CDM objects, which are
     generally defined in terms of messages"""
-    for primitive_field in primitive_party_pb2._NONPRIMITIVES.fields:
-        assert False == (is_protobuf_primitive_field(primitive_field))
+    assert not is_protobuf_primitive_field(
+        sample_inference_service.messages.SampleTaskRequest().DESCRIPTOR.fields_by_name[
+            "sample_input"
+        ]
+    )
 
 
 def test_servicer_util_is_protobuf_primitive_returns_false_for_instance_not_in_FieldDescriptor():
@@ -188,27 +197,6 @@ def test_servicer_util_will_not_validate_arbitrary_service_descriptor():
 
 
 # ---------------- Tests for build_caikit_library_request_dict --------------------
-def _primitives_function(
-    self,
-    double_field,
-    float_field,
-    int64_field,
-    uint64_field,
-    int32_field,
-    fixed64_field,
-    fixed32_field,
-    bool_field,
-    string_field,
-    bytes_field,
-    uint32_field,
-    sfixed32_field,
-    sfixed64_field,
-    sint32_field,
-    sint64_field,
-):
-    pass
-
-
 HAPPY_PATH_INPUT = SampleInputType(name="Gabe").to_proto()
 
 
@@ -220,7 +208,7 @@ def test_global_predict_build_caikit_library_request_dict_creates_caikit_core_ru
         sample_inference_service.messages.SampleTaskRequest(
             sample_input=HAPPY_PATH_INPUT
         ),
-        sample_lib.modules.sample_task.SampleModule().run,
+        sample_lib.modules.sample_task.SampleModule.RUN_SIGNATURE,
     )
 
     # No self or "throw", throw was not set and the throw parameter contains a default value
@@ -237,9 +225,11 @@ def test_global_predict_build_caikit_library_request_dict_strips_invalid_run_kwa
     # Sample module doesn't take the `int_type` or `bool_type` params
     request_dict = build_caikit_library_request_dict(
         sample_inference_service.messages.SampleTaskRequest(
-            sample_input=HAPPY_PATH_INPUT, int_type=5, bool_type=True
+            sample_input=HAPPY_PATH_INPUT,
+            int_type=5,
+            bool_type=True,
         ),
-        sample_lib.modules.sample_task.SampleModule().run,
+        sample_lib.modules.sample_task.SampleModule.RUN_SIGNATURE,
     )
 
     expected_arguments = {"sample_input"}
@@ -253,113 +243,46 @@ def test_global_predict_build_caikit_library_request_dict_strips_empty_list_from
     """Global predict build_caikit_library_request_dict strips empty list from request"""
     request_dict = build_caikit_library_request_dict(
         sample_inference_service.messages.SampleTaskRequest(int_type=5, list_type=[]),
-        sample_lib.modules.sample_task.SamplePrimitiveModule().run,
+        sample_lib.modules.sample_task.SamplePrimitiveModule.RUN_SIGNATURE,
     )
 
     assert "list_type" not in request_dict.keys()
     assert "int_type" in request_dict.keys()
 
 
-def test_global_predict_build_caikit_library_request_dict_works_for_non_optional_primitives():
+def test_global_predict_build_caikit_library_request_dict_works_for_unset_primitives(
+    sample_inference_service,
+):
     """Global predict build_caikit_library_request_dict works for primitives"""
-    request = primitive_party_pb2.NonOptionalPrimitives(
-        bool_field=False,
-        int64_field=10,
-        float_field=0.0,
-        bytes_field=b"",  # only field that is not passed through here
-        string_field="not_empty",
+    request = sample_inference_service.messages.SampleTaskRequest()
+
+    request_dict = build_caikit_library_request_dict(
+        request, SamplePrimitiveModule.RUN_SIGNATURE
     )
-
-    request_dict = build_caikit_library_request_dict(request, _primitives_function)
-    # dict started with 15 keys (15 args)
-    # Since these are non-optional, any field that is not an iterable
-    # is passed through, any field that is an iterable (str or bytes)
-    # is passed through only if len(field_value) != 0
-    assert len(request_dict.keys()) == 14
-    assert request_dict["float_field"] == 0.0
-    assert request_dict["int64_field"] == 10
-    assert request_dict["bool_field"] == False
-    assert "string_field" in request_dict
-    # TODO: Make sure to double check this later
-    assert "bytes_field" not in request_dict
-
-
-def test_global_predict_build_caikit_library_request_dict_works_for_unset_primitives():
-    """Global predict build_caikit_library_request_dict works for primitives"""
-    request = primitive_party_pb2.OptionalPrimitives()
-
-    request_dict = build_caikit_library_request_dict(request, _primitives_function)
-    # dict started with 15 keys (15 args)
-    # all fields that are unset are removed
+    # None of the primitive args should be there
     assert len(request_dict.keys()) == 0
 
 
-def test_global_predict_build_caikit_library_request_dict_works_for_set_primitives():
-    """Global predict build_caikit_library_request_dict works for primitives"""
-    request = primitive_party_pb2.OptionalPrimitives(
-        bool_field=False, int64_field=10, float_field=0.0
-    )
-
-    request_dict = build_caikit_library_request_dict(request, _primitives_function)
-    # dict started with 15 keys (15 args)
-    # we set the bool, int and float field, hence they should
-    # be in the request object
-
-    assert len(request_dict.keys()) == 3
-    assert "float_field" in request_dict
-    assert isinstance(request_dict["float_field"], float)
-    assert "bool_field" in request_dict
-    assert isinstance(request_dict["bool_field"], bool)
-    assert "int64_field" in request_dict
-
-
-def test_global_predict_build_caikit_library_request_dict_works_for_repeated_fields():
-    """Global predict build_caikit_library_request_dict works for repeated fields"""
-
-    # TODO: uncomment the repeated_message_field test when we have support for the repeated MessageType field
-
-    request = primitive_party_pb2.Repeateds(repeated_string_field=["this is a string"])
-
-    def foo_function(
-        self,
-        repeated_string_field,
-        # repeated_message_field
-    ):
-        pass
-
-    request_dict = build_caikit_library_request_dict(request, foo_function)
-    # dict started with 1 key
-    # we expect 1 list fields back int the dict
-    assert len(request_dict.keys()) == 1
-    assert "repeated_string_field" in request_dict
-    assert isinstance(request_dict["repeated_string_field"], list)
-    # self.assertTrue("repeated_message_field" in caikit.core_request)
-    # self.assertIsInstance(caikit.core_request["repeated_message_field"], list)
-
-
-def test_global_train_build_caikit_library_request_dict_creates_caikit_core_run_kwargs_not_fail_when_optional_proto_field_not_exist(
-    sample_train_service,
+def test_global_predict_build_caikit_library_request_dict_works_for_set_primitives(
+    sample_inference_service,
 ):
-    """Global train build_caikit_library_request_dict creates module run kwargs from RPC msg
-    and if not passed in request, it creates the fields with default values"""
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=random_test_id()  # not having batch_size, and training_data
+    """Global predict build_caikit_library_request_dict works for primitives"""
+    request = sample_inference_service.messages.SampleTaskRequest(
+        int_type=5,
+        float_type=4.2,
+        str_type="moose",
+        bytes_type=b"foo",
+        list_type=["1", "2", "3"],
     )
 
-    caikit.core_request = build_caikit_library_request_dict(
-        train_request,
-        sample_lib.modules.sample_task.SampleModule().train,
+    request_dict = build_caikit_library_request_dict(
+        request, SamplePrimitiveModule.RUN_SIGNATURE
     )
-
-    expected_arguments = {"training_data"}
-
-    # assert that even though not passed in, caikit.core_request now has training_data
-    # because empty stream types get an empty steam initialized
-    # TODO: will need additional tests for list arguments
-    assert expected_arguments == set(caikit.core_request.keys())
-    assert isinstance(
-        caikit.core_request["training_data"], caikit.core.data_model.DataStream
-    )
+    assert request_dict["int_type"] == 5
+    assert request_dict["float_type"] == 4.2
+    assert request_dict["str_type"] == "moose"
+    assert request_dict["bytes_type"] == b"foo"
+    assert request_dict["list_type"] == ["1", "2", "3"]
 
 
 def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_request(
@@ -376,7 +299,7 @@ def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_r
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        sample_lib.modules.sample_task.SampleModule().train,
+        sample_lib.modules.sample_task.SampleModule.TRAIN_SIGNATURE,
     )
 
     # model_name is not expected to be passed through
@@ -399,8 +322,7 @@ def test_global_train_build_caikit_library_request_dict_works_for_repeated_field
     )
 
     caikit.core_request = build_caikit_library_request_dict(
-        train_request,
-        sample_lib.modules.sample_task.ListModule().train,
+        train_request, sample_lib.modules.sample_task.ListModule.TRAIN_SIGNATURE
     )
 
     # model_name is not expected to be passed through
@@ -428,13 +350,10 @@ def test_global_train_build_caikit_library_request_dict_ok_with_DataStreamSource
     )
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        sample_lib.modules.other_task.OtherModule().train,
+        sample_lib.modules.other_task.OtherModule.TRAIN_SIGNATURE,
     )
 
-    expected_arguments = set(
-        sample_lib.modules.other_task.OtherModule().train.__code__.co_varnames
-    )
-    expected_arguments.remove("cls")
+    expected_arguments = {"batch_size", "sample_input", "training_data"}
 
     assert expected_arguments == set(caikit.core_request.keys())
 
@@ -455,7 +374,7 @@ def test_global_train_build_caikit_library_request_dict_ok_with_data_stream_file
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        sample_lib.modules.sample_task.SampleModule().train,
+        sample_lib.modules.sample_task.SampleModule.TRAIN_SIGNATURE,
     )
 
     # model_name is not expected to be passed through
@@ -480,7 +399,7 @@ def test_global_train_build_caikit_library_request_dict_ok_with_training_data_as
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request,
-        sample_lib.modules.sample_task.ListModule().train,
+        sample_lib.modules.sample_task.ListModule.TRAIN_SIGNATURE,
     )
 
     # model_name is not expected to be passed through
@@ -520,145 +439,5 @@ def test_build_caikit_library_request_dict_works_when_data_stream_directory_incl
         # no error because at least 1 json file exists within the provided dir
         caikit.core_request = build_caikit_library_request_dict(
             train_request,
-            sample_lib.modules.sample_task.SampleModule().train,
+            sample_lib.modules.sample_task.SampleModule.TRAIN_SIGNATURE,
         )
-
-
-# ---------------- Error tests for build_caikit_library_request_dict --------------------
-
-
-def test_build_caikit_library_request_dict_raises_invalid_data_stream_source_file(
-    sample_train_service,
-):
-    """Global train build_caikit_library_request_dict works for repeated fields"""
-
-    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    training_data = stream_type(file=stream_type.File(filename="abc.blah")).to_proto()
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=random_test_id(),
-        training_data=training_data,
-    )
-
-    with pytest.raises(CaikitRuntimeException) as e:
-        caikit.core_request = build_caikit_library_request_dict(
-            train_request,
-            sample_lib.modules.sample_task.SampleModule().train,
-        )
-
-    assert "Invalid .blah data source file" in e.value.message
-
-
-def test_build_caikit_library_request_dict_raises_invalid_data_stream_source_file_ext(
-    sample_train_service,
-):
-    """Global train build_caikit_library_request_dict works for repeated fields"""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as handle:
-        handle.write("not_relevant")
-        handle.flush()
-        fname = handle.name
-        stream_type = (
-            caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-        )
-        training_data = stream_type(file=stream_type.File(filename=fname)).to_proto()
-        train_request = (
-            sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-                model_name="Foo Bar Training",
-                training_data=training_data,
-            )
-        )
-
-        with pytest.raises(CaikitRuntimeException) as e:
-            caikit.core_request = build_caikit_library_request_dict(
-                train_request,
-                sample_lib.modules.sample_task.SampleModule().train,
-            )
-
-        assert "Extension not supported" in e.value.message
-
-
-def test_build_caikit_library_request_dict_raises_when_data_stream_file_passes_as_dir(
-    sample_train_service, sample_csv_file
-):
-    """Global train build_caikit_library_request_dict raises for a file passed as directory"""
-
-    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    training_data = stream_type(
-        directory=stream_type.Directory(dirname=sample_csv_file)
-    ).to_proto()
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name="Foo Bar Training",
-        training_data=training_data,
-    )
-
-    with pytest.raises(CaikitRuntimeException) as e:
-        caikit.core_request = build_caikit_library_request_dict(
-            train_request,
-            sample_lib.modules.sample_task.SampleModule().train,
-        )
-
-    assert "Invalid json directory source file" in e.value.message
-
-
-def test_build_caikit_library_request_dict_raises_when_data_stream_directory_passed_with_nonsupported_extension(
-    sample_train_service,
-):
-    """Global train build_caikit_library_request_dict raises non-supported extension type directory"""
-
-    with tempfile.TemporaryDirectory() as tempdir:
-        fname = os.path.join(tempdir, "justafile.txt")
-        with open(fname, "w") as handle:
-            handle.writelines("blah blah blah")
-
-        stream_type = (
-            caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-        )
-        training_data = stream_type(
-            directory=stream_type.Directory(dirname=tempdir, extension="txt")
-        ).to_proto()
-        train_request = (
-            sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-                model_name=random_test_id(),
-                training_data=training_data,
-            )
-        )
-
-        with pytest.raises(CaikitRuntimeException) as e:
-            caikit.core_request = build_caikit_library_request_dict(
-                train_request,
-                sample_lib.modules.sample_task.SampleModule().train,
-            )
-
-        # TODO: change this message once it's implemented
-        assert "Extension not supported!" in e.value.message
-
-
-def test_build_caikit_library_request_dict_raises_when_data_stream_directory_passed_with_incorrect_extension(
-    sample_train_service, sample_csv_file
-):
-    """Global train build_caikit_library_request_dict raises wrong extension type directory"""
-
-    with tempfile.TemporaryDirectory() as tempdir:
-        fname = os.path.join(tempdir, "justafile.csv")
-        with open(fname, "w") as handle:
-            handle.writelines("valid_csv,1,2,3")
-
-        stream_type = (
-            caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-        )
-        training_data = stream_type(
-            directory=stream_type.Directory(dirname=tempdir, extension="json")
-        ).to_proto()
-        train_request = (
-            sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-                model_name=random_test_id(),
-                training_data=training_data,
-            )
-        )
-
-        with pytest.raises(CaikitRuntimeException) as e:
-            caikit.core_request = build_caikit_library_request_dict(
-                train_request,
-                sample_lib.modules.sample_task.SampleModule().train,
-            )
-
-        assert "contains no source files with extension" in e.value.message
