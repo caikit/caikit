@@ -16,7 +16,7 @@
 import os
 
 # Third Party
-from transformers import pipeline
+from transformers import pipeline  # pylint: disable=import-error
 
 # Local
 from caikit.core import ModuleBase, ModuleLoader, ModuleSaver, TaskBase, module, task
@@ -51,7 +51,9 @@ class HuggingFaceSentimentModule(ModuleBase):
         model = pipeline(model=config.hf_artifact_path, task="sentiment-analysis")
         self.sentiment_pipeline = model
 
-    def run(self, text_input: TextInput) -> ClassificationPrediction:
+    def run(  # pylint: disable=arguments-differ
+        self, text_input: TextInput
+    ) -> ClassificationPrediction:
         """Run HF sentiment analysis
         Args:
             text_input: TextInput
@@ -68,7 +70,9 @@ class HuggingFaceSentimentModule(ModuleBase):
         return ClassificationPrediction(class_info)
 
     @classmethod
-    def bootstrap(cls, model_path="distilbert-base-uncased-finetuned-sst-2-english"):
+    def bootstrap(
+        cls, model_path="distilbert-base-uncased-finetuned-sst-2-english"
+    ):  # pylint: disable=arguments-differ
         """Load a HuggingFace based caikit model
         Args:
             model_path: str
@@ -78,7 +82,7 @@ class HuggingFaceSentimentModule(ModuleBase):
         """
         return cls(model_path)
 
-    def save(self, model_path, **kwargs):
+    def save(self, model_path, **kwargs):  # pylint: disable=arguments-differ
         module_saver = ModuleSaver(
             self,
             model_path=model_path,
@@ -94,7 +98,7 @@ class HuggingFaceSentimentModule(ModuleBase):
 
     # this is how you load the model, if you have a caikit model
     @classmethod
-    def load(cls, model_path):
+    def load(cls, model_path):  # pylint: disable=arguments-differ
         """Load a HuggingFace based caikit model
         Args:
             model_path: str
