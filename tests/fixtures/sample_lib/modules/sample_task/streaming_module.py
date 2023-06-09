@@ -5,11 +5,7 @@ A sample module for sample things!
 import os
 
 # Local
-from ...data_model.sample import (
-    SampleInputType,
-    SampleOutputType,
-    StreamingTask,
-)
+from ...data_model.sample import SampleInputType, SampleOutputType, StreamingTask
 from caikit.core.data_model import DataStream
 from caikit.core.modules import ModuleLoader, ModuleSaver
 import caikit.core
@@ -19,7 +15,6 @@ import caikit.core
     "00110203-0123-0456-0789-0a0b02dd0e0f", "SampleModule", "0.0.1", StreamingTask
 )
 class StreamingModule(caikit.core.ModuleBase):
-
     def __init__(self, stream_size):
         super().__init__()
         self.stream_size = stream_size
@@ -30,9 +25,7 @@ class StreamingModule(caikit.core.ModuleBase):
         config = loader.config
         return cls(config["stream_size"])
 
-    def run(
-        self, sample_input: SampleInputType
-    ) -> DataStream[SampleOutputType]:
+    def run(self, sample_input: SampleInputType) -> DataStream[SampleOutputType]:
         """
         Args:
             sample_input (sample_lib.data_model.SampleInputType): the input
@@ -40,7 +33,10 @@ class StreamingModule(caikit.core.ModuleBase):
         Returns:
             sample_lib.data_model.SampleOutputType: The output
         """
-        list_ = [SampleOutputType(f"Hello {sample_input.name}") for x in range(self.stream_size)]
+        list_ = [
+            SampleOutputType(f"Hello {sample_input.name}")
+            for x in range(self.stream_size)
+        ]
         stream = DataStream.from_iterable(list_)
         return stream
 
@@ -50,7 +46,5 @@ class StreamingModule(caikit.core.ModuleBase):
             model_path=model_path,
         )
         with module_saver:
-            config_options = {
-                "stream_size": self.stream_size
-            }
+            config_options = {"stream_size": self.stream_size}
             module_saver.update_config(config_options)

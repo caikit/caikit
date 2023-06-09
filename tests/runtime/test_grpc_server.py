@@ -204,7 +204,7 @@ def test_predict_streaming_module(
     predict_request = sample_inference_service.messages.StreamingTaskRequest(
         sample_input=HAPPY_PATH_INPUT
     )
-    stream = stub.SampleTaskPredict(
+    stream = stub.StreamingTaskPredict(
         predict_request, metadata=[("mm-model-id", loaded_streaming_model_id)]
     )
 
