@@ -1,5 +1,5 @@
 """
-A sample module for sample things!
+A streaming module for streaming things!
 """
 # Standard
 import os
