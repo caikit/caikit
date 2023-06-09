@@ -212,6 +212,22 @@ def test_predict_fake_module_error_response(
     assert context.value.code() == grpc.StatusCode.NOT_FOUND
 
 
+def test_rpc_validation_on_predict(
+    loaded_model_id, runtime_grpc_server, sample_inference_service
+):
+    """Check that the server catches models sent to the wrong task RPCs"""
+    stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
+    predict_request = sample_inference_service.messages.OtherTaskRequest(
+        sample_inputsampleinputtype=HAPPY_PATH_INPUT
+    )
+    with pytest.raises(grpc.RpcError) as context:
+        stub.OtherTaskPredict(
+            predict_request, metadata=[("mm-model-id", loaded_model_id)]
+        )
+    assert context.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+    assert "Wrong inference RPC invoked for model class" in str(context.value)
+
+
 ####### End-to-end tests for train a model and then predict with it
 def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
     train_stub,

@@ -36,7 +36,7 @@ from caikit.interfaces.runtime.data_model import (
     TrainingInfoResponse,
 )
 from caikit.runtime import service_generation
-from caikit.runtime.service_generation.rpcs import snake_to_upper_camel
+from caikit.runtime.service_generation.rpcs import CaikitRPCBase, snake_to_upper_camel
 from caikit.runtime.utils import import_util
 import caikit.core
 
@@ -73,6 +73,7 @@ class ServicePackage:
     ]
     stub_class: Type
     messages: ModuleType
+    caikit_rpcs: Set[CaikitRPCBase]
 
 
 class ServicePackageFactory:
@@ -110,6 +111,7 @@ class ServicePackageFactory:
                 registration_function=grpc_service.registration_function,
                 stub_class=grpc_service.client_stub_class,
                 messages=None,  # we don't need messages here
+                caikit_rpcs=set(),  # No caikit RPCs
             )
 
         # First make sure we import the data model for the correct library
@@ -160,6 +162,7 @@ class ServicePackageFactory:
             registration_function=grpc_service.registration_function,
             stub_class=grpc_service.client_stub_class,
             messages=client_module,
+            caikit_rpcs=set(task_rpc_list),
         )
 
     # Implementation details for pure python service packages #
