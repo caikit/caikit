@@ -14,6 +14,7 @@
 
 # Standard
 import traceback
+from typing import Callable
 
 # Third Party
 from grpc._utilities import RpcMethodHandler
@@ -209,8 +210,8 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                         "<RUN30032825I>",
                         "Re-routing RPC %s from %s to %s",
                         fqm,
-                        original_rpc_handler.unary_unary,
-                        rerouted_rpc_method_handlers[method].unary_unary,
+                        self._get_handler_fn(original_rpc_handler),
+                        self._get_handler_fn(rerouted_rpc_method_handlers[method]),
                     )
 
                 # Now that we have re-rerouted all the original RPC method
@@ -367,3 +368,13 @@ class CaikitRuntimeServerWrapper(grpc.Server):
             A bool indicates if the operation times out.
         """
         return self._server.wait_for_termination(timeout)
+
+    @staticmethod
+    def _get_handler_fn(handler: RpcMethodHandler) -> Callable:
+        if handler.unary_unary:
+            return handler.unary_unary
+        if handler.unary_stream:
+            return handler.unary_stream
+        if handler.stream_unary:
+            return handler.stream_unary
+        return handler.stream_stream
