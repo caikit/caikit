@@ -161,7 +161,7 @@ def test_global_train_other_task(
 
 
 def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_not_raise(
-    loaded_model_id,
+    sample_task_model_id,
     sample_train_service,
     sample_train_servicer,
     sample_inference_service,
@@ -169,7 +169,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
 ):
     """Global train of TrainRequest returns a training job with the correct model name, and some training id for a train function that requires another loaded model"""
     sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
-        model_id=loaded_model_id
+        model_id=sample_task_model_id
     ).to_proto()
 
     training_request = (

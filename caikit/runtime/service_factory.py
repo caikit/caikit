@@ -36,8 +36,7 @@ from caikit.interfaces.runtime.data_model import (
     TrainingInfoResponse,
 )
 from caikit.runtime import service_generation
-from caikit.runtime.service_generation.rpcs import snake_to_upper_camel
-from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from caikit.runtime.service_generation.rpcs import CaikitRPCBase, snake_to_upper_camel
 from caikit.runtime.utils import import_util
 import caikit.core
 
@@ -74,6 +73,7 @@ class ServicePackage:
     ]
     stub_class: Type
     messages: ModuleType
+    caikit_rpcs: Set[CaikitRPCBase]
 
 
 class ServicePackageFactory:
@@ -111,6 +111,7 @@ class ServicePackageFactory:
                 registration_function=grpc_service.registration_function,
                 stub_class=grpc_service.client_stub_class,
                 messages=None,  # we don't need messages here
+                caikit_rpcs=set(),  # No caikit RPCs
             )
 
         # First make sure we import the data model for the correct library
@@ -161,6 +162,7 @@ class ServicePackageFactory:
             registration_function=grpc_service.registration_function,
             stub_class=grpc_service.client_stub_class,
             messages=client_module,
+            caikit_rpcs=set(rpc_list),
         )
 
     # Implementation details for pure python service packages #
@@ -251,70 +253,3 @@ class ServicePackageFactory:
             excluded_modules,
         )
         return clean_modules
-
-    # Implementation Details for protoc-compiled packages #
-    @staticmethod
-    def _get_service_descriptor(
-        caikit_runtime_pb2,
-        lib_name,
-    ) -> google.protobuf.descriptor.ServiceDescriptor:
-        """Get Service descriptor from caikit_runtime_pb2 module"""
-        service = f"_{lib_name.upper()}SERVICE"
-        train_service = f"_{lib_name.upper()}TRAININGSERVICE"
-
-        if hasattr(caikit_runtime_pb2, service):
-            return getattr(caikit_runtime_pb2, service)
-        if hasattr(caikit_runtime_pb2, train_service):
-            return getattr(caikit_runtime_pb2, train_service)
-
-        raise CaikitRuntimeException(
-            grpc.StatusCode.INTERNAL,
-            "Could not find service descriptor in caikit_runtime_pb2",
-        )
-
-    @staticmethod
-    def _get_servicer_class(
-        caikit_runtime_pb2_grpc,
-        lib_name,
-    ) -> Type[google.protobuf.service.Service]:
-        """Get google.protobufs.service.Service interface class from
-        caikit_runtime_pb2_grpc module"""
-        servicer = f"{lib_name}ServiceServicer"
-        train_servicer = f"{lib_name}TrainingServiceServicer"
-
-        if hasattr(caikit_runtime_pb2_grpc, servicer):
-            return getattr(caikit_runtime_pb2_grpc, servicer)
-        if hasattr(caikit_runtime_pb2_grpc, train_servicer):
-            return getattr(caikit_runtime_pb2_grpc, train_servicer)
-
-        raise CaikitRuntimeException(
-            grpc.StatusCode.INTERNAL,
-            f"Could not find servicer class {servicer} or {train_servicer} "
-            "in caikit_runtime_pb2_grpc",
-        )
-
-    @staticmethod
-    def _get_servicer_stub(
-        caikit_runtime_pb2_grpc,
-        lib_name,
-    ) -> type:
-        """Get ServiceStub class from caikit_runtime_pb2_grpc module"""
-        servicer = f"{lib_name}ServiceStub"
-        train_servicer = f"{lib_name}TrainingServiceStub"
-
-        if hasattr(caikit_runtime_pb2_grpc, servicer):
-            return getattr(caikit_runtime_pb2_grpc, servicer)
-        if hasattr(caikit_runtime_pb2_grpc, train_servicer):
-            return getattr(caikit_runtime_pb2_grpc, train_servicer)
-
-        raise CaikitRuntimeException(
-            grpc.StatusCode.INTERNAL,
-            "Could not find servicer stub in caikit_runtime_pb2_grpc",
-        )
-
-    @staticmethod
-    def _get_lib_name_for_servicer() -> str:
-        """Get caikit library name from Config, make upper case and not include caikit_"""
-        lib_names = import_util.clean_lib_names(get_config().runtime.library)
-        assert len(lib_names) == 1, "Only 1 caikit library supported for now"
-        return snake_to_upper_camel(lib_names[0].replace("caikit_", ""))

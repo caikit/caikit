@@ -13,6 +13,7 @@
 # limitations under the License.
 # Standard
 from importlib.metadata import version
+from typing import Set
 import traceback
 
 # Third Party
@@ -25,9 +26,11 @@ import alog
 
 # Local
 from caikit import get_config
+from caikit.core import ModuleBase
 from caikit.runtime.metrics.rpc_meter import RPCMeter
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage
+from caikit.runtime.service_generation.rpcs import TaskPredictRPC
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import clean_lib_names
 from caikit.runtime.utils.servicer_util import (
@@ -135,9 +138,9 @@ class GlobalPredictServicer:
                 A Caikit Library data model response object
         """
         request_name = request.DESCRIPTOR.name
-        outer_scope_name = "GlobalPredictServicerMock.Predict:%s" % request_name
+        outer_scope_name = "GlobalPredictServicer.Predict:%s" % request_name
         inner_scope_name = (
-            "GlobalPredictServicerImpl.Predict.caikit_library_run:%s" % request_name
+            "GlobalPredictServicer.Predict.caikit_library_run:%s" % request_name
         )
 
         try:
@@ -147,6 +150,8 @@ class GlobalPredictServicer:
                 # Retrieve the model from the model manager
                 log.debug("<RUN52259029D>", "Retrieving model '%s'", model_id)
                 model = self._model_manager.retrieve_model(model_id)
+
+                self._verify_model_task(model, request_name)
 
                 model_class = type(model)
                 # Unmarshall the request object into the required module run argument(s)
@@ -237,3 +242,27 @@ class GlobalPredictServicer:
             raise CaikitRuntimeException(
                 StatusCode.INTERNAL, "Unhandled exception during prediction"
             ) from e
+
+    def _verify_model_task(self, model: ModuleBase, request_name: str):
+        """Raise if the model is not supported for the task"""
+        rpc_set: Set[TaskPredictRPC] = self._inference_service.caikit_rpcs
+        module_rpc: TaskPredictRPC = next(
+            (rpc for rpc in rpc_set if model.TASK_CLASS == rpc.task),
+            None,
+        )
+
+        if not module_rpc:
+            raise CaikitRuntimeException(
+                status_code=StatusCode.INVALID_ARGUMENT,
+                message=f"Inference for model class {type(model)} not supported by this runtime",
+            )
+
+        request_rpc: TaskPredictRPC = next(
+            (rpc for rpc in rpc_set if rpc.request.name == request_name), None
+        )
+        if request_rpc != module_rpc:
+            raise CaikitRuntimeException(
+                status_code=StatusCode.INVALID_ARGUMENT,
+                message=f"Wrong inference RPC invoked for model class {type(model)}. "
+                f"Use {request_rpc.name} instead of {request_name}",
+            )
