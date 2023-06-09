@@ -125,9 +125,11 @@ class DataStream(Generic[T]):
             3
         """
         error.type_check("<COR88684982E>", Iterable, data=data)
+        return cls(cls._from_iterable_generator, data)
 
-        # lambda closure over `data` that returns an iterator over `data`
-        return cls(lambda: iter(data))
+    @classmethod
+    def _from_iterable_generator(cls, data: typing.Iterable[T]) -> typing.Iterator[T]:
+        return iter(data)
 
     @classmethod
     def from_jsonl(cls, filename: str) -> "DataStream[Dict]":
@@ -168,28 +170,28 @@ class DataStream(Generic[T]):
         """
         error.file_check("<COR32600575E>", filename)
 
-        def generator_func():
-            # open the file (closure around `filename`)
-            with open(filename, mode="rb") as json_fh:
-                log.debug2("Loading JSON array file: {}".format(filename))
-                lines = json_fh.readlines()
+        return cls(cls._from_jsonl_generator, filename)
 
-                try:
-                    for line in lines:
-                        if line.strip():  # ignore empty lines
-                            yield json.loads(line)
-                except json.JSONDecodeError as e:
-                    error(
-                        "<COR55596551E>",
-                        ValueError(f"Invalid JSON object in `{line}`, error: {e.msg}"),
-                    )
-                except TypeError:
-                    error(
-                        "<COR35596551E>",
-                        ValueError("Invalid JSON object in `{}`".format(line)),
-                    )
+    @classmethod
+    def _from_jsonl_generator(cls, filename):
+        with open(filename, mode="rb") as json_fh:
+            log.debug2("Loading JSON array file:  %s", filename)
+            lines = json_fh.readlines()
 
-        return cls(generator_func)
+            try:
+                for line in lines:
+                    if line.strip():  # ignore empty lines
+                        yield json.loads(line)
+            except json.JSONDecodeError as e:
+                error(
+                    "<COR55596551E>",
+                    ValueError(f"Invalid JSON object in `{line}`, error: {e.msg}"),
+                )
+            except TypeError:
+                error(
+                    "<COR35596551E>",
+                    ValueError("Invalid JSON object in `{}`".format(line)),
+                )
 
     @classmethod
     def from_json_array(cls, filename: str) -> "DataStream[Dict]":
@@ -228,24 +230,25 @@ class DataStream(Generic[T]):
         """
         error.file_check("<COR39609575E>", filename)
 
-        def generator_func():
-            # open the file (closure around `filename`)
-            with open(filename, mode="rb") as json_fh:
-                log.debug2("Loading JSON array file: {}".format(filename))
+        return cls(cls._from_json_array_generator, filename)
 
-                # for each {} object of the array
-                try:
-                    for item_idx, obj in enumerate(ijson.items(json_fh, "item")):
-                        log.debug2("Loading object index %d", item_idx)
-                        yield obj
+    @classmethod
+    def _from_json_array_generator(cls, filename):
+        # open the file
+        with open(filename, mode="rb") as json_fh:
+            log.debug2("Loading JSON array file: %s", filename)
 
-                except ijson.JSONError:
-                    error(
-                        "<COR85596551E>",
-                        ValueError("Invalid JSON object in `{}`".format(filename)),
-                    )
+            # for each {} object of the array
+            try:
+                for item_idx, obj in enumerate(ijson.items(json_fh, "item")):
+                    log.debug2("Loading object index %d", item_idx)
+                    yield obj
 
-        return cls(generator_func)
+            except ijson.JSONError:
+                error(
+                    "<COR85596551E>",
+                    ValueError("Invalid JSON object in `{}`".format(filename)),
+                )
 
     @classmethod
     def from_csv(cls, filename: str, *args, skip=0, **kwargs) -> "DataStream[List]":
@@ -288,20 +291,20 @@ class DataStream(Generic[T]):
                 ),
             )
 
-        # generator function that yields lists each containing the columns of the csv file
-        def generator_func(*csv_args, **csv_kwargs):
-            # open the csv file (closure around `filename`)
-            with open(filename, mode="r", encoding="utf8") as fh:
-                # skip lines if requested
-                for _ in range(skip):
-                    # pylint: disable=stop-iteration-return
-                    next(fh)
+        return cls(cls._from_csv_generator, filename, skip, *args, **kwargs)
 
-                # for each line of the csv file, yield a list
-                for line in csv.reader(fh, *csv_args, **csv_kwargs):
-                    yield line
+    @classmethod
+    def _from_csv_generator(cls, filename, skip, *csv_args, **csv_kwargs):
+        # open the csv file (closure around `filename`)
+        with open(filename, mode="r", encoding="utf8") as fh:
+            # skip lines if requested
+            for _ in range(skip):
+                # pylint: disable=stop-iteration-return
+                next(fh)
 
-        return cls(generator_func, *args, **kwargs)
+            # for each line of the csv file, yield a list
+            for line in csv.reader(fh, *csv_args, **csv_kwargs):
+                yield line
 
     @classmethod
     def from_header_csv(cls, filename: str, *args, **kwargs) -> "DataStream[Dict]":
@@ -343,16 +346,16 @@ class DataStream(Generic[T]):
                 ),
             )
 
-        # generator function that yields dicts
-        def generator_func(*csv_args, **csv_kwargs):
-            # open the csv file (closure around `filename`)
-            with open(filename, mode="r", encoding="utf8") as fh:
+        return cls(cls._from_header_csv_generator, filename, *args, **kwargs)
 
-                # for each line of the csv file, yield a dict
-                for line in csv.DictReader(fh, *csv_args, **csv_kwargs):
-                    yield line
+    @classmethod
+    def _from_header_csv_generator(cls, filename, *csv_args, **csv_kwargs):
+        # open the csv file (closure around `filename`)
+        with open(filename, mode="r", encoding="utf8") as fh:
 
-        return cls(generator_func, *args, **kwargs)
+            # for each line of the csv file, yield a dict
+            for line in csv.DictReader(fh, *csv_args, **csv_kwargs):
+                yield line
 
     @classmethod
     def from_txt(cls, filename: str) -> "DataStream[str]":
@@ -388,15 +391,16 @@ class DataStream(Generic[T]):
         """
         error.file_check("<COR79693043E>", filename)
 
-        def generator_func():
-            # open the file (closure around `filename`)
-            with open(filename, mode="r", encoding="utf8") as fh:
-                # for each line of the file
-                for line in fh:
-                    # strip new lines and carriage returns and yield the line
-                    yield line.rstrip("\n\r")
+        return cls(cls._from_txt_generator, filename)
 
-        return cls(generator_func)
+    @classmethod
+    def _from_txt_generator(cls, filename):
+        # open the file (closure around `filename`)
+        with open(filename, mode="r", encoding="utf8") as fh:
+            # for each line of the file
+            for line in fh:
+                # strip new lines and carriage returns and yield the line
+                yield line.rstrip("\n\r")
 
     @classmethod
     def from_file(cls, filename: str) -> "DataStream[Union[Dict, Tuple, str]]":
@@ -420,18 +424,14 @@ class DataStream(Generic[T]):
         _, file_ext = os.path.splitext(filename)
         # choose the right from_* fn
         if file_ext.lower() == ".json":
-            log.debug2(
-                "Detected .json extension, loading {} as a json file".format(filename)
-            )
+            log.debug2("Detected .json extension, loading %s as a json file", filename)
             return DataStream.from_json_array(filename)
 
         if file_ext.lower() == ".csv":
-            log.debug2(
-                "Detected .csv extension, loading {} as a csv file".format(filename)
-            )
+            log.debug2("Detected .csv extension, loading %s as a csv file", filename)
             return DataStream.from_csv(filename)
 
-        log.debug2("Loading {} as a raw text file".format(filename))
+        log.debug2("Loading %s as a raw text file", filename)
         # TODO: test this at some point (this path is unused currently)
         return DataStream.from_txt(filename)
 
@@ -465,12 +465,13 @@ class DataStream(Generic[T]):
         # verify that `dirname` exists
         cls._verify_dir(dirname)
 
-        def generator_func():
-            # glob `*.txt` files in `dirname` (closure around `dirname`)
-            for filename in glob(os.path.join(dirname, "*." + extension)):
-                yield file_opener(filename)
+        return cls(cls._from_collection_generator, dirname, extension, file_opener)
 
-        return cls(generator_func)
+    @classmethod
+    def _from_collection_generator(cls, dirname, extension, file_opener):
+        # glob `*.txt` files in `dirname` (closure around `dirname`)
+        for filename in glob(os.path.join(dirname, "*." + extension)):
+            yield file_opener(filename)
 
     @classmethod
     def from_txt_collection(cls, dirname: str, extension="txt") -> "DataStream[str]":
@@ -540,17 +541,18 @@ class DataStream(Generic[T]):
         # verify that `dirname` exists
         cls._verify_dir(dirname)
 
-        def generator_func():
-            # list of data_streams created from different files
-            data_stream_list = []
-            # glob `*.txt` files in `dirname` (closure around `dirname`)
-            for filename in glob(os.path.join(dirname, "*.csv")):
-                data_stream_list.append(cls.from_header_csv(filename=filename))
-            # yield the combined data item once flattened
-            for data_item in DataStream.chain(data_stream_list).flatten():
-                yield data_item
+        return cls(cls._from_csv_collection_generator, dirname)
 
-        return cls(generator_func)
+    @classmethod
+    def _from_csv_collection_generator(cls, dirname):
+        # list of data_streams created from different files
+        data_stream_list = []
+        # glob `*.txt` files in `dirname` (closure around `dirname`)
+        for filename in glob(os.path.join(dirname, "*.csv")):
+            data_stream_list.append(cls.from_header_csv(filename=filename))
+        # yield the combined data item once flattened
+        for data_item in DataStream.chain(data_stream_list).flatten():
+            yield data_item
 
     @classmethod
     def from_jsonl_collection(cls, dirname: str) -> "DataStream[Dict]":
@@ -569,17 +571,18 @@ class DataStream(Generic[T]):
         # verify that `dirname` exists
         cls._verify_dir(dirname)
 
-        def generator_func():
-            # list of data_streams created from different files
-            data_stream_list = []
-            # glob `*.txt` files in `dirname` (closure around `dirname`)
-            for filename in glob(os.path.join(dirname, "*.jsonl")):
-                data_stream_list.append(cls.from_jsonl(filename=filename))
-            # yield the combined data item once flattened
-            for data_item in DataStream.chain(data_stream_list).flatten():
-                yield data_item
+        return cls(cls._from_jsonl_collection_generator, dirname)
 
-        return cls(generator_func)
+    @classmethod
+    def _from_jsonl_collection_generator(cls, dirname):
+        # list of data_streams created from different files
+        data_stream_list = []
+        # glob `*.txt` files in `dirname` (closure around `dirname`)
+        for filename in glob(os.path.join(dirname, "*.jsonl")):
+            data_stream_list.append(cls.from_jsonl(filename=filename))
+        # yield the combined data item once flattened
+        for data_item in DataStream.chain(data_stream_list).flatten():
+            yield data_item
 
     def train_test_split(
         self, test_split=0.25, seed=None

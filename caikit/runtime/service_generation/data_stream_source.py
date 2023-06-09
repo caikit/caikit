@@ -51,8 +51,11 @@ class DataStreamSourceBase(DataStream):
     """
 
     def __init__(self):
-        """Validate oneof semantics"""
-        super().__init__(lambda: self.to_data_stream().generator_func())
+        super().__init__(self._generator)
+
+    def _generator(self):
+        stream = self.to_data_stream()
+        return stream.generator_func(*stream.generator_args, **stream.generator_kwargs)
 
     def __getstate__(self) -> bytes:
         """A DataStreamSource is pickled by serializing its source
