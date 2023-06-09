@@ -46,7 +46,7 @@ HAPPY_PATH_RESPONSE = SampleOutputType(greeting="Hello Gabe").to_proto()
 
 
 def test_calling_predict_should_raise_if_module_raises(
-    sample_inference_service, sample_predict_servicer, loaded_model_id
+    sample_inference_service, sample_predict_servicer, sample_task_model_id
 ):
     with pytest.raises(CaikitRuntimeException) as context:
         # SampleModules will raise a RuntimeError if the throw flag is set
@@ -54,14 +54,14 @@ def test_calling_predict_should_raise_if_module_raises(
             sample_input=HAPPY_PATH_INPUT, throw=True
         )
         sample_predict_servicer.Predict(
-            request, Fixtures.build_context(loaded_model_id)
+            request, Fixtures.build_context(sample_task_model_id)
         )
     assert context.value.status_code == grpc.StatusCode.INTERNAL
     assert "Unhandled exception during prediction" in context.value.message
 
 
 def test_invalid_input_to_a_valid_caikit_core_class_method_raises(
-    loaded_model_id, sample_inference_service, sample_predict_servicer
+    sample_task_model_id, sample_inference_service, sample_predict_servicer
 ):
     """Test that a caikit.core module that gets an unexpected input value errors in an expected way"""
     with pytest.raises(CaikitRuntimeException) as context:
@@ -70,21 +70,21 @@ def test_invalid_input_to_a_valid_caikit_core_class_method_raises(
             sample_input=SampleInputType(name=SampleModule.POISON_PILL_NAME).to_proto(),
         )
         sample_predict_servicer.Predict(
-            request, Fixtures.build_context(loaded_model_id)
+            request, Fixtures.build_context(sample_task_model_id)
         )
     assert context.value.status_code == grpc.StatusCode.INVALID_ARGUMENT
     assert "problem with your input" in context.value.message
 
 
 def test_global_predict_works_on_good_inputs(
-    sample_inference_service, sample_predict_servicer, loaded_model_id
+    sample_inference_service, sample_predict_servicer, sample_task_model_id
 ):
     """Global predict of SampleTaskRequest returns a prediction"""
     response = sample_predict_servicer.Predict(
         sample_inference_service.messages.SampleTaskRequest(
             sample_input=HAPPY_PATH_INPUT
         ),
-        Fixtures.build_context(loaded_model_id),
+        Fixtures.build_context(sample_task_model_id),
     )
     assert response == HAPPY_PATH_RESPONSE
 
@@ -134,7 +134,7 @@ def test_global_predict_aborts_long_running_predicts(
 
 
 def test_metering_ignore_unsuccessful_calls(
-    sample_inference_service, sample_predict_servicer, loaded_model_id
+    sample_inference_service, sample_predict_servicer, sample_task_model_id
 ):
     with patch.object(
         sample_predict_servicer.rpc_meter, "update_metrics"
@@ -144,13 +144,13 @@ def test_metering_ignore_unsuccessful_calls(
         )
         with pytest.raises(CaikitRuntimeException):
             sample_predict_servicer.Predict(
-                request, Fixtures.build_context(loaded_model_id)
+                request, Fixtures.build_context(sample_task_model_id)
             )
 
         mock_update_func.assert_not_called()
 
 
-def test_metering_predict_rpc_counter(sample_inference_service, loaded_model_id):
+def test_metering_predict_rpc_counter(sample_inference_service, sample_task_model_id):
     # need a new servicer to get a fresh new RPC meter
     sample_predict_servicer = GlobalPredictServicer(sample_inference_service)
     try:
@@ -160,7 +160,7 @@ def test_metering_predict_rpc_counter(sample_inference_service, loaded_model_id)
                 sample_inference_service.messages.SampleTaskRequest(
                     sample_input=HAPPY_PATH_INPUT
                 ),
-                Fixtures.build_context(loaded_model_id),
+                Fixtures.build_context(sample_task_model_id),
             )
 
         # Force meter to write
@@ -187,7 +187,7 @@ def test_metering_predict_rpc_counter(sample_inference_service, loaded_model_id)
 
 
 def test_metering_write_to_metrics_file_twice(
-    sample_inference_service, loaded_model_id
+    sample_inference_service, sample_task_model_id
 ):
     """Make sure subsequent metering events append to file"""
     # need a new servicer to get a fresh new RPC meter
@@ -197,7 +197,7 @@ def test_metering_write_to_metrics_file_twice(
             sample_inference_service.messages.SampleTaskRequest(
                 sample_input=HAPPY_PATH_INPUT
             ),
-            Fixtures.build_context(loaded_model_id),
+            Fixtures.build_context(sample_task_model_id),
         )
 
         # Force write
@@ -207,7 +207,7 @@ def test_metering_write_to_metrics_file_twice(
             sample_inference_service.messages.SampleTaskRequest(
                 sample_input=HAPPY_PATH_INPUT
             ),
-            Fixtures.build_context(loaded_model_id),
+            Fixtures.build_context(sample_task_model_id),
         )
 
         # Force write

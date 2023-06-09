@@ -192,7 +192,7 @@ def other_good_model_path() -> str:
 
 
 @pytest.fixture
-def loaded_model_id(good_model_path) -> str:
+def sample_task_model_id(good_model_path) -> str:
     """Loaded model ID using model manager load model implementation"""
     model_id = _random_id()
     model_manager = ModelManager.get_instance()
@@ -209,7 +209,7 @@ def loaded_model_id(good_model_path) -> str:
 
 
 @pytest.fixture
-def other_loaded_model_id(other_good_model_path) -> str:
+def other_task_model_id(other_good_model_path) -> str:
     """Loaded model ID using model manager load model implementation"""
     model_id = _random_id()
     model_manager = ModelManager.get_instance()

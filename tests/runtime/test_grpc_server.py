@@ -183,7 +183,7 @@ def test_model_train(runtime_grpc_server):
 
 
 def test_predict_fake_module_ok_response(
-    loaded_model_id, runtime_grpc_server, sample_inference_service
+    sample_task_model_id, runtime_grpc_server, sample_inference_service
 ):
     """Test RPC CaikitRuntime.WidgetPredict successful response"""
     stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
@@ -191,7 +191,7 @@ def test_predict_fake_module_ok_response(
         sample_input=HAPPY_PATH_INPUT
     )
     actual_response = stub.SampleTaskPredict(
-        predict_request, metadata=[("mm-model-id", loaded_model_id)]
+        predict_request, metadata=[("mm-model-id", sample_task_model_id)]
     )
     assert actual_response == HAPPY_PATH_RESPONSE
 
@@ -214,7 +214,7 @@ def test_predict_fake_module_error_response(
 
 
 def test_rpc_validation_on_predict(
-    loaded_model_id, runtime_grpc_server, sample_inference_service
+    sample_task_model_id, runtime_grpc_server, sample_inference_service
 ):
     """Check that the server catches models sent to the wrong task RPCs"""
     stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
@@ -223,7 +223,7 @@ def test_rpc_validation_on_predict(
     )
     with pytest.raises(grpc.RpcError) as context:
         stub.OtherTaskPredict(
-            predict_request, metadata=[("mm-model-id", loaded_model_id)]
+            predict_request, metadata=[("mm-model-id", sample_task_model_id)]
         )
     assert context.value.code() == grpc.StatusCode.INVALID_ARGUMENT
     assert "Wrong inference RPC invoked for model class" in str(context.value)
@@ -300,7 +300,7 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
 
 
 def test_train_fake_module_ok_response_with_loaded_model_can_predict_with_trained_model(
-    loaded_model_id,
+    sample_task_model_id,
     train_stub,
     inference_stub,
     sample_train_service,
@@ -309,7 +309,7 @@ def test_train_fake_module_ok_response_with_loaded_model_can_predict_with_traine
 ):
     """Test RPC CaikitRuntime.WorkflowsSampleTaskSampleWorkflowTrain successful response with a loaded model"""
     sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
-        model_id=loaded_model_id
+        model_id=sample_task_model_id
     ).to_proto()
     model_name = random_test_id()
     train_request = sample_train_service.messages.SampleTaskCompositeModuleTrainRequest(
@@ -331,7 +331,7 @@ def test_train_fake_module_ok_response_with_loaded_model_can_predict_with_traine
 
 
 def test_train_fake_module_does_not_change_another_instance_model_of_block(
-    other_loaded_model_id,
+    other_task_model_id,
     sample_int_file,
     train_stub,
     inference_stub,
@@ -378,7 +378,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
 
     # make sure the previously loaded OtherModule model still has batch size 42
     original_inference_response = inference_stub.OtherTaskPredict(
-        predict_request, metadata=[("mm-model-id", other_loaded_model_id)]
+        predict_request, metadata=[("mm-model-id", other_task_model_id)]
     )
     expected_original_inference_response = OtherOutputType(
         farewell="goodbye: Gabe 42 times"
@@ -524,12 +524,14 @@ def test_load_model_badmodel_error_response(runtime_grpc_server):
     assert context.value.code() == grpc.StatusCode.INTERNAL
 
 
-def test_unload_model_ok_response(loaded_model_id, runtime_grpc_server):
+def test_unload_model_ok_response(sample_task_model_id, runtime_grpc_server):
     """Test unload model's successful response"""
     stub = model_runtime_pb2_grpc.ModelRuntimeStub(
         runtime_grpc_server.make_local_channel()
     )
-    unload_model_request = model_runtime_pb2.UnloadModelRequest(modelId=loaded_model_id)
+    unload_model_request = model_runtime_pb2.UnloadModelRequest(
+        modelId=sample_task_model_id
+    )
     # Unload model throws on failure (response message has no fields)
     stub.unloadModel(unload_model_request)
 
@@ -559,14 +561,14 @@ def test_predict_model_size_ok_response(runtime_grpc_server):
 
 
 def test_predict_model_size_on_loaded_model_ok_response(
-    loaded_model_id, runtime_grpc_server
+    sample_task_model_id, runtime_grpc_server
 ):
     """Test predict model size successful response on a model that has been loaded"""
     stub = model_runtime_pb2_grpc.ModelRuntimeStub(
         runtime_grpc_server.make_local_channel()
     )
     predict_model_size_request = model_runtime_pb2.PredictModelSizeRequest(
-        modelId=loaded_model_id, modelPath=Fixtures.get_good_model_path()
+        modelId=sample_task_model_id, modelPath=Fixtures.get_good_model_path()
     )
     actual_response = stub.predictModelSize(predict_model_size_request)
     assert 0 < actual_response.sizeInBytes
@@ -585,13 +587,15 @@ def test_predict_model_size_model_notfound_error_response(runtime_grpc_server):
     assert context.value.code() == grpc.StatusCode.NOT_FOUND
 
 
-def test_model_size_ok_response(loaded_model_id, runtime_grpc_server):
+def test_model_size_ok_response(sample_task_model_id, runtime_grpc_server):
     """Test model size successful response"""
     stub = model_runtime_pb2_grpc.ModelRuntimeStub(
         runtime_grpc_server.make_local_channel()
     )
 
-    model_size_request = model_runtime_pb2.ModelSizeRequest(modelId=loaded_model_id)
+    model_size_request = model_runtime_pb2.ModelSizeRequest(
+        modelId=sample_task_model_id
+    )
     actual_response = stub.modelSize(model_size_request)
     # Mar. 14, 23
     # The size of the directory pointed to by Fixtures.get_good_model_path() is 355 now.
@@ -780,7 +784,7 @@ def test_certs_can_be_loaded_as_files(sample_inference_service, tmp_path):
 
 
 def test_metrics_stored_after_server_interrupt(
-    loaded_model_id, sample_inference_service
+    sample_task_model_id, sample_inference_service
 ):
     """This tests the gRPC server's behaviour when interrupted"""
 
@@ -793,7 +797,7 @@ def test_metrics_stored_after_server_interrupt(
             sample_input=HAPPY_PATH_INPUT
         )
         _ = stub.SampleTaskPredict(
-            predict_request, metadata=[("mm-model-id", loaded_model_id)]
+            predict_request, metadata=[("mm-model-id", sample_task_model_id)]
         )
 
         # Interrupt server
