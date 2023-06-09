@@ -137,10 +137,10 @@ class GlobalPredictServicer:
             response (object):
                 A Caikit Library data model response object
         """
-        desc_name = request.DESCRIPTOR.name
-        outer_scope_name = "GlobalPredictServicer.Predict:%s" % desc_name
+        request_name = request.DESCRIPTOR.name
+        outer_scope_name = "GlobalPredictServicer.Predict:%s" % request_name
         inner_scope_name = (
-            "GlobalPredictServicer.Predict.caikit_library_run:%s" % desc_name
+            "GlobalPredictServicer.Predict.caikit_library_run:%s" % request_name
         )
 
         try:
@@ -156,7 +156,7 @@ class GlobalPredictServicer:
                 model_class = type(model)
                 # Unmarshall the request object into the required module run argument(s)
                 with PREDICT_FROM_PROTO_SUMMARY.labels(
-                    grpc_request=desc_name, model_id=model_id
+                    grpc_request=request_name, model_id=model_id
                 ).time():
                     caikit_library_request = build_caikit_library_request_dict(
                         request,
@@ -167,7 +167,7 @@ class GlobalPredictServicer:
                 # provide a rudimentary throughput metric of size / time
                 with alog.ContextLog(log.debug, inner_scope_name):
                     with PREDICT_CAIKIT_LIBRARY_SUMMARY.labels(
-                        grpc_request=desc_name, model_id=model_id
+                        grpc_request=request_name, model_id=model_id
                     ).time():
                         if self.use_abortable_threads:
                             work = AbortableAction(
@@ -181,13 +181,13 @@ class GlobalPredictServicer:
 
                 # Marshall the response to the necessary return type
                 with PREDICT_TO_PROTO_SUMMARY.labels(
-                    grpc_request=desc_name, model_id=model_id
+                    grpc_request=request_name, model_id=model_id
                 ).time():
                     response_proto = build_proto_response(response)
 
             # Update Prometheus metrics
             PREDICT_RPC_COUNTER.labels(
-                grpc_request=desc_name, code=StatusCode.OK.name, model_id=model_id
+                grpc_request=request_name, code=StatusCode.OK.name, model_id=model_id
             ).inc()
             if get_config().runtime.metering.enabled:
                 self.rpc_meter.update_metrics(str(type(model)))
@@ -202,7 +202,7 @@ class GlobalPredictServicer:
             }
             log.warning({**log_dict, **e.metadata})
             PREDICT_RPC_COUNTER.labels(
-                grpc_request=desc_name, code=e.status_code.name, model_id=model_id
+                grpc_request=request_name, code=e.status_code.name, model_id=model_id
             ).inc()
             raise e
 
@@ -217,7 +217,7 @@ class GlobalPredictServicer:
             }
             log.warning(log_dict)
             PREDICT_RPC_COUNTER.labels(
-                grpc_request=desc_name,
+                grpc_request=request_name,
                 code=StatusCode.INVALID_ARGUMENT.name,
                 model_id=model_id,
             ).inc()
@@ -235,7 +235,9 @@ class GlobalPredictServicer:
             }
             log.warning(log_dict)
             PREDICT_RPC_COUNTER.labels(
-                grpc_request=desc_name, code=StatusCode.INTERNAL.name, model_id=model_id
+                grpc_request=request_name,
+                code=StatusCode.INTERNAL.name,
+                model_id=model_id,
             ).inc()
             raise CaikitRuntimeException(
                 StatusCode.INTERNAL, "Unhandled exception during prediction"
