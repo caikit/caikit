@@ -90,13 +90,6 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
 
         self.__cancel_event = cancel_event
 
-    def __del__(self):
-        """
-        NOTE: This is NOT how execution should be cancelled.
-        This function is designed to make sure cleanup happens.
-        """
-        self.cancel()
-
     # pylint: disable=arguments-differ
     def train_and_save_model(
         self,
