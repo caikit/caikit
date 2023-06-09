@@ -56,6 +56,10 @@ There are 2 user profiles who leverage Caikit:
   - They take trained models, deploy them, and then infer the models in applications through APIs provided by Caikit
   - Examples of operators are cloud and embedded application developers whose applications need analysis of unstructured data
 
+## Documentation
+
+Get going with [Getting Started](#getting-started) or jump into more details with the [Python API doc]s(https://caikit.readthedocs.io/en/latest/).
+
 ## Contributing
 
 Check out our [contributing](CONTRIBUTING.md) guide to learn how to contribute to Caikit.
