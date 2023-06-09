@@ -14,7 +14,7 @@
 """A generic module to help Predict and Train servicers
 """
 # Standard
-from typing import Any, Dict, Iterable, Union
+from typing import Any, Dict, Iterable, Iterator, Union
 import traceback
 
 # Third Party
@@ -25,15 +25,15 @@ import grpc
 # First Party
 import alog
 
-import caikit.core
-from caikit.core.data_model import DataStream
 # Local
+from caikit.core.data_model import DataStream
 from caikit.core.data_model.base import DataBase
 from caikit.core.signature_parsing import CaikitMethodSignature
 from caikit.interfaces.runtime.data_model.training_management import ModelPointer
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import get_data_model
+import caikit.core
 
 log = alog.use_channel("SERVICR-UTIL")
 
@@ -67,13 +67,18 @@ def validate_caikit_library_class_method_exists(caikit_library_class, method_nam
         raise e
 
 
-def build_proto_response(caikit_library_response):
+def build_proto_response(
+    caikit_library_response: Union[DataBase, Iterable[DataBase]]
+) -> Union[ProtoMessageType, Iterator[ProtoMessageType]]:
+    """Either serializes a data model instance into a protobuf message, or returns a lazy iterator
+    that serializes each data model from an iterable of data models"""
     try:
         if caikit.core.isiterable(caikit_library_response):
             # probably a streaming rpc!
             def _proto_generator():
                 for item in caikit_library_response:
                     yield item.to_proto()
+
             return iter(DataStream(_proto_generator))
         return caikit_library_response.to_proto()
     except Exception as e:

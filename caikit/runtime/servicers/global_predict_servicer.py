@@ -23,7 +23,6 @@ from prometheus_client import Counter, Summary
 # First Party
 import alog
 
-import caikit.core
 # Local
 from caikit import get_config
 from caikit.runtime.metrics.rpc_meter import RPCMeter
@@ -174,13 +173,6 @@ class GlobalPredictServicer:
                             response = work.do()
                         else:
                             response = model.run(**caikit_library_request)
-
-                # hothothot
-                # shortcut here if we end up with an iterable
-                if caikit.core.isiterable(response):
-                    for item in response:
-                        yield item.to_proto()
-                    return
 
                 # Marshall the response to the necessary return type
                 with PREDICT_TO_PROTO_SUMMARY.labels(

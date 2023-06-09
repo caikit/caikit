@@ -189,9 +189,11 @@ def training_management_stub(runtime_grpc_server) -> Type:
 def good_model_path() -> str:
     return Fixtures.get_good_model_path()
 
+
 @pytest.fixture
 def streaming_model_path() -> str:
     return os.path.join(os.path.dirname(__file__), "fixtures", "dummy_streaming_module")
+
 
 @pytest.fixture
 def other_good_model_path() -> str:

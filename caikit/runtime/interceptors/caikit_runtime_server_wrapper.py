@@ -192,8 +192,13 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                     original_rpc_handler = handler.service(DummyHandlerCallDetails(fqm))
 
                     # Make sure this is a unary-unary RPC
-                    if not original_rpc_handler.unary_unary and not original_rpc_handler.unary_stream:
-                        raise NotImplementedError("Unary-unary and unary-stream RPCs only!")
+                    if (
+                        not original_rpc_handler.unary_unary
+                        and not original_rpc_handler.unary_stream
+                    ):
+                        raise NotImplementedError(
+                            "Unary-unary and unary-stream RPCs only!"
+                        )
 
                     # Now, swap out the original unary-unary callable with our
                     # generic predict method, and add this newly re-routed RPC
@@ -253,11 +258,12 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                 response_serializer=original_rpc_handler.response_serializer,
             )
         if original_rpc_handler.unary_stream:
+            if replace_with_global_predict:
+                behavior = self.safe_rpc_wrapper(self._global_predict)
+            else:
+                behavior = self.safe_rpc_wrapper(original_rpc_handler.unary_stream)
             return grpc.unary_stream_rpc_method_handler(
-                self.safe_rpc_wrapper(
-                    self._global_predict
-                    if replace_with_global_predict
-                    else original_rpc_handler.unary_stream),
+                behavior,
                 request_deserializer=original_rpc_handler.request_deserializer,
                 response_serializer=original_rpc_handler.response_serializer,
             )
