@@ -288,6 +288,7 @@ class DataStream(Generic[T]):
                     "csv filename `{}` does not exist or is not a regular file.".format(
                         filename
                     )
+                ),
             )
 
         return cls(cls._from_csv_generator, filename, skip, *args, **kwargs)
@@ -342,6 +343,7 @@ class DataStream(Generic[T]):
                     "csv filename `{}` does not exist or is not a regular file.".format(
                         filename
                     )
+                ),
             )
 
         return cls(cls._from_header_csv_generator, filename, *args, **kwargs)
@@ -966,6 +968,7 @@ class DataStream(Generic[T]):
         if not os.path.exists(dirname):
             error(
                 "<COR82306771E>",
+                FileNotFoundError(
                     "Could not find collection directory `{}`".format(dirname)
                 ),
             )
