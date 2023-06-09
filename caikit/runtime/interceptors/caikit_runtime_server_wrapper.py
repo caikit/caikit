@@ -13,8 +13,8 @@
 # limitations under the License.
 
 # Standard
-import traceback
 from typing import Callable
+import traceback
 
 # Third Party
 from grpc._utilities import RpcMethodHandler
@@ -248,35 +248,22 @@ class CaikitRuntimeServerWrapper(grpc.Server):
         original_rpc_handler: RpcMethodHandler,
         replace_with_global_predict: bool = True,
     ):
+        if replace_with_global_predict:
+            behavior = self.safe_rpc_wrapper(self._global_predict)
+        else:
+            behavior = self.safe_rpc_wrapper(self._get_handler_fn(original_rpc_handler))
+
         if original_rpc_handler.unary_unary:
-            if replace_with_global_predict:
-                behavior = self.safe_rpc_wrapper(self._global_predict)
-            else:
-                behavior = self.safe_rpc_wrapper(original_rpc_handler.unary_unary)
-            return grpc.unary_unary_rpc_method_handler(
-                behavior=behavior,
-                request_deserializer=original_rpc_handler.request_deserializer,
-                response_serializer=original_rpc_handler.response_serializer,
-            )
-        if original_rpc_handler.unary_stream:
-            if replace_with_global_predict:
-                behavior = self.safe_rpc_wrapper(self._global_predict)
-            else:
-                behavior = self.safe_rpc_wrapper(original_rpc_handler.unary_stream)
-            return grpc.unary_stream_rpc_method_handler(
-                behavior=behavior,
-                request_deserializer=original_rpc_handler.request_deserializer,
-                response_serializer=original_rpc_handler.response_serializer,
-            )
-        if original_rpc_handler.stream_unary:
-            return grpc.stream_unary_rpc_method_handler(
-                self.safe_rpc_wrapper(original_rpc_handler.stream_unary),
-                request_deserializer=original_rpc_handler.request_deserializer,
-                response_serializer=original_rpc_handler.response_serializer,
-            )
-        # Else, it's stream-stream
-        return grpc.stream_stream_rpc_method_handler(
-            self.safe_rpc_wrapper(original_rpc_handler.stream_stream),
+            handler_constructor = grpc.unary_unary_rpc_method_handler
+        elif original_rpc_handler.unary_stream:
+            handler_constructor = grpc.unary_stream_rpc_method_handler
+        elif original_rpc_handler.stream_unary:
+            handler_constructor = grpc.stream_unary_rpc_method_handler
+        else:
+            handler_constructor = grpc.stream_stream_rpc_method_handler
+
+        return handler_constructor(
+            behavior=behavior,
             request_deserializer=original_rpc_handler.request_deserializer,
             response_serializer=original_rpc_handler.response_serializer,
         )
