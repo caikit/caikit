@@ -876,3 +876,27 @@ def test_dataobject_inheritance(temp_dpool):
     assert inst.foo == 1
     assert inst.bar == "asdf"
     assert inst.baz == "qwer"
+
+
+def test_dataobject_function_inheritance(temp_dpool):
+    """Make sure inheritance works to override functionality without changing
+    the schema of the parent
+    """
+
+    @dataobject
+    class Base(DataObjectBase):
+        foo: int
+
+        def doit(self):
+            return self.foo * 2
+
+    @dataobject
+    class Derived(Base):
+        def doit(self):
+            return self.foo * 3
+
+    b_inst = Base(1)
+    assert b_inst.doit() == 2
+
+    d_inst = Derived(1)
+    assert d_inst.doit() == 3
