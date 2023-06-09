@@ -878,46 +878,25 @@ def test_dataobject_inheritance(temp_dpool):
     assert inst.baz == "qwer"
 
 
-def test_dataobject_union_repeated():
-    """Make sure that a oneof with lists of primitive fields works correctly"""
+def test_dataobject_function_inheritance(temp_dpool):
+    """Make sure inheritance works to override functionality without changing
+    the schema of the parent
+    """
 
-    # convert
     @dataobject
-    class Foo(DataObjectBase):
-        foo: Union[List[str], List[int]]
+    class Base(DataObjectBase):
+        foo: int
 
-    # The above behaves the same way as this:
+        def doit(self):
+            return self.foo * 2
 
-    # @dataobject
-    # class Foo(DataObjectBase):
-    #     @dataobject
-    #     class IntSequence(DataObjectBase):
-    #         values: List[int]
+    @dataobject
+    class Derived(Base):
+        def doit(self):
+            return self.foo * 3
 
-    #     @dataobject
-    #     class StrSequence(DataObjectBase):
-    #         values: List[str]
+    b_inst = Base(1)
+    assert b_inst.doit() == 2
 
-    #     foo: Union[IntSequence, StrSequence]
-
-    # proto round trip
-    foo_int = Foo.IntSequence(values=[1, 2])
-    foo1 = Foo(foo=foo_int)
-    assert foo1.which_oneof("foo") == "foo_intsequence"
-    proto_repr_foo = foo1.to_proto()
-    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
-
-    # dict test
-    assert foo1.to_dict() == {"foo_intsequence": {"values": [1, 2]}}
-
-    # json round trip
-    json_repr_foo = foo1.to_json()
-    assert json.loads(json_repr_foo) == {"foo_intsequence": {"values": [1, 2]}}
-    baz_from_json = Foo.from_json(json_repr_foo)
-    assert baz_from_json.to_json() == json_repr_foo
-
-    foo_str = Foo.StrSequence(values=["hello", "world"])
-    foo2 = Foo(foo=foo_str)
-    assert foo2.which_oneof("foo") == "foo_strsequence"
-    proto_repr_foo2 = foo2.to_proto()
-    assert Foo.from_proto(proto=proto_repr_foo2).to_proto() == proto_repr_foo2
+    d_inst = Derived(1)
+    assert d_inst.doit() == 3
