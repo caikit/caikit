@@ -137,22 +137,8 @@ def runtime_grpc_server(
         inference_service=sample_inference_service,
         training_service=sample_train_service,
     ) as server:
-
+        _check_server_readiness(server)
         yield server
-
-        # server.start(blocking=False)
-
-        # grpc_thread = threading.Thread(
-        #     target=server.start,
-        # )
-        # grpc_thread.daemon = False
-        # grpc_thread.start()
-        # _check_server_readiness(server)
-        # yield server
-
-        # teardown
-        # server.stop(0)
-        # grpc_thread.join()
 
 
 @pytest.fixture(scope="session")
