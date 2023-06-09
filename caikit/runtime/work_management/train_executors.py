@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # Standard
+from concurrent.futures.thread import _threads_queues
 from typing import Type
 import abc
 import multiprocessing
@@ -37,6 +38,16 @@ error = caikit.core.toolkit.errors.error_handler.get(log)
 
 
 OOM_EXIT_CODE = 137
+
+
+# 🌶️🌶️🌶️
+# Fix for python3.9, 3.10 and 3.11 issue where forked processes always exit with exitcode 1
+# when it's created inside a ThreadPoolExecutor: https://github.com/python/cpython/issues/88110
+# Fix taken from https://github.com/python/cpython/pull/101940
+# Credit: marmarek, https://github.com/marmarek
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_threads_queues.clear)
 
 # NOTE: Following would get replaced with training backends potentially
 # in future.
@@ -199,6 +210,7 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             # forwarded to the parent
             # pylint: disable=broad-exception-caught
             except Exception as err:
+                log.error("<RUN69863806E>", "Caught exception in training", repr(err))
                 self.error = err
 
             finally:
@@ -221,9 +233,9 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
 
     def _cleanup(self):
         """Function to clearup running workers"""
-        if self._worker.is_alive():
+        if self._worker._check_closed():
             self._worker.terminate()
-        self._worker.close()
+            self._worker.close()
 
     # pylint: disable=arguments-differ
     def train_and_save_model(
@@ -237,7 +249,7 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             kwargs=kwargs,
         )
 
-        def exit_code_handler():
+        def cancel_event_handler():
             """Function to wait for completion_event and fire up
             cancellation (termination of subprocess) in case
             cancel_event is triggered
@@ -258,7 +270,7 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
         # Create a cancel thread which will be in "parallel" waiting for
         # complete_event and will target cancellation of worker, in case
         # cancellation event is set
-        cancellation_thread = threading.Thread(target=exit_code_handler)
+        cancellation_thread = threading.Thread(target=cancel_event_handler)
 
         # NOTE: Below order is crucial
         self._worker.start()
