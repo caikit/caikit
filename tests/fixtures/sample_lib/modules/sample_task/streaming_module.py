@@ -15,7 +15,7 @@ import caikit.core
     "00110203-0123-0456-0789-0a0b02dd0e0f", "SampleModule", "0.0.1", StreamingTask
 )
 class StreamingModule(caikit.core.ModuleBase):
-    def __init__(self, stream_size):
+    def __init__(self, stream_size=10):
         super().__init__()
         self.stream_size = stream_size
 
