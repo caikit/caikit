@@ -128,16 +128,16 @@ class ServicePackageFactory:
         )
 
         if service_type == cls.ServiceType.INFERENCE:
-            task_rpc_list = service_generation.create_inference_rpcs(clean_modules)
+            rpc_list = service_generation.create_inference_rpcs(clean_modules)
             service_name = f"{ai_domain_name}Service"
         else:  # service_type == cls.ServiceType.TRAINING
-            task_rpc_list = service_generation.create_training_rpcs(clean_modules)
+            rpc_list = service_generation.create_training_rpcs(clean_modules)
             service_name = f"{ai_domain_name}TrainingService"
 
-        task_rpc_list = [rpc for rpc in task_rpc_list if rpc.return_type is not None]
+        rpc_list = [rpc for rpc in rpc_list if rpc.return_type is not None]
 
         request_data_models = [
-            rpc.create_request_data_model(package_name) for rpc in task_rpc_list
+            rpc.create_request_data_model(package_name) for rpc in rpc_list
         ]
 
         client_module = ModuleType(
@@ -149,7 +149,7 @@ class ServicePackageFactory:
             # We need the message class that data model serializes to
             setattr(client_module, dm_class.__name__, type(dm_class().to_proto()))
 
-        rpc_jsons = [rpc.create_rpc_json(package_name) for rpc in task_rpc_list]
+        rpc_jsons = [rpc.create_rpc_json(package_name) for rpc in rpc_list]
         service_json = {"service": {"rpcs": rpc_jsons}}
         grpc_service = json_to_service(
             name=service_name, package=package_name, json_service_def=service_json
