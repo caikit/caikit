@@ -84,10 +84,25 @@ class _DataObjectBaseMetaClass(_DataBaseMetaClass):
         # Get the annotations that will go into the dataclass
         if name != "DataObjectBase":
             field_names = attrs.get("__annotations__")
-            if field_names is None:
+            parent_dataobjects = [
+                base for base in bases if isinstance(base, _DataBaseMetaClass)
+            ]
+            field_name_sets = [base.fields for base in parent_dataobjects]
+            if field_names is not None:
+                field_name_sets = [field_names] + field_name_sets
+
+            # We need at least one field name set!
+            if not field_name_sets:
                 raise TypeError(
                     "All DataObjectBase classes must follow dataclass syntax"
                 )
+
+            # Flatten the field names
+            field_names = {
+                field_name
+                for field_name_set in field_name_sets
+                for field_name in field_name_set
+            }
             attrs[_DataBaseMetaClass._FWD_DECL_FIELDS] = field_names
 
         # Delegate to the base metaclass
