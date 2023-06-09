@@ -248,12 +248,12 @@ class CaikitRuntimeServerWrapper(grpc.Server):
         replace_with_global_predict: bool = True,
     ):
         if original_rpc_handler.unary_unary:
+            if replace_with_global_predict:
+                behavior = self.safe_rpc_wrapper(self._global_predict)
+            else:
+                behavior = self.safe_rpc_wrapper(original_rpc_handler.unary_unary)
             return grpc.unary_unary_rpc_method_handler(
-                self.safe_rpc_wrapper(
-                    self._global_predict
-                    if replace_with_global_predict
-                    else original_rpc_handler.unary_unary
-                ),
+                behavior=behavior,
                 request_deserializer=original_rpc_handler.request_deserializer,
                 response_serializer=original_rpc_handler.response_serializer,
             )
@@ -263,7 +263,7 @@ class CaikitRuntimeServerWrapper(grpc.Server):
             else:
                 behavior = self.safe_rpc_wrapper(original_rpc_handler.unary_stream)
             return grpc.unary_stream_rpc_method_handler(
-                behavior,
+                behavior=behavior,
                 request_deserializer=original_rpc_handler.request_deserializer,
                 response_serializer=original_rpc_handler.response_serializer,
             )
