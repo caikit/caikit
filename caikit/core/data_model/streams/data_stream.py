@@ -190,7 +190,7 @@ class DataStream(Generic[T]):
             except TypeError:
                 error(
                     "<COR35596551E>",
-                    ValueError("Invalid JSON object in %s", line),
+                    ValueError("Invalid JSON object in `{}`".format(line)),
                 )
 
     @classmethod
@@ -247,7 +247,7 @@ class DataStream(Generic[T]):
             except ijson.JSONError:
                 error(
                     "<COR85596551E>",
-                    ValueError("Invalid JSON object in %s`", filename),
+                    ValueError("Invalid JSON object in `{}`".format(filename)),
                 )
 
     @classmethod
@@ -285,8 +285,9 @@ class DataStream(Generic[T]):
             error(
                 "<COR82308234E>",
                 FileNotFoundError(
-                    "csv filename %s does not exist or is not a regular file.", filename
-                ),
+                    "csv filename `{}` does not exist or is not a regular file.".format(
+                        filename
+                    )
             )
 
         return cls(cls._from_csv_generator, filename, skip, *args, **kwargs)
@@ -338,8 +339,9 @@ class DataStream(Generic[T]):
             error(
                 "<COR44308234E>",
                 FileNotFoundError(
-                    "csv filename %s does not exist or is not a regular file.", filename
-                ),
+                    "csv filename `{}` does not exist or is not a regular file.".format(
+                        filename
+                    )
             )
 
         return cls(cls._from_header_csv_generator, filename, *args, **kwargs)
@@ -964,12 +966,15 @@ class DataStream(Generic[T]):
         if not os.path.exists(dirname):
             error(
                 "<COR82306771E>",
-                FileNotFoundError("Could not find collection directory %s", dirname),
+                    "Could not find collection directory `{}`".format(dirname)
+                ),
             )
 
         # verify that `dirname` is a directory
         if not os.path.isdir(dirname):
             error(
                 "<COR82306849E>",
-                NotADirectoryError("collection path %s is not a directory", dirname),
+                NotADirectoryError(
+                    "collection path `{}` is not a directory".format(dirname)
+                ),
             )
