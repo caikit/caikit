@@ -56,6 +56,7 @@ from caikit.runtime.protobufs import (
     process_pb2_grpc,
 )
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
+from sample_lib import InnerModule
 from sample_lib.data_model import (
     OtherOutputType,
     SampleInputType,
@@ -226,6 +227,39 @@ def test_rpc_validation_on_predict(
         )
     assert context.value.code() == grpc.StatusCode.INVALID_ARGUMENT
     assert "Wrong inference RPC invoked for model class" in str(context.value)
+
+
+def test_rpc_validation_on_predict_for_unsupported_model(
+    runtime_grpc_server: RuntimeGRPCServer, sample_inference_service, tmp_path
+):
+    """Check that the server catches models that have no supported inference rpc"""
+    unsupported_model = InnerModule()
+    tmpdir = str(tmp_path)
+    unsupported_model.save(tmpdir)
+    model_id = random_test_id()
+    try:
+        runtime_grpc_server._global_predict_servicer._model_manager.load_model(
+            model_id, tmpdir, "foo"
+        )
+
+        stub = sample_inference_service.stub_class(
+            runtime_grpc_server.make_local_channel()
+        )
+        predict_request = sample_inference_service.messages.SampleTaskRequest(
+            sample_input=HAPPY_PATH_INPUT
+        )
+        with pytest.raises(grpc.RpcError) as context:
+            stub.SampleTaskPredict(
+                predict_request, metadata=[("mm-model-id", model_id)]
+            )
+        assert context.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+        assert "Inference for model class" in str(context.value)
+        assert "not supported by this runtime" in str(context.value)
+
+    finally:
+        runtime_grpc_server._global_predict_servicer._model_manager.unload_model(
+            model_id
+        )
 
 
 ####### End-to-end tests for train a model and then predict with it

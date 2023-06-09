@@ -3,6 +3,7 @@ A hypothetical inner module that transforms some output type rather than taking 
 """
 # Local
 from ...data_model.sample import SampleOutputType
+from caikit.core import ModuleSaver
 import caikit.core
 
 
@@ -15,3 +16,15 @@ class InnerModule(caikit.core.ModuleBase):
 
     def run(self, some_input: SampleOutputType) -> SampleOutputType:
         return SampleOutputType(f"nested greeting: {some_input.greeting}")
+
+    def save(self, model_path):
+        module_saver = ModuleSaver(
+            self,
+            model_path=model_path,
+        )
+        with module_saver:
+            pass
+
+    @classmethod
+    def load(cls, model_path):
+        return cls()
