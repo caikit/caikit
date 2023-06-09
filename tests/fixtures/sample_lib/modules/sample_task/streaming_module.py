@@ -1,8 +1,6 @@
 """
 A streaming module for streaming things!
 """
-# Standard
-import os
 
 # Local
 from ...data_model.sample import SampleInputType, SampleOutputType, StreamingTask
@@ -31,7 +29,8 @@ class StreamingModule(caikit.core.ModuleBase):
             sample_input (sample_lib.data_model.SampleInputType): the input
 
         Returns:
-            sample_lib.data_model.SampleOutputType: The output
+            caikit.core.data_model.DataStream[sample_lib.data_model.SampleOutputType]: The output
+                stream
         """
         list_ = [
             SampleOutputType(f"Hello {sample_input.name}")

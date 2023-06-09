@@ -204,7 +204,7 @@ def sample_task_model_id(good_model_path) -> str:
 
 
 @pytest.fixture
-def loaded_streaming_model_id(streaming_model_path) -> str:
+def streaming_task_model_id(streaming_model_path) -> str:
     """Loaded model ID using model manager load model implementation"""
     model_id = _random_id()
     model_manager = ModelManager.get_instance()
