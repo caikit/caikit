@@ -182,10 +182,10 @@ def test_model_train(runtime_grpc_server):
     assert result.learning_rate == 0.0015
 
 
-def test_predict_fake_module_ok_response(
+def test_predict_sample_module_ok_response(
     sample_task_model_id, runtime_grpc_server, sample_inference_service
 ):
-    """Test RPC CaikitRuntime.WidgetPredict successful response"""
+    """Test RPC CaikitRuntime.SampleTaskPredict successful response"""
     stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
     predict_request = sample_inference_service.messages.SampleTaskRequest(
         sample_input=HAPPY_PATH_INPUT
@@ -197,15 +197,15 @@ def test_predict_fake_module_ok_response(
 
 
 def test_predict_streaming_module(
-    loaded_streaming_model_id, runtime_grpc_server, sample_inference_service
+    streaming_task_model_id, runtime_grpc_server, sample_inference_service
 ):
-    """Test RPC CaikitRuntime.WidgetPredict successful response"""
+    """Test RPC CaikitRuntime.StreamingTaskPredict successful response"""
     stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
     predict_request = sample_inference_service.messages.StreamingTaskRequest(
         sample_input=HAPPY_PATH_INPUT
     )
     stream = stub.StreamingTaskPredict(
-        predict_request, metadata=[("mm-model-id", loaded_streaming_model_id)]
+        predict_request, metadata=[("mm-model-id", streaming_task_model_id)]
     )
 
     count = 0
@@ -215,10 +215,10 @@ def test_predict_streaming_module(
     assert count == 10
 
 
-def test_predict_fake_module_error_response(
+def test_predict_sample_module_error_response(
     runtime_grpc_server, sample_inference_service
 ):
-    """Test RPC CaikitRuntime.WidgetPredict error response"""
+    """Test RPC CaikitRuntime.SampleTaskPredict error response"""
     with pytest.raises(grpc.RpcError) as context:
         stub = sample_inference_service.stub_class(
             runtime_grpc_server.make_local_channel()

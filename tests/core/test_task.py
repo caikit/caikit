@@ -73,6 +73,15 @@ def test_task_decorator_can_have_iterable_output():
         ) -> caikit.core.data_model.DataStream[SampleOutputType]:
             pass
 
+
+def test_task_iterator_raises_on_wrong_streaming_type():
+    @task(
+        required_parameters={"sample_input": SampleInputType},
+        output_type=Iterable[SampleOutputType],
+    )
+    class StreamingTask(TaskBase):
+        pass
+
     with pytest.raises(TypeError, match="Wrong output type for module"):
 
         @caikit.core.module(
