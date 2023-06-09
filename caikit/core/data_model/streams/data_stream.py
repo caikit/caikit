@@ -128,7 +128,7 @@ class DataStream(Generic[T]):
         return cls(cls._from_iterable_generator, data)
 
     @classmethod
-    def _from_iterable_generator(cls, data: typing.Iterable[T]):
+    def _from_iterable_generator(cls, data: typing.Iterable[T]) -> typing.Iterator[T]:
         return iter(data)
 
     @classmethod
@@ -175,7 +175,7 @@ class DataStream(Generic[T]):
     @classmethod
     def _from_jsonl_generator(cls, filename):
         with open(filename, mode="rb") as json_fh:
-            log.debug2("Loading JSON array file: {}".format(filename))
+            log.debug2("Loading JSON array file:  %s", filename)
             lines = json_fh.readlines()
 
             try:
@@ -190,7 +190,7 @@ class DataStream(Generic[T]):
             except TypeError:
                 error(
                     "<COR35596551E>",
-                    ValueError("Invalid JSON object in `{}`".format(line)),
+                    ValueError("Invalid JSON object in %s", line),
                 )
 
     @classmethod
@@ -236,7 +236,7 @@ class DataStream(Generic[T]):
     def _from_json_array_generator(cls, filename):
         # open the file
         with open(filename, mode="rb") as json_fh:
-            log.debug2("Loading JSON array file: {}".format(filename))
+            log.debug2("Loading JSON array file: %s", filename)
 
             # for each {} object of the array
             try:
@@ -247,7 +247,7 @@ class DataStream(Generic[T]):
             except ijson.JSONError:
                 error(
                     "<COR85596551E>",
-                    ValueError("Invalid JSON object in `{}`".format(filename)),
+                    ValueError("Invalid JSON object in %s`", filename),
                 )
 
     @classmethod
@@ -285,9 +285,7 @@ class DataStream(Generic[T]):
             error(
                 "<COR82308234E>",
                 FileNotFoundError(
-                    "csv filename `{}` does not exist or is not a regular file.".format(
-                        filename
-                    )
+                    "csv filename %s does not exist or is not a regular file.", filename
                 ),
             )
 
@@ -340,9 +338,7 @@ class DataStream(Generic[T]):
             error(
                 "<COR44308234E>",
                 FileNotFoundError(
-                    "csv filename `{}` does not exist or is not a regular file.".format(
-                        filename
-                    )
+                    "csv filename %s does not exist or is not a regular file.", filename
                 ),
             )
 
@@ -424,18 +420,14 @@ class DataStream(Generic[T]):
         _, file_ext = os.path.splitext(filename)
         # choose the right from_* fn
         if file_ext.lower() == ".json":
-            log.debug2(
-                "Detected .json extension, loading {} as a json file".format(filename)
-            )
+            log.debug2("Detected .json extension, loading %s as a json file", filename)
             return DataStream.from_json_array(filename)
 
         if file_ext.lower() == ".csv":
-            log.debug2(
-                "Detected .csv extension, loading {} as a csv file".format(filename)
-            )
+            log.debug2("Detected .csv extension, loading %s as a csv file", filename)
             return DataStream.from_csv(filename)
 
-        log.debug2("Loading {} as a raw text file".format(filename))
+        log.debug2("Loading %s as a raw text file", filename)
         # TODO: test this at some point (this path is unused currently)
         return DataStream.from_txt(filename)
 
@@ -972,16 +964,12 @@ class DataStream(Generic[T]):
         if not os.path.exists(dirname):
             error(
                 "<COR82306771E>",
-                FileNotFoundError(
-                    "Could not find collection directory `{}`".format(dirname)
-                ),
+                FileNotFoundError("Could not find collection directory %s", dirname),
             )
 
         # verify that `dirname` is a directory
         if not os.path.isdir(dirname):
             error(
                 "<COR82306849E>",
-                NotADirectoryError(
-                    "collection path `{}` is not a directory".format(dirname)
-                ),
+                NotADirectoryError("collection path %s is not a directory", dirname),
             )
