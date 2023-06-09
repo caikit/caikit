@@ -61,7 +61,11 @@ def isprimitive(obj):
 
 def isiterable(obj):
     """Returns True if obj can be iterated over, otherwise False."""
-    return isinstance(obj, collections.abc.Iterable)
+    try:
+        iter(obj)
+        return True
+    except TypeError:
+        return False
 
 
 def isvalidversion(obj):
