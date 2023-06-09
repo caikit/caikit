@@ -16,9 +16,6 @@
 """Utility functions for testing if an object is an instance of a given type.
 """
 
-# Standard
-import collections
-
 # Third Party
 from google.protobuf.internal.containers import (
     RepeatedCompositeFieldContainer,
