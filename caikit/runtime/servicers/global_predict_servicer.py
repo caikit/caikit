@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
+from contextlib import contextmanager
 from importlib.metadata import version
 from typing import Set
 import traceback
@@ -138,22 +139,16 @@ class GlobalPredictServicer:
             response (object):
                 A Caikit Library data model response object
         """
+        # Make sure the request has a model before doing anything
         request_name = request.DESCRIPTOR.name
-        outer_scope_name = "GlobalPredictServicer.Predict:%s" % request_name
-        inner_scope_name = (
-            "GlobalPredictServicer.Predict.caikit_library_run:%s" % request_name
-        )
-
-        try:
-            with alog.ContextLog(log.debug, outer_scope_name):
-                # Make sure the request has a model before doing anything
-                model_id = get_metadata(context, self.MODEL_MESH_MODEL_ID_KEY)
+        model_id = get_metadata(context, self.MODEL_MESH_MODEL_ID_KEY)
+        with self._handle_predict_exceptions(model_id, request_name):
+            with alog.ContextLog(
+                log.debug, "GlobalPredictServicer.Predict:%s", request_name
+            ):
                 # Retrieve the model from the model manager
                 log.debug("<RUN52259029D>", "Retrieving model '%s'", model_id)
                 model = self._model_manager.retrieve_model(model_id)
-
-                self._verify_model_task(model, request_name)
-
                 model_class = type(model)
                 # Unmarshall the request object into the required module run argument(s)
                 with PREDICT_FROM_PROTO_SUMMARY.labels(
@@ -163,22 +158,9 @@ class GlobalPredictServicer:
                         request,
                         model_class.RUN_SIGNATURE,
                     )
-
-                # NB: we previously recorded the size of the request, and timed this module to
-                # provide a rudimentary throughput metric of size / time
-                with alog.ContextLog(log.debug, inner_scope_name):
-                    with PREDICT_CAIKIT_LIBRARY_SUMMARY.labels(
-                        grpc_request=request_name, model_id=model_id
-                    ).time():
-                        if self.use_abortable_threads:
-                            work = AbortableAction(
-                                CallAborter(context),
-                                model.run,
-                                **caikit_library_request,
-                            )
-                            response = work.do()
-                        else:
-                            response = model.run(**caikit_library_request)
+                response = self.predict_model(
+                    request_name, model_id, context=context, **caikit_library_request
+                )
 
                 # Marshall the response to the necessary return type
                 with PREDICT_TO_PROTO_SUMMARY.labels(
@@ -188,6 +170,33 @@ class GlobalPredictServicer:
                         response_proto = build_proto_stream(response)
                     else:
                         response_proto = build_proto_response(response)
+                return response_proto
+
+    def predict_model(self, request_name: str, model_id: str, context=None, **kwargs):
+        """Run a prediction against the given model. This does not require that"""
+
+        with self._handle_predict_exceptions(model_id, request_name):
+            model = self._model_manager.retrieve_model(model_id)
+            self._verify_model_task(model, request_name)
+
+            # NB: we previously recorded the size of the request, and timed this module to
+            # provide a rudimentary throughput metric of size / time
+            with alog.ContextLog(
+                log.debug,
+                "GlobalPredictServicer.Predict.caikit_library_run:%s",
+                request_name,
+            ):
+                with PREDICT_CAIKIT_LIBRARY_SUMMARY.labels(
+                    grpc_request=request_name, model_id=model_id
+                ).time():
+                    # TODO: Support abortable threads for non-grpc calls
+                    if context is not None and self.use_abortable_threads:
+                        work = AbortableAction(
+                            CallAborter(context), model.run, **kwargs
+                        )
+                        response = work.do()
+                    else:
+                        response = model.run(**kwargs)
 
             # Update Prometheus metrics
             PREDICT_RPC_COUNTER.labels(
@@ -195,13 +204,20 @@ class GlobalPredictServicer:
             ).inc()
             if get_config().runtime.metering.enabled:
                 self.rpc_meter.update_metrics(str(type(model)))
-            return response_proto
+            return response
+
+    ## Implementation Details ##################################################
+
+    @contextmanager
+    def _handle_predict_exceptions(self, model_id: str, request_name: str):
+        try:
+            yield
 
         except CaikitRuntimeException as e:
             log_dict = {
                 "log_code": "<RUN50530380W>",
                 "message": e.message,
-                "model_id": get_metadata(context, self.MODEL_MESH_MODEL_ID_KEY),
+                "model_id": model_id,
                 "error_id": e.id,
             }
             log.warning({**log_dict, **e.metadata})
@@ -216,7 +232,7 @@ class GlobalPredictServicer:
             log_dict = {
                 "log_code": "<RUN490439039W>",
                 "message": repr(e),
-                "model_id": get_metadata(context, self.MODEL_MESH_MODEL_ID_KEY),
+                "model_id": model_id,
                 "stack_trace": traceback.format_exc(),
             }
             log.warning(log_dict)
@@ -234,7 +250,7 @@ class GlobalPredictServicer:
             log_dict = {
                 "log_code": "<RUN49049070W>",
                 "message": repr(e),
-                "model_id": get_metadata(context, self.MODEL_MESH_MODEL_ID_KEY),
+                "model_id": model_id,
                 "stack_trace": traceback.format_exc(),
             }
             log.warning(log_dict)
