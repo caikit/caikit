@@ -63,7 +63,9 @@ class ModuleConfig(aconfig.Config):
 
         # 🌶️🌶️🌶️: Backwards compatibility for old-style `blocks`, `workflows`, and `resources`
         if not self.module_id:  # pylint: disable=access-member-before-definition
-            log.warning("No module_id found in config. Re-save the model to use module_id.")
+            log.warning(
+                "No module_id found in config. Re-save the model to use module_id."
+            )
             if self.block_id:
                 log.debug("Detected legacy block_id in config")
                 self.module_id = self.block_id
