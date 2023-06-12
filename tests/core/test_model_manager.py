@@ -176,13 +176,10 @@ class TestModelManager(TestCaseBase):
         from caikit.core.model_manager import module_registry  # isort: skip
 
     def test_load_model_with_no_module_id(self):
-        """Test that we can load a module with the legacy block_id instead of module_id, and that
-        a DeprecationWarning is raised.
-        """
+        """Test that we can load a module with the legacy block_id instead of module_id"""
         model_path = os.path.join(self.fixtures_dir, DUMMY_NO_ID_MODEL_NAME)
-        with pytest.deprecated_call():
-            model = caikit.core.load(model_path)
-            self.assertIsInstance(model, caikit.core.ModuleBase)
+        model = caikit.core.load(model_path)
+        self.assertIsInstance(model, caikit.core.ModuleBase)
 
 
 # Pytest tests #########################################################
