@@ -530,19 +530,19 @@ def test_dataobject_oneof_from_backend():
     class Foo(DataObjectBase):
         foo: Union[int, str]
 
-    data_dict1 = {"fooint": 1234}
+    data_dict1 = {"foo_int": 1234}
     backend1 = DictBackend(data_dict1)
     msg1 = Foo.from_backend(backend1)
     assert msg1.foo == 1234
-    assert msg1.fooint == 1234
-    assert msg1.which_oneof("foo") == "fooint"
+    assert msg1.foo_int == 1234
+    assert msg1.which_oneof("foo") == "foo_int"
 
     data_dict2 = {"foo": 1234}
     backend2 = DictBackend(data_dict2)
     msg2 = Foo.from_backend(backend2)
     assert msg2.foo == 1234
-    assert msg2.fooint == 1234
-    assert msg2.which_oneof("foo") == "fooint"
+    assert msg2.foo_int == 1234
+    assert msg2.which_oneof("foo") == "foo_int"
 
 
 def test_dataobject_round_trip_json():
