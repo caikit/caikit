@@ -173,6 +173,29 @@ def test_init_and_members():
     assert config.nested.integer == 2
     assert config.nested.float == -0.123
 
+def test_backwards_compatibility_for_block():
+    config = ModuleConfig(
+        {
+            "block_id": "123"
+        }
+    )
+    assert config.module_id == "123"
+
+def test_backwards_compatibility_for_workflow():
+    config = ModuleConfig(
+        {
+            "workflow_id": "456",
+        }
+    )
+    assert config.module_id == "456"
+
+def test_backwards_compatibility_for_resource():
+    config = ModuleConfig(
+        {
+            "resource_id": "789",
+        }
+    )
+    assert config.module_id == "789"
 
 def test_reserved_keys():
     for reserved_key in ("model_path",):
