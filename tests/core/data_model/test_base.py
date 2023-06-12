@@ -227,17 +227,17 @@ def test_compiled_proto_oneof():
         assert isinstance(dm.ThingOne, type)
         assert issubclass(dm.ThingOne, DataBase)
         assert not issubclass(dm.ThingOne, DataObjectBase)
-        assert set(dm.ThingOne.fields) == {"foostr", "fooint"}
+        assert set(dm.ThingOne.fields) == {"foo_str", "foo_int"}
 
         # Construct with the oneof name
         inst = dm.ThingOne(foo=1)
         assert inst.foo == 1
-        assert inst.which_oneof("foo") == "fooint"
+        assert inst.which_oneof("foo") == "foo_int"
 
         # Construct with field name
-        inst = dm.ThingOne(foostr="asdf")
+        inst = dm.ThingOne(foo_str="asdf")
         assert inst.foo == "asdf"
-        assert inst.which_oneof("foo") == "foostr"
+        assert inst.which_oneof("foo") == "foo_str"
 
         # Conflicting args
         with pytest.raises(TypeError):

@@ -138,7 +138,7 @@ def test_dict_backend_oneof():
         backend = DictBackend(data_dict)
         msg = dm.Foo.from_backend(backend)
         assert msg.foo == "asdf"
-        assert msg.which_oneof("foo") == "foostr"
+        assert msg.which_oneof("foo") == "foo_str"
 
 
 def test_dict_backend_invalid_field_error():

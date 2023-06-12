@@ -219,7 +219,7 @@ def test_rpc_validation_on_predict(
     """Check that the server catches models sent to the wrong task RPCs"""
     stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
     predict_request = sample_inference_service.messages.OtherTaskRequest(
-        sample_inputsampleinputtype=HAPPY_PATH_INPUT
+        sample_input_sampleinputtype=HAPPY_PATH_INPUT
     )
     with pytest.raises(grpc.RpcError) as context:
         stub.OtherTaskPredict(
@@ -352,7 +352,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
 
     train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
         model_name="Bar Training",
-        sample_inputsampleinputtype=SampleInputType(name="Gabe").to_proto(),
+        sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
         batch_size=100,
         training_data=training_data,
     )
@@ -366,7 +366,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
 
     # make sure the trained model can run inference, and the batch size 100 was used
     predict_request = sample_inference_service.messages.OtherTaskRequest(
-        sample_inputsampleinputtype=HAPPY_PATH_INPUT
+        sample_input_sampleinputtype=HAPPY_PATH_INPUT
     )
     trained_inference_response = inference_stub.OtherTaskPredict(
         predict_request, metadata=[("mm-model-id", actual_response.model_name)]
