@@ -51,4 +51,4 @@ Check out our [contributing](CONTRIBUTING.md) guide to learn how to contribute t
 
 ## Code of conduct
 
-Participation in the Caikit community is governed by the [Code of Conduct](CODE-OF-CONDUCT.md).
+Participation in the Caikit community is governed by the [Code of Conduct](code-of-conduct.md).
