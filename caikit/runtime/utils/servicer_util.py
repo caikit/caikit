@@ -47,8 +47,15 @@ def validate_caikit_library_class_exists(cdm, class_name):
         return getattr(cdm, class_name)
 
     except AttributeError as e:
-        log.error("<RUN24024010E>", "No Caikit Library CDM class for %s", class_name)
-        raise e
+        log.warning("<RUN24024050W>", "No Caikit Library CDM class for %s", class_name)
+        # Look up the data model class corresponding to the given name
+        dm_class_name = DataBase.get_class_for_name(class_name=class_name)
+        if not dm_class_name:
+            log.error(
+                "<RUN24024010E>", "No Caikit Library CDM class for %s", class_name
+            )
+            raise e
+        return dm_class_name
 
 
 def validate_caikit_library_class_method_exists(caikit_library_class, method_name):
