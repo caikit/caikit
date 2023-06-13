@@ -14,3 +14,4 @@
 
 runtime:
     library: text_sentiment
+    local_models_dir: examples/text-sentiment/models
