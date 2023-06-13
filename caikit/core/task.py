@@ -25,7 +25,6 @@ from .data_model import DataStream
 from .data_model.base import DataBase
 from .signature_parsing import CaikitMethodSignature
 from .toolkit.errors import error_handler
-from .toolkit.isa import isiterable
 
 log = alog.use_channel("TASK_BASE")
 error = error_handler.get(log)
@@ -120,7 +119,9 @@ class TaskBase:
         # `output_type` here can be any iterable, so long as it is type annotated with the type
         # that is iterated over. So we first only check that it is iterable at all, and then look
         # at the annotated type's args.
-        if isiterable(output_type) and isiterable(cls.get_output_type()):
+        if cls._is_iterable_type(output_type) and cls._is_iterable_type(
+            cls.get_output_type()
+        ):
             # in this case we validated up-front that cls.output_type is Iterable[T]
             streaming_type = typing.get_args(cls.get_output_type())[0]
 
@@ -144,6 +145,20 @@ class TaskBase:
         if isclass(this_type) and isclass(that_type):
             return issubclass(this_type, that_type)
         return False
+
+    @staticmethod
+    def _is_iterable_type(typ: Type) -> bool:
+        """Returns True if typ is an iterable type.
+        Does not work for types like `list`, `tuple`, but we're interested here in `List[T]` etc.
+
+        This is implemented this way to support older python versions where
+        isinstance(typ, typing.Iterable) does not work
+        """
+        try:
+            iter(typ)
+            return True
+        except TypeError:
+            return False
 
 
 def task(
