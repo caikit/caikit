@@ -33,7 +33,6 @@ from caikit.interfaces.runtime.data_model.training_management import ModelPointe
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import get_data_model
-import caikit.core
 
 log = alog.use_channel("SERVICR-UTIL")
 
@@ -74,19 +73,35 @@ def validate_caikit_library_class_method_exists(caikit_library_class, method_nam
         raise e
 
 
-def build_proto_response(
-    caikit_library_response: Union[DataBase, Iterable[DataBase]]
-) -> Union[ProtoMessageType, Iterator[ProtoMessageType]]:
-    """Either serializes a data model instance into a protobuf message, or returns a lazy iterator
-    that serializes each data model from an iterable of data models"""
-    try:
-        if caikit.core.isiterable(caikit_library_response):
-            # probably a streaming rpc!
-            def _proto_generator():
-                for item in caikit_library_response:
-                    yield item.to_proto()
+def build_proto_stream(
+    caikit_library_response: Iterable[DataBase],
+) -> Iterator[ProtoMessageType]:
+    """Returns an iterator that serializes each item in the model's response to protobuf"""
 
-            return iter(DataStream(_proto_generator))
+    def _proto_generator():
+        for item in caikit_library_response:
+            try:
+                yield item.to_proto()
+            except Exception as e:
+                log.warning(
+                    {
+                        "log_code": "<RUN11567943W>",
+                        "message": "Exception while serializing response from stream: "
+                        "{}".format(e),
+                        "stack_trace": traceback.format_exc(),
+                    }
+                )
+                raise CaikitRuntimeException(
+                    grpc.StatusCode.INTERNAL,
+                    "Could not serialize output in model response stream",
+                ) from e
+
+    return iter(DataStream(_proto_generator))
+
+
+def build_proto_response(caikit_library_response: DataBase) -> ProtoMessageType:
+    """Serializes a data model instance into a protobuf message"""
+    try:
         return caikit_library_response.to_proto()
     except Exception as e:
         log.warning(

@@ -20,7 +20,6 @@ may find helpful methods in here for more advanced use of this library.
 from . import compatibility, logging
 from .errors import *
 from .fileio import *
-from .isa import *
 from .quality_evaluation import (
     EvalTypes,
     F1Metrics,
