@@ -196,6 +196,22 @@ def test_predict_fake_module_ok_response(
     assert actual_response == HAPPY_PATH_RESPONSE
 
 
+def test_predict_fake_private_module_ok_response(
+    sample_private_task_model_id, runtime_grpc_server, sample_inference_service
+):
+    """Test RPC CaikitRuntime.WidgetPredict successful response"""
+    stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
+
+    # Explicitly use the "public" version of the message on the request side
+    predict_request = sample_inference_service.messages.SampleTaskRequest(
+        sample_input=HAPPY_PATH_INPUT
+    )
+    actual_response = stub.SampleTaskPredict(
+        predict_request, metadata=[("mm-model-id", sample_private_task_model_id)]
+    )
+    assert actual_response == HAPPY_PATH_RESPONSE
+
+
 def test_predict_fake_module_error_response(
     runtime_grpc_server, sample_inference_service
 ):
