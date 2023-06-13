@@ -128,9 +128,7 @@ class TaskBase:
         # `output_type` here can be any iterable, so long as it is type annotated with the type
         # that is iterated over. So we first only check that it is iterable at all, and then look
         # at the annotated type's args.
-        if cls._is_iterable_type(output_type) and cls._is_iterable_type(
-            cls.get_output_type()
-        ):
+        if cls._is_iterable_type(output_type) and cls.is_output_streaming_task():
             # In this case, the task decorator has already validated that the task has output type
             # Iterable[T] with exactly one T, so this is safe.
             streaming_type = typing.get_args(cls.get_output_type())[0]
