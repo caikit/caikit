@@ -125,6 +125,9 @@ def test_global_train_other_task(
         # either of the below lines work since it's a Union now
         # TODO create a separate test, lazy
         # sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
+        list_value_strsequence=sample_train_service.messages.OtherTaskOtherModuleTrainRequest.StrSequence(
+            values=["str", "sequence"]
+        ),
         sample_input_str="sample",
         batch_size=batch_size,
     )
@@ -448,7 +451,6 @@ def test_global_train_aborts_long_running_trains(
         f"{SampleModule.__module__}.{SampleModule.train.__qualname__}",
         never_respond,
     ):
-
         train_thread.start()
         # NB: assert is here to make sure we called the patched train
         assert test_event.wait(test_event_timeout)
