@@ -69,9 +69,16 @@ class TaskBase:
         for parameter_name, parameter_type in cls.get_required_parameters().items():
             signature_type = signature.parameters[parameter_name]
             if parameter_type != signature_type:
-                if typing.get_origin(
-                    signature_type
-                ) == typing.Union and parameter_type in typing.get_args(signature_type):
+                if typing.get_origin(signature_type) == typing.Union and any(
+                    issubclass(sig_type, parameter_type)
+                    for sig_type in typing.get_args(signature_type)
+                ):
+                    continue
+                if (
+                    isinstance(parameter_type, type)
+                    and isinstance(signature_type, type)
+                    and issubclass(signature_type, parameter_type)
+                ):
                     continue
                 type_mismatch_errors.append(
                     f"Parameter {parameter_name} has type {signature_type} but type \
@@ -172,7 +179,7 @@ def task(
         get_required_parameters.__doc__ = f"""
         Returns the set of input parameters required in the `run` function for any module that
         implements the '{cls.__name__}' Task.
-        
+
         ({required_parameters})
 
         Returns: Dict[str, Type]
@@ -181,10 +188,10 @@ def task(
 
         get_output_type.__doc__ = f"""
         Returns the output type required of the `run` function in any module that implements the
-        {cls.__name__} task. 
-        
+        {cls.__name__} task.
+
         ({output_type})
-        
+
         Returns: Type
             The output type of the {cls.__name__} inference task
         """

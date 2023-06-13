@@ -232,6 +232,12 @@ class TaskPredictRPC(CaikitRPCBase):
                 current_val = parameters_dict.get(arg_name, arg_type)
                 # TODO: raise runtime error here instead of assert!
                 # TODO: need to resolve Optional[T] vs. T - if both come in, use Optional[T]
+
+                # If the current version of the argument is a base class of the
+                # previous, take the lowest common denominator
+                if current_val != arg_type and issubclass(arg_type, current_val):
+                    arg_type = current_val
+
                 assert (
                     current_val == arg_type
                 ), f"Conflicting value types for arg {arg_name}: {current_val} != {arg_type}"
