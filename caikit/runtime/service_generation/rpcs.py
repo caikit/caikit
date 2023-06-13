@@ -33,7 +33,7 @@ import alog
 from . import protoable, type_helpers
 from .compatibility_checker import ApiFieldNames
 from .data_stream_source import make_data_stream_source
-from caikit.core import ModuleBase, TaskBase, isiterable
+from caikit.core import ModuleBase, TaskBase
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import (
     DataObjectBase,
@@ -96,7 +96,7 @@ class CaikitRPCBase(abc.ABC):
 
     def create_rpc_json(self, package_name: str) -> Dict:
         """Return json snippet for the service definition of this RPC"""
-        if isiterable(self.return_type):
+        if self.module_list[0].TASK_CLASS.is_output_streaming_task():
             output_type_name = (
                 typing.get_args(self.return_type)[0]
                 .get_proto_class()

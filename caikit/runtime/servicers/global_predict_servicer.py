@@ -36,6 +36,7 @@ from caikit.runtime.utils.import_util import clean_lib_names
 from caikit.runtime.utils.servicer_util import (
     build_caikit_library_request_dict,
     build_proto_response,
+    build_proto_stream,
     get_metadata,
     validate_data_model,
 )
@@ -183,7 +184,10 @@ class GlobalPredictServicer:
                 with PREDICT_TO_PROTO_SUMMARY.labels(
                     grpc_request=request_name, model_id=model_id
                 ).time():
-                    response_proto = build_proto_response(response)
+                    if model.TASK_CLASS.is_output_streaming_task():
+                        response_proto = build_proto_stream(response)
+                    else:
+                        response_proto = build_proto_response(response)
 
             # Update Prometheus metrics
             PREDICT_RPC_COUNTER.labels(

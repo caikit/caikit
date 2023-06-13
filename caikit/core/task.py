@@ -104,6 +104,15 @@ class TaskBase:
         raise NotImplementedError("This is implemented by the @task decorator!")
 
     @classmethod
+    def is_output_streaming_task(cls) -> bool:
+        """Returns true if this task has streaming output
+
+        NOTE: This method is automatically configured by the @task decorator
+            and should not be overwritten by child classes.
+        """
+        raise NotImplementedError("This is implemented by the @task decorator!")
+
+    @classmethod
     def _raise_on_wrong_output_type(cls, output_type, module):
         if cls._subclass_check(output_type, cls.get_output_type()):
             # Basic case, same type or subclass of it
@@ -122,7 +131,8 @@ class TaskBase:
         if cls._is_iterable_type(output_type) and cls._is_iterable_type(
             cls.get_output_type()
         ):
-            # in this case we validated up-front that cls.output_type is Iterable[T]
+            # In this case, the task decorator has already validated that the task has output type
+            # Iterable[T] with exactly one T, so this is safe.
             streaming_type = typing.get_args(cls.get_output_type())[0]
 
             for iterable_type in typing.get_args(output_type):
@@ -219,14 +229,19 @@ def task(
         error.subclass_check(
             "<COR12766440E>", typing.get_args(output_type)[0], DataBase
         )
+        output_streaming = True
     else:
         error.subclass_check("<COR12766440E>", output_type, DataBase)
+        output_streaming = False
 
     def get_required_parameters(_):
         return required_parameters
 
     def get_output_type(_):
         return output_type
+
+    def is_output_streaming_task(_):
+        return output_streaming
 
     def decorator(cls: Type[TaskBase]) -> Type[TaskBase]:
         get_required_parameters.__doc__ = f"""
@@ -251,6 +266,7 @@ def task(
         error.subclass_check("<COR19436440E>", cls, TaskBase)
         setattr(cls, "get_required_parameters", classmethod(get_required_parameters))
         setattr(cls, "get_output_type", classmethod(get_output_type))
+        setattr(cls, "is_output_streaming_task", classmethod(is_output_streaming_task))
         return cls
 
     return decorator
