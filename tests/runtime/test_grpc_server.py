@@ -353,6 +353,9 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
     train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
         model_name="Bar Training",
         sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
+        list_value_strsequence=sample_train_service.messages.OtherTaskOtherModuleTrainRequest.StrSequence(
+            values=["str", "sequence"]
+        ),
         batch_size=100,
         training_data=training_data,
     )
