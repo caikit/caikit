@@ -61,125 +61,133 @@ class CustomDocstringConverter:
             str: The converted docstring in Google style.
         """
 
-        # # Extract the name, data type, and description of arguments using regular expressions
-        # arg_pattern = r"(?!Args)(?!rgs)(?!gs)(?!s)(\*\*\w+|\*\w+|\w+):\s*((?:\w+\s*\
-        #     |\s*)*(?:\w+\s*\|)?\s*(?:\w+(?:\.\w+)*\s+\([^)]+\)|\w+(?:\.\w+)*|\w+(?:\
-        #         .\w+)*\s*\|\s*\w+(?:\.\w+)*))\s*\n\s*((?:(?!:\s*Returns:\s).)*?)($|\n)"
-
-        # # Extract the white space, data type, and description of returns using regular expressions
-        # ret_pattern = r"Returns:(\s*)(?!.*:)([^:\n]+)\n(\s+)((?:.*(?:\n(?!\n)|$).*)*)(\n|\"\"\")"
-
-        # def arg_replacement(match):
-        #     name, data_type, description, _ = match.groups()
-        #     return f"{name} ({data_type}): {textwrap.dedent(description)}\n"
-
-        # # Replace the argument pattern matches with the converted parts
-        # converted_docstring = re.sub(arg_pattern, arg_replacement, converted_docstring)
-
-        # return converted_docstring
-
-        # converted_docstring = custom_docstring
-
-        # # If "Args:" is in custom_docstring
-        #     # Want to grab arguments name (first), argument data type (second, comes after colon), argument description (on new line)
-        #     # Based on indentation, know if it's description or argument name: argument type
-        #         # 1 more indent than Args: arguments name: argument type
-        #         # 2 more indents than Args: argument description
-        #     # Gather arguments as one strings and format each one individually using textwrap
-        #     # We know Args are done when we see the words "Returns:", "Notes:", or """
-        
-        # # If "Returns:" is in custom_docstring
-        #     # Grab returns data type, returns description
-        #     # Based on indentation, know if it's description or return data type
-        #         # 1 more indents than Returns: returns data type
-        #         # 2 more indents than Returns: returns description
-        #     # Gather returns as one string and format using textwrap
-        #     # Know that Returns is done when we see words "Notes:" or """
-        
-        # docstring_list = custom_docstring.split('\n')
-
         def ret_replacement(match):
             white_space, data_type, desc_white_space, description = match.groups()
+            # If has already been converted, don't convert it again
+            if ":" in data_type:
+                return f"{white_space}{data_type}\n{desc_white_space}{description}"
             if description:
+                # Clean up return and reformat it
                 cleaned_description = re.sub(r"\s*\n\s*", " ", description.strip())
                 wrapped_lines = textwrap.wrap(
-                    f"{white_space}{data_type}: {cleaned_description}\n", width=72
+                    f"{white_space}{data_type}: {cleaned_description}\n",
+                    width=80,
+                    subsequent_indent=desc_white_space,
                 )
-                indented_lines = textwrap.indent(
-                    "\n".join(wrapped_lines[1:]), " " * (len(desc_white_space))
-                )
-                returns_white_space = (" " * (len(white_space)-5))
-                # Accounts for the fact Returns: may be last section
-                if(returns_last):
-                    return f"Returns:\n{wrapped_lines[0]}\n{indented_lines}\n{returns_white_space}"
-                else:
-                    return f"Returns:\n{wrapped_lines[0]}\n{indented_lines}"
-            else:
-                return f"Returns:{white_space}{data_type}\n"
+                returns_white_space = " " * (len(white_space) - 5)
 
-        converted_docstring=custom_docstring
-        args= False
+                # Accounts for the fact Returns: may be last section
+                if returns_last:
+                    print("Returns last")
+                    return "\n" + "\n".join(wrapped_lines) + "\n" + returns_white_space
+
+                return "\n" + "\n".join(wrapped_lines)
+
+            return f"{white_space}{data_type}\n"
+
+        def arg_replacement(match):
+            (
+                white_space,
+                name,
+                arg_white_space,
+                data_type,
+                desc_white_space,
+                description,
+            ) = match.groups()
+            if description:
+                # Safety check if description is input incorrectly
+                if (len(white_space.strip("\n"))) == len(desc_white_space):
+                    return f"{white_space}{name} ({data_type})\n{desc_white_space}{description}"
+                # Clean up argument and reformat it
+                cleaned_description = re.sub(r"\s*\n\s*", " ", description.strip())
+                wrapped_lines = textwrap.wrap(
+                    f"{white_space}{name} ({data_type}): {cleaned_description}",
+                    width=80,
+                    subsequent_indent=desc_white_space,
+                )
+                # If there was a newline in white space, replace it
+                if "\n" in white_space:
+                    return "\n" + "\n".join(wrapped_lines)
+
+                return "\n".join(wrapped_lines)
+
+            return f"{white_space}{name} ({data_type})\n{desc_white_space}"
+
+        converted_docstring = custom_docstring
+        args = False
         returns = False
         notes = False
+        examples = False
         returns_last = False
 
         # Determine args, returns, notes start
-        if("Args:" in custom_docstring):
+        if "Args:" in custom_docstring:
             args_start = custom_docstring.find("Args:")
             args = True
-            print("Args start: ",args_start)
-        if("Returns:" in custom_docstring):
+        if "Returns:" in custom_docstring:
             returns_start = custom_docstring.find("Returns:")
             returns = True
-            print("Returns start: ",returns_start)
-        if("Notes:" in custom_docstring):
+        if "Notes:" in custom_docstring:
             notes_start = custom_docstring.find("Notes:")
             notes = True
-            print("Notes start: ", notes_start)
+        if "Examples:" in custom_docstring:
+            examples_start = custom_docstring.find("Examples:")
+            examples= True
 
-        docstring_end = custom_docstring.find('"""',custom_docstring.find('"""')+1)
+        # Find second """ (end of docstring)
+        docstring_end = custom_docstring.find('"""', custom_docstring.find('"""') + 1)
 
         # Determine args ending
-        if(returns):
+        if returns:
             args_end = returns_start
-        elif(notes):
+        elif notes:
             args_end = notes_start
+        elif examples:
+            args_end = examples_start
         else:
             args_end = docstring_end
 
-        #Determine returns ending
-        if(notes):
+        # Determine returns ending
+        if notes:
             returns_end = notes_start
+        elif examples:
+            returns_end = examples_start
         else:
             returns_end = docstring_end
             returns_last = True
 
-        # # Extract the name and data type of arguments using regular expressions
-        # arg_pattern = r"(?!Args)(?!rgs)(?!gs)(?!s)(\*\*\w+|\*\w+|\w+):\s*((?:\w+\s*\
-        #     |\s*)*(?:\w+\s*\|)?\s*(?:\w+(?:\.\w+)*\s+\([^)]+\)|\w+(?:\.\w+)*|\w+(?:\
-        #         .\w+)*\s*\|\s*\w+(?:\.\w+)*))\s*\n\s*($|\n)"
-        
-        # Extract the data type and description of returns using regular expressions
-        ret_pattern = r"(\s*)(?!.*:)([^:\n]+)\n(\s+)((?:.*(?:\n(?!\n)|$).*)*)"
-
-        returns_string = custom_docstring[returns_start+8:returns_end]
-        print(returns_string)
-
-        # Replace the return pattern matches with the converted parts
-        returns_string = re.sub(ret_pattern, ret_replacement, returns_string)
-            
-        converted_docstring = (
-            custom_docstring[:returns_start] + returns_string + custom_docstring[returns_end:]
+        # Extract the preceding white space, name, colon, data type, and following white
+        # space of arguments using expressions
+        arg_pattern = (
+            r"(\s*)(\*\*\w+|\*\w+|\w+)(:\s*)(.*)\s*\n(\s*)((?!.*:)(?:.*(?:\n\5|$).*)*)?"
         )
 
-        print("Docstring end: ", docstring_end)
-        # docstring_end-1 will be a blank character!
-        print("Docstring end character: ", custom_docstring[docstring_end])
-        print("Args end: ", args_end)
-        print("Returns end: ", returns_end)
-        
+        # Extract the data type and description of returns using regular expressions
+        ret_pattern = r"(\s*)(.+)\n(\s+)((?:.*(?:\n(?!\n)|$).*)*)"
 
-        
+        if returns:
+            returns_string = custom_docstring[returns_start + 8 : returns_end]
+
+            # Replace the return pattern matches with the converted parts
+            returns_string = re.sub(ret_pattern, ret_replacement, returns_string)
+            converted_docstring = (
+                custom_docstring[: returns_start + 8]
+                + returns_string
+                + custom_docstring[returns_end:]
+            )
+
+        if args:
+            args_string = custom_docstring[args_start + 5 : args_end]
+
+            # Replace args pattern matches with converted parts
+            args_string = re.sub(
+                arg_pattern, arg_replacement, args_string, flags=re.MULTILINE
+            )
+            converted_docstring = (
+                converted_docstring[: args_start + 5]
+                + args_string
+                + converted_docstring[args_end:]
+            )
 
         return converted_docstring
 
