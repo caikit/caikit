@@ -1,0 +1,11 @@
+module_class: sample_lib.modules.sample_task.sample_implementation.SampleModulePrivate
+module_id: b38be66a-81f2-49e7-a767-f53072f24b8b
+created: "2023-03-14 11:24:58.720898"
+name: SampleModule
+sample_lib_version: 1.2.3
+saved: "2023-03-14 11:24:58.720929"
+tracking_id: 0676cc24-1823-4a31-a3ff-96a45b316699
+train:
+    batch_size: 42
+    learning_rate: 0.0015
+version: 0.0.1

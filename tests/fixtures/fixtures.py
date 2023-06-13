@@ -75,6 +75,10 @@ class Fixtures:
         return os.path.join(os.path.dirname(__file__), "models", "foo")
 
     @staticmethod
+    def get_private_model_path():
+        return os.path.join(os.path.dirname(__file__), "models", "foo_private")
+
+    @staticmethod
     def get_other_good_model_path():
         return os.path.join(os.path.dirname(__file__), "models", "bar")
 

@@ -15,6 +15,14 @@ class SampleInputType(DataObjectBase):
 
 
 @dataobject(package="caikit_data_model.sample_lib")
+class SampleInputTypePrivate(SampleInputType):
+    """A derived class with 'private' functionality"""
+
+    def secret(self) -> str:
+        return "shhh, don't tell!"
+
+
+@dataobject(package="caikit_data_model.sample_lib")
 class SampleOutputType(DataObjectBase):
     """A simple return type for the `sample_task` task"""
 

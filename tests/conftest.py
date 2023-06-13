@@ -187,25 +187,42 @@ def good_model_path() -> str:
 
 
 @pytest.fixture
+def private_model_path() -> str:
+    return Fixtures.get_private_model_path()
+
+
+@pytest.fixture
 def other_good_model_path() -> str:
     return Fixtures.get_other_good_model_path()
 
 
-@pytest.fixture
-def sample_task_model_id(good_model_path) -> str:
+@contextmanager
+def loaded_model(model_path, model_type):
     """Loaded model ID using model manager load model implementation"""
     model_id = _random_id()
     model_manager = ModelManager.get_instance()
     # model load test already tests with archive - just using a model path here
     model_manager.load_model(
         model_id,
-        local_model_path=good_model_path,
-        model_type=Fixtures.get_good_model_type(),  # eventually we'd like to be determining the type from the model itself...
+        local_model_path=model_path,
+        model_type=model_type,  # eventually we'd like to be determining the type from the model itself...
     )
     yield model_id
 
     # teardown
     model_manager.unload_model(model_id)
+
+
+@pytest.fixture
+def sample_task_model_id(good_model_path) -> str:
+    with loaded_model(good_model_path, Fixtures.get_good_model_type()) as model_id:
+        yield model_id
+
+
+@pytest.fixture
+def sample_private_task_model_id(private_model_path) -> str:
+    with loaded_model(private_model_path, Fixtures.get_good_model_type()) as model_id:
+        yield model_id
 
 
 @pytest.fixture
