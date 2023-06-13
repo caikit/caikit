@@ -44,8 +44,8 @@ from caikit.core.data_model.dataobject import (
     _AUTO_GEN_PROTO_CLASSES,
     render_dataobject_protos,
 )
+from caikit.core.data_model.enums import isprotobufenum
 from caikit.core.data_model.json_dict import JsonDict
-from caikit.core.toolkit.isa import isprotobufenum
 
 ## Helpers #####################################################################
 
