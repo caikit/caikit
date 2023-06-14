@@ -37,8 +37,9 @@ from sample_lib.data_model import SampleInputType, SampleOutputType
 from sample_lib.modules.sample_task import SampleModule
 from tests.fixtures import Fixtures
 
-HAPPY_PATH_INPUT = SampleInputType(name="Gabe").to_proto()
+HAPPY_PATH_INPUT_DM = SampleInputType(name="Gabe")
 HAPPY_PATH_RESPONSE_DM = SampleOutputType(greeting="Hello Gabe")
+HAPPY_PATH_INPUT = HAPPY_PATH_INPUT_DM.to_proto()
 HAPPY_PATH_RESPONSE = HAPPY_PATH_RESPONSE_DM.to_proto()
 
 
@@ -95,7 +96,7 @@ def test_global_predict_predict_model_direct(
     response = sample_predict_servicer.predict_model(
         request_name="SampleTaskRequest",
         model_id=sample_task_model_id,
-        sample_input=HAPPY_PATH_INPUT,
+        sample_input=HAPPY_PATH_INPUT_DM,
     )
     assert response == HAPPY_PATH_RESPONSE_DM
 
