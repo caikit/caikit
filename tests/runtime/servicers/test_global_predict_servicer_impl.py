@@ -22,11 +22,8 @@ except (NameError, ModuleNotFoundError):
 
 # Standard
 import json
-import os
-import tempfile
 import threading
 import time
-import uuid
 
 # Third Party
 import grpc
@@ -39,10 +36,10 @@ from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model import SampleInputType, SampleOutputType
 from sample_lib.modules.sample_task import SampleModule
 from tests.fixtures import Fixtures
-import sample_lib
 
 HAPPY_PATH_INPUT = SampleInputType(name="Gabe").to_proto()
-HAPPY_PATH_RESPONSE = SampleOutputType(greeting="Hello Gabe").to_proto()
+HAPPY_PATH_RESPONSE_DM = SampleOutputType(greeting="Hello Gabe")
+HAPPY_PATH_RESPONSE = HAPPY_PATH_RESPONSE_DM.to_proto()
 
 
 def test_calling_predict_should_raise_if_module_raises(
@@ -87,6 +84,20 @@ def test_global_predict_works_on_good_inputs(
         Fixtures.build_context(sample_task_model_id),
     )
     assert response == HAPPY_PATH_RESPONSE
+
+
+def test_global_predict_predict_model_direct(
+    sample_inference_service, sample_predict_servicer, sample_task_model_id
+):
+    """Test that the direct predict_model function can be called to bypass the
+    gRPC handler
+    """
+    response = sample_predict_servicer.predict_model(
+        request_name="SampleTaskRequest",
+        model_id=sample_task_model_id,
+        sample_input=HAPPY_PATH_INPUT,
+    )
+    assert response == HAPPY_PATH_RESPONSE_DM
 
 
 def test_global_predict_aborts_long_running_predicts(
