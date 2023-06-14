@@ -119,6 +119,9 @@ def test_global_train_other_task(
     batch_size = 42
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
     training_data = stream_type(jsondata=stream_type.JsonData(data=[1])).to_proto()
+    training_parameters_json_dict = caikit.core.data_model.json_dict.dict_to_struct(
+        {"foo": {"bar": [1, 2, 3]}}
+    )
     train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
         model_name="Other module Training",
         training_data=training_data,
@@ -127,6 +130,7 @@ def test_global_train_other_task(
         # sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
         sample_input_str="sample",
         batch_size=batch_size,
+        training_parameters_json_dict=training_parameters_json_dict,
     )
 
     training_response = sample_train_servicer.Train(
