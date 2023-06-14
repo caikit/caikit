@@ -368,6 +368,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
     training_parameters_json_dict = caikit.core.data_model.json_dict.dict_to_struct(
         {"foo": {"bar": [1, 2, 3]}}
     )
+    training_parameters = {"layer_sizes": 100, "window_scaling": 200}
     training_data = stream_type(
         file=stream_type.File(filename=sample_int_file)
     ).to_proto()
@@ -378,6 +379,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
         batch_size=100,
         training_data=training_data,
         training_parameters_json_dict=training_parameters_json_dict,
+        training_parameters=training_parameters,
     )
     actual_response = train_stub.OtherTaskOtherModuleTrain(train_request)
     is_good_train_response(
@@ -395,7 +397,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
         predict_request, metadata=[("mm-model-id", actual_response.model_name)]
     )
     expected_trained_inference_response = OtherOutputType(
-        farewell="goodbye: Gabe 100 times"
+        farewell="goodbye: Gabe 100 times 100"
     ).to_proto()
     assert trained_inference_response == expected_trained_inference_response
 
@@ -404,7 +406,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
         predict_request, metadata=[("mm-model-id", other_task_model_id)]
     )
     expected_original_inference_response = OtherOutputType(
-        farewell="goodbye: Gabe 42 times"
+        farewell="goodbye: Gabe 42 times 100"
     ).to_proto()
     assert original_inference_response == expected_original_inference_response
 
