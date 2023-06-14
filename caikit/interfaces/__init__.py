@@ -22,10 +22,5 @@ This library intentionally does NOT define any implementations, as those are
 left to the domain implementation libraries.
 """
 
-# First Party
-import import_tracker
-
-# Import each domain with lazy import errors
-with import_tracker.lazy_import_errors():
-    # Local
-    from . import common, nlp, runtime
+# NOTE: We do not proactively import sub-modules in the interfaces here as they
+#   may contain optional dependencies
