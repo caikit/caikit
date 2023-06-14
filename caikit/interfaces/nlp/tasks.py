@@ -20,12 +20,12 @@ from typing import Iterable
 
 # Local
 from ...core import TaskBase, task
-from .data_model.text_generation import GeneratedResult, GeneratedStreamResult
+from .data_model.text_generation import GeneratedTextResult, GeneratedTextStreamResult
 
 
 @task(
     required_parameters={"inputs": str},
-    output_type=GeneratedResult,
+    output_type=GeneratedTextResult,
 )
 class TextGenerationTask(TaskBase):
     """The Text Generation Task is responsible for taking input prompting text
@@ -35,7 +35,7 @@ class TextGenerationTask(TaskBase):
 
 @task(
     required_parameters={"inputs": str},
-    output_type=Iterable[GeneratedStreamResult],
+    output_type=Iterable[GeneratedTextStreamResult],
 )
 class TextGenerationStreamTask(TaskBase):
     """The Text Generation Stream Task is responsible for taking input prompting

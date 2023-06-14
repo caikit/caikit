@@ -17,8 +17,8 @@ from . import package, text_generation
 from .package import NLP_PACKAGE
 from .text_generation import (
     FinishReason,
-    GeneratedResult,
-    GeneratedStreamResult,
+    GeneratedTextResult,
+    GeneratedTextStreamResult,
     GeneratedToken,
-    StreamDetails,
+    TokenStreamDetails,
 )
