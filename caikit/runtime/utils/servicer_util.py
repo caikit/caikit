@@ -131,6 +131,9 @@ def is_protobuf_primitive_field(obj):
             type(obj),
         )
         return False
+
+    if obj.type == FieldDescriptor.TYPE_MESSAGE and obj.message_type.name == "Struct":
+        return True
     return obj.type not in NON_PRIMITIVE_TYPES
 
 
