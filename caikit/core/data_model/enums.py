@@ -22,6 +22,7 @@ from typing import Dict, Optional, Tuple, Type
 
 # Third Party
 from google.protobuf.internal.enum_type_wrapper import EnumTypeWrapper
+import google
 import munch
 
 # First Party
@@ -29,7 +30,6 @@ import alog
 
 # Local
 from ..toolkit.errors import error_handler
-from ..toolkit.isa import isprotobufenum
 
 log = alog.use_channel("DATAM")
 error = error_handler.get(log)
@@ -139,3 +139,8 @@ def import_enums(current_globals):
         name, rev_name = import_enum(proto_enum)
         current_globals[name] = globals()[name]
         current_globals[rev_name] = globals()[rev_name]
+
+
+def isprotobufenum(obj):
+    """Returns True if obj is a protobufs enum."""
+    return isinstance(obj, google.protobuf.internal.enum_type_wrapper.EnumTypeWrapper)

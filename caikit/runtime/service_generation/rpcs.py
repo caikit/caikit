@@ -20,6 +20,7 @@ Typically used for `caikit.core.module`s that expose .train and .run functions.
 from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
 import abc
 import copy
+import typing
 
 # First Party
 from py_to_proto.dataclass_to_proto import (  # NOTE: Imported from here for compatibility
@@ -95,12 +96,22 @@ class CaikitRPCBase(abc.ABC):
 
     def create_rpc_json(self, package_name: str) -> Dict:
         """Return json snippet for the service definition of this RPC"""
-        output_type_name = self.return_type.get_proto_class().DESCRIPTOR.full_name
+        if self.module_list[0].TASK_CLASS.is_output_streaming_task():
+            output_type_name = (
+                typing.get_args(self.return_type)[0]
+                .get_proto_class()
+                .DESCRIPTOR.full_name
+            )
+            server_streaming = True
+        else:
+            output_type_name = self.return_type.get_proto_class().DESCRIPTOR.full_name
+            server_streaming = False
 
         rpc_json = {
             "name": f"{self.name}",
             "input_type": f"{package_name}.{self.request.name}",
             "output_type": output_type_name,
+            "server_streaming": server_streaming,
         }
         return rpc_json
 
