@@ -14,7 +14,6 @@
 
 # Standard
 import os
-import warnings
 
 # First Party
 import aconfig
@@ -63,16 +62,15 @@ class ModuleConfig(aconfig.Config):
 
         # 🌶️🌶️🌶️: Backwards compatibility for old-style `blocks`, `workflows`, and `resources`
         if not self.module_id:  # pylint: disable=access-member-before-definition
-            warnings.warn(
-                "No module_id found in config. Re-save the block to use module_id",
-                DeprecationWarning,
-            )  # actual warning or just log.warning?
+            log.warning(
+                "No module_id found in config. Re-save the model to use module_id."
+            )
             if self.block_id:
                 log.debug("Detected legacy block_id in config")
                 self.module_id = self.block_id
             elif self.workflow_id:
                 log.debug("Detected legacy workflow_id in config")
-                self.module_id = self.block_id
+                self.module_id = self.workflow_id
             elif self.resource_id:
                 log.debug("Detected legacy resource_id in config")
                 self.module_id = self.resource_id

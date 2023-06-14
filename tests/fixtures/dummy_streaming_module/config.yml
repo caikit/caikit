@@ -1,0 +1,9 @@
+created: "2023-06-08 14:16:17.291098"
+module_class: sample_lib.modules.sample_task.streaming_module.StreamingModule
+module_id: 00110203-0123-0456-0789-0a0b02dd0e0f
+name: SampleModule
+sample_lib_version: 1.2.3
+saved: "2023-06-08 14:16:17.291129"
+stream_size: 10
+tracking_id: f72ded0d-44fe-4f53-901d-248ac8451163
+version: 0.0.1

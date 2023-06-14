@@ -137,18 +137,8 @@ def runtime_grpc_server(
         inference_service=sample_inference_service,
         training_service=sample_train_service,
     ) as server:
-
-        grpc_thread = threading.Thread(
-            target=server.start,
-        )
-        grpc_thread.daemon = False
-        grpc_thread.start()
         _check_server_readiness(server)
         yield server
-
-        # teardown
-        server.stop(0)
-        grpc_thread.join()
 
 
 @pytest.fixture(scope="session")
@@ -187,6 +177,11 @@ def good_model_path() -> str:
 
 
 @pytest.fixture
+def streaming_model_path() -> str:
+    return os.path.join(os.path.dirname(__file__), "fixtures", "dummy_streaming_module")
+
+
+@pytest.fixture
 def other_good_model_path() -> str:
     return Fixtures.get_other_good_model_path()
 
@@ -201,6 +196,22 @@ def sample_task_model_id(good_model_path) -> str:
         model_id,
         local_model_path=good_model_path,
         model_type=Fixtures.get_good_model_type(),  # eventually we'd like to be determining the type from the model itself...
+    )
+    yield model_id
+
+    # teardown
+    model_manager.unload_model(model_id)
+
+
+@pytest.fixture
+def streaming_task_model_id(streaming_model_path) -> str:
+    """Loaded model ID using model manager load model implementation"""
+    model_id = _random_id()
+    model_manager = ModelManager.get_instance()
+    model_manager.load_model(
+        model_id,
+        local_model_path=streaming_model_path,
+        model_type=Fixtures.get_good_model_type(),
     )
     yield model_id
 

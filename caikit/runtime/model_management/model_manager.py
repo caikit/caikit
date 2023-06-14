@@ -13,7 +13,7 @@
 # limitations under the License.
 # Standard
 from collections import Counter as DictCounter
-from typing import Dict, Type
+from typing import Dict
 import gc
 import os
 import threading
@@ -252,7 +252,7 @@ class ModelManager:
         """
         return self.model_sizer.get_model_size(model_id, local_model_path, model_type)
 
-    def retrieve_model(self, model_id) -> Type[ModuleBase]:
+    def retrieve_model(self, model_id) -> ModuleBase:
         """Retrieve a model from the loaded model map by model ID.
 
         Args:

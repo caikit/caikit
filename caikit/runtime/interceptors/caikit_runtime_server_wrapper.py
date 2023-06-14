@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # Standard
+from typing import Callable
 import traceback
 
 # Third Party
@@ -191,9 +192,14 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                     # Get the original grpc.RpcMethodHandler for this RPC method
                     original_rpc_handler = handler.service(DummyHandlerCallDetails(fqm))
 
-                    # Make sure this is a unary-unary RPC
-                    if not original_rpc_handler.unary_unary:
-                        raise NotImplementedError("Unary-unary RPCs only!")
+                    # Make sure this is a supported RPC flavor
+                    if (
+                        not original_rpc_handler.unary_unary
+                        and not original_rpc_handler.unary_stream
+                    ):
+                        raise NotImplementedError(
+                            "Unary-unary and unary-stream RPCs only!"
+                        )
 
                     # Now, swap out the original unary-unary callable with our
                     # generic predict method, and add this newly re-routed RPC
@@ -204,8 +210,8 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                         "<RUN30032825I>",
                         "Re-routing RPC %s from %s to %s",
                         fqm,
-                        original_rpc_handler.unary_unary,
-                        rerouted_rpc_method_handlers[method].unary_unary,
+                        self._get_handler_fn(original_rpc_handler),
+                        self._get_handler_fn(rerouted_rpc_method_handlers[method]),
                     )
 
                 # Now that we have re-rerouted all the original RPC method
@@ -242,31 +248,22 @@ class CaikitRuntimeServerWrapper(grpc.Server):
         original_rpc_handler: RpcMethodHandler,
         replace_with_global_predict: bool = True,
     ):
+        if replace_with_global_predict:
+            behavior = self.safe_rpc_wrapper(self._global_predict)
+        else:
+            behavior = self.safe_rpc_wrapper(self._get_handler_fn(original_rpc_handler))
+
         if original_rpc_handler.unary_unary:
-            return grpc.unary_unary_rpc_method_handler(
-                self.safe_rpc_wrapper(
-                    self._global_predict
-                    if replace_with_global_predict
-                    else original_rpc_handler.unary_unary
-                ),
-                request_deserializer=original_rpc_handler.request_deserializer,
-                response_serializer=original_rpc_handler.response_serializer,
-            )
-        if original_rpc_handler.unary_stream:
-            return grpc.unary_stream_rpc_method_handler(
-                self.safe_rpc_wrapper(original_rpc_handler.unary_stream),
-                request_deserializer=original_rpc_handler.request_deserializer,
-                response_serializer=original_rpc_handler.response_serializer,
-            )
-        if original_rpc_handler.stream_unary:
-            return grpc.stream_unary_rpc_method_handler(
-                self.safe_rpc_wrapper(original_rpc_handler.stream_unary),
-                request_deserializer=original_rpc_handler.request_deserializer,
-                response_serializer=original_rpc_handler.response_serializer,
-            )
-        # Else, it's stream-stream
-        return grpc.stream_stream_rpc_method_handler(
-            self.safe_rpc_wrapper(original_rpc_handler.stream_stream),
+            handler_constructor = grpc.unary_unary_rpc_method_handler
+        elif original_rpc_handler.unary_stream:
+            handler_constructor = grpc.unary_stream_rpc_method_handler
+        elif original_rpc_handler.stream_unary:
+            handler_constructor = grpc.stream_unary_rpc_method_handler
+        else:
+            handler_constructor = grpc.stream_stream_rpc_method_handler
+
+        return handler_constructor(
+            behavior=behavior,
             request_deserializer=original_rpc_handler.request_deserializer,
             response_serializer=original_rpc_handler.response_serializer,
         )
@@ -358,3 +355,13 @@ class CaikitRuntimeServerWrapper(grpc.Server):
             A bool indicates if the operation times out.
         """
         return self._server.wait_for_termination(timeout)
+
+    @staticmethod
+    def _get_handler_fn(handler: RpcMethodHandler) -> Callable:
+        if handler.unary_unary:
+            return handler.unary_unary
+        if handler.unary_stream:
+            return handler.unary_stream
+        if handler.stream_unary:
+            return handler.stream_unary
+        return handler.stream_stream
