@@ -877,6 +877,7 @@ def test_dataobject_inheritance(temp_dpool):
     assert inst.bar == "asdf"
     assert inst.baz == "qwer"
 
+
 def test_dataobject_union_repeated():
     """Make sure that a oneof with lists of primitive fields works correctly"""
 
@@ -921,6 +922,7 @@ def test_dataobject_union_repeated():
     proto_repr_foo2 = foo2.to_proto()
     assert Foo.from_proto(proto=proto_repr_foo2).to_proto() == proto_repr_foo2
 
+
 def test_dataobject_function_inheritance(temp_dpool):
     """Make sure inheritance works to override functionality without changing
     the schema of the parent
@@ -943,4 +945,3 @@ def test_dataobject_function_inheritance(temp_dpool):
 
     d_inst = Derived(1)
     assert d_inst.doit() == 3
-
