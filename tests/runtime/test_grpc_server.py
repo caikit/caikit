@@ -365,6 +365,9 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
 
     # Train an OtherModule with batch size 100
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
+    training_parameters_json_dict = caikit.core.data_model.json_dict.dict_to_struct(
+        {"foo": {"bar": [1, 2, 3]}}
+    )
     training_data = stream_type(
         file=stream_type.File(filename=sample_int_file)
     ).to_proto()
@@ -374,6 +377,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
         sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
         batch_size=100,
         training_data=training_data,
+        training_parameters_json_dict=training_parameters_json_dict,
     )
     actual_response = train_stub.OtherTaskOtherModuleTrain(train_request)
     is_good_train_response(

@@ -7,6 +7,7 @@ from typing import Union
 # Local
 from ...data_model.sample import OtherOutputType, OtherTask, SampleInputType
 from caikit.core.data_model import DataStream
+from caikit.core.data_model.json_dict import JsonDict
 from caikit.core.modules import ModuleLoader, ModuleSaver
 import caikit.core
 
@@ -52,10 +53,12 @@ class OtherModule(caikit.core.ModuleBase):
         training_data: DataStream[int],
         sample_input: Union[SampleInputType, str],
         batch_size: int = 64,
+        training_parameters_json_dict: JsonDict = None,
     ) -> "OtherModule":
         """Sample training method that produces a trained model"""
         assert type(sample_input) == SampleInputType or str
         # Barf if we were incorrectly passed data not in datastream format
         assert isinstance(training_data, DataStream)
+        assert training_parameters_json_dict is not None
         assert batch_size > 0
         return cls(batch_size=batch_size)
