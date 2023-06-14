@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Standard
-from typing import Type
-
 # First Party
 import alog
 
@@ -59,7 +56,7 @@ class LoadedModel:
     def id(self) -> str:
         return self._model_id
 
-    def module(self) -> Type[ModuleBase]:
+    def module(self) -> ModuleBase:
         return self._caikit_module
 
     def type(self) -> str:

@@ -14,7 +14,7 @@
 """A generic module to help Predict and Train servicers
 """
 # Standard
-from typing import Any, Dict, Iterable, Union
+from typing import Any, Dict, Iterable, Iterator, Union
 import traceback
 
 # Third Party
@@ -26,6 +26,7 @@ import grpc
 import alog
 
 # Local
+from caikit.core.data_model import DataStream
 from caikit.core.data_model.base import DataBase
 from caikit.core.signature_parsing import CaikitMethodSignature
 from caikit.interfaces.runtime.data_model.training_management import ModelPointer
@@ -65,7 +66,34 @@ def validate_caikit_library_class_method_exists(caikit_library_class, method_nam
         raise e
 
 
-def build_proto_response(caikit_library_response):
+def build_proto_stream(
+    caikit_library_response: Iterable[DataBase],
+) -> Iterator[ProtoMessageType]:
+    """Returns an iterator that serializes each item in the model's response to protobuf"""
+
+    def _proto_generator():
+        for item in caikit_library_response:
+            try:
+                yield item.to_proto()
+            except Exception as e:
+                log.warning(
+                    {
+                        "log_code": "<RUN11567943W>",
+                        "message": "Exception while serializing response from stream: "
+                        "{}".format(e),
+                        "stack_trace": traceback.format_exc(),
+                    }
+                )
+                raise CaikitRuntimeException(
+                    grpc.StatusCode.INTERNAL,
+                    "Could not serialize output in model response stream",
+                ) from e
+
+    return iter(DataStream(_proto_generator))
+
+
+def build_proto_response(caikit_library_response: DataBase) -> ProtoMessageType:
+    """Serializes a data model instance into a protobuf message"""
     try:
         return caikit_library_response.to_proto()
     except Exception as e:

@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 # Standard
+from inspect import isclass
 from typing import Callable, Dict, List, Type, Union
+import collections
 import typing
 
 # First Party
@@ -82,17 +83,7 @@ class TaskBase:
                 f"Wrong types provided for parameters to {signature.module}: {type_mismatch_errors}"
             )
 
-        if signature.return_type != cls.get_output_type():
-            # Wrong return type: Just check to make sure it's not
-            # `Union[expected_type, other_types]`
-            if typing.get_origin(signature.return_type) != Union or (
-                typing.get_origin(signature.return_type) == Union
-                and cls.get_output_type() not in typing.get_args(signature.return_type)
-            ):
-                raise TypeError(
-                    f"Wrong output type for module {signature.module}: "
-                    f"Found {signature.return_type} but expected {cls.get_output_type()}"
-                )
+        cls._raise_on_wrong_output_type(signature.return_type, signature.module)
 
     @classmethod
     def get_required_parameters(cls) -> Dict[str, ValidInputTypes]:
@@ -111,6 +102,71 @@ class TaskBase:
             and should not be overwritten by child classes.
         """
         raise NotImplementedError("This is implemented by the @task decorator!")
+
+    @classmethod
+    def is_output_streaming_task(cls) -> bool:
+        """Returns true if this task has streaming output
+
+        NOTE: This method is automatically configured by the @task decorator
+            and should not be overwritten by child classes.
+        """
+        raise NotImplementedError("This is implemented by the @task decorator!")
+
+    @classmethod
+    def _raise_on_wrong_output_type(cls, output_type, module):
+        if cls._subclass_check(output_type, cls.get_output_type()):
+            # Basic case, same type or subclass of it
+            return
+
+        if typing.get_origin(output_type) == Union:
+            for union_type in typing.get_args(output_type):
+                if cls._subclass_check(union_type, cls.get_output_type()):
+                    # Something in the union has an acceptable type
+                    return
+
+        # Iterable output checks:
+        # `output_type` here can be any iterable, so long as it is type annotated with the type
+        # that is iterated over. So we first only check that it is iterable at all, and then look
+        # at the annotated type's args.
+        if cls._is_iterable_type(output_type) and cls.is_output_streaming_task():
+            # In this case, the task decorator has already validated that the task has output type
+            # Iterable[T] with exactly one T, so this is safe.
+            streaming_type = typing.get_args(cls.get_output_type())[0]
+
+            for iterable_type in typing.get_args(output_type):
+                if cls._subclass_check(iterable_type, streaming_type):
+                    return
+
+        raise TypeError(
+            f"Wrong output type for module {module}: "
+            f"Found {output_type} but expected {cls.get_output_type()}"
+        )
+
+    @staticmethod
+    def _subclass_check(this_type, that_type):
+        """Wrapper around issubclass that first checks if both args are classes.
+        Returns True if the types are the same, or they are both classes and this_type
+        is a subclass of that_type
+        """
+        if this_type == that_type:
+            return True
+        if isclass(this_type) and isclass(that_type):
+            return issubclass(this_type, that_type)
+        return False
+
+    @staticmethod
+    def _is_iterable_type(typ: Type) -> bool:
+        """Returns True if typ is an iterable type.
+        Does not work for types like `list`, `tuple`, but we're interested here in `List[T]` etc.
+
+        This is implemented this way to support older python versions where
+        isinstance(typ, typing.Iterable) does not work
+        """
+        try:
+            iter(typ)
+            return True
+        except TypeError:
+            return False
 
 
 def task(
@@ -160,13 +216,30 @@ def task(
             tasks.
     """
     # TODO: type checking on required_inputs
-    error.subclass_check("<COR12766440E>", output_type, DataBase)
+    # Check that return type is a data model or iterable of a data model
+    # We explicitly require `Iterable[T]` on output type annotations
+    if typing.get_origin(output_type) == collections.abc.Iterable:
+        error.value_check(
+            "<COR12569910E>",
+            len(typing.get_args(output_type)) == 1,
+            "A single type T must be provided for tasks with output type Iterable[T].",
+        )
+        error.subclass_check(
+            "<COR12766440E>", typing.get_args(output_type)[0], DataBase
+        )
+        output_streaming = True
+    else:
+        error.subclass_check("<COR12766440E>", output_type, DataBase)
+        output_streaming = False
 
     def get_required_parameters(_):
         return required_parameters
 
     def get_output_type(_):
         return output_type
+
+    def is_output_streaming_task(_):
+        return output_streaming
 
     def decorator(cls: Type[TaskBase]) -> Type[TaskBase]:
         get_required_parameters.__doc__ = f"""
@@ -191,6 +264,7 @@ def task(
         error.subclass_check("<COR19436440E>", cls, TaskBase)
         setattr(cls, "get_required_parameters", classmethod(get_required_parameters))
         setattr(cls, "get_output_type", classmethod(get_output_type))
+        setattr(cls, "is_output_streaming_task", classmethod(is_output_streaming_task))
         return cls
 
     return decorator

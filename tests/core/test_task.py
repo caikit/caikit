@@ -1,6 +1,6 @@
 ## Tests #######################################################################
 # Standard
-from typing import Union
+from typing import Iterable, Union
 import uuid
 
 # Third Party
@@ -49,6 +49,52 @@ def test_task_decorator_validates_output_is_data_model():
         )
         class SampleTask(TaskBase):
             pass
+
+
+def test_task_decorator_can_have_iterable_output():
+    """This test covers tasks + modules with streaming output"""
+
+    @task(
+        required_parameters={"sample_input": SampleInputType},
+        output_type=Iterable[SampleOutputType],
+    )
+    class StreamingTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()),
+        name="StreamingModule",
+        version="0.0.1",
+        task=StreamingTask,
+    )
+    class StreamingModule(caikit.core.ModuleBase):
+        def run(
+            self, sample_input: SampleInputType
+        ) -> caikit.core.data_model.DataStream[SampleOutputType]:
+            pass
+
+
+def test_task_iterator_raises_on_wrong_streaming_type():
+    @task(
+        required_parameters={"sample_input": SampleInputType},
+        output_type=Iterable[SampleOutputType],
+    )
+    class StreamingTask(TaskBase):
+        pass
+
+    with pytest.raises(TypeError, match="Wrong output type for module"):
+
+        @caikit.core.module(
+            id=str(uuid.uuid4()),
+            name="InvalidStreamingModule",
+            version="0.0.1",
+            task=StreamingTask,
+        )
+        class InvalidStreamingModule(caikit.core.ModuleBase):
+            def run(
+                self, sample_input: SampleInputType
+            ) -> caikit.core.data_model.DataStream[SampleInputType]:
+                pass
 
 
 def test_task_is_set_on_module_classes():
