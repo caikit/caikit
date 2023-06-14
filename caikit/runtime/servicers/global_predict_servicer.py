@@ -14,12 +14,13 @@
 # Standard
 from contextlib import contextmanager
 from importlib.metadata import version
-from typing import Set
+from typing import Iterable, Optional, Set, Union
 import traceback
 
 # Third Party
 from google.protobuf.descriptor import FieldDescriptor
-from grpc import StatusCode
+from google.protobuf.message import Message as ProtobufMessage
+from grpc import ServicerContext, StatusCode
 from prometheus_client import Counter, Summary
 
 # First Party
@@ -28,6 +29,7 @@ import alog
 # Local
 from caikit import get_config
 from caikit.core import ModuleBase
+from caikit.core.data_model import DataBase
 from caikit.runtime.metrics.rpc_meter import RPCMeter
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage
@@ -126,17 +128,22 @@ class GlobalPredictServicer:
         )
         super()
 
-    def Predict(self, request, context):
+    def Predict(
+        self,
+        request: ProtobufMessage,
+        context: ServicerContext,
+    ) -> Union[ProtobufMessage, Iterable[ProtobufMessage]]:
         """Global predict RPC -- Mocks the invocation of a Caikit Library module.run()
         method for a loaded Caikit Library model
 
         Args:
-            request(object):
+            request (ProtobufMessage):
                 A deserialized RPC request message
-            context(grpc.ServicerContext): Context object (contains request metadata, etc)
+            context (ServicerContext):
+                Context object (contains request metadata, etc)
 
         Returns:
-            response (object):
+            response (Union[ProtobufMessage, Iterable[ProtobufMessage]]):
                 A Caikit Library data model response object
         """
         # Make sure the request has a model before doing anything
@@ -172,8 +179,31 @@ class GlobalPredictServicer:
                         response_proto = build_proto_response(response)
                 return response_proto
 
-    def predict_model(self, request_name: str, model_id: str, context=None, **kwargs):
-        """Run a prediction against the given model. This does not require that"""
+    def predict_model(
+        self,
+        request_name: str,
+        model_id: str,
+        context: Optional[ServicerContext] = None,
+        **kwargs,
+    ) -> Union[DataBase, Iterable[DataBase]]:
+        """Run a prediction against the given model using the raw arguments to
+        the model's run function.
+
+        Args:
+            request_name (str):
+                The name of the request message to validate the model's task
+            model_id (str):
+                The ID of the loaded model
+            context (Optional[ServicerContext]):
+                For gRPC requests, this is the request context
+            **kwargs:
+                Keyword arguments to pass to the model's run function
+
+        Returns:
+            response (Union[DataBase, Iterable[DataBase]]):
+                The object (unary) or objects (output stream) produced by the
+                inference request
+        """
 
         with self._handle_predict_exceptions(model_id, request_name):
             model = self._model_manager.retrieve_model(model_id)
