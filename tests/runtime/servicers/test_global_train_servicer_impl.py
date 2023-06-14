@@ -122,6 +122,7 @@ def test_global_train_other_task(
     training_parameters_json_dict = caikit.core.data_model.json_dict.dict_to_struct(
         {"foo": {"bar": [1, 2, 3]}}
     )
+    training_parameters = {"layer_sizes": 100, "window_scaling": 200}
     train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
         model_name="Other module Training",
         training_data=training_data,
@@ -131,6 +132,7 @@ def test_global_train_other_task(
         sample_input_str="sample",
         batch_size=batch_size,
         training_parameters_json_dict=training_parameters_json_dict,
+        training_parameters=training_parameters,
     )
 
     training_response = sample_train_servicer.Train(
@@ -159,7 +161,7 @@ def test_global_train_other_task(
     assert (
         inference_response
         == OtherOutputType(
-            farewell=f"goodbye: Gabe {batch_size} times",
+            farewell=f"goodbye: Gabe {batch_size} times {training_parameters.get('layer_sizes')}",
         ).to_proto()
     )
 

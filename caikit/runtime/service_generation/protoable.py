@@ -124,6 +124,7 @@ def is_protoable_type(arg_type: Type) -> bool:
     Or if it's an imported Caikit data model class.
     Or if it's a Union of at least one of those.
     Or if it's a List of one of those.
+    Or if it's a Dict of one of those.
     False otherwise"""
     proto_primitive_set = list(DATAOBJECT_PY_TO_PROTO_TYPES.keys())
 
@@ -138,6 +139,16 @@ def is_protoable_type(arg_type: Type) -> bool:
             log.debug2("List annotation has no type")
             return False
         return typing.get_args(arg_type)[0] in proto_primitive_set
+
+    if typing.get_origin(arg_type) == dict:
+        log.debug2("Arg is Dict")
+        if len(typing.get_args(arg_type)) == 0:
+            log.debug2("Dict annotation has no type")
+            return False
+        return (
+            typing.get_args(arg_type)[0] in proto_primitive_set
+            and typing.get_args(arg_type)[1] in proto_primitive_set
+        )
 
     if typing.get_origin(arg_type) == Union:
         log.debug2("Arg is Union")
