@@ -166,7 +166,12 @@ class GlobalPredictServicer:
                         model_class.RUN_SIGNATURE,
                     )
                 response = self.predict_model(
-                    request_name, model_id, context=context, **caikit_library_request
+                    request_name,
+                    model_id,
+                    aborter=CallAborter(context)
+                    if self.use_abortable_threads
+                    else None,
+                    **caikit_library_request,
                 )
 
                 # Marshall the response to the necessary return type
@@ -183,7 +188,7 @@ class GlobalPredictServicer:
         self,
         request_name: str,
         model_id: str,
-        context: Optional[ServicerContext] = None,
+        aborter: Optional[CallAborter] = None,
         **kwargs,
     ) -> Union[DataBase, Iterable[DataBase]]:
         """Run a prediction against the given model using the raw arguments to
@@ -194,8 +199,8 @@ class GlobalPredictServicer:
                 The name of the request message to validate the model's task
             model_id (str):
                 The ID of the loaded model
-            context (Optional[ServicerContext]):
-                For gRPC requests, this is the request context
+            aborter (Optional[CallAborter]):
+                If using abortable calls, this is the aborter to use
             **kwargs:
                 Keyword arguments to pass to the model's run function
 
@@ -219,11 +224,8 @@ class GlobalPredictServicer:
                 with PREDICT_CAIKIT_LIBRARY_SUMMARY.labels(
                     grpc_request=request_name, model_id=model_id
                 ).time():
-                    # TODO: Support abortable threads for non-grpc calls
-                    if context is not None and self.use_abortable_threads:
-                        work = AbortableAction(
-                            CallAborter(context), model.run, **kwargs
-                        )
+                    if aborter is not None:
+                        work = AbortableAction(aborter, model.run, **kwargs)
                         response = work.do()
                     else:
                         response = model.run(**kwargs)
