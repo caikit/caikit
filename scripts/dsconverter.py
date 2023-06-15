@@ -62,13 +62,18 @@ class CustomDocstringConverter:
         """
 
         def ret_replacement(match):
-            white_space, data_type, desc_white_space, description = match.groups()
+            (white_space, data_type, desc_white_space, description) = match.groups()
+            num_words_data_type = len(data_type.split())
+            if num_words_data_type>=10:
+                return f"{white_space}{data_type}\n{desc_white_space}{description}"
             # If has already been converted, don't convert it again
             if ":" in data_type:
                 return f"{white_space}{data_type}\n{desc_white_space}{description}"
             if description:
                 # Clean up return and reformat it
                 cleaned_description = re.sub(r"\s*\n\s*", " ", description.strip())
+                if "\n" in white_space:
+                    white_space = "\n" + (" " * (len(white_space) - 2))
                 wrapped_lines = textwrap.wrap(
                     f"{white_space}{data_type}: {cleaned_description}\n",
                     width=80,
@@ -77,11 +82,20 @@ class CustomDocstringConverter:
                 returns_white_space = " " * (len(white_space) - 5)
 
                 # Accounts for the fact Returns: may be last section
-                if returns_last:
-                    print("Returns last")
-                    return "\n" + "\n".join(wrapped_lines) + "\n" + returns_white_space
+                if "\n" in white_space:
+                    if returns_last:
+                        return (
+                            "\n" + "\n".join(wrapped_lines) + "\n" + returns_white_space
+                        )
+                    return "\n" + "\n".join(wrapped_lines)
 
-                return "\n" + "\n".join(wrapped_lines)
+                if returns_last:
+                    return "\n".join(wrapped_lines) + "\n" + returns_white_space
+
+                return "\n".join(wrapped_lines)
+
+            if returns_last:
+                return f"{white_space}{data_type}\n{desc_white_space}"
 
             return f"{white_space}{data_type}\n"
 
@@ -94,12 +108,27 @@ class CustomDocstringConverter:
                 desc_white_space,
                 description,
             ) = match.groups()
+            num_words_data_type = len(data_type.split())
+            num_ors_data_type = len(data_type.split("|"))-1
+            num_word_ors_data_type = len(data_type.split("or"))-1
+            num_commas_data_type = len(data_type.split(", "))-1
+            num_arrows_data_type = len(data_type.split("->"))-1
+            num_words_data_type -= (num_ors_data_type * 2) + (num_word_ors_data_type * 2) + (num_commas_data_type) + (num_arrows_data_type * 2)
+            
+            # If re accidentally absorbs description as data type
+            if num_words_data_type >= 2:
+                return (
+                    f"{white_space}{name}: {data_type}\n{desc_white_space}{description}"
+                )
             if description:
                 # Safety check if description is input incorrectly
                 if (len(white_space.strip("\n"))) == len(desc_white_space):
                     return f"{white_space}{name} ({data_type})\n{desc_white_space}{description}"
                 # Clean up argument and reformat it
                 cleaned_description = re.sub(r"\s*\n\s*", " ", description.strip())
+                # Wrapped lines created an extra space, must remove it
+                if "\n" in white_space:
+                    white_space = "\n" + (" " * (len(white_space) - 2))
                 wrapped_lines = textwrap.wrap(
                     f"{white_space}{name} ({data_type}): {cleaned_description}",
                     width=80,
@@ -118,23 +147,51 @@ class CustomDocstringConverter:
         returns = False
         notes = False
         examples = False
+        raises= False
+        attributes = False
         returns_last = False
 
         # Determine args, returns, notes start
         if "Args:" in custom_docstring:
             args_start = custom_docstring.find("Args:")
             args = True
+        elif "args:" in custom_docstring:
+            args_start = custom_docstring.find("args:")
+            args = True
+
         if "Returns:" in custom_docstring:
             returns_start = custom_docstring.find("Returns:")
             returns = True
+        elif "returns:" in custom_docstring:
+            returns_start = custom_docstring.find("returns:")
+            returns = True
+
         if "Notes:" in custom_docstring:
             notes_start = custom_docstring.find("Notes:")
             notes = True
+        elif "notes:" in custom_docstring:
+            notes_start = custom_docstring.find("notes:")
+            notes = True
+
         if "Examples:" in custom_docstring:
             examples_start = custom_docstring.find("Examples:")
-            examples= True
+            examples = True
+        elif "examples:" in custom_docstring:
+            examples_start = custom_docstring.find("examples:")
+            examples = True
+        elif "Example Usage:" in custom_docstring:
+            examples_start = custom_docstring.find("Example Usage:")
+            examples = True
 
-        # Find second """ (end of docstring)
+        if "Raises:" in custom_docstring:
+            raises_start = custom_docstring.find("Raises:")
+            raises = True
+        
+        if "Attributes:" in custom_docstring:
+            attributes_start = custom_docstring.find("Attributes:")
+            attributes = True
+
+        # Find second triple quote (end of docstring)
         docstring_end = custom_docstring.find('"""', custom_docstring.find('"""') + 1)
 
         # Determine args ending
@@ -144,6 +201,10 @@ class CustomDocstringConverter:
             args_end = notes_start
         elif examples:
             args_end = examples_start
+        elif attributes:
+            args_end = attributes_start
+        elif raises:
+            args_end = raises_start
         else:
             args_end = docstring_end
 
@@ -152,6 +213,10 @@ class CustomDocstringConverter:
             returns_end = notes_start
         elif examples:
             returns_end = examples_start
+        elif attributes:
+            returns_end = attributes_start
+        elif raises:
+            returns_end = raises_start
         else:
             returns_end = docstring_end
             returns_last = True
@@ -169,7 +234,9 @@ class CustomDocstringConverter:
             returns_string = custom_docstring[returns_start + 8 : returns_end]
 
             # Replace the return pattern matches with the converted parts
-            returns_string = re.sub(ret_pattern, ret_replacement, returns_string)
+            returns_string = re.sub(
+                ret_pattern, ret_replacement, returns_string, flags=re.MULTILINE
+            )
             converted_docstring = (
                 custom_docstring[: returns_start + 8]
                 + returns_string
@@ -250,7 +317,7 @@ def main():
                 if file.endswith(".py"):
                     file_path = os.path.join(root, file)
                     counter += 1
-                    print("Updated: ", file_path, "\n")
+                    print("Updated: ", file_path)
                     docstrings = CustomDocstringConverter.extract_docstrings_from_file(
                         file_path
                     )
