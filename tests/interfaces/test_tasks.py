@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for the NLP task definitions"""
+"""Tests for the task definitions"""
 # Standard
 from typing import Type
 
@@ -21,6 +21,7 @@ import pytest
 # Local
 from caikit.core import ModuleBase, TaskBase, module
 from caikit.interfaces.nlp import tasks as nlp_tasks
+from caikit.interfaces.vision import tasks as vision_tasks
 from tests.core.helpers import *
 
 ## Helpers #####################################################################
@@ -34,7 +35,14 @@ class InvalidType:
 
 
 @pytest.mark.parametrize(
-    "task", (nlp_tasks.TextGenerationTask, nlp_tasks.TextGenerationStreamTask)
+    "task", (
+        # NLP Tasks
+        nlp_tasks.TextGenerationTask, 
+        nlp_tasks.TextGenerationStreamTask,
+        # Vision tasks
+        vision_tasks.ObjectDetectionTask,
+        vision_tasks.ImageClassificationTask,
+    ),
 )
 def test_tasks(reset_globals, task: Type[TaskBase]):
     """Common tests for all tasks"""
