@@ -15,3 +15,13 @@
 # Local
 from . import package
 from .package import VISION_PACKAGE
+from .image_classification import (
+    ImageClassification,
+    ImageClassificationResult,
+)
+
+from.object_detection import (
+    DetectedObject,
+    BoundingBox,
+    ObjectDetectionResult,
+)
