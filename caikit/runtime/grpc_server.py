@@ -75,20 +75,21 @@ class RuntimeGRPCServer:
         self.training_service = training_service
 
         self.port = (
-            self._find_port(self.config.runtime.port)
-            if self.config.runtime.find_available_port
-            else self.config.runtime.port
+            self._find_port(self.config.runtime.grpc.port)
+            if self.config.runtime.find_available_ports
+            else self.config.runtime.grpc.port
         )
-        if self.port != self.config.runtime.port:
+        if self.port != self.config.runtime.grpc.port:
             log.warning(
-                "Port %s was in use, had to find another!", self.config.runtime.port
+                "Port %s was in use, had to find another!",
+                self.config.runtime.grpc.port,
             )
 
         # Initialize basic server
         # py_grpc_prometheus.server_metrics.
         self.server = grpc.server(
             futures.ThreadPoolExecutor(
-                max_workers=self.config.runtime.server_thread_pool_size
+                max_workers=self.config.runtime.grpc.server_thread_pool_size
             ),
             interceptors=(PROMETHEUS_METRICS_INTERCEPTOR,),
         )
@@ -162,23 +163,23 @@ class RuntimeGRPCServer:
         reflection.enable_server_reflection(service_names, self.server)
 
         # Listen on a unix socket as well for model mesh.
-        if self.config.runtime.unix_socket_path and os.path.exists(
-            self.config.runtime.unix_socket_path
+        if self.config.runtime.grpc.unix_socket_path and os.path.exists(
+            self.config.runtime.grpc.unix_socket_path
         ):
             try:
                 self.server.add_insecure_port(
-                    f"unix://{self.config.runtime.unix_socket_path}"
+                    f"unix://{self.config.runtime.grpc.unix_socket_path}"
                 )
                 log.info(
                     "<RUN10001011I>",
                     "Caikit Runtime is communicating through address: unix://%s",
-                    self.config.runtime.unix_socket_path,
+                    self.config.runtime.grpc.unix_socket_path,
                 )
             except RuntimeError:
                 log.info(
                     "<RUN10001100I>",
                     "Binding failed for: unix://%s",
-                    self.config.runtime.unix_socket_path,
+                    self.config.runtime.grpc.unix_socket_path,
                 )
 
         # Pull TLS config from app config, unless an explicit override was passed
@@ -262,7 +263,7 @@ class RuntimeGRPCServer:
         """
         if not grace_period_seconds:
             grace_period_seconds = (
-                self.config.runtime.server_shutdown_grace_period_seconds
+                self.config.runtime.grpc.server_shutdown_grace_period_seconds
             )
         self.server.stop(grace_period_seconds)
         # Ensure we flush out any remaining billing metrics and stop metering
@@ -338,7 +339,7 @@ def load_secret(secret: str) -> str:
     return secret
 
 
-def main():
+def main(blocking: bool = True):
     # Configure using the log level and formatter type specified in config.
     caikit.core.toolkit.logging.configure()
 
@@ -370,7 +371,7 @@ def main():
         training_service=training_service,
         handle_terminations=handle_terminations,
     )
-    server.start()
+    server.start(blocking)
 
 
 if __name__ == "__main__":

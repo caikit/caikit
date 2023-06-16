@@ -897,8 +897,10 @@ def test_out_of_range_port(sample_inference_service):
     with temp_config(
         {
             "runtime": {
-                "port": free_high_port,
-                "find_available_port": False,
+                "grpc": {
+                    "port": free_high_port,
+                },
+                "find_available_ports": False,
             }
         },
         merge_strategy="merge",
