@@ -41,6 +41,7 @@ from caikit.runtime.protobufs import (
     model_runtime_pb2_grpc,
     process_pb2_grpc,
 )
+from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
@@ -56,34 +57,31 @@ from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 # pylint: disable=W0703
 import caikit.core.data_model
 
-log = alog.use_channel("GRPC-SERVR")
+log = alog.use_channel("SERVR-GRPC")
 PROMETHEUS_METRICS_INTERCEPTOR = PromServerInterceptor()
 
 
-class RuntimeGRPCServer:
+class RuntimeGRPCServer(RuntimeServerBase):
     """An implementation of a gRPC server that serves caikit runtimes"""
 
     def __init__(
         self,
         inference_service: ServicePackage,
         training_service: Optional[ServicePackage],
-        tls_config_override: aconfig.Config = None,
+        tls_config_override: Optional[aconfig.Config] = None,
         handle_terminations: bool = False,
     ):
-        self.config = get_config()
+        super().__init__(get_config().runtime.grpc.port, tls_config_override)
         self.inference_service = inference_service
         self.training_service = training_service
 
-        self.port = (
-            self._find_port(self.config.runtime.grpc.port)
-            if self.config.runtime.find_available_ports
-            else self.config.runtime.grpc.port
-        )
-        if self.port != self.config.runtime.grpc.port:
-            log.warning(
-                "Port %s was in use, had to find another!",
-                self.config.runtime.grpc.port,
-            )
+        # NOTE: signal function can only be called from main thread of the main
+        # interpreter. If this function is called from a thread (like in tests)
+        # then signal handler cannot be used. Thus, we will only have real
+        # termination_handler when this is called from the __main__.
+        if handle_terminations:
+            signal.signal(signal.SIGINT, self.interrupt)
+            signal.signal(signal.SIGTERM, self.interrupt)
 
         # Initialize basic server
         # py_grpc_prometheus.server_metrics.
@@ -182,11 +180,6 @@ class RuntimeGRPCServer:
                     self.config.runtime.grpc.unix_socket_path,
                 )
 
-        # Pull TLS config from app config, unless an explicit override was passed
-        self.tls_config = (
-            tls_config_override if tls_config_override else self.config.runtime.tls
-        )
-
         if (
             self.tls_config
             and self.tls_config.server.key
@@ -195,8 +188,8 @@ class RuntimeGRPCServer:
             log.info("<RUN10001805I>", "Running with TLS")
 
             tls_server_pair = (
-                bytes(load_secret(self.tls_config.server.key), "utf-8"),
-                bytes(load_secret(self.tls_config.server.cert), "utf-8"),
+                bytes(self._load_secret(self.tls_config.server.key), "utf-8"),
+                bytes(self._load_secret(self.tls_config.server.cert), "utf-8"),
             )
             if self.tls_config.client.cert:
                 log.info("<RUN10001806I>", "Running with mutual TLS")
@@ -204,7 +197,7 @@ class RuntimeGRPCServer:
                 # will verify the client using client cert.
                 server_credentials = grpc.ssl_server_credentials(
                     [tls_server_pair],
-                    root_certificates=load_secret(self.tls_config.client.cert),
+                    root_certificates=self._load_secret(self.tls_config.client.cert),
                     require_client_auth=True,
                 )
             else:
@@ -214,14 +207,6 @@ class RuntimeGRPCServer:
         else:
             log.info("<RUN10001807I>", "Running in insecure mode")
             self.server.add_insecure_port(f"[::]:{self.port}")
-
-        # NOTE: signal function can only be called from main thread of the main interpreter.
-        # If this function is called from a thread (like in tests) then signal handler cannot
-        # be used. Thus, we will only have real termination_handler when this is called from
-        # the __main__.
-        if handle_terminations:
-            signal.signal(signal.SIGINT, self.interrupt)
-            signal.signal(signal.SIGTERM, self.interrupt)
 
     def start(self, blocking: bool = True):
         """Boot the gRPC server. Can be non-blocking, or block until shutdown
@@ -292,51 +277,14 @@ class RuntimeGRPCServer:
         """
         return grpc.insecure_channel(f"localhost:{self.port}")
 
-    @classmethod
-    def _find_port(cls, start=8888, end=None, host="127.0.0.1"):
-        """Function to find an available port in a given range
-        Args:
-            start: int
-                Starting number for port search (inclusive)
-                Default: 8888
-            end: Optional[int]
-                End number for port search (exclusive)
-                Default: start + 1000
-            host: str
-                Host name or ip address to search on
-                Default: localhost
-        Returns:
-            int
-                Available port
-        """
-        end = start + 1000 if end is None else end
-        if start < end:
-            with socket.socket() as soc:
-                # soc.connect_ex returns 0 if connection is successful and thus
-                # indicating port is available
-                if soc.connect_ex((host, start)) == 0:
-                    # port is in use, thus connection to it is successful
-                    return cls._find_port(start + 1, end, host)
-
-                # port is open
-                return start
-
-    # Context manager impl
-    def __enter__(self):
-        self.start(blocking=False)
-        return self
-
-    def __exit__(self, type_, value, traceback):
-        self.stop(0)
-
-
-def load_secret(secret: str) -> str:
-    """If the secret points to a file, return the contents (plaintext reads).
-    Else return the string"""
-    if os.path.exists(secret):
-        with open(secret, "r", encoding="utf-8") as secret_file:
-            return secret_file.read()
-    return secret
+    @staticmethod
+    def _load_secret(secret: str) -> str:
+        """If the secret points to a file, return the contents (plaintext reads).
+        Else return the string"""
+        if os.path.exists(secret):
+            with open(secret, "r", encoding="utf-8") as secret_file:
+                return secret_file.read()
+        return secret
 
 
 def main(blocking: bool = True):
