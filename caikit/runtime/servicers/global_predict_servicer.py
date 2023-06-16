@@ -152,7 +152,7 @@ class GlobalPredictServicer:
                 log.debug("<RUN52259029D>", "Retrieving model '%s'", model_id)
                 model = self._model_manager.retrieve_model(model_id)
 
-                self._verify_model_task(model, desc_name)
+                self._verify_model_task(model, request_name)
 
                 model_class = type(model)
                 # Unmarshall the request object into the required module run argument(s)

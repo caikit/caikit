@@ -162,7 +162,7 @@ class ServicePackageFactory:
             registration_function=grpc_service.registration_function,
             stub_class=grpc_service.client_stub_class,
             messages=client_module,
-            caikit_rpcs=set(task_rpc_list),
+            caikit_rpcs=set(rpc_list),
         )
 
     # Implementation details for pure python service packages #

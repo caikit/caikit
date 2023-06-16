@@ -45,6 +45,7 @@ from caikit.core.data_model.dataobject import (
     render_dataobject_protos,
 )
 from caikit.core.data_model.enums import isprotobufenum
+from caikit.core.data_model.enums import isprotobufenum
 from caikit.core.data_model.json_dict import JsonDict
 
 ## Helpers #####################################################################
