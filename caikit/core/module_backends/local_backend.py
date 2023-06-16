@@ -30,6 +30,7 @@ from ..registries import module_registry
 from ..toolkit.errors import error_handler
 from .backend_types import register_backend_type
 from .base import SharedLoadBackendBase, SharedTrainBackendBase
+from ..toolkit.wip_decorator import TempDisableWIP
 
 log = alog.use_channel("LCLBKND")
 error = error_handler.get(log)
@@ -80,4 +81,5 @@ class LocalBackend(SharedLoadBackendBase, SharedTrainBackendBase):
 
 
 # Register local backend
-register_backend_type(LocalBackend)
+with TempDisableWIP():
+    register_backend_type(LocalBackend)
