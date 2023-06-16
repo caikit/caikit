@@ -23,7 +23,6 @@ import pytest
 import alog
 
 # Local
-from caikit import get_config
 from caikit.core.data_model.dataobject import render_dataobject_protos
 from caikit.core.toolkit import logging
 from caikit.runtime.grpc_server import RuntimeGRPCServer
@@ -33,7 +32,6 @@ from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServic
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from tests.conftest import *
 from tests.fixtures import Fixtures
-import caikit
 
 log = alog.use_channel("TEST-CONFTEST")
 
