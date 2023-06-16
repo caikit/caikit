@@ -42,9 +42,15 @@ runtime-grpc = [
     "py-grpc-prometheus>=0.7.0,<0.8",
 ]
 
+runtime-http = [
+    "fastapi[all]>=0.95,<1",
+    "sse-starlette>=1.6.1,<2",
+]
+
 # NOTE: This is "all" from the user perspective, not the dev perspective
 all = [
     "caikit[runtime-grpc]",
+    "caikit[runtime-http]",
 ]
 
 ## Dev Extra Sets ##
