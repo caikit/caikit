@@ -27,12 +27,7 @@ import alog
 
 # Local
 from caikit.core.data_model.base import DataBase
-from caikit.core.data_model.dataobject import (
-    DataObjectBase,
-    _DataObjectBaseMetaClass,
-    _make_oneof_init,
-    dataobject,
-)
+from caikit.core.data_model.dataobject import _make_oneof_init, make_dataobject
 from caikit.core.data_model.streams.data_stream import DataStream
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit
@@ -202,81 +197,56 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
         # these classes can be referenced within the Union annotation for the
         # outer class itself.
         package = "caikit_data_model.runtime"
-        JsonData = dataobject(package=package, name=f"{cls_name}JsonData")(
-            _DataObjectBaseMetaClass.__new__(
-                _DataObjectBaseMetaClass,
-                name="JsonData",
-                bases=(DataObjectBase,),
-                attrs={
-                    "__annotations__": {"data": List[data_element_type]},
-                    "__qualname__": f"{cls_name}.JsonData",
-                },
-            ),
+        JsonData = make_dataobject(
+            package=package,
+            proto_name=f"{cls_name}JsonData",
+            name="JsonData",
+            attrs={"__qualname__": f"{cls_name}.JsonData"},
+            annotations={"data": List[data_element_type]},
         )
-        File = dataobject(package=package, name=f"{cls_name}File")(
-            _DataObjectBaseMetaClass.__new__(
-                _DataObjectBaseMetaClass,
-                name="File",
-                bases=(DataObjectBase,),
-                attrs={
-                    "__annotations__": {"filename": str},
-                    "__qualname__": f"{cls_name}.File",
-                },
-            ),
+        File = make_dataobject(
+            package=package,
+            proto_name=f"{cls_name}File",
+            name="File",
+            attrs={"__qualname__": f"{cls_name}.File"},
+            annotations={"filename": str},
         )
-        ListOfFiles = dataobject(package=package, name=f"{cls_name}ListOfFiles")(
-            _DataObjectBaseMetaClass.__new__(
-                _DataObjectBaseMetaClass,
-                name="ListOfFiles",
-                bases=(DataObjectBase,),
-                attrs={
-                    "__annotations__": {"files": List[str]},
-                    "__qualname__": f"{cls_name}.ListOfFiles",
-                },
-            ),
+        ListOfFiles = make_dataobject(
+            package=package,
+            proto_name=f"{cls_name}ListOfFiles",
+            name="ListOfFiles",
+            attrs={"__qualname__": f"{cls_name}.ListOfFiles"},
+            annotations={"files": List[str]},
         )
-        Directory = dataobject(package=package, name=f"{cls_name}Directory")(
-            _DataObjectBaseMetaClass.__new__(
-                _DataObjectBaseMetaClass,
-                name="Directory",
-                bases=(DataObjectBase,),
-                attrs={
-                    "__annotations__": {
-                        "dirname": str,
-                        "extension": str,
-                    },
-                    "__qualname__": f"{cls_name}.Directory",
-                },
-            ),
+        Directory = make_dataobject(
+            package=package,
+            proto_name=f"{cls_name}Directory",
+            name="Directory",
+            attrs={"__qualname__": f"{cls_name}.Directory"},
+            annotations={"dirname": str, "extension": str},
         )
 
         # Create the outer class that encapsulates the Union (oneof) or the
         # various types of input sources
-        data_object = dataobject(package=package)(
-            _DataObjectBaseMetaClass.__new__(
-                _DataObjectBaseMetaClass,
-                name=cls_name,
-                bases=(DataObjectBase, DataStreamSourceBase),
-                attrs={
-                    "ELEMENT_TYPE": data_element_type,
-                    JsonData.__name__: JsonData,
-                    File.__name__: File,
-                    ListOfFiles.__name__: ListOfFiles,
-                    Directory.__name__: Directory,
-                    "__annotations__": {
-                        "data_stream": Union[
-                            Annotated[JsonData, OneofField(JsonData.__name__.lower())],
-                            Annotated[File, OneofField(File.__name__.lower())],
-                            Annotated[
-                                ListOfFiles, OneofField(ListOfFiles.__name__.lower())
-                            ],
-                            Annotated[
-                                Directory, OneofField(Directory.__name__.lower())
-                            ],
-                        ],
-                    },
-                },
-            )
+        data_object = make_dataobject(
+            package=package,
+            name=cls_name,
+            bases=(DataStreamSourceBase,),
+            attrs={
+                "ELEMENT_TYPE": data_element_type,
+                JsonData.__name__: JsonData,
+                File.__name__: File,
+                ListOfFiles.__name__: ListOfFiles,
+                Directory.__name__: Directory,
+            },
+            annotations={
+                "data_stream": Union[
+                    Annotated[JsonData, OneofField(JsonData.__name__.lower())],
+                    Annotated[File, OneofField(File.__name__.lower())],
+                    Annotated[ListOfFiles, OneofField(ListOfFiles.__name__.lower())],
+                    Annotated[Directory, OneofField(Directory.__name__.lower())],
+                ],
+            },
         )
 
         # Add this data stream source to the common data model and the module
