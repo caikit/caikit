@@ -132,3 +132,12 @@ def test_to_protoable_signature_unsupported_dict():
         )
         == {}
     )
+
+
+def test_to_protoable_signature_dict_incomplete_type_hint():
+    assert (
+        to_protoable_signature(
+            signature={"name": dict},
+        )
+        == {}
+    )
