@@ -448,6 +448,7 @@ def test_global_train_aborts_long_running_trains(
         f"{SampleModule.__module__}.{SampleModule.train.__qualname__}",
         never_respond,
     ):
+
         train_thread.start()
         # NB: assert is here to make sure we called the patched train
         assert test_event.wait(test_event_timeout)
