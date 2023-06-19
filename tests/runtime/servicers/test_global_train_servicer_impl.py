@@ -125,9 +125,6 @@ def test_global_train_other_task(
         # either of the below lines work since it's a Union now
         # TODO create a separate test, lazy
         # sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
-        list_value_str_sequence=sample_train_service.messages.OtherTaskOtherModuleTrainRequest.StrSequence(
-            values=["str", "sequence"]
-        ),
         sample_input_str="sample",
         batch_size=batch_size,
     )

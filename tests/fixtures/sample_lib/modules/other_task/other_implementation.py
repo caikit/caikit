@@ -2,7 +2,7 @@
 A sample module for sample things!
 """
 # Standard
-from typing import List, Union
+from typing import Union
 
 # Local
 from ...data_model.sample import OtherOutputType, OtherTask, SampleInputType
@@ -51,13 +51,11 @@ class OtherModule(caikit.core.ModuleBase):
         cls,
         training_data: DataStream[int],
         sample_input: Union[SampleInputType, str],
-        list_value: Union[List[str], List[int]],
         batch_size: int = 64,
     ) -> "OtherModule":
         """Sample training method that produces a trained model"""
         assert type(sample_input) == SampleInputType or str
         # Barf if we were incorrectly passed data not in datastream format
         assert isinstance(training_data, DataStream)
-        assert isinstance(list_value.values, List)
         assert batch_size > 0
         return cls(batch_size=batch_size)

@@ -3,7 +3,7 @@ A module meant to flex a bit of the protobufs primitive support
 """
 # Standard
 from dataclasses import field
-from typing import Dict, List
+from typing import Dict, List, Union
 
 # Local
 from ...data_model.sample import SampleInputType, SampleOutputType, SampleTask
@@ -69,12 +69,19 @@ class SamplePrimitiveModule(caikit.core.ModuleBase):
     def train(
         cls,
         sample_input: SampleInputType,
+        simple_list: List[str],
+        union_list: Union[List[str], List[int]],
         training_params_json_dict: JsonDict = None,
         training_params_dict: Dict[str, int] = field(default_factory=dict),
         training_params_dict_int: Dict[int, float] = field(default_factory=dict),
     ) -> "SamplePrimitiveModule":
         """Sample training method that produces a trained model"""
         assert type(sample_input) == SampleInputType
+        assert isinstance(simple_list, List)
+        assert isinstance(union_list.values, List)
+        assert isinstance(training_params_json_dict, Dict)
+        assert isinstance(training_params_dict, Dict)
+        assert isinstance(training_params_dict_int, Dict)
         assert training_params_json_dict is not None
         assert training_params_dict is not None
         assert training_params_dict_int is not None

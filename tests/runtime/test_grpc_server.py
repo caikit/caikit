@@ -40,6 +40,7 @@ import alog
 
 # Local
 from caikit import get_config
+from caikit.core.data_model.base import DataBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingInfoResponse,
@@ -372,9 +373,6 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
     train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
         model_name="Bar Training",
         sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
-        list_value_str_sequence=sample_train_service.messages.OtherTaskOtherModuleTrainRequest.StrSequence(
-            values=["str", "sequence"]
-        ),
         batch_size=100,
         training_data=training_data,
     )
@@ -423,16 +421,21 @@ def test_train_primitive_model(
     )
     training_params_dict = {"layer_sizes": 100, "window_scaling": 200}
     training_params_dict_int = {1: 0.1, 2: 0.01}
-
-    train_request = (
-        sample_train_service.messages.SampleTaskSamplePrimitiveModuleTrainRequest(
-            model_name=model_name,
-            sample_input=SampleInputType(name="Gabe").to_proto(),
-            training_params_json_dict=training_params_json_dict,
-            training_params_dict=training_params_dict,
-            training_params_dict_int=training_params_dict_int,
-        )
+    train_request_class = DataBase.get_class_for_name(
+        "SampleTaskSamplePrimitiveModuleTrainRequest"
     )
+    train_request = train_request_class(
+        model_name=model_name,
+        sample_input=SampleInputType(name="Gabe"),
+        simple_list=["hello", "world"],
+        union_list_str_sequence=train_request_class.StrSequence(
+            values=["str", "sequence"]
+        ),
+        training_params_json_dict={"foo": {"bar": [1, 2, 3]}},
+        training_params_dict=training_params_dict,
+        training_params_dict_int=training_params_dict_int,
+    ).to_proto()
+
     training_response = train_stub.SampleTaskSamplePrimitiveModuleTrain(train_request)
     is_good_train_response(
         training_response,

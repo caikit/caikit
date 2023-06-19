@@ -353,7 +353,7 @@ def test_global_train_build_caikit_library_request_dict_ok_with_DataStreamSource
         sample_lib.modules.other_task.OtherModule.TRAIN_SIGNATURE,
     )
 
-    expected_arguments = {"batch_size", "list_value", "sample_input", "training_data"}
+    expected_arguments = {"batch_size", "sample_input", "training_data"}
 
     assert expected_arguments == set(caikit.core_request.keys())
 
