@@ -42,6 +42,8 @@ from caikit.core.data_model.base import DataBase, _DataBaseMetaClass
 from caikit.core.data_model.data_backends.dict_backend import DictBackend
 from caikit.core.data_model.dataobject import (
     _AUTO_GEN_PROTO_CLASSES,
+    CAIKIT_DATA_MODEL,
+    make_dataobject,
     render_dataobject_protos,
 )
 from caikit.core.data_model.enums import isprotobufenum
@@ -922,3 +924,45 @@ def test_dataobject_function_inheritance(temp_dpool):
 
     d_inst = Derived(1)
     assert d_inst.doit() == 3
+
+
+def test_make_dataobject_no_optionals(temp_dpool):
+    """Test that dataobject classes can be created dynamically without optional
+    values given
+    """
+    data_object = make_dataobject(
+        name="FooBar",
+        annotations={"foo": str, "bar": int},
+    )
+
+    assert data_object.__name__ == "FooBar"
+    assert data_object.__annotations__ == {"foo": str, "bar": int}
+    assert issubclass(data_object, DataObjectBase)
+    assert data_object._proto_class.DESCRIPTOR.name == "FooBar"
+    assert data_object._proto_class.DESCRIPTOR.file.package == CAIKIT_DATA_MODEL
+
+
+def test_make_dataobject_with_optionals(temp_dpool):
+    """Test that dataobject classes can be created dynamically with optional
+    values given
+    """
+
+    class OtherBase:
+        pass
+
+    data_object = make_dataobject(
+        name="FooBar",
+        annotations={"foo": str, "bar": int},
+        bases=(OtherBase,),
+        attrs={"prop": "val"},
+        proto_name="SomeOtherFooBar",
+        package="foo.bar.baz",
+    )
+
+    assert data_object.__name__ == "FooBar"
+    assert data_object.__annotations__ == {"foo": str, "bar": int}
+    assert issubclass(data_object, DataObjectBase)
+    assert issubclass(data_object, OtherBase)
+    assert data_object.prop == "val"
+    assert data_object._proto_class.DESCRIPTOR.name == "SomeOtherFooBar"
+    assert data_object._proto_class.DESCRIPTOR.file.package == "foo.bar.baz"

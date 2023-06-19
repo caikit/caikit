@@ -19,7 +19,18 @@ model objects inline without manually defining the protobufs representation
 
 # Standard
 from enum import Enum
-from typing import Any, Callable, List, Type, Union, get_args, get_origin
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Type,
+    Union,
+    get_args,
+    get_origin,
+)
 import dataclasses
 
 # Third Party
@@ -231,6 +242,53 @@ def render_dataobject_protos(interfaces_dir: str):
     """
     for proto_class in _AUTO_GEN_PROTO_CLASSES:
         proto_class.write_proto_file(interfaces_dir)
+
+
+def make_dataobject(
+    *,
+    name: str,
+    annotations: Dict[str, type],
+    bases: Optional[Iterable[type]] = None,
+    attrs: Optional[Dict[str, Any]] = None,
+    proto_name: Optional[str] = None,
+    **kwargs,
+) -> _DataObjectBaseMetaClass:
+    """Factory function for creating net-new dataobject classes
+
+    WARNING: This is a power-user feature that should be used with caution since
+        dynamically generated dataobject classes have portability issues due to
+        the use of global registries.
+
+    Kwargs:
+        name (str): The name of the class to create
+        annotations (Dict[str, type]): The type annotations for the class
+        bases (Optional[Iterable[type]]): Additional base classes beyond
+            DataObjectBase
+        attrs (Optional[Dict[str, Any]]): Additional class attributes beyond
+            __annotations__
+        proto_name (Optional[str]): Alternate name to use for the name of
+            protobuf message
+
+    Returns:
+        dataobject_class (_DataObjectBaseMetaClass): Programmatically created
+            class derived from DataObjectBase with the given name and
+            annotations
+    """
+    bases = tuple([DataObjectBase] + list(bases or []))
+    attrs = {
+        "__annotations__": annotations,
+        **(attrs or {}),
+    }
+    if proto_name is not None:
+        kwargs["name"] = proto_name
+    return dataobject(**kwargs)(
+        _DataObjectBaseMetaClass.__new__(
+            _DataObjectBaseMetaClass,
+            name=name,
+            bases=bases,
+            attrs=attrs,
+        )
+    )
 
 
 ## Implementation Details ######################################################
