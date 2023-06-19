@@ -12,6 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Custom to Google Docstring Converter
+
+This script converts custom style docstrings to Google style. It extracts docstrings from a 
+file or directory, converts them to Google style, and updates the file(s) with the converted 
+docstrings.
+
+Example Usage:
+    python dsconverter.py my_script.py
+    python dsconverter.py my_directory/
+    tox -e dsconverter
+
+Note:
+    - The script assumes that the custom docstrings are written in triple quotes and follow a 
+      specific structure.
+    - It identifies different sections within the docstring such as Args, Returns, Notes, 
+      Examples, Raises, and Attributes, and converts them accordingly.
+    - It assumes docstrings sections are written in the following order 
+      Args -> Returns -> Notes -> Examples -> Attributes -> Raises
+    - The conversion includes formatting the descriptions and arguments, and reorganizing 
+      the sections based on Google style.
+    - Google Python Style Guide:
+      http://google.github.io/styleguide/pyguide.html
+"""
+
+
 # Standard
 import argparse
 import ast
@@ -109,12 +134,17 @@ class CustomDocstringConverter:
                 description,
             ) = match.groups()
             num_words_data_type = len(data_type.split())
-            num_ors_data_type = len(data_type.split("|"))-1
-            num_word_ors_data_type = len(data_type.split("or"))-1
-            num_commas_data_type = len(data_type.split(", "))-1
-            num_arrows_data_type = len(data_type.split("->"))-1
-            num_words_data_type -= (num_ors_data_type * 2) + (num_word_ors_data_type * 2) + (num_commas_data_type) + (num_arrows_data_type * 2)
-            
+            num_ors_data_type = len(data_type.split("|")) - 1
+            num_word_ors_data_type = len(data_type.split("or")) - 1
+            num_commas_data_type = len(data_type.split(", ")) - 1
+            num_arrows_data_type = len(data_type.split("->")) - 1
+            num_words_data_type -= (
+                (num_ors_data_type * 2)
+                + (num_word_ors_data_type * 2)
+                + (num_commas_data_type)
+                + (num_arrows_data_type * 2)
+            )
+
             # If re accidentally absorbs description as data type
             if num_words_data_type >= 2:
                 return (
@@ -147,7 +177,7 @@ class CustomDocstringConverter:
         returns = False
         notes = False
         examples = False
-        raises= False
+        raises = False
         attributes = False
         returns_last = False
 
@@ -186,7 +216,7 @@ class CustomDocstringConverter:
         if "Raises:" in custom_docstring:
             raises_start = custom_docstring.find("Raises:")
             raises = True
-        
+
         if "Attributes:" in custom_docstring:
             attributes_start = custom_docstring.find("Attributes:")
             attributes = True
