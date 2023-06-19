@@ -2,11 +2,13 @@
 A module meant to flex a bit of the protobufs primitive support
 """
 # Standard
-from typing import List
+from dataclasses import field
+from typing import Dict, List
 
 # Local
 from ...data_model.sample import SampleInputType, SampleOutputType, SampleTask
-from caikit.core.modules import ModuleSaver
+from caikit.core.data_model.json_dict import JsonDict
+from caikit.core.modules import ModuleLoader, ModuleSaver
 import caikit.core
 
 
@@ -14,12 +16,19 @@ import caikit.core
     "00112233-0405-0607-0809-0a0b02dd0e0f", "SampleModule", "0.0.1", SampleTask
 )
 class SamplePrimitiveModule(caikit.core.ModuleBase):
-    def __init__(self):
+    def __init__(self, training_params_json_dict=None, training_params_dict={}):
         super().__init__()
+        self.training_params_json_dict = training_params_json_dict
+        self.training_params_dict = training_params_dict
 
     @classmethod
     def load(cls, model_path, **kwargs):
-        return cls()
+        loader = ModuleLoader(model_path)
+        config = loader.config
+        return cls(
+            config["train"]["training_params_json_dict"],
+            config["train"]["training_params_dict"],
+        )
 
     def run(
         self,
@@ -37,7 +46,9 @@ class SamplePrimitiveModule(caikit.core.ModuleBase):
         assert isinstance(float_type, float)
         assert isinstance(str_type, str)
         assert isinstance(bytes_type, bytes)
-        return SampleOutputType(f"hello: primitives!")
+        return SampleOutputType(
+            f"hello: primitives! {self.training_params_json_dict.get('foo').get('bar')} {self.training_params_dict.get('layer_sizes')}"
+        )
 
     def save(self, model_path):
         module_saver = ModuleSaver(
@@ -45,4 +56,29 @@ class SamplePrimitiveModule(caikit.core.ModuleBase):
             model_path=model_path,
         )
         with module_saver:
-            pass
+            config_options = {
+                "train": {
+                    "training_params_json_dict": self.training_params_json_dict,
+                    "training_params_dict": self.training_params_dict,
+                },
+            }
+
+            module_saver.update_config(config_options)
+
+    @classmethod
+    def train(
+        cls,
+        sample_input: SampleInputType,
+        training_params_json_dict: JsonDict = None,
+        training_params_dict: Dict[str, int] = field(default_factory=dict),
+        training_params_dict_int: Dict[int, float] = field(default_factory=dict),
+    ) -> "SamplePrimitiveModule":
+        """Sample training method that produces a trained model"""
+        assert type(sample_input) == SampleInputType
+        assert training_params_json_dict is not None
+        assert training_params_dict is not None
+        assert training_params_dict_int is not None
+        return cls(
+            training_params_json_dict=training_params_json_dict,
+            training_params_dict=training_params_dict,
+        )

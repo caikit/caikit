@@ -1,5 +1,5 @@
 # Standard
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 # Third Party
 import pytest
@@ -110,4 +110,34 @@ def test_to_output_dm_type_with_union_optional_dm():
     assert (
         extract_data_model_type_from_union(Union[Optional[SampleOutputType], str])
         == SampleOutputType
+    )
+
+
+def test_to_protoable_signature_dict():
+    assert to_protoable_signature(
+        signature={"name": Dict[str, int]},
+    ) == {"name": Dict[str, int]}
+
+
+def test_to_protoable_signature_dict_int_keys():
+    assert to_protoable_signature(
+        signature={"name": Dict[int, float]},
+    ) == {"name": Dict[int, float]}
+
+
+def test_to_protoable_signature_unsupported_dict():
+    assert (
+        to_protoable_signature(
+            signature={"name": Dict[str, NonProtoable]},
+        )
+        == {}
+    )
+
+
+def test_to_protoable_signature_dict_incomplete_type_hint():
+    assert (
+        to_protoable_signature(
+            signature={"name": dict},
+        )
+        == {}
     )

@@ -28,6 +28,7 @@ from ..modules.base import ModuleBase
 from ..modules.config import ModuleConfig
 from ..registries import module_registry
 from ..toolkit.errors import error_handler
+from ..toolkit.wip_decorator import TempDisableWIP
 from .backend_types import register_backend_type
 from .base import SharedLoadBackendBase, SharedTrainBackendBase
 
@@ -80,4 +81,5 @@ class LocalBackend(SharedLoadBackendBase, SharedTrainBackendBase):
 
 
 # Register local backend
-register_backend_type(LocalBackend)
+with TempDisableWIP():
+    register_backend_type(LocalBackend)

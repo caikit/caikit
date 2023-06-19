@@ -138,6 +138,9 @@ def is_protobuf_primitive_field(obj):
             type(obj),
         )
         return False
+
+    if obj.type == FieldDescriptor.TYPE_MESSAGE and obj.message_type.name == "Struct":
+        return True
     return obj.type not in NON_PRIMITIVE_TYPES
 
 
@@ -212,6 +215,17 @@ def validate_data_model(
             # and check to make that it is either a primitive protobufs type or that
             # we have a data model class that we can deserialize the protobufs with
             if not is_protobuf_primitive_field(field):
+
+                if field.message_type and field.message_type.GetOptions().map_entry:
+                    log.debug(
+                        "<RUN51658878D>",
+                        "Field: [%s] is a map of key type: [%s] and value type: [%s]",
+                        field.name,
+                        field.message_type.fields[0].type,
+                        field.message_type.fields[1].type,
+                    )
+                    continue
+
                 # ... or that we can get the field type name, e.g., RawDocument...
                 field_type = input_proto_msg.fields_by_name[
                     field.name

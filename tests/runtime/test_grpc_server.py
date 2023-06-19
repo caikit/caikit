@@ -408,6 +408,53 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
     assert original_inference_response == expected_original_inference_response
 
 
+def test_train_primitive_model(
+    train_stub,
+    inference_stub,
+    training_management_stub,
+    sample_train_service,
+    sample_inference_service,
+):
+    """Test that we can make a successful training and inference call to the primitive module using primitive inputs"""
+
+    model_name = "primitive_trained_model"
+    training_params_json_dict = caikit.core.data_model.json_dict.dict_to_struct(
+        {"foo": {"bar": [1, 2, 3]}}
+    )
+    training_params_dict = {"layer_sizes": 100, "window_scaling": 200}
+    training_params_dict_int = {1: 0.1, 2: 0.01}
+
+    train_request = (
+        sample_train_service.messages.SampleTaskSamplePrimitiveModuleTrainRequest(
+            model_name=model_name,
+            sample_input=SampleInputType(name="Gabe").to_proto(),
+            training_params_json_dict=training_params_json_dict,
+            training_params_dict=training_params_dict,
+            training_params_dict_int=training_params_dict_int,
+        )
+    )
+    training_response = train_stub.SampleTaskSamplePrimitiveModuleTrain(train_request)
+    is_good_train_response(
+        training_response,
+        HAPPY_PATH_TRAIN_RESPONSE,
+        model_name,
+        training_management_stub,
+    )
+
+    # make sure the trained model can run inference
+    predict_request = sample_inference_service.messages.SampleTaskRequest(
+        sample_input=HAPPY_PATH_INPUT
+    )
+
+    inference_response = inference_stub.SampleTaskPredict(
+        predict_request, metadata=[("mm-model-id", training_response.model_name)]
+    )
+    expected_inference_response = SampleOutputType(
+        greeting="hello: primitives! [1, 2, 3] 100"
+    ).to_proto()
+    assert inference_response == expected_inference_response
+
+
 ##### Test different datastream types #####
 def test_train_fake_module_ok_response_with_datastream_jsondata(
     train_stub,
