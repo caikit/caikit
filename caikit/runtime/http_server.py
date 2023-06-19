@@ -11,6 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+This module holds the implementation of caikit's primary HTTP server entrypoint.
+The server is responsible for binding caikit workloads to a consistent REST/SSE
+API based on the task definitions available at boot.
+"""
 
 # Standard
 from functools import partial
@@ -38,6 +43,7 @@ import alog
 # Local
 from caikit.config import get_config
 from caikit.core.data_model import DataBase
+from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
 from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
@@ -75,6 +81,12 @@ GRPC_CODE_TO_HTTP = {
     StatusCode.UNAVAILABLE: 501,
     StatusCode.DEADLINE_EXCEEDED: 504,
 }
+
+
+# These keys are used to define the logical sections of the request and response
+# data structures.
+REQUIRED_INPUTS_KEY = "inputs"
+OPTIONAL_INPUTS_KEY = "parameters"
 
 ## RuntimeHTTPServer ###########################################################
 
@@ -252,9 +264,54 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
     def _get_request_dataobject(self, rpc: CaikitRPCBase) -> Type[DataBase]:
         """Get the dataobject request for the given rpc"""
-        return DataBase.get_class_for_name(
-            ".".join([self.package_name, rpc.request.name])
+
+        # Identify the set of required inputs and optional parameters
+        required_params = rpc.task.get_required_parameters()
+        optional_params = {
+            entry[1]: entry[0]
+            for entry in rpc.request.triples
+            if entry[1] not in required_params
+        }
+
+        # If there are multiple required inputs, we need a sub-message,
+        # otherwise we will use a single field in the request message
+        inputs_type = None
+        pkg_name = f"caikit.http.{rpc.task.__name__}"
+        if len(required_params) > 1:
+            log.debug3("Using structured inputs type for %s", pkg_name)
+            inputs_type = make_dataobject(
+                name=f"{rpc.request.name}Inputs",
+                annotations=required_params,
+                package=pkg_name,
+            )
+        elif required_params:
+            inputs_type = list(required_params.values())[0]
+            log.debug3(
+                "Using single inputs type for task %s: %s", pkg_name, inputs_type
+            )
+
+        # Always create a bundled sub-message for optional parameters
+        parameters_type = None
+        if optional_params:
+            parameters_type = make_dataobject(
+                name=f"{rpc.request.name}Parameters",
+                annotations=optional_params,
+                package=pkg_name,
+            )
+
+        # Create the top-level request message
+        request_annotations = {}
+        if inputs_type:
+            request_annotations[REQUIRED_INPUTS_KEY] = inputs_type
+        if parameters_type:
+            request_annotations[OPTIONAL_INPUTS_KEY] = parameters_type
+        request_message = make_dataobject(
+            name=f"{rpc.request.name}HttpRequest",
+            annotations=request_annotations,
+            package=pkg_name,
         )
+
+        return request_message
 
     @staticmethod
     def _get_response_dataobject(rpc: CaikitRPCBase) -> Type[DataBase]:
