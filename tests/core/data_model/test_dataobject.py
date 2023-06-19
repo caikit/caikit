@@ -17,7 +17,7 @@
 # Standard
 from dataclasses import dataclass, field, is_dataclass
 from enum import Enum
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 import copy
 import json
 import os
@@ -231,6 +231,28 @@ def test_dataobject_arrays():
 
     assert check_field_type(Foo.get_proto_class(), "bar", "TYPE_STRING")
     assert check_field_label(Foo.get_proto_class(), "bar", "LABEL_REPEATED")
+
+
+def test_dataobject_simple_dict():
+    """Make sure simple dicts work as expected"""
+
+    @dataobject
+    class Foo(DataObjectBase):
+        bar: Dict[str, int]
+
+    assert check_field_type(Foo.get_proto_class(), "bar", "TYPE_MESSAGE")
+    assert (
+        Foo.get_proto_class()
+        .DESCRIPTOR.fields_by_name["bar"]
+        .message_type.GetOptions()
+        .map_entry
+    )
+
+    dict_input = {"foo": 1, "bar": 2}
+    foo = Foo(bar=dict_input)
+    assert foo.bar == dict_input
+
+    assert Foo.from_proto(foo.to_proto()).bar == dict_input
 
 
 def test_dataobject_obj_refs_no_opt_types():
