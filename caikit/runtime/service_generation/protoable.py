@@ -136,21 +136,24 @@ def is_protoable_type(arg_type: Type) -> bool:
         log.debug2("Arg is List")
         if len(typing.get_args(arg_type)) == 0:
             log.debug2("List annotation has no type")
-            return False
-        protoable = typing.get_args(arg_type)[0] in proto_primitive_set
+            protoable = False
+        else:
+            protoable = typing.get_args(arg_type)[0] in proto_primitive_set
     elif typing.get_origin(arg_type) == dict:
         log.debug2("Arg is Dict")
         if len(typing.get_args(arg_type)) == 0:
             log.debug2("Dict annotation has no type")
-            return False
-        protoable = (
-            typing.get_args(arg_type)[0] in proto_primitive_set
-            and typing.get_args(arg_type)[1] in proto_primitive_set
-        )
+            protoable = False
+        else:
+            protoable = (
+                typing.get_args(arg_type)[0] in proto_primitive_set
+                and typing.get_args(arg_type)[1] in proto_primitive_set
+            )
     elif typing.get_origin(arg_type) == Union:
         log.debug2("Arg is Union")
         # pylint: disable=use-a-generator
         protoable = any([is_protoable_type(arg) for arg in typing.get_args(arg_type)])
 
-    log.debug2("Arg is not protoable, arg_type: %s", arg_type)
+    if not protoable:
+        log.debug2("Arg is not protoable, arg_type: %s", arg_type)
     return protoable

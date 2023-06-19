@@ -8,5 +8,4 @@ tracking_id: 4ee84742-79f3-40da-8465-26c48c77968c
 train:
     batch_size: 42
     learning_rate: 0.0015
-    training_parameters: { "layer_sizes": 100, "window_scaling": 200 }
 version: 0.0.1
