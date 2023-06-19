@@ -416,11 +416,6 @@ def test_train_primitive_model(
     """Test that we can make a successful training and inference call to the primitive module using primitive inputs"""
 
     model_name = "primitive_trained_model"
-    training_params_json_dict = caikit.core.data_model.json_dict.dict_to_struct(
-        {"foo": {"bar": [1, 2, 3]}}
-    )
-    training_params_dict = {"layer_sizes": 100, "window_scaling": 200}
-    training_params_dict_int = {1: 0.1, 2: 0.01}
     train_request_class = DataBase.get_class_for_name(
         "SampleTaskSamplePrimitiveModuleTrainRequest"
     )
@@ -432,8 +427,8 @@ def test_train_primitive_model(
             values=["str", "sequence"]
         ),
         training_params_json_dict={"foo": {"bar": [1, 2, 3]}},
-        training_params_dict=training_params_dict,
-        training_params_dict_int=training_params_dict_int,
+        training_params_dict={"layer_sizes": 100, "window_scaling": 200},
+        training_params_dict_int={1: 0.1, 2: 0.01},
     ).to_proto()
 
     training_response = train_stub.SampleTaskSamplePrimitiveModuleTrain(train_request)
