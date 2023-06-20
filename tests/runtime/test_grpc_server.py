@@ -63,8 +63,9 @@ from sample_lib.data_model import (
     SampleOutputType,
     SampleTrainingType,
 )
-from tests.conftest import random_test_id, runtime_grpc_test_server, temp_config
+from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
+from tests.runtime.conftest import runtime_grpc_test_server
 import caikit
 import sample_lib
 

@@ -37,6 +37,9 @@ jobs:
           # Special matrix entry to ensure protobuf 3 compatibility
           - setup: '3.8'
             tox: 'proto3'
+          # Special matrix entry to ensure core tests pass without optional deps
+          - setup: '3.8'
+            tox: 'core'
 
     steps:
       - uses: actions/checkout@v3
