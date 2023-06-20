@@ -569,6 +569,29 @@ def test_dataobject_oneof_from_backend():
     assert msg2.which_oneof("foo") == "foo_int"
 
 
+def test_dataobject_oneof_numeric_type_precedence():
+    """Make sure that when inferring the which field from the python type, the
+    value of bool < int < float is respected
+    """
+
+    @dataobject
+    class Foo(DataObjectBase):
+        value: Union[
+            # NOTE: The order matters here. Since float is declared first, it
+            #   would naturally occur before int without correct sorting
+            Annotated[float, OneofField("float_val")],
+            Annotated[int, OneofField("int_val")],
+            Annotated[bool, OneofField("bool_val")],
+        ]
+
+    foo_bool = Foo(True)
+    assert foo_bool.which_oneof("value") == "bool_val"
+    foo_int = Foo(123)
+    assert foo_int.which_oneof("value") == "int_val"
+    foo_float = Foo(1.23)
+    assert foo_float.which_oneof("value") == "float_val"
+
+
 def test_dataobject_round_trip_json():
     """Make sure that a dataobject class can serialize to/from json"""
 
