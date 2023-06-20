@@ -35,11 +35,7 @@ from .compatibility_checker import ApiFieldNames
 from .data_stream_source import make_data_stream_source
 from caikit.core import ModuleBase, TaskBase
 from caikit.core.data_model.base import DataBase
-from caikit.core.data_model.dataobject import (
-    DataObjectBase,
-    _DataObjectBaseMetaClass,
-    dataobject,
-)
+from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.signature_parsing import CaikitMethodSignature, CustomSignature
 from caikit.interfaces.runtime.data_model import ModelPointer, TrainingJob
 
@@ -74,7 +70,6 @@ class CaikitRPCBase(abc.ABC):
             if triple[1] in self.request.default_map
         }
         attrs = copy.copy(self.request.default_map)
-        attrs["__annotations__"] = {**properties, **optional_properties}
 
         if not properties and not optional_properties:
             log.warning(
@@ -83,16 +78,12 @@ class CaikitRPCBase(abc.ABC):
             )
             return None
 
-        decorator = dataobject(package=package_name)
-        cls_ = _DataObjectBaseMetaClass.__new__(
-            _DataObjectBaseMetaClass,
+        return make_dataobject(
+            package=package_name,
             name=self.request.name,
-            bases=(DataObjectBase,),
             attrs=attrs,
+            annotations={**properties, **optional_properties},
         )
-        decorated_cls = decorator(cls_)
-
-        return decorated_cls
 
     def create_rpc_json(self, package_name: str) -> Dict:
         """Return json snippet for the service definition of this RPC"""

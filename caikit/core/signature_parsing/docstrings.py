@@ -212,14 +212,12 @@ def _get_docstring_type(
 
         # If the type was not fully qualified (like a `ProducerId`), look in a couple well known
         # places - the caikit core data model itself
-        candidate_type = _extract_type_from_pymodule(
-            caikit.interfaces.common.data_model, type_name
-        )
+        candidate_type = _extract_type_from_pymodule(caikit.core.data_model, type_name)
         if candidate_type is not None:
             valid_candidates.append(candidate_type)
             log.debug2(
                 # pylint: disable=line-too-long
-                f"Found valid candidate type on caikit.interfaces.common.data_model: {candidate_type}"
+                f"Found valid candidate type on caikit.core.data_model: {candidate_type}"
             )
             continue
         # ...And the data model within the interfaces, including those defined in library
