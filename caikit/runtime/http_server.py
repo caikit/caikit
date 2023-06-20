@@ -113,6 +113,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Bind all routes to the server
         self._bind_routes(inference_service)
 
+    def __del__(self):
+        if get_config().runtime.metering.enabled:
+            self.global_predict_servicer.rpc_meter.flush_metrics()
+            self.global_predict_servicer.rpc_meter.end_writer_thread()
+
     def start(self):
         """Start the server (blocking)"""
         # Parse TLS configuration
@@ -307,7 +312,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             request_annotations[OPTIONAL_INPUTS_KEY] = parameters_type
         request_message = make_dataobject(
             name=f"{rpc.request.name}HttpRequest",
-            annotations=request_annotations,
+            annotations=required_params,
             package=pkg_name,
         )
 
