@@ -68,7 +68,7 @@ def test_servicer_util_validate_caikit_library_class_exists_returns_caikit_class
 
 def test_servicer_util_validate_caikit_library_class_exists_raises_for_garbage_input():
     """Test that validate_caikit_library_class_exists raises for garbage 'model'"""
-    with pytest.raises(AttributeError):
+    with pytest.raises(ValueError):
         validate_caikit_library_class_exists(get_data_model(), "NonExistentClass")
 
 
@@ -192,7 +192,7 @@ def test_servicer_util_validates_caikit_core_data_model(
 
 def test_servicer_util_will_not_validate_arbitrary_service_descriptor():
     """Test that validate_data_model raises exception validating arbitrary ServiceDescriptor"""
-    with pytest.raises(AttributeError):
+    with pytest.raises(ValueError):
         validate_data_model(model_runtime_pb2._MODELRUNTIME)
 
 
