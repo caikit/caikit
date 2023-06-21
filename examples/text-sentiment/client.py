@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Standard
+import os
+
 # Third Party
 import grpc
 
@@ -24,12 +27,12 @@ inference_service = ServicePackageFactory().get_service_package(
 )
 
 port = 8085
-channel = grpc.insecure_channel(f"localhost:{port}")
 
+# Setup the client
+channel = grpc.insecure_channel(f"localhost:{port}")
 client_stub = inference_service.stub_class(channel)
 
-# print(dir(client_stub))
-
+# Run inference for two sample prompts
 for text in ["I am not feeling well today!", "Today is a nice sunny day"]:
     input_text_proto = TextInput(text=text).to_proto()
     request = inference_service.messages.HuggingFaceSentimentTaskRequest(

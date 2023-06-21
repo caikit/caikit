@@ -52,4 +52,4 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r setup_requirements.txt
       - name: Build and test with tox
-        run: tox -e ${{ matrix.python-version.tox }}
+        run: tox -e ${{ matrix.python-version.tox }} -- tests
