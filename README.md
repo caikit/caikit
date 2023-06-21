@@ -28,6 +28,21 @@ Caikit provides an abstraction layer for application developers where they can c
 
 When deploying a small handful of models, this benefit is minimal. The benefits are generally realized when consuming 10s or hundreds of AI models, or maintaining an application over time as AI technology evolves. Caikit simplifies the scaling and maintenance of such integrations compared to other runtimes. This is because other runtimes require an AI centric view of the model (for example, the common interface of “tensor in, tensor out”) which means having to code different data transformations into the application for each model. Additionally, the data form of the model may change from version to version.
 
+## Getting Started
+
+There are 2 key things to define upfront when using Caikit to manage your AI model. They are as follows:
+
+- [Module](https://github.com/caikit/caikit/blob/main/docs/adrs/001-module.md)
+- [Data model](https://github.com/caikit/caikit/blob/main/docs/adrs/010-data-model-definition.md)
+
+The `module` defines the entry points for Caikit to manage your model. In other words, it tells Caikit how to load, infer and train your model. An example is the [text sentiment module](https://github.com/caikit/caikit/blob/main/examples/text-sentiment/text_sentiment/runtime_model/hf_module.py). The `data model` defines the input and outputs of the model task. An example is the [text sentiment data model](https://github.com/caikit/caikit/blob/main/examples/text-sentiment/text_sentiment/data_model/classification.py).
+
+The model is served by a [gRPC](https://grpc.io) server which can run as is or in any container runtime, including [Knative](https://knative.dev/docs/) and [KServe](https://www.kubeflow.org/docs/external-add-ons/kserve/kserve/). Here is an example of the [text sentiment server code for gRPC](https://github.com/caikit/caikit/blob/main/examples/text-sentiment/start_runtime.py). This references the module configuration [here](https://github.com/caikit/caikit/blob/main/examples/text-sentiment/models/text_sentiment/config.yml). This configuration specifies the module(s) (which wraps the model(s)) to serve.
+
+There is an example of a client [here](https://github.com/caikit/caikit/blob/main/examples/text-sentiment/client.py) which is a simple Python CLI which calls the model and queries it for sentiment analysis on 2 different pieces of text. The client also references the module configuration.
+
+Check out the full [Text Sentiment example](examples/text-sentiment/) to understand how to load and infer a model using Caikit.
+
 ## User Profiles
 
 There are 2 user profiles who leverage Caikit:
@@ -41,9 +56,9 @@ There are 2 user profiles who leverage Caikit:
   - They take trained models, deploy them, and then infer the models in applications through APIs provided by Caikit
   - Examples of operators are cloud and embedded application developers whose applications need analysis of unstructured data
 
-## AI Model Operator Example
+## Documentation
 
-Check out the [Text Sentiment example](examples/text-sentiment/) to understand how to load and infer a model using Caikit.
+Get going with [Getting Started](#getting-started) or jump into more details with the [Python API docs](https://caikit.readthedocs.io/en/latest/).
 
 ## Contributing
 
