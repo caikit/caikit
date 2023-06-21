@@ -428,6 +428,7 @@ def test_train_primitive_model(
             values=["str", "sequence"]
         ),
         training_params_json_dict={"foo": {"bar": [1, 2, 3]}},
+        training_params_json_dict_list=[{"foo": {"bar": [1, 2, 3]}}],
         training_params_dict={"layer_sizes": 100, "window_scaling": 200},
         training_params_dict_int={1: 0.1, 2: 0.01},
     ).to_proto()

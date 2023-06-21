@@ -691,9 +691,12 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 elements = []
                 contained_class = None
                 for item in proto_attr:
-                    if contained_class is None:
-                        contained_class = cls.get_class_for_proto(item)
-                    elements.append(contained_class.from_proto(item))
+                    if item.DESCRIPTOR.full_name == "google.protobuf.Struct":
+                        elements.append(json_dict.struct_to_dict(item))
+                    else:
+                        if contained_class is None:
+                            contained_class = cls.get_class_for_proto(item)
+                        elements.append(contained_class.from_proto(item))
                 kwargs[field] = elements
 
             else:
@@ -827,8 +830,13 @@ class DataBase(metaclass=_DataBaseMetaClass):
             elif field in self._fields_message_repeated:
                 subproto = getattr(proto, field)
                 for item in attr:
-                    item.fill_proto(subproto.add())
-
+                    elem_type = subproto.add()
+                    if isinstance(item, dict):
+                        elem_type.CopyFrom(
+                            json_dict.dict_to_struct(item, elem_type.__class__)
+                        )
+                    else:
+                        item.fill_proto(elem_type)
             else:
                 error(
                     "<COR71783852E>",
