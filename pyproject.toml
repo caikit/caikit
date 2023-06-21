@@ -50,7 +50,7 @@ all = [
 ## Dev Extra Sets ##
 
 dev-test = [
-    "pytest>=6.2.5,<7.0",
+    "pytest>=6.2.5,<8.0",
     "pytest-cov>=2.10.1,<5.0",
     "pytest-html>=3.1.1,<4.0",
     "tls_test_tools>=0.1.1",
