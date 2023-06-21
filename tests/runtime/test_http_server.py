@@ -146,3 +146,12 @@ def test_inference_other_task(other_task_model_id):
         assert response.status_code == 200
         json_response = json.loads(response.content.decode(response.default_encoding))
         assert json_response["farewell"] == "goodbye: world 42 times"
+
+def test_model_not_found():
+    """Simple check that we can ping a model"""
+    server = http_server.RuntimeHTTPServer()
+    with TestClient(server.app) as client:
+        response = client.post(f"/api/v1/this_is_not_a_model/task/sample", json={"inputs": {
+            "name": "world"
+        }})
+        assert response.status_code == 404
