@@ -24,19 +24,16 @@ import yaml
 import alog
 
 # Local
-from ..modules.base import ModuleBase
-from ..modules.config import ModuleConfig
-from ..registries import module_registry
 from ..toolkit.errors import error_handler
 from ..toolkit.wip_decorator import TempDisableWIP
 from .backend_types import register_backend_type
-from .base import SharedLoadBackendBase, SharedTrainBackendBase
+from .base import BackendBase
 
 log = alog.use_channel("LCLBKND")
 error = error_handler.get(log)
 
 
-class LocalBackend(SharedLoadBackendBase, SharedTrainBackendBase):
+class LocalBackend(BackendBase):
     backend_type = "LOCAL"
 
     def register_config(self, config) -> None:
@@ -55,29 +52,6 @@ class LocalBackend(SharedLoadBackendBase, SharedTrainBackendBase):
     def stop(self):
         """Stop local backend. This is a no-op"""
         self._started = False
-
-    def train(self, module_class: Type[ModuleBase], *args, **kwargs) -> ModuleBase:
-        """Perform a local training on the given class"""
-        with alog.ContextTimer(log.info, "Finished local training in: "):
-            return module_class.train(*args, **kwargs)
-
-    def load(self, model_path: str, *args, **kwargs) -> Optional[ModuleBase]:
-        """Look up the given module in the module registry and load it if found"""
-        try:
-            model_config = ModuleConfig.load(model_path)
-        except (FileNotFoundError, KeyError, yaml.parser.ParserError):
-            log.debug("Unable to load local model config from [%s]", model_path)
-            return None
-        module_id = model_config.module_id
-        module_class = module_registry().get(module_id)
-        if module_class is not None:
-            return module_class.load(model_path, *args, **kwargs)
-        log.warning(
-            "<COR14661026W>",
-            "Could not load MODULE_ID %s with %s",
-            module_id,
-            self.backend_type,
-        )
 
 
 # Register local backend
