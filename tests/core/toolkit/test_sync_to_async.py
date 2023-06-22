@@ -13,7 +13,9 @@
 # limitations under the License.
 """Tests for sync -> async wrappers"""
 # Standard
+from concurrent.futures import ThreadPoolExecutor
 import asyncio
+import threading
 import time
 
 # Third Party
@@ -94,3 +96,38 @@ async def test_async_wrap_iter_exception_propagation():
     with pytest.raises(RuntimeError):
         async for _ in async_wrap_iter(IterableHelper([1, 2, 3], raise_element=1)):
             pass
+
+
+@pytest.mark.asyncio
+async def test_async_wrap_iter_shared_executor():
+    """Make sure that a shared ThreadPoolExecutor can be used to manage the work
+    without exhausting thread counts
+    """
+    lst = [1, 2, 3, 4]
+    pool = ThreadPoolExecutor(max_workers=1)
+
+    start_event = threading.Event()
+    finish_event = threading.Event()
+
+    def slow_task():
+        start_event.set()
+        finish_event.wait()
+
+    # Start the slow task and make sure it's started
+    slow_future = pool.submit(slow_task)
+    start_event.wait()
+
+    # Use the same pool to start the async iteration
+    agen = async_wrap_iter(lst, pool)
+
+    # Make sure the async iteration is blocked
+    assert pool._work_queue.qsize() == 1
+
+    # Wait for the slow task to finish
+    finish_event.set()
+    slow_future.result()
+
+    # Make sure the async iteration is unblocked
+    assert pool._work_queue.qsize() == 0
+    async_round_trip = [x async for x in agen]
+    assert lst == async_round_trip

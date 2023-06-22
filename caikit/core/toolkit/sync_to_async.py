@@ -15,12 +15,15 @@
 wrapper functions
 """
 # Standard
-from typing import AsyncGenerator, Iterable
+from concurrent.futures import ThreadPoolExecutor
+from typing import AsyncGenerator, Iterable, Optional
 import asyncio
-import threading
 
 
-def async_wrap_iter(it: Iterable) -> AsyncGenerator:
+def async_wrap_iter(
+    it: Iterable,
+    pool: Optional[ThreadPoolExecutor] = None,
+) -> AsyncGenerator:
     """Wrap blocking iterable into an asynchronous one
 
     CITE: https://stackoverflow.com/a/62297994
@@ -55,5 +58,5 @@ def async_wrap_iter(it: Iterable) -> AsyncGenerator:
         finally:
             asyncio.run_coroutine_threadsafe(q.put(_END), loop).result()
 
-    threading.Thread(target=iter_to_queue).start()
+    loop.run_in_executor(pool, iter_to_queue)
     return yield_queue_items()
