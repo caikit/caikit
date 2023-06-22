@@ -43,7 +43,7 @@ import alog
 # Local
 from caikit.config import get_config
 from caikit.core.data_model import DataBase
-from caikit.core.data_model.dataobject import make_dataobject
+from caikit.core.data_model.dataobject import make_dataobject, render_dataobject_protos
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
 from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
@@ -157,6 +157,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 self._add_unary_stream_handler(rpc)
             else:
                 self._add_unary_unary_handler(rpc)
+        render_dataobject_protos("caikit/runtime/protos")
 
     def _add_unary_unary_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
@@ -176,12 +177,16 @@ class RuntimeHTTPServer(RuntimeServerBase):
             request_kwargs = {
                 field: getattr(request, field) for field in request.__fields__
             }
+            combined_dict = {}
+            for field in request_kwargs:
+                if request_kwargs[field]:
+                    combined_dict.update(**dict(request_kwargs[field]))
             try:
                 call = partial(
                     self.global_predict_servicer.predict_model,
                     model_id=model_id,
                     request_name=rpc.request.name,
-                    **request_kwargs,
+                    **combined_dict,
                 )
                 return await loop.run_in_executor(None, call)
             except CaikitRuntimeException as err:
@@ -282,17 +287,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # otherwise we will use a single field in the request message
         inputs_type = None
         pkg_name = f"caikit.http.{rpc.task.__name__}"
-        if len(required_params) > 1:
+        if required_params:
             log.debug3("Using structured inputs type for %s", pkg_name)
             inputs_type = make_dataobject(
                 name=f"{rpc.request.name}Inputs",
                 annotations=required_params,
                 package=pkg_name,
-            )
-        elif required_params:
-            inputs_type = list(required_params.values())[0]
-            log.debug3(
-                "Using single inputs type for task %s: %s", pkg_name, inputs_type
             )
 
         # Always create a bundled sub-message for optional parameters
@@ -312,7 +312,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             request_annotations[OPTIONAL_INPUTS_KEY] = parameters_type
         request_message = make_dataobject(
             name=f"{rpc.request.name}HttpRequest",
-            annotations=required_params,
+            annotations=request_annotations,
             package=pkg_name,
         )
 

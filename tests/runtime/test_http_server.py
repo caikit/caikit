@@ -17,16 +17,17 @@ Tests for the caikit HTTP server
 # Standard
 from contextlib import contextmanager
 from dataclasses import dataclass
-import json
 from typing import Optional
+import json
+import os
 import tempfile
 import time
 
 # Third Party
 import pytest
+
 # import requests
 import tls_test_tools
-import os
 
 # First Party
 import aconfig
@@ -34,7 +35,6 @@ import aconfig
 # Local
 from caikit.runtime import http_server
 from tests.conftest import temp_config
-
 
 ## Helpers #####################################################################
 
@@ -113,6 +113,7 @@ def insecure_http_server():
         yield sample_server
 
 
+# Third Party
 ## Tests #######################################################################
 from fastapi.testclient import TestClient
 
@@ -129,29 +130,36 @@ def test_inference(sample_task_model_id):
     """Simple check that we can ping a model"""
     server = http_server.RuntimeHTTPServer()
     with TestClient(server.app) as client:
-        response = client.post(f"/api/v1/{sample_task_model_id}/task/sample", json={"sample_input": {
-            "name": "world"
-        }})
+        json_input = {"inputs": {"sample_input": {"name": "world"}}}
+        response = client.post(
+            f"/api/v1/{sample_task_model_id}/task/sample",
+            json=json_input,
+        )
         assert response.status_code == 200
         json_response = json.loads(response.content.decode(response.default_encoding))
         assert json_response["greeting"] == "Hello world"
+
 
 def test_inference_other_task(other_task_model_id):
     """Simple check that we can ping a model"""
     server = http_server.RuntimeHTTPServer()
     with TestClient(server.app) as client:
-        response = client.post(f"/api/v1/{other_task_model_id}/task/other", json={"sample_input": {
-            "name": "world"
-        }})
+        json_input = {"inputs": {"sample_input": {"name": "world"}}}
+        response = client.post(
+            f"/api/v1/{other_task_model_id}/task/other",
+            json=json_input,
+        )
         assert response.status_code == 200
         json_response = json.loads(response.content.decode(response.default_encoding))
         assert json_response["farewell"] == "goodbye: world 42 times"
+
 
 def test_model_not_found():
     """Simple check that we can ping a model"""
     server = http_server.RuntimeHTTPServer()
     with TestClient(server.app) as client:
-        response = client.post(f"/api/v1/this_is_not_a_model/task/sample", json={"inputs": {
-            "name": "world"
-        }})
+        response = client.post(
+            f"/api/v1/this_is_not_a_model/task/sample",
+            json={"inputs": {"name": "world"}},
+        )
         assert response.status_code == 404
