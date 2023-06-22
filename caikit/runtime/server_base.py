@@ -14,9 +14,7 @@
 """Base class with common functionality across all caikit servers"""
 
 # Standard
-from typing import Optional, Union
-import os
-import signal
+from typing import Optional
 import socket
 
 # First Party

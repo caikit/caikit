@@ -49,6 +49,7 @@ from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
+from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit.core.toolkit.logging
 
@@ -62,6 +63,7 @@ PYDANTIC_REGISTRY = {}
 
 
 # Mapping from GRPC codes to their corresponding HTTP codes
+# pylint: disable=line-too-long
 # CITE: https://chromium.googlesource.com/external/github.com/grpc/grpc/+/refs/tags/v1.21.4-pre1/doc/statuscodes.md
 GRPC_CODE_TO_HTTP = {
     StatusCode.OK: 200,
@@ -108,10 +110,19 @@ class RuntimeHTTPServer(RuntimeServerBase):
             ServicePackageFactory.ServiceType.INFERENCE,
         )
         self.global_predict_servicer = GlobalPredictServicer(inference_service)
+
+        # Set up the central train servicer
+        train_service = ServicePackageFactory().get_service_package(
+            ServicePackageFactory.ServiceType.TRAINING,
+        )
+        self.global_predict_servicer = GlobalPredictServicer(inference_service)
+        self.global_train_servicer = GlobalTrainServicer(train_service)
         self.package_name = inference_service.descriptor.full_name.rsplit(".", 1)[0]
 
         # Bind all routes to the server
         self._bind_routes(inference_service)
+        # TODO: uncomment later on
+        # self._bind_routes(train_service)
 
     def __del__(self):
         if get_config().runtime.metering.enabled:
@@ -149,9 +160,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
     ## Impl ##
     ##########
 
-    def _bind_routes(self, inference_service: ServicePackage):
+    def _bind_routes(self, service: ServicePackage):
         """Bind all rpcs as routes to the given app"""
-        for rpc in inference_service.caikit_rpcs:
+        for rpc in service.caikit_rpcs:
             rpc_info = rpc.create_rpc_json("")
             if rpc_info["server_streaming"]:
                 self._add_unary_stream_handler(rpc)
@@ -169,6 +180,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         )
 
         @self.app.post(self._get_route(rpc))
+        # pylint: disable=unused-argument
         async def _handler(
             model_id: str, request: pydantic_request, context: Request
         ) -> pydantic_response:
@@ -177,16 +189,22 @@ class RuntimeHTTPServer(RuntimeServerBase):
             request_kwargs = {
                 field: getattr(request, field) for field in request.__fields__
             }
+            # flatten inputs and params into a dict
+            # would have been useful to call dataobject.to_dict()
+            # but unfortunately we now have converted pydantic objects
             combined_dict = {}
             for field in request_kwargs:
                 if request_kwargs[field]:
                     combined_dict.update(**dict(request_kwargs[field]))
+            # remove non-none items
+            combined_no_none = {k: v for k, v in combined_dict.items() if v is not None}
+
             try:
                 call = partial(
                     self.global_predict_servicer.predict_model,
                     model_id=model_id,
                     request_name=rpc.request.name,
-                    **combined_dict,
+                    **combined_no_none,
                 )
                 return await loop.run_in_executor(None, call)
             except CaikitRuntimeException as err:
@@ -196,7 +214,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     "code": error_code,
                     "id": err.id,
                 }
-            except Exception as err:
+            except Exception as err:  # pylint: disable=broad-exception-caught
                 error_code = 500
                 error_content = {
                     "details": f"Unhandled exception: {str(err)}",
@@ -213,7 +231,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         pydantic_response = self._dataobject_to_pydantic(
             self._get_response_dataobject(rpc)
         )
-
+        # pylint: disable=unused-argument
         @self.app.post(self._get_route(rpc), response_model=pydantic_response)
         async def _handler(
             model_id: str, request: pydantic_request, context: Request
@@ -242,7 +260,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         "code": error_code,
                         "id": err.id,
                     }
-                except Exception as err:
+                except Exception as err:  # pylint: disable=broad-exception-caught
                     error_code = 500
                     error_content = {
                         "details": f"Unhandled exception: {str(err)}",
@@ -270,23 +288,39 @@ class RuntimeHTTPServer(RuntimeServerBase):
             if route[0] != "/":
                 route = "/" + route
             return route
+        if rpc.name.endswith("Train"):
+
+            route = "/".join(
+                [self.config.runtime.http.route_prefix, "{model_id}", rpc.name]
+            )
+            if route[0] != "/":
+                route = "/" + route
+            return route
         raise NotImplementedError("No support for train rpcs yet!")
 
     def _get_request_dataobject(self, rpc: CaikitRPCBase) -> Type[DataBase]:
         """Get the dataobject request for the given rpc"""
-
-        # Identify the set of required inputs and optional parameters
-        required_params = rpc.task.get_required_parameters()
+        is_inference_rpc = hasattr(rpc, "task")
+        if is_inference_rpc:
+            required_params = rpc.task.get_required_parameters()
+        else:  # train
+            required_params = {
+                entry[1]: entry[0]
+                for entry in rpc.request.triples
+                if entry[1] not in rpc.request.default_map
+            }
         optional_params = {
             entry[1]: entry[0]
             for entry in rpc.request.triples
             if entry[1] not in required_params
         }
 
-        # If there are multiple required inputs, we need a sub-message,
-        # otherwise we will use a single field in the request message
         inputs_type = None
-        pkg_name = f"caikit.http.{rpc.task.__name__}"
+        if is_inference_rpc:
+            pkg_name = f"caikit.http.{rpc.task.__name__}"
+        else:
+            pkg_name = f"caikit.http.{rpc.name}"
+        # Always create a bundled sub-message for required parameters
         if required_params:
             log.debug3("Using structured inputs type for %s", pkg_name)
             inputs_type = make_dataobject(
@@ -370,7 +404,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             for field_name, field_type in dm_class.__annotations__.items()
         }
         pydantic_model = type(pydantic.BaseModel)(
-            dm_class.__name__,
+            dm_class.full_name,
             (pydantic.BaseModel,),
             {
                 "__annotations__": annotations,

@@ -17,7 +17,6 @@ from concurrent import futures
 from typing import Optional, Union
 import os
 import signal
-import socket
 
 # Third Party
 from grpc_health.v1 import health, health_pb2_grpc
