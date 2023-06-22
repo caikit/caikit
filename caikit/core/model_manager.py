@@ -20,8 +20,7 @@
 from contextlib import contextmanager
 from io import BytesIO
 from threading import Lock
-from typing import Union
-import errno
+from typing import List, Union
 import os
 import tempfile
 import zipfile
@@ -30,12 +29,14 @@ import zipfile
 import alog
 
 # Local
-from .module_backends import backend_types, module_backend_config
-from .module_backends.base import SharedLoadBackendBase
+from .model_management import (
+    ModelFinderBase,
+    ModelLoaderBase,
+    model_finder_factory,
+    model_loader_factory,
+)
 from .modules.base import ModuleBase
-from .modules.config import ModuleConfig
 from .modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
-from .registries import module_backend_registry, module_registry
 from .toolkit.errors import error_handler
 from caikit.config import get_config
 
@@ -108,6 +109,7 @@ class ModelManager:
         # If we have bytes, convert to a buffer, since we already handle in memory binary streams.
         elif isinstance(module_path, bytes):
             module_path = BytesIO(module_path)
+
         # Now that we have a file like object | str we can try to load as an archive.
         if zipfile.is_zipfile(module_path):
             return self._load_from_zipfile(module_path, load_singleton, *args, **kwargs)
@@ -136,149 +138,47 @@ class ModelManager:
             subclass of caikit.core.modules.ModuleBase: Model object that is
                 loaded, configured, and ready for prediction.
         """
-        # Short-circuit the loading process if the path does not exist
-        if not os.path.exists(module_path):
-            raise FileNotFoundError(
-                errno.ENOENT, os.strerror(errno.ENOENT), module_path
-            )
-
-        # If this is a singleton load, the entire body of this function needs to
-        # be locked to avoid concurrent loads on the same model. Otherwise, we
-        # can freely load in parallel.
         with self.singleton_lock(load_singleton):
-
-            # Using the module_path as a key, look for an instance preloaded in the
-            # singleton cache if desired
-            # 🌶🌶🌶 This doesn't work for nested modules
-            # TODO: think about bringing back the `unique_hash` or `tracking_id`
             if singleton_entry := (
                 load_singleton and self.singleton_module_cache.get(module_path)
             ):
                 log.debug("Found %s in the singleton cache", module_path)
                 return singleton_entry
 
-            # Get the set of configured loaders
-            configured_load_backends = module_backend_config.configured_load_backends()
-            if not configured_load_backends:
-                log.info(
-                    "<COR56759744I>",
-                    "No backends configured! Configuring backends with current configuration",
-                )
-                module_backend_config.configure()
-                configured_load_backends = (
-                    module_backend_config.configured_load_backends()
-                )
+            # Iterate all configured finders and try to find the model's config
+            model_config = None
+            for finder in self._get_finders():
+                model_config = finder.find_model(module_path, *args, **kwargs)
+                if model_config is not None:
+                    log.debug(
+                        "Successfully found %s with finder %s", module_path, finder.name
+                    )
+                    break
+            error.value_check(
+                "<COR92173495E>",
+                model_config is not None,
+                "Unable to find a ModuleConfig for {}",
+                module_path,
+            )
 
-            # Pre-initialize variables that will be parsed lazily from the
-            # ModuleConfig if needed. This is done lazily so that loaders which
-            # don't require a config.yml can take precedence over those that do
-            # require one.
-            module_id = None
-            module_implementations = None
-            model_creation_backend = None
-
-            # For each backend, if it's a shared loader, attempt to load the model
-            # directly. If not, parse the module config and look to see if there is
-            # a version of the module available for the given backend
+            # Iterate all loaders and try to load the model
             loaded_model = None
-            log.debug("Available load backends: %s", configured_load_backends)
-            for i, load_backend in enumerate(configured_load_backends):
-                # If this is a shared loader, try loading the model directly
-                if isinstance(load_backend, SharedLoadBackendBase):
-                    log.debug("Trying shared backend loader")
-                    model = load_backend.load(module_path, *args, **kwargs)
-                    if model is not None:
-                        log.debug2(
-                            "Successfully loaded %s with loader (%d)%s",
-                            module_path,
-                            i,
-                            load_backend.backend_type,
-                        )
-                        error.type_check(
-                            "<COR76726077E>",
-                            ModuleBase,
-                            model=model,
-                        )
-
-                        loaded_model = model
-                        model.set_load_backend(load_backend)
-                        break
-                    log.debug3(
-                        "Could not load %s with loader (%d)%s",
+            for loader in self._get_loaders():
+                loaded_model = loader.load(model_config, *args, **kwargs)
+                if loaded_model is not None:
+                    log.debug(
+                        "Successfully loaded %s with loader %s",
                         module_path,
-                        i,
-                        load_backend.backend_type,
+                        loader.name,
                     )
-
-                # If this is not a shared loader, look for an implementation of the
-                # model's module that works with this backend
-                else:
-                    # If this is the first time parsing the module config, do so
-                    if module_id is None:
-                        log.debug2("Loading ModuleConfig from %s", module_path)
-                        module_config = ModuleConfig.load(module_path)
-                        module_id = module_config.module_id
-                        module_implementations = module_backend_registry().get(
-                            module_id, {}
-                        )
-                        log.debug2(
-                            "Number of available backend implementations for %s found: %d",
-                            module_id,
-                            len(module_implementations),
-                        )
-                        # Look up the backend that this model was created with
-                        model_creation_backend = module_config.get(
-                            "model_backend", backend_types.LOCAL
-                        )
-
-                    # Look in the module's implementations for this backend type
-                    backend_impl_obj = module_implementations.get(
-                        load_backend.backend_type
-                    )
-                    if backend_impl_obj is None:
-                        log.debug3(
-                            "Module %s does not support loading with %s",
-                            module_id,
-                            load_backend.backend_type,
-                        )
-                        continue
-
-                    # Grab the concrete module class for this backend and check to
-                    # see if this model's artifacts were created with a version of
-                    # the module that can be loaded with this backend.
-                    module_backend_impl = backend_impl_obj.impl_class
-                    supported_load_backends = self._get_supported_load_backends(
-                        module_backend_impl
-                    )
-                    if model_creation_backend in supported_load_backends:
-                        log.debug3(
-                            "Attempting to load %s (module_id %s) with backend %s and class %s",
-                            module_path,
-                            module_id,
-                            load_backend.backend_type,
-                            module_backend_impl.__name__,
-                        )
-                        loaded_model = module_backend_impl.load(
-                            module_path,
-                            *args,
-                            load_backend=load_backend,
-                            **kwargs,
-                        )
-                        if loaded_model is not None:
-                            log.debug2(
-                                "Successfully loaded %s with backend %s",
-                                module_path,
-                                load_backend.backend_type,
-                            )
-                            loaded_model.set_load_backend(load_backend)
-                            break
+                    break
 
             # If no model successfully loaded, it's an error
             if loaded_model is None:
                 error(
                     "<COR50207494E>",
                     ValueError(
-                        f"Unable to load model from {module_path} with MODULE_ID {module_id}"
+                        f"Unable to load model from {module_path} with MODULE_ID {model_config.module_id}"
                     ),
                 )
 
@@ -483,3 +383,25 @@ class ModelManager:
         # If module_backend is None, then we will assume that this model is not loadable in
         # any other backend
         return getattr(backend_impl, SUPPORTED_LOAD_BACKENDS_VAR_NAME, [])
+
+    def _get_finders(self) -> List[ModelFinderBase]:
+        """Get the configured model finders
+
+        NOTE: This is done lazily to avoid relying on import order and to allow
+            for dynamic config changes
+        """
+        return [
+            model_finder_factory.construct(finder_cfg)
+            for finder_cfg in get_config().model_management.loading.finders
+        ]
+
+    def _get_loaders(self) -> List[ModelLoaderBase]:
+        """Get the configured model loaders
+
+        NOTE: This is done lazily to avoid relying on import order and to allow
+            for dynamic config changes
+        """
+        return [
+            model_loader_factory.construct(loader_cfg)
+            for loader_cfg in get_config().model_management.loading.loaders
+        ]
