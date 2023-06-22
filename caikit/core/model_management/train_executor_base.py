@@ -23,9 +23,10 @@ import abc
 
 # Local
 from ..modules import ModuleBase
+from ..toolkit.factory import FactoryConstructible
 
 
-class TrainExecutorBase(abc.ABC):
+class TrainExecutorBase(FactoryConstructible):
     __doc__ = __doc__
 
     class TrainingStatus(Enum):
@@ -57,7 +58,7 @@ class TrainExecutorBase(abc.ABC):
             """If created with a save path, the future must expose it"""
 
         @abc.abstractmethod
-        def get_status(self) -> TrainingStatus:
+        def get_status(self) -> "TrainingStatus":
             """Every model future must be able to poll the status of the
             training job
             """
@@ -81,7 +82,7 @@ class TrainExecutorBase(abc.ABC):
         *args,
         save_path: Optional[str] = None,
         **kwargs,
-    ) -> TrainFutureBase:
+    ) -> "TrainFutureBase":
         """Start training the given module and return a future to the trained
         model instance
         """

@@ -22,13 +22,14 @@ import abc
 
 # Local
 from ..modules import ModuleBase, ModuleConfig
+from ..toolkit.factory import FactoryConstructible
 
 
-class ModelLoaderBase(abc.ABC):
+class ModelLoaderBase(FactoryConstructible):
     __doc__ = __doc__
 
     @abc.abstractmethod
-    def load_model(model_config: ModuleConfig) -> Optional[ModuleBase]:
+    def load(self, model_config: ModuleConfig, *args, **kwargs) -> Optional[ModuleBase]:
         """Given a ModelConfig, attempt to load it into memory
 
         Args:

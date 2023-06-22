@@ -22,13 +22,14 @@ import abc
 
 # Local
 from ..modules import ModuleConfig
+from ..toolkit.factory import FactoryConstructible
 
 
-class ModelFinderBase(abc.ABC):
+class ModelFinderBase(FactoryConstructible):
     __doc__ = __doc__
 
     @abc.abstractmethod
-    def find_model(model_path: str) -> Optional[ModuleConfig]:
+    def find_model(self, model_path: str) -> Optional[ModuleConfig]:
         """Find any model that can be uniquely identified by the given (logical)
         path. If found, return the in-memory ModuleConfig.
 
