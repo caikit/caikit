@@ -12,16 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-The model management abstractions manage the key lifecycle phases of a concrete
-model instance and are used by the ModelManager to handle end-to-end management.
+Global factories for model management
 """
 
 # Local
-from .factories import (
-    model_finder_factory,
-    model_loader_factory,
-    train_executor_factory,
-)
-from .model_finder_base import ModelFinderBase
-from .model_loader_base import ModelLoaderBase
-from .train_executor_base import TrainExecutorBase
+from ..toolkit.factory import Factory
+from .local_model_finder import LocalModelFinder
+from .local_model_loader import LocalModelLoader
+
+# Train executor factory
+train_executor_factory = Factory("TrainExecutor")
+
+# Model finder factory
+model_finder_factory = Factory("ModelFinder")
+model_finder_factory.register(LocalModelFinder)
+
+# Model loader factory
+model_loader_factory = Factory("ModelLoader")
+model_loader_factory.register(LocalModelLoader)
