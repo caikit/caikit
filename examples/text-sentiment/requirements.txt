@@ -1,4 +1,4 @@
-caikit
+caikit[all]
 
 # Only needed for HuggingFace
 scipy

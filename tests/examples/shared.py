@@ -58,7 +58,7 @@ def requirements(example: str) -> Tuple[str, str]:
         # Create a venv, install local version of caikit and local version of requirements
         venv.create(env_dir=venv_dir, system_site_packages=False, with_pip=True)
         try:
-            subprocess.run([pip, "install", "-e", caikit_dir], check=True)
+            subprocess.run([pip, "install", caikit_dir + "[all]"], check=True)
             subprocess.run(
                 [
                     pip,
