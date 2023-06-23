@@ -146,8 +146,7 @@ def dataobject(*args, **kwargs) -> Callable[[Type], Type[DataBase]]:
         before this decorator can auto-gen the protobufs class.
 
     Args:
-        package:  str
-            The package name to use for the generated protobufs class
+        package (str): The package name to use for the generated protobufs class
 
     Returns:
         decorator:  Callable[[Type], Type[DataBase]]
@@ -237,8 +236,7 @@ def render_dataobject_protos(interfaces_dir: str):
     to the target interfaces directory
 
     Args:
-        interfaces_dir:  str
-            The target directory (must already exist)
+        interfaces_dir (str): The target directory (must already exist)
     """
     for proto_class in _AUTO_GEN_PROTO_CLASSES:
         proto_class.write_proto_file(interfaces_dir)

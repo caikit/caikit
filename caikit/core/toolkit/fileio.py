@@ -135,8 +135,7 @@ def compress(dir_path, output_path=None, extension="zip"):
     """Compress a given folder recursively to an archive with a given extension format
 
     Args:
-        dir_path: str
-            Path of directory to compress
+        dir_path (str): Path of directory to compress
         output_path: (Optional) str
             Output path where the archive is created. Defaults to current path + 'archive' +
             format extension
@@ -147,8 +146,7 @@ def compress(dir_path, output_path=None, extension="zip"):
             Defaults to .zip
 
     Returns:
-        str
-            Path to created archive
+        str: Path to created archive
     """
     if not output_path:
         output_path = os.path.join(os.getcwd(), "archive")

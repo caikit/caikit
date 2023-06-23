@@ -144,12 +144,10 @@ def _configure_backend_overrides(backend: str, backend_instance: object):
     for a particular backend and configure their backend overrides
 
     Args:
-        backend: str
-            Name of the backend to select from registry
-        backend_instance: object
-            Initialized backend instance. This object should
-            implement the `register_config` function which will be
-            used to merge / iteratively configure the backend
+        backend (str): Name of the backend to select from registry
+        backend_instance (object): Initialized backend instance. This object
+            should implement the `register_config` function which will be used
+            to merge / iteratively configure the backend
     """
     # Go through all the modules registered with particular backend
     for module_id, module_type_mapping in module_backend_registry().items():

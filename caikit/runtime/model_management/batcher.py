@@ -50,17 +50,13 @@ class Batcher:
         most the given size with the given delay to collect a batch.
 
         Args:
-            model_name:  str
-                The name of this model for error reporting
-            model:  ModuleBase
-                The model instance that will have inputs batched
-            batch_size:  int
-                The maximum size of a batch that will be sent to run_batch.
-                Batches of smaller sizes will be sent if no additional requests
-                are available.
-            batch_collect_delay_s:  Optional[float]
-                Number of seconds to wait for more requests to show up when
-                filling the batch.
+            model_name (str): The name of this model for error reporting
+            model (ModuleBase): The model instance that will have inputs batched
+            batch_size (int): The maximum size of a batch that will be sent to
+                run_batch. Batches of smaller sizes will be sent if no
+                additional requests are available.
+            batch_collect_delay_s (Optional[float]): Number of seconds to wait
+                for more requests to show up when filling the batch.
         """
         self._model_name = model_name
         self._model = model

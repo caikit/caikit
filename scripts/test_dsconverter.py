@@ -529,6 +529,7 @@ def test_data_type_same_line_returns():
     '''
     )
 
+
 def test_example_usage():
     converter = CustomDocstringConverter()
     test1 = '''
@@ -583,6 +584,7 @@ def test_example_usage():
     
     """
     )
+
 
 def test_example_usage():
     converter = CustomDocstringConverter()
@@ -789,8 +791,6 @@ def test_multiword_args():
     """
     '''
     )
-
-
 
 
 # Run the tests

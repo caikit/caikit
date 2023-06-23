@@ -30,10 +30,9 @@ class ObjectSerializer(abc.ABC):
         """Serialize the provided object to the specified file path.
 
         Args:
-            obj:  object
-                The object to serialize
-            file_path:  str
-                Absolute path to which the object should be serialized
+            obj (object): The object to serialize
+            file_path (str): Absolute path to which the object should be
+                serialized
         """
 
 
@@ -44,10 +43,9 @@ class JSONSerializer(ObjectSerializer):
         """Serialize the provided object to a JSON file.
 
         Args:
-            obj:  object
-                The object to serialize
-            file_path:  str
-                Absolute path to which the object should be serialized
+            obj (object): The object to serialize
+            file_path (str): Absolute path to which the object should be
+                serialized
         """
         fileio.save_json(obj, file_path)
 
@@ -59,10 +57,9 @@ class TextSerializer(ObjectSerializer):
         """Serialize the provided python list to a text file.
 
         Args:
-            obj:  list(str)
-                The list to serialize
-            file_path:  str
-                Absolute path to which the object should be serialized
+            obj (list(str)): The list to serialize
+            file_path (str): Absolute path to which the object should be
+                serialized
         """
         lines = "\n".join(obj)
         fileio.save_txt(lines, file_path)
@@ -75,10 +72,9 @@ class YAMLSerializer(ObjectSerializer):
         """Serialize the provided object to a YAML file.
 
         Args:
-            obj:  object
-                The object to serialize
-            file_path:  str
-                Absolute path to which the object should be serialized
+            obj (object): The object to serialize
+            file_path (str): Absolute path to which the object should be
+                serialized
         """
         fileio.save_yaml(obj, file_path)
 
@@ -90,10 +86,9 @@ class CSVSerializer(ObjectSerializer):
         """Serialize the provided object to a CSV file.
 
         Args:
-            obj:  object
-                The object to serialize
-            file_path:  str
-                Absolute path to which the object should be serialized
+            obj (object): The object to serialize
+            file_path (str): Absolute path to which the object should be
+                serialized
         """
         fileio.save_csv(obj, file_path)
 
@@ -105,9 +100,8 @@ class PickleSerializer(ObjectSerializer):
         """Serialize the provided object to a CSV file.
 
         Args:
-            obj: any
-                The object to serialize
-            file_path:  str
-                Absolute path to which the object should be serialized
+            obj (any): The object to serialize
+            file_path (str): Absolute path to which the object should be
+                serialized
         """
         fileio.save_pickle(obj, file_path)

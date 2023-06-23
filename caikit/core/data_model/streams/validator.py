@@ -39,9 +39,8 @@ class DataStreamValidator:
         """Initialize DataStreamValidator
 
         Args:
-            expected_keys: Dict(str)
-                (Ordered) dictionary of key names -> types that determines
-                how data will be validated
+            expected_keys (Dict(str)): (Ordered) dictionary of key names ->
+                types that determines how data will be validated
         """
         self._expected_keys: Dict[str, type] = expected_keys
         error.value_check(
@@ -60,8 +59,7 @@ class DataStreamValidator:
             items and the type of the nth item matches the nth type in `self._expected_keys`
 
         Args:
-            stream: DataStream
-                stream intended to be converted
+            stream (DataStream): stream intended to be converted
 
         Returns:
             The same data stream, which will now throw DataValidationErrors when accessed if the
@@ -83,7 +81,7 @@ class DataStreamValidator:
 
         Args:
             data_item: A data object yielded by the stream
-            data_item_number: The index of the object in the stream
+            Nonedata_item_number: The index of the object in the stream
         """
         if isinstance(data_item, dict):
             # From dictionary: error if key doesn't exist

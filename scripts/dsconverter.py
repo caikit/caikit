@@ -89,7 +89,7 @@ class CustomDocstringConverter:
         def ret_replacement(match):
             (white_space, data_type, desc_white_space, description) = match.groups()
             num_words_data_type = len(data_type.split())
-            if num_words_data_type>=10:
+            if num_words_data_type >= 10:
                 return f"{white_space}{data_type}\n{desc_white_space}{description}"
             # If has already been converted, don't convert it again
             if ":" in data_type:

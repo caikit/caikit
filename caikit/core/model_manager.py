@@ -73,24 +73,24 @@ class ModelManager:
         """Load a model and return an instantiated object on which we can run inference.
 
         Args:
-            module_path: str | BytesIO | bytes
-                A module path to one of the following.
-                    1. A module path to a directory containing a yaml config file in the top level.
-                    2. A module path to a zip archive containing either a yaml config file in the
-                       top level when extracted, or a directory containing a yaml config file in
-                       the top level.
-                    3. A BytesIO object corresponding to a zip archive containing either a yaml
-                       config file in the top level when extracted, or a directory containing a
-                       yaml config file in the top level.
-                    4. A bytes object corresponding to a zip archive containing either a yaml
-                       config file in the top level when extracted, or a directory containing a
-                       yaml config file in the top level.
+            module_path (str | BytesIO | bytes): A module path to one of the
+                following. 1. A module path to a directory containing a yaml
+                config file in the top level. 2. A module path to a zip archive
+                containing either a yaml config file in the top level when
+                extracted, or a directory containing a yaml config file in the
+                top level. 3. A BytesIO object corresponding to a zip archive
+                containing either a yaml config file in the top level when
+                extracted, or a directory containing a yaml config file in the
+                top level. 4. A bytes object corresponding to a zip archive
+                containing either a yaml config file in the top level when
+                extracted, or a directory containing a yaml config file in the
+                top level.
             load_singleton: bool (Defaults to False)
                 Indicates whether this model should be loaded as a singleton.
 
         Returns:
-            subclass of caikit.core.modules.ModuleBase
-                Model object that is loaded, configured, and ready for prediction.
+            subclass of caikit.core.modules.ModuleBase: Model object that is
+                loaded, configured, and ready for prediction.
         """
         error.type_check("<COR98255724E>", bool, load_singleton=load_singleton)
 
@@ -127,15 +127,14 @@ class ModelManager:
         """Load a model from a directory.
 
         Args:
-            module_path:  str
-                Path to directory. At the top level of directory is `config.yml` which holds info
-                about the model.
-            load_singleton: bool
-                Indicates whether this model should be loaded as a singleton.
+            module_path (str): Path to directory. At the top level of directory
+                is `config.yml` which holds info about the model.
+            load_singleton (bool): Indicates whether this model should be loaded
+                as a singleton.
 
         Returns:
-            subclass of caikit.core.modules.ModuleBase
-                Model object that is loaded, configured, and ready for prediction.
+            subclass of caikit.core.modules.ModuleBase: Model object that is
+                loaded, configured, and ready for prediction.
         """
         # Short-circuit the loading process if the path does not exist
         if not os.path.exists(module_path):
@@ -294,15 +293,14 @@ class ModelManager:
         """Load a model from a zip archive.
 
         Args:
-            module_path:  str
-                Path to directory. At the top level of directory is `config.yml` which holds info
-                about the model.
-            load_singleton: bool
-                Indicates whether this model should be loaded as a singleton.
+            module_path (str): Path to directory. At the top level of directory
+                is `config.yml` which holds info about the model.
+            load_singleton (bool): Indicates whether this model should be loaded
+                as a singleton.
 
         Returns:
-            subclass of caikit.core.modules.ModuleBase
-                Model object that is loaded, configured, and ready for prediction.
+            subclass of caikit.core.modules.ModuleBase: Model object that is
+                loaded, configured, and ready for prediction.
         """
         with tempfile.TemporaryDirectory() as extract_path:
             with zipfile.ZipFile(module_path, "r") as zip_f:
@@ -359,15 +357,13 @@ class ModelManager:
         """Method to extract a downloaded archive to a specified directory.
 
         Args:
-            zip_path: str
-                Location of .zip file to extract.
-            model_path: str
-                Model directory where the archive should be unzipped unzipped.
+            zip_path (str): Location of .zip file to extract.
+            model_path (str): Model directory where the archive should be
+                unzipped unzipped.
             force_overwrite: bool (Defaults to false)
                 Force an overwrite to model_path, even if the folder exists
         Returns:
-            str
-                Output path where the model archive is unzipped.
+            str: Output path where the model archive is unzipped.
         """
         model_path = os.path.abspath(model_path)
 
@@ -399,12 +395,11 @@ class ModelManager:
                 - Name of a model that the catalog knows about
                 - Loaded module
             **kwargs: Any keyword arguments to pass along to ModelManager.load()
-                      or ModelManager.download()
+                        or ModelManager.download()
                 e.g. parent_dir
 
         Returns:
             A loaded module
-
         Examples:
             >>> stock_syntax_model = manager.resolve_and_load('syntax_izumo_en_stock')
             >>> local_categories_model = manager.resolve_and_load('path/to/categories/model')
@@ -444,8 +439,7 @@ class ModelManager:
         """Returns information about the singleton cache in {hash: module type} format
 
         Returns:
-            Dict[str, type]
-                A dictionary of model hashes to model types
+            Dict[str, type]: A dictionary of model hashes to model types
         """
         return {k: type(v) for k, v in self.singleton_module_cache.items()}
 
@@ -475,11 +469,11 @@ class ModelManager:
         that the module supports
 
         Args:
-            backend_impl: caikit.core.ModuleBase
-                Module implementing the backend
+            backend_impl (caikit.core.ModuleBase): Module implementing the
+                backend
         Returns:
-            list(backend_types)
-                list of backends that are supported for model load
+            list(backend_types): list of backends that are supported for model
+                load
         """
 
         # Get list of backends that are supported for load

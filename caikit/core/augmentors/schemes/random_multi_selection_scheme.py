@@ -35,15 +35,14 @@ class RandomMultiSelectionScheme(SchemeBase):
         simultaneously, each of which is controlled by an independent application probability.
 
         Args:
-            preserve_order: bool
-                Indicates whether or not the contained augmentors should always be considered in
-                the order that they were provided when they are being applied.
-            selection_probs: list(int|float) | tuple(int|float)
-                Independent probability values for applying each augmentor.
-            augmentors: list(AugmentorBase) | tuple(AugmentorBase)
-                Augmentors to be applied (in same order as selection_probs).
-            random_seed: int
-                Random seed for controlling shuffling behavior.
+            preserve_order (bool): Indicates whether or not the contained
+                augmentors should always be considered in the order that they
+                were provided when they are being applied.
+            selection_probs (list(int|float) | tuple(int|float)): Independent
+                probability values for applying each augmentor.
+            augmentors (list(AugmentorBase) | tuple(AugmentorBase)): Augmentors
+                to be applied (in same order as selection_probs).
+            random_seed (int): Random seed for controlling shuffling behavior.
         """
         super().__init__(preserve_order, augmentors, random_seed)
         error.type_check("<COR99517020E>", list, tuple, selection_probs=selection_probs)
@@ -67,11 +66,10 @@ class RandomMultiSelectionScheme(SchemeBase):
         shuffled ordering, based on the value of self.preserve_order).
 
         Args:
-            obj: str | caikit.core.data_model.DataBase
-                Object to be augmented.
+            obj (str | caikit.core.data_model.DataBase): Object to be augmented.
         Returns:
-            str | caikit.core.data_model.DataBase
-                Augmented object of same type as input obj.
+            str | caikit.core.data_model.DataBase: Augmented object of same type
+                as input obj.
         """
         output_obj = obj
         for idx in self._current_order:

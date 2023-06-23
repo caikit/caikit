@@ -201,9 +201,7 @@ class GlobalPredictServicer:
                 The ID of the loaded model
             aborter (Optional[CallAborter]):
                 If using abortable calls, this is the aborter to use
-            **kwargs:
-                Keyword arguments to pass to the model's run function
-
+            **kwargs: Keyword arguments to pass to the model's run function
         Returns:
             response (Union[DataBase, Iterable[DataBase]]):
                 The object (unary) or objects (output stream) produced by the

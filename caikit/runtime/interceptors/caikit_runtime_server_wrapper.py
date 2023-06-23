@@ -298,7 +298,6 @@ class CaikitRuntimeServerWrapper(grpc.Server):
             if the port is 0, or not specified in the address, then gRPC
             runtime will choose a port.
           server_credentials: A ServerCredentials object.
-
         Returns:
           integer:
           An integer port on which server will accept RPC requests.
@@ -333,7 +332,6 @@ class CaikitRuntimeServerWrapper(grpc.Server):
 
         Args:
           grace: A duration of time in seconds or None.
-
         Returns:
           A threading.Event that will be set when this Server has completely
           stopped, i.e. when running RPCs either complete or are aborted and

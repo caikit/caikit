@@ -265,14 +265,13 @@ def _extract_type_from_pymodule(
     """This walks down a type hierarchy to try to find the concrete type given an input string name
 
     Args:
-        py_module: Type | Dict
-            A python module, or dictionary of modules, to start walking to find "type_name"
-        type_name: str
-            The name of the type that we're trying to find. e.g. "caikit.core.data_model.ProducerId"
+        py_module (Type | Dict): A python module, or dictionary of modules, to
+            start walking to find "type_name"
+        type_name (str): The name of the type that we're trying to find. e.g.
+            "caikit.core.data_model.ProducerId"
 
     Returns:
-        Optional[Type]
-            The type of "type_name", or None if it cannot be found
+        Optional[Type]: The type of "type_name", or None if it cannot be found
     """
     output_type = py_module
 

@@ -35,13 +35,12 @@ class SchemeBase:
         augmentors.
 
         Args:
-            preserve_order: bool
-                Indicates whether or not the contained augmentors should always be considered in
-                the order that they were provided when they are being applied.
-            augmentors: list(AugmentorBase) | tuple(AugmentorBase)
-                List or tuple of Augmentor objects to be applied.
-            random_seed: int
-                Random seed for controlling shuffling behavior.
+            preserve_order (bool): Indicates whether or not the contained
+                augmentors should always be considered in the order that they
+                were provided when they are being applied.
+            augmentors (list(AugmentorBase) | tuple(AugmentorBase)): List or
+                tuple of Augmentor objects to be applied.
+            random_seed (int): Random seed for controlling shuffling behavior.
         """
         error.type_check("<COR54555981E>", bool, preserve_order=preserve_order)
         error.type_check("<COR54155111E>", list, tuple, augmentors=augmentors)
@@ -64,11 +63,10 @@ class SchemeBase:
         augmentors.
 
         Args:
-            obj: str | caikit.core.data_model.DataBase
-                Object to be augmented.
+            obj (str | caikit.core.data_model.DataBase): Object to be augmented.
         Returns:
-            str | caikit.core.data_model.DataBase
-                Augmented object of same type as input obj.
+            str | caikit.core.data_model.DataBase: Augmented object of same type
+                as input obj.
         """
         if not self._preserve_order:
             random.shuffle(self._current_order)

@@ -38,8 +38,8 @@ class ModuleLoader:
         """Construct a new module loader.
 
         Args:
-            model_path:  str
-                The path to the directory where the model is to be loaded from.
+            model_path (str): The path to the directory where the model is to be
+                loaded from.
         """
         self.model_path = os.path.normpath(model_path)
         error.dir_check("<COR43014802E>", model_path)
@@ -57,10 +57,10 @@ class ModuleLoader:
         """Load a CaikitCore module from a module config.module_paths specification.
 
         Args:
-            module_paths_key:  str
-                key in `config.module_paths` looked at to load a module
-            load_singleton: bool
-                singleton load flag to pass to individual module loads
+            module_paths_key (str): key in `config.module_paths` looked at to
+                load a module
+            load_singleton (bool): singleton load flag to pass to individual
+                module loads
         """
         # Load module from a given relative path
         if "module_paths" not in self.config:
@@ -87,12 +87,11 @@ class ModuleLoader:
         """Load a list of CaikitCore module from a workflow config.module_paths specification.
 
         Args:
-            module_paths_key:  str
-                key in `config.module_paths` looked at to load a list of modules
+            module_paths_key (str): key in `config.module_paths` looked at to
+                load a list of modules
 
         Returns:
-            list
-                list of loaded modules
+            list: list of loaded modules
         """
         # Load module from a given relative path
         # Can be updated to load from a module key
