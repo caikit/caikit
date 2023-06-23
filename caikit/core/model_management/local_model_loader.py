@@ -15,7 +15,7 @@
 The LocalModelLoader loads a model into local memory
 """
 # Standard
-from typing import Optional
+from typing import Optional, Union
 import os
 
 # First Party
@@ -110,7 +110,9 @@ class LocalModelLoader(ModelLoaderBase):
 
         log.debug2("All configured backends: %s", self._backends)
 
-    def load(self, model_config: ModuleConfig, *args, **kwargs) -> Optional[ModuleBase]:
+    def load(
+        self, model_config: ModuleConfig, *args, **kwargs
+    ) -> Union[Optional[ModuleBase], Exception]:
         """Given a ModelConfig, attempt to load it into memory
 
         Args:

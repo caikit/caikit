@@ -17,7 +17,7 @@ a usable Module instance.
 """
 
 # Standard
-from typing import Optional
+from typing import Optional, Union
 import abc
 
 # Local
@@ -29,7 +29,12 @@ class ModelLoaderBase(FactoryConstructible):
     __doc__ = __doc__
 
     @abc.abstractmethod
-    def load(self, model_config: ModuleConfig, *args, **kwargs) -> Optional[ModuleBase]:
+    def load(
+        self,
+        model_config: ModuleConfig,
+        *args,
+        **kwargs,
+    ) -> Union[Optional[ModuleBase], Exception]:
         """Given a ModelConfig, attempt to load it into memory
 
         Args:
@@ -37,6 +42,7 @@ class ModelLoaderBase(FactoryConstructible):
                 the model to be loaded
 
         Returns:
-            model (Optional[ModuleBase]): The in-memory ModuleBase instance that
-                is ready to run
+            model (Union[Optional[ModuleBase], Exception]): The in-memory
+                ModuleBase instance that is ready to run if successful. If not,
+                None or an Exception may be returned.
         """

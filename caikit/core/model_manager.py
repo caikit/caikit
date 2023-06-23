@@ -37,6 +37,7 @@ from .model_management import (
 )
 from .modules.base import ModuleBase
 from .modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
+from .registries import module_registry
 from .toolkit.errors import error_handler
 from caikit.config import get_config
 
@@ -68,6 +69,8 @@ class ModelManager:
         # Map to store module caches, to be used for singleton model lookups
         self.singleton_module_cache = {}
         self._singleton_lock = Lock()
+        self._finders = None
+        self._loaders = None
 
     # make load function available from top-level of library
     def load(self, module_path, *args, load_singleton=False, **kwargs):
@@ -147,13 +150,23 @@ class ModelManager:
 
             # Iterate all configured finders and try to find the model's config
             model_config = None
+            finder_exceptions = []
             for finder in self._get_finders():
                 model_config = finder.find_model(module_path, *args, **kwargs)
-                if model_config is not None:
+                if isinstance(model_config, Exception):
+                    finder_exceptions.append(model_config)
+                    model_config = None
+                elif model_config is not None:
                     log.debug(
                         "Successfully found %s with finder %s", module_path, finder.name
                     )
                     break
+
+            # If model_config is None and there are exceptions, aggregate
+            if model_config is None and finder_exceptions:
+                self._raise_aggregate_error(
+                    f"Failed to find {module_path}", finder_exceptions
+                )
             error.value_check(
                 "<COR92173495E>",
                 model_config is not None,
@@ -163,8 +176,12 @@ class ModelManager:
 
             # Iterate all loaders and try to load the model
             loaded_model = None
+            loader_exceptions = []
             for loader in self._get_loaders():
                 loaded_model = loader.load(model_config, *args, **kwargs)
+                if isinstance(loaded_model, Exception):
+                    loader_exceptions.append(loaded_model)
+                    loaded_model = None
                 if loaded_model is not None:
                     log.debug(
                         "Successfully loaded %s with loader %s",
@@ -174,6 +191,10 @@ class ModelManager:
                     break
 
             # If no model successfully loaded, it's an error
+            if loaded_model is None and loader_exceptions:
+                self._raise_aggregate_error(
+                    f"Failed to load {module_path}", loader_exceptions
+                )
             if loaded_model is None:
                 error(
                     "<COR50207494E>",
@@ -390,10 +411,12 @@ class ModelManager:
         NOTE: This is done lazily to avoid relying on import order and to allow
             for dynamic config changes
         """
-        return [
-            model_finder_factory.construct(finder_cfg)
-            for finder_cfg in get_config().model_management.loading.finders
-        ]
+        if self._finders is None:
+            self._finders = [
+                model_finder_factory.construct(finder_cfg)
+                for finder_cfg in get_config().model_management.loading.finders
+            ]
+        return self._finders
 
     def _get_loaders(self) -> List[ModelLoaderBase]:
         """Get the configured model loaders
@@ -401,7 +424,22 @@ class ModelManager:
         NOTE: This is done lazily to avoid relying on import order and to allow
             for dynamic config changes
         """
-        return [
-            model_loader_factory.construct(loader_cfg)
-            for loader_cfg in get_config().model_management.loading.loaders
-        ]
+        if self._loaders is None:
+            self._loaders = [
+                model_loader_factory.construct(loader_cfg)
+                for loader_cfg in get_config().model_management.loading.loaders
+            ]
+        return self._loaders
+
+    @staticmethod
+    def _raise_aggregate_error(err_msg: str, exceptions: List[Exception]):
+        """Common semantics for aggregating multiple errors"""
+        error_types = set(type(err) for err in exceptions)
+        error_type = ValueError
+        if len(error_types) == 1:
+            error_type = list(error_types)[0]
+        if len(exceptions) == 1:
+            raise error_type(err_msg) from exceptions[0]
+        err = error_type(err_msg)
+        err.parents = exceptions
+        raise err

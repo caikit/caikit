@@ -17,7 +17,7 @@ which may be a path, id, or other identifier.
 """
 
 # Standard
-from typing import Optional
+from typing import Optional, Union
 import abc
 
 # Local
@@ -29,7 +29,7 @@ class ModelFinderBase(FactoryConstructible):
     __doc__ = __doc__
 
     @abc.abstractmethod
-    def find_model(self, model_path: str) -> Optional[ModuleConfig]:
+    def find_model(self, model_path: str) -> Union[Optional[ModuleConfig], Exception]:
         """Find any model that can be uniquely identified by the given (logical)
         path. If found, return the in-memory ModuleConfig.
 
@@ -38,6 +38,7 @@ class ModelFinderBase(FactoryConstructible):
                 path, etc...)
 
         Returns:
-            model_config (Optional[ModuleConfig]): The in-memory config object
-                for the model if found, None otherwise
+            result (Union[Optional[ModuleConfig], Exception]): If found, the
+                in-memory config object for the model. If not found, None or an
+                Exception is returned.
         """
