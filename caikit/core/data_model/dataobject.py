@@ -27,10 +27,10 @@ from typing import (
     List,
     Optional,
     Type,
+    TypeVar,
     Union,
     get_args,
     get_origin,
-    TypeVar,
 )
 import dataclasses
 
@@ -132,7 +132,7 @@ class DataObjectBase(DataBase, metaclass=_DataObjectBaseMetaClass):
 _DataObjectBaseT = TypeVar("_DataObjectBaseT", bound=DataObjectBase)
 
 
-def dataobject(*args, **kwargs) -> Callable[[_DataObjectBaseT], Type[_DataObjectBaseT]]:
+def dataobject(*args, **kwargs) -> Callable[[_DataObjectBaseT], _DataObjectBaseT]:
     """The @dataobject decorator can be used to define a Data Model object's
     schema inline with the definition of the python class rather than needing to
     bind to a pre-compiled protobufs class. For example:
@@ -148,6 +148,20 @@ def dataobject(*args, **kwargs) -> Callable[[_DataObjectBaseT], Type[_DataObject
         directly, the metaclass that links protobufs to the class will be called
         before this decorator can auto-gen the protobufs class.
 
+    The `dataobject` decorator will not provide tools with enough information
+    to perform type completion for constructions in an IDE, or static
+    typechecking.  In order to have that, the `dataclass` decorator
+    may optionally be added, with the slight overhead of wasted effort in
+    creating the "standard" __init__ function which then gets re-done by
+    @dataobject.  The `dataclass` must follow the `dataobject` decorator.  For example:
+
+    @dataobject("foo.bar")
+    @dataclass
+    class MyDataObject(DataObjectBase):
+        '''My Custom Data Object'''
+        foo: str
+        bar: int
+
     Kwargs:
         package:  str
             The package name to use for the generated protobufs class
@@ -157,7 +171,7 @@ def dataobject(*args, **kwargs) -> Callable[[_DataObjectBaseT], Type[_DataObject
             The decorator function that will wrap the given class
     """
 
-    def decorator(cls: _DataObjectBaseT) -> Type[_DataObjectBaseT]:
+    def decorator(cls: _DataObjectBaseT) -> _DataObjectBaseT:
         # Make sure that the wrapped class does NOT inherit from DataBase
         error.value_check(
             "<COR95184230E>",
@@ -277,7 +291,7 @@ def make_dataobject(
             class derived from DataObjectBase with the given name and
             annotations
     """
-    bases = tuple([Type[DataObjectBase]] + list(bases or []))
+    bases = (DataObjectBase,) + tuple(bases or ())
     attrs = {
         "__annotations__": annotations,
         **(attrs or {}),
