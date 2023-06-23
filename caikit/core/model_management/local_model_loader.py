@@ -173,6 +173,7 @@ class LocalModelLoader(ModelLoaderBase):
                     **extra_kwargs,
                     **kwargs,
                 )
+                error.type_check("<COR40080753E>", ModuleBase, model=loaded_model)
                 if loaded_model is not None:
                     log.debug2(
                         "Successfully loaded %s with backend %s",
