@@ -38,7 +38,12 @@ class TrainingManager:
                 return TrainingStatus.FAILED
             return TrainingStatus.COMPLETED
 
-        raise RuntimeError("Unexpected error")
+        if future.cancelled():
+            return TrainingStatus.HALTED
+
+        # If it's not running and it's not done in some way, it hasn't started
+        # yet!
+        return TrainingStatus.NOT_STARTED
 
     @classmethod
     def get_instance(cls) -> "TrainingManager":
