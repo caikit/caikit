@@ -30,6 +30,7 @@ from typing import (
     Union,
     get_args,
     get_origin,
+    TypeVar,
 )
 import dataclasses
 
@@ -128,13 +129,15 @@ class DataObjectBase(DataBase, metaclass=_DataObjectBaseMetaClass):
     """
 
 
-def dataobject(*args, **kwargs) -> Callable[[Type], Type[DataBase]]:
+_DataObjectBaseT = TypeVar("_DataObjectBaseT", bound=DataObjectBase)
+
+
+def dataobject(*args, **kwargs) -> Callable[[_DataObjectBaseT], Type[_DataObjectBaseT]]:
     """The @dataobject decorator can be used to define a Data Model object's
     schema inline with the definition of the python class rather than needing to
     bind to a pre-compiled protobufs class. For example:
 
     @dataobject("foo.bar")
-    @dataclass
     class MyDataObject(DataObjectBase):
         '''My Custom Data Object'''
         foo: str
@@ -145,7 +148,7 @@ def dataobject(*args, **kwargs) -> Callable[[Type], Type[DataBase]]:
         directly, the metaclass that links protobufs to the class will be called
         before this decorator can auto-gen the protobufs class.
 
-    Args:
+    Kwargs:
         package:  str
             The package name to use for the generated protobufs class
 
@@ -154,7 +157,7 @@ def dataobject(*args, **kwargs) -> Callable[[Type], Type[DataBase]]:
             The decorator function that will wrap the given class
     """
 
-    def decorator(cls: Type) -> Type[DataBase]:
+    def decorator(cls: _DataObjectBaseT) -> Type[_DataObjectBaseT]:
         # Make sure that the wrapped class does NOT inherit from DataBase
         error.value_check(
             "<COR95184230E>",
@@ -199,7 +202,7 @@ def dataobject(*args, **kwargs) -> Callable[[Type], Type[DataBase]]:
 
         # Declare the merged class that binds DataBase to the wrapped class with
         # this generated proto class
-        if isinstance(proto_class, type):
+        if not isinstance(proto_class, EnumTypeWrapper):
             setattr(cls, "_proto_class", proto_class)
             cls = _make_data_model_class(proto_class, cls)
 
@@ -274,7 +277,7 @@ def make_dataobject(
             class derived from DataObjectBase with the given name and
             annotations
     """
-    bases = tuple([DataObjectBase] + list(bases or []))
+    bases = tuple([Type[DataObjectBase]] + list(bases or []))
     attrs = {
         "__annotations__": annotations,
         **(attrs or {}),
@@ -310,7 +313,7 @@ class _DataobjectConverter(DataclassConverter):
         if (
             isinstance(unwrapped, type)
             and issubclass(unwrapped, DataBase)
-            and unwrapped._proto_class is not None
+            and entry.get_proto_class() is not None
         ) or hasattr(unwrapped, "_proto_enum"):
             return entry
         return super().get_concrete_type(entry)
@@ -319,7 +322,7 @@ class _DataobjectConverter(DataclassConverter):
         """Unpack data model classes and enums to their descriptors"""
         entry = self._resolve_wrapped_type(entry)
         if isinstance(entry, type) and issubclass(entry, DataBase):
-            return entry._proto_class.DESCRIPTOR
+            return entry.get_proto_class().DESCRIPTOR
         proto_enum = getattr(entry, "_proto_enum", None)
         if proto_enum is not None:
             return proto_enum.DESCRIPTOR
@@ -364,7 +367,7 @@ def _get_all_enums(
     return all_enums
 
 
-def _make_data_model_class(proto_class, cls):
+def _make_data_model_class(proto_class: Type[_message.Message], cls):
     if issubclass(cls, DataObjectBase):
         _DataBaseMetaClass.parse_proto_descriptor(cls)
 
@@ -444,6 +447,7 @@ def _make_oneof_init(cls):
             del kwargs[kwarg]
         kwargs.update(new_kwargs)
         original_init(self, *args, **kwargs)
+        # noinspection PyProtectedMember
         setattr(self, _DataBaseMetaClass._WHICH_ONEOF_ATTR, which_oneof)
 
     return __init__
