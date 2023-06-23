@@ -15,7 +15,8 @@
 The LocalModelLoader loads a model into local memory
 """
 # Standard
-from typing import Optional, Union
+from typing import Callable, Optional, Union
+import inspect
 import os
 
 # First Party
@@ -164,9 +165,12 @@ class LocalModelLoader(ModelLoaderBase):
                     load_backend.backend_type,
                     module_backend_impl.__name__,
                 )
+                extra_kwargs = {}
+                if self._supports_load_backend_kwarg(module_backend_impl.load):
+                    extra_kwargs["load_backend"] = load_backend
                 loaded_model = module_backend_impl.load(
                     model_path,
-                    load_backend=load_backend,
+                    **extra_kwargs,
                     **kwargs,
                 )
                 if loaded_model is not None:
@@ -182,6 +186,17 @@ class LocalModelLoader(ModelLoaderBase):
         return loaded_model
 
     ## Implementation Details ##################################################
+
+    @staticmethod
+    def _supports_load_backend_kwarg(load_fn: Callable) -> bool:
+        """A load function supports the load_backend kwarg IFF it has an arg
+        explicitly named load_backend or it has a ** kwarg capture
+        """
+        sig = inspect.signature(load_fn)
+        return "load_backend" in sig.parameters or any(
+            param.kind == inspect.Parameter.VAR_KEYWORD
+            for param in sig.parameters.values()
+        )
 
     def _get_supported_load_backends(self, backend_impl: ModuleBase):
         """Function to get a list of supported load backends
