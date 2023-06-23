@@ -20,20 +20,13 @@ import copy
 import pytest
 
 # Local
-from caikit.core import MODEL_MANAGER, LocalBackend
+from caikit.core import MODEL_MANAGER
 
 # Add mock backend
 # This is set in the base test config's load_priority list
-from caikit.core.model_management import (
-    ModelFinderBase,
-    ModelLoaderBase,
-    model_loader_factory,
-)
+from caikit.core.model_management import ModelLoaderBase, model_loader_factory
+from caikit.core.model_management.local_model_loader import LocalModelLoader
 from caikit.core.module_backends import BackendBase, backend_types
-from caikit.core.module_backends.module_backend_config import (
-    _CONFIGURED_LOAD_BACKENDS,
-    _CONFIGURED_TRAIN_BACKENDS,
-)
 from caikit.core.modules import ModuleBase, ModuleConfig
 from caikit.core.registries import (
     module_backend_classes,
@@ -88,6 +81,15 @@ class TestLoader(ModelLoaderBase):
 model_loader_factory.register(TestLoader)
 
 
+def configured_backends():
+    local_loaders = [
+        loader
+        for loader in MODEL_MANAGER._get_loaders()
+        if isinstance(loader, LocalModelLoader)
+    ]
+    return [backend for loader in local_loaders for backend in loader._backends]
+
+
 @pytest.fixture
 def reset_backend_types():
     """Fixture that will reset the backend types if a test modifies them"""
@@ -121,20 +123,6 @@ def reset_module_registry():
 
 
 @pytest.fixture
-def reset_configured_backends():
-    """Fixture that will reset the configured backends"""
-    load_backends_list = copy.copy(_CONFIGURED_LOAD_BACKENDS)
-    train_backends_list = copy.copy(_CONFIGURED_TRAIN_BACKENDS)
-    _CONFIGURED_LOAD_BACKENDS.clear()
-    _CONFIGURED_TRAIN_BACKENDS.clear()
-    yield
-    _CONFIGURED_LOAD_BACKENDS.clear()
-    _CONFIGURED_LOAD_BACKENDS.extend(load_backends_list)
-    _CONFIGURED_TRAIN_BACKENDS.clear()
-    _CONFIGURED_TRAIN_BACKENDS.extend(train_backends_list)
-
-
-@pytest.fixture
 def reset_model_manager():
     prev_finders = MODEL_MANAGER._finders
     prev_loaders = MODEL_MANAGER._loaders
@@ -148,7 +136,6 @@ def reset_model_manager():
 @pytest.fixture
 def reset_globals(
     reset_backend_types,
-    reset_configured_backends,
     reset_model_manager,
     reset_module_backend_registry,
     reset_module_registry,

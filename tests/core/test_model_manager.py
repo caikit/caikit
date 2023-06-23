@@ -17,22 +17,20 @@ and download and load them.
 
 # Standard
 from contextlib import contextmanager
-from typing import List, Union
 from unittest import mock
 from unittest.mock import MagicMock
 import os
 import tempfile
-import uuid
 
 # Local
-from caikit.core import MODEL_MANAGER
+from caikit.core import MODEL_MANAGER, LocalBackend
 from caikit.core.model_management import ModelFinderBase, model_finder_factory
 from caikit.core.modules import ModuleConfig
 
 # Unit Test Infrastructure
 from sample_lib.modules.sample_task import SampleModule
 from tests.base import TestCaseBase
-from tests.conftest import temp_config
+from tests.conftest import backend_priority, temp_config
 
 # NOTE: We do need to import `reset_backend_types` and `reset_module_distribution_registry` for `reset_globals` to work
 from tests.core.helpers import *
@@ -243,25 +241,6 @@ def temp_saved_model(model):
         yield model_path
 
 
-@contextmanager
-def backend_priority(backend_cfg: Union[List[dict], dict]):
-    if isinstance(backend_cfg, dict):
-        backend_cfg = [backend_cfg]
-    with temp_config(
-        {
-            "model_management": {
-                "loading": {
-                    "finders": [{"type": "LOCAL"}],
-                    "loaders": [
-                        {"type": "LOCAL", "config": {"backend_priority": backend_cfg}}
-                    ],
-                }
-            }
-        }
-    ):
-        yield
-
-
 ## Tests #######################################################################
 
 
@@ -378,9 +357,9 @@ def test_module_backend_instance_is_passed_to_load_classmethod(reset_globals):
         with mock.patch.object(DummyBar, "load", MagicMock()) as mock_load:
             mock_load.return_value = DummyBar()
             dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
-            model = caikit.core.load(dummy_model_path)
+            caikit.core.load(dummy_model_path)
 
-            load_backends = MODEL_MANAGER._get_loaders()[0]._backends
+            load_backends = configured_backends()
             expected_load_backend = [
                 be for be in load_backends if be.backend_type == backend_types.MOCK
             ][0]
