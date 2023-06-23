@@ -24,10 +24,7 @@ import aconfig
 import alog
 
 # Local
-from ..module_backends import backend_types, module_backend_config
-from ..module_backends.module_backend_config import (  # TODO: Move here!
-    _configure_backend_overrides,
-)
+from ..module_backends import backend_types
 from ..modules import ModuleBase, ModuleConfig
 from ..modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
 from ..registries import (
@@ -104,7 +101,7 @@ class LocalModelLoader(ModelLoaderBase):
             backend_instance = backend_class(backend_instance_config)
 
             # Add configuration to backends as per individual module requirements
-            _configure_backend_overrides(backend_type, backend_instance)
+            self._configure_backend_overrides(backend_type, backend_instance)
 
             # Add the instance to the registry
             self._backends.append(backend_instance)
@@ -218,3 +215,30 @@ class LocalModelLoader(ModelLoaderBase):
         # If module_backend is None, then we will assume that this model is not loadable in
         # any other backend
         return getattr(backend_impl, SUPPORTED_LOAD_BACKENDS_VAR_NAME, [])
+
+    @staticmethod
+    def _configure_backend_overrides(backend: str, backend_instance: object):
+        """Function to go over all the modules registered in the MODULE_BACKEND_REGISTRY
+        for a particular backend and configure their backend overrides
+
+        Args:
+            backend: str
+                Name of the backend to select from registry
+            backend_instance: object
+                Initialized backend instance. This object should
+                implement the `register_config` function which will be
+                used to merge / iteratively configure the backend
+        """
+        # Go through all the modules registered with particular backend
+        for module_id, module_type_mapping in module_backend_registry().items():
+            if backend in module_type_mapping:
+                # check if it contains any special config
+                config = module_type_mapping[backend].backend_config_override
+                error.type_check("<COR61136899E>", dict, config=config)
+                if len(config) != 0:
+                    # TODO: Add a check here to see if the backend has already started
+                    backend_instance.register_config(config)
+                else:
+                    log.debug2(
+                        f"No backend overrides configured for {module_id} module and {backend} backend"
+                    )
