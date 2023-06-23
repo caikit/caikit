@@ -29,13 +29,20 @@ class ModelFinderBase(FactoryConstructible):
     __doc__ = __doc__
 
     @abc.abstractmethod
-    def find_model(self, model_path: str) -> Union[Optional[ModuleConfig], Exception]:
+    def find_model(
+        self,
+        model_path: str,
+        **kwargs,
+    ) -> Union[Optional[ModuleConfig], Exception]:
         """Find any model that can be uniquely identified by the given (logical)
         path. If found, return the in-memory ModuleConfig.
 
         Args:
             model_path (str): The logical path to the model (name, id, file
                 path, etc...)
+            **kwargs: All finders must allow additional kwargs through so that
+                specific finders and loaders can support additional optional
+                arguments.
 
         Returns:
             result (Union[Optional[ModuleConfig], Exception]): If found, the

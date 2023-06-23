@@ -73,7 +73,7 @@ class ModelManager:
         self._loaders = None
 
     # make load function available from top-level of library
-    def load(self, module_path, *args, load_singleton=False, **kwargs):
+    def load(self, module_path, *, load_singleton=False, **kwargs):
         """Load a model and return an instantiated object on which we can run inference.
 
         Args:
@@ -115,9 +115,9 @@ class ModelManager:
 
         # Now that we have a file like object | str we can try to load as an archive.
         if zipfile.is_zipfile(module_path):
-            return self._load_from_zipfile(module_path, load_singleton, *args, **kwargs)
+            return self._load_from_zipfile(module_path, load_singleton, **kwargs)
         try:
-            return self._load_from_dir(module_path, load_singleton, *args, **kwargs)
+            return self._load_from_dir(module_path, load_singleton, **kwargs)
         except FileNotFoundError:
             error(
                 "<COR80419785E>",
@@ -128,7 +128,7 @@ class ModelManager:
                 ),
             )
 
-    def _load_from_dir(self, module_path, load_singleton, *args, **kwargs):
+    def _load_from_dir(self, module_path, load_singleton, **kwargs):
         """Load a model from a directory.
 
         Args:
@@ -152,7 +152,7 @@ class ModelManager:
             model_config = None
             finder_exceptions = []
             for finder in self._get_finders():
-                model_config = finder.find_model(module_path, *args, **kwargs)
+                model_config = finder.find_model(module_path, **kwargs)
                 if isinstance(model_config, Exception):
                     finder_exceptions.append(model_config)
                     model_config = None
@@ -178,7 +178,7 @@ class ModelManager:
             loaded_model = None
             loader_exceptions = []
             for loader in self._get_loaders():
-                loaded_model = loader.load(model_config, *args, **kwargs)
+                loaded_model = loader.load(model_config, **kwargs)
                 if isinstance(loaded_model, Exception):
                     loader_exceptions.append(loaded_model)
                     loaded_model = None
@@ -210,7 +210,7 @@ class ModelManager:
             # Return successfully!
             return loaded_model
 
-    def _load_from_zipfile(self, module_path, load_singleton, *args, **kwargs):
+    def _load_from_zipfile(self, module_path, load_singleton, **kwargs):
         """Load a model from a zip archive.
 
         Args:
@@ -230,9 +230,7 @@ class ModelManager:
             # to files directly, or it may unpack to a (single) directory containing the files.
             # We expect the former, but fall back to the second if we can't find the config.
             try:
-                model = self._load_from_dir(
-                    extract_path, load_singleton, *args, **kwargs
-                )
+                model = self._load_from_dir(extract_path, load_singleton, **kwargs)
             # NOTE: Error handling is a little gross here, the main reason being that we
             # only want to log to error() if something is fatal, and there are a good amount
             # of things that can go wrong in this process.
@@ -261,7 +259,7 @@ class ModelManager:
                 # create one potential extra layer of nesting around the model directory.
                 try:
                     model = self._load_from_dir(
-                        nested_dirs[0], load_singleton, *args, **kwargs
+                        nested_dirs[0], load_singleton, **kwargs
                     )
                 except FileNotFoundError:
                     error(

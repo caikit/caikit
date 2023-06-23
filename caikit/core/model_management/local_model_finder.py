@@ -43,7 +43,11 @@ class LocalModelFinder(ModelFinderBase):
         """Initialize with an optional path prefix"""
         self._load_path = config.load_path
 
-    def find_model(self, model_path: str) -> Union[Optional[ModuleConfig], Exception]:
+    def find_model(
+        self,
+        model_path: str,
+        **__,
+    ) -> Union[Optional[ModuleConfig], Exception]:
         """Find a model at the local path or with the configured prefix"""
         full_model_path = model_path
         if not os.path.exists(model_path) and self._load_path:

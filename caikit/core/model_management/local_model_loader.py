@@ -111,7 +111,7 @@ class LocalModelLoader(ModelLoaderBase):
         log.debug2("All configured backends: %s", self._backends)
 
     def load(
-        self, model_config: ModuleConfig, *args, **kwargs
+        self, model_config: ModuleConfig, **kwargs
     ) -> Union[Optional[ModuleBase], Exception]:
         """Given a ModelConfig, attempt to load it into memory
 
@@ -166,7 +166,6 @@ class LocalModelLoader(ModelLoaderBase):
                 )
                 loaded_model = module_backend_impl.load(
                     model_path,
-                    *args,
                     load_backend=load_backend,
                     **kwargs,
                 )

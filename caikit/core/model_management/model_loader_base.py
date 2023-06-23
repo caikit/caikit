@@ -32,7 +32,6 @@ class ModelLoaderBase(FactoryConstructible):
     def load(
         self,
         model_config: ModuleConfig,
-        *args,
         **kwargs,
     ) -> Union[Optional[ModuleBase], Exception]:
         """Given a ModelConfig, attempt to load it into memory
@@ -40,6 +39,9 @@ class ModelLoaderBase(FactoryConstructible):
         Args:
             model_config (ModuleConfig): The in-memory model config object for
                 the model to be loaded
+            **kwargs: All loaders must allow additional kwargs through so that
+                specific finders and loaders can support additional optional
+                arguments.
 
         Returns:
             model (Union[Optional[ModuleBase], Exception]): The in-memory
