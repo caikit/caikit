@@ -25,6 +25,7 @@ from tests.examples.shared import requirements, waitForPort
 
 
 @pytest.mark.examples
+@pytest.mark.skipif(getenv("SKIP_EXAMPLES") == "1", reason="It's really slow!")
 def test_example_text_sentiment():
     # Example specific grpc port
     grpc_port = 8085
