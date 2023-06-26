@@ -805,9 +805,7 @@ def test_multiword_args():
                 The index of the object in the stream
         """
     '''
-    print(test1)
     converted = converter.convert_to_google_style(test1)
-    print(converted)
     assert (
         converted
         == '''
