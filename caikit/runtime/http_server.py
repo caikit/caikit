@@ -49,7 +49,6 @@ from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
-from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit.core.toolkit.logging
 
@@ -112,16 +111,15 @@ class RuntimeHTTPServer(RuntimeServerBase):
         self.global_predict_servicer = GlobalPredictServicer(inference_service)
 
         # Set up the central train servicer
-        train_service = ServicePackageFactory().get_service_package(
-            ServicePackageFactory.ServiceType.TRAINING,
-        )
-        self.global_predict_servicer = GlobalPredictServicer(inference_service)
-        self.global_train_servicer = GlobalTrainServicer(train_service)
+        # TODO: uncomment later on
+        # train_service = ServicePackageFactory().get_service_package(
+        #     ServicePackageFactory.ServiceType.TRAINING,
+        # )
+        # self.global_train_servicer = GlobalTrainServicer(train_service)
         self.package_name = inference_service.descriptor.full_name.rsplit(".", 1)[0]
 
         # Bind all routes to the server
         self._bind_routes(inference_service)
-        # TODO: uncomment later on
         # self._bind_routes(train_service)
 
     def __del__(self):
