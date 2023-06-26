@@ -17,11 +17,7 @@ model instance and are used by the ModelManager to handle end-to-end management.
 """
 
 # Local
-from .factories import (
-    model_finder_factory,
-    model_loader_factory,
-    train_executor_factory,
-)
+from .factories import model_finder_factory, model_loader_factory, trainer_factory
 from .model_finder_base import ModelFinderBase
 from .model_loader_base import ModelLoaderBase
-from .train_executor_base import TrainExecutorBase
+from .trainer_base import TrainerBase

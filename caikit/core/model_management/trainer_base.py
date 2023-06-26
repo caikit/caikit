@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-A TrainExecutor is responsible for managing execution of a training job for a
-given module class
+A Trainer is responsible for managing execution of a training job for a given
+module class
 """
 
 # Standard
@@ -26,7 +26,7 @@ from ..modules import ModuleBase
 from ..toolkit.factory import FactoryConstructible
 
 
-class TrainExecutorBase(FactoryConstructible):
+class TrainerBase(FactoryConstructible):
     __doc__ = __doc__
 
     class TrainingStatus(Enum):
@@ -41,8 +41,8 @@ class TrainExecutorBase(FactoryConstructible):
         ERRORED = 5
 
     class ModelFutureBase(abc.ABC):
-        """Every TrainExecutor must implement a ModelFuture class that can
-        access the training job in the infrastructure managed by the executor.
+        """Every Trainer must implement a ModelFuture class that can access the
+        training job in the infrastructure managed by the trainer.
         """
 
         @property

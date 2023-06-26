@@ -20,8 +20,8 @@ from ..toolkit.factory import Factory
 from .local_model_finder import LocalModelFinder
 from .local_model_loader import LocalModelLoader
 
-# Train executor factory
-train_executor_factory = Factory("TrainExecutor")
+# Trainer factory
+trainer_factory = Factory("Trainer")
 
 # Model finder factory
 model_finder_factory = Factory("ModelFinder")
