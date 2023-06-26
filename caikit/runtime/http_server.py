@@ -43,7 +43,7 @@ import alog
 # Local
 from caikit.config import get_config
 from caikit.core.data_model import DataBase
-from caikit.core.data_model.dataobject import make_dataobject, render_dataobject_protos
+from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
 from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
@@ -166,7 +166,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 self._add_unary_stream_handler(rpc)
             else:
                 self._add_unary_unary_handler(rpc)
-        render_dataobject_protos("caikit/runtime/protos")
 
     def _add_unary_unary_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
