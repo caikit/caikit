@@ -199,7 +199,10 @@ class ModelManager:
                 error(
                     "<COR50207494E>",
                     ValueError(
-                        f"Unable to load model from {module_path} with MODULE_ID {model_config.module_id}"
+                        "Unable to load model from {} with MODULE_ID {}".format(
+                            module_path,
+                            model_config.module_id,
+                        )
                     ),
                 )
 

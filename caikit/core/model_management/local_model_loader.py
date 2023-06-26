@@ -17,21 +17,19 @@ The LocalModelLoader loads a model into local memory
 # Standard
 from typing import Callable, Optional, Union
 import inspect
-import os
 
 # First Party
 import aconfig
 import alog
 
 # Local
-from ..module_backends import backend_types
+from ..module_backends import BackendBase, backend_types
 from ..modules import ModuleBase, ModuleConfig
 from ..modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
 from ..registries import (
     module_backend_classes,
     module_backend_registry,
     module_backend_types,
-    module_registry,
 )
 from ..toolkit.errors import error_handler
 from .model_loader_base import ModelLoaderBase
@@ -240,5 +238,7 @@ class LocalModelLoader(ModelLoaderBase):
                     backend_instance.register_config(config)
                 else:
                     log.debug2(
-                        f"No backend overrides configured for {module_id} module and {backend} backend"
+                        "No backend overrides configured for %s module and %s backend",
+                        module_id,
+                        backend,
                     )

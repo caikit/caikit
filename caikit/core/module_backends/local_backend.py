@@ -14,11 +14,6 @@
 
 """This module implements a LOCAL backend configuration
 """
-# Standard
-from typing import Optional, Type
-
-# Third Party
-import yaml
 
 # First Party
 import alog
