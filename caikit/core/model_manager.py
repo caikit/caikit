@@ -412,7 +412,7 @@ class ModelManager:
         if self._finders is None:
             self._finders = [
                 model_finder_factory.construct(finder_cfg)
-                for finder_cfg in get_config().model_management.loading.finders
+                for finder_cfg in get_config().model_management.finders
             ]
         return self._finders
 
@@ -425,7 +425,7 @@ class ModelManager:
         if self._loaders is None:
             self._loaders = [
                 model_loader_factory.construct(loader_cfg)
-                for loader_cfg in get_config().model_management.loading.loaders
+                for loader_cfg in get_config().model_management.loaders
             ]
         return self._loaders
 

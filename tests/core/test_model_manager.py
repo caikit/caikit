@@ -440,20 +440,18 @@ def test_load_with_two_shared_loaders_of_the_same_type(good_model_path, reset_gl
     with temp_config(
         {
             "model_management": {
-                "loading": {
-                    "finders": [{"type": "LOCAL"}],
-                    "loaders": [
-                        {
-                            "type": TestLoader.name,
-                            "config": {"model_type": "model one"},
-                        },
-                        {
-                            "type": TestLoader.name,
-                            "config": {"model_type": "model two"},
-                        },
-                        {"type": "LOCAL"},
-                    ],
-                }
+                "finders": [{"type": "LOCAL"}],
+                "loaders": [
+                    {
+                        "type": TestLoader.name,
+                        "config": {"model_type": "model one"},
+                    },
+                    {
+                        "type": TestLoader.name,
+                        "config": {"model_type": "model two"},
+                    },
+                    {"type": "LOCAL"},
+                ],
             }
         }
     ):
@@ -506,14 +504,12 @@ def test_load_does_not_read_config_yml_if_loader_does_not_require_it(
     with temp_config(
         {
             "model_management": {
-                "loading": {
-                    "finders": [
-                        {"type": NoYamlFinder.name},
-                    ],
-                    "loaders": [
-                        {"type": NoYamlLoader.name},
-                    ],
-                }
+                "finders": [
+                    {"type": NoYamlFinder.name},
+                ],
+                "loaders": [
+                    {"type": NoYamlLoader.name},
+                ],
             }
         }
     ):

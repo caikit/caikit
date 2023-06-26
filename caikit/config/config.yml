@@ -26,23 +26,21 @@ max_exception_log_messages: 4
 # Configuration for managing the lifecycle of models
 model_management:
     # How models are trained through the ModelManager
-    training:
+    trainers:
         # Ordered list of executor configuration blobs. Each entry must have a
         # 'type' field and can optionally have a 'config' dict field
-        executors:
-            - type: LOCAL
-              config: {}
+        - type: LOCAL
+          config: {}
     # How models are loaded through the ModelManager
-    loading:
-        finders:
-            - type: LOCAL
-              config:
-                  load_path: null
-        loaders:
-            - type: LOCAL
-              config:
-                  backend_priority:
-                      - type: LOCAL
+    finders:
+        - type: LOCAL
+          config:
+              load_path: null
+    loaders:
+        - type: LOCAL
+          config:
+              backend_priority:
+                  - type: LOCAL
 
 log:
     # Default level for all python loggers

@@ -19,13 +19,12 @@ inference_plugin:
         runtime_version: mock
 
 model_management:
-    loading:
-        finders:
-            - type: LOCAL
-        loaders:
-            - type: LOCAL
-              config:
-                  backend_priority:
-                      # There is a 'MOCK' backend type defined in our test helpers
-                      - type: MOCK
-                      - type: LOCAL
+    finders:
+        - type: LOCAL
+    loaders:
+        - type: LOCAL
+          config:
+              backend_priority:
+                  # There is a 'MOCK' backend type defined in our test helpers
+                  - type: MOCK
+                  - type: LOCAL
