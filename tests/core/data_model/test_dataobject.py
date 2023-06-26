@@ -928,27 +928,40 @@ def test_dataobject_inheritance(temp_dpool):
 def test_dataobject_union_repeated():
     """Make sure that a oneof with lists of primitive fields works correctly"""
 
-    # convert
     @dataobject
     class Foo(DataObjectBase):
         foo: Union[List[str], List[int]]
+        bar: Union[List[str], List[int]]
 
-    # The above behaves the same way as this:
+    # The above behaves _almost_ the same way as this
+    # with some naming caveats for one-of fields being
+    # foo_foointsequence instead of foo_int_sequence and
+    # bar_barintsequence instead of bar_int_sequence
 
     # @dataobject
     # class Foo(DataObjectBase):
     #     @dataobject
-    #     class IntSequence(DataObjectBase):
+    #     class FooIntSequence(DataObjectBase):
     #         values: List[int]
 
     #     @dataobject
-    #     class StrSequence(DataObjectBase):
+    #     class FooStrSequence(DataObjectBase):
     #         values: List[str]
 
-    #     foo: Union[IntSequence, StrSequence]
+    #     @dataobject
+    #     class BarIntSequence(DataObjectBase):
+    #         values: List[int]
 
+    #     @dataobject
+    #     class BarStrSequence(DataObjectBase):
+    #         values: List[str]
+
+    #     foo: Union[FooIntSequence, FooStrSequence]
+    #     bar: Union[BarIntSequence, BarStrSequence]
+
+    # Foo
     # proto round trip
-    foo_int = Foo.IntSequence(values=[1, 2])
+    foo_int = Foo.FooIntSequence(values=[1, 2])
     foo1 = Foo(foo=foo_int)
     assert foo1.which_oneof("foo") == "foo_int_sequence"
     proto_repr_foo = foo1.to_proto()
@@ -960,14 +973,37 @@ def test_dataobject_union_repeated():
     # json round trip
     json_repr_foo = foo1.to_json()
     assert json.loads(json_repr_foo) == {"foo_int_sequence": {"values": [1, 2]}}
-    baz_from_json = Foo.from_json(json_repr_foo)
-    assert baz_from_json.to_json() == json_repr_foo
+    foo_json_repr = Foo.from_json(json_repr_foo)
+    assert foo_json_repr.to_json() == json_repr_foo
 
-    foo_str = Foo.StrSequence(values=["hello", "world"])
+    foo_str = Foo.FooStrSequence(values=["hello", "world"])
     foo2 = Foo(foo=foo_str)
     assert foo2.which_oneof("foo") == "foo_str_sequence"
     proto_repr_foo2 = foo2.to_proto()
     assert Foo.from_proto(proto=proto_repr_foo2).to_proto() == proto_repr_foo2
+
+    # Bar
+    # proto round trip
+    bar_int = Foo.BarIntSequence(values=[1, 2])
+    bar1 = Foo(bar=bar_int)
+    assert bar1.which_oneof("bar") == "bar_int_sequence"
+    proto_repr_bar = bar1.to_proto()
+    assert Foo.from_proto(proto=proto_repr_bar).to_proto() == proto_repr_bar
+
+    # dict test
+    assert bar1.to_dict() == {"bar_int_sequence": {"values": [1, 2]}}
+
+    # json round trip
+    json_repr_bar = bar1.to_json()
+    assert json.loads(json_repr_bar) == {"bar_int_sequence": {"values": [1, 2]}}
+    bar_json_repr = Foo.from_json(json_repr_bar)
+    assert bar_json_repr.to_json() == json_repr_bar
+
+    bar_str = Foo.BarStrSequence(values=["hello", "world"])
+    bar2 = Foo(bar=bar_str)
+    assert bar2.which_oneof("bar") == "bar_str_sequence"
+    proto_repr_bar2 = bar2.to_proto()
+    assert Foo.from_proto(proto=proto_repr_bar2).to_proto() == proto_repr_bar2
 
 
 def test_dataobject_function_inheritance(temp_dpool):
