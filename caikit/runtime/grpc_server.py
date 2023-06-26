@@ -295,18 +295,13 @@ class RuntimeGRPCServer:
     def _find_port(cls, start=8888, end=None, host="127.0.0.1"):
         """Function to find an available port in a given range
         Args:
-            start: int
-                Starting number for port search (inclusive)
-                Default: 8888
-            end: Optional[int]
-                End number for port search (exclusive)
-                Default: start + 1000
-            host: str
-                Host name or ip address to search on
-                Default: localhost
+            start (int): Starting number for port search (inclusive) Default:
+                8888
+            end (Optional[int]): End number for port search (exclusive) Default:
+                start + 1000
+            host (str): Host name or ip address to search on Default: localhost
         Returns:
-            int
-                Available port
+            int: Available port
         """
         end = start + 1000 if end is None else end
         if start < end:

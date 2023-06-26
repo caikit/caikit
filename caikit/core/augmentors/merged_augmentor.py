@@ -32,8 +32,8 @@ class MergedAugmentor(AugmentorBase):
         """Build an augmentor encapsulating multiple augmentors, where application order is
         governed by the provided scheme.
         Args:
-            scheme: SchemeBase
-                Scheme indicating how encapsulated augmentors should be combined.
+            scheme (SchemeBase): Scheme indicating how encapsulated augmentors
+                should be combined.
         """
         # NOTE: Random seed of merged augmentor does not currently matter since randomness is
         # already represented completely within encapsulated augmentors and scheme state
@@ -58,11 +58,10 @@ class MergedAugmentor(AugmentorBase):
         """Apply a merged augmentor whose behavior is controlled by the encapsulated scheme.
 
         Args:
-            obj: str | caikit.core.data_model.DataBase
-                Object to be augmented.
+            obj (str | caikit.core.data_model.DataBase): Object to be augmented.
         Returns:
-            str | caikit.core.data_model.DataBase
-                Augmented object of same type as input obj.
+            str | caikit.core.data_model.DataBase: Augmented object of same type
+                as input obj.
         """
         return self._scheme.execute(obj)
 

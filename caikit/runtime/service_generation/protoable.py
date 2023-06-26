@@ -34,8 +34,7 @@ def to_protoable_signature(signature: Dict[str, Type]) -> Dict[str, Type]:
     If there is a Union, pick the protoable type
 
     Args:
-        signature: Dict[str, Type]
-            module signature of parameters and types
+        signature (Dict[str, Type]): module signature of parameters and types
     """
     protoables = {}
     log.debug("Building protoable signature for %s", signature)

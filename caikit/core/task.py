@@ -203,8 +203,7 @@ def task(
     Args:
         required_parameters (Dict[str, ValidInputTypes]): The required parameters that all public
             models' .run functions must contain. A dictionary of parameter name to parameter
-            type, where the types can be in the set of:
-                - Python primitives
+            type, where the types can be in the set of: - Python primitives
                 - Caikit data models
                 - Iterable containers of the above
                 - Caikit model references (maybe?)

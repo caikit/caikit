@@ -43,12 +43,12 @@ def import_protobufs(proto_dir, package_base_name, current_globals):
     nice with inspecting a wheel whose contents have been compiled to bytecode. :(
 
     Args:
-        proto_dir: str
-            Path to the proto directory, i.e., the directory that you __init__ protobufs file is in.
-        package_base_name: str
-            full name of your package, e.g., __name__ from the __init__ protobufs file.
-        current_globals: dict
-            global dictionary from your protobufs package __init__ file.
+        proto_dir (str): Path to the proto directory, i.e., the directory that
+            you __init__ protobufs file is in.
+        package_base_name (str): full name of your package, e.g., __name__ from
+            the __init__ protobufs file.
+        current_globals (dict): global dictionary from your protobufs package
+            __init__ file.
     """
 
     # look for *_pb2.py files in proto_dir, we will consider these to be our protobufs files

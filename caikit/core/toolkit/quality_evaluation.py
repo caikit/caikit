@@ -78,8 +78,8 @@ class QualityEvaluator:
         """Main entry point for evaluation.
 
         Args:
-            evaluation_type:  str
-                Which type of evaluation to run. Only a few are currently supported.
+            evaluation_type (str): Which type of evaluation to run. Only a few
+                are currently supported.
             find_label_func: function to fetch labels from any one prediction, used in
                 multiclass multilabel evaluation.
                 eg: if a prediction is of form (token, label), this function should be
@@ -94,20 +94,20 @@ class QualityEvaluator:
                               (currently only for multiclass multilabel eval type)
                               Detailed metrics give us metrics for every example, and
                               metrics using a custom partial match function
-            labels:  list (Optional, defaults to None)
+            labels: list (Optional, defaults to None)
                 Optional list of class labels to evaluate quality on. By default evaluation is done
                 over all class labels. Using this, you can explicitly mention only a subset of
                 labels to include in the quality evaluation.
             partial_match_metrics: flag to indicate whether or not you want partial match
                                    micro avg metrics.
                                    (currently only for multiclass multilabel eval type)
-            max_hierarchy_levels: int
-                Used in hierarchical multilabel multiclass evaluation only. The number of levels
-                in the hierarchy to run model evaluation on, in addition to complete matches.
+            max_hierarchy_levels (int): Used in hierarchical multilabel
+                multiclass evaluation only. The number of levels in the
+                hierarchy to run model evaluation on, in addition to complete
+                matches.
 
         Returns:
-            dict
-                Full results from evaluation on dataset and model.
+            dict: Full results from evaluation on dataset and model.
         """
         if evaluation_type == EvalTypes.MULTILABEL_MULTICLASS:
             return self.multilabel_multiclass_evaluation(
@@ -134,30 +134,22 @@ class QualityEvaluator:
 
         Args:
             Note: here class should be initialized with gold and pred in the following format
-                self.gold: list
-                    list of gold set labels for every example,
-                    where each example can have only one label
-                    eg: ['label1','label2', 'label3', 'label4']
-                self.pred: list
-                    Predicted-by-the-model set labels for every example.
-            labels:  list (Optional, defaults to None)
+            Noneself.gold (list): list of gold set labels for every example, where each example
+                can have only one label eg: ['label1','label2', 'label3','label4']
+            self.pred (list): Predicted-by-the-model set labels for every example.
+            labels: list (Optional, defaults to None)
                 Optional list of class labels to evaluate quality on. By default evaluation is done
                 over all class labels. Using this, you can explicitly mention only a subset of
                 labels to include in the quality evaluation.
 
         Returns:
-            dict
-                Dictionary looks like: {
-                    'per_class_confusion_matrix': {'entity_type': {'true_positive': int ...}}
-                    'macro_precision': 0 <= float <= 1,
-                    'macro_recall': 0 <= float <= 1,
-                    'macro_f1': 0 <= float <= 1,
-                    'micro_precision': 0 <= float <= 1,,
-                    'micro_recall': 0 <= float <= 1,,
-                    'micro_f1': 0 <= float <= 1,
-                    'overall_tp': int,
-                    'overall_fp': int,
-                    'overall_fn': int
+            dict: Dictionary looks like: { 'per_class_confusion_matrix':
+                {'entity_type': {'true_positive': int ...}} 'macro_precision': 0
+                <= float <= 1, 'macro_recall': 0 <= float <= 1, 'macro_f1': 0 <=
+                float <= 1, 'micro_precision': 0 <= float <= 1,, 'micro_recall':
+                0 <= float <= 1,, 'micro_f1': 0 <= float <= 1, 'overall_tp':
+                int, 'overall_fp': int, 'overall_fn': int
+
 
                 }
         """
@@ -220,14 +212,12 @@ class QualityEvaluator:
 
         Args:
             Note: here class should be initialized with gold and pred in the following format
-                self.gold: list(list)
-                    list of gold set labels for every example
-                    eg: [['label1','label2'], ['label1', 'label4']]
-                self.pred: list(list)
-                    Predicted-by-the-model set labels for every example.
+                Noneself.gold (list(list)): list of gold set labels for every example eg:
+                    [['label1','label2'], ['label1', 'label4']]
+                self.pred (list(list)): Predicted-by-the-model set labels for every example.
             find_label_func: function to fetch labels from any one prediction
-            find_label_data_func: function to fetch data that belongs to a certain class
-            labels:  list (Optional, defaults to None)
+            Nonefind_label_data_func: function to fetch data that belongs to a certain class
+            Nonelabels: list (Optional, defaults to None)
                 Optional list of class labels to evaluate quality on. By default evaluation is done
                 over all class labels. Using this, you can explicitly mention only a subset of
                 labels to include in the quality evaluation.
@@ -236,25 +226,20 @@ class QualityEvaluator:
                               metrics using a custom partial match function
             partial_match_metrics: flag to indicate whether or not you want partial match
                                    micro avg metrics.
-            use_labels_for_matching: bool
-                Indicates whether or not we should use the output of find_label_func for metric
-                computations, or the raw data tuples.
+            use_labels_for_matching (bool): Indicates whether or not we should
+                use the output of find_label_func for metric computations, or
+                the raw data tuples.
 
         Returns:
-            dict
-                Dictionary looks like: {
-                    'per_class_confusion_matrix': {'entity_type': {'true_positive': int ...}}
-                    'macro_precision': 0 <= float <= 1,
-                    'macro_recall': 0 <= float <= 1,
-                    'macro_f1': 0 <= float <= 1,
-                    'micro_precision': micro_precision,
-                    'micro_recall': micro_recall,
-                    'micro_f1': micro_f1,
-                    'detailed_metrics' : {'exact_match_precision'..,'partial_match_precision'}
-                    'micro_precision_partial_match': 0 <= float <= 1,
-                    'micro_recall_partial_match': 0 <= float <= 1,
-                    'micro_f1_partial_match': 0 <= float <= 1
-                }
+            dict: Dictionary looks like: { 'per_class_confusion_matrix':
+                {'entity_type': {'true_positive': int ...}} 'macro_precision': 0
+                <= float <= 1, 'macro_recall': 0 <= float <= 1, 'macro_f1': 0 <=
+                float <= 1, 'micro_precision': micro_precision, 'micro_recall':
+                micro_recall, 'micro_f1': micro_f1, 'detailed_metrics' :
+                {'exact_match_precision'..,'partial_match_precision'}
+                'micro_precision_partial_match': 0 <= float <= 1,
+                'micro_recall_partial_match': 0 <= float <= 1,
+                'micro_f1_partial_match': 0 <= float <= 1 }
         """
         gold, pred = self.gold, self.pred
         assert len(gold) == len(
@@ -451,20 +436,20 @@ class QualityEvaluator:
         hierarchy.
 
         Args:
-            find_label_func_builder: function
-                A function that takes in a level number (or None if full hierarchy) and returns a
-                find_label_func for this level that can be passed to the multilabel multiclass
+            find_label_func_builder (function): A function that takes in a level
+                number (or None if full hierarchy) and returns a find_label_func
+                for this level that can be passed to the multilabel multiclass
                 evaluator.
-            find_label_data_func_builder: function
-                A function that takes in a level number (or None if full hierarchy) and returns a
-                find_label_data_func for this level that can be passed to the multilabel multiclass
-                evaluator.
-            max_hierarchy_levels: int
-                The number of levels to run in the hierarchy, in addition to complete match.
+            find_label_data_func_builder (function): A function that takes in a
+                level number (or None if full hierarchy) and returns a
+                find_label_data_func for this level that can be passed to the
+                multilabel multiclass evaluator.
+            max_hierarchy_levels (int): The number of levels to run in the
+                hierarchy, in addition to complete match.
         Returns:
-            dict
-                Dictionary, where each key is a level number, or 'FULL', and maps to the dict
-                returned by multilabel_multiclass_evaluation for that level of the hierarchy.
+            dict: Dictionary, where each key is a level number, or 'FULL', and
+                maps to the dict returned by multilabel_multiclass_evaluation
+                for that level of the hierarchy.
         """
         metrics = {}
         # Levels are None [FULL], and 1...n, where n is the deepest level in the hierarchy (for now,
@@ -491,15 +476,11 @@ class QualityEvaluator:
     def calc_f1_score(gold, pred, match_fun=None):
         """Calculates F1 score
         Args:
-            gold: list
-                List of gold annotations
-            pred: list
-                List of predictions
+            gold (list): List of gold annotations
+            pred (list): List of predictions
             match_fun: Function that finds the matches and returns tuple of matched gold, preds
-
         Returns:
-            tuple
-                Precision, Recall, F1 score
+            tuple: Precision, Recall, F1 score
         """
         if match_fun:
             # In case of partial match, matched predictions need not equal matched gold
@@ -544,16 +525,13 @@ class QualityEvaluator:
            Overlaps are not considered.
 
         Args:
-            groundtruth: list
-                Groundtruth data
-            prediction: list
-                Predictions returned by the model
+            groundtruth (list): Groundtruth data
+            prediction (list): Predictions returned by the model
 
         Returns:
-            tuple
-                gold_matched: set, pred_matched: set
-                    gold annotations that were matched
-                    Predictions that partially or fully matched with groundtruth
+            tuple: gold_matched: set, pred_matched: set gold annotations that
+                were matched Predictions that partially or fully matched with
+                groundtruth
         """
 
         gold_matched = set()
@@ -585,14 +563,14 @@ class QualityEvaluator:
            statistics per class label.
 
         Args:
-            per_class_confusion_matrix: Dict[str, F1Metrics]
-                 Dictionary of statistics per class label. Class labels are keys for the
-                 dictionary. For each class label, there should be a F1Metrics class object with
-                 values true positive, false_positive , false_negative representating the count
-                 of these per class. The dictionary looks like:
-                 per_class_confusion_matrix[label] = F1Metrics(true_positive = val 1,
-                                                                            false_positive = val 2,
-                                                                            false_negative = val 3)
+            per_class_confusion_matrix (Dict[str, F1Metrics]): Dictionary of
+                 statistics per class label. Class labels are keys for the
+                 dictionary. For each class label, there should be a F1Metrics
+                 class object with values true positive, false_positive ,
+                 false_negative representating the count of these per class. The
+                 dictionary looks like: per_class_confusion_matrix[label] =
+                 F1Metrics(true_positive = val 1, false_positive = val 2,
+                 false_negative = val 3)
 
         Returns:
             Returns:
@@ -674,8 +652,8 @@ class QualityEvaluator:
     def convert_F1MetricsContainer_to_dict(metrics_summary: F1MetricsContainer) -> dict:
         """
         Args:
-            metrics_summary: F1MetricsContainer
-                 An object of dataclass F1MetricsContainer
+            metrics_summary (F1MetricsContainer): An object of dataclass
+                 F1MetricsContainer
 
         Returns:
             Returns:

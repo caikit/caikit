@@ -44,7 +44,7 @@ class ProducerPriority(DataObjectBase):
         """Construct a new ProducerPriority
 
         Args:
-            producers:  list(ProducerId)
+            producers (list(ProducerId))
         """
         error.type_check_all("<COR01353088E>", ProducerId, producers=producers)
         self.producers = producers

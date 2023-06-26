@@ -62,8 +62,8 @@ def configure(
             with overrides for your usage.
         config_dict (Optional[Dict]): Config overrides in dictionary form
 
-    Returns: None
-        This only sets the config object that is returned by `caikit.get_config()`
+    Returns: None: This only sets the config object that is returned by
+        `caikit.get_config()`
     """
     if not config_yml_path and not config_dict:
         log.error("<CFG43273054E>", "No config_file or config_dict provided")
@@ -129,12 +129,10 @@ def merge_configs(
     and the type of the key for both is a dict, recursively merge, otherwise
     set the base value to the override value.
     Args:
-        base: Optional[dict]
-            The base config that will be updated with the overrides
-        overrides: Optional[dict]
-            The override config
-        merge_strategy: str
-            The merging strategy, either `merge` or `override`
+        base (Optional[dict]): The base config that will be updated with the
+            overrides
+        overrides (Optional[dict]): The override config
+        merge_strategy (str): The merging strategy, either `merge` or `override`
             `override` will replace values in base with those from overrides
             `merge` will deep-merge dictionaries and prepend-merge lists
     Returns:

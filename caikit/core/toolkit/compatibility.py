@@ -33,8 +33,8 @@ def unsupported_platforms(platforms):
     see: https://docs.python.org/3/library/sys.html#sys.platform
 
     Args:
-        platforms: List | Tuple | str
-            Platforms on which this capability is not implemented.
+        platforms (List | Tuple | str): Platforms on which this capability is
+            not implemented.
     """
     error.type_check("<COR48137162E>", list, tuple, str, platforms=platforms)
     if not isinstance(platforms, str):
@@ -74,16 +74,14 @@ def is_importable_on_platform(module, package, exc_type, platforms, platform_hin
     raise on other platforms.
 
     Args:
-        module: str
-            Module that we want to import.
-        package: str
-            Package from which we want to import the module.
-        exc_type: Exception
-            Exception that we want to warn a hint for if we hit it on import for a given platform.
-        platforms: str
-            Platform on which we expect potential bad import from for this module.
-        platform_hint: str
-            Hint to warn if we hit the exception type on the provided platform.
+        module (str): Module that we want to import.
+        package (str): Package from which we want to import the module.
+        exc_type (Exception): Exception that we want to warn a hint for if we
+            hit it on import for a given platform.
+        platforms (str): Platform on which we expect potential bad import from
+            for this module.
+        platform_hint (str): Hint to warn if we hit the exception type on the
+            provided platform.
     """
     error.type_check(
         "<COR48442162E>",

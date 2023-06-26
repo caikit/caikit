@@ -254,8 +254,7 @@ def render_dataobject_protos(interfaces_dir: str):
     to the target interfaces directory
 
     Args:
-        interfaces_dir:  str
-            The target directory (must already exist)
+        interfaces_dir (str): The target directory (must already exist)
     """
     for proto_class in _AUTO_GEN_PROTO_CLASSES:
         proto_class.write_proto_file(interfaces_dir)

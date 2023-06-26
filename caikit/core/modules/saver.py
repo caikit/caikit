@@ -55,11 +55,11 @@ class ModuleSaver:
         """Construct a new module saver.
 
         Args:
-            module:  caikit.core.module.Module
-                The instance of the module to be saved.
-            model_path:  str
-                The absolute path to the directory where the model will be saved.  If this directory
-                does not exist, it will be created.
+            module (caikit.core.module.Module): The instance of the module to be
+                saved.
+            model_path (str): The absolute path to the directory where the model
+                will be saved.  If this directory does not exist, it will be
+                created.
         """
         self.model_path = os.path.normpath(model_path)
 
@@ -118,16 +118,14 @@ class ModuleSaver:
         """Create a directory inside the `model_path` for this saver.
 
         Args:
-            relative_path:  str
-                A path relative to this saver's `model_path` denoting the directory to create.
-            base_relative_path:  str
-                A path, relative to this saver's `model_path`, in which `relative_path` will be
-                created.
+            relative_path (str): A path relative to this saver's `model_path`
+                denoting the directory to create.
+            base_relative_path (str): A path, relative to this saver's
+                `model_path`, in which `relative_path` will be created.
 
         Returns:
-            str, str
-                A tuple containing both the `relative_path` and `absolute_path` to the
-                directory created.
+            str, str: A tuple containing both the `relative_path` and
+                `absolute_path` to the directory created.
 
         Examples:
             >>> with ModelSaver('/path/to/model') as saver:
@@ -151,16 +149,15 @@ class ModuleSaver:
         """Copy an external file into a subdirectory of the `model_path` for this saver.
 
         Args:
-            file_path:  str
-                Absolute path to the external file to copy.
-            relative_path:  str
-                The relative path inside of `model_path` where the file will be copied to.
-                If set to the empty string (default) then the file will be placed directly in
-                the `model_path` directory.
+            file_path (str): Absolute path to the external file to copy.
+            relative_path (str): The relative path inside of `model_path` where
+                the file will be copied to. If set to the empty string (default)
+                then the file will be placed directly in the `model_path`
+                directory.
 
         Returns:
-            str, str
-                A tuple containing both the `relative_path` and `absolute_path` to the copied file.
+            str, str: A tuple containing both the `relative_path` and
+                `absolute_path` to the copied file.
         """
         file_path = os.path.normpath(file_path)
 
@@ -187,15 +184,12 @@ class ModuleSaver:
         """Save a Python object using the provided ObjectSerializer.
 
         Args:
-            obj:  any
-                The Python object to save
-            filename: str
-                The filename to use for the saved object
-            serializer: ObjectSerializer
-                An ObjectSerializer instance (e.g., YAMLSerializer) that should be used to serialize
-                the object
-            relative_path:  str
-                The relative path inside of `model_path` where the object will be saved
+            obj (any): The Python object to save
+            filename (str): The filename to use for the saved object
+            serializer (ObjectSerializer): An ObjectSerializer instance (e.g.,
+                YAMLSerializer) that should be used to serialize the object
+            relative_path (str): The relative path inside of `model_path` where
+                the object will be saved
         """
         if not issubclass(serializer.__class__, ObjectSerializer):
             error(
@@ -221,8 +215,8 @@ class ModuleSaver:
         """Add items to this saver's config dictionary.
 
         Args:
-            additional_config:  dict
-                A dictionary of config options to add the this saver's configuration.
+            additional_config (dict): A dictionary of config options to add the
+                this saver's configuration.
 
         Notes:
             The behavior of this method matches `dict.update` and is equivalent to calling
@@ -235,10 +229,10 @@ class ModuleSaver:
         """Save a CaikitCore module within a workflow artifact and add a reference to the config.
 
         Args:
-            module:  caikit.core.ModuleBase
-                The CaikitCore module to save as part of this workflow
-            relative_path:  str
-                The relative path inside of `model_path` where the module will be saved
+            module (caikit.core.ModuleBase): The CaikitCore module to save as
+                part of this workflow
+            relative_path (str): The relative path inside of `model_path` where
+                the module will be saved
         """
 
         if not issubclass(module.__class__, ModuleBase):
@@ -264,12 +258,11 @@ class ModuleSaver:
         config.
 
         Args:
-            modules:  dict{str -> caikit.core.ModuleBase}
-                A dict with module relative path as key and a CaikitCore module as value to save as
+            modules (dict{str -> caikit.core.ModuleBase}): A dict with module
+                relative path as key and a CaikitCore module as value to save as
                 part of this workflow
-            config_key:  str
-                The config key inside of `model_path` where the modules' relative path with be
-                referenced
+            config_key (str): The config key inside of `model_path` where the
+                modules' relative path with be referenced
 
         Returns:
             list_of_rel_path: list(str)

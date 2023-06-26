@@ -35,12 +35,11 @@ class RandomSingleSelectionScheme(SchemeBase):
         augmentors when executed.
 
         Args:
-            selection_probs: list(int|float) | tuple(int|float)
-                Probability values for applying each augmentor (must sum to 1).
-            augmentors: list(AugmentorBase) | tuple(AugmentorBase)
-                Augmentors to be applied (in same order as selection_probs).
-            random_seed: int
-                Random seed for controlling shuffling behavior.
+            selection_probs (list(int|float) | tuple(int|float)): Probability
+                values for applying each augmentor (must sum to 1).
+            augmentors (list(AugmentorBase) | tuple(AugmentorBase)): Augmentors
+                to be applied (in same order as selection_probs).
+            random_seed (int): Random seed for controlling shuffling behavior.
         """
         super().__init__(True, augmentors, random_seed)
         error.type_check("<COR26721310E>", list, tuple, selection_probs=selection_probs)
@@ -68,11 +67,10 @@ class RandomSingleSelectionScheme(SchemeBase):
         """Execute the merged scheme by picking one random augmentor and applying it.
 
         Args:
-            obj: str | caikit.core.data_model.DataBase
-                Object to be augmented.
+            obj (str | caikit.core.data_model.DataBase): Object to be augmented.
         Returns:
-            str | caikit.core.data_model.DataBase
-                Augmented object of same type as input obj.
+            str | caikit.core.data_model.DataBase: Augmented object of same type
+                as input obj.
         """
         aug = random.choices(self._augmentors, weights=self._selection_probs)[0]
         return aug.augment(obj)

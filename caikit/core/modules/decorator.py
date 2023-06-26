@@ -243,19 +243,16 @@ def _register_module_implementation(
     backend_type to the implementation class
 
     Args:
-        implementation_class:  type
-            The class that is used to implement this backend type for the given
-            module_id
-        backend_type:  str
-            Value from MODULE_BACKEND_TYPES that indicates the backend
-            that this class implements
-        module_id:  str
-            The module_id from the caikit.core module registry that this class
-            overloads
-        backend_config_override: Dict
-            Dictionary containing essential overrides for the backend config.
-            This will get stored with the implementation_class class name and will automatically
-            get picked up and merged with other such configs for a specific backend
+        implementation_class (type): The class that is used to implement this
+            backend type for the given module_id
+        backend_type (str): Value from MODULE_BACKEND_TYPES that indicates the
+            backend that this class implements
+        module_id (str): The module_id from the caikit.core module registry that
+            this class overloads
+        backend_config_override (Dict): Dictionary containing essential
+            overrides for the backend config. This will get stored with the
+            implementation_class class name and will automatically get picked up
+            and merged with other such configs for a specific backend
 
     """
 

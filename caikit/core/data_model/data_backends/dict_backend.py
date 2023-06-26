@@ -48,10 +48,9 @@ class DictBackend(DataModelBackendBase):
         same backend.
 
         Args:
-            data_model_class:  Type[DataBase]
-                The frontend data model class that is accessing this attribute
-            name:  str
-                The name of the attribute to access
+            data_model_class (Type[DataBase]): The frontend data model class
+                that is accessing this attribute
+            name (str): The name of the attribute to access
 
         Returns:
             value:  Any

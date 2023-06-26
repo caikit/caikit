@@ -67,10 +67,9 @@ def import_enum(
     """Import a single enum into the global enum module by name
 
     Args:
-        proto_enum:  EnumTypeWrapper
-            The enum to import
-        enum_class:  Optional[Type[Enum]]
-            A pre-existing enum class that this proto enum binds to
+        proto_enum (EnumTypeWrapper): The enum to import
+        enum_class (Optional[Type[Enum]]): A pre-existing enum class that this
+            proto enum binds to
 
     Returns:
         name:  str
@@ -119,8 +118,8 @@ def import_enums(current_globals):
     your enums (as importable from this file) with the data model.
 
     Args:
-        current_globals: dict
-            global dictionary from your data model package __init__ file.
+        current_globals (dict): global dictionary from your data model package
+            __init__ file.
     """
     # Like the proto imports, we'd one day like to do this with introspection using something
     # like below, but can't because our wheel is compiled. If you can think of a cleaner way

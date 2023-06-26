@@ -53,11 +53,11 @@ class AugmentorBase:
         """Take an object in, give an object back. Calls ._augment in the subclass.
 
         Args:
-            inp_obj: str | caikit.core.data_model.DataBase
-                Object to be augmented.
+            inp_obj (str | caikit.core.data_model.DataBase): Object to be
+                augmented.
         Returns:
-            str | caikit.core.data_model.DataBase
-                Augmented object of same type as input inp_obj.
+            str | caikit.core.data_model.DataBase: Augmented object of same type
+                as input inp_obj.
         """
         if not isinstance(inp_obj, self.augmentor_type):
             raise TypeError(

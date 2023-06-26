@@ -47,8 +47,7 @@ class RPCMeter:
     def update_metrics(self, model_type):
         """Updates metrics, writes to file if max count has reached and resets counters
         Args:
-            model_type: string
-                Type of model the request was made for
+            model_type (string): Type of model the request was made for
         """
         # Locking to ensure that with concurrent updates to counters, the latest metrics are
         # reported

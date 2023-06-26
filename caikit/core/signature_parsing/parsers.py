@@ -203,9 +203,8 @@ def _get_default_type(arg: inspect.Parameter) -> Optional[Type]:
     Tries to infer a type from the default value of the argument
     Args:
         arg: (inspect.Parameter) The inspected argument
-
-    Returns: (Optional[Type]) The type of the argument,
-        or None if no default value is present
+    Returns: (Optional[Type]) The type of the argument,: or None if no default value is
+        present
     """
     if arg.default != inspect.Parameter.empty and arg.default is not None:
         log.debug3("Found default with type %s", type(arg.default))

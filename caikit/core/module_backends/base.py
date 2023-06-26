@@ -92,7 +92,6 @@ class SharedTrainBackendBase(BackendBase, abc.ABC):
         Args:
             module_class (Type[ModuleBase]): The module class to train
             *args, **kwargs: The args to pass through to training
-
         Returns:
             model (ModuleBase): The in-memory instance of the trained
                 module

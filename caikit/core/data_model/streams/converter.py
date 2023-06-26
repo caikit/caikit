@@ -74,10 +74,9 @@ class DataStreamConverter:
         """Initialize DataStreamConverter
 
         Args:
-            target_type: type
-                Target DataStream type, either dict or list
-            key_list: List(str)
-                List of keys that determines how data will be formatted into a DataStream
+            target_type (type): Target DataStream type, either dict or list
+            key_list (List(str)): List of keys that determines how data will be
+                formatted into a DataStream
         """
         error.type_check("<COR56775827E>", type, target_type=target_type)
         error.type_check_all("<COR16523028E>", str, key_list=key_list)
@@ -109,8 +108,7 @@ class DataStreamConverter:
         See classdoc for examples
 
         Args:
-            stream: DataStream
-                stream intended to be converted
+            stream (DataStream): stream intended to be converted
 
         Returns:
             Converted datastream based on the target type
@@ -122,8 +120,7 @@ class DataStreamConverter:
         """Attempt to convert a stream to dictionaries
 
         Args:
-            stream: DataStream
-                Stream to convert to a stream of dictionaries
+            stream (DataStream): Stream to convert to a stream of dictionaries
         Returns:
             A stream which will lazily convert data items to dictionaries
         """
@@ -143,8 +140,7 @@ class DataStreamConverter:
         """Attempt to convert a stream to lists
 
         Args:
-            stream: DataStream
-                Stream to convert to a stream of lists
+            stream (DataStream): Stream to convert to a stream of lists
         Returns:
             A stream which will lazily convert data items to lists
         """
