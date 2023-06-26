@@ -32,6 +32,9 @@ from caikit.core.data_model.streams.data_stream import DataStream
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit
 
+# import common explicitly since this module needs it
+import caikit.interfaces.common
+
 # This global holds the mapping of element types to their respective
 # DataStreamSource wrappers so that the same message is not recreated
 # unnecessarily

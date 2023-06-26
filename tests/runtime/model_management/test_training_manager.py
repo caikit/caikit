@@ -14,10 +14,12 @@
 # Standard
 from threading import Timer
 import concurrent.futures as futures
+import threading
 import unittest
 import uuid
 
 # Local
+from caikit.interfaces.runtime.data_model.training_management import TrainingStatus
 from caikit.runtime.model_management.training_manager import TrainingManager
 
 
@@ -35,28 +37,36 @@ class TestTrainingManager(unittest.TestCase):
             another_training_manager = TrainingManager()
         self.assertIn("This class is a singleton!", str(context.exception))
 
-    def test_get_training_status_raises_when_a_training_future_is_cancelled_due_to_shutdown(
-        self,
-    ):
-        """Test that a waiting but cancelled training thread raises RuntimeError"""
-        training_id = _random_training_id()
-        training_id2 = _random_training_id()
-        timer = Timer(2000, function=None)  # a Timer that just waits a while
+    def test_get_training_status_not_started(self):
+        """Make sure that if the future has not started, it doesn't raise an
+        error and reports that it has not yet started
+        """
 
+        start_event = threading.Event()
+
+        def block_start():
+            start_event.wait()
+
+        end_event = threading.Event()
+
+        def train_task():
+            end_event.set()
+
+        # Start the pool and block it
         T = futures.ThreadPoolExecutor(1)  # Run at most 1 function concurrently
+        T.submit(block_start)
 
-        def foo():
-            timer.start()
-            return
+        # Start the "training"
+        train_future = T.submit(train_task)
+        train_id = _random_training_id()
+        self.training_manager.training_futures[train_id] = train_future
 
-        thread = T.submit(foo)
-        thread2 = T.submit(foo)
-        T.shutdown(wait=False)
-        self.training_manager.training_futures[training_id] = thread
-        self.training_manager.training_futures[training_id2] = thread2
+        # Make sure the training is NOT_STARTED
+        assert (
+            self.training_manager.get_training_status(train_id)
+            == TrainingStatus.NOT_STARTED
+        )
 
-        with self.assertRaises(RuntimeError) as context:
-            TrainingManager.get_training_status(self.training_manager, training_id2)
-
-        self.assertIn("Unexpected error", str(context.exception))
-        timer.cancel()
+        # Let the "training" proceed and make sure it completes
+        start_event.set()
+        end_event.wait()
