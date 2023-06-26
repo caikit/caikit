@@ -155,6 +155,8 @@ def test_inference_optional_field(sample_task_model_id):
             f"/api/v1/{sample_task_model_id}/task/sample",
             json=json_input,
         )
+        # this is 500 because we explicitly pass in `throw` as True, which
+        # raises an internal error in the module
         assert response.status_code == 500
 
 
