@@ -792,6 +792,7 @@ def test_multiword_args():
     '''
     )
 
+
 def test_multiword_args():
     converter = CustomDocstringConverter()
     test1 = '''
@@ -808,7 +809,7 @@ def test_multiword_args():
     converted = converter.convert_to_google_style(test1)
     print(converted)
     assert (
-        converted 
+        converted
         == '''
     """Validate a single data item from a data stream
 

@@ -143,16 +143,12 @@ class CustomDocstringConverter:
                 + (num_word_ors_data_type * 2)
                 + (num_commas_data_type)
                 + (num_arrows_data_type * 2)
-            )   
+            )
             # If re accidentally absorbs description as data type
             if num_words_data_type >= 2:
                 if description:
-                    return (
-                        f"{white_space}{name}: {data_type}\n{desc_white_space}{description}"
-                    )
-                return(
-                    f"{white_space}{name}: {data_type}\n{desc_white_space}"
-                )
+                    return f"{white_space}{name}: {data_type}\n{desc_white_space}{description}"
+                return f"{white_space}{name}: {data_type}\n{desc_white_space}"
             if description:
                 # Safety check if description is input incorrectly
                 if (len(white_space.strip("\n"))) == len(desc_white_space):
