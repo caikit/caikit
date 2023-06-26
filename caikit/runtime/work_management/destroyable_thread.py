@@ -135,11 +135,11 @@ class DestroyableThread(threading.Thread):
 
     def get_or_throw(self):
         """
-                    After the thread has completed it's work, call this to get the output.
-                Returns:
-                    The resulting value of runnable_func(*runnable_args, **runnable_kwargs)
+            After the thread has completed it's work, call this to get the output.
+        Returns:
+            The resulting value of runnable_func(*runnable_args, **runnable_kwargs)
         Raises:
-                    Any exception raised by runnable_func(*runnable_args, **runnable_kwargs)
+            Any exception raised by runnable_func(*runnable_args, **runnable_kwargs)
         """
         if self.__destroyed:
             log.error(

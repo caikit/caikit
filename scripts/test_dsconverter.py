@@ -792,6 +792,33 @@ def test_multiword_args():
     '''
     )
 
+def test_multiword_args():
+    converter = CustomDocstringConverter()
+    test1 = '''
+    """Validate a single data item from a data stream
+
+        Args:
+            data_item: 
+                A data object yielded by the stream
+            data_item_number: 
+                The index of the object in the stream
+        """
+    '''
+    print(test1)
+    converted = converter.convert_to_google_style(test1)
+    print(converted)
+    assert (
+        converted 
+        == '''
+    """Validate a single data item from a data stream
+
+        Args:
+            data_item: A data object yielded by the stream
+            data_item_number: The index of the object in the stream
+        """
+    '''
+    )
+
 
 # Run the tests
 if __name__ == "__main__":
