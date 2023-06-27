@@ -262,7 +262,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
 
         Args:
             *args: Variable length argument list to be passed directly to run().
-            None**kwargs: Arbitrary keyword arguments to be passed directly to run().
+            **kwargs: Arbitrary keyword arguments to be passed directly to run().
         Returns:
             tuple: Iterable of prediction outputs, run as a batch.
         """
@@ -357,7 +357,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             data_stream (caikit.core.data_model.DataStream): Datastream to be
                 lazily sequentially processed by the module under consideration.
             *args: Variable length argument list to be passed directly to run().
-            None**kwargs: Arbitrary keyword arguments to be passed directly to run().
+            **kwargs: Arbitrary keyword arguments to be passed directly to run().
         Returns:
             protobufs: A DataBase object.
         """
@@ -545,7 +545,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
 
         Args:
             *args: Variable length argument list to be passed directly to run().
-            None**kwargs: Arbitrary keyword arguments to be passed directly to run().
+            **kwargs: Arbitrary keyword arguments to be passed directly to run().
         Returns:
             int: Inferred batch size based on expandable iterables.
         """

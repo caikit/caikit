@@ -49,8 +49,8 @@ class ModelSizer:
         Returns the estimated memory footprint of a model
         Args:
             model_id: The model identifier, used for informative logging
-            Nonecos_model_path: The path to the model archive in S3 storage
-            Nonemodel_type: The type of model, used to adjust the memory estimate
+            cos_model_path: The path to the model archive in S3 storage
+            model_type: The type of model, used to adjust the memory estimate
         Returns:
             The estimated size in bytes of memory that would be used by loading this model
         """

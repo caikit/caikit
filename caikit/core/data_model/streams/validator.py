@@ -81,7 +81,7 @@ class DataStreamValidator:
 
         Args:
             data_item: A data object yielded by the stream
-            Nonedata_item_number: The index of the object in the stream
+            data_item_number: The index of the object in the stream
         """
         if isinstance(data_item, dict):
             # From dictionary: error if key doesn't exist

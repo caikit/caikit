@@ -793,6 +793,32 @@ def test_multiword_args():
     )
 
 
+def test_multiword_args():
+    converter = CustomDocstringConverter()
+    test1 = '''
+    """Validate a single data item from a data stream
+
+        Args:
+            data_item: 
+                A data object yielded by the stream
+            data_item_number: 
+                The index of the object in the stream
+        """
+    '''
+    converted = converter.convert_to_google_style(test1)
+    assert (
+        converted
+        == '''
+    """Validate a single data item from a data stream
+
+        Args:
+            data_item: A data object yielded by the stream
+            data_item_number: The index of the object in the stream
+        """
+    '''
+    )
+
+
 # Run the tests
 if __name__ == "__main__":
     pytest.main([__file__])

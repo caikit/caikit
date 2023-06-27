@@ -134,7 +134,7 @@ class QualityEvaluator:
 
         Args:
             Note: here class should be initialized with gold and pred in the following format
-            Noneself.gold (list): list of gold set labels for every example, where each example
+            self.gold (list): list of gold set labels for every example, where each example
                 can have only one label eg: ['label1','label2', 'label3','label4']
             self.pred (list): Predicted-by-the-model set labels for every example.
             labels: list (Optional, defaults to None)
@@ -212,12 +212,12 @@ class QualityEvaluator:
 
         Args:
             Note: here class should be initialized with gold and pred in the following format
-                Noneself.gold (list(list)): list of gold set labels for every example eg:
-                    [['label1','label2'], ['label1', 'label4']]
-                self.pred (list(list)): Predicted-by-the-model set labels for every example.
+            self.gold (list(list)): list of gold set labels for every example eg:
+                [['label1','label2'], ['label1', 'label4']]
+            self.pred (list(list)): Predicted-by-the-model set labels for every example.
             find_label_func: function to fetch labels from any one prediction
-            Nonefind_label_data_func: function to fetch data that belongs to a certain class
-            Nonelabels: list (Optional, defaults to None)
+            find_label_data_func: function to fetch data that belongs to a certain class
+            labels: list (Optional, defaults to None)
                 Optional list of class labels to evaluate quality on. By default evaluation is done
                 over all class labels. Using this, you can explicitly mention only a subset of
                 labels to include in the quality evaluation.
