@@ -127,6 +127,14 @@ class RuntimeHTTPServer(RuntimeServerBase):
             self.global_predict_servicer.rpc_meter.flush_metrics()
             self.global_predict_servicer.rpc_meter.end_writer_thread()
 
+    # Override context manager impl
+    def __enter__(self):
+        return self
+
+    # TODO: what should actually happen here?
+    def __exit__(self, type_, value, traceback):
+        pass
+
     def start(self):
         """Start the server (blocking)"""
         # Parse TLS configuration

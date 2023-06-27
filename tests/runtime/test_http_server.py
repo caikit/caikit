@@ -47,7 +47,7 @@ def save_key_cert_pair(prefix, workdir, key=None, cert=None):
             handle.write(key)
     if cert is not None:
         crtfile = os.path.join(workdir, f"{prefix}.crt")
-        with open(keyfile, "w") as handle:
+        with open(crtfile, "w") as handle:
             handle.write(cert)
     return crtfile, keyfile
 
@@ -111,6 +111,25 @@ def sample_http_server(tls: bool = False, mtls: bool = False, **http_config_over
 def insecure_http_server():
     with sample_http_server() as sample_server:
         yield sample_server
+
+
+@pytest.fixture
+def http_server_with_tls():
+    with sample_http_server(tls=True, mtls=False) as sample_server:
+        yield sample_server
+
+
+def test_insecure_server(insecure_http_server):
+    with TestClient(insecure_http_server.server.app) as client:
+        response = client.get("/docs")
+        assert response.status_code == 200
+
+
+# this is questionable, does TestClient actually respect TLS or does it ignore?
+def test_tls_server(http_server_with_tls):
+    with TestClient(http_server_with_tls.server.app) as client:
+        response = client.get("/docs")
+        assert response.status_code == 200
 
 
 # Third Party
