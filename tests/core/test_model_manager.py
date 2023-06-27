@@ -241,6 +241,32 @@ def temp_saved_model(model):
         yield model_path
 
 
+class NoYamlFinder(ModelFinderBase):
+    name = "NOYAML"
+
+    def __init__(self, *_, **__):
+        pass
+
+    def find_model(self, model_path):
+        """This load function doesn't read from model_path, so it definitely does not read the config.yml file"""
+        return ModuleConfig({"module_id": SampleModule.MODULE_ID})
+
+
+class NoYamlLoader(ModelLoaderBase):
+    name = "NOYAML"
+
+    def __init__(self, *_, **__):
+        pass
+
+    def load(self, model_config):
+        """This load function doesn't read from model_path, so it definitely does not read the config.yml file"""
+        assert model_config.module_id == SampleModule.MODULE_ID
+        return SampleModule()
+
+
+model_finder_factory.register(NoYamlFinder)
+model_loader_factory.register(NoYamlLoader)
+
 ## Tests #######################################################################
 
 
@@ -474,33 +500,8 @@ def test_load_does_not_read_config_yml_if_loader_does_not_require_it(
     reset_globals, tmp_path
 ):
     tmpdir = str(tmp_path)
-
     with open(os.path.join(tmpdir, "config.yml"), "w") as f:
         f.write("{this is not yaml} !!@#$%^")
-
-    class NoYamlFinder(ModelFinderBase):
-        name = "NOYAML"
-
-        def __init__(self, *_, **__):
-            pass
-
-        def find_model(self, model_path):
-            """This load function doesn't read from model_path, so it definitely does not read the config.yml file"""
-            return ModuleConfig({"module_id": SampleModule.MODULE_ID})
-
-    class NoYamlLoader(ModelLoaderBase):
-        name = "NOYAML"
-
-        def __init__(self, *_, **__):
-            pass
-
-        def load(self, model_config):
-            """This load function doesn't read from model_path, so it definitely does not read the config.yml file"""
-            assert model_config.module_id == SampleModule.MODULE_ID
-            return SampleModule()
-
-    model_finder_factory.register(NoYamlFinder)
-    model_loader_factory.register(NoYamlLoader)
 
     with temp_config(
         {
@@ -515,4 +516,44 @@ def test_load_does_not_read_config_yml_if_loader_does_not_require_it(
         }
     ):
         model = caikit.core.load(tmpdir)
+        assert isinstance(model, SampleModule)
+
+
+def test_load_loader_finder_by_name(reset_globals):
+    """Make sure that non-default loaders and finders can be referenced by name
+    when calling load
+    """
+    with temp_config(
+        {
+            "model_management": {
+                "finders": {
+                    "default": {"type": "LOCAL"},
+                    "other": {"type": NoYamlFinder.name},
+                },
+                "loaders": {
+                    "default": {"type": "LOCAL"},
+                    "other": {"type": NoYamlLoader.name},
+                },
+            }
+        }
+    ):
+        model = caikit.core.load("unused", finder="other", loader="other")
+        assert isinstance(model, SampleModule)
+
+
+def test_load_loader_finder_by_value(reset_globals):
+    """Make sure that non-default loaders and finders can be passed by value"""
+    with temp_config(
+        {
+            "model_management": {
+                "finders": {
+                    "default": {"type": "LOCAL"},
+                },
+                "loaders": {
+                    "default": {"type": "LOCAL"},
+                },
+            }
+        }
+    ):
+        model = caikit.core.load("unused", finder=NoYamlFinder(), loader=NoYamlLoader())
         assert isinstance(model, SampleModule)
