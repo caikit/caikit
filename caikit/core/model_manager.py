@@ -69,32 +69,51 @@ class ModelManager:
         # Map to store module caches, to be used for singleton model lookups
         self.singleton_module_cache = {}
         self._singleton_lock = Lock()
-        self._finders = None
-        self._loaders = None
+        self._finders = {}
+        self._loaders = {}
 
     # make load function available from top-level of library
-    def load(self, module_path, *, load_singleton=False, **kwargs):
-        """Load a model and return an instantiated object on which we can run inference.
+    def load(
+        self,
+        module_path: str,
+        *,
+        load_singleton: bool = False,
+        finder: Union[str, ModelFinderBase] = "default",
+        loader: Union[str, ModelLoaderBase] = "default",
+        **kwargs,
+    ):
+        """Load a model and return an instantiated object on which we can run
+        inference.
 
         Args:
-            module_path (str | BytesIO | bytes): A module path to one of the
-                following. 1. A module path to a directory containing a yaml
-                config file in the top level. 2. A module path to a zip archive
-                containing either a yaml config file in the top level when
-                extracted, or a directory containing a yaml config file in the
-                top level. 3. A BytesIO object corresponding to a zip archive
-                containing either a yaml config file in the top level when
-                extracted, or a directory containing a yaml config file in the
-                top level. 4. A bytes object corresponding to a zip archive
-                containing either a yaml config file in the top level when
-                extracted, or a directory containing a yaml config file in the
-                top level.
-            load_singleton: bool (Defaults to False)
-                Indicates whether this model should be loaded as a singleton.
+            module_path (str | BytesIO | bytes): A module path (identifier) to
+                one of the following:
+                1. A directory containing a yaml config file in the top level.
+                2. A zip archive containing either a yaml config file in the
+                    top level when extracted, or a directory containing a yaml
+                    config file in the top level.
+                3. A BytesIO object corresponding to a zip archive containing
+                    either a yaml config file in the top level when extracted,
+                    or a directory containing a yaml config file in the top
+                    level.
+                4. A bytes object corresponding to a zip archive containing
+                    either a yaml config file in the top level when extracted,
+                    or a directory containing a yaml config file in the top
+                    level.
+                5. A string that is understood by the configured finder/loader
+
+        Kwargs:
+            load_singleton (bool): Load this model as a singleton
+            finder (Union[str, ModelFinderBase]): Finder to use when loading
+                this model. If passed as a string, this names the finder in the
+                global config model_management.finders section.
+            loader (Union[str, ModelLoaderBase]): Loader to use when loading
+                this model. If passed as a string, this is the name of the
+                loader in the global config model_management.loaders section.
 
         Returns:
-            subclass of caikit.core.modules.ModuleBase: Model object that is
-                loaded, configured, and ready for prediction.
+            model (ModuleBase) Model object that is loaded, configured, and
+                ready for prediction.
         """
         error.type_check("<COR98255724E>", bool, load_singleton=load_singleton)
 
@@ -115,9 +134,13 @@ class ModelManager:
 
         # Now that we have a file like object | str we can try to load as an archive.
         if zipfile.is_zipfile(module_path):
-            return self._load_from_zipfile(module_path, load_singleton, **kwargs)
+            return self._load_from_zipfile(
+                module_path, load_singleton, finder, loader, **kwargs
+            )
         try:
-            return self._load_from_dir(module_path, load_singleton, **kwargs)
+            return self._load_from_dir(
+                module_path, load_singleton, finder, loader, **kwargs
+            )
         except FileNotFoundError:
             error(
                 "<COR80419785E>",
@@ -128,14 +151,19 @@ class ModelManager:
                 ),
             )
 
-    def _load_from_dir(self, module_path, load_singleton, **kwargs):
+    def _load_from_dir(self, module_path, load_singleton, finder, loader, **kwargs):
         """Load a model from a directory.
 
         Args:
             module_path (str): Path to directory. At the top level of directory
                 is `config.yml` which holds info about the model.
-            load_singleton (bool): Indicates whether this model should be loaded
-                as a singleton.
+            load_singleton (bool): Load this model as a singleton
+            finder (Union[str, ModelFinderBase]): Finder to use when loading
+                this model. If passed as a string, this names the finder in the
+                global config model_management.finders section.
+            loader (Union[str, ModelLoaderBase]): Loader to use when loading
+                this model. If passed as a string, this is the name of the
+                loader in the global config model_management.loaders section.
 
         Returns:
             subclass of caikit.core.modules.ModuleBase: Model object that is
@@ -148,25 +176,13 @@ class ModelManager:
                 log.debug("Found %s in the singleton cache", module_path)
                 return singleton_entry
 
-            # Iterate all configured finders and try to find the model's config
-            model_config = None
-            finder_exceptions = []
-            for finder in self._get_finders():
-                model_config = finder.find_model(module_path, **kwargs)
-                if isinstance(model_config, Exception):
-                    finder_exceptions.append(model_config)
-                    model_config = None
-                elif model_config is not None:
-                    log.debug(
-                        "Successfully found %s with finder %s", module_path, finder.name
-                    )
-                    break
-
-            # If model_config is None and there are exceptions, aggregate
-            if model_config is None and finder_exceptions:
-                self._raise_aggregate_error(
-                    f"Failed to find {module_path}", finder_exceptions
-                )
+            # Use the given finder to try to find the module config for this
+            # module_path
+            #
+            # NOTE: This will lazily construct named finders if needed
+            log.debug("Attempting to find [%s] with finder %s", module_path, finder)
+            finder = self._get_finder(finder)
+            model_config = finder.find_model(module_path, **kwargs)
             error.value_check(
                 "<COR92173495E>",
                 model_config is not None,
@@ -174,37 +190,18 @@ class ModelManager:
                 module_path,
             )
 
-            # Iterate all loaders and try to load the model
-            loaded_model = None
-            loader_exceptions = []
-            for loader in self._get_loaders():
-                loaded_model = loader.load(model_config, **kwargs)
-                if isinstance(loaded_model, Exception):
-                    loader_exceptions.append(loaded_model)
-                    loaded_model = None
-                if loaded_model is not None:
-                    log.debug(
-                        "Successfully loaded %s with loader %s",
-                        module_path,
-                        loader.name,
-                    )
-                    break
-
-            # If no model successfully loaded, it's an error
-            if loaded_model is None and loader_exceptions:
-                self._raise_aggregate_error(
-                    f"Failed to load {module_path}", loader_exceptions
-                )
-            if loaded_model is None:
-                error(
-                    "<COR50207494E>",
-                    ValueError(
-                        "Unable to load model from {} with MODULE_ID {}".format(
-                            module_path,
-                            model_config.module_id,
-                        )
-                    ),
-                )
+            # Use the given loader to try to load the model
+            #
+            # NOTE: This will lazily construct named loaders if needed
+            loader = self._get_loader(loader)
+            loaded_model = loader.load(model_config, **kwargs)
+            error.value_check(
+                "<COR50207494E>",
+                loaded_model is not None,
+                "Unable to load model from {} with MODULE_ID {}",
+                module_path,
+                model_config.module_id,
+            )
 
             # If loading as a singleton, populate the cache
             if load_singleton:
@@ -213,14 +210,19 @@ class ModelManager:
             # Return successfully!
             return loaded_model
 
-    def _load_from_zipfile(self, module_path, load_singleton, **kwargs):
+    def _load_from_zipfile(self, module_path, load_singleton, finder, loader, **kwargs):
         """Load a model from a zip archive.
 
         Args:
             module_path (str): Path to directory. At the top level of directory
                 is `config.yml` which holds info about the model.
-            load_singleton (bool): Indicates whether this model should be loaded
-                as a singleton.
+            load_singleton (bool): Load this model as a singleton
+            finder (Union[str, ModelFinderBase]): Finder to use when loading
+                this model. If passed as a string, this names the finder in the
+                global config model_management.finders section.
+            loader (Union[str, ModelLoaderBase]): Loader to use when loading
+                this model. If passed as a string, this is the name of the
+                loader in the global config model_management.loaders section.
 
         Returns:
             subclass of caikit.core.modules.ModuleBase: Model object that is
@@ -233,7 +235,9 @@ class ModelManager:
             # to files directly, or it may unpack to a (single) directory containing the files.
             # We expect the former, but fall back to the second if we can't find the config.
             try:
-                model = self._load_from_dir(extract_path, load_singleton, **kwargs)
+                model = self._load_from_dir(
+                    extract_path, load_singleton, finder, loader, **kwargs
+                )
             # NOTE: Error handling is a little gross here, the main reason being that we
             # only want to log to error() if something is fatal, and there are a good amount
             # of things that can go wrong in this process.
@@ -262,7 +266,7 @@ class ModelManager:
                 # create one potential extra layer of nesting around the model directory.
                 try:
                     model = self._load_from_dir(
-                        nested_dirs[0], load_singleton, **kwargs
+                        nested_dirs[0], load_singleton, finder, loader, **kwargs
                     )
                 except FileNotFoundError:
                     error(
@@ -406,31 +410,45 @@ class ModelManager:
         # any other backend
         return getattr(backend_impl, SUPPORTED_LOAD_BACKENDS_VAR_NAME, [])
 
-    def _get_finders(self) -> List[ModelFinderBase]:
-        """Get the configured model finders
+    def _get_finder(self, finder: Union[str, ModelFinderBase]) -> ModelFinderBase:
+        """Get the configured model finder or the one passed by value
 
         NOTE: This is done lazily to avoid relying on import order and to allow
             for dynamic config changes
         """
-        if self._finders is None:
-            self._finders = [
-                model_finder_factory.construct(finder_cfg)
-                for finder_cfg in get_config().model_management.finders
-            ]
-        return self._finders
+        error.type_check("<COR45466249E>", str, ModelFinderBase, finder=finder)
+        if isinstance(finder, ModelFinderBase):
+            return finder
+        if finder not in self._finders:
+            finder_cfg = get_config().model_management.finders.get(finder)
+            error.value_check(
+                "<COR55057389E>",
+                isinstance(finder_cfg, dict),
+                "Unknown finder: {}",
+                finder,
+            )
+            self._finders[finder] = model_finder_factory.construct(finder_cfg)
+        return self._finders[finder]
 
-    def _get_loaders(self) -> List[ModelLoaderBase]:
-        """Get the configured model loaders
+    def _get_loader(self, loader: Union[str, ModelLoaderBase]) -> ModelLoaderBase:
+        """Get the configured model loader or the one passed by value
 
         NOTE: This is done lazily to avoid relying on import order and to allow
             for dynamic config changes
         """
-        if self._loaders is None:
-            self._loaders = [
-                model_loader_factory.construct(loader_cfg)
-                for loader_cfg in get_config().model_management.loaders
-            ]
-        return self._loaders
+        error.type_check("<COR45466258E>", str, ModelLoaderBase, loader=loader)
+        if isinstance(loader, ModelLoaderBase):
+            return loader
+        if loader not in self._loaders:
+            loader_cfg = get_config().model_management.loaders.get(loader)
+            error.value_check(
+                "<COR55057398E>",
+                isinstance(loader_cfg, dict),
+                "Unknown loader: {}",
+                loader,
+            )
+            self._loaders[loader] = model_loader_factory.construct(loader_cfg)
+        return self._loaders[loader]
 
     @staticmethod
     def _raise_aggregate_error(err_msg: str, exceptions: List[Exception]):
