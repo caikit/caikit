@@ -440,33 +440,34 @@ def test_load_with_two_shared_loaders_of_the_same_type(good_model_path, reset_gl
     with temp_config(
         {
             "model_management": {
-                "finders": [{"type": "LOCAL"}],
-                "loaders": [
-                    {
+                "finders": {"default": {"type": "LOCAL"}},
+                "loaders": {
+                    "model-one": {
                         "type": TestLoader.name,
                         "config": {"model_type": "model one"},
                     },
-                    {
+                    "model-two": {
                         "type": TestLoader.name,
                         "config": {"model_type": "model two"},
                     },
-                    {"type": "LOCAL"},
-                ],
+                    "default": {"type": "LOCAL"},
+                },
             }
         }
     ):
-        loaders = MODEL_MANAGER._get_loaders()
-        assert len(loaders) == 3
+        model_one_loader = MODEL_MANAGER._get_loader("model-one")
+        model_two_loader = MODEL_MANAGER._get_loader("model-two")
 
         # plain model load should use first loader
-        model = caikit.core.load(good_model_path)
-        assert model in loaders[0].loaded_models
-        assert model not in loaders[1].loaded_models
+        model = caikit.core.load(good_model_path, loader="model-one")
+        assert model_one_loader
+        assert model in model_one_loader.loaded_models
+        assert model not in model_two_loader.loaded_models
 
         # model load that fails in the first loader will use the second
-        model = caikit.core.load(good_model_path, model_type="model two")
-        assert model not in loaders[0].loaded_models
-        assert model in loaders[1].loaded_models
+        model = caikit.core.load(good_model_path, loader="model-two")
+        assert model not in model_one_loader.loaded_models
+        assert model in model_two_loader.loaded_models
 
 
 def test_load_does_not_read_config_yml_if_loader_does_not_require_it(
@@ -504,12 +505,12 @@ def test_load_does_not_read_config_yml_if_loader_does_not_require_it(
     with temp_config(
         {
             "model_management": {
-                "finders": [
-                    {"type": NoYamlFinder.name},
-                ],
-                "loaders": [
-                    {"type": NoYamlLoader.name},
-                ],
+                "finders": {
+                    "default": {"type": NoYamlFinder.name},
+                },
+                "loaders": {
+                    "default": {"type": NoYamlLoader.name},
+                },
             }
         }
     ):

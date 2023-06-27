@@ -84,7 +84,7 @@ model_loader_factory.register(TestLoader)
 def configured_backends():
     local_loaders = [
         loader
-        for loader in MODEL_MANAGER._get_loaders()
+        for loader in MODEL_MANAGER._loaders.values()
         if isinstance(loader, LocalModelLoader)
     ]
     return [backend for loader in local_loaders for backend in loader._backends]
@@ -126,8 +126,8 @@ def reset_module_registry():
 def reset_model_manager():
     prev_finders = MODEL_MANAGER._finders
     prev_loaders = MODEL_MANAGER._loaders
-    MODEL_MANAGER._finders = None
-    MODEL_MANAGER._loaders = None
+    MODEL_MANAGER._finders = {}
+    MODEL_MANAGER._loaders = {}
     yield
     MODEL_MANAGER._finders = prev_finders
     MODEL_MANAGER._loaders = prev_loaders

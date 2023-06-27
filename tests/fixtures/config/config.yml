@@ -20,11 +20,13 @@ inference_plugin:
 
 model_management:
     finders:
-        - type: LOCAL
+        default:
+            type: LOCAL
     loaders:
-        - type: LOCAL
-          config:
-              backend_priority:
-                  # There is a 'MOCK' backend type defined in our test helpers
-                  - type: MOCK
-                  - type: LOCAL
+        default:
+            type: LOCAL
+            config:
+                backend_priority:
+                    # There is a 'MOCK' backend type defined in our test helpers
+                    - type: MOCK
+                    - type: LOCAL

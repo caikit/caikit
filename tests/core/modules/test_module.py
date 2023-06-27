@@ -331,12 +331,26 @@ def test_class_attributes(reset_globals):
     # Configure and make sure it can be fetched by the class
     with temp_config(
         {
-            "module_backends": {
-                "load_priority": [{"type": backend_types.MOCK}],
+            "model_management": {
+                "loaders": {
+                    "default": {
+                        "type": "LOCAL",
+                        "config": {
+                            "backend_priority": [
+                                {"type": backend_types.MOCK},
+                            ]
+                        },
+                    },
+                }
             }
         }
     ):
         assert DummyBar.BACKEND_TYPE == backend_types.MOCK
+
+        # Normally non-local backend modules are loaded through caikit.load, so
+        # we need to make sure the local loader has been properly configured to
+        # enable local instance instantiation.
+        assert MODEL_MANAGER._get_loader("default")
 
         # Make sure an instance can fetch via get_backend()
         inst = DummyBar()
