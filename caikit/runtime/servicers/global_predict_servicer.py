@@ -314,5 +314,5 @@ class GlobalPredictServicer:
             raise CaikitRuntimeException(
                 status_code=StatusCode.INVALID_ARGUMENT,
                 message=f"Wrong inference RPC invoked for model class {type(model)}. "
-                f"Use {request_rpc.name} instead of {request_name}",
+                f"Use {module_rpc.name} instead of {request_rpc.name}",
             )

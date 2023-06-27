@@ -242,12 +242,14 @@ def test_rpc_validation_on_predict(
     predict_request = sample_inference_service.messages.OtherTaskRequest(
         sample_input_sampleinputtype=HAPPY_PATH_INPUT
     )
-    with pytest.raises(grpc.RpcError) as context:
+    with pytest.raises(
+        grpc.RpcError,
+        match="Wrong inference RPC invoked for model class .* Use SampleTaskPredict instead of OtherTaskPredict",
+    ) as context:
         stub.OtherTaskPredict(
             predict_request, metadata=[("mm-model-id", sample_task_model_id)]
         )
     assert context.value.code() == grpc.StatusCode.INVALID_ARGUMENT
-    assert "Wrong inference RPC invoked for model class" in str(context.value)
 
 
 def test_rpc_validation_on_predict_for_unsupported_model(
