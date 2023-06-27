@@ -17,7 +17,7 @@ which may be a path, id, or other identifier.
 """
 
 # Standard
-from typing import Optional, Union
+from typing import Optional
 import abc
 
 # Local
@@ -33,7 +33,7 @@ class ModelFinderBase(FactoryConstructible):
         self,
         model_path: str,
         **kwargs,
-    ) -> Union[Optional[ModuleConfig], Exception]:
+    ) -> Optional[ModuleConfig]:
         """Find any model that can be uniquely identified by the given (logical)
         path. If found, return the in-memory ModuleConfig.
 
@@ -45,7 +45,7 @@ class ModelFinderBase(FactoryConstructible):
                 arguments.
 
         Returns:
-            result (Union[Optional[ModuleConfig], Exception]): If found, the
-                in-memory config object for the model. If not found, None or an
-                Exception is returned.
+            result (Optional[ModuleConfig]): If found, the in-memory config
+                object for the model. If the model cannot be found, an exception
+                may be raised or None returned.
         """

@@ -15,11 +15,8 @@
 The LocalModelFinder locates models locally on disk
 """
 # Standard
-from typing import Optional, Union
+from typing import Optional
 import os
-
-# Third Party
-import yaml
 
 # First Party
 import aconfig
@@ -47,21 +44,11 @@ class LocalModelFinder(ModelFinderBase):
         self,
         model_path: str,
         **__,
-    ) -> Union[Optional[ModuleConfig], Exception]:
+    ) -> Optional[ModuleConfig]:
         """Find a model at the local path or with the configured prefix"""
         full_model_path = model_path
         if not os.path.exists(model_path) and self._load_path:
             full_model_path = os.path.join(self._load_path, model_path)
             log.debug2("Looking for %s in %s", model_path, full_model_path)
         full_model_path = os.path.normpath(full_model_path)
-        try:
-            return ModuleConfig.load(full_model_path)
-        except (FileNotFoundError, KeyError, yaml.parser.ParserError) as err:
-            log.debug(
-                "[%s] Unable to load %s (full path %s): %s",
-                self.name,
-                model_path,
-                full_model_path,
-                str(err),
-            )
-            return err
+        return ModuleConfig.load(full_model_path)

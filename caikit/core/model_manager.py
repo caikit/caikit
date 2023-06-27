@@ -20,7 +20,7 @@
 from contextlib import contextmanager
 from io import BytesIO
 from threading import Lock
-from typing import List, Union
+from typing import Union
 import os
 import tempfile
 import zipfile
@@ -449,16 +449,3 @@ class ModelManager:
             )
             self._loaders[loader] = model_loader_factory.construct(loader_cfg)
         return self._loaders[loader]
-
-    @staticmethod
-    def _raise_aggregate_error(err_msg: str, exceptions: List[Exception]):
-        """Common semantics for aggregating multiple errors"""
-        error_types = set(type(err) for err in exceptions)
-        error_type = ValueError
-        if len(error_types) == 1:
-            error_type = list(error_types)[0]
-        if len(exceptions) == 1:
-            raise error_type(err_msg) from exceptions[0]
-        err = error_type(err_msg)
-        err.parents = exceptions
-        raise err

@@ -15,7 +15,7 @@
 The LocalModelLoader loads a model into local memory
 """
 # Standard
-from typing import Callable, Optional, Union
+from typing import Callable, Optional
 import inspect
 
 # First Party
@@ -106,9 +106,7 @@ class LocalModelLoader(ModelLoaderBase):
 
         log.debug2("All configured backends: %s", self._backends)
 
-    def load(
-        self, model_config: ModuleConfig, **kwargs
-    ) -> Union[Optional[ModuleBase], Exception]:
+    def load(self, model_config: ModuleConfig, **kwargs) -> Optional[ModuleBase]:
         """Given a ModelConfig, attempt to load it into memory
 
         Args:
@@ -129,6 +127,7 @@ class LocalModelLoader(ModelLoaderBase):
         )
         # Look up the backend that this model was created with
         model_creation_backend = model_config.get("model_backend", backend_types.LOCAL)
+        log.debug2("Model creation backend: %s", model_creation_backend)
 
         # Iterate through each backend in priority order and see if this module
         # can load with it
