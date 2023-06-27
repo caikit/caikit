@@ -16,7 +16,7 @@ One particular decision here is that the responsibility for delegating `inferenc
 
 ## Status
 
-choose one: Accepted
+choose one: [Superseded by 020-model-management-abstractions](020-model-management-abstractions.md)
 
 ## Consequences
 

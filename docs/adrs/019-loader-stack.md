@@ -12,7 +12,7 @@ When loading a model in a non-local backend, there are several ways to map a giv
 
 ## Status
 
-choose one: Accepted
+choose one: [Superseded by 020-model-management-abstractions](020-model-management-abstractions.md)
 
 ## Consequences
 
