@@ -426,7 +426,7 @@ def test_train_primitive_model(
         model_name=model_name,
         sample_input=SampleInputType(name="Gabe"),
         simple_list=["hello", "world"],
-        union_list_str_sequence=train_request_class.StrSequence(
+        union_list_str_sequence=train_request_class.UnionListStrSequence(
             values=["str", "sequence"]
         ),
         training_params_json_dict={"foo": {"bar": [1, 2, 3]}},
