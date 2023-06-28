@@ -18,6 +18,7 @@ API based on the task definitions available at boot.
 """
 
 # Standard
+from contextlib import contextmanager
 from functools import partial
 
 # Standardfrom functools import partial
@@ -26,6 +27,8 @@ import asyncio
 import json
 import re
 import ssl
+import threading
+import time
 
 # Third Party
 from fastapi import FastAPI, Request, Response
@@ -122,23 +125,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
         self._bind_routes(inference_service)
         # self._bind_routes(train_service)
 
-    def __del__(self):
-        if get_config().runtime.metering.enabled:
-            self.global_predict_servicer.rpc_meter.flush_metrics()
-            self.global_predict_servicer.rpc_meter.end_writer_thread()
-
-    # Override context manager impl
-    def __enter__(self):
-        return self
-
-    # TODO: what should actually happen here?
-    def __exit__(self, type_, value, traceback):
-        pass
-
-    def start(self):
-        """Start the server (blocking)"""
         # Parse TLS configuration
         tls_kwargs = {}
+        print("setting up tls and server config\n")
+        print(self.tls_config)
         if (
             self.tls_config
             and self.tls_config.server.key
@@ -153,7 +143,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 tls_kwargs["ssl_cert_reqs"] = ssl.CERT_REQUIRED
 
         # Start the server and run forever
-        uvicorn.run(
+        config = uvicorn.Config(
             self.app,
             host="0.0.0.0",
             port=self.port,
@@ -161,6 +151,35 @@ class RuntimeHTTPServer(RuntimeServerBase):
             log_config=None,
             **tls_kwargs,
         )
+        self.server = uvicorn.Server(config=config)
+        self.uvicorn_server_thread = threading.Thread(target=self.server.run)
+
+    def __del__(self):
+        if get_config().runtime.metering.enabled:
+            self.global_predict_servicer.rpc_meter.flush_metrics()
+            self.global_predict_servicer.rpc_meter.end_writer_thread()
+
+    # Override context manager impl
+    def __enter__(self):
+        self.start()
+        return self
+
+    # TODO: what should actually happen here?
+    def __exit__(self, type_, value, traceback):
+        pass
+
+    def start(self):
+        """Start the server (blocking)"""
+        self.server.run()
+
+    @contextmanager
+    def run_in_thread(self):
+        print("starting server thread\n")
+        self.uvicorn_server_thread.start()
+        while not self.server.started:
+            time.sleep(1e-3)
+        print("server ready")
+        yield
 
     ##########
     ## Impl ##

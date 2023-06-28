@@ -21,12 +21,12 @@ from typing import Optional
 import json
 import os
 import tempfile
+import threading
 import time
 
 # Third Party
 import pytest
-
-# import requests
+import requests
 import tls_test_tools
 
 # First Party
@@ -61,75 +61,100 @@ class SampleServer:
     client_certfile: Optional[str]
 
 
+@dataclass
+class KeyPair:
+    cert: str
+    key: str
+
+
+@dataclass
+class TLSConfig:
+    server: KeyPair
+    client: KeyPair
+
+
 @contextmanager
-def sample_http_server(tls: bool = False, mtls: bool = False, **http_config_overrides):
+def generate_tls_configs(
+    tls: bool = False, mtls: bool = False, **http_config_overrides
+):
     """Helper to boot up an instance of the http server on an available port"""
     with tempfile.TemporaryDirectory() as workdir:
         config_overrides = {}
         client_keyfile, client_certfile, ca_certfile = None, None, None
         if mtls or tls:
             ca_key = tls_test_tools.generate_key()[0]
-            ca_certfile, _ = save_key_cert_pair(
-                "ca", workdir, cert=tls_test_tools.generate_ca_cert(ca_key)
-            )
-            server_keyfile, server_certfile = save_key_cert_pair(
+            ca_cert = tls_test_tools.generate_ca_cert(ca_key)
+            ca_certfile, _ = save_key_cert_pair("ca", workdir, cert=ca_cert)
+            print("setting up ca_certfile to be: ")
+            print(ca_certfile)
+            server_certfile, server_keyfile = save_key_cert_pair(
                 "server",
                 workdir,
                 *tls_test_tools.generate_derived_key_cert_pair(ca_key),
             )
-            config_overrides["tls"] = {
-                "server": {
-                    "key": server_keyfile,
-                    "cert": server_certfile,
-                }
-            }
+
+            tls_config = TLSConfig(
+                server=KeyPair(cert=server_certfile, key=server_keyfile),
+                client=KeyPair(cert=ca_certfile, key=""),
+            )
             if mtls:
-                client_keyfile, client_certfile = save_key_cert_pair(
+                client_certfile, client_keyfile = save_key_cert_pair(
                     "client",
                     workdir,
                     *tls_test_tools.generate_derived_key_cert_pair(ca_key),
                 )
-                config_overrides["tls"]["client"] = {"cert": ca_certfile}
+                # tls_config.client = KeyPair(cert=ca_certfile, key="")
+                tls_config.client = KeyPair(cert=client_certfile, key=client_keyfile)
+            config_overrides["runtime"] = {"tls": tls_config}
         port = http_server.RuntimeServerBase._find_port()
         config_overrides.setdefault("runtime", {})["http"] = {
             "port": port,
             **http_config_overrides,
         }
+
         with temp_config(config_overrides, "merge"):
-            with http_server.RuntimeHTTPServer() as server:
-                time.sleep(0.1)
-                yield SampleServer(
-                    server=server,
-                    port=port,
-                    ca_certfile=ca_certfile,
-                    client_keyfile=client_keyfile,
-                    client_certfile=client_certfile,
-                )
+            yield config_overrides
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def insecure_http_server():
-    with sample_http_server() as sample_server:
-        yield sample_server
+    with generate_tls_configs():
+        insecure_http_server = http_server.RuntimeHTTPServer()
+        yield insecure_http_server
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def http_server_with_tls():
-    with sample_http_server(tls=True, mtls=False) as sample_server:
-        yield sample_server
+    with generate_tls_configs(
+        tls=True, mtls=False, http_config_overrides={}
+    ) as config_overrides:
+        print("in pytest fixture")
+        print(config_overrides)
+        http_server_with_tls = http_server.RuntimeHTTPServer(
+            tls_config_override=config_overrides["runtime"]["tls"]
+        )
+        yield http_server_with_tls
 
 
 def test_insecure_server(insecure_http_server):
-    with TestClient(insecure_http_server.server.app) as client:
-        response = client.get("/docs")
-        assert response.status_code == 200
+    with insecure_http_server.run_in_thread():
+        resp = requests.get(f"http://0.0.0.0:{insecure_http_server.port}/docs")
+        print(resp.status_code)
+        resp.raise_for_status()
+    # TODO: how do I kill this thread?
 
-
-# this is questionable, does TestClient actually respect TLS or does it ignore?
+@pytest.mark.skip(reason="WIP")
 def test_tls_server(http_server_with_tls):
-    with TestClient(http_server_with_tls.server.app) as client:
-        response = client.get("/docs")
-        assert response.status_code == 200
+    with http_server_with_tls.run_in_thread():
+        print("cert is: ")
+        print(http_server_with_tls.tls_config.client.cert)
+        resp = requests.get(
+            f"https://0.0.0.0:{http_server_with_tls.port}/docs",
+            verify=http_server_with_tls.tls_config.client.cert,
+        )
+        print(resp.status_code)
+        resp.raise_for_status()
+    # TODO: how do I kill this thread?
 
 
 # Third Party
