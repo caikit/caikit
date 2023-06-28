@@ -193,8 +193,8 @@ def module(
         cls_.TRAIN_SIGNATURE = CaikitMethodSignature(cls_, "train")
 
         # If the module has a task, validate it:
-        if cls_.TASK_CLASS:
-            cls_.TASK_CLASS.validate_run_signature(cls_.RUN_SIGNATURE)
+        # if cls_.TASK_CLASS:
+        #     cls_.TASK_CLASS.validate_run_signature(cls_.RUN_SIGNATURE)
 
         # If no backend support described in the class, add current backend
         # as the only backend that can load models trained by this module

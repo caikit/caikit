@@ -46,6 +46,7 @@ class TaskBase:
 
     @classmethod
     def validate_run_signature(cls, signature: CaikitMethodSignature) -> None:
+        #
         if not signature.parameters:
             raise ValueError(
                 "Task could not be validated, no .run parameters were provided"
@@ -169,10 +170,7 @@ class TaskBase:
             return False
 
 
-def task(
-    required_parameters: Dict[str, ValidInputTypes],
-    output_type: Type[DataBase],
-) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
+def task(*args, **kwargs) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
     """The decorator for AI Task classes.
 
     This defines an output data model type for the task, and a minimal set of required inputs
@@ -217,53 +215,74 @@ def task(
     # TODO: type checking on required_inputs
     # Check that return type is a data model or iterable of a data model
     # We explicitly require `Iterable[T]` on output type annotations
-    if typing.get_origin(output_type) == collections.abc.Iterable:
-        error.value_check(
-            "<COR12569910E>",
-            len(typing.get_args(output_type)) == 1,
-            "A single type T must be provided for tasks with output type Iterable[T].",
-        )
-        error.subclass_check(
-            "<COR12766440E>", typing.get_args(output_type)[0], DataBase
-        )
-        output_streaming = True
-    else:
-        error.subclass_check("<COR12766440E>", output_type, DataBase)
-        output_streaming = False
+    # if typing.get_origin(output_type) == collections.abc.Iterable:
+    #     error.value_check(
+    #         "<COR12569910E>",
+    #         len(typing.get_args(output_type)) == 1,
+    #         "A single type T must be provided for tasks with output type Iterable[T].",
+    #     )
+    #     error.subclass_check(
+    #         "<COR12766440E>", typing.get_args(output_type)[0], DataBase
+    #     )
+    #     output_streaming = True
+    # else:
+    #     error.subclass_check("<COR12766440E>", output_type, DataBase)
+    #     output_streaming = False
 
-    def get_required_parameters(_):
-        return required_parameters
+    # def get_required_parameters(_):
+    #     return cls.unary_params
 
-    def get_output_type(_):
-        return output_type
-
-    def is_output_streaming_task(_):
-        return output_streaming
+    # def get_output_type(_):
+    #     return output_type
 
     def decorator(cls: Type[TaskBase]) -> Type[TaskBase]:
-        get_required_parameters.__doc__ = f"""
-        Returns the set of input parameters required in the `run` function for any module that
-        implements the '{cls.__name__}' Task.
-        
-        ({required_parameters})
+        # get_required_parameters.__doc__ = f"""
+        # Returns the set of input parameters required in the `run` function for any module that
+        # implements the '{cls.__name__}' Task.
 
-        Returns: Dict[str, Type]
-            The parameter dictionary for the {cls.__name__} inference task
-        """
+        # ({cls.__annotations__.unary_params})
 
-        get_output_type.__doc__ = f"""
-        Returns the output type required of the `run` function in any module that implements the
-        {cls.__name__} task. 
-        
-        ({output_type})
-        
-        Returns: Type
-            The output type of the {cls.__name__} inference task
-        """
+        # Returns: Dict[str, Type]
+        #     The parameter dictionary for the {cls.__name__} inference task
+        # """
+
+        # get_output_type.__doc__ = f"""
+        # Returns the output type required of the `run` function in any module that implements the
+        # {cls.__name__} task.
+
+        # ({cls.__annotations__.unary_output_type})
+
+        # Returns: Type
+        #     The output type of the {cls.__name__} inference task
+        # """
+        # output_type = cls.__annotations__.unary_output_type
+        # # setattr(cls, "get_required_parameters", classmethod(get_required_parameters))
+        # # setattr(cls, "get_output_type", classmethod(get_output_type))
+
+        # if typing.get_origin(output_type) == collections.abc.Iterable:
+        #     error.value_check(
+        #         "<COR12569910E>",
+        #         len(typing.get_args(output_type)) == 1,
+        #         "A single type T must be provided for tasks with output type Iterable[T].",
+        #     )
+        #     error.subclass_check(
+        #         "<COR12766440E>", typing.get_args(output_type)[0], DataBase
+        #     )
+        #     output_streaming = True
+        # else:
+        #     error.subclass_check("<COR12766440E>", output_type, DataBase)
+        #     output_streaming = False
+
+        def is_output_streaming_task(_):
+            return "streaming_output_type" in cls.__annotations__
+
+        def is_input_streaming_task(_):
+            return "streaming_params" in cls.__annotations__
+
         error.subclass_check("<COR19436440E>", cls, TaskBase)
-        setattr(cls, "get_required_parameters", classmethod(get_required_parameters))
-        setattr(cls, "get_output_type", classmethod(get_output_type))
         setattr(cls, "is_output_streaming_task", classmethod(is_output_streaming_task))
+        setattr(cls, "is_input_streaming_task", classmethod(is_input_streaming_task))
+
         return cls
 
     return decorator

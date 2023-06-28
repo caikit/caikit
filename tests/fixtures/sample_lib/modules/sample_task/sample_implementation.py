@@ -50,6 +50,24 @@ class SampleModule(caikit.core.ModuleBase):
             raise ValueError(f"{self.POISON_PILL_NAME} is not allowed!")
         return SampleOutputType(f"Hello {sample_input.name}")
 
+    def run_stream_out(
+        self, sample_input: SampleInputType
+    ) -> DataStream[SampleOutputType]:
+        """
+        Args:
+            sample_input (sample_lib.data_model.SampleInputType): the input
+
+        Returns:
+            caikit.core.data_model.DataStream[sample_lib.data_model.SampleOutputType]: The output
+                stream
+        """
+        list_ = [
+            SampleOutputType(f"Hello {sample_input.name}")
+            for x in range(self.stream_size)
+        ]
+        stream = DataStream.from_iterable(list_)
+        return stream
+
     def save(self, model_path):
         module_saver = ModuleSaver(
             self,

@@ -2,6 +2,7 @@
 Dummy data model object for testing
 """
 # Standard
+from typing import Iterable
 import typing
 
 # Local
@@ -37,25 +38,17 @@ class SampleTrainingType(DataObjectBase):
     number: int
 
 
-@task(
-    required_parameters={"sample_input": SampleInputType},
-    output_type=SampleOutputType,
-)
+@task()
 class SampleTask(TaskBase):
+    unary_params: {"sample_input": SampleInputType}
+    streaming_params: {"text": Iterable[str]}
+    unary_output_type: SampleOutputType
+    streaming_output_type: Iterable[str]
     """A sample `task` for our test models"""
 
 
-@task(
-    required_parameters={"sample_input": SampleInputType},
-    output_type=typing.Iterable[SampleOutputType],
-)
-class StreamingTask(TaskBase):
-    """A streaming version of a task"""
-
-
-@task(
-    required_parameters={"sample_input": SampleInputType},
-    output_type=OtherOutputType,
-)
+@task()
 class OtherTask(TaskBase):
+    unary_params: {"sample_input": SampleInputType}
+    unary_output_type: OtherOutputType
     """Another sample `task` for our test models"""
