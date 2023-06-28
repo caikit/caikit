@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-The LocalModelLoader loads a model into local memory
+The LocalModelLoader loads a model locally, optionally with a non-local backend
+if the given module provides multiple backend-specific implementations.
 """
 # Standard
 from typing import Callable, Optional

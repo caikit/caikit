@@ -25,6 +25,8 @@ The previous ADRs for [018-shared-backends](018-shared-backends.md) and [019-loa
 * They relied on an ordered list of configured objects to discover the right loader instance which was hard to configure in a running server since lists are not well supported with environment variables
     * This also did not allow explicit specification of a loader for a model where mulitple loaders in the list could work, so you could not load one model one way and another a different way
 
+Prior to `018` and `019`, the `module_backend` abstraction was explicitly tasked with performing "internal distribution" (distributing the work of a given module to some framework, requiring specific knowledge of the algorithm implemented by the module). With `018` and `019`, `module_backend` was extended to also support "external distribution" (distributing the whole operation of a given module as a black box without knowledge of the module's algorithm). This was at the heart of what lead to the confusion, so in this ADR we walk that back and split those responsibilities between `module_backend` (responsible for "internal distribution") and `loader` (responsible for "external distribution").
+
 ## Decision
 
 * The `SharedTrainBackend` an `SharedLoadBackend` abstract classes will be removed

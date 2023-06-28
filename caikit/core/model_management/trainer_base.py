@@ -82,7 +82,7 @@ class TrainerBase(FactoryConstructible):
         *args,
         save_path: Optional[str] = None,
         **kwargs,
-    ) -> "TrainFutureBase":
+    ) -> "ModelFutureBase":
         """Start training the given module and return a future to the trained
         model instance
         """

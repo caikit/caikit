@@ -13,7 +13,8 @@
 # limitations under the License.
 """
 The model management abstractions manage the key lifecycle phases of a concrete
-model instance and are used by the ModelManager to handle end-to-end management.
+model instance and are used by the ModelManager to handle each phase of the
+model lifecycle.
 """
 
 # Local

@@ -20,13 +20,16 @@ from ..toolkit.factory import Factory
 from .local_model_finder import LocalModelFinder
 from .local_model_loader import LocalModelLoader
 
-# Trainer factory
+# Trainer factory. A trainer is responsible for performing the train operation
+# against a configured framework connection.
 trainer_factory = Factory("Trainer")
 
-# Model finder factory
+# Model finder factory. A finder is responsible for locating a well defined
+# configuration for a model based on a unique path or id.
 model_finder_factory = Factory("ModelFinder")
 model_finder_factory.register(LocalModelFinder)
 
-# Model loader factory
+# Model loader factory. A loader is responsible for taking a model configuration
+# and preparing the model to be run in a configured runtime location.
 model_loader_factory = Factory("ModelLoader")
 model_loader_factory.register(LocalModelLoader)
