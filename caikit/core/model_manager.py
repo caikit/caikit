@@ -20,7 +20,7 @@
 from contextlib import contextmanager
 from io import BytesIO
 from threading import Lock
-from typing import Union
+from typing import Dict, Union
 import os
 import tempfile
 import zipfile
@@ -39,6 +39,7 @@ from .modules.base import ModuleBase
 from .modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
 from .registries import module_registry
 from .toolkit.errors import error_handler
+from .toolkit.factory import Factory, FactoryConstructible
 from caikit.config import get_config
 
 log = alog.use_channel("MDLMNG")
@@ -410,42 +411,55 @@ class ModelManager:
         # any other backend
         return getattr(backend_impl, SUPPORTED_LOAD_BACKENDS_VAR_NAME, [])
 
-    def _get_finder(self, finder: Union[str, ModelFinderBase]) -> ModelFinderBase:
-        """Get the configured model finder or the one passed by value
+    @staticmethod
+    def _get_component(
+        component: Union[str, FactoryConstructible],
+        component_dict: Dict[str, FactoryConstructible],
+        component_factory: Factory,
+        component_name: str,
+        component_cfg: dict,
+        component_type: type,
+    ) -> FactoryConstructible:
+        """Common logic for resolving components from config
 
         NOTE: This is done lazily to avoid relying on import order and to allow
             for dynamic config changes
         """
-        error.type_check("<COR45466249E>", str, ModelFinderBase, finder=finder)
-        if isinstance(finder, ModelFinderBase):
-            return finder
-        if finder not in self._finders:
-            finder_cfg = get_config().model_management.finders.get(finder)
+        error.type_check(
+            "<COR45466249E>", str, component_type, **{component_name: component}
+        )
+        if isinstance(component, component_type):
+            return component
+        if component not in component_dict:
+            cfg = component_cfg.get(component)
             error.value_check(
                 "<COR55057389E>",
-                isinstance(finder_cfg, dict),
-                "Unknown finder: {}",
-                finder,
+                isinstance(cfg, dict),
+                "Unknown {}: {}",
+                component_name,
+                component,
             )
-            self._finders[finder] = model_finder_factory.construct(finder_cfg)
-        return self._finders[finder]
+            component_dict[component] = component_factory.construct(cfg)
+        return component_dict[component]
+
+    def _get_finder(self, finder: Union[str, ModelFinderBase]) -> ModelFinderBase:
+        """Get the configured model finder or the one passed by value"""
+        return self._get_component(
+            component=finder,
+            component_dict=self._finders,
+            component_factory=model_finder_factory,
+            component_name="finder",
+            component_cfg=get_config().model_management.finders,
+            component_type=ModelFinderBase,
+        )
 
     def _get_loader(self, loader: Union[str, ModelLoaderBase]) -> ModelLoaderBase:
-        """Get the configured model loader or the one passed by value
-
-        NOTE: This is done lazily to avoid relying on import order and to allow
-            for dynamic config changes
-        """
-        error.type_check("<COR45466258E>", str, ModelLoaderBase, loader=loader)
-        if isinstance(loader, ModelLoaderBase):
-            return loader
-        if loader not in self._loaders:
-            loader_cfg = get_config().model_management.loaders.get(loader)
-            error.value_check(
-                "<COR55057398E>",
-                isinstance(loader_cfg, dict),
-                "Unknown loader: {}",
-                loader,
-            )
-            self._loaders[loader] = model_loader_factory.construct(loader_cfg)
-        return self._loaders[loader]
+        """Get the configured model loader or the one passed by value"""
+        return self._get_component(
+            component=loader,
+            component_dict=self._loaders,
+            component_factory=model_loader_factory,
+            component_name="loader",
+            component_cfg=get_config().model_management.loaders,
+            component_type=ModelLoaderBase,
+        )
