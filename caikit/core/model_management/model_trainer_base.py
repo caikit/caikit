@@ -26,7 +26,7 @@ from ..modules import ModuleBase
 from ..toolkit.factory import FactoryConstructible
 
 
-class TrainerBase(FactoryConstructible):
+class ModelTrainerBase(FactoryConstructible):
     __doc__ = __doc__
 
     class TrainingStatus(Enum):
