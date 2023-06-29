@@ -67,12 +67,13 @@ class ModelManager:
     def __init__(self):
         """Initialize ModelManager."""
         # Map to store module caches, to be used for singleton model lookups
-        self.singleton_module_cache = {}
-        self._singleton_lock = Lock()
+        self._singleton_module_cache = {}
         self._finders = {}
         self._initializers = {}
+        self.__singleton_lock = Lock()
 
-    # make load function available from top-level of library
+    ## Public ##################################################################
+
     def load(
         self,
         module_path: str,
@@ -153,141 +154,9 @@ class ModelManager:
                 ),
             )
 
-    def _load_from_dir(
-        self, module_path, load_singleton, finder, initializer, **kwargs
-    ):
-        """Load a model from a directory.
-
-        Args:
-            module_path (str): Path to directory. At the top level of directory
-                is `config.yml` which holds info about the model.
-            load_singleton (bool): Load this model as a singleton
-            finder (Union[str, ModelFinderBase]): Finder to use when loading
-                this model. If passed as a string, this names the finder in the
-                global config model_management.finders section.
-            initializer (Union[str, ModelInitializerBase]): Loader to use when
-                loading this model. If passed as a string, this is the name of
-                the initializer in the global
-                config model_management.initializers section.
-
-        Returns:
-            subclass of caikit.core.modules.ModuleBase: Model object that is
-                loaded, configured, and ready for prediction.
-        """
-        with self.singleton_lock(load_singleton):
-            if singleton_entry := (
-                load_singleton and self.singleton_module_cache.get(module_path)
-            ):
-                log.debug("Found %s in the singleton cache", module_path)
-                return singleton_entry
-
-            # Use the given finder to try to find the module config for this
-            # module_path
-            #
-            # NOTE: This will lazily construct named finders if needed
-            log.debug("Attempting to find [%s] with finder %s", module_path, finder)
-            finder = self._get_finder(finder)
-            model_config = finder.find_model(module_path, **kwargs)
-            error.value_check(
-                "<COR92173495E>",
-                model_config is not None,
-                "Unable to find a ModuleConfig for {}",
-                module_path,
-            )
-
-            # Use the given initializer to try to load the model
-            #
-            # NOTE: This will lazily construct named initializers if needed
-            initializer = self._get_initializer(initializer)
-            loaded_model = initializer.init(model_config, **kwargs)
-            error.value_check(
-                "<COR50207494E>",
-                loaded_model is not None,
-                "Unable to load model from {} with MODULE_ID {}",
-                module_path,
-                model_config.module_id,
-            )
-
-            # If loading as a singleton, populate the cache
-            if load_singleton:
-                self.singleton_module_cache[module_path] = loaded_model
-
-            # Return successfully!
-            return loaded_model
-
-    def _load_from_zipfile(
-        self, module_path, load_singleton, finder, initializer, **kwargs
-    ):
-        """Load a model from a zip archive.
-
-        Args:
-            module_path (str): Path to directory. At the top level of directory
-                is `config.yml` which holds info about the model.
-            load_singleton (bool): Load this model as a singleton
-            finder (Union[str, ModelFinderBase]): Finder to use when loading
-                this model. If passed as a string, this names the finder in the
-                global config model_management.finders section.
-            initializer (Union[str, ModelInitializerBase]): Loader to use when
-                loading this model. If passed as a string, this is the name of
-                the initializer in the global
-                config model_management.initializers section.
-
-        Returns:
-            subclass of caikit.core.modules.ModuleBase: Model object that is
-                loaded, configured, and ready for prediction.
-        """
-        with tempfile.TemporaryDirectory() as extract_path:
-            with zipfile.ZipFile(module_path, "r") as zip_f:
-                zip_f.extractall(extract_path)
-            # Depending on the way the zip archive is packaged, out temp directory may unpack
-            # to files directly, or it may unpack to a (single) directory containing the files.
-            # We expect the former, but fall back to the second if we can't find the config.
-            try:
-                model = self._load_from_dir(
-                    extract_path, load_singleton, finder, initializer, **kwargs
-                )
-            # NOTE: Error handling is a little gross here, the main reason being that we
-            # only want to log to error() if something is fatal, and there are a good amount
-            # of things that can go wrong in this process.
-            except FileNotFoundError:
-
-                def get_full_path(folder_name):
-                    return os.path.join(extract_path, folder_name)
-
-                # Get the contained directories. Omit anything starting with __ to avoid
-                # accidentally traversing compression artifacts, e.g., __MACOSX.
-                nested_dirs = [
-                    get_full_path(f)
-                    for f in os.listdir(extract_path)
-                    if os.path.isdir(get_full_path(f)) and not f.startswith("__")
-                ]
-                # If we have multiple dirs, something is probably wrong - this doesn't look
-                # like a simple level of nesting as a result of creating the zip.
-                if len(nested_dirs) != 1:
-                    error(
-                        "<COR06761097E>",
-                        FileNotFoundError(
-                            "Unable to locate archive config due to nested dirs"
-                        ),
-                    )
-                # Otherwise, try again. If we fail again stop, because the zip creation should only
-                # create one potential extra layer of nesting around the model directory.
-                try:
-                    model = self._load_from_dir(
-                        nested_dirs[0], load_singleton, finder, initializer, **kwargs
-                    )
-                except FileNotFoundError:
-                    error(
-                        "<COR84410081E>",
-                        FileNotFoundError(
-                            "Unable to locate archive config within top two levels of {}".format(
-                                module_path
-                            )
-                        ),
-                    )
-        return model
-
-    def extract(self, zip_path, model_path, force_overwrite=False):
+    def extract(
+        self, zip_path: str, model_path: str, force_overwrite: bool = False
+    ) -> str:
         """Method to extract a downloaded archive to a specified directory.
 
         Args:
@@ -375,7 +244,7 @@ class ModelManager:
         Returns:
             Dict[str, type]: A dictionary of model hashes to model types
         """
-        return {k: type(v) for k, v in self.singleton_module_cache.items()}
+        return {k: type(v) for k, v in self._singleton_module_cache.items()}
 
     def clear_singleton_cache(self):
         """Clears the cache of singleton models. Useful to release references of models, as long as
@@ -384,16 +253,152 @@ class ModelManager:
         Returns:
             None
         """
-        with self._singleton_lock:
-            self.singleton_module_cache.clear()
+        with self.__singleton_lock:
+            self._singleton_module_cache.clear()
+
+    ## Implementation Details ##################################################
+
+    def _load_from_dir(
+        self, module_path, load_singleton, finder, initializer, **kwargs
+    ):
+        """Load a model from a directory.
+
+        Args:
+            module_path (str): Path to directory. At the top level of directory
+                is `config.yml` which holds info about the model.
+            load_singleton (bool): Load this model as a singleton
+            finder (Union[str, ModelFinderBase]): Finder to use when loading
+                this model. If passed as a string, this names the finder in the
+                global config model_management.finders section.
+            initializer (Union[str, ModelInitializerBase]): Loader to use when
+                loading this model. If passed as a string, this is the name of
+                the initializer in the global
+                config model_management.initializers section.
+
+        Returns:
+            subclass of caikit.core.modules.ModuleBase: Model object that is
+                loaded, configured, and ready for prediction.
+        """
+        with self._singleton_lock(load_singleton):
+            if singleton_entry := (
+                load_singleton and self._singleton_module_cache.get(module_path)
+            ):
+                log.debug("Found %s in the singleton cache", module_path)
+                return singleton_entry
+
+            # Use the given finder to try to find the module config for this
+            # module_path
+            #
+            # NOTE: This will lazily construct named finders if needed
+            log.debug("Attempting to find [%s] with finder %s", module_path, finder)
+            finder = self._get_finder(finder)
+            model_config = finder.find_model(module_path, **kwargs)
+            error.value_check(
+                "<COR92173495E>",
+                model_config is not None,
+                "Unable to find a ModuleConfig for {}",
+                module_path,
+            )
+
+            # Use the given initializer to try to load the model
+            #
+            # NOTE: This will lazily construct named initializers if needed
+            initializer = self._get_initializer(initializer)
+            loaded_model = initializer.init(model_config, **kwargs)
+            error.value_check(
+                "<COR50207494E>",
+                loaded_model is not None,
+                "Unable to load model from {} with MODULE_ID {}",
+                module_path,
+                model_config.module_id,
+            )
+
+            # If loading as a singleton, populate the cache
+            if load_singleton:
+                self._singleton_module_cache[module_path] = loaded_model
+
+            # Return successfully!
+            return loaded_model
+
+    def _load_from_zipfile(
+        self, module_path, load_singleton, finder, initializer, **kwargs
+    ):
+        """Load a model from a zip archive.
+
+        Args:
+            module_path (str): Path to directory. At the top level of directory
+                is `config.yml` which holds info about the model.
+            load_singleton (bool): Load this model as a singleton
+            finder (Union[str, ModelFinderBase]): Finder to use when loading
+                this model. If passed as a string, this names the finder in the
+                global config model_management.finders section.
+            initializer (Union[str, ModelInitializerBase]): Loader to use when
+                loading this model. If passed as a string, this is the name of
+                the initializer in the global
+                config model_management.initializers section.
+
+        Returns:
+            subclass of caikit.core.modules.ModuleBase: Model object that is
+                loaded, configured, and ready for prediction.
+        """
+        with tempfile.TemporaryDirectory() as extract_path:
+            with zipfile.ZipFile(module_path, "r") as zip_f:
+                zip_f.extractall(extract_path)
+            # Depending on the way the zip archive is packaged, out temp directory may unpack
+            # to files directly, or it may unpack to a (single) directory containing the files.
+            # We expect the former, but fall back to the second if we can't find the config.
+            try:
+                model = self._load_from_dir(
+                    extract_path, load_singleton, finder, initializer, **kwargs
+                )
+            # NOTE: Error handling is a little gross here, the main reason being that we
+            # only want to log to error() if something is fatal, and there are a good amount
+            # of things that can go wrong in this process.
+            except FileNotFoundError:
+
+                def get_full_path(folder_name):
+                    return os.path.join(extract_path, folder_name)
+
+                # Get the contained directories. Omit anything starting with __ to avoid
+                # accidentally traversing compression artifacts, e.g., __MACOSX.
+                nested_dirs = [
+                    get_full_path(f)
+                    for f in os.listdir(extract_path)
+                    if os.path.isdir(get_full_path(f)) and not f.startswith("__")
+                ]
+                # If we have multiple dirs, something is probably wrong - this doesn't look
+                # like a simple level of nesting as a result of creating the zip.
+                if len(nested_dirs) != 1:
+                    error(
+                        "<COR06761097E>",
+                        FileNotFoundError(
+                            "Unable to locate archive config due to nested dirs"
+                        ),
+                    )
+                # Otherwise, try again. If we fail again stop, because the zip creation should only
+                # create one potential extra layer of nesting around the model directory.
+                try:
+                    model = self._load_from_dir(
+                        nested_dirs[0], load_singleton, finder, initializer, **kwargs
+                    )
+                except FileNotFoundError:
+                    error(
+                        "<COR84410081E>",
+                        FileNotFoundError(
+                            "Unable to locate archive config within top two levels of {}".format(
+                                module_path
+                            )
+                        ),
+                    )
+        return model
 
     @contextmanager
-    def singleton_lock(self, load_singleton: bool):
+    def _singleton_lock(self, load_singleton: bool):
         """Helper contextmanager that will only lock the singleton cache if this
         load is a singleton load
         """
         if load_singleton:
-            with self._singleton_lock:
+            with self.__singleton_lock:
                 yield
         else:
             yield

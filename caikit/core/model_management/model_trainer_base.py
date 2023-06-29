@@ -86,3 +86,7 @@ class ModelTrainerBase(FactoryConstructible):
         """Start training the given module and return a future to the trained
         model instance
         """
+
+    @abc.abstractmethod
+    def get_model_future(self, training_id: str) -> "ModelFutureBase":
+        """Look up the model future for the given id"""
