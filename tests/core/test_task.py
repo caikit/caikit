@@ -8,6 +8,7 @@ import pytest
 
 # Local
 from caikit.core import TaskBase, task
+from caikit.core.task import StreamingFlavor
 from sample_lib import SampleModule
 from sample_lib.data_model.sample import SampleInputType, SampleOutputType, SampleTask
 import caikit.core
@@ -48,8 +49,6 @@ def test_task_decorator_can_have_iterable_output():
     @task()
     class StreamingTask(TaskBase):
         unary_params: {"sample_input": SampleInputType}
-        streaming_params: {"tokens": Iterable[str]}
-        unary_output_type: SampleOutputType
         streaming_output_type: Iterable[SampleOutputType]
 
     @caikit.core.module(
@@ -59,33 +58,49 @@ def test_task_decorator_can_have_iterable_output():
         task=StreamingTask,
     )
     class StreamingModule(caikit.core.ModuleBase):
+        @StreamingTask.taskmethod(streaming_flavor=StreamingFlavor.UNARY_STREAM)
         def run(
             self, sample_input: SampleInputType
         ) -> caikit.core.data_model.DataStream[SampleOutputType]:
             pass
 
 
-# def test_task_iterator_raises_on_wrong_streaming_type():
-#     @task(
-#         required_parameters={"sample_input": SampleInputType},
-#         output_type=Iterable[SampleOutputType],
-#     )
-#     class StreamingTask(TaskBase):
-#         pass
+def test_task_decorator_validates_streaming_output_is_iterable():
+    with pytest.raises(TypeError, match="not a subclass of .*Iterable"):
+        @task()
+        class StreamingTask(TaskBase):
+            streaming_params: {"text": Iterable[str]}
+            streaming_output_type: str
 
-#     with pytest.raises(TypeError, match="Wrong output type for module"):
 
-#         @caikit.core.module(
-#             id=str(uuid.uuid4()),
-#             name="InvalidStreamingModule",
-#             version="0.0.1",
-#             task=StreamingTask,
-#         )
-#         class InvalidStreamingModule(caikit.core.ModuleBase):
-#             def run(
-#                 self, sample_input: SampleInputType
-#             ) -> caikit.core.data_model.DataStream[SampleInputType]:
-#                 pass
+def test_task_decorator_validates_streaming_input_is_iterable():
+    with pytest.raises(TypeError, match="not a subclass of .*Iterable"):
+        @task()
+        class StreamingTask(TaskBase):
+            streaming_params: {"text": str}
+            streaming_output_type: Iterable[SampleOutputType]
+
+
+def test_task_iterator_raises_on_wrong_streaming_type():
+    @task()
+    class StreamingTask(TaskBase):
+        unary_params: {"sample_input": SampleInputType}
+        streaming_output_type: Iterable[SampleOutputType]
+
+    with pytest.raises(TypeError, match="Wrong output type for module"):
+
+        @caikit.core.module(
+            id=str(uuid.uuid4()),
+            name="InvalidStreamingModule",
+            version="0.0.1",
+            task=StreamingTask,
+        )
+        class InvalidStreamingModule(caikit.core.ModuleBase):
+            @StreamingTask.taskmethod(streaming_flavor=StreamingFlavor.UNARY_STREAM)
+            def run(
+                self, sample_input: SampleInputType
+            ) -> caikit.core.data_model.DataStream[SampleInputType]:
+                pass
 
 
 # def test_task_is_set_on_module_classes():

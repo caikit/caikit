@@ -20,6 +20,7 @@ import pytest
 
 # Local
 from caikit.core import ModuleBase, TaskBase, module
+from caikit.core.task import StreamingFlavor
 from caikit.interfaces.nlp import tasks as nlp_tasks
 from tests.core.helpers import *
 
@@ -34,14 +35,15 @@ class InvalidType:
 
 
 @pytest.mark.parametrize(
-    "task", (nlp_tasks.TextGenerationTask, nlp_tasks.TextGenerationStreamTask)
+    "flavor", (StreamingFlavor.UNARY_UNARY, StreamingFlavor.UNARY_STREAM)
 )
-def test_tasks(reset_globals, task: Type[TaskBase]):
+def test_tasks(reset_globals, flavor: StreamingFlavor):
     """Common tests for all tasks"""
     # Only support single required param named "inputs"
-    assert set(task.get_required_parameters().keys()) == {"inputs"}
-    input_type = task.get_required_parameters()["inputs"]
-    output_type = task.get_output_type()
+    task = nlp_tasks.TextGenerationTask
+    assert set(task.get_required_parameters(flavor).keys()) == {"inputs"}
+    input_type = task.get_required_parameters(flavor)["inputs"]
+    output_type = task.get_output_type(flavor)
 
     # Version with the right signature and nothing else
     @module(id="foo1", name="Foo", version="0.0.0", task=task)
@@ -66,6 +68,7 @@ def test_tasks(reset_globals, task: Type[TaskBase]):
 
         @module(id="foo3", name="Foo", version="0.0.0", task=task)
         class Foo3(ModuleBase):
+            @task.taskmethod(flavor)
             def run(self, other_name: str) -> output_type:
                 return output_type()
 
@@ -74,6 +77,7 @@ def test_tasks(reset_globals, task: Type[TaskBase]):
 
         @module(id="foo4", name="Foo", version="0.0.0", task=task)
         class Foo4(ModuleBase):
+            @task.taskmethod(flavor)
             def run(self, inputs: InvalidType) -> output_type:
                 return output_type()
 
@@ -82,5 +86,6 @@ def test_tasks(reset_globals, task: Type[TaskBase]):
 
         @module(id="foo", name="Foo", version="0.0.0", task=task)
         class Foo(ModuleBase):
+            @task.taskmethod(flavor)
             def run(self, inputs: input_type) -> InvalidType:
                 return "hi there"

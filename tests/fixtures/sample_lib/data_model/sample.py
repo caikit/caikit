@@ -41,9 +41,9 @@ class SampleTrainingType(DataObjectBase):
 @task()
 class SampleTask(TaskBase):
     unary_params: {"sample_input": SampleInputType}
-    streaming_params: {"text": Iterable[str]}
+    streaming_params: {"sample_inputs": Iterable[SampleInputType]}
     unary_output_type: SampleOutputType
-    streaming_output_type: Iterable[str]
+    streaming_output_type: Iterable[SampleOutputType]
     """A sample `task` for our test models"""
 
 
@@ -52,3 +52,12 @@ class OtherTask(TaskBase):
     unary_params: {"sample_input": SampleInputType}
     unary_output_type: OtherOutputType
     """Another sample `task` for our test models"""
+
+
+# NB: Backwards compatibility test
+@task(
+    required_parameters={"sample_input": SampleInputType},
+    output_type=typing.Iterable[SampleOutputType],
+)
+class StreamingTask(TaskBase):
+    """A streaming version of a task"""

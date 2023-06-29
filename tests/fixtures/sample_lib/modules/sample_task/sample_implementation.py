@@ -35,7 +35,7 @@ class SampleModule(caikit.core.ModuleBase):
         config = loader.config
         return cls(config["train"]["batch_size"], config["train"]["learning_rate"])
 
-    @SampleTask.taskmethod
+    @SampleTask.taskmethod()
     def run(
         self, sample_input: SampleInputType, throw: bool = False
     ) -> SampleOutputType:

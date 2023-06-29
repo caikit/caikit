@@ -38,6 +38,11 @@ ValidInputTypes = Union[
 
 _InferenceMethodBaseT = TypeVar("_InferenceMethodBaseT", bound=Callable)
 
+_STREAM_OUT_ANNOTATION = "streaming_output_type"
+_STREAM_PARAMS_ANNOTATION = "streaming_params"
+_UNARY_OUT_ANNOTATION = "unary_output_type"
+_UNARY_PARAMS_ANNOTATION = "unary_params"
+
 
 class StreamingFlavor(enum.Enum):
     UNARY_UNARY = 1
@@ -66,9 +71,6 @@ class TaskBase:
     @classmethod
     def taskmethod(cls, streaming_flavor: StreamingFlavor = StreamingFlavor.UNARY_UNARY) -> Callable[[_InferenceMethodBaseT], _InferenceMethodBaseT]:
         def decorator(inference_method: _InferenceMethodBaseT) -> _InferenceMethodBaseT:
-
-            # signature = CaikitMethodSignature(inference_method.__self__, inference_method.__name__)
-
             cls.deferred_method_decorators.setdefault(cls, {})
             fq_mod_name = ".".join([inference_method.__module__, *inference_method.__qualname__.split(".")[0:-1]])
             cls.deferred_method_decorators[cls].setdefault(fq_mod_name, [])
@@ -83,7 +85,7 @@ class TaskBase:
             deferred_decorations = cls.deferred_method_decorators[cls][keyname]
             for decoration in deferred_decorations:
                 signature = CaikitMethodSignature(module, decoration.method_name)
-                cls.validate_run_signature(signature)
+                cls.validate_run_signature(signature, decoration.streaming_flavor)
 
     @classmethod
     def has_inference_method_decorators(cls, module_class: Type) -> bool:
@@ -93,7 +95,7 @@ class TaskBase:
 
 
     @classmethod
-    def validate_run_signature(cls, signature: CaikitMethodSignature) -> None:
+    def validate_run_signature(cls, signature: CaikitMethodSignature, streaming_flavor: StreamingFlavor) -> None:
         #
         if not signature.parameters:
             raise ValueError(
@@ -106,7 +108,7 @@ class TaskBase:
 
         missing_required_params = [
             parameter_name
-            for parameter_name in cls.get_required_parameters()
+            for parameter_name in cls.get_required_parameters(streaming_flavor)
             if parameter_name not in signature.parameters
         ]
         if missing_required_params:
@@ -116,7 +118,7 @@ class TaskBase:
             )
 
         type_mismatch_errors = []
-        for parameter_name, parameter_type in cls.get_required_parameters().items():
+        for parameter_name, parameter_type in cls.get_required_parameters(streaming_flavor).items():
             signature_type = signature.parameters[parameter_name]
             if parameter_type != signature_type:
                 if typing.get_origin(
@@ -132,25 +134,34 @@ class TaskBase:
                 f"Wrong types provided for parameters to {signature.module}: {type_mismatch_errors}"
             )
 
-        cls._raise_on_wrong_output_type(signature.return_type, signature.module)
+        cls._raise_on_wrong_output_type(signature.return_type, signature.module, streaming_flavor)
 
     @classmethod
-    def get_required_parameters(cls) -> Dict[str, ValidInputTypes]:
+    def get_required_parameters(cls, flavor: StreamingFlavor) -> Dict[str, ValidInputTypes]:
         """Get the set of input types required by this task
-
-        NOTE: This method is automatically configured by the @task decorator
-            and should not be overwritten by child classes.
         """
-        raise NotImplementedError("This is implemented by the @task decorator!")
+        if flavor == StreamingFlavor.UNARY_UNARY or flavor == StreamingFlavor.UNARY_STREAM:
+            if _UNARY_PARAMS_ANNOTATION not in cls.__annotations__:
+                raise ValueError("No unary inputs are specified for this task")
+            return cls.__annotations__[_UNARY_PARAMS_ANNOTATION]
+        if _STREAM_PARAMS_ANNOTATION not in cls.__annotations__:
+            raise ValueError("No streaming inputs are specified for this task")
+        return cls.__annotations__[_STREAM_PARAMS_ANNOTATION]
 
     @classmethod
-    def get_output_type(cls) -> Type[DataBase]:
+    def get_output_type(cls, flavor: StreamingFlavor) -> Type[DataBase]:
         """Get the output type for this task
 
         NOTE: This method is automatically configured by the @task decorator
             and should not be overwritten by child classes.
         """
-        raise NotImplementedError("This is implemented by the @task decorator!")
+        if flavor == StreamingFlavor.UNARY_UNARY or flavor == StreamingFlavor.STREAM_UNARY:
+            if _UNARY_OUT_ANNOTATION not in cls.__annotations__:
+                raise ValueError("No unary outputs are specified for this task")
+            return cls.__annotations__[_UNARY_OUT_ANNOTATION]
+        if _STREAM_OUT_ANNOTATION not in cls.__annotations__:
+            raise ValueError("No streaming outputs are specified for this task")
+        return cls.__annotations__[_STREAM_OUT_ANNOTATION]
 
     @classmethod
     def is_output_streaming_task(cls) -> bool:
@@ -162,33 +173,32 @@ class TaskBase:
         raise NotImplementedError("This is implemented by the @task decorator!")
 
     @classmethod
-    def _raise_on_wrong_output_type(cls, output_type, module):
-        if cls._subclass_check(output_type, cls.get_output_type()):
+    def _raise_on_wrong_output_type(cls, output_type, module, streaming_flavor: StreamingFlavor):
+        task_output_type = cls.get_output_type(streaming_flavor)
+
+        if cls._subclass_check(output_type, task_output_type):
             # Basic case, same type or subclass of it
             return
 
         if typing.get_origin(output_type) == Union:
             for union_type in typing.get_args(output_type):
-                if cls._subclass_check(union_type, cls.get_output_type()):
+                if cls._subclass_check(union_type, task_output_type):
                     # Something in the union has an acceptable type
                     return
 
-        # Iterable output checks:
-        # `output_type` here can be any iterable, so long as it is type annotated with the type
-        # that is iterated over. So we first only check that it is iterable at all, and then look
-        # at the annotated type's args.
-        if cls._is_iterable_type(output_type) and cls.is_output_streaming_task():
-            # In this case, the task decorator has already validated that the task has output type
-            # Iterable[T] with exactly one T, so this is safe.
-            streaming_type = typing.get_args(cls.get_output_type())[0]
+        # Do some streaming checks
+        if streaming_flavor == StreamingFlavor.UNARY_STREAM or streaming_flavor == StreamingFlavor.STREAM_STREAM:
+            if cls._is_iterable_type(output_type):
+                # task_output_type is already guaranteed to be Iterable[T]
+                streaming_type = typing.get_args(task_output_type)[0]
 
-            for iterable_type in typing.get_args(output_type):
-                if cls._subclass_check(iterable_type, streaming_type):
-                    return
+                for iterable_type in typing.get_args(output_type):
+                    if cls._subclass_check(iterable_type, streaming_type):
+                        return
 
         raise TypeError(
             f"Wrong output type for module {module}: "
-            f"Found {output_type} but expected {cls.get_output_type()}"
+            f"Found {output_type} but expected {task_output_type}"
         )
 
     @staticmethod
@@ -321,36 +331,49 @@ def task(*args, **kwargs) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
         #     error.subclass_check("<COR12766440E>", output_type, DataBase)
         #     output_streaming = False
 
+        error.subclass_check("<COR19436440E>", cls, TaskBase)
+
+        # Backwards compatibility with old-style @tasks
+        if "required_parameters" in kwargs and _UNARY_PARAMS_ANNOTATION not in cls.__annotations__:
+            cls.__annotations__[_UNARY_PARAMS_ANNOTATION] = kwargs["required_parameters"]
+        if "output_type" in kwargs and _UNARY_OUT_ANNOTATION not in cls.__annotations__:
+            output_type = kwargs["output_type"]
+            if cls._is_iterable_type(output_type):
+                cls.__annotations__[_STREAM_OUT_ANNOTATION] = kwargs["output_type"]
+            else:
+                cls.__annotations__[_UNARY_OUT_ANNOTATION] = kwargs["output_type"]
+        # End Backwards compatibility
+
+        error.value_check("<COR12671910E>", _UNARY_PARAMS_ANNOTATION in cls.__annotations__ or _STREAM_PARAMS_ANNOTATION in cls.__annotations__, "At least one input type must be set on a task")
+        error.value_check("<COR12671910E>", _UNARY_OUT_ANNOTATION in cls.__annotations__ or _STREAM_OUT_ANNOTATION in cls.__annotations__, "At least one output type must be set on a task")
+
+        if _UNARY_OUT_ANNOTATION in cls.__annotations__:
+            error.subclass_check(
+                "<COR12766440E>", cls.__annotations__[_UNARY_OUT_ANNOTATION], DataBase
+            )
+        else:
+            error.subclass_check(
+                "<COR12766440E>", typing.get_origin(cls.__annotations__[_STREAM_OUT_ANNOTATION]), collections.abc.Iterable
+            )
+
+        if _UNARY_PARAMS_ANNOTATION in cls.__annotations__:
+            params_dict = cls.__annotations__[_UNARY_PARAMS_ANNOTATION]
+            error.type_check("<COR19906440E>", dict, params_dict=params_dict)
+            error.type_check_all("<COR00123440E>", str, params_dict_keys=params_dict.keys())
+            # TODO: check proto-ability of things
+        else:
+            params_dict = cls.__annotations__[_STREAM_PARAMS_ANNOTATION]
+            error.type_check("<COR19556230E>", dict, params_dict=params_dict)
+            error.value_check("<COR56569734E>", len(params_dict) == 1, "Only a single streaming input type supported")
+            error.type_check_all("<COR58796465E>", str, params_dict_keys=params_dict.keys())
+            for v in params_dict.values():
+                error.subclass_check("<COR52740295E>", typing.get_origin(v), collections.abc.Iterable)
+
         def is_output_streaming_task(_):
-            if "streaming_output_type" in cls.__annotations__:
-                streaming_output_type = cls.__annotations__["streaming_output_type"]
-                error.value_check(
-                    "<COR12569910E>",
-                    len(typing.get_args(streaming_output_type)) == 1,
-                    "A single type T must be provided for tasks with output type Iterable[T].",
-                )
-                error.subclass_check(
-                    "<COR12766440E>",
-                    typing.get_args(streaming_output_type)[0],
-                    DataBase,
-                )
-                return True
-            return False
+            return _STREAM_OUT_ANNOTATION in cls.__annotations__
 
         def is_input_streaming_task(_):
-            if "streaming_params" in cls.__annotations__:
-                error.value_check(
-                    "<COR12572910E>",
-                    len(cls.__annotations__["streaming_params"]) == 1,
-                    "A single type T must be provided for tasks with input type Iterable[T].",
-                )
-                return True
-            return False
-
-        error.subclass_check("<COR19436440E>", cls, TaskBase)
-        error.subclass_check(
-            "<COR12766440E>", cls.__annotations__["unary_output_type"], DataBase
-        )
+            return _STREAM_PARAMS_ANNOTATION in cls.__annotations__
 
         setattr(cls, "is_output_streaming_task", classmethod(is_output_streaming_task))
         setattr(cls, "is_input_streaming_task", classmethod(is_input_streaming_task))
