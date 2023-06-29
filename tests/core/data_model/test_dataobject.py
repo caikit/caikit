@@ -861,6 +861,36 @@ def test_dataobject_jsondict(temp_dpool, run_num):
     assert foo2.js_dict == foo.js_dict
 
 
+def test_dataobject_jsondict_repeated(temp_dpool):
+    """Make sure that a list of JsonDict types is handled correctly in a dataobject"""
+
+    @dataobject
+    class Foo(DataObjectBase):
+        js_dict: List[JsonDict]
+
+    # Make sure the field has the right type
+    Struct = temp_dpool.FindMessageTypeByName("google.protobuf.Struct")
+    assert Foo._proto_class.DESCRIPTOR.fields_by_name["js_dict"].message_type == Struct
+
+    # Make sure dict is preserved on init
+    js_dict = [{"foo": {"bar": [1, 2, 3]}}]
+    foo = Foo(js_dict)
+    assert foo.js_dict == js_dict
+
+    # Make sure conversion to struct happens on to_proto
+    foo_proto = foo.to_proto()
+    assert len(foo_proto.js_dict) == 1
+    assert set(foo_proto.js_dict[0].fields.keys()) == set(js_dict[0].keys())
+    assert foo_proto.js_dict[0].fields["foo"].struct_value
+    assert set(foo_proto.js_dict[0].fields["foo"].struct_value.fields.keys()) == set(
+        js_dict[0]["foo"].keys()
+    )
+
+    # Make sure conversion back to dict happens on from_proto
+    foo2 = Foo.from_proto(foo_proto)
+    assert foo2.js_dict == foo.js_dict
+
+
 def test_dataobject_to_kwargs(temp_dpool):
     """to_kwargs does a non-recursive version of to_dict"""
 
