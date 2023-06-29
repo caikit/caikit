@@ -36,7 +36,6 @@ from .model_management import (
     model_initializer_factory,
 )
 from .modules.base import ModuleBase
-from .modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
 from .registries import module_registry
 from .toolkit.errors import error_handler
 from .toolkit.factory import Factory, FactoryConstructible
@@ -398,26 +397,6 @@ class ModelManager:
                 yield
         else:
             yield
-
-    def _get_supported_load_backends(self, backend_impl: ModuleBase):
-        """Function to get a list of supported load backends
-        that the module supports
-
-        Args:
-            backend_impl (caikit.core.ModuleBase): Module implementing the
-                backend
-        Returns:
-            list(backend_types): list of backends that are supported for model
-                load
-        """
-
-        # Get list of backends that are supported for load
-        # NOTE: since code in a module can change anytime, its support
-        # for various backend might also change, in which case,
-        # it would be better to keep the backend information in the model itself
-        # If module_backend is None, then we will assume that this model is not loadable in
-        # any other backend
-        return getattr(backend_impl, SUPPORTED_LOAD_BACKENDS_VAR_NAME, [])
 
     @staticmethod
     def _get_component(
