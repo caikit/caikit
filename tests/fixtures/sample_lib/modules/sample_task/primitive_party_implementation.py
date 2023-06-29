@@ -85,7 +85,7 @@ class SamplePrimitiveModule(caikit.core.ModuleBase):
         assert isinstance(training_params_dict, Dict)
         assert isinstance(training_params_dict_int, Dict)
         assert training_params_json_dict is not None
-        assert training_params_json_dict_list is not None
+        assert len(training_params_json_dict_list) > 0
         assert training_params_dict is not None
         assert training_params_dict_int is not None
         return cls(
