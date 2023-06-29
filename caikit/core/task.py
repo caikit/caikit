@@ -274,10 +274,30 @@ def task(*args, **kwargs) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
         #     output_streaming = False
 
         def is_output_streaming_task(_):
-            return "streaming_output_type" in cls.__annotations__
+            if "streaming_output_type" in cls.__annotations__:
+                streaming_output_type = cls.__annotations__["streaming_output_type"]
+                error.value_check(
+                    "<COR12569910E>",
+                    len(typing.get_args(streaming_output_type)) == 1,
+                    "A single type T must be provided for tasks with output type Iterable[T].",
+                )
+                error.subclass_check(
+                    "<COR12766440E>",
+                    typing.get_args(streaming_output_type)[0],
+                    DataBase,
+                )
+                return True
+            return False
 
         def is_input_streaming_task(_):
-            return "streaming_params" in cls.__annotations__
+            if "streaming_params" in cls.__annotations__:
+                error.value_check(
+                    "<COR12572910E>",
+                    len(cls.__annotations__["streaming_params"]) == 1,
+                    "A single type T must be provided for tasks with input type Iterable[T].",
+                )
+                return True
+            return False
 
         error.subclass_check("<COR19436440E>", cls, TaskBase)
         setattr(cls, "is_output_streaming_task", classmethod(is_output_streaming_task))
