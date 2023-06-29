@@ -4,7 +4,6 @@ A sample module for sample things!
 # Standard
 import os
 
-from caikit.core.task import StreamingFlavor
 # Local
 from ...data_model.sample import (
     SampleInputType,
@@ -14,6 +13,7 @@ from ...data_model.sample import (
 )
 from caikit.core.data_model import DataStream
 from caikit.core.modules import ModuleLoader, ModuleSaver
+from caikit.core.task import StreamingFlavor
 import caikit.core
 
 

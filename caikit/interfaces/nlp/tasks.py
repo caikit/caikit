@@ -28,6 +28,7 @@ class TextGenerationTask(TaskBase):
     """The Text Generation Task is responsible for taking input prompting text
     and generating additional text from that prompt.
     """
+
     unary_params: {"inputs": str}
     unary_output_type: GeneratedTextResult
     streaming_output_type: Iterable[GeneratedTextStreamResult]

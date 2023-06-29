@@ -179,7 +179,8 @@ class GlobalPredictServicer:
                     grpc_request=request_name, model_id=model_id
                 ).time():
                     # if model.TASK_CLASS.is_output_streaming_task():
-                    # hackity hack: We need to check the actual RPC def to see if this is streaming out or not
+                    # hackity hack: We need to check the actual RPC def to see if this is streaming
+                    # out or not
                     if model.TASK_CLASS._is_iterable_type(response):
                         response_proto = build_proto_stream(response)
                     else:

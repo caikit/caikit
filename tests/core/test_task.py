@@ -67,6 +67,7 @@ def test_task_decorator_can_have_iterable_output():
 
 def test_task_decorator_validates_streaming_output_is_iterable():
     with pytest.raises(TypeError, match="not a subclass of .*Iterable"):
+
         @task()
         class StreamingTask(TaskBase):
             streaming_params: {"text": Iterable[str]}
@@ -75,6 +76,7 @@ def test_task_decorator_validates_streaming_output_is_iterable():
 
 def test_task_decorator_validates_streaming_input_is_iterable():
     with pytest.raises(TypeError, match="not a subclass of .*Iterable"):
+
         @task()
         class StreamingTask(TaskBase):
             streaming_params: {"text": str}
