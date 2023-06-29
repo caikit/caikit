@@ -37,7 +37,7 @@ model_management:
             type: LOCAL
             config:
                 load_path: null
-    loaders:
+    initializers:
         default:
             type: LOCAL
             config:

@@ -18,7 +18,7 @@ Global factories for model management
 # Local
 from ..toolkit.factory import Factory
 from .local_model_finder import LocalModelFinder
-from .local_model_loader import LocalModelLoader
+from .local_model_initializer import LocalModelInitializer
 
 # Model trainer factory. A trainer is responsible for performing the train
 # operation against a configured framework connection.
@@ -29,7 +29,8 @@ model_trainer_factory = Factory("ModelTrainer")
 model_finder_factory = Factory("ModelFinder")
 model_finder_factory.register(LocalModelFinder)
 
-# Model loader factory. A loader is responsible for taking a model configuration
-# and preparing the model to be run in a configured runtime location.
-model_loader_factory = Factory("ModelLoader")
-model_loader_factory.register(LocalModelLoader)
+# Model initializer factory. An initializer is responsible for taking a model
+# configuration and preparing the model to be run in a configured runtime
+# location.
+model_initializer_factory = Factory("ModelInitializer")
+model_initializer_factory.register(LocalModelInitializer)

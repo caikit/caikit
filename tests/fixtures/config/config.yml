@@ -22,7 +22,7 @@ model_management:
     finders:
         default:
             type: LOCAL
-    loaders:
+    initializers:
         default:
             type: LOCAL
             config:

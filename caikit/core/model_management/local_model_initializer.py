@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-The LocalModelLoader loads a model locally, optionally with a non-local backend
+The LocalModelInitializer loads a model locally, optionally with a non-local backend
 if the given module provides multiple backend-specific implementations.
 """
 # Standard
@@ -33,13 +33,13 @@ from ..registries import (
     module_backend_types,
 )
 from ..toolkit.errors import error_handler
-from .model_loader_base import ModelLoaderBase
+from .model_initializer_base import ModelInitializerBase
 
 log = alog.use_channel("LLOAD")
 error = error_handler.get(log)
 
 
-class LocalModelLoader(ModelLoaderBase):
+class LocalModelInitializer(ModelInitializerBase):
     __doc__ = __doc__
 
     name = "LOCAL"
@@ -107,12 +107,13 @@ class LocalModelLoader(ModelLoaderBase):
 
         log.debug2("All configured backends: %s", self._backends)
 
-    def load(self, model_config: ModuleConfig, **kwargs) -> Optional[ModuleBase]:
-        """Given a ModelConfig, attempt to load it into memory
+    def init(self, model_config: ModuleConfig, **kwargs) -> Optional[ModuleBase]:
+        """Given a ModelConfig, attempt to initialize it locally, possibly using
+        a non-local backend
 
         Args:
             model_config (ModuleConfig): The in-memory model config object for
-                the model to be loaded
+                the model to be initialized
 
         Returns:
             model (Optional[ModuleBase]): The in-memory ModuleBase instance that

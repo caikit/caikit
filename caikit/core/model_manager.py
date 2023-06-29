@@ -31,9 +31,9 @@ import alog
 # Local
 from .model_management import (
     ModelFinderBase,
-    ModelLoaderBase,
+    ModelInitializerBase,
     model_finder_factory,
-    model_loader_factory,
+    model_initializer_factory,
 )
 from .modules.base import ModuleBase
 from .modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
@@ -71,7 +71,7 @@ class ModelManager:
         self.singleton_module_cache = {}
         self._singleton_lock = Lock()
         self._finders = {}
-        self._loaders = {}
+        self._initializers = {}
 
     # make load function available from top-level of library
     def load(
@@ -80,7 +80,7 @@ class ModelManager:
         *,
         load_singleton: bool = False,
         finder: Union[str, ModelFinderBase] = "default",
-        loader: Union[str, ModelLoaderBase] = "default",
+        initializer: Union[str, ModelInitializerBase] = "default",
         **kwargs,
     ):
         """Load a model and return an instantiated object on which we can run
@@ -101,16 +101,18 @@ class ModelManager:
                     either a yaml config file in the top level when extracted,
                     or a directory containing a yaml config file in the top
                     level.
-                5. A string that is understood by the configured finder/loader
+                5. A string that is understood by the configured
+                    finder/initializer
 
         Kwargs:
             load_singleton (bool): Load this model as a singleton
             finder (Union[str, ModelFinderBase]): Finder to use when loading
                 this model. If passed as a string, this names the finder in the
                 global config model_management.finders section.
-            loader (Union[str, ModelLoaderBase]): Loader to use when loading
-                this model. If passed as a string, this is the name of the
-                loader in the global config model_management.loaders section.
+            initializer (Union[str, ModelInitializerBase]): Loader to use when
+                initializint this model. If passed as a string, this is the name
+                of the initializer in the global
+                config model_management.initializers section.
 
         Returns:
             model (ModuleBase) Model object that is loaded, configured, and
@@ -136,11 +138,11 @@ class ModelManager:
         # Now that we have a file like object | str we can try to load as an archive.
         if zipfile.is_zipfile(module_path):
             return self._load_from_zipfile(
-                module_path, load_singleton, finder, loader, **kwargs
+                module_path, load_singleton, finder, initializer, **kwargs
             )
         try:
             return self._load_from_dir(
-                module_path, load_singleton, finder, loader, **kwargs
+                module_path, load_singleton, finder, initializer, **kwargs
             )
         except FileNotFoundError:
             error(
@@ -152,7 +154,9 @@ class ModelManager:
                 ),
             )
 
-    def _load_from_dir(self, module_path, load_singleton, finder, loader, **kwargs):
+    def _load_from_dir(
+        self, module_path, load_singleton, finder, initializer, **kwargs
+    ):
         """Load a model from a directory.
 
         Args:
@@ -162,9 +166,10 @@ class ModelManager:
             finder (Union[str, ModelFinderBase]): Finder to use when loading
                 this model. If passed as a string, this names the finder in the
                 global config model_management.finders section.
-            loader (Union[str, ModelLoaderBase]): Loader to use when loading
-                this model. If passed as a string, this is the name of the
-                loader in the global config model_management.loaders section.
+            initializer (Union[str, ModelInitializerBase]): Loader to use when
+                loading this model. If passed as a string, this is the name of
+                the initializer in the global
+                config model_management.initializers section.
 
         Returns:
             subclass of caikit.core.modules.ModuleBase: Model object that is
@@ -191,11 +196,11 @@ class ModelManager:
                 module_path,
             )
 
-            # Use the given loader to try to load the model
+            # Use the given initializer to try to load the model
             #
-            # NOTE: This will lazily construct named loaders if needed
-            loader = self._get_loader(loader)
-            loaded_model = loader.load(model_config, **kwargs)
+            # NOTE: This will lazily construct named initializers if needed
+            initializer = self._get_initializer(initializer)
+            loaded_model = initializer.init(model_config, **kwargs)
             error.value_check(
                 "<COR50207494E>",
                 loaded_model is not None,
@@ -211,7 +216,9 @@ class ModelManager:
             # Return successfully!
             return loaded_model
 
-    def _load_from_zipfile(self, module_path, load_singleton, finder, loader, **kwargs):
+    def _load_from_zipfile(
+        self, module_path, load_singleton, finder, initializer, **kwargs
+    ):
         """Load a model from a zip archive.
 
         Args:
@@ -221,9 +228,10 @@ class ModelManager:
             finder (Union[str, ModelFinderBase]): Finder to use when loading
                 this model. If passed as a string, this names the finder in the
                 global config model_management.finders section.
-            loader (Union[str, ModelLoaderBase]): Loader to use when loading
-                this model. If passed as a string, this is the name of the
-                loader in the global config model_management.loaders section.
+            initializer (Union[str, ModelInitializerBase]): Loader to use when
+                loading this model. If passed as a string, this is the name of
+                the initializer in the global
+                config model_management.initializers section.
 
         Returns:
             subclass of caikit.core.modules.ModuleBase: Model object that is
@@ -237,7 +245,7 @@ class ModelManager:
             # We expect the former, but fall back to the second if we can't find the config.
             try:
                 model = self._load_from_dir(
-                    extract_path, load_singleton, finder, loader, **kwargs
+                    extract_path, load_singleton, finder, initializer, **kwargs
                 )
             # NOTE: Error handling is a little gross here, the main reason being that we
             # only want to log to error() if something is fatal, and there are a good amount
@@ -267,7 +275,7 @@ class ModelManager:
                 # create one potential extra layer of nesting around the model directory.
                 try:
                     model = self._load_from_dir(
-                        nested_dirs[0], load_singleton, finder, loader, **kwargs
+                        nested_dirs[0], load_singleton, finder, initializer, **kwargs
                     )
                 except FileNotFoundError:
                     error(
@@ -453,13 +461,15 @@ class ModelManager:
             component_type=ModelFinderBase,
         )
 
-    def _get_loader(self, loader: Union[str, ModelLoaderBase]) -> ModelLoaderBase:
-        """Get the configured model loader or the one passed by value"""
+    def _get_initializer(
+        self, initializer: Union[str, ModelInitializerBase]
+    ) -> ModelInitializerBase:
+        """Get the configured model initializer or the one passed by value"""
         return self._get_component(
-            component=loader,
-            component_dict=self._loaders,
-            component_factory=model_loader_factory,
-            component_name="loader",
-            component_cfg=get_config().model_management.loaders,
-            component_type=ModelLoaderBase,
+            component=initializer,
+            component_dict=self._initializers,
+            component_factory=model_initializer_factory,
+            component_name="initializer",
+            component_cfg=get_config().model_management.initializers,
+            component_type=ModelInitializerBase,
         )

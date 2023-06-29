@@ -252,20 +252,20 @@ class NoYamlFinder(ModelFinderBase):
         return ModuleConfig({"module_id": SampleModule.MODULE_ID})
 
 
-class NoYamlLoader(ModelLoaderBase):
+class NoYamlInitializer(ModelInitializerBase):
     name = "NOYAML"
 
     def __init__(self, *_, **__):
         pass
 
-    def load(self, model_config):
+    def init(self, model_config):
         """This load function doesn't read from model_path, so it definitely does not read the config.yml file"""
         assert model_config.module_id == SampleModule.MODULE_ID
         return SampleModule()
 
 
 model_finder_factory.register(NoYamlFinder)
-model_loader_factory.register(NoYamlLoader)
+model_initializer_factory.register(NoYamlInitializer)
 
 ## Tests #######################################################################
 
@@ -460,20 +460,22 @@ def test_load_must_return_model():
             caikit.core.load(tempdir)
 
 
-def test_load_with_two_shared_loaders_of_the_same_type(good_model_path, reset_globals):
+def test_load_with_two_shared_initializers_of_the_same_type(
+    good_model_path, reset_globals
+):
     """Multiple instances of one shared loader type can be configured"""
 
     with temp_config(
         {
             "model_management": {
                 "finders": {"default": {"type": "LOCAL"}},
-                "loaders": {
+                "initializers": {
                     "model-one": {
-                        "type": TestLoader.name,
+                        "type": TestInitializer.name,
                         "config": {"model_type": "model one"},
                     },
                     "model-two": {
-                        "type": TestLoader.name,
+                        "type": TestInitializer.name,
                         "config": {"model_type": "model two"},
                     },
                     "default": {"type": "LOCAL"},
@@ -481,17 +483,17 @@ def test_load_with_two_shared_loaders_of_the_same_type(good_model_path, reset_gl
             }
         }
     ):
-        model_one_loader = MODEL_MANAGER._get_loader("model-one")
-        model_two_loader = MODEL_MANAGER._get_loader("model-two")
+        model_one_loader = MODEL_MANAGER._get_initializer("model-one")
+        model_two_loader = MODEL_MANAGER._get_initializer("model-two")
 
         # plain model load should use first loader
-        model = caikit.core.load(good_model_path, loader="model-one")
+        model = caikit.core.load(good_model_path, initializer="model-one")
         assert model_one_loader
         assert model in model_one_loader.loaded_models
         assert model not in model_two_loader.loaded_models
 
         # model load that fails in the first loader will use the second
-        model = caikit.core.load(good_model_path, loader="model-two")
+        model = caikit.core.load(good_model_path, initializer="model-two")
         assert model not in model_one_loader.loaded_models
         assert model in model_two_loader.loaded_models
 
@@ -509,8 +511,8 @@ def test_load_does_not_read_config_yml_if_loader_does_not_require_it(
                 "finders": {
                     "default": {"type": NoYamlFinder.name},
                 },
-                "loaders": {
-                    "default": {"type": NoYamlLoader.name},
+                "initializers": {
+                    "default": {"type": NoYamlInitializer.name},
                 },
             }
         }
@@ -530,14 +532,14 @@ def test_load_loader_finder_by_name(reset_globals):
                     "default": {"type": "LOCAL"},
                     "other": {"type": NoYamlFinder.name},
                 },
-                "loaders": {
+                "initializers": {
                     "default": {"type": "LOCAL"},
-                    "other": {"type": NoYamlLoader.name},
+                    "other": {"type": NoYamlInitializer.name},
                 },
             }
         }
     ):
-        model = caikit.core.load("unused", finder="other", loader="other")
+        model = caikit.core.load("unused", finder="other", initializer="other")
         assert isinstance(model, SampleModule)
 
 
@@ -549,11 +551,13 @@ def test_load_loader_finder_by_value(reset_globals):
                 "finders": {
                     "default": {"type": "LOCAL"},
                 },
-                "loaders": {
+                "initializers": {
                     "default": {"type": "LOCAL"},
                 },
             }
         }
     ):
-        model = caikit.core.load("unused", finder=NoYamlFinder(), loader=NoYamlLoader())
+        model = caikit.core.load(
+            "unused", finder=NoYamlFinder(), initializer=NoYamlInitializer()
+        )
         assert isinstance(model, SampleModule)

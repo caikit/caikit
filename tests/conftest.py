@@ -173,7 +173,7 @@ def backend_priority(backend_cfg: Union[List[dict], dict]):
         {
             "model_management": {
                 "finders": {"default": {"type": "LOCAL"}},
-                "loaders": {
+                "initializers": {
                     "default": {
                         "type": "LOCAL",
                         "config": {"backend_priority": backend_cfg},

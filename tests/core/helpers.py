@@ -24,8 +24,8 @@ from caikit.core import MODEL_MANAGER
 
 # Add mock backend
 # This is set in the base test config's load_priority list
-from caikit.core.model_management import ModelLoaderBase, model_loader_factory
-from caikit.core.model_management.local_model_loader import LocalModelLoader
+from caikit.core.model_management import ModelInitializerBase, model_initializer_factory
+from caikit.core.model_management.local_model_initializer import LocalModelInitializer
 from caikit.core.module_backends import BackendBase, backend_types
 from caikit.core.modules import ModuleBase, ModuleConfig
 from caikit.core.registries import (
@@ -57,37 +57,37 @@ backend_types.register_backend_type(MockBackend)
 
 
 # Add a new shared load backend that tests can use
-class TestLoader(ModelLoaderBase):
-    name = "TESTLOADER"
+class TestInitializer(ModelInitializerBase):
+    name = "TestInitializer"
     __test__ = False
 
     def __init__(self, config):
         self.config = config
         self.loaded_models = []
-        self.local_loader = model_loader_factory.construct({"type": "LOCAL"})
+        self.local_initializer = model_initializer_factory.construct({"type": "LOCAL"})
 
-    def load(self, model_config: ModuleConfig, *args, **kwargs) -> Optional[ModuleBase]:
+    def init(self, model_config: ModuleConfig, *args, **kwargs) -> Optional[ModuleBase]:
         # allow config.model_type to control whether this loader barfs
         if "model_type" in self.config and "model_type" in kwargs:
             if self.config["model_type"] != kwargs["model_type"]:
                 # Don't load in this loader
                 return None
         # use the "Local" loader to actually load the model
-        model = self.local_loader.load(model_config)
+        model = self.local_initializer.init(model_config)
         self.loaded_models.append(model)
         return model
 
 
-model_loader_factory.register(TestLoader)
+model_initializer_factory.register(TestInitializer)
 
 
 def configured_backends():
-    local_loaders = [
+    local_initializers = [
         loader
-        for loader in MODEL_MANAGER._loaders.values()
-        if isinstance(loader, LocalModelLoader)
+        for loader in MODEL_MANAGER._initializers.values()
+        if isinstance(loader, LocalModelInitializer)
     ]
-    return [backend for loader in local_loaders for backend in loader._backends]
+    return [backend for loader in local_initializers for backend in loader._backends]
 
 
 @pytest.fixture
@@ -125,12 +125,12 @@ def reset_module_registry():
 @pytest.fixture
 def reset_model_manager():
     prev_finders = MODEL_MANAGER._finders
-    prev_loaders = MODEL_MANAGER._loaders
+    prev_initializers = MODEL_MANAGER._initializers
     MODEL_MANAGER._finders = {}
-    MODEL_MANAGER._loaders = {}
+    MODEL_MANAGER._initializers = {}
     yield
     MODEL_MANAGER._finders = prev_finders
-    MODEL_MANAGER._loaders = prev_loaders
+    MODEL_MANAGER._initializers = prev_initializers
 
 
 @pytest.fixture

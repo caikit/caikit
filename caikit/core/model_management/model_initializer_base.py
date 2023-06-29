@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-A ModelLoader is responsible for taking an in-memory ModuleConfig and producing
-a usable Module instance.
+A ModelInitializer is responsible for taking an in-memory ModuleConfig and
+producing a usable Module instance.
 """
 
 # Standard
@@ -25,16 +25,16 @@ from ..modules import ModuleBase, ModuleConfig
 from ..toolkit.factory import FactoryConstructible
 
 
-class ModelLoaderBase(FactoryConstructible):
+class ModelInitializerBase(FactoryConstructible):
     __doc__ = __doc__
 
     @abc.abstractmethod
-    def load(
+    def init(
         self,
         model_config: ModuleConfig,
         **kwargs,
     ) -> Optional[ModuleBase]:
-        """Given a ModelConfig, attempt to load it into memory
+        """Given a ModelConfig, attempt to initialize it for running
 
         Args:
             model_config (ModuleConfig): The in-memory model config object for

@@ -18,7 +18,11 @@ model lifecycle.
 """
 
 # Local
-from .factories import model_finder_factory, model_loader_factory, model_trainer_factory
+from .factories import (
+    model_finder_factory,
+    model_initializer_factory,
+    model_trainer_factory,
+)
 from .model_finder_base import ModelFinderBase
-from .model_loader_base import ModelLoaderBase
+from .model_initializer_base import ModelInitializerBase
 from .model_trainer_base import ModelTrainerBase
