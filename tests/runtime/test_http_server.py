@@ -21,8 +21,6 @@ from typing import Optional
 import json
 import os
 import tempfile
-import threading
-import time
 
 # Third Party
 import pytest
@@ -85,23 +83,23 @@ def generate_tls_configs(
             ca_key = tls_test_tools.generate_key()[0]
             ca_cert = tls_test_tools.generate_ca_cert(ca_key)
             ca_certfile, _ = save_key_cert_pair("ca", workdir, cert=ca_cert)
-            print("setting up ca_certfile to be: ")
-            print(ca_certfile)
             server_certfile, server_keyfile = save_key_cert_pair(
                 "server",
                 workdir,
-                *tls_test_tools.generate_derived_key_cert_pair(ca_key),
+                *tls_test_tools.generate_derived_key_cert_pair(ca_key=ca_key),
             )
 
             tls_config = TLSConfig(
                 server=KeyPair(cert=server_certfile, key=server_keyfile),
-                client=KeyPair(cert=ca_certfile, key=""),
+                client=KeyPair(cert="", key=""),
             )
+            # need to save this ca_certfile in config_overrides so the tls tests below can access it from client side
+            config_overrides["use_in_test"] = {"ca_cert": ca_certfile}
             if mtls:
                 client_certfile, client_keyfile = save_key_cert_pair(
                     "client",
                     workdir,
-                    *tls_test_tools.generate_derived_key_cert_pair(ca_key),
+                    *tls_test_tools.generate_derived_key_cert_pair(ca_key=ca_key),
                 )
                 # tls_config.client = KeyPair(cert=ca_certfile, key="")
                 tls_config.client = KeyPair(cert=client_certfile, key=client_keyfile)
@@ -123,38 +121,26 @@ def insecure_http_server():
         yield insecure_http_server
 
 
-@pytest.fixture(scope="session")
-def http_server_with_tls():
+def test_insecure_server(insecure_http_server):
+    with insecure_http_server.run_in_thread():
+        resp = requests.get(f"http://localhost:{insecure_http_server.port}/docs")
+        resp.raise_for_status()
+
+
+def test_basic_tls_server():
     with generate_tls_configs(
         tls=True, mtls=False, http_config_overrides={}
     ) as config_overrides:
-        print("in pytest fixture")
-        print(config_overrides)
         http_server_with_tls = http_server.RuntimeHTTPServer(
             tls_config_override=config_overrides["runtime"]["tls"]
         )
-        yield http_server_with_tls
-
-
-def test_insecure_server(insecure_http_server):
-    with insecure_http_server.run_in_thread():
-        resp = requests.get(f"http://0.0.0.0:{insecure_http_server.port}/docs")
-        print(resp.status_code)
-        resp.raise_for_status()
-    # TODO: how do I kill this thread?
-
-@pytest.mark.skip(reason="WIP")
-def test_tls_server(http_server_with_tls):
-    with http_server_with_tls.run_in_thread():
-        print("cert is: ")
-        print(http_server_with_tls.tls_config.client.cert)
-        resp = requests.get(
-            f"https://0.0.0.0:{http_server_with_tls.port}/docs",
-            verify=http_server_with_tls.tls_config.client.cert,
-        )
-        print(resp.status_code)
-        resp.raise_for_status()
-    # TODO: how do I kill this thread?
+        with http_server_with_tls.run_in_thread():
+            resp = requests.get(
+                f"https://localhost:{http_server_with_tls.port}/docs",
+                verify=config_overrides["use_in_test"]["ca_cert"],
+            )
+            resp.raise_for_status()
+            # TODO: how do I kill this thread?
 
 
 # Third Party
