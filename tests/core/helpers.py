@@ -13,8 +13,8 @@
 # limitations under the License.
 
 # Standard
-from typing import Optional
-import copy
+from typing import Optional, Type
+import uuid
 
 # Third Party
 import pytest
@@ -24,7 +24,12 @@ from caikit.core import MODEL_MANAGER
 
 # Add mock backend
 # This is set in the base test config's load_priority list
-from caikit.core.model_management import ModelInitializerBase, model_initializer_factory
+from caikit.core.model_management import (
+    ModelInitializerBase,
+    ModelTrainerBase,
+    model_initializer_factory,
+    model_trainer_factory,
+)
 from caikit.core.model_management.local_model_initializer import LocalModelInitializer
 from caikit.core.module_backends import BackendBase, backend_types
 from caikit.core.modules import ModuleBase, ModuleConfig
@@ -81,6 +86,79 @@ class TestInitializer(ModelInitializerBase):
 model_initializer_factory.register(TestInitializer)
 
 
+# Add a new simple trainer for tests to use
+class TestTrainer(ModelTrainerBase):
+    name = "TestTrainer"
+    __test__ = False
+
+    def __init__(self, config):
+        self.canned_status = config.get(
+            "canned_status", ModelTrainerBase.TrainingStatus.COMPLETED
+        )
+        self._futures = {}
+
+    class TestModelFuture(ModelTrainerBase.ModelFutureBase):
+        __test__ = False
+
+        def __init__(
+            self,
+            parent,
+            trained_model,
+            save_path,
+        ):
+            self._id = str(uuid.uuid4())
+            self._save_path = save_path
+            self._parent = parent
+            self._trained_model = trained_model
+            self._canceled = False
+
+            # Save it if given a path
+            if self.save_path:
+                self._trained_model.save(self.save_path)
+
+        @property
+        def id(self):
+            return self._id
+
+        @property
+        def save_path(self):
+            return self._save_path
+
+        def get_status(self):
+            if self._canceled:
+                return ModelTrainerBase.TrainingStatus.CANCELED
+            return self._parent.canned_status
+
+        def cancel(self):
+            self._canceled = True
+
+        def wait(self):
+            return
+
+        def load(self):
+            return self._trained_model
+
+    def train(
+        self,
+        module_class: Type[ModuleBase],
+        *args,
+        save_path: Optional[str] = None,
+        **kwargs,
+    ):
+        trained_model = module_class.train(*args, **kwargs)
+        future = self.TestModelFuture(self, trained_model, save_path)
+        self._futures[future.id] = future
+        return future
+
+    def get_model_future(self, training_id: str) -> ModelTrainerBase.ModelFutureBase:
+        if training_id not in self._futures:
+            raise ValueError(f"Unknown training id: {training_id}")
+        return self._futures[training_id]
+
+
+model_trainer_factory.register(TestTrainer)
+
+
 def configured_backends():
     local_initializers = [
         loader
@@ -126,11 +204,14 @@ def reset_module_registry():
 def reset_model_manager():
     prev_finders = MODEL_MANAGER._finders
     prev_initializers = MODEL_MANAGER._initializers
+    prev_trainers = MODEL_MANAGER._trainers
     MODEL_MANAGER._finders = {}
     MODEL_MANAGER._initializers = {}
+    MODEL_MANAGER._trainers = {}
     yield
     MODEL_MANAGER._finders = prev_finders
     MODEL_MANAGER._initializers = prev_initializers
+    MODEL_MANAGER._trainers = prev_trainers
 
 
 @pytest.fixture

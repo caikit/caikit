@@ -20,7 +20,7 @@
 from contextlib import contextmanager
 from io import BytesIO
 from threading import Lock
-from typing import Dict, Union
+from typing import Dict, Optional, Type, Union
 import os
 import tempfile
 import zipfile
@@ -32,8 +32,10 @@ import alog
 from .model_management import (
     ModelFinderBase,
     ModelInitializerBase,
+    ModelTrainerBase,
     model_finder_factory,
     model_initializer_factory,
+    model_trainer_factory,
 )
 from .modules.base import ModuleBase
 from .registries import module_registry
@@ -68,11 +70,105 @@ class ModelManager:
         """Initialize ModelManager."""
         # Map to store module caches, to be used for singleton model lookups
         self._singleton_module_cache = {}
+        self._trainers = {}
         self._finders = {}
         self._initializers = {}
         self.__singleton_lock = Lock()
 
     ## Public ##################################################################
+
+    def train(
+        self,
+        module: Union[Type[ModuleBase], str],
+        *args,
+        trainer: Union[str, ModelTrainerBase] = "default",
+        save_path: Optional[str] = None,
+        wait: bool = False,
+        **kwargs,
+    ) -> ModelTrainerBase.ModelFutureBase:
+        """Train an instance of the given module with the given args and kwargs
+        using the given trainer.
+
+        Each module's train function encapsulates the code needed to perform the
+        training locally. This top-level train function provides the wrapper
+        functionality to delegate the execution of the module's train function
+        to an alternate framework using a ModelTrainerBase. It also allows
+        training to be launched asynchronously.
+
+        Args:
+            module (Union[Type[ModuleBase], str]): The module class or guid for
+                the module to train
+            *args: Additional positional args to pass through to the module's
+                train function
+
+        Kwargs:
+            trainer (Union[str, ModelTrainerBase]): The trainer to use. If given
+                as a string, this is a key in the global config at
+                model_management.trainers.
+            save_path (Optional[str]): Path on disk where the model should be
+                saved (may be relative to a remote trainer's filesystem)
+            wait (bool): Wait for training to complete before returning
+            **kwargs: Additional keyword arguments to pass through to the
+                modules's train function
+
+        Returns:
+            model_future (ModelTrainerBase.ModelFutureBase): The future handle
+                to the model which holds the status of the in-flight training.
+        """
+        # Resolve the module class
+        if isinstance(module, str):
+            module_id = module
+            module = module_registry().get(module_id)
+            error.value_check(
+                "<COR00469102E>",
+                module is not None,
+                "Unable to train unknown module {}",
+                module_id,
+            )
+        error.subclass_check("<COR05418775E>", module, ModuleBase)
+
+        # Get the trainer to use
+        trainer = self._get_trainer(trainer)
+
+        # Start the training
+        with alog.ContextTimer(log.debug, "Started training in: "):
+            model_future = trainer.train(module, *args, save_path=save_path, **kwargs)
+            log.debug("Started training %s", model_future.id)
+
+        # If requested, wait for the future to complete
+        if wait:
+            log.debug("Waiting for training %s to complete", model_future.id)
+            with alog.ContextTimer(
+                log.debug, "Finished training %s in: ", model_future.id
+            ):
+                model_future.wait()
+
+        # Return a handle to the training
+        return model_future
+
+    def get_model_future(
+        self,
+        training_id: str,
+        *,
+        trainer: Union[str, ModelTrainerBase] = "default",
+    ) -> ModelTrainerBase.ModelFutureBase:
+        """Get the future handle to an in-progress training
+
+        Args:
+            training_id (str): The ID string from the original training
+                submission's ModelFuture
+
+        Kwargs:
+            trainer (Union[str, ModelTrainerBase]): The trainer to use. If given
+                as a string, this is a key in the global config at
+                model_management.trainers.
+
+        Returns:
+            model_future (ModelTrainerBase.ModelFutureBase): The future handle
+                to the model which holds the status of the in-flight training.
+        """
+        trainer = self._get_trainer(trainer)
+        return trainer.get_model_future(training_id)
 
     def load(
         self,
@@ -433,6 +529,17 @@ class ModelManager:
             )
             component_dict[component] = component_factory.construct(cfg)
         return component_dict[component]
+
+    def _get_trainer(self, trainer: Union[str, ModelTrainerBase]) -> ModelTrainerBase:
+        """Get the configured model trainer or the one passed by value"""
+        return self._get_component(
+            component=trainer,
+            component_dict=self._trainers,
+            component_factory=model_trainer_factory,
+            component_name="trainer",
+            component_cfg=get_config().model_management.trainers,
+            component_type=ModelTrainerBase,
+        )
 
     def _get_finder(self, finder: Union[str, ModelFinderBase]) -> ModelFinderBase:
         """Get the configured model finder or the one passed by value"""

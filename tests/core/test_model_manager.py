@@ -21,6 +21,7 @@ import tempfile
 
 # Local
 from caikit.core import LocalBackend
+from caikit.core.data_model import DataStream
 from caikit.core.model_management import ModelFinderBase, model_finder_factory
 
 # Unit Test Infrastructure
@@ -262,6 +263,16 @@ class NoYamlInitializer(ModelInitializerBase):
 
 model_finder_factory.register(NoYamlFinder)
 model_initializer_factory.register(NoYamlInitializer)
+
+
+@contextmanager
+def setup_test_trainer(config=None):
+    factory_blob = {"type": TestTrainer.name}
+    if config is not None:
+        factory_blob["config"] = config
+    with temp_config({"model_management": {"trainers": {"default": factory_blob}}}):
+        yield
+
 
 ## Tests #######################################################################
 
@@ -556,3 +567,31 @@ def test_load_loader_finder_by_value(reset_globals):
             "unused", finder=NoYamlFinder(), initializer=NoYamlInitializer()
         )
         assert isinstance(model, SampleModule)
+
+
+def test_train_by_module_class(reset_globals):
+    """Make sure training can be accessed through the central train function
+    with the class directly
+    """
+    with setup_test_trainer():
+        train_future = caikit.train(SampleModule, DataStream.from_iterable([]))
+        assert isinstance(train_future, ModelTrainerBase.ModelFutureBase)
+        loaded_model = train_future.load()
+        assert isinstance(loaded_model, SampleModule)
+        found_future = caikit.get_model_future(train_future.id)
+        assert found_future is train_future
+
+
+def test_train_by_module_id(reset_globals):
+    """Make sure training can be accessed through the central train function
+    with the module_id for the module to train
+    """
+    with setup_test_trainer():
+        train_future = caikit.train(
+            SampleModule.MODULE_ID, DataStream.from_iterable([])
+        )
+        assert isinstance(train_future, ModelTrainerBase.ModelFutureBase)
+        loaded_model = train_future.load()
+        assert isinstance(loaded_model, SampleModule)
+        found_future = caikit.get_model_future(train_future.id)
+        assert found_future is train_future
