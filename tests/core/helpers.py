@@ -93,7 +93,7 @@ class TestTrainer(ModelTrainerBase):
 
     def __init__(self, config):
         self.canned_status = config.get(
-            "canned_status", ModelTrainerBase.TrainingStatus.COMPLETED
+            "canned_status", ModelTrainerBase.TrainingStatus.RUNNING
         )
         self._futures = {}
 
@@ -111,10 +111,7 @@ class TestTrainer(ModelTrainerBase):
             self._parent = parent
             self._trained_model = trained_model
             self._canceled = False
-
-            # Save it if given a path
-            if self.save_path:
-                self._trained_model.save(self.save_path)
+            self._completed = False
 
         @property
         def id(self):
@@ -125,6 +122,8 @@ class TestTrainer(ModelTrainerBase):
             return self._save_path
 
         def get_status(self):
+            if self._completed:
+                return ModelTrainerBase.TrainingStatus.COMPLETED
             if self._canceled:
                 return ModelTrainerBase.TrainingStatus.CANCELED
             return self._parent.canned_status
@@ -133,7 +132,9 @@ class TestTrainer(ModelTrainerBase):
             self._canceled = True
 
         def wait(self):
-            return
+            self._completed = True
+            if self.save_path:
+                self._trained_model.save(self.save_path)
 
         def load(self):
             return self._trained_model

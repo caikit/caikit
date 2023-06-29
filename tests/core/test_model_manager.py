@@ -595,3 +595,42 @@ def test_train_by_module_id(reset_globals):
         assert isinstance(loaded_model, SampleModule)
         found_future = caikit.get_model_future(train_future.id)
         assert found_future is train_future
+
+
+def test_train_with_wait(reset_globals):
+    """Make sure calling train with wait correctly waits for completion"""
+    with setup_test_trainer():
+        # Call without waiting and make sure it's not COMPLETED
+        unfinished_train_future = caikit.train(
+            SampleModule, DataStream.from_iterable([])
+        )
+        assert (
+            unfinished_train_future.get_status()
+            == ModelTrainerBase.TrainingStatus.RUNNING
+        )
+        # Call with wait and make sure it is COMPLETED
+        finished_train_future = caikit.train(
+            SampleModule, DataStream.from_iterable([]), wait=True
+        )
+        assert (
+            finished_train_future.get_status()
+            == ModelTrainerBase.TrainingStatus.COMPLETED
+        )
+
+
+def test_train_with_save_path(reset_globals):
+    """Make sure calling train with a save_path correctly saves out the model"""
+    with setup_test_trainer():
+        with tempfile.TemporaryDirectory() as workdir:
+            save_path = os.path.join(workdir, "saved_model")
+            train_future = caikit.train(
+                SampleModule, DataStream.from_iterable([]), save_path=save_path
+            )
+            assert train_future.get_status() == ModelTrainerBase.TrainingStatus.RUNNING
+            assert not os.path.exists(save_path)
+            assert train_future.save_path == save_path
+            train_future.wait()
+            assert (
+                train_future.get_status() == ModelTrainerBase.TrainingStatus.COMPLETED
+            )
+            assert os.path.exists(save_path)
