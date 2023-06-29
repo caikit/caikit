@@ -75,7 +75,7 @@ class TLSConfig:
 def generate_tls_configs(
     tls: bool = False, mtls: bool = False, **http_config_overrides
 ):
-    """Helper to boot up an instance of the http server on an available port"""
+    """Helper to generate tls configs"""
     with tempfile.TemporaryDirectory() as workdir:
         config_overrides = {}
         client_keyfile, client_certfile, ca_certfile = None, None, None
@@ -101,8 +101,11 @@ def generate_tls_configs(
                     workdir,
                     *tls_test_tools.generate_derived_key_cert_pair(ca_key=ca_key),
                 )
-                # tls_config.client = KeyPair(cert=ca_certfile, key="")
-                tls_config.client = KeyPair(cert=client_certfile, key=client_keyfile)
+                tls_config.client = KeyPair(cert=ca_certfile, key="")
+                # need to save the client cert and key in config_overrides so the mtls test below can access it
+                config_overrides["use_in_test"]["client_cert"] = client_certfile
+                config_overrides["use_in_test"]["client_key"] = client_keyfile
+
             config_overrides["runtime"] = {"tls": tls_config}
         port = http_server.RuntimeServerBase._find_port()
         config_overrides.setdefault("runtime", {})["http"] = {
@@ -125,6 +128,7 @@ def test_insecure_server(insecure_http_server):
     with insecure_http_server.run_in_thread():
         resp = requests.get(f"http://localhost:{insecure_http_server.port}/docs")
         resp.raise_for_status()
+        # TODO: how do I kill this thread?
 
 
 def test_basic_tls_server():
@@ -138,6 +142,31 @@ def test_basic_tls_server():
             resp = requests.get(
                 f"https://localhost:{http_server_with_tls.port}/docs",
                 verify=config_overrides["use_in_test"]["ca_cert"],
+            )
+            resp.raise_for_status()
+            # TODO: how do I kill this thread?
+
+
+def test_mutual_tls_server():
+    with generate_tls_configs(
+        tls=True, mtls=True, http_config_overrides={}
+    ) as config_overrides:
+        http_server_with_mtls = http_server.RuntimeHTTPServer(
+            tls_config_override=config_overrides["runtime"]["tls"]
+        )
+        with http_server_with_mtls.run_in_thread():
+            print(
+                "client_cert_file is: ", config_overrides["use_in_test"]["client_cert"]
+            )
+            print("client key file is: ", config_overrides["use_in_test"]["client_key"])
+            print("ca cert is: ", config_overrides["use_in_test"]["ca_cert"])
+            resp = requests.get(
+                f"https://localhost:{http_server_with_mtls.port}/docs",
+                verify=config_overrides["use_in_test"]["ca_cert"],
+                cert=(
+                    config_overrides["use_in_test"]["client_cert"],
+                    config_overrides["use_in_test"]["client_key"],
+                ),
             )
             resp.raise_for_status()
             # TODO: how do I kill this thread?
