@@ -128,8 +128,6 @@ def test_insecure_server(insecure_http_server):
     with insecure_http_server.run_in_thread():
         resp = requests.get(f"http://localhost:{insecure_http_server.port}/docs")
         resp.raise_for_status()
-        # TODO: how do I kill this thread?
-
 
 def test_basic_tls_server():
     with generate_tls_configs(
@@ -144,8 +142,6 @@ def test_basic_tls_server():
                 verify=config_overrides["use_in_test"]["ca_cert"],
             )
             resp.raise_for_status()
-            # TODO: how do I kill this thread?
-
 
 def test_mutual_tls_server():
     with generate_tls_configs(
@@ -169,7 +165,6 @@ def test_mutual_tls_server():
                 ),
             )
             resp.raise_for_status()
-            # TODO: how do I kill this thread?
 
 
 # Third Party

@@ -127,8 +127,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         # Parse TLS configuration
         tls_kwargs = {}
-        print("setting up tls and server config\n")
-        print(self.tls_config)
         if (
             self.tls_config
             and self.tls_config.server.key
@@ -174,12 +172,17 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
     @contextmanager
     def run_in_thread(self):
-        print("starting server thread\n")
         self.uvicorn_server_thread.start()
-        while not self.server.started:
-            time.sleep(1e-3)
-        print("server ready")
-        yield
+        try:
+            while not self.server.started:
+                time.sleep(1e-3)
+            log.info("HTTP Server is running in thread")
+            yield
+
+        finally:
+            log.info("Shutting down HTTP Server")
+            self.server.should_exit = True
+            self.uvicorn_server_thread.join()
 
     ##########
     ## Impl ##

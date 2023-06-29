@@ -41,8 +41,6 @@ class RuntimeServerBase:
             log.warning(
                 "Port %d was in use, had to find another! %d", base_port, self.port
             )
-        print("in server base: ")
-        print(tls_config_override)
         self.tls_config = (
             tls_config_override if tls_config_override else self.config.runtime.tls
         )
