@@ -300,6 +300,10 @@ def task(*args, **kwargs) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
             return False
 
         error.subclass_check("<COR19436440E>", cls, TaskBase)
+        error.subclass_check(
+            "<COR12766440E>", cls.__annotations__["unary_output_type"], DataBase
+        )
+
         setattr(cls, "is_output_streaming_task", classmethod(is_output_streaming_task))
         setattr(cls, "is_input_streaming_task", classmethod(is_input_streaming_task))
 

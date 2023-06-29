@@ -25,49 +25,44 @@ def test_task_decorator_has_streaming_types():
     assert SampleTask.is_output_streaming_task()
 
 
-# def test_task_decorator_validates_class_extends_task_base():
-#     with pytest.raises(TypeError):
+def test_task_decorator_validates_class_extends_task_base():
+    with pytest.raises(TypeError):
 
-#         @task(
-#             required_parameters={"sample_input": SampleInputType},
-#             output_type=SampleOutputType,
-#         )
-#         class SampleTask:
-#             pass
+        @task()
+        class SampleTask:
+            pass
 
 
-# def test_task_decorator_validates_output_is_data_model():
-#     with pytest.raises(TypeError, match=".*str.* is not a subclass"):
+def test_task_decorator_validates_output_is_data_model():
+    with pytest.raises(TypeError, match=".*str.* is not a subclass"):
 
-#         @task(
-#             required_parameters={"sample_input": SampleInputType},
-#             output_type=str,
-#         )
-#         class SampleTask(TaskBase):
-#             pass
+        @task()
+        class SampleTask(TaskBase):
+            unary_params: {"text": str}
+            unary_output_type: str
 
 
-# def test_task_decorator_can_have_iterable_output():
-#     """This test covers tasks + modules with streaming output"""
+def test_task_decorator_can_have_iterable_output():
+    """This test covers tasks + modules with streaming output"""
 
-#     @task(
-#         required_parameters={"sample_input": SampleInputType},
-#         output_type=Iterable[SampleOutputType],
-#     )
-#     class StreamingTask(TaskBase):
-#         pass
+    @task()
+    class StreamingTask(TaskBase):
+        unary_params: {"sample_input": SampleInputType}
+        streaming_params: {"tokens": Iterable[str]}
+        unary_output_type: SampleOutputType
+        streaming_output_type: Iterable[SampleOutputType]
 
-#     @caikit.core.module(
-#         id=str(uuid.uuid4()),
-#         name="StreamingModule",
-#         version="0.0.1",
-#         task=StreamingTask,
-#     )
-#     class StreamingModule(caikit.core.ModuleBase):
-#         def run(
-#             self, sample_input: SampleInputType
-#         ) -> caikit.core.data_model.DataStream[SampleOutputType]:
-#             pass
+    @caikit.core.module(
+        id=str(uuid.uuid4()),
+        name="StreamingModule",
+        version="0.0.1",
+        task=StreamingTask,
+    )
+    class StreamingModule(caikit.core.ModuleBase):
+        def run(
+            self, sample_input: SampleInputType
+        ) -> caikit.core.data_model.DataStream[SampleOutputType]:
+            pass
 
 
 # def test_task_iterator_raises_on_wrong_streaming_type():
