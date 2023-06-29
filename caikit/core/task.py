@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
+import dataclasses
+import enum
 from inspect import isclass
-from typing import Callable, Dict, List, Type, Union
+from typing import Callable, Dict, List, Type, Union, TypeVar
 import collections
 import typing
 
@@ -34,6 +36,15 @@ ValidInputTypes = Union[
     ProtoableInputTypes, List[ProtoableInputTypes], DataStream[ProtoableInputTypes]
 ]
 
+_InferenceMethodBaseT = TypeVar("_InferenceMethodBaseT", bound=Callable)
+
+
+class StreamingFlavor(enum.Enum):
+    UNARY_UNARY = 1
+    UNARY_STREAM = 2
+    STREAM_UNARY = 3
+    STREAM_STREAM = 4
+
 
 class TaskBase:
     """The TaskBase defines the interface for an abstract AI task
@@ -43,6 +54,43 @@ class TaskBase:
     required input argument types and the output value type are consistent
     across all implementations of the task.
     """
+
+    @dataclasses.dataclass
+    class InferenceMethodPtr:
+        method_name: str
+        streaming_flavor: StreamingFlavor
+
+    deferred_method_decorators: Dict[Type['TaskBase'], Dict[str, List['TaskBase.InferenceMethodPtr']]] = {}
+
+
+    @classmethod
+    def taskmethod(cls, streaming_flavor: StreamingFlavor = StreamingFlavor.UNARY_UNARY) -> Callable[[_InferenceMethodBaseT], _InferenceMethodBaseT]:
+        def decorator(inference_method: _InferenceMethodBaseT) -> _InferenceMethodBaseT:
+
+            # signature = CaikitMethodSignature(inference_method.__self__, inference_method.__name__)
+
+            cls.deferred_method_decorators.setdefault(cls, {})
+            fq_mod_name = ".".join([inference_method.__module__, *inference_method.__qualname__.split(".")[0:-1]])
+            cls.deferred_method_decorators[cls].setdefault(fq_mod_name, [])
+            cls.deferred_method_decorators[cls][fq_mod_name].append(TaskBase.InferenceMethodPtr(method_name=inference_method.__name__, streaming_flavor=streaming_flavor))
+            return inference_method
+        return decorator
+
+    @classmethod
+    def deferred_method_decoration(cls, module: Type):
+        if cls.has_inference_method_decorators(module):
+            keyname = _make_keyname_for_module(module)
+            deferred_decorations = cls.deferred_method_decorators[cls][keyname]
+            for decoration in deferred_decorations:
+                signature = CaikitMethodSignature(module, decoration.method_name)
+                cls.validate_run_signature(signature)
+
+    @classmethod
+    def has_inference_method_decorators(cls, module_class: Type) -> bool:
+        if cls not in cls.deferred_method_decorators:
+            return False
+        return _make_keyname_for_module(module_class) in cls.deferred_method_decorators[cls]
+
 
     @classmethod
     def validate_run_signature(cls, signature: CaikitMethodSignature) -> None:
@@ -310,3 +358,7 @@ def task(*args, **kwargs) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
         return cls
 
     return decorator
+
+
+def _make_keyname_for_module(module_class: Type) -> str:
+    return ".".join([module_class.__module__, module_class.__qualname__])

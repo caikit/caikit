@@ -195,6 +195,12 @@ def module(
         # If the module has a task, validate it:
         # if cls_.TASK_CLASS:
         #     cls_.TASK_CLASS.validate_run_signature(cls_.RUN_SIGNATURE)
+        if cls_.TASK_CLASS:
+            if not cls_.TASK_CLASS.has_inference_method_decorators(module_class=cls_):
+                # TODO: backwards compatibility code for raw `.run` impls
+                pass
+
+            cls_.TASK_CLASS.deferred_method_decoration(cls_)
 
         # If no backend support described in the class, add current backend
         # as the only backend that can load models trained by this module

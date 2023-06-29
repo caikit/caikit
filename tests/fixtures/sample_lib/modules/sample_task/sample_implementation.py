@@ -4,6 +4,7 @@ A sample module for sample things!
 # Standard
 import os
 
+from caikit.core.task import StreamingFlavor
 # Local
 from ...data_model.sample import (
     SampleInputType,
@@ -34,6 +35,7 @@ class SampleModule(caikit.core.ModuleBase):
         config = loader.config
         return cls(config["train"]["batch_size"], config["train"]["learning_rate"])
 
+    @SampleTask.taskmethod
     def run(
         self, sample_input: SampleInputType, throw: bool = False
     ) -> SampleOutputType:
@@ -50,6 +52,7 @@ class SampleModule(caikit.core.ModuleBase):
             raise ValueError(f"{self.POISON_PILL_NAME} is not allowed!")
         return SampleOutputType(f"Hello {sample_input.name}")
 
+    @SampleTask.taskmethod(streaming_flavor=StreamingFlavor.UNARY_STREAM)
     def run_stream_out(
         self, sample_input: SampleInputType
     ) -> DataStream[SampleOutputType]:
