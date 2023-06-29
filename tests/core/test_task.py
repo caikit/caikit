@@ -22,8 +22,13 @@ def test_task_decorator_has_streaming_types():
         unary_output_type: SampleOutputType
         streaming_output_type: Iterable[SampleOutputType]
 
-    assert SampleTask.is_input_streaming_task()
-    assert SampleTask.is_output_streaming_task()
+    assert (
+        SampleTask.get_output_type(flavor=StreamingFlavor.STREAM_STREAM)
+        == Iterable[SampleOutputType]
+    )
+    assert SampleTask.get_required_parameters(flavor=StreamingFlavor.STREAM_STREAM) == {
+        "tokens": Iterable[str]
+    }
 
 
 def test_task_decorator_validates_class_extends_task_base():

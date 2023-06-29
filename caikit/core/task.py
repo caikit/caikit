@@ -187,15 +187,6 @@ class TaskBase:
         return cls.__annotations__[_STREAM_OUT_ANNOTATION]
 
     @classmethod
-    def is_output_streaming_task(cls) -> bool:
-        """Returns true if this task has streaming output
-
-        NOTE: This method is automatically configured by the @task decorator
-            and should not be overwritten by child classes.
-        """
-        raise NotImplementedError("This is implemented by the @task decorator!")
-
-    @classmethod
     def _raise_on_wrong_output_type(
         cls, output_type, module, streaming_flavor: StreamingFlavor
     ):
@@ -423,15 +414,6 @@ def task(*_, **kwargs) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
                 error.subclass_check(
                     "<COR52740295E>", typing.get_origin(v), collections.abc.Iterable
                 )
-
-        def is_output_streaming_task(_):
-            return _STREAM_OUT_ANNOTATION in cls.__annotations__
-
-        def is_input_streaming_task(_):
-            return _STREAM_PARAMS_ANNOTATION in cls.__annotations__
-
-        setattr(cls, "is_output_streaming_task", classmethod(is_output_streaming_task))
-        setattr(cls, "is_input_streaming_task", classmethod(is_input_streaming_task))
 
         return cls
 
