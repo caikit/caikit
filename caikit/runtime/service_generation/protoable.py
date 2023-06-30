@@ -16,15 +16,26 @@ This file contains our logic about what constitutes a proto-able for RPC generat
 """
 
 # Standard
-from typing import Dict, Type, Union, get_args, get_origin
+from typing import Dict, List, Type, Union, get_args, get_origin
 import typing
 
 # First Party
+from py_to_proto.dataclass_to_proto import Annotated, OneofField
 import alog
 
 # Local
-from caikit.core.data_model.dataobject import DATAOBJECT_PY_TO_PROTO_TYPES
+from caikit.core.data_model.base import DataBase
+from caikit.core.data_model.dataobject import (
+    DATAOBJECT_PY_TO_PROTO_TYPES,
+    make_dataobject,
+)
 from caikit.runtime.service_generation.type_helpers import is_data_model_type
+import caikit
+
+# This global holds the mapping of union list types to their respective
+# UnionList wrappers so that the same message is not recreated
+# unnecessarily
+_UNION_LIST_SOURCE_TYPES = {}
 
 log = alog.use_channel("PROTOABLES")
 
@@ -66,6 +77,11 @@ def handle_protoables_in_union(arg_type: Type) -> Type:
                 for union_val in typing.get_args(arg_type)
                 if is_protoable_type(union_val)
             ]
+            # handle union of lists in a separate way
+            if len(union_protoables) > 1 and all(
+                typing.get_origin(arg) is list for arg in union_protoables
+            ):
+                return make_union_dataobjects(union_protoables)
             # if all are protoable, return the union (which will create a oneof)
             if len(union_protoables) == len(typing.get_args(arg_type)):
                 return arg_type
@@ -89,6 +105,92 @@ def handle_protoables_in_union(arg_type: Type) -> Type:
             return union_protoables[0]
         return arg_type
     log.debug("Skipping non-protoable argument type [%s]", arg_type)
+
+
+def _make_union_list_source_type_name(args: List) -> str:
+    """Make the name for  source class that wraps the given types"""
+    return f"UnionList{''.join([get_args(arg)[0].__name__.capitalize() for arg in args])}Source"
+
+
+def make_union_dataobjects(union_protoables: List) -> Type[DataBase]:
+    """Dynamically create a union list source message type"""
+    package = "caikit_data_model.runtime"
+    cls_name = _make_union_list_source_type_name(union_protoables)
+    if cls_name not in _UNION_LIST_SOURCE_TYPES:
+        data_object_map = {}
+        data_object_list = []
+        for arg in union_protoables:
+            arg_type = get_args(arg)[0]
+            arg_name = f"{arg_type.__name__.capitalize()}Sequence"
+            do = make_dataobject(
+                package=package,
+                proto_name=f"{cls_name}{arg_name}",
+                name=arg_name,
+                attrs={"__qualname__": f"{cls_name}.{arg_name}"},
+                annotations={"values": List[arg_type]},
+            )
+            data_object_map[arg_name] = do
+            data_object_list.append(Annotated[do, OneofField(do.__name__)])
+        data_object = make_dataobject(
+            package=package,
+            name=cls_name,
+            attrs=data_object_map,
+            annotations={
+                "union_list": Union[tuple(data_object_list)],
+            },
+        )
+        setattr(
+            caikit.interfaces.common.data_model,
+            cls_name,
+            data_object,
+        )
+
+        _UNION_LIST_SOURCE_TYPES[cls_name] = data_object
+
+    return _UNION_LIST_SOURCE_TYPES[cls_name]
+
+
+def _make_union_list_source_type_name(args: List) -> str:
+    """Make the name for  source class that wraps the given types"""
+    return f"UnionList{''.join([get_args(arg)[0].__name__.capitalize() for arg in args])}Source"
+
+
+def make_union_dataobjects(union_protoables: List) -> Type[DataBase]:
+    """Dynamically create a union list source message type"""
+    package = "caikit_data_model.runtime"
+    cls_name = _make_union_list_source_type_name(union_protoables)
+    if cls_name not in _UNION_LIST_SOURCE_TYPES:
+        data_object_map = {}
+        data_object_list = []
+        for arg in union_protoables:
+            arg_type = get_args(arg)[0]
+            arg_name = f"{arg_type.__name__.capitalize()}Sequence"
+            do = make_dataobject(
+                package=package,
+                proto_name=f"{cls_name}{arg_name}",
+                name=arg_name,
+                attrs={"__qualname__": f"{cls_name}.{arg_name}"},
+                annotations={"values": List[arg_type]},
+            )
+            data_object_map[arg_name] = do
+            data_object_list.append(Annotated[do, OneofField(do.__name__)])
+        data_object = make_dataobject(
+            package=package,
+            name=cls_name,
+            attrs=data_object_map,
+            annotations={
+                "union_list": Union[tuple(data_object_list)],
+            },
+        )
+        setattr(
+            caikit.interfaces.common.data_model,
+            cls_name,
+            data_object,
+        )
+
+        _UNION_LIST_SOURCE_TYPES[cls_name] = data_object
+
+    return _UNION_LIST_SOURCE_TYPES[cls_name]
 
 
 def get_protoable_return_type(arg_type: Type) -> Type:

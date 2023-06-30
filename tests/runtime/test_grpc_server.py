@@ -340,10 +340,14 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
             data=[SampleTrainingType(1), SampleTrainingType(2)]
         )
     ).to_proto()
+    union_list_str_int_dm = caikit.interfaces.common.data_model.UnionListStrIntSource
     model_name = random_test_id()
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
         model_name=model_name,
         training_data=training_data,
+        union_list=union_list_str_int_dm(
+            union_list=union_list_str_int_dm.StrSequence(values=["str", "sequence"])
+        ).to_proto(),
     )
 
     actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
@@ -462,12 +466,17 @@ def test_train_primitive_model(
     train_request_class = DataBase.get_class_for_name(
         "SampleTaskSamplePrimitiveModuleTrainRequest"
     )
+    union_list_str_int_dm = caikit.interfaces.common.data_model.UnionListStrIntSource
+    union_list_str_bool_dm = caikit.interfaces.common.data_model.UnionListStrBoolSource
     train_request = train_request_class(
         model_name=model_name,
         sample_input=SampleInputType(name="Gabe"),
         simple_list=["hello", "world"],
-        union_list_str_sequence=train_request_class.UnionListStrSequence(
-            values=["str", "sequence"]
+        union_list=union_list_str_int_dm(
+            union_list=union_list_str_int_dm.StrSequence(values=["str", "sequence"])
+        ),
+        union_list1=union_list_str_bool_dm(
+            union_list=union_list_str_bool_dm.BoolSequence(values=[True, False])
         ),
         training_params_json_dict={"foo": {"bar": [1, 2, 3]}},
         training_params_json_dict_list=[{"foo": {"bar": [1, 2, 3]}}],
