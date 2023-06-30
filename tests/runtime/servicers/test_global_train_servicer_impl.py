@@ -40,12 +40,11 @@ import caikit.core
 
 
 @pytest.fixture(autouse=True, params=[True, False])
-def set_train_location(request):
+def set_train_location(request, sample_train_servicer):
     """This fixture ensures that all tests in this file will be run with both
     subprocess and local training styles
     """
-    with temp_config({"training": {"use_subprocess": request.param}}):
-        yield
+    sample_train_servicer.use_subprocess = request.param
 
 
 # Train tests for the GlobalTrainServicer class ############################################################
@@ -78,6 +77,7 @@ def test_global_train_sample_task(
     training_response = sample_train_servicer.Train(
         train_request, Fixtures.build_context("foo")
     )
+
     assert training_response.model_name == model_name
 
     assert training_response.training_id is not None
@@ -340,6 +340,8 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_mod
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
+
+    sample_train_servicer.auto_load_trained_model = False
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
         model_name=random_test_id(),
         batch_size=999,
@@ -351,11 +353,11 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_mod
             train_request, Fixtures.build_context("foo")
         )
 
-        training_result = sample_train_servicer.training_map.get(
+        _ = sample_train_servicer.training_map.get(
             training_response.training_id
         ).result()
 
-    assert f"This may be a problem with your input" in str(context.value.message)
+    assert f"Batch size of 999 is not allowed!" in str(context.value.message)
 
 
 def test_global_train_returns_exit_code_with_oom(
