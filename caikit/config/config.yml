@@ -32,6 +32,8 @@ model_management:
     trainers:
         default:
             type: LOCAL
+            config:
+                retention_duration: 1d
     finders:
         default:
             type: LOCAL
