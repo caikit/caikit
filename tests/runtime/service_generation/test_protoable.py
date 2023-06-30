@@ -200,6 +200,11 @@ def test_to_protoable_signature_union_list():
     union_list_str_instance = union_list_dm(
         union_list=union_list_dm.StrSequence(values=["one", "two"])
     )
+    ## proto test
+    union_list_dm.from_proto(
+        union_list_str_instance.to_proto()
+    ) == union_list_str_instance
+    ## json test
     union_list_str_json_repr = {"strsequence": {"values": ["one", "two"]}}
     assert union_list_str_instance.to_json() == json.dumps(union_list_str_json_repr)
     assert union_list_dm.from_json(union_list_str_json_repr) == union_list_str_instance
@@ -208,6 +213,10 @@ def test_to_protoable_signature_union_list():
     union_list_int_instance = union_list_dm(
         union_list=union_list_dm.IntSequence(values=[1, 2])
     )
+    ## proto test
+    union_list_dm.from_proto(
+        union_list_int_instance.to_proto()
+    ) == union_list_int_instance
     union_list_int_json_repr = {"intsequence": {"values": [1, 2]}}
     assert union_list_int_instance.to_json() == json.dumps(union_list_int_json_repr)
     assert union_list_dm.from_json(union_list_int_json_repr) == union_list_int_instance
