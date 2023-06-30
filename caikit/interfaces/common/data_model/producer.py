@@ -38,13 +38,4 @@ class ProducerPriority(DataObjectBase):
     data structure.
     """
 
-    elements: List[ProducerId]
-
-    def __init__(self, producers):
-        """Construct a new ProducerPriority
-
-        Args:
-            producers (list(ProducerId))
-        """
-        error.type_check_all("<COR01353088E>", ProducerId, producers=producers)
-        self.producers = producers
+    producers: List[ProducerId]
