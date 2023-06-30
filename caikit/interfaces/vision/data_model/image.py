@@ -14,24 +14,29 @@
 
 """Data structures for representing images."""
 
-import alog
-from caikit.core import error_handler
-from caikit.core import DataObjectBase, dataobject
-import numpy as np
+# Third Party
 from PIL import Image as PILImage
-from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
+import numpy as np
 
+# First Party
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
+import alog
+
+# Local
 from .backends import ImagePilBackend
 from .package import VISION_PACKAGE
+from caikit.core import DataObjectBase, dataobject, error_handler
 
 log = alog.use_channel("DATAM")
 error = error_handler.get(log)
+
 
 @dataobject(package=VISION_PACKAGE)
 class Image(DataObjectBase):
     """Data model for an image object; this stores the image in the backend as a PIL image, with
     convenience views to interact with the Image as other formats as needed.
     """
+
     image_data: Annotated[bytes, FieldNumber(1)]
 
     def __init__(self, *args, **kwargs):

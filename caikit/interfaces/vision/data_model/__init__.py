@@ -14,7 +14,5 @@
 
 # Local
 from . import package
+from .image import Image
 from .package import VISION_PACKAGE
-from .image import (
-    Image
-)

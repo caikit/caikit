@@ -14,8 +14,9 @@
 
 # Local
 try:
+    # Local
     from . import data_model
 except ImportError:
-        raise ImportError(
-            "Unable to import vision data model; did you install with [vision-data-model] extras?"
-        )
+    raise ImportError(
+        "Unable to import vision data model; did you install with [vision-data-model] extras?"
+    )

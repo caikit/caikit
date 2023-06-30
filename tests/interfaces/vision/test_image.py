@@ -12,22 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for image data model and its backend/views."""
+# Standard
 import io
 import os
 
-import numpy as np
+# Third Party
 from PIL import Image as PILImage
+import numpy as np
 import pytest
 
+# Local
 from caikit.interfaces import vision as v
 
-
-FIXTURES_DIR = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "..",
-    "fixtures"
-)
+FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "fixtures")
 
 HAPPY_IMAGE_PATH = os.path.join(FIXTURES_DIR, "data", "sample_image.png")
 SAD_IMAGE_PATH = "does/not/exist"
@@ -65,23 +62,29 @@ def test_valid_image_initializations(happy_kwargs):
     assert isinstance(numpy_im, np.ndarray)
     assert np.allclose(numpy_im, NP_UINT8_DATA)
 
+
 @pytest.mark.parametrize("sad_kwargs", INVALID_INITIALIZATIONS)
 def test_invalid_initializations(sad_kwargs):
     """Test that we get a ValueError if we try to init with unsupported types."""
     with pytest.raises(ValueError):
         v.data_model.Image(**sad_kwargs)
 
+
 def test_bad_path_initialization():
     """Test that we get a FileNotFoundError if we try to load a bad path."""
     with pytest.raises(FileNotFoundError):
         v.data_model.Image(image_data=SAD_IMAGE_PATH)
 
+
 def test_bad_init_type():
     """Test that we produce a TypeError if we pass a bad type to dm initializer."""
+
     class SadType:
         pass
+
     with pytest.raises(TypeError):
         v.data_model.Image(SadType())
+
 
 ### View tests
 def test_as_pil():
@@ -99,6 +102,7 @@ def test_as_numpy():
     assert npimg.shape == expected_shape
     assert npimg.dtype == np.uint8
 
+
 ### Backend validation tests
 def test_no_backend_property_access_fails():
     """Test that we throw good errors if we skip _backend setting."""
@@ -112,11 +116,13 @@ def test_no_backend_property_access_fails():
         with pytest.raises(AttributeError):
             getattr(sad_img, view_name)()
 
+
 def test_from_sad_backend():
     """Test that if garbage is used for our backend, views fail."""
     sad_img = v.data_model.Image.from_backend(100)
     with pytest.raises(AttributeError):
         sad_img.as_numpy()
+
 
 def test_default_format_pil():
     """Test that we can serialize a PIL image created in-memory with a lossless compression."""
@@ -131,7 +137,11 @@ def test_default_format_pil():
     assert dm_image._backend._export_format == default_format
     # Then, if we reconstruct from the serialized proto, it should be
     # reloaded as a PNG because it was serialized as a PNG.
-    assert v.data_model.Image.from_proto(proto_img)._backend._export_format == default_format
+    assert (
+        v.data_model.Image.from_proto(proto_img)._backend._export_format
+        == default_format
+    )
+
 
 ### Tests for other properties
 def test_dm_props():

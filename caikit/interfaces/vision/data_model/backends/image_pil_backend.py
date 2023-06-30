@@ -11,14 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import alog
+# Standard
+from typing import Any, Union
 import io
 import os
-from typing import Any, Union
 
-import numpy as np
+# Third Party
 from PIL import Image as PILImage
+import numpy as np
 
+# First Party
+import alog
+
+# Local
 from caikit.core import error_handler
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.data_backends import DataModelBackendBase
@@ -26,8 +31,8 @@ from caikit.core.data_model.data_backends import DataModelBackendBase
 log = alog.use_channel("DATABACK")
 error = error_handler.get(log)
 
-class ImagePilBackend(DataModelBackendBase):
 
+class ImagePilBackend(DataModelBackendBase):
     def __init__(self, image_data):
         self._image_data = self.__class__.coerce_to_pil(image_data)
         # Unless the PIL image explicitly has information about its format, export
@@ -36,9 +41,7 @@ class ImagePilBackend(DataModelBackendBase):
             self._image_data.format if self._image_data.format is not None else "PNG"
         )
 
-    def get_attribute(
-        self, data_model_class: DataBase, name: str
-    ) -> Any:
+    def get_attribute(self, data_model_class: DataBase, name: str) -> Any:
         # Convert the underlying PIL image to bytes
         if name == "image_data":
             # Save the whole contents of the image into a BytesIO object; this includes image fmt
