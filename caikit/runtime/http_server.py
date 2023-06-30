@@ -154,8 +154,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
     def __del__(self):
         if get_config().runtime.metering.enabled:
-            self.global_predict_servicer.rpc_meter.flush_metrics()
-            self.global_predict_servicer.rpc_meter.end_writer_thread()
+            self._stop_metering()
 
     # Override context manager impl
     def __enter__(self):
@@ -187,6 +186,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
     ##########
     ## Impl ##
     ##########
+    def _stop_metering(self):
+        self.global_predict_servicer.rpc_meter.flush_metrics()
+        self.global_predict_servicer.rpc_meter.end_writer_thread()
 
     def _bind_routes(self, service: ServicePackage):
         """Bind all rpcs as routes to the given app"""

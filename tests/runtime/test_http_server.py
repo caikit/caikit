@@ -117,17 +117,18 @@ def generate_tls_configs(
             yield config_overrides
 
 
-@pytest.fixture(scope="session")
-def insecure_http_server():
+## Insecure and TLS Tests #######################################################################
+
+
+def test_insecure_server():
     with generate_tls_configs():
         insecure_http_server = http_server.RuntimeHTTPServer()
-        yield insecure_http_server
+        with insecure_http_server.run_in_thread():
+            resp = requests.get(f"http://localhost:{insecure_http_server.port}/docs")
+            resp.raise_for_status()
 
+        insecure_http_server._stop_metering()
 
-def test_insecure_server(insecure_http_server):
-    with insecure_http_server.run_in_thread():
-        resp = requests.get(f"http://localhost:{insecure_http_server.port}/docs")
-        resp.raise_for_status()
 
 def test_basic_tls_server():
     with generate_tls_configs(
@@ -142,6 +143,8 @@ def test_basic_tls_server():
                 verify=config_overrides["use_in_test"]["ca_cert"],
             )
             resp.raise_for_status()
+        http_server_with_tls._stop_metering()
+
 
 def test_mutual_tls_server():
     with generate_tls_configs(
@@ -151,11 +154,6 @@ def test_mutual_tls_server():
             tls_config_override=config_overrides["runtime"]["tls"]
         )
         with http_server_with_mtls.run_in_thread():
-            print(
-                "client_cert_file is: ", config_overrides["use_in_test"]["client_cert"]
-            )
-            print("client key file is: ", config_overrides["use_in_test"]["client_key"])
-            print("ca cert is: ", config_overrides["use_in_test"]["ca_cert"])
             resp = requests.get(
                 f"https://localhost:{http_server_with_mtls.port}/docs",
                 verify=config_overrides["use_in_test"]["ca_cert"],
@@ -165,14 +163,12 @@ def test_mutual_tls_server():
                 ),
             )
             resp.raise_for_status()
+        http_server_with_mtls._stop_metering()
 
 
 # Third Party
 ## Tests #######################################################################
 from fastapi.testclient import TestClient
-
-# def test_simple():
-#     server = http_server.RuntimeHTTPServer()
 
 
 def test_docs():
