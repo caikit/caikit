@@ -15,3 +15,6 @@
 # Local
 from . import package
 from .package import VISION_PACKAGE
+from .image import (
+    Image
+)
