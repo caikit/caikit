@@ -173,7 +173,13 @@ class ModelManager:
             model_future (ModelTrainerBase.ModelFutureBase): The future handle
                 to the model which holds the status of the in-flight training.
         """
-        trainer = self._get_trainer(ModelTrainerBase.get_trainer_name(training_id))
+        try:
+            trainer = self._get_trainer(ModelTrainerBase.get_trainer_name(training_id))
+
+        # Fall back to the default trainer to try to find this ID
+        except ValueError:
+            trainer = self._get_trainer("default")
+
         return trainer.get_model_future(training_id)
 
     def load(
