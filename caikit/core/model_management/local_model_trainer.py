@@ -68,6 +68,7 @@ class LocalModelTrainer(ModelTrainerBase):
             *args,
             save_path: Optional[str],
             save_with_id: bool,
+            external_training_id: Optional[str],
             **kwargs,
         ):
             super().__init__(
@@ -76,6 +77,16 @@ class LocalModelTrainer(ModelTrainerBase):
                 save_with_id=save_with_id,
                 save_path=save_path,
             )
+
+            # If an external id is given, use it explicitly
+            if external_training_id is not None:
+                self._id = external_training_id
+                self._save_path = self._save_path_with_id(
+                    save_path,
+                    save_with_id,
+                    external_training_id,
+                )
+
             self._module_class = module_class
 
             # Placeholder for the time when the future completed
@@ -195,6 +206,7 @@ class LocalModelTrainer(ModelTrainerBase):
         *args,
         save_path: Optional[str] = None,
         save_with_id: bool = False,
+        external_training_id: Optional[str] = None,
         **kwargs,
     ) -> "LocalModelFuture":
         """Start training the given module and return a future to the trained
@@ -210,6 +222,7 @@ class LocalModelTrainer(ModelTrainerBase):
             *args,
             save_path=save_path,
             save_with_id=save_with_id,
+            external_training_id=external_training_id,
             **kwargs,
         )
 
