@@ -63,17 +63,20 @@ class LocalModelTrainer(ModelTrainerBase):
 
         def __init__(
             self,
+            parent_name: str,
             module_class: Type[ModuleBase],
             *args,
             save_path: Optional[str],
             save_with_id: bool,
             **kwargs,
         ):
-            self._id = str(uuid.uuid4())
-            self._module_class = module_class
-            self._save_path = ModelTrainerBase.save_path_with_id(
-                save_path, save_with_id, self.id
+            super().__init__(
+                parent_name=parent_name,
+                training_id=str(uuid.uuid4()),
+                save_with_id=save_with_id,
+                save_path=save_path,
             )
+            self._module_class = module_class
 
             # Placeholder for the time when the future completed
             self._completion_time = None
@@ -93,14 +96,6 @@ class LocalModelTrainer(ModelTrainerBase):
             return self._completion_time
 
         ## Interface ##
-
-        @property
-        def id(self) -> str:
-            return self._id
-
-        @property
-        def save_path(self) -> str:
-            return self._save_path
 
         def get_status(self) -> ModelTrainerBase.TrainingStatus:
             """Every model future must be able to poll the status of the
@@ -169,8 +164,9 @@ class LocalModelTrainer(ModelTrainerBase):
         r"^((?P<days>\d+?)d)?((?P<hours>\d+?)hr)?((?P<minutes>\d+?)m)?((?P<seconds>\d*\.?\d*?)s)?$"
     )
 
-    def __init__(self, config: aconfig.Config):
+    def __init__(self, config: aconfig.Config, instance_name: str):
         """Initialize with a shared dict of all trainings"""
+        self._instance_name = instance_name
         self._retention_duration = config.get("retention_duration")
         if self._retention_duration is not None:
             try:
@@ -209,6 +205,7 @@ class LocalModelTrainer(ModelTrainerBase):
 
         # Create the new future
         model_future = self.LocalModelFuture(
+            self._instance_name,
             module_class,
             *args,
             save_path=save_path,
