@@ -44,7 +44,11 @@ def set_train_location(request, sample_train_servicer):
     """This fixture ensures that all tests in this file will be run with both
     subprocess and local training styles
     """
+    prev_value = sample_train_servicer.use_subprocess
     sample_train_servicer.use_subprocess = request.param
+    yield
+    # Reset use_subprocess to previous value
+    sample_train_servicer.use_subprocess = prev_value
 
 
 # Train tests for the GlobalTrainServicer class ############################################################
