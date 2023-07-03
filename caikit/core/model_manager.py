@@ -527,7 +527,7 @@ class ModelManager:
                 component_name,
                 component,
             )
-            component_dict[component] = component_factory.construct(cfg)
+            component_dict[component] = component_factory.construct(cfg, component)
         return component_dict[component]
 
     def _get_trainer(self, trainer: Union[str, ModelTrainerBase]) -> ModelTrainerBase:
