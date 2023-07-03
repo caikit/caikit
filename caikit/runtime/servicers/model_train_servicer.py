@@ -90,11 +90,16 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
 
             training_response = self._gts.run_training_job(
                 request=train_message_request,
-                model=train_module,
-                training_id=request.trainingID,
+                module=train_module,
                 training_output_dir=request.training_output_dir,
                 context=context,
                 wait=True,
+                # TODO: This usage of the server will sit behind Model Train and
+                #   will therefore always use a local trainer which supports the
+                #   external_training_id override. If that is ever not the case
+                #   this will be brokenly passing that kwarg through to the
+                #   module's train function.
+                external_training_id=request.trainingID,
             )
             log.debug("<RUN00837184D>", "training_response: %s", training_response)
             # return response

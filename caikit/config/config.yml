@@ -152,10 +152,6 @@ runtime:
     training:
         # The directory to save trained models in
         output_dir: training_output
-        # Whether to automatically load the trained model
-        auto_load_trained_model: false
-        # Run training jobs in isolated processes
-        use_subprocess: false
 
 inference_plugin:
     model_mesh:
