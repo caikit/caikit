@@ -66,8 +66,9 @@ class TestInitializer(ModelInitializerBase):
     name = "TestInitializer"
     __test__ = False
 
-    def __init__(self, config):
+    def __init__(self, config, instance_name):
         self.config = config
+        self.instance_name = instance_name
         self.loaded_models = []
         self.local_initializer = model_initializer_factory.construct({"type": "LOCAL"})
 
@@ -91,7 +92,8 @@ class TestTrainer(ModelTrainerBase):
     name = "TestTrainer"
     __test__ = False
 
-    def __init__(self, config):
+    def __init__(self, config, instance_name):
+        self.instance_name = instance_name
         self.canned_status = config.get(
             "canned_status", ModelTrainerBase.TrainingStatus.RUNNING
         )
@@ -100,26 +102,17 @@ class TestTrainer(ModelTrainerBase):
     class TestModelFuture(ModelTrainerBase.ModelFutureBase):
         __test__ = False
 
-        def __init__(
-            self,
-            parent,
-            trained_model,
-            save_path,
-        ):
-            self._id = str(uuid.uuid4())
-            self._save_path = save_path
+        def __init__(self, parent, trained_model, save_path, save_with_id):
+            super().__init__(
+                parent_name=parent.instance_name,
+                training_id=str(uuid.uuid4()),
+                save_path=save_path,
+                save_with_id=save_with_id,
+            )
             self._parent = parent
             self._trained_model = trained_model
             self._canceled = False
             self._completed = False
-
-        @property
-        def id(self):
-            return self._id
-
-        @property
-        def save_path(self):
-            return self._save_path
 
         def get_status(self):
             if self._completed:
@@ -144,10 +137,11 @@ class TestTrainer(ModelTrainerBase):
         module_class: Type[ModuleBase],
         *args,
         save_path: Optional[str] = None,
+        save_with_id: bool = False,
         **kwargs,
     ):
         trained_model = module_class.train(*args, **kwargs)
-        future = self.TestModelFuture(self, trained_model, save_path)
+        future = self.TestModelFuture(self, trained_model, save_path, save_with_id)
         self._futures[future.id] = future
         return future
 
