@@ -199,22 +199,31 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
 
         def __init__(self, *args, event=None, **kwargs):
             super().__init__(*args, **kwargs)
-            self.error = None
+            self._error = None
+            self._parent_conn, self._child_conn = multiprocessing.Pipe()
             self._completion_event = event
 
         def run(self, *args, **kwargs):
             try:
-                return super().run(*args, **kwargs)
+                super().run(*args, **kwargs)
+                self._child_conn.send(None)
 
             # Catch any errors thrown within a subprocess so that they can be
             # forwarded to the parent
             # pylint: disable=broad-exception-caught
             except Exception as err:
-                log.error("<RUN69863806E>", "Caught exception in training", repr(err))
-                self.error = err
-
+                err_str = repr(err)
+                log.error("<RUN69863806E>", "Caught exception in training", err_str)
+                self._child_conn.send(err_str)
             finally:
                 self._completion_event.set()
+
+        @property
+        def error(self):
+            # NOTE: below is relying on child only sending error back and no other message
+            if self._parent_conn.poll():
+                self._error = self._parent_conn.recv()
+            return self._error
 
     def __init__(self, cancel_event) -> None:
 
@@ -301,12 +310,10 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
         # If an error occurred, reraise it here
         # TODO: Make sure the stack trace is preserved
         if self._worker.error is not None:
-            if isinstance(self._worker.error, CaikitRuntimeException):
-                raise self._worker.error
             raise CaikitRuntimeException(
                 StatusCode.INTERNAL,
-                "Error caught in training subprocess",
-            ) from self._worker.error
+                f"Exception raised during training: {self._worker.error}",
+            )
 
         # If process exited with a non-zero exit code
         if self._worker.exitcode and self._worker.exitcode != os.EX_OK:
