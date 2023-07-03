@@ -29,6 +29,7 @@ model_management:
 from enum import Enum
 from typing import Optional, Type
 import abc
+import os
 
 # Local
 from ..modules import ModuleBase
@@ -64,7 +65,9 @@ class ModelTrainerBase(FactoryConstructible):
         @property
         @abc.abstractmethod
         def save_path(self) -> Optional[str]:
-            """If created with a save path, the future must expose it"""
+            """If created with a save path, the future must expose it, including
+            any injected training id
+            """
 
         @abc.abstractmethod
         def get_status(self) -> "TrainingStatus":
@@ -90,6 +93,7 @@ class ModelTrainerBase(FactoryConstructible):
         module_class: Type[ModuleBase],
         *args,
         save_path: Optional[str] = None,
+        save_with_id: bool = False,
         **kwargs,
     ) -> "ModelFutureBase":
         """Start training the given module and return a future to the trained
@@ -99,3 +103,25 @@ class ModelTrainerBase(FactoryConstructible):
     @abc.abstractmethod
     def get_model_future(self, training_id: str) -> "ModelFutureBase":
         """Look up the model future for the given id"""
+
+    ## Shared Utilities ##
+
+    @classmethod
+    def save_path_with_id(
+        cls,
+        save_path: Optional[str],
+        save_with_id: bool,
+        training_id: str,
+    ) -> Optional[str]:
+        """If asked to save_with_id, child classes should use this shared
+        utility to construct the final save path
+        """
+        if save_path is None:
+            return save_path
+        if not save_with_id or training_id in save_path:
+            return save_path
+
+        # If told to save with the ID in the path, inject it right before the
+        # final portion of the path which is assumed to be the model ID.
+        path_parts = os.path.split(save_path)
+        return os.path.join(*list(path_parts[:-1] + (training_id,) + path_parts[-1:]))

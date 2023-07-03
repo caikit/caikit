@@ -83,6 +83,7 @@ class ModelManager:
         *args,
         trainer: Union[str, ModelTrainerBase] = "default",
         save_path: Optional[str] = None,
+        save_with_id: bool = False,
         wait: bool = False,
         **kwargs,
     ) -> ModelTrainerBase.ModelFutureBase:
@@ -107,6 +108,8 @@ class ModelManager:
                 model_management.trainers.
             save_path (Optional[str]): Path on disk where the model should be
                 saved (may be relative to a remote trainer's filesystem)
+            save_with_id (bool): Inject the training ID into the save path for
+                the output model
             wait (bool): Wait for training to complete before returning
             **kwargs: Additional keyword arguments to pass through to the
                 modules's train function
@@ -132,8 +135,18 @@ class ModelManager:
 
         # Start the training
         with alog.ContextTimer(log.debug, "Started training in: "):
-            model_future = trainer.train(module, *args, save_path=save_path, **kwargs)
-            log.debug("Started training %s", model_future.id)
+            model_future = trainer.train(
+                module,
+                *args,
+                save_path=save_path,
+                save_with_id=save_with_id,
+                **kwargs,
+            )
+            log.debug(
+                "Started training %s with save path %s",
+                model_future.id,
+                model_future.save_path,
+            )
 
         # If requested, wait for the future to complete
         if wait:
