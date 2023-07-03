@@ -30,22 +30,25 @@ from caikit.core.toolkit import factory
 class TypeOne(factory.FactoryConstructible):
     name = "one"
 
-    def __init__(self, config):
+    def __init__(self, config, instance_name):
         self.config = config
+        self.instance_name = instance_name
 
 
 class TypeTwo(factory.FactoryConstructible):
     name = "two"
 
-    def __init__(self, config):
+    def __init__(self, config, instance_name):
         self.config = config
+        self.instance_name = instance_name
 
 
 class TypeOtherOne(factory.FactoryConstructible):
     name = "one"
 
-    def __init__(self, config):
+    def __init__(self, config, instance_name):
         self.config = config
+        self.instance_name = instance_name
 
 
 ## Tests #######################################################################
@@ -85,3 +88,20 @@ def test_factory_duplicate_registration():
     fact.register(TypeOne)
     with pytest.raises(ValueError):
         fact.register(TypeOtherOne)
+
+
+def test_factory_construct_with_instance_name():
+    """Make sure that double registering a type is ok, but conflicting
+    registration is not
+    """
+    fact = factory.Factory("Test")
+    fact.register(TypeOne)
+
+    inst_no_name = fact.construct({"type": "one"})
+    assert isinstance(inst_no_name, TypeOne)
+    assert inst_no_name.instance_name == TypeOne.name
+
+    inst_name = "the-instance"
+    inst_with_name = fact.construct({"type": "one"}, inst_name)
+    assert isinstance(inst_with_name, TypeOne)
+    assert inst_with_name.instance_name == inst_name
