@@ -162,8 +162,6 @@ class ModelManager:
     def get_model_future(
         self,
         training_id: str,
-        *,
-        trainer: Union[str, ModelTrainerBase] = "default",
     ) -> ModelTrainerBase.ModelFutureBase:
         """Get the future handle to an in-progress training
 
@@ -171,16 +169,11 @@ class ModelManager:
             training_id (str): The ID string from the original training
                 submission's ModelFuture
 
-        Kwargs:
-            trainer (Union[str, ModelTrainerBase]): The trainer to use. If given
-                as a string, this is a key in the global config at
-                model_management.trainers.
-
         Returns:
             model_future (ModelTrainerBase.ModelFutureBase): The future handle
                 to the model which holds the status of the in-flight training.
         """
-        trainer = self._get_trainer(trainer)
+        trainer = self._get_trainer(ModelTrainerBase.get_trainer_name(training_id))
         return trainer.get_model_future(training_id)
 
     def load(

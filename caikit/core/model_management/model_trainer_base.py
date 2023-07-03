@@ -154,3 +154,12 @@ class ModelTrainerBase(FactoryConstructible):
     @abc.abstractmethod
     def get_model_future(self, training_id: str) -> "ModelFutureBase":
         """Look up the model future for the given id"""
+
+    ## Shared Utilities ##
+
+    @classmethod
+    def get_trainer_name(cls, training_id: str) -> str:
+        """Un-hash the trainer's instance name from the given training id"""
+        return ReversibleHasher.reverse_hash(
+            training_id.split(cls.ModelFutureBase.ID_DELIMITER)[0]
+        )
