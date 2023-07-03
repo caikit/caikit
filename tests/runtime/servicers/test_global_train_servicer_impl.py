@@ -345,7 +345,6 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_mod
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
 
-    sample_train_servicer.auto_load_trained_model = False
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
         model_name=random_test_id(),
         batch_size=999,
