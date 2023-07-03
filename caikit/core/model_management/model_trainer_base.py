@@ -50,6 +50,14 @@ class ModelTrainerBase(FactoryConstructible):
         CANCELED = 4
         ERRORED = 5
 
+        @property
+        def is_terminal(self):
+            return self in [
+                self.__class__.COMPLETED,
+                self.__class__.CANCELED,
+                self.__class__.ERRORED,
+            ]
+
     class ModelFutureBase(abc.ABC):
         """Every Trainer must implement a ModelFuture class that can access the
         training job in the infrastructure managed by the trainer.
