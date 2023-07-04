@@ -41,7 +41,7 @@ The model is served by a [gRPC](https://grpc.io) server which can run as is or i
 
 There is an example of a client [here](https://github.com/caikit/caikit/blob/main/examples/text-sentiment/client.py) which is a simple Python CLI which calls the model and queries it for sentiment analysis on 2 different pieces of text. The client also references the module configuration.
 
-Check out the full [Text Sentiment example](examples/text-sentiment/) to understand how to load and infer a model using Caikit.
+Check out the full [Text Sentiment example](examples/text-sentiment/) to understand how to load and infer a model using Caikit. There is also a [GitHub template](https://github.com/caikit/caikit-template) available which if you click on the <button type="button" name="button" style="background-color:green; color:white" class="btn">Use this template</button> button generates a repository in your GitHub account with a simple customized model which is wrapped to be served by the Caikit runtime.
 
 ## User Profiles
 
