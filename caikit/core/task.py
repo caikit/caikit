@@ -13,7 +13,7 @@
 # limitations under the License.
 # Standard
 from inspect import isclass
-from typing import Callable, Dict, List, Type, TypeVar, Union
+from typing import Callable, Dict, Iterable, List, Type, TypeVar, Union
 import collections
 import dataclasses
 import enum
@@ -247,7 +247,13 @@ class TaskBase:
             return False
 
 
-def task(*_, **kwargs) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
+def task(
+    unary_parameters: Dict[str, ValidInputTypes] = None,
+    streaming_parameters: Dict[str, ValidInputTypes] = None,
+    unary_output_type: Type[DataBase] = None,
+    streaming_output_type: Type[Iterable[Type[DataBase]]] = None,
+    **kwargs,
+) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
     """The decorator for AI Task classes.
 
     This defines an output data model type for the task, and a minimal set of required inputs
@@ -289,68 +295,18 @@ def task(*_, **kwargs) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
         A decorator function for the task class, registering it with caikit's core registry of
             tasks.
     """
-    # TODO: type checking on required_inputs
-    # Check that return type is a data model or iterable of a data model
-    # We explicitly require `Iterable[T]` on output type annotations
-    # if typing.get_origin(output_type) == collections.abc.Iterable:
-    #     error.value_check(
-    #         "<COR12569910E>",
-    #         len(typing.get_args(output_type)) == 1,
-    #         "A single type T must be provided for tasks with output type Iterable[T].",
-    #     )
-    #     error.subclass_check(
-    #         "<COR12766440E>", typing.get_args(output_type)[0], DataBase
-    #     )
-    #     output_streaming = True
-    # else:
-    #     error.subclass_check("<COR12766440E>", output_type, DataBase)
-    #     output_streaming = False
-
-    # def get_required_parameters(_):
-    #     return cls.unary_params
-
-    # def get_output_type(_):
-    #     return output_type
 
     def decorator(cls: Type[TaskBase]) -> Type[TaskBase]:
-        # get_required_parameters.__doc__ = f"""
-        # Returns the set of input parameters required in the `run` function for any module that
-        # implements the '{cls.__name__}' Task.
-
-        # ({cls.__annotations__.unary_params})
-
-        # Returns: Dict[str, Type]
-        #     The parameter dictionary for the {cls.__name__} inference task
-        # """
-
-        # get_output_type.__doc__ = f"""
-        # Returns the output type required of the `run` function in any module that implements the
-        # {cls.__name__} task.
-
-        # ({cls.__annotations__.unary_output_type})
-
-        # Returns: Type
-        #     The output type of the {cls.__name__} inference task
-        # """
-        # output_type = cls.__annotations__.unary_output_type
-        # # setattr(cls, "get_required_parameters", classmethod(get_required_parameters))
-        # # setattr(cls, "get_output_type", classmethod(get_output_type))
-
-        # if typing.get_origin(output_type) == collections.abc.Iterable:
-        #     error.value_check(
-        #         "<COR12569910E>",
-        #         len(typing.get_args(output_type)) == 1,
-        #         "A single type T must be provided for tasks with output type Iterable[T].",
-        #     )
-        #     error.subclass_check(
-        #         "<COR12766440E>", typing.get_args(output_type)[0], DataBase
-        #     )
-        #     output_streaming = True
-        # else:
-        #     error.subclass_check("<COR12766440E>", output_type, DataBase)
-        #     output_streaming = False
-
         error.subclass_check("<COR19436440E>", cls, TaskBase)
+
+        if unary_parameters:
+            cls.__annotations__[_UNARY_PARAMS_ANNOTATION] = unary_parameters
+        if streaming_parameters:
+            cls.__annotations__[_STREAM_PARAMS_ANNOTATION] = streaming_parameters
+        if unary_output_type:
+            cls.__annotations__[_UNARY_OUT_ANNOTATION] = unary_output_type
+        if streaming_output_type:
+            cls.__annotations__[_STREAM_OUT_ANNOTATION] = streaming_output_type
 
         # Backwards compatibility with old-style @tasks
         if (
