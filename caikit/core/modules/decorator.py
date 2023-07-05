@@ -30,7 +30,7 @@ import alog
 from ..data_model import ProducerId
 from ..registries import module_backend_registry, module_backend_types, module_registry
 from ..signature_parsing import CaikitMethodSignature
-from ..task import StreamingFlavor, TaskBase
+from ..task import TaskBase
 from ..toolkit.errors import error_handler
 from .base import ModuleBase
 import caikit.core
@@ -198,10 +198,10 @@ def module(
                 # Hackity hack hack - make sure at least one flavor is supported
                 validated = False
                 validation_errs = []
-                for flavor in StreamingFlavor:
+                for flavor in [[False, False], [True, True], [False, True]]:
                     try:
                         cls_.TASK_CLASS.validate_run_signature(
-                            cls_.RUN_SIGNATURE, flavor
+                            cls_.RUN_SIGNATURE, *flavor
                         )
                         validated = True
                         break

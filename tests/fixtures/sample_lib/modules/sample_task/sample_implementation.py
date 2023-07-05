@@ -13,7 +13,6 @@ from ...data_model.sample import (
 )
 from caikit.core.data_model import DataStream
 from caikit.core.modules import ModuleLoader, ModuleSaver
-from caikit.core.task import StreamingFlavor
 import caikit.core
 
 
@@ -52,7 +51,7 @@ class SampleModule(caikit.core.ModuleBase):
             raise ValueError(f"{self.POISON_PILL_NAME} is not allowed!")
         return SampleOutputType(f"Hello {sample_input.name}")
 
-    @SampleTask.taskmethod(streaming_flavor=StreamingFlavor.UNARY_STREAM)
+    @SampleTask.taskmethod(output_streaming=True)
     def run_stream_out(
         self, sample_input: SampleInputType
     ) -> DataStream[SampleOutputType]:

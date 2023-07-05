@@ -8,25 +8,25 @@ import pytest
 
 # Local
 from caikit.core import TaskBase, task
-from caikit.core.task import StreamingFlavor
 from sample_lib import SampleModule
 from sample_lib.data_model.sample import SampleInputType, SampleOutputType, SampleTask
 import caikit.core
 
 
 def test_task_decorator_has_streaming_types():
-    @task(unary_parameters={"text": str},
-          streaming_parameters={"tokens": Iterable[str]},
-          unary_output_type=SampleOutputType,
-          streaming_output_type=Iterable[SampleOutputType])
+    @task(
+        unary_parameters={"text": str},
+        streaming_parameters={"tokens": Iterable[str]},
+        unary_output_type=SampleOutputType,
+        streaming_output_type=Iterable[SampleOutputType],
+    )
     class SampleTask(TaskBase):
         pass
 
     assert (
-        SampleTask.get_output_type(flavor=StreamingFlavor.STREAM_STREAM)
-        == Iterable[SampleOutputType]
+        SampleTask.get_output_type(output_streaming=True) == Iterable[SampleOutputType]
     )
-    assert SampleTask.get_required_parameters(flavor=StreamingFlavor.STREAM_STREAM) == {
+    assert SampleTask.get_required_parameters(input_streaming=True) == {
         "tokens": Iterable[str]
     }
 
@@ -63,7 +63,7 @@ def test_task_decorator_can_have_iterable_output():
         task=StreamingTask,
     )
     class StreamingModule(caikit.core.ModuleBase):
-        @StreamingTask.taskmethod(streaming_flavor=StreamingFlavor.UNARY_STREAM)
+        @StreamingTask.taskmethod(output_streaming=True)
         def run(
             self, sample_input: SampleInputType
         ) -> caikit.core.data_model.DataStream[SampleOutputType]:
@@ -103,7 +103,7 @@ def test_task_iterator_raises_on_wrong_streaming_type():
             task=StreamingTask,
         )
         class InvalidStreamingModule(caikit.core.ModuleBase):
-            @StreamingTask.taskmethod(streaming_flavor=StreamingFlavor.UNARY_STREAM)
+            @StreamingTask.taskmethod(output_streaming=True)
             def run(
                 self, sample_input: SampleInputType
             ) -> caikit.core.data_model.DataStream[SampleInputType]:
