@@ -197,6 +197,7 @@ def module(
             if not cls_.TASK_CLASS.has_inference_method_decorators(module_class=cls_):
                 # Hackity hack hack - make sure at least one flavor is supported
                 validated = False
+                validation_errs = []
                 for flavor in StreamingFlavor:
                     try:
                         cls_.TASK_CLASS.validate_run_signature(
@@ -204,12 +205,10 @@ def module(
                         )
                         validated = True
                         break
-                    except (ValueError, TypeError):
-                        pass
+                    except (ValueError, TypeError) as e:
+                        validation_errs.append(e)
                 if not validated:
-                    raise ValueError(
-                        f".run method on module {cls_} failed validation for task {cls_.TASK_CLASS}"
-                    )
+                    raise validation_errs[0]
 
             cls_.TASK_CLASS.deferred_method_decoration(cls_)
 

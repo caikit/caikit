@@ -154,7 +154,7 @@ def test_task_validation_throws_on_no_params():
 
     with pytest.raises(
         ValueError,
-        match=".* failed validation for task .*",
+        match="Task could not be validated, no .run parameters were provided",
     ):
 
         @caikit.core.module(
@@ -165,114 +165,112 @@ def test_task_validation_throws_on_no_params():
                 pass
 
 
-# def test_task_validation_throws_on_no_return_type():
-#     @task(
-#         required_parameters={"foo": int},
-#         output_type=SampleOutputType,
-#     )
-#     class SomeTask(TaskBase):
-#         pass
+def test_task_validation_throws_on_no_return_type():
+    @task()
+    class SomeTask(TaskBase):
+        unary_params: {"foo": int}
+        unary_output_type: SampleOutputType
 
-#     with pytest.raises(
-#         ValueError,
-#         match="Task could not be validated, no .run return type was provided",
-#     ):
+    with pytest.raises(
+        ValueError,
+        match="Task could not be validated, no .run return type was provided",
+    ):
 
-#         @caikit.core.module(
-#             id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
-#         )
-#         class Stuff(caikit.core.ModuleBase):
-#             def run(self, foo: int):
-#                 pass
+        @caikit.core.module(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class Stuff(caikit.core.ModuleBase):
+            def run(self, foo: int):
+                pass
 
 
-# def test_task_validation_throws_on_wrong_return_type():
-#     @task(
-#         required_parameters={"foo": int},
-#         output_type=SampleOutputType,
-#     )
-#     class SomeTask(TaskBase):
-#         pass
+def test_task_validation_throws_on_wrong_return_type():
+    @task(
+        required_parameters={"foo": int},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
 
-#     with pytest.raises(
-#         TypeError,
-#         match="Wrong output type for module",
-#     ):
+    with pytest.raises(
+        TypeError,
+        match="Wrong output type for module",
+    ):
 
-#         @caikit.core.module(
-#             id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
-#         )
-#         class Stuff(caikit.core.ModuleBase):
-#             def run(self, foo: int) -> SampleInputType:
-#                 pass
-
-
-# def test_task_validation_accepts_union_outputs():
-#     @task(
-#         required_parameters={"foo": int},
-#         output_type=SampleOutputType,
-#     )
-#     class SomeTask(TaskBase):
-#         pass
-
-#     @caikit.core.module(
-#         id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
-#     )
-#     class Stuff(caikit.core.ModuleBase):
-#         def run(self, foo: int) -> Union[SampleOutputType, int, str]:
-#             pass
+        @caikit.core.module(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class Stuff(caikit.core.ModuleBase):
+            def run(self, foo: int) -> SampleInputType:
+                pass
 
 
-# def test_task_validation_throws_on_missing_parameter():
-#     @task(
-#         required_parameters={"foo": int},
-#         output_type=SampleOutputType,
-#     )
-#     class SomeTask(TaskBase):
-#         pass
+def test_task_validation_accepts_union_outputs():
+    @task(
+        required_parameters={"foo": int},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
 
-#     with pytest.raises(TypeError, match="Required parameters .*foo.* not in signature"):
-
-#         @caikit.core.module(
-#             id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
-#         )
-#         class Stuff(caikit.core.ModuleBase):
-#             def run(self, bar: str) -> SampleOutputType:
-#                 pass
+    @caikit.core.module(
+        id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+    )
+    class Stuff(caikit.core.ModuleBase):
+        def run(self, foo: int) -> Union[SampleOutputType, int, str]:
+            pass
 
 
-# def test_task_validation_throws_on_wrong_parameter_type():
-#     @task(
-#         required_parameters={"foo": int},
-#         output_type=SampleOutputType,
-#     )
-#     class SomeTask(TaskBase):
-#         pass
+def test_task_validation_throws_on_missing_parameter():
+    @task(
+        required_parameters={"foo": int},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
 
-#     with pytest.raises(
-#         TypeError,
-#         match="Parameter foo has type .*str.* but type .*int.* is required",
-#     ):
+    with pytest.raises(TypeError, match="Required parameters .*foo.* not in signature"):
 
-#         @caikit.core.module(
-#             id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
-#         )
-#         class Stuff(caikit.core.ModuleBase):
-#             def run(self, foo: str) -> SampleOutputType:
-#                 pass
+        @caikit.core.module(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class Stuff(caikit.core.ModuleBase):
+            def run(self, bar: str) -> SampleOutputType:
+                pass
 
 
-# def test_task_validation_passes_when_module_has_correct_run_signature():
-#     @task(
-#         required_parameters={"foo": int},
-#         output_type=SampleOutputType,
-#     )
-#     class SomeTask(TaskBase):
-#         pass
+def test_task_validation_throws_on_wrong_parameter_type():
+    @task(
+        required_parameters={"foo": int},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
 
-#     @caikit.core.module(
-#         id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
-#     )
-#     class SomeModule(caikit.core.ModuleBase):
-#         def run(self, foo: int, bar: str) -> SampleOutputType:
-#             pass
+    with pytest.raises(
+        TypeError,
+        match="Parameter foo has type .*str.* but type .*int.* is required",
+    ):
+
+        @caikit.core.module(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class Stuff(caikit.core.ModuleBase):
+            def run(self, foo: str) -> SampleOutputType:
+                pass
+
+
+def test_task_validation_passes_when_module_has_correct_run_signature():
+    @task(
+        required_parameters={"foo": int},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+    )
+    class SomeModule(caikit.core.ModuleBase):
+        def run(self, foo: int, bar: str) -> SampleOutputType:
+            pass
