@@ -114,7 +114,7 @@ def _make_union_list_source_type_name(args: List) -> str:
 
 def make_union_dataobjects(union_protoables: List) -> Type[DataBase]:
     """Dynamically create a union list source message type"""
-    package = "caikit_data_model.runtime"
+    common_dm_package = caikit.interfaces.common.data_model
     cls_name = _make_union_list_source_type_name(union_protoables)
     if cls_name not in _UNION_LIST_SOURCE_TYPES:
         data_object_map = {}
@@ -122,15 +122,15 @@ def make_union_dataobjects(union_protoables: List) -> Type[DataBase]:
         for arg in union_protoables:
             arg_type = get_args(arg)[0]
             arg_name = f"{arg_type.__name__.capitalize()}Sequence"
-            if not hasattr(caikit.interfaces.runtime.data_model, arg_name):
+            if not hasattr(common_dm_package, arg_name):
                 raise AttributeError(
-                    f"Unable to find {arg_name} in caikit.interfaces.runtime.data_model"
+                    f"Unable to find {arg_name} in {common_dm_package}"
                 )
-            do = getattr(caikit.interfaces.runtime.data_model, arg_name)
+            do = getattr(common_dm_package, arg_name)
             data_object_map[arg_name] = do
             data_object_list.append(Annotated[do, OneofField(do.__name__)])
         data_object = make_dataobject(
-            package=package,
+            package="caikit_data_model.runtime",
             name=cls_name,
             attrs=data_object_map,
             annotations={
@@ -138,7 +138,7 @@ def make_union_dataobjects(union_protoables: List) -> Type[DataBase]:
             },
         )
         setattr(
-            caikit.interfaces.common.data_model,
+            common_dm_package,
             cls_name,
             data_object,
         )
