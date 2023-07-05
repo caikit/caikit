@@ -311,12 +311,12 @@ def task(
         # Backwards compatibility with old-style @tasks
         if (
             "required_parameters" in kwargs
-            and _UNARY_PARAMS_ANNOTATION not in cls.__annotations__
+            and not unary_parameters
         ):
             cls.__annotations__[_UNARY_PARAMS_ANNOTATION] = kwargs[
                 "required_parameters"
             ]
-        if "output_type" in kwargs and _UNARY_OUT_ANNOTATION not in cls.__annotations__:
+        if "output_type" in kwargs and not unary_output_type:
             output_type = kwargs["output_type"]
             if cls._is_iterable_type(output_type):
                 cls.__annotations__[_STREAM_OUT_ANNOTATION] = kwargs["output_type"]

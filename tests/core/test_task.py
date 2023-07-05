@@ -15,12 +15,12 @@ import caikit.core
 
 
 def test_task_decorator_has_streaming_types():
-    @task()
+    @task(unary_parameters={"text": str},
+          streaming_parameters={"tokens": Iterable[str]},
+          unary_output_type=SampleOutputType,
+          streaming_output_type=Iterable[SampleOutputType])
     class SampleTask(TaskBase):
-        unary_params: {"text": str}
-        streaming_params: {"tokens": Iterable[str]}
-        unary_output_type: SampleOutputType
-        streaming_output_type: Iterable[SampleOutputType]
+        pass
 
     assert (
         SampleTask.get_output_type(flavor=StreamingFlavor.STREAM_STREAM)
