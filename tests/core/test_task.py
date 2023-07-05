@@ -110,63 +110,59 @@ def test_task_iterator_raises_on_wrong_streaming_type():
                 pass
 
 
-# def test_task_is_set_on_module_classes():
-#     assert hasattr(SampleModule, "TASK_CLASS")
-#     assert SampleModule.TASK_CLASS == SampleTask
+def test_task_is_set_on_module_classes():
+    assert hasattr(SampleModule, "TASK_CLASS")
+    assert SampleModule.TASK_CLASS == SampleTask
 
 
-# def test_task_can_be_inferred_from_parent_module():
-#     @caikit.core.modules.module(id="foobar", name="Stuff", version="0.0.1")
-#     class Stuff(SampleModule):
-#         pass
+def test_task_can_be_inferred_from_parent_module():
+    @caikit.core.modules.module(id="foobar", name="Stuff", version="0.0.1")
+    class Stuff(SampleModule):
+        pass
 
-#     assert Stuff.TASK_CLASS == SampleModule.TASK_CLASS
-
-
-# def test_task_cannot_conflict_with_parent_module():
-#     @task(
-#         required_parameters={"foo": SampleInputType},
-#         output_type=SampleOutputType,
-#     )
-#     class SomeTask(TaskBase):
-#         pass
-
-#     with pytest.raises(TypeError, match="but superclass has"):
-
-#         @caikit.core.modules.module(
-#             id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
-#         )
-#         class Stuff(SampleModule):
-#             pass
+    assert Stuff.TASK_CLASS == SampleModule.TASK_CLASS
 
 
-# def test_task_is_not_required_for_modules():
-#     @caikit.core.modules.module(id=str(uuid.uuid4()), name="Stuff", version="0.0.1")
-#     class Stuff(caikit.core.ModuleBase):
-#         pass
+def test_task_cannot_conflict_with_parent_module():
+    @task()
+    class SomeTask(TaskBase):
+        unary_params: {"foo": SampleInputType}
+        unary_output_type: SampleOutputType
 
-#     assert Stuff.TASK_CLASS is None
+    with pytest.raises(TypeError, match="but superclass has"):
+
+        @caikit.core.modules.module(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class Stuff(SampleModule):
+            pass
 
 
-# def test_task_validation_throws_on_no_params():
-#     @task(
-#         required_parameters={"foo": int},
-#         output_type=SampleOutputType,
-#     )
-#     class SomeTask(TaskBase):
-#         pass
+def test_task_is_not_required_for_modules():
+    @caikit.core.modules.module(id=str(uuid.uuid4()), name="Stuff", version="0.0.1")
+    class Stuff(caikit.core.ModuleBase):
+        pass
 
-#     with pytest.raises(
-#         ValueError,
-#         match="Task could not be validated, no .run parameters were provided",
-#     ):
+    assert Stuff.TASK_CLASS is None
 
-#         @caikit.core.module(
-#             id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
-#         )
-#         class Stuff(caikit.core.ModuleBase):
-#             def run(self) -> SampleOutputType:
-#                 pass
+
+def test_task_validation_throws_on_no_params():
+    @task()
+    class SomeTask(TaskBase):
+        unary_params: {"foo": int}
+        unary_output_type: SampleOutputType
+
+    with pytest.raises(
+        ValueError,
+        match=".* failed validation for task .*",
+    ):
+
+        @caikit.core.module(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class Stuff(caikit.core.ModuleBase):
+            def run(self) -> SampleOutputType:
+                pass
 
 
 # def test_task_validation_throws_on_no_return_type():

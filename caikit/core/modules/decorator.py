@@ -30,7 +30,7 @@ import alog
 from ..data_model import ProducerId
 from ..registries import module_backend_registry, module_backend_types, module_registry
 from ..signature_parsing import CaikitMethodSignature
-from ..task import TaskBase
+from ..task import StreamingFlavor, TaskBase
 from ..toolkit.errors import error_handler
 from .base import ModuleBase
 import caikit.core
@@ -193,12 +193,23 @@ def module(
         cls_.TRAIN_SIGNATURE = CaikitMethodSignature(cls_, "train")
 
         # If the module has a task, validate it:
-        # if cls_.TASK_CLASS:
-        #     cls_.TASK_CLASS.validate_run_signature(cls_.RUN_SIGNATURE)
         if cls_.TASK_CLASS:
             if not cls_.TASK_CLASS.has_inference_method_decorators(module_class=cls_):
-                # TODO: backwards compatibility code for raw `.run` impls
-                pass
+                # Hackity hack hack - make sure at least one flavor is supported
+                validated = False
+                for flavor in StreamingFlavor:
+                    try:
+                        cls_.TASK_CLASS.validate_run_signature(
+                            cls_.RUN_SIGNATURE, flavor
+                        )
+                        validated = True
+                        break
+                    except (ValueError, TypeError):
+                        pass
+                if not validated:
+                    raise ValueError(
+                        f".run method on module {cls_} failed validation for task {cls_.TASK_CLASS}"
+                    )
 
             cls_.TASK_CLASS.deferred_method_decoration(cls_)
 
