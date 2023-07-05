@@ -14,7 +14,6 @@
 # Standard
 from importlib.metadata import version
 from typing import Optional, Type, Union
-import concurrent.futures
 import os
 import traceback
 
@@ -58,11 +57,6 @@ class GlobalTrainServicer:
         self._model_manager = ModelManager.get_instance()
         caikit_config = get_config()
         self.training_output_dir = caikit_config.runtime.training.output_dir
-        self.auto_load_trained_model = (
-            caikit_config.runtime.training.auto_load_trained_model
-        )
-
-        self.use_subprocess = caikit_config.runtime.training.use_subprocess
 
         # TODO: think about if we really want to do this here:
         self.cdm = get_data_model()
