@@ -170,6 +170,29 @@ def test_to_protoable_signature_multiple_same_type_union_list():
     assert all((union_list_signature.get(k) == v for k, v in assert_sig.items()))
 
 
+def test_to_protoable_signature_all_types_union_list():
+    union_list_signature = to_protoable_signature(
+        signature={
+            "union_list_arg": Union[List[str], List[int], List[float], List[bool]],
+        },
+    )
+    assert union_list_signature == {
+        "union_list_arg": caikit.interfaces.common.data_model.UnionListStrIntFloatBoolSource
+    }
+
+
+def test_to_protoable_signature_throws_unknown_type():
+    # Third Party
+    import numpy as np
+
+    with pytest.raises(AttributeError):
+        to_protoable_signature(
+            signature={
+                "union_list_arg": Union[List[np.int32], List[int]],
+            },
+        )
+
+
 def test_to_protoable_signature_multiple_diff_type_union_list():
     union_list_signature = to_protoable_signature(
         signature={
