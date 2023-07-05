@@ -14,6 +14,7 @@
 
 # Local
 from . import training_management
+from .static_interfaces import BoolSequence, IntSequence, StrSequence
 from .training_management import (
     ModelPointer,
     TrainingInfoRequest,

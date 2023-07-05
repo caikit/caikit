@@ -217,6 +217,7 @@ def test_to_protoable_signature_union_list():
     union_list_dm.from_proto(
         union_list_int_instance.to_proto()
     ) == union_list_int_instance
+    ## json test
     union_list_int_json_repr = {"intsequence": {"values": [1, 2]}}
     assert union_list_int_instance.to_json() == json.dumps(union_list_int_json_repr)
     assert union_list_dm.from_json(union_list_int_json_repr) == union_list_int_instance

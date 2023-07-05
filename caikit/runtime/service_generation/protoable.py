@@ -122,13 +122,11 @@ def make_union_dataobjects(union_protoables: List) -> Type[DataBase]:
         for arg in union_protoables:
             arg_type = get_args(arg)[0]
             arg_name = f"{arg_type.__name__.capitalize()}Sequence"
-            do = make_dataobject(
-                package=package,
-                proto_name=f"{cls_name}{arg_name}",
-                name=arg_name,
-                attrs={"__qualname__": f"{cls_name}.{arg_name}"},
-                annotations={"values": List[arg_type]},
-            )
+            if not hasattr(caikit.interfaces.runtime.data_model, arg_name):
+                raise AttributeError(
+                    f"Unable to find {arg_name} in caikit.interfaces.runtime.data_model"
+                )
+            do = getattr(caikit.interfaces.runtime.data_model, arg_name)
             data_object_map[arg_name] = do
             data_object_list.append(Annotated[do, OneofField(do.__name__)])
         data_object = make_dataobject(
