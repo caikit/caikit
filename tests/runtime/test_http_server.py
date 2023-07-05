@@ -109,6 +109,7 @@ def generate_tls_configs(
             config_overrides["runtime"] = {"tls": tls_config}
         port = http_server.RuntimeServerBase._find_port()
         config_overrides.setdefault("runtime", {})["http"] = {
+            "timeout": 0.1,  # this is so the server is killed after 0.1 if no test is running
             "port": port,
             **http_config_overrides,
         }

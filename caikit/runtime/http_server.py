@@ -104,6 +104,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
     def __init__(self, tls_config_override: Optional[aconfig.Config] = None):
         super().__init__(get_config().runtime.http.port, tls_config_override)
+        # if not set in config, timeout is None and unvicorn accepts None or number of seconds
+        unvicorn_timeout_graceful_shutdown = get_config().runtime.http.timeout
 
         self.app = FastAPI()
 
@@ -147,6 +149,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             port=self.port,
             log_level=None,
             log_config=None,
+            timeout_graceful_shutdown=unvicorn_timeout_graceful_shutdown,
             **tls_kwargs,
         )
         self.server = uvicorn.Server(config=config)

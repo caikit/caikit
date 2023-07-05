@@ -97,6 +97,7 @@ runtime:
         port: 8080
         # String prefix for API routes
         route_prefix: api/v1
+        timeout: 5
 
     # Configuration for the metrics server
     metrics:
