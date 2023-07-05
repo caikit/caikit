@@ -330,24 +330,24 @@ def task(
 
         if _UNARY_OUT_ANNOTATION in cls.__annotations__:
             error.subclass_check(
-                "<COR12766440E>", cls.__annotations__[_UNARY_OUT_ANNOTATION], DataBase
+                "<COR12766440E>", cls.get_output_type(output_streaming=False), DataBase
             )
-        else:
+        if _STREAM_OUT_ANNOTATION in cls.__annotations__:
             error.subclass_check(
                 "<COR12766440E>",
-                typing.get_origin(cls.__annotations__[_STREAM_OUT_ANNOTATION]),
+                typing.get_origin(cls.get_output_type(output_streaming=True)),
                 collections.abc.Iterable,
             )
 
         if _UNARY_PARAMS_ANNOTATION in cls.__annotations__:
-            params_dict = cls.__annotations__[_UNARY_PARAMS_ANNOTATION]
+            params_dict = cls.get_required_parameters(input_streaming=False)
             error.type_check("<COR19906440E>", dict, params_dict=params_dict)
             error.type_check_all(
                 "<COR00123440E>", str, params_dict_keys=params_dict.keys()
             )
             # TODO: check proto-ability of things
-        else:
-            params_dict = cls.__annotations__[_STREAM_PARAMS_ANNOTATION]
+        if _STREAM_PARAMS_ANNOTATION in cls.__annotations__:
+            params_dict = cls.get_required_parameters(input_streaming=True)
             error.type_check("<COR19556230E>", dict, params_dict=params_dict)
             error.value_check(
                 "<COR56569734E>",

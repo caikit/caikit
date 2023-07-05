@@ -274,3 +274,42 @@ def test_task_validation_passes_when_module_has_correct_run_signature():
     class SomeModule(caikit.core.ModuleBase):
         def run(self, foo: int, bar: str) -> SampleOutputType:
             pass
+
+
+# ----------- BACKWARDS COMPATIBILITY ------------------------------------------- ##
+
+
+def test_task_backwards_compatibility():
+    """The old 'required_parameters' and 'output_type' should continue to function"""
+
+    @task(
+        required_parameters={"foo": int},
+        output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+    )
+    class SomeModule(caikit.core.ModuleBase):
+        def run(self, foo: int, bar: str) -> SampleOutputType:
+            pass
+
+    with pytest.raises(TypeError):
+
+        @caikit.core.module(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class SomeModule(caikit.core.ModuleBase):
+            def run(self, foo: str) -> SampleOutputType:
+                pass
+
+    with pytest.raises(TypeError):
+
+        @caikit.core.module(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class SomeModule(caikit.core.ModuleBase):
+            def run(self, foo: int) -> SampleInputType:
+                pass
