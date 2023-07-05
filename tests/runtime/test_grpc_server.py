@@ -65,7 +65,7 @@ from sample_lib.data_model import (
 )
 from tests.conftest import random_test_id
 from tests.fixtures import Fixtures
-from tests.runtime.conftest import runtime_grpc_test_server
+from tests.runtime.conftest import register_trained_model, runtime_grpc_test_server
 import caikit.interfaces.common
 import sample_lib
 
@@ -328,6 +328,7 @@ def test_rpc_validation_on_predict_for_wrong_streaming_flavor(
 def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
     train_stub,
     inference_stub,
+    runtime_grpc_server,
     sample_train_service,
     sample_inference_service,
     training_management_stub,
@@ -350,19 +351,23 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
     is_good_train_response(
         actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name, training_management_stub
     )
+    register_trained_model(
+        runtime_grpc_server, actual_response.model_name, actual_response.training_id
+    )
 
-    # # make sure the trained model can run inference
-    # predict_request = sample_inference_service.messages.SampleTaskRequest(
-    #     sample_input=HAPPY_PATH_INPUT
-    # )
-    # inference_response = inference_stub.SampleTaskPredict(
-    #     predict_request, metadata=[("mm-model-id", actual_response.model_name)]
-    # )
-    # assert inference_response == HAPPY_PATH_RESPONSE
+    # make sure the trained model can run inference
+    predict_request = sample_inference_service.messages.SampleTaskRequest(
+        sample_input=HAPPY_PATH_INPUT
+    )
+    inference_response = inference_stub.SampleTaskPredict(
+        predict_request, metadata=[("mm-model-id", actual_response.model_name)]
+    )
+    assert inference_response == HAPPY_PATH_RESPONSE
 
 
 def test_train_fake_module_ok_response_with_loaded_model_can_predict_with_trained_model(
     sample_task_model_id,
+    runtime_grpc_server,
     train_stub,
     inference_stub,
     sample_train_service,
@@ -381,19 +386,23 @@ def test_train_fake_module_ok_response_with_loaded_model_can_predict_with_traine
     is_good_train_response(
         actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name, training_management_stub
     )
+    register_trained_model(
+        runtime_grpc_server, actual_response.model_name, actual_response.training_id
+    )
 
-    # # make sure the trained model can run inference
-    # predict_request = sample_inference_service.messages.SampleTaskRequest(
-    #     sample_input=HAPPY_PATH_INPUT
-    # )
-    # inference_response = inference_stub.SampleTaskPredict(
-    #     predict_request, metadata=[("mm-model-id", actual_response.model_name)]
-    # )
-    # assert inference_response == HAPPY_PATH_RESPONSE
+    # make sure the trained model can run inference
+    predict_request = sample_inference_service.messages.SampleTaskRequest(
+        sample_input=HAPPY_PATH_INPUT
+    )
+    inference_response = inference_stub.SampleTaskPredict(
+        predict_request, metadata=[("mm-model-id", actual_response.model_name)]
+    )
+    assert inference_response == HAPPY_PATH_RESPONSE
 
 
 def test_train_fake_module_does_not_change_another_instance_model_of_block(
     other_task_model_id,
+    runtime_grpc_server,
     sample_int_file,
     train_stub,
     inference_stub,
@@ -425,18 +434,21 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
         "Bar Training",
         training_management_stub,
     )
+    register_trained_model(
+        runtime_grpc_server, actual_response.model_name, actual_response.training_id
+    )
 
-    # # make sure the trained model can run inference, and the batch size 100 was used
+    # make sure the trained model can run inference, and the batch size 100 was used
     predict_request = sample_inference_service.messages.OtherTaskRequest(
         sample_input=HAPPY_PATH_INPUT
     )
-    # trained_inference_response = inference_stub.OtherTaskPredict(
-    #     predict_request, metadata=[("mm-model-id", actual_response.model_name)]
-    # )
-    # expected_trained_inference_response = OtherOutputType(
-    #     farewell="goodbye: Gabe 100 times"
-    # ).to_proto()
-    # assert trained_inference_response == expected_trained_inference_response
+    trained_inference_response = inference_stub.OtherTaskPredict(
+        predict_request, metadata=[("mm-model-id", actual_response.model_name)]
+    )
+    expected_trained_inference_response = OtherOutputType(
+        farewell="goodbye: Gabe 100 times"
+    ).to_proto()
+    assert trained_inference_response == expected_trained_inference_response
 
     # make sure the previously loaded OtherModule model still has batch size 42
     original_inference_response = inference_stub.OtherTaskPredict(
@@ -449,6 +461,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
 
 
 def test_train_primitive_model(
+    runtime_grpc_server,
     train_stub,
     inference_stub,
     training_management_stub,
@@ -481,23 +494,27 @@ def test_train_primitive_model(
         model_name,
         training_management_stub,
     )
+    register_trained_model(
+        runtime_grpc_server, training_response.model_name, training_response.training_id
+    )
 
-    # # make sure the trained model can run inference
-    # predict_request = sample_inference_service.messages.SampleTaskRequest(
-    #     sample_input=HAPPY_PATH_INPUT
-    # )
+    # make sure the trained model can run inference
+    predict_request = sample_inference_service.messages.SampleTaskRequest(
+        sample_input=HAPPY_PATH_INPUT
+    )
 
-    # inference_response = inference_stub.SampleTaskPredict(
-    #     predict_request, metadata=[("mm-model-id", training_response.model_name)]
-    # )
-    # expected_inference_response = SampleOutputType(
-    #     greeting="hello: primitives! [1, 2, 3] 100"
-    # ).to_proto()
-    # assert inference_response == expected_inference_response
+    inference_response = inference_stub.SampleTaskPredict(
+        predict_request, metadata=[("mm-model-id", training_response.model_name)]
+    )
+    expected_inference_response = SampleOutputType(
+        greeting="hello: primitives! [1, 2, 3] 100"
+    ).to_proto()
+    assert inference_response == expected_inference_response
 
 
 ##### Test different datastream types #####
 def test_train_fake_module_ok_response_with_datastream_jsondata(
+    runtime_grpc_server,
     train_stub,
     inference_stub,
     sample_train_service,
@@ -522,18 +539,22 @@ def test_train_fake_module_ok_response_with_datastream_jsondata(
     is_good_train_response(
         actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name, training_management_stub
     )
+    register_trained_model(
+        runtime_grpc_server, actual_response.model_name, actual_response.training_id
+    )
 
-    # # make sure the trained model can run inference
-    # predict_request = sample_inference_service.messages.SampleTaskRequest(
-    #     sample_input=HAPPY_PATH_INPUT
-    # )
-    # inference_response = inference_stub.SampleTaskPredict(
-    #     predict_request, metadata=[("mm-model-id", actual_response.model_name)]
-    # )
-    # assert inference_response == HAPPY_PATH_RESPONSE
+    # make sure the trained model can run inference
+    predict_request = sample_inference_service.messages.SampleTaskRequest(
+        sample_input=HAPPY_PATH_INPUT
+    )
+    inference_response = inference_stub.SampleTaskPredict(
+        predict_request, metadata=[("mm-model-id", actual_response.model_name)]
+    )
+    assert inference_response == HAPPY_PATH_RESPONSE
 
 
 def test_train_fake_module_ok_response_with_datastream_csv_file(
+    runtime_grpc_server,
     train_stub,
     inference_stub,
     sample_train_service,
@@ -556,15 +577,18 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
     is_good_train_response(
         actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name, training_management_stub
     )
+    register_trained_model(
+        runtime_grpc_server, actual_response.model_name, actual_response.training_id
+    )
 
-    # # make sure the trained model can run inference
-    # predict_request = sample_inference_service.messages.SampleTaskRequest(
-    #     sample_input=HAPPY_PATH_INPUT
-    # )
-    # inference_response = inference_stub.SampleTaskPredict(
-    #     predict_request, metadata=[("mm-model-id", actual_response.model_name)]
-    # )
-    # assert inference_response == HAPPY_PATH_RESPONSE
+    # make sure the trained model can run inference
+    predict_request = sample_inference_service.messages.SampleTaskRequest(
+        sample_input=HAPPY_PATH_INPUT
+    )
+    inference_response = inference_stub.SampleTaskPredict(
+        predict_request, metadata=[("mm-model-id", actual_response.model_name)]
+    )
+    assert inference_response == HAPPY_PATH_RESPONSE
 
 
 #### Error cases for train tests #####
