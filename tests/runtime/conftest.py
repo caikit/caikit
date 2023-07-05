@@ -238,7 +238,7 @@ def other_task_model_id(other_good_model_path) -> str:
 
 
 def register_trained_model(
-    grpc_server: RuntimeGRPCServer,
+    servicer: Union[RuntimeGRPCServer, GlobalPredictServicer],
     model_id: str,
     training_id: str,
 ):
@@ -255,9 +255,9 @@ def register_trained_model(
         .module(model)
         .build()
     )
-    grpc_server._global_predict_servicer._model_manager.loaded_models[
-        model_id
-    ] = loaded_model
+    if isinstance(servicer, RuntimeGRPCServer):
+        servicer = servicer._global_predict_servicer
+    servicer._model_manager.loaded_models[model_id] = loaded_model
 
 
 # IMPLEMENTATION DETAILS ############################################################
