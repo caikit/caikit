@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Standard
-from typing import Callable
+from typing import Callable, Optional
 import traceback
 
 # Third Party
@@ -26,6 +26,7 @@ import alog
 
 # Local
 from caikit.runtime.service_factory import ServicePackage
+from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("SERVER-WRAPR")
@@ -100,7 +101,7 @@ class CaikitRuntimeServerWrapper(grpc.Server):
         return self._intercepted_methods
 
     @staticmethod
-    def safe_rpc_wrapper(rpc):
+    def safe_rpc_wrapper(rpc: Callable, caikit_rpc: Optional[CaikitRPCBase] = None):
         """This wrapper should be used to safely invoke an RPC. If used, it adds automatic error
         handling and conversion to the appropriate response for gRPC, as well as logging indicating
         if the the error was intentional (i.e., thrown as CaikitRuntimeException directly) or
@@ -142,6 +143,9 @@ class CaikitRuntimeServerWrapper(grpc.Server):
             with alog.ContextLog(log.debug, "[Safe RPC]: %s", rpc.__name__):
                 try:
                     IN_PROGRESS_GAUGE.labels(rpc_name=rpc.__name__).inc()
+                    if caikit_rpc:
+                        # Pass through the CaikitRPCBase rpc description to the global handlers
+                        return rpc(request, context, caikit_rpc)
                     return rpc(request, context)
 
                 except CaikitRuntimeException as e:
@@ -205,12 +209,21 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                         )
 
                     # Find the Caikit RPC that maps to this rpc
-                    # matching_rpcs = self._intercepted_svc_package.caikit_rpcs
+                    matching_rpcs = [
+                        rpc
+                        for rpc in self._intercepted_svc_package.caikit_rpcs
+                        if rpc.name == method
+                    ]
+                    if len(matching_rpcs) != 1:
+                        raise ValueError(f"No Caikit RPC Found for method: {method}")
+                    caikit_rpc = matching_rpcs[0]
 
                     # Now, swap out the original unary-unary callable with our
                     # generic predict method, and add this newly re-routed RPC
                     # method handler to the dict of (method, handler) pairs
-                    safe_rpc_handler = self._make_new_handler(original_rpc_handler)
+                    safe_rpc_handler = self._make_new_handler(
+                        original_rpc_handler, caikit_rpc
+                    )
                     rerouted_rpc_method_handlers[method] = safe_rpc_handler
                     log.info(
                         "<RUN30032825I>",
@@ -242,9 +255,7 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                     # Wrap the RPC handler for this method in a safe RPC call,
                     # but do not replace the handler with a global handler
                     original_rpc_handler = handler._method_handlers[method]
-                    safe_rpc_handler = self._make_new_handler(
-                        original_rpc_handler, replace_with_global_predict=False
-                    )
+                    safe_rpc_handler = self._make_new_handler(original_rpc_handler)
                     handler._method_handlers[method] = safe_rpc_handler
 
                 self._server.add_generic_rpc_handlers(generic_rpc_handlers)
@@ -252,10 +263,10 @@ class CaikitRuntimeServerWrapper(grpc.Server):
     def _make_new_handler(
         self,
         original_rpc_handler: RpcMethodHandler,
-        replace_with_global_predict: bool = True,
+        caikit_rpc: Optional[CaikitRPCBase] = None,
     ):
-        if replace_with_global_predict:
-            behavior = self.safe_rpc_wrapper(self._global_predict)
+        if caikit_rpc:
+            behavior = self.safe_rpc_wrapper(self._global_predict, caikit_rpc)
         else:
             behavior = self.safe_rpc_wrapper(self._get_handler_fn(original_rpc_handler))
 

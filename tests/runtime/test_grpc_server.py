@@ -957,9 +957,7 @@ def test_streaming_handlers_are_built_correctly(runtime_grpc_server):
         unary_stream=None,
         stream_stream=None,
     )
-    new_handler = runtime_grpc_server.server._make_new_handler(
-        stream_unary_handler, replace_with_global_predict=False
-    )
+    new_handler = runtime_grpc_server.server._make_new_handler(stream_unary_handler)
     assert new_handler.stream_unary is not None
     assert new_handler.stream_unary.__name__ == "safe_rpc_call"
 
@@ -973,9 +971,7 @@ def test_streaming_handlers_are_built_correctly(runtime_grpc_server):
         unary_stream=None,
         stream_stream=FakeHandler,
     )
-    new_handler = runtime_grpc_server.server._make_new_handler(
-        stream_stream_handler, replace_with_global_predict=False
-    )
+    new_handler = runtime_grpc_server.server._make_new_handler(stream_stream_handler)
     assert new_handler.stream_stream is not None
     assert new_handler.stream_stream.__name__ == "safe_rpc_call"
 

@@ -132,6 +132,8 @@ class GlobalPredictServicer:
         self,
         request: ProtobufMessage,
         context: ServicerContext,
+        *_,
+        **__,
     ) -> Union[ProtobufMessage, Iterable[ProtobufMessage]]:
         """Global predict RPC -- Mocks the invocation of a Caikit Library module.run()
         method for a loaded Caikit Library model
