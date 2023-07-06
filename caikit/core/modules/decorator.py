@@ -199,13 +199,19 @@ def module(
                 # Hackity hack hack - make sure at least one flavor is supported
                 validated = False
                 validation_errs = []
-                for flavor in [[False, False], [True, True], [False, True]]:
+                for input_streaming, output_streaming in [
+                    [False, False],
+                    [True, True],
+                    [False, True],
+                ]:
                     try:
                         cls_.TASK_CLASS.validate_run_signature(
-                            cls_.RUN_SIGNATURE, *flavor
+                            cls_.RUN_SIGNATURE, input_streaming, output_streaming
                         )
                         validated = True
-                        cls_._INFERENCE_SIGNATURES.append((*flavor, cls_.RUN_SIGNATURE))
+                        cls_._INFERENCE_SIGNATURES.append(
+                            (input_streaming, output_streaming, cls_.RUN_SIGNATURE)
+                        )
                         break
                     except (ValueError, TypeError) as e:
                         validation_errs.append(e)
