@@ -20,8 +20,7 @@
 from contextlib import contextmanager
 from io import BytesIO
 from threading import Lock
-from typing import Union
-import errno
+from typing import Dict, Union
 import os
 import tempfile
 import zipfile
@@ -30,13 +29,16 @@ import zipfile
 import alog
 
 # Local
-from .module_backends import backend_types, module_backend_config
-from .module_backends.base import SharedLoadBackendBase
+from .model_management import (
+    ModelFinderBase,
+    ModelInitializerBase,
+    model_finder_factory,
+    model_initializer_factory,
+)
 from .modules.base import ModuleBase
-from .modules.config import ModuleConfig
-from .modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
-from .registries import module_backend_registry, module_registry
+from .registries import module_registry
 from .toolkit.errors import error_handler
+from .toolkit.factory import Factory, FactoryConstructible
 from caikit.config import get_config
 
 log = alog.use_channel("MDLMNG")
@@ -67,30 +69,53 @@ class ModelManager:
         # Map to store module caches, to be used for singleton model lookups
         self.singleton_module_cache = {}
         self._singleton_lock = Lock()
+        self._finders = {}
+        self._initializers = {}
 
     # make load function available from top-level of library
-    def load(self, module_path, *args, load_singleton=False, **kwargs):
-        """Load a model and return an instantiated object on which we can run inference.
+    def load(
+        self,
+        module_path: str,
+        *,
+        load_singleton: bool = False,
+        finder: Union[str, ModelFinderBase] = "default",
+        initializer: Union[str, ModelInitializerBase] = "default",
+        **kwargs,
+    ):
+        """Load a model and return an instantiated object on which we can run
+        inference.
 
         Args:
-            module_path (str | BytesIO | bytes): A module path to one of the
-                following. 1. A module path to a directory containing a yaml
-                config file in the top level. 2. A module path to a zip archive
-                containing either a yaml config file in the top level when
-                extracted, or a directory containing a yaml config file in the
-                top level. 3. A BytesIO object corresponding to a zip archive
-                containing either a yaml config file in the top level when
-                extracted, or a directory containing a yaml config file in the
-                top level. 4. A bytes object corresponding to a zip archive
-                containing either a yaml config file in the top level when
-                extracted, or a directory containing a yaml config file in the
-                top level.
-            load_singleton: bool (Defaults to False)
-                Indicates whether this model should be loaded as a singleton.
+            module_path (str | BytesIO | bytes): A module path (identifier) to
+                one of the following:
+                1. A directory containing a yaml config file in the top level.
+                2. A zip archive containing either a yaml config file in the
+                    top level when extracted, or a directory containing a yaml
+                    config file in the top level.
+                3. A BytesIO object corresponding to a zip archive containing
+                    either a yaml config file in the top level when extracted,
+                    or a directory containing a yaml config file in the top
+                    level.
+                4. A bytes object corresponding to a zip archive containing
+                    either a yaml config file in the top level when extracted,
+                    or a directory containing a yaml config file in the top
+                    level.
+                5. A string that is understood by the configured
+                    finder/initializer
+
+        Kwargs:
+            load_singleton (bool): Load this model as a singleton
+            finder (Union[str, ModelFinderBase]): Finder to use when loading
+                this model. If passed as a string, this names the finder in the
+                global config model_management.finders section.
+            initializer (Union[str, ModelInitializerBase]): Loader to use when
+                initializint this model. If passed as a string, this is the name
+                of the initializer in the global
+                config model_management.initializers section.
 
         Returns:
-            subclass of caikit.core.modules.ModuleBase: Model object that is
-                loaded, configured, and ready for prediction.
+            model (ModuleBase) Model object that is loaded, configured, and
+                ready for prediction.
         """
         error.type_check("<COR98255724E>", bool, load_singleton=load_singleton)
 
@@ -108,11 +133,16 @@ class ModelManager:
         # If we have bytes, convert to a buffer, since we already handle in memory binary streams.
         elif isinstance(module_path, bytes):
             module_path = BytesIO(module_path)
+
         # Now that we have a file like object | str we can try to load as an archive.
         if zipfile.is_zipfile(module_path):
-            return self._load_from_zipfile(module_path, load_singleton, *args, **kwargs)
+            return self._load_from_zipfile(
+                module_path, load_singleton, finder, initializer, **kwargs
+            )
         try:
-            return self._load_from_dir(module_path, load_singleton, *args, **kwargs)
+            return self._load_from_dir(
+                module_path, load_singleton, finder, initializer, **kwargs
+            )
         except FileNotFoundError:
             error(
                 "<COR80419785E>",
@@ -123,164 +153,60 @@ class ModelManager:
                 ),
             )
 
-    def _load_from_dir(self, module_path, load_singleton, *args, **kwargs):
+    def _load_from_dir(
+        self, module_path, load_singleton, finder, initializer, **kwargs
+    ):
         """Load a model from a directory.
 
         Args:
             module_path (str): Path to directory. At the top level of directory
                 is `config.yml` which holds info about the model.
-            load_singleton (bool): Indicates whether this model should be loaded
-                as a singleton.
+            load_singleton (bool): Load this model as a singleton
+            finder (Union[str, ModelFinderBase]): Finder to use when loading
+                this model. If passed as a string, this names the finder in the
+                global config model_management.finders section.
+            initializer (Union[str, ModelInitializerBase]): Loader to use when
+                loading this model. If passed as a string, this is the name of
+                the initializer in the global
+                config model_management.initializers section.
 
         Returns:
             subclass of caikit.core.modules.ModuleBase: Model object that is
                 loaded, configured, and ready for prediction.
         """
-        # Short-circuit the loading process if the path does not exist
-        if not os.path.exists(module_path):
-            raise FileNotFoundError(
-                errno.ENOENT, os.strerror(errno.ENOENT), module_path
-            )
-
-        # If this is a singleton load, the entire body of this function needs to
-        # be locked to avoid concurrent loads on the same model. Otherwise, we
-        # can freely load in parallel.
         with self.singleton_lock(load_singleton):
-
-            # Using the module_path as a key, look for an instance preloaded in the
-            # singleton cache if desired
-            # 🌶🌶🌶 This doesn't work for nested modules
-            # TODO: think about bringing back the `unique_hash` or `tracking_id`
             if singleton_entry := (
                 load_singleton and self.singleton_module_cache.get(module_path)
             ):
                 log.debug("Found %s in the singleton cache", module_path)
                 return singleton_entry
 
-            # Get the set of configured loaders
-            configured_load_backends = module_backend_config.configured_load_backends()
-            if not configured_load_backends:
-                log.info(
-                    "<COR56759744I>",
-                    "No backends configured! Configuring backends with current configuration",
-                )
-                module_backend_config.configure()
-                configured_load_backends = (
-                    module_backend_config.configured_load_backends()
-                )
+            # Use the given finder to try to find the module config for this
+            # module_path
+            #
+            # NOTE: This will lazily construct named finders if needed
+            log.debug("Attempting to find [%s] with finder %s", module_path, finder)
+            finder = self._get_finder(finder)
+            model_config = finder.find_model(module_path, **kwargs)
+            error.value_check(
+                "<COR92173495E>",
+                model_config is not None,
+                "Unable to find a ModuleConfig for {}",
+                module_path,
+            )
 
-            # Pre-initialize variables that will be parsed lazily from the
-            # ModuleConfig if needed. This is done lazily so that loaders which
-            # don't require a config.yml can take precedence over those that do
-            # require one.
-            module_id = None
-            module_implementations = None
-            model_creation_backend = None
-
-            # For each backend, if it's a shared loader, attempt to load the model
-            # directly. If not, parse the module config and look to see if there is
-            # a version of the module available for the given backend
-            loaded_model = None
-            log.debug("Available load backends: %s", configured_load_backends)
-            for i, load_backend in enumerate(configured_load_backends):
-                # If this is a shared loader, try loading the model directly
-                if isinstance(load_backend, SharedLoadBackendBase):
-                    log.debug("Trying shared backend loader")
-                    model = load_backend.load(module_path, *args, **kwargs)
-                    if model is not None:
-                        log.debug2(
-                            "Successfully loaded %s with loader (%d)%s",
-                            module_path,
-                            i,
-                            load_backend.backend_type,
-                        )
-                        error.type_check(
-                            "<COR76726077E>",
-                            ModuleBase,
-                            model=model,
-                        )
-
-                        loaded_model = model
-                        model.set_load_backend(load_backend)
-                        break
-                    log.debug3(
-                        "Could not load %s with loader (%d)%s",
-                        module_path,
-                        i,
-                        load_backend.backend_type,
-                    )
-
-                # If this is not a shared loader, look for an implementation of the
-                # model's module that works with this backend
-                else:
-                    # If this is the first time parsing the module config, do so
-                    if module_id is None:
-                        log.debug2("Loading ModuleConfig from %s", module_path)
-                        module_config = ModuleConfig.load(module_path)
-                        module_id = module_config.module_id
-                        module_implementations = module_backend_registry().get(
-                            module_id, {}
-                        )
-                        log.debug2(
-                            "Number of available backend implementations for %s found: %d",
-                            module_id,
-                            len(module_implementations),
-                        )
-                        # Look up the backend that this model was created with
-                        model_creation_backend = module_config.get(
-                            "model_backend", backend_types.LOCAL
-                        )
-
-                    # Look in the module's implementations for this backend type
-                    backend_impl_obj = module_implementations.get(
-                        load_backend.backend_type
-                    )
-                    if backend_impl_obj is None:
-                        log.debug3(
-                            "Module %s does not support loading with %s",
-                            module_id,
-                            load_backend.backend_type,
-                        )
-                        continue
-
-                    # Grab the concrete module class for this backend and check to
-                    # see if this model's artifacts were created with a version of
-                    # the module that can be loaded with this backend.
-                    module_backend_impl = backend_impl_obj.impl_class
-                    supported_load_backends = self._get_supported_load_backends(
-                        module_backend_impl
-                    )
-                    if model_creation_backend in supported_load_backends:
-                        log.debug3(
-                            "Attempting to load %s (module_id %s) with backend %s and class %s",
-                            module_path,
-                            module_id,
-                            load_backend.backend_type,
-                            module_backend_impl.__name__,
-                        )
-                        loaded_model = module_backend_impl.load(
-                            module_path,
-                            *args,
-                            load_backend=load_backend,
-                            **kwargs,
-                        )
-                        if loaded_model is not None:
-                            log.debug2(
-                                "Successfully loaded %s with backend %s",
-                                module_path,
-                                load_backend.backend_type,
-                            )
-                            loaded_model.set_load_backend(load_backend)
-                            break
-
-            # If no model successfully loaded, it's an error
-            if loaded_model is None:
-                error(
-                    "<COR50207494E>",
-                    ValueError(
-                        f"Unable to load model from {module_path} with MODULE_ID {module_id}"
-                    ),
-                )
+            # Use the given initializer to try to load the model
+            #
+            # NOTE: This will lazily construct named initializers if needed
+            initializer = self._get_initializer(initializer)
+            loaded_model = initializer.init(model_config, **kwargs)
+            error.value_check(
+                "<COR50207494E>",
+                loaded_model is not None,
+                "Unable to load model from {} with MODULE_ID {}",
+                module_path,
+                model_config.module_id,
+            )
 
             # If loading as a singleton, populate the cache
             if load_singleton:
@@ -289,14 +215,22 @@ class ModelManager:
             # Return successfully!
             return loaded_model
 
-    def _load_from_zipfile(self, module_path, load_singleton, *args, **kwargs):
+    def _load_from_zipfile(
+        self, module_path, load_singleton, finder, initializer, **kwargs
+    ):
         """Load a model from a zip archive.
 
         Args:
             module_path (str): Path to directory. At the top level of directory
                 is `config.yml` which holds info about the model.
-            load_singleton (bool): Indicates whether this model should be loaded
-                as a singleton.
+            load_singleton (bool): Load this model as a singleton
+            finder (Union[str, ModelFinderBase]): Finder to use when loading
+                this model. If passed as a string, this names the finder in the
+                global config model_management.finders section.
+            initializer (Union[str, ModelInitializerBase]): Loader to use when
+                loading this model. If passed as a string, this is the name of
+                the initializer in the global
+                config model_management.initializers section.
 
         Returns:
             subclass of caikit.core.modules.ModuleBase: Model object that is
@@ -310,7 +244,7 @@ class ModelManager:
             # We expect the former, but fall back to the second if we can't find the config.
             try:
                 model = self._load_from_dir(
-                    extract_path, load_singleton, *args, **kwargs
+                    extract_path, load_singleton, finder, initializer, **kwargs
                 )
             # NOTE: Error handling is a little gross here, the main reason being that we
             # only want to log to error() if something is fatal, and there are a good amount
@@ -340,7 +274,7 @@ class ModelManager:
                 # create one potential extra layer of nesting around the model directory.
                 try:
                     model = self._load_from_dir(
-                        nested_dirs[0], load_singleton, *args, **kwargs
+                        nested_dirs[0], load_singleton, finder, initializer, **kwargs
                     )
                 except FileNotFoundError:
                     error(
@@ -464,22 +398,57 @@ class ModelManager:
         else:
             yield
 
-    def _get_supported_load_backends(self, backend_impl: ModuleBase):
-        """Function to get a list of supported load backends
-        that the module supports
+    @staticmethod
+    def _get_component(
+        component: Union[str, FactoryConstructible],
+        component_dict: Dict[str, FactoryConstructible],
+        component_factory: Factory,
+        component_name: str,
+        component_cfg: dict,
+        component_type: type,
+    ) -> FactoryConstructible:
+        """Common logic for resolving components from config
 
-        Args:
-            backend_impl (caikit.core.ModuleBase): Module implementing the
-                backend
-        Returns:
-            list(backend_types): list of backends that are supported for model
-                load
+        NOTE: This is done lazily to avoid relying on import order and to allow
+            for dynamic config changes
         """
+        error.type_check(
+            "<COR45466249E>", str, component_type, **{component_name: component}
+        )
+        if isinstance(component, component_type):
+            return component
+        if component not in component_dict:
+            cfg = component_cfg.get(component)
+            error.value_check(
+                "<COR55057389E>",
+                isinstance(cfg, dict),
+                "Unknown {}: {}",
+                component_name,
+                component,
+            )
+            component_dict[component] = component_factory.construct(cfg)
+        return component_dict[component]
 
-        # Get list of backends that are supported for load
-        # NOTE: since code in a module can change anytime, its support
-        # for various backend might also change, in which case,
-        # it would be better to keep the backend information in the model itself
-        # If module_backend is None, then we will assume that this model is not loadable in
-        # any other backend
-        return getattr(backend_impl, SUPPORTED_LOAD_BACKENDS_VAR_NAME, [])
+    def _get_finder(self, finder: Union[str, ModelFinderBase]) -> ModelFinderBase:
+        """Get the configured model finder or the one passed by value"""
+        return self._get_component(
+            component=finder,
+            component_dict=self._finders,
+            component_factory=model_finder_factory,
+            component_name="finder",
+            component_cfg=get_config().model_management.finders,
+            component_type=ModelFinderBase,
+        )
+
+    def _get_initializer(
+        self, initializer: Union[str, ModelInitializerBase]
+    ) -> ModelInitializerBase:
+        """Get the configured model initializer or the one passed by value"""
+        return self._get_component(
+            component=initializer,
+            component_dict=self._initializers,
+            component_factory=model_initializer_factory,
+            component_name="initializer",
+            component_cfg=get_config().model_management.initializers,
+            component_type=ModelInitializerBase,
+        )
