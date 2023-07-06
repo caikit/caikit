@@ -184,7 +184,7 @@ def test_task_inference_rpc_with_streaming():
         task=TestTask,
         method_signatures=[
             TestModule.get_inference_signature(
-                input_streaming=False, output_streaming=True
+                input_streaming=True, output_streaming=True
             )
         ],
         input_streaming=True,
