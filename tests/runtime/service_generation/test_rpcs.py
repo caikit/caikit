@@ -64,6 +64,58 @@ import caikit.core
 #     assert rpc.name == "ClientStreamingTestTaskPredict"
 
 
+def test_task_inference_multiples_modules_rpc():
+    @caikit.core.task(
+        unary_parameters={"sample_input": SampleInputType},
+        streaming_parameters={"sample_inputs": Iterable[SampleInputType]},
+        unary_output_type=SampleOutputType,
+        streaming_output_type=Iterable[SampleOutputType],
+    )
+    class MultiModTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()), name="testmod1", version="9.9.9", task=MultiModTask
+    )
+    class TestModule1(ModuleBase):
+        @MultiModTask.taskmethod(input_streaming=True)
+        def run_stream_in(
+            self, sample_inputs: DataStream[SampleInputType]
+        ) -> SampleOutputType:
+            pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()), name="testmod2", version="9.9.9", task=MultiModTask
+    )
+    class TestModule2(ModuleBase):
+        @MultiModTask.taskmethod(input_streaming=True)
+        def run_stream_in(
+            self, sample_inputs: DataStream[SampleInputType]
+        ) -> SampleOutputType:
+            pass
+
+    rpc = TaskPredictRPC(
+        task=MultiModTask,
+        method_signatures=[
+            TestModule1.get_inference_signature(
+                input_streaming=True, output_streaming=False
+            ),
+            TestModule2.get_inference_signature(
+                input_streaming=True, output_streaming=False
+            ),
+        ],
+        input_streaming=True,
+        output_streaming=False,
+    )
+    assert rpc.request.name == "ClientStreamingMultiModTaskRequest"
+    assert rpc.request.triples == [(SampleInputType, "sample_inputs", 1)]
+
+    data_model = rpc.create_request_data_model(package_name="blah")
+    assert data_model is not None
+
+    assert rpc.name == "ClientStreamingMultiModTaskPredict"
+
+
 def test_task_inference_rpc_with_client_streaming():
     @caikit.core.task(
         unary_parameters={"sample_input": SampleInputType},
@@ -94,6 +146,7 @@ def test_task_inference_rpc_with_client_streaming():
         input_streaming=True,
         output_streaming=False,
     )
+    assert rpc.request.name == "ClientStreamingTestTask1Request"
     assert rpc.request.triples == [(SampleInputType, "sample_inputs", 1)]
 
     data_model = rpc.create_request_data_model(package_name="blah")

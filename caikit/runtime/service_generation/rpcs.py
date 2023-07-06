@@ -292,6 +292,12 @@ class TaskPredictRPC(CaikitRPCBase):
         """Helper function to convert the pair of library name and task name to
         a request message name
         """
+        if self._input_streaming and self._output_streaming:
+            return snake_to_upper_camel(f"BidiStreaming{self.task.__name__}_Request")
+        if self._output_streaming:
+            return snake_to_upper_camel(f"ServerStreaming{self.task.__name__}_Request")
+        if self._input_streaming:
+            return snake_to_upper_camel(f"ClientStreaming{self.task.__name__}_Request")
         return snake_to_upper_camel(f"{self.task.__name__}_Request")
 
     def _task_to_rpc_name(self) -> str:
