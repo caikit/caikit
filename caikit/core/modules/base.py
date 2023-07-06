@@ -24,7 +24,7 @@
 
 # Standard
 from io import BytesIO
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 import collections
 import os
 import shutil
@@ -81,6 +81,18 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         was used to load this module
         """
         self._load_backend = load_backend
+
+    @classmethod
+    def get_inference_signature(
+        cls, input_streaming: bool, output_streaming: bool
+    ) -> Optional["caikit.core.signature_parsing.CaikitMethodSignature"]:
+        """Returns the inference method signature that is capable of running the module's task
+        for the given flavors of input and output streaming
+        """
+        for in_streaming, out_streaming, signature in cls._INFERENCE_SIGNATURES:
+            if in_streaming == input_streaming and out_streaming == output_streaming:
+                return signature
+        return None
 
     @property
     def load_backend(self):

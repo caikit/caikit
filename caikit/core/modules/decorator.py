@@ -191,10 +191,34 @@ def module(
         # Parse the `train` and `run` signatures
         cls_.RUN_SIGNATURE = CaikitMethodSignature(cls_, "run")
         cls_.TRAIN_SIGNATURE = CaikitMethodSignature(cls_, "train")
+        cls_._INFERENCE_SIGNATURES = []
 
         # If the module has a task, validate it:
         if cls_.TASK_CLASS:
-            cls_.TASK_CLASS.validate_run_signature(cls_.RUN_SIGNATURE)
+            if not cls_.TASK_CLASS.has_inference_method_decorators(module_class=cls_):
+                # Hackity hack hack - make sure at least one flavor is supported
+                validated = False
+                validation_errs = []
+                for input_streaming, output_streaming in [
+                    [False, False],
+                    [True, True],
+                    [False, True],
+                ]:
+                    try:
+                        cls_.TASK_CLASS.validate_run_signature(
+                            cls_.RUN_SIGNATURE, input_streaming, output_streaming
+                        )
+                        validated = True
+                        cls_._INFERENCE_SIGNATURES.append(
+                            (input_streaming, output_streaming, cls_.RUN_SIGNATURE)
+                        )
+                        break
+                    except (ValueError, TypeError) as e:
+                        validation_errs.append(e)
+                if not validated:
+                    raise validation_errs[0]
+
+            cls_.TASK_CLASS.deferred_method_decoration(cls_)
 
         # If no backend support described in the class, add current backend
         # as the only backend that can load models trained by this module

@@ -24,20 +24,11 @@ from .data_model.text_generation import GeneratedTextResult, GeneratedTextStream
 
 
 @task(
-    required_parameters={"inputs": str},
-    output_type=GeneratedTextResult,
+    unary_parameters={"inputs": str},
+    unary_output_type=GeneratedTextResult,
+    streaming_output_type=Iterable[GeneratedTextStreamResult],
 )
 class TextGenerationTask(TaskBase):
     """The Text Generation Task is responsible for taking input prompting text
     and generating additional text from that prompt.
-    """
-
-
-@task(
-    required_parameters={"inputs": str},
-    output_type=Iterable[GeneratedTextStreamResult],
-)
-class TextGenerationStreamTask(TaskBase):
-    """The Text Generation Stream Task is responsible for taking input prompting
-    text and iteratively producing output tokens in a stream.
     """

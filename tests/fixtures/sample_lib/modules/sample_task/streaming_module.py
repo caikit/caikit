@@ -1,5 +1,7 @@
 """
 A streaming module for streaming things!
+
+NB: This is here for backwards-compatibility support with ye-olde basic streaming-out tasks
 """
 
 # Local

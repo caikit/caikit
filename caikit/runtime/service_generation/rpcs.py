@@ -87,7 +87,8 @@ class CaikitRPCBase(abc.ABC):
 
     def create_rpc_json(self, package_name: str) -> Dict:
         """Return json snippet for the service definition of this RPC"""
-        if self.module_list[0].TASK_CLASS.is_output_streaming_task():
+        if self.module_list[0].TASK_CLASS._is_iterable_type(self.return_type):
+            # if self.module_list[0].TASK_CLASS.is_output_streaming_task():
             output_type_name = (
                 typing.get_args(self.return_type)[0]
                 .get_proto_class()

@@ -13,40 +13,36 @@ from sample_lib.data_model.sample import SampleInputType, SampleOutputType, Samp
 import caikit.core
 
 
-def test_task_decorator_has_required_inputs_and_output_type():
+def test_task_decorator_has_streaming_types():
     @task(
-        required_parameters={"sample_input": SampleInputType},
-        output_type=SampleOutputType,
+        unary_parameters={"text": str},
+        streaming_parameters={"tokens": Iterable[str]},
+        unary_output_type=SampleOutputType,
+        streaming_output_type=Iterable[SampleOutputType],
     )
     class SampleTask(TaskBase):
         pass
 
-    assert SampleTask.get_required_parameters() == {"sample_input": SampleInputType}
-    assert SampleTask.get_output_type() == SampleOutputType
-
-    # assert Immutable properties
-    SampleTask.required_inputs = {"sample_input": str}
-    assert SampleTask.get_required_parameters() == {"sample_input": SampleInputType}
+    assert (
+        SampleTask.get_output_type(output_streaming=True) == Iterable[SampleOutputType]
+    )
+    assert SampleTask.get_required_parameters(input_streaming=True) == {
+        "tokens": Iterable[str]
+    }
 
 
 def test_task_decorator_validates_class_extends_task_base():
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match="is not a subclass of .*TaskBase"):
 
-        @task(
-            required_parameters={"sample_input": SampleInputType},
-            output_type=SampleOutputType,
-        )
+        @task()
         class SampleTask:
             pass
 
 
 def test_task_decorator_validates_output_is_data_model():
-    with pytest.raises(TypeError, match=".*str.* is not a subclass"):
+    with pytest.raises(TypeError, match=".*str.* is not a subclass of .*DataBase"):
 
-        @task(
-            required_parameters={"sample_input": SampleInputType},
-            output_type=str,
-        )
+        @task(unary_parameters={"text": str}, unary_output_type=str)
         class SampleTask(TaskBase):
             pass
 
@@ -55,8 +51,8 @@ def test_task_decorator_can_have_iterable_output():
     """This test covers tasks + modules with streaming output"""
 
     @task(
-        required_parameters={"sample_input": SampleInputType},
-        output_type=Iterable[SampleOutputType],
+        unary_parameters={"sample_input": SampleInputType},
+        streaming_output_type=Iterable[SampleOutputType],
     )
     class StreamingTask(TaskBase):
         pass
@@ -68,16 +64,36 @@ def test_task_decorator_can_have_iterable_output():
         task=StreamingTask,
     )
     class StreamingModule(caikit.core.ModuleBase):
+        @StreamingTask.taskmethod(output_streaming=True)
         def run(
             self, sample_input: SampleInputType
         ) -> caikit.core.data_model.DataStream[SampleOutputType]:
             pass
 
 
-def test_task_iterator_raises_on_wrong_streaming_type():
+def test_task_decorator_validates_streaming_output_is_iterable():
+    with pytest.raises(TypeError, match="not a subclass of .*Iterable"):
+
+        @task(streaming_parameters={"text": Iterable[str]}, streaming_output_type=str)
+        class StreamingTask(TaskBase):
+            pass
+
+
+def test_task_decorator_validates_streaming_input_is_iterable():
+    with pytest.raises(TypeError, match="not a subclass of .*Iterable"):
+
+        @task(
+            streaming_parameters={"text": str},
+            streaming_output_type=Iterable[SampleOutputType],
+        )
+        class StreamingTask(TaskBase):
+            pass
+
+
+def test_task_validator_raises_on_wrong_streaming_type():
     @task(
-        required_parameters={"sample_input": SampleInputType},
-        output_type=Iterable[SampleOutputType],
+        unary_parameters={"sample_input": SampleInputType},
+        streaming_output_type=Iterable[SampleOutputType],
     )
     class StreamingTask(TaskBase):
         pass
@@ -91,6 +107,7 @@ def test_task_iterator_raises_on_wrong_streaming_type():
             task=StreamingTask,
         )
         class InvalidStreamingModule(caikit.core.ModuleBase):
+            @StreamingTask.taskmethod(output_streaming=True)
             def run(
                 self, sample_input: SampleInputType
             ) -> caikit.core.data_model.DataStream[SampleInputType]:
@@ -111,10 +128,7 @@ def test_task_can_be_inferred_from_parent_module():
 
 
 def test_task_cannot_conflict_with_parent_module():
-    @task(
-        required_parameters={"foo": SampleInputType},
-        output_type=SampleOutputType,
-    )
+    @task(unary_parameters={"foo": SampleInputType}, unary_output_type=SampleOutputType)
     class SomeTask(TaskBase):
         pass
 
@@ -136,10 +150,7 @@ def test_task_is_not_required_for_modules():
 
 
 def test_task_validation_throws_on_no_params():
-    @task(
-        required_parameters={"foo": int},
-        output_type=SampleOutputType,
-    )
+    @task(unary_parameters={"foo": int}, unary_output_type=SampleOutputType)
     class SomeTask(TaskBase):
         pass
 
@@ -157,10 +168,7 @@ def test_task_validation_throws_on_no_params():
 
 
 def test_task_validation_throws_on_no_return_type():
-    @task(
-        required_parameters={"foo": int},
-        output_type=SampleOutputType,
-    )
+    @task(unary_parameters={"foo": int}, unary_output_type=SampleOutputType)
     class SomeTask(TaskBase):
         pass
 
@@ -179,8 +187,8 @@ def test_task_validation_throws_on_no_return_type():
 
 def test_task_validation_throws_on_wrong_return_type():
     @task(
-        required_parameters={"foo": int},
-        output_type=SampleOutputType,
+        unary_parameters={"foo": int},
+        unary_output_type=SampleOutputType,
     )
     class SomeTask(TaskBase):
         pass
@@ -200,8 +208,8 @@ def test_task_validation_throws_on_wrong_return_type():
 
 def test_task_validation_accepts_union_outputs():
     @task(
-        required_parameters={"foo": int},
-        output_type=SampleOutputType,
+        unary_parameters={"foo": int},
+        unary_output_type=SampleOutputType,
     )
     class SomeTask(TaskBase):
         pass
@@ -216,8 +224,8 @@ def test_task_validation_accepts_union_outputs():
 
 def test_task_validation_throws_on_missing_parameter():
     @task(
-        required_parameters={"foo": int},
-        output_type=SampleOutputType,
+        unary_parameters={"foo": int},
+        unary_output_type=SampleOutputType,
     )
     class SomeTask(TaskBase):
         pass
@@ -234,8 +242,8 @@ def test_task_validation_throws_on_missing_parameter():
 
 def test_task_validation_throws_on_wrong_parameter_type():
     @task(
-        required_parameters={"foo": int},
-        output_type=SampleOutputType,
+        unary_parameters={"foo": int},
+        unary_output_type=SampleOutputType,
     )
     class SomeTask(TaskBase):
         pass
@@ -255,6 +263,96 @@ def test_task_validation_throws_on_wrong_parameter_type():
 
 def test_task_validation_passes_when_module_has_correct_run_signature():
     @task(
+        unary_parameters={"foo": int},
+        unary_output_type=SampleOutputType,
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+    )
+    class SomeModule(caikit.core.ModuleBase):
+        def run(self, foo: int, bar: str) -> SampleOutputType:
+            pass
+
+
+def test_task_decorator_adds_taskmethods_to_modules():
+    """This test covers tasks + modules with streaming output"""
+
+    @task(
+        unary_parameters={"sample_input": SampleInputType},
+        unary_output_type=SampleOutputType,
+        streaming_output_type=Iterable[SampleOutputType],
+    )
+    class StreamingTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()),
+        name="StreamingModule",
+        version="0.0.1",
+        task=StreamingTask,
+    )
+    class StreamingModule(caikit.core.ModuleBase):
+        @StreamingTask.taskmethod()
+        def run(self, sample_input: SampleInputType) -> SampleOutputType:
+            pass
+
+        @StreamingTask.taskmethod(output_streaming=True)
+        def run_stream_out(
+            self, sample_input: SampleInputType
+        ) -> caikit.core.data_model.DataStream[SampleOutputType]:
+            pass
+
+    assert (
+        StreamingModule.get_inference_signature(
+            input_streaming=False, output_streaming=False
+        ).method_name
+        == "run"
+    )
+    assert (
+        StreamingModule.get_inference_signature(
+            input_streaming=False, output_streaming=True
+        ).method_name
+        == "run_stream_out"
+    )
+
+
+def test_decorator_adds_default_run_method_to_modules():
+    @task(
+        unary_parameters={"sample_input": SampleInputType},
+        unary_output_type=SampleOutputType,
+        streaming_output_type=Iterable[SampleOutputType],
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()),
+        name="SomeModule",
+        version="0.0.1",
+        task=SomeTask,
+    )
+    class SomeModule(caikit.core.ModuleBase):
+        def run(self, sample_input: SampleInputType) -> SampleOutputType:
+            pass
+
+    assert (
+        SomeModule.get_inference_signature(
+            input_streaming=False, output_streaming=False
+        ).method_name
+        == "run"
+    )
+
+
+# ----------- BACKWARDS COMPATIBILITY ------------------------------------------- ##
+
+
+def test_task_backwards_compatibility():
+    """The old 'required_parameters' and 'output_type' should continue to function"""
+
+    @task(
         required_parameters={"foo": int},
         output_type=SampleOutputType,
     )
@@ -267,3 +365,21 @@ def test_task_validation_passes_when_module_has_correct_run_signature():
     class SomeModule(caikit.core.ModuleBase):
         def run(self, foo: int, bar: str) -> SampleOutputType:
             pass
+
+    with pytest.raises(TypeError):
+
+        @caikit.core.module(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class SomeModule(caikit.core.ModuleBase):
+            def run(self, foo: str) -> SampleOutputType:
+                pass
+
+    with pytest.raises(TypeError):
+
+        @caikit.core.module(
+            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
+        )
+        class SomeModule(caikit.core.ModuleBase):
+            def run(self, foo: int) -> SampleInputType:
+                pass
