@@ -15,13 +15,183 @@
 """Tests for the rpc objects that hold our in-memory representation of
 what an RPC for a service looks like"""
 # Standard
+from typing import Iterable, Union
 import uuid
 
 # Local
 from caikit.core import ModuleBase, TaskBase
+from caikit.core.data_model import DataStream
 from caikit.runtime.service_generation.rpcs import ModuleClassTrainRPC, TaskPredictRPC
-from sample_lib.data_model import SampleOutputType
+from sample_lib.data_model import SampleInputType, SampleOutputType
 import caikit.core
+
+# def test_task_inference_rpc_with_client_streaming_union():
+#     @caikit.core.task(
+#         unary_parameters={"sample_input": SampleInputType},
+#         streaming_parameters={"sample_inputs": Iterable[SampleInputType]},
+#         unary_output_type=SampleOutputType,
+#         streaming_output_type=Iterable[SampleOutputType],
+#         # TODO: check if above line fails without iterable
+#     )
+#     class TestTask(TaskBase):
+#         pass
+
+#     @caikit.core.module(
+#         id=str(uuid.uuid4()), name="testest", version="9.9.9", task=TestTask
+#     )
+#     class TestModule(ModuleBase):
+#         @TestTask.taskmethod(input_streaming=True)
+#         def run_stream_in(
+#             self, sample_inputs: Union[DataStream[SampleInputType], str]
+#         ) -> SampleOutputType:
+#             pass
+
+#     rpc = TaskPredictRPC(
+#         task=TestTask,
+#         method_signatures=[
+#             TestModule.get_inference_signature(
+#                 input_streaming=True, output_streaming=False
+#             )
+#         ],
+#         input_streaming=True,
+#         output_streaming=False,
+#     )
+#     assert rpc.request.triples == [(SampleInputType, "sample_inputs", 1)]
+
+#     data_model = rpc.create_request_data_model(package_name="blah")
+#     assert data_model is not None
+
+#     assert rpc.name == "ClientStreamingTestTaskPredict"
+
+
+def test_task_inference_rpc_with_client_streaming():
+    @caikit.core.task(
+        unary_parameters={"sample_input": SampleInputType},
+        streaming_parameters={"sample_inputs": Iterable[SampleInputType]},
+        unary_output_type=SampleOutputType,
+        streaming_output_type=Iterable[SampleOutputType],
+    )
+    class TestTask1(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()), name="testest", version="9.9.9", task=TestTask1
+    )
+    class TestModule(ModuleBase):
+        @TestTask1.taskmethod(input_streaming=True)
+        def run_stream_in(
+            self, sample_inputs: DataStream[SampleInputType]
+        ) -> SampleOutputType:
+            pass
+
+    rpc = TaskPredictRPC(
+        task=TestTask1,
+        method_signatures=[
+            TestModule.get_inference_signature(
+                input_streaming=True, output_streaming=False
+            )
+        ],
+        input_streaming=True,
+        output_streaming=False,
+    )
+    assert rpc.request.triples == [(SampleInputType, "sample_inputs", 1)]
+
+    data_model = rpc.create_request_data_model(package_name="blah")
+    assert data_model is not None
+
+    assert rpc.name == "ClientStreamingTestTask1Predict"
+
+
+def test_task_inference_rpc_with_streaming():
+    @caikit.core.task(
+        unary_parameters={"sample_input": SampleInputType},
+        streaming_parameters={"sample_inputs": Iterable[SampleInputType]},
+        unary_output_type=SampleOutputType,
+        streaming_output_type=Iterable[SampleOutputType],
+        # TODO: check if above line fails without iterable
+    )
+    class TestTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()), name="testest", version="9.9.9", task=TestTask
+    )
+    class TestModule(ModuleBase):
+        @TestTask.taskmethod()
+        def run(self, sample_input: SampleInputType) -> SampleOutputType:
+            pass
+
+        @TestTask.taskmethod(output_streaming=True)
+        def run_stream_out(
+            self, sample_input: SampleInputType
+        ) -> DataStream[SampleOutputType]:
+            pass
+
+        @TestTask.taskmethod(input_streaming=True)
+        def run_stream_in(
+            self, sample_inputs: Union[SampleInputType, str]
+        ) -> SampleOutputType:
+            pass
+
+        @TestTask.taskmethod(input_streaming=True, output_streaming=True)
+        def run_stream_bidi(
+            self, sample_inputs: Iterable[SampleInputType]
+        ) -> DataStream[SampleOutputType]:
+            pass
+
+    # Unary
+    rpc = TaskPredictRPC(
+        task=TestTask,
+        method_signatures=[
+            TestModule.get_inference_signature(
+                input_streaming=False, output_streaming=False
+            )
+        ],
+    )
+
+    assert rpc.name == "TestTaskPredict"
+
+    # # Server streaming
+    rpc = TaskPredictRPC(
+        task=TestTask,
+        method_signatures=[
+            TestModule.get_inference_signature(
+                input_streaming=False, output_streaming=True
+            )
+        ],
+        input_streaming=False,
+        output_streaming=True,
+    )
+
+    assert rpc.name == "ServerStreamingTestTaskPredict"
+
+    # Client streaming
+    rpc = TaskPredictRPC(
+        task=TestTask,
+        method_signatures=[
+            TestModule.get_inference_signature(
+                input_streaming=True, output_streaming=False
+            )
+        ],
+        input_streaming=True,
+        output_streaming=False,
+    )
+
+    assert rpc.name == "ClientStreamingTestTaskPredict"
+
+    # Bidi streaming
+    rpc = TaskPredictRPC(
+        task=TestTask,
+        method_signatures=[
+            TestModule.get_inference_signature(
+                input_streaming=False, output_streaming=True
+            )
+        ],
+        input_streaming=True,
+        output_streaming=True,
+    )
+
+    assert rpc.name == "BidiStreamingTestTaskPredict"
 
 
 def test_task_inference_rpc_with_all_optional_params():

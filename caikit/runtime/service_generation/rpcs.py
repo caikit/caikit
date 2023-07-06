@@ -212,6 +212,8 @@ class TaskPredictRPC(CaikitRPCBase):
         self,
         task: Type[TaskBase],
         method_signatures: List[CaikitMethodSignature],
+        input_streaming: bool = False,
+        output_streaming: bool = False,
     ):
         """Initialize a .proto generator with all modules of a given task to convert
 
@@ -224,13 +226,17 @@ class TaskPredictRPC(CaikitRPCBase):
         self.task = task
         self._module_list = [method.module for method in method_signatures]
         self._method_signatures = method_signatures
+        self._input_streaming = input_streaming
+        self._output_streaming = output_streaming
 
         # Aggregate the argument signature types into a single parameters_dict
+        # handle removing non-task type stuff here
         parameters_dict = {}
         default_parameters = {}
         for method in method_signatures:
             default_parameters.update(method.default_parameters)
-            primitive_arg_dict = protoable.to_protoable_signature(method.parameters)
+            new_params = self._handle_streaming_type(method.parameters)
+            primitive_arg_dict = protoable.to_protoable_signature(new_params)
             for arg_name, arg_type in primitive_arg_dict.items():
                 current_val = parameters_dict.get(arg_name, arg_type)
                 # TODO: raise runtime error here instead of assert!
@@ -265,6 +271,23 @@ class TaskPredictRPC(CaikitRPCBase):
     def request(self) -> "_RequestMessage":
         return self._req
 
+    def _handle_streaming_type(self, method_params: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle streaming type inputs and convert them to args,
+        so Iterable[Type] becomes Type"""
+        new_params = {}
+        if self._input_streaming:
+            req_param = self.task.get_required_parameters(input_streaming=True)
+            for param_name, param_type in method_params.items():
+                if param_name in req_param:
+                    # double check this condition, although it should already have been validated
+                    # also assuming both are iterables
+                    if get_args(req_param[param_name])[0] in get_args(param_type):
+                        new_params[param_name] = get_args(req_param[param_name])[0]
+                else:
+                    new_params[param_name] = param_type
+                return new_params
+        return method_params
+
     def _task_to_req_name(self) -> str:
         """Helper function to convert the pair of library name and task name to
         a request message name
@@ -279,6 +302,12 @@ class TaskPredictRPC(CaikitRPCBase):
 
         return: SampleTaskPredict
         """
+        if self._input_streaming and self._output_streaming:
+            return snake_to_upper_camel(f"BidiStreaming{self.task.__name__}_Predict")
+        if self._output_streaming:
+            return snake_to_upper_camel(f"ServerStreaming{self.task.__name__}_Predict")
+        if self._input_streaming:
+            return snake_to_upper_camel(f"ClientStreaming{self.task.__name__}_Predict")
         return snake_to_upper_camel(f"{self.task.__name__}_Predict")
 
 
