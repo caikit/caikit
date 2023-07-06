@@ -143,6 +143,8 @@ class _ModuleBaseMeta(abc.ABCMeta):
 
                 return module
 
+            # Wrap the load function so that the final method appears the same
+            # as the original
             metadata_injecting_load = functools.wraps(real_load.__func__)(
                 metadata_injecting_load
             )

@@ -41,6 +41,7 @@ model_management:
         default:
             type: LOCAL
             config:
+                # List of module backend configurations in priority order
                 backend_priority:
                     - type: LOCAL
 

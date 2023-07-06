@@ -14,6 +14,15 @@
 """
 A ModelInitializer is responsible for taking an in-memory ModuleConfig and
 producing a usable Module instance.
+
+Configuration for ModelInitializers lives under the config as follows:
+
+model_management:
+    initializers:
+        <initializer name>:
+            type: <initializer type name>
+            config:
+                <config option>: <value>
 """
 
 # Standard

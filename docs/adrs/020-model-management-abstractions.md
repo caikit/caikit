@@ -33,7 +33,7 @@ Prior to `018` and `019`, the `module_backend` abstraction was explicitly tasked
 * The logic in `ModelManager` that handles `SharedLoadBackend`s will be removed
 * A new set of abstract classes will be introduced in `caikit.core.model_management`, one each for `ModelTrainer`, `ModelFinder`, and `ModelLoader`
 * The `ModelManager.load` implementation will be refactored to do the following:
-    * Get a unique `finder` by name or value, falling back to a `"default"` instance and attempt to find the model based on `model_path`
+    * Get a unique `finder` by name or value, falling back to a `"default"` instance and attempt to find the model based on `model_path`. A successful finder returns a `ModuleConfig` containing the `module_id` of the `module` class that should be used to initialize the model.
     * If the model is found, get a unique `initializer` by name or value, falling back to a `"default"` instance and attempt to initialize the found model using it.
 * All of the responsibility for managing `module_backend` mapping will move to the `LOCAL` implementation of the `ModelLoader` abstraction
 * The global `config` will be refactored as follows:

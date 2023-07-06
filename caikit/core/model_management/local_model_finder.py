@@ -12,7 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-The LocalModelFinder locates models locally on disk
+The LocalModelFinder locates models locally on disk that contain a caikit-native
+config.yml file.
+
+Configuration for LocalModelFinder lives under the config as follows:
+
+model_management:
+    finders:
+        <finder name>:
+            type: LOCAL
+            config:
+                # Path to a local directory that holds models for relative paths
+                load_path: <null or str>
 """
 # Standard
 from typing import Optional

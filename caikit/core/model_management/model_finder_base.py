@@ -14,6 +14,15 @@
 """
 A ModelFinder is responsible for finding models based on a unique input string
 which may be a path, id, or other identifier.
+
+Configuration for ModelFinders lives under the config as follows:
+
+model_management:
+    finders:
+        <finder name>:
+            type: <finder type name>
+            config:
+                <config option>: <value>
 """
 
 # Standard

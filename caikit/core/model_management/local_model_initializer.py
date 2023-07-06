@@ -14,6 +14,18 @@
 """
 The LocalModelInitializer loads a model locally, optionally with a non-local backend
 if the given module provides multiple backend-specific implementations.
+
+Configuration for LocalModelInitializer lives under the config as follows:
+
+model_management:
+    initializers:
+        <initializer name>:
+            type: LOCAL
+            config:
+                # List of module backend configurations in priority order
+                backend_priority:
+                    - type: LOCAL
+                      config: {}
 """
 # Standard
 from typing import Callable, Optional

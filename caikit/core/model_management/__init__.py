@@ -15,6 +15,8 @@
 The model management abstractions manage the key lifecycle phases of a concrete
 model instance and are used by the ModelManager to handle each phase of the
 model lifecycle.
+
+For architectural details, see docs/adrs/020-model-management-abstractions.md
 """
 
 # Local
