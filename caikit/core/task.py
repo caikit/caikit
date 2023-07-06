@@ -37,10 +37,10 @@ ValidInputTypes = Union[
 
 _InferenceMethodBaseT = TypeVar("_InferenceMethodBaseT", bound=Callable)
 
-_STREAM_OUT_ANNOTATION = "streaming_output_type"
-_STREAM_PARAMS_ANNOTATION = "streaming_params"
-_UNARY_OUT_ANNOTATION = "unary_output_type"
-_UNARY_PARAMS_ANNOTATION = "unary_params"
+_STREAM_OUT_ANNOTATION = "__streaming_output_type"
+_STREAM_PARAMS_ANNOTATION = "__streaming_params"
+_UNARY_OUT_ANNOTATION = "__unary_output_type"
+_UNARY_PARAMS_ANNOTATION = "__unary_params"
 
 
 class TaskBase:

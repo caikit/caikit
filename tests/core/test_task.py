@@ -32,7 +32,7 @@ def test_task_decorator_has_streaming_types():
 
 
 def test_task_decorator_validates_class_extends_task_base():
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match="is not a subclass of .*TaskBase"):
 
         @task()
         class SampleTask:
@@ -40,12 +40,11 @@ def test_task_decorator_validates_class_extends_task_base():
 
 
 def test_task_decorator_validates_output_is_data_model():
-    with pytest.raises(TypeError, match=".*str.* is not a subclass"):
+    with pytest.raises(TypeError, match=".*str.* is not a subclass of .*DataBase"):
 
-        @task()
+        @task(unary_parameters={"text": str}, unary_output_type=str)
         class SampleTask(TaskBase):
-            unary_params: {"text": str}
-            unary_output_type: str
+            pass
 
 
 def test_task_decorator_can_have_iterable_output():
@@ -92,10 +91,12 @@ def test_task_decorator_validates_streaming_input_is_iterable():
 
 
 def test_task_validator_raises_on_wrong_streaming_type():
-    @task()
+    @task(
+        unary_parameters={"sample_input": SampleInputType},
+        streaming_output_type=Iterable[SampleOutputType],
+    )
     class StreamingTask(TaskBase):
-        unary_params: {"sample_input": SampleInputType}
-        streaming_output_type: Iterable[SampleOutputType]
+        pass
 
     with pytest.raises(TypeError, match="Wrong output type for module"):
 
@@ -127,10 +128,9 @@ def test_task_can_be_inferred_from_parent_module():
 
 
 def test_task_cannot_conflict_with_parent_module():
-    @task()
+    @task(unary_parameters={"foo": SampleInputType}, unary_output_type=SampleOutputType)
     class SomeTask(TaskBase):
-        unary_params: {"foo": SampleInputType}
-        unary_output_type: SampleOutputType
+        pass
 
     with pytest.raises(TypeError, match="but superclass has"):
 
@@ -150,10 +150,9 @@ def test_task_is_not_required_for_modules():
 
 
 def test_task_validation_throws_on_no_params():
-    @task()
+    @task(unary_parameters={"foo": int}, unary_output_type=SampleOutputType)
     class SomeTask(TaskBase):
-        unary_params: {"foo": int}
-        unary_output_type: SampleOutputType
+        pass
 
     with pytest.raises(
         ValueError,
@@ -169,10 +168,9 @@ def test_task_validation_throws_on_no_params():
 
 
 def test_task_validation_throws_on_no_return_type():
-    @task()
+    @task(unary_parameters={"foo": int}, unary_output_type=SampleOutputType)
     class SomeTask(TaskBase):
-        unary_params: {"foo": int}
-        unary_output_type: SampleOutputType
+        pass
 
     with pytest.raises(
         ValueError,
@@ -189,8 +187,8 @@ def test_task_validation_throws_on_no_return_type():
 
 def test_task_validation_throws_on_wrong_return_type():
     @task(
-        required_parameters={"foo": int},
-        output_type=SampleOutputType,
+        unary_parameters={"foo": int},
+        unary_output_type=SampleOutputType,
     )
     class SomeTask(TaskBase):
         pass
@@ -210,8 +208,8 @@ def test_task_validation_throws_on_wrong_return_type():
 
 def test_task_validation_accepts_union_outputs():
     @task(
-        required_parameters={"foo": int},
-        output_type=SampleOutputType,
+        unary_parameters={"foo": int},
+        unary_output_type=SampleOutputType,
     )
     class SomeTask(TaskBase):
         pass
@@ -226,8 +224,8 @@ def test_task_validation_accepts_union_outputs():
 
 def test_task_validation_throws_on_missing_parameter():
     @task(
-        required_parameters={"foo": int},
-        output_type=SampleOutputType,
+        unary_parameters={"foo": int},
+        unary_output_type=SampleOutputType,
     )
     class SomeTask(TaskBase):
         pass
@@ -244,8 +242,8 @@ def test_task_validation_throws_on_missing_parameter():
 
 def test_task_validation_throws_on_wrong_parameter_type():
     @task(
-        required_parameters={"foo": int},
-        output_type=SampleOutputType,
+        unary_parameters={"foo": int},
+        unary_output_type=SampleOutputType,
     )
     class SomeTask(TaskBase):
         pass
@@ -265,8 +263,8 @@ def test_task_validation_throws_on_wrong_parameter_type():
 
 def test_task_validation_passes_when_module_has_correct_run_signature():
     @task(
-        required_parameters={"foo": int},
-        output_type=SampleOutputType,
+        unary_parameters={"foo": int},
+        unary_output_type=SampleOutputType,
     )
     class SomeTask(TaskBase):
         pass

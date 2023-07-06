@@ -38,19 +38,21 @@ class SampleTrainingType(DataObjectBase):
     number: int
 
 
-@task()
+@task(
+    unary_parameters={"sample_input": SampleInputType},
+    streaming_parameters={"sample_inputs": Iterable[SampleInputType]},
+    unary_output_type=SampleOutputType,
+    streaming_output_type=Iterable[SampleOutputType],
+)
 class SampleTask(TaskBase):
-    unary_params: {"sample_input": SampleInputType}
-    streaming_params: {"sample_inputs": Iterable[SampleInputType]}
-    unary_output_type: SampleOutputType
-    streaming_output_type: Iterable[SampleOutputType]
     """A sample `task` for our test models"""
 
 
-@task()
+@task(
+    unary_parameters={"sample_input": SampleInputType},
+    unary_output_type=OtherOutputType,
+)
 class OtherTask(TaskBase):
-    unary_params: {"sample_input": SampleInputType}
-    unary_output_type: OtherOutputType
     """Another sample `task` for our test models"""
 
 
