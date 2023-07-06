@@ -36,7 +36,7 @@ class TestDestroyableThread(unittest.TestCase):
             while True:
                 time.sleep(0.1)
 
-        thread = DestroyableThread(threading.Event(), infinite_wait)
+        thread = DestroyableThread(infinite_wait)
 
         thread.start()
         thread.destroy()
@@ -57,7 +57,9 @@ class TestDestroyableThread(unittest.TestCase):
                 caught_event.set()
                 raise e
 
-        thread = DestroyableThread(threading.Event(), test_catcher, started, caught)
+        thread = DestroyableThread(
+            test_catcher, started_event=started, caught_event=caught
+        )
 
         thread.start()
         started.wait()
@@ -70,7 +72,7 @@ class TestDestroyableThread(unittest.TestCase):
 
     def test_threads_can_return_results(self):
         expected = "test-any-result"
-        thread = DestroyableThread(threading.Event(), lambda: expected)
+        thread = DestroyableThread(lambda: expected)
 
         thread.start()
         thread.join()
@@ -83,7 +85,7 @@ class TestDestroyableThread(unittest.TestCase):
         def thrower():
             raise expected
 
-        thread = DestroyableThread(threading.Event(), thrower)
+        thread = DestroyableThread(thrower)
 
         thread.start()
         thread.join()
@@ -94,7 +96,7 @@ class TestDestroyableThread(unittest.TestCase):
         self.assertEqual(expected, ctx.exception)
 
     def test_threads_will_not_execute_if_destroyed_before_starting(self):
-        thread = DestroyableThread(threading.Event(), lambda: time.sleep(1000))
+        thread = DestroyableThread(lambda: time.sleep(1000))
 
         with catch_threading_exception() as cm:
             thread.destroy()
@@ -108,7 +110,7 @@ class TestDestroyableThread(unittest.TestCase):
 
     def test_event_is_set_on_completion(self):
         event = threading.Event()
-        thread = DestroyableThread(event, lambda: None)
+        thread = DestroyableThread(lambda: None, event)
 
         self.assertFalse(event.is_set())
         thread.start()
@@ -121,7 +123,7 @@ class TestDestroyableThread(unittest.TestCase):
         def thrower():
             raise ValueError("test-any-exception")
 
-        thread = DestroyableThread(event, thrower)
+        thread = DestroyableThread(thrower, event)
 
         self.assertFalse(event.is_set())
         thread.start()

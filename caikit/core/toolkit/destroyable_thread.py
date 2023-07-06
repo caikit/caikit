@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
+from typing import Optional
 import ctypes
 import sys
 import threading
@@ -19,6 +20,9 @@ import traceback
 
 # First Party
 import alog
+
+# Local
+from .destroyable import Destroyable
 
 log = alog.use_channel("DESTROY-THRD")
 
@@ -35,7 +39,7 @@ class ThreadDestroyedException(RuntimeError):
 
 
 # pylint: disable=too-many-instance-attributes
-class DestroyableThread(threading.Thread):
+class DestroyableThread(threading.Thread, Destroyable):
     """A class for Destroyable Threads. When work is delegated to a thread but may need to be
     canceled while in progress, we use this class which allows us to raise an exception inside
     the work thread.
@@ -53,16 +57,13 @@ class DestroyableThread(threading.Thread):
 
     def __init__(
         self,
-        work_done_event: threading.Event,
         runnable_func,
+        work_done_event: Optional[threading.Event] = None,
         *runnable_args,
         **runnable_kwargs
     ):
         threading.Thread.__init__(self)
-
-        if work_done_event is None:
-            raise RuntimeError("DestroyableThread created without an event to signal")
-        self.work_done_event = work_done_event
+        self.work_done_event = work_done_event or threading.Event()
 
         # These describe the work to be done
         self.runnable_func = runnable_func
@@ -82,6 +83,10 @@ class DestroyableThread(threading.Thread):
     @property
     def destroyed(self) -> bool:
         return self.__destroyed
+
+    @property
+    def canceled(self) -> bool:
+        return self.destroyed and self.threw
 
     @property
     def ran(self) -> bool:
@@ -105,7 +110,7 @@ class DestroyableThread(threading.Thread):
         # Raise immediately if the thread was destroyed before
         if self.__destroyed:
             log.info(
-                "<RUN14653273I>",
+                "<COR14653273I>",
                 "Not starting work for %s, thread already cancelled",
                 self.runnable_func,
             )
@@ -130,7 +135,7 @@ class DestroyableThread(threading.Thread):
             if self.__destroyed:
                 log.info(
                     {
-                        "log_code": "<RUN15827563I>",
+                        "log_code": "<COR15827563I>",
                         "message": "Work for {} was aborted and threw".format(
                             self.runnable_func
                         ),
@@ -140,7 +145,7 @@ class DestroyableThread(threading.Thread):
             else:
                 log.warning(
                     {
-                        "log_code": "<RUN16788843W>",
+                        "log_code": "<COR16788843W>",
                         "message": "Work for {} threw exception: {}".format(
                             self.runnable_func, e
                         ),
@@ -161,21 +166,21 @@ class DestroyableThread(threading.Thread):
         Raises:
             Any exception raised by runnable_func(*runnable_args, **runnable_kwargs)
         """
-        if self.__destroyed:
+        if self.destroyed:
             log.error(
-                "<RUN14653274E>",
+                "<COR14653274E>",
                 "get_or_throw called on destroyed thread for %s, no value to return",
                 self.runnable_func,
             )
 
-        if not self.__ran:
+        if not self.ran:
             log.error(
-                "<RUN14653275E>",
+                "<COR14653275E>",
                 "get_or_throw called on thread for %s, but it has not finished running",
                 self.runnable_func,
             )
 
-        if self.__threw:
+        if self.threw:
             raise self.__runnable_exception
         return self.__runnable_result
 
@@ -195,7 +200,7 @@ class DestroyableThread(threading.Thread):
         thread_id = self.__get_id()
         if thread_id is None or not self.is_alive():
             log.debug(
-                "<RUN14653276D>",
+                "<COR14653276D>",
                 "Destroying thread that is not currently alive: %s",
                 self.runnable_func,
             )
@@ -208,7 +213,7 @@ class DestroyableThread(threading.Thread):
         )
         if async_exception_result > 1:
             log.error(
-                "<RUN14653277E>",
+                "<COR14653277E>",
                 "Could not raise async exception on destroyable thread for %s. Result code: %s",
                 self.runnable_func,
                 async_exception_result,

@@ -68,7 +68,7 @@ class AbortableAction:
         # Create a new thread to do the work, which will set the event if it finished
         self.__runnable_func = runnable_func
         self.__work_thread = DestroyableThread(
-            self.__done_or_aborted_event, self.__runnable_func, *args, **kwargs
+            self.__runnable_func, self.__done_or_aborted_event, *args, **kwargs
         )
 
     def do(self):
