@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
+from contextlib import contextmanager
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 import multiprocessing
@@ -32,7 +33,8 @@ from sample_lib.data_model.sample import (
     SampleTrainingType,
 )
 from sample_lib.modules.sample_task.sample_implementation import SampleModule
-from tests.conftest import random_test_id
+from tests.conftest import random_test_id, temp_config
+from tests.core.helpers import reset_model_manager
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import register_trained_model
 import caikit.core
@@ -40,17 +42,32 @@ import caikit.core
 ## Helpers #####################################################################
 
 
+@contextmanager
+def set_use_subprocess(use_subprocess: bool):
+    with temp_config(
+        {
+            "model_management": {
+                "trainers": {
+                    "default": {
+                        "config": {
+                            "use_subprocess": use_subprocess,
+                        }
+                    }
+                }
+            }
+        },
+        "merge",
+    ):
+        yield
+
+
 @pytest.fixture(autouse=True, params=[True, False])
-def set_train_location(request, sample_train_servicer):
+def set_train_location(request, sample_train_servicer, reset_model_manager):
     """This fixture ensures that all tests in this file will be run with both
     subprocess and local training styles
     """
-    # DEBUG!!!!!!!!!!!!!!!!!!
-    # prev_value = sample_train_servicer.use_subprocess
-    # sample_train_servicer.use_subprocess = request.param
-    # yield
-    # # Reset use_subprocess to previous value
-    # sample_train_servicer.use_subprocess = prev_value
+    with set_use_subprocess(request.param):
+        yield
 
 
 # Train tests for the GlobalTrainServicer class ############################################################
@@ -322,32 +339,30 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_mod
     assert f"Batch size of 999 is not allowed!" in str(context.value)
 
 
-# TODO: Re-enable with subprocess trainer
-# def test_global_train_returns_exit_code_with_oom(
-#     sample_train_service, sample_train_servicer
-# ):
-#     """Test that if module goes into OOM we are able to surface error code"""
-#     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-#     training_data = stream_type(
-#         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
-#     ).to_proto()
-#     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-#         model_name=random_test_id(),
-#         batch_size=42,
-#         training_data=training_data,
-#         oom_exit=True,
-#     )
+def test_global_train_returns_exit_code_with_oom(
+    sample_train_service, sample_train_servicer
+):
+    """Test that if module goes into OOM we are able to surface error code"""
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    training_data = stream_type(
+        jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
+    ).to_proto()
+    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+        model_name=random_test_id(),
+        batch_size=42,
+        training_data=training_data,
+        oom_exit=True,
+    )
 
-#     # Enable sub-processing for test
-#     sample_train_servicer.use_subprocess = True
+    # Enable sub-processing for test
+    with set_use_subprocess(True):
+        with pytest.raises(MemoryError) as context:
+            training_response = sample_train_servicer.Train(
+                train_request, Fixtures.build_context("foo")
+            )
+            MODEL_MANAGER.get_model_future(training_response.training_id).wait()
 
-#     with pytest.raises(CaikitRuntimeException) as context:
-#         training_response = sample_train_servicer.Train(
-#             train_request, Fixtures.build_context("foo")
-#         )
-#         sample_train_servicer.training_map.get(training_response.training_id).result()
-
-#     assert f"Training process died with OOM error!" in str(context.value.message)
+    assert f"Training process died with OOM error!" in str(context.value)
 
 
 #####################################################################
