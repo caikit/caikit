@@ -243,7 +243,7 @@ class TaskBase:
 
 def task(
     unary_parameters: Dict[str, ValidInputTypes] = None,
-    streaming_parameters: Dict[str, ValidInputTypes] = None,
+    streaming_parameters: Dict[str, Type[Iterable[ValidInputTypes]]] = None,
     unary_output_type: Type[DataBase] = None,
     streaming_output_type: Type[Iterable[Type[DataBase]]] = None,
     **kwargs,
