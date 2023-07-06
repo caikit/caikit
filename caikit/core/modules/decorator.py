@@ -191,6 +191,7 @@ def module(
         # Parse the `train` and `run` signatures
         cls_.RUN_SIGNATURE = CaikitMethodSignature(cls_, "run")
         cls_.TRAIN_SIGNATURE = CaikitMethodSignature(cls_, "train")
+        cls_._INFERENCE_SIGNATURES = []
 
         # If the module has a task, validate it:
         if cls_.TASK_CLASS:
@@ -204,6 +205,7 @@ def module(
                             cls_.RUN_SIGNATURE, *flavor
                         )
                         validated = True
+                        cls_._INFERENCE_SIGNATURES.append((*flavor, cls_.RUN_SIGNATURE))
                         break
                     except (ValueError, TypeError) as e:
                         validation_errs.append(e)

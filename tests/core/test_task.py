@@ -277,6 +277,77 @@ def test_task_validation_passes_when_module_has_correct_run_signature():
             pass
 
 
+def test_task_decorator_adds_taskmethods_to_modules():
+    """This test covers tasks + modules with streaming output"""
+
+    @task(
+        unary_parameters={"sample_input": SampleInputType},
+        unary_output_type=SampleOutputType,
+        streaming_output_type=Iterable[SampleOutputType],
+    )
+    class StreamingTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()),
+        name="StreamingModule",
+        version="0.0.1",
+        task=StreamingTask,
+    )
+    class StreamingModule(caikit.core.ModuleBase):
+        @StreamingTask.taskmethod()
+        def run(self, sample_input: SampleInputType) -> SampleOutputType:
+            pass
+
+        @StreamingTask.taskmethod(output_streaming=True)
+        def run_stream_out(
+            self, sample_input: SampleInputType
+        ) -> caikit.core.data_model.DataStream[SampleOutputType]:
+            pass
+
+    assert (
+        StreamingModule.get_inference_signature(
+            input_streaming=False, output_streaming=False
+        ).method_name
+        == "run"
+    )
+    assert (
+        StreamingModule.get_inference_signature(
+            input_streaming=False, output_streaming=True
+        ).method_name
+        == "run_stream_out"
+    )
+
+
+def test_decorator_adds_default_run_method_to_modules():
+    """This test covers tasks + modules with streaming output"""
+
+    @task(
+        unary_parameters={"sample_input": SampleInputType},
+        unary_output_type=SampleOutputType,
+        streaming_output_type=Iterable[SampleOutputType],
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()),
+        name="SomeModule",
+        version="0.0.1",
+        task=SomeTask,
+    )
+    class SomeModule(caikit.core.ModuleBase):
+        def run(self, sample_input: SampleInputType) -> SampleOutputType:
+            pass
+
+    assert (
+        SomeModule.get_inference_signature(
+            input_streaming=False, output_streaming=False
+        ).method_name
+        == "run"
+    )
+
+
 # ----------- BACKWARDS COMPATIBILITY ------------------------------------------- ##
 
 

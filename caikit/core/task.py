@@ -97,6 +97,10 @@ class TaskBase:
                     signature, decoration.input_streaming, decoration.output_streaming
                 )
 
+                module._INFERENCE_SIGNATURES.append(
+                    (decoration.input_streaming, decoration.output_streaming, signature)
+                )
+
     @classmethod
     def has_inference_method_decorators(cls, module_class: Type) -> bool:
         if cls not in cls.deferred_method_decorators:
