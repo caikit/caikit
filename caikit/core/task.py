@@ -326,60 +326,64 @@ def task(
     def decorator(cls: Type[TaskBase]) -> Type[TaskBase]:
         error.subclass_check("<COR19436440E>", cls, TaskBase)
 
+        # NB: python <= 3.9 safe way of setting class annotations
+        cls_annotations = cls.__dict__.get("__annotations__", None)
+        if cls_annotations is None:
+            cls.__annotations__ = {}
+            cls_annotations = cls.__dict__.get("__annotations__", None)
+
         if unary_parameters:
-            cls.__annotations__[_UNARY_PARAMS_ANNOTATION] = unary_parameters
+            cls_annotations[_UNARY_PARAMS_ANNOTATION] = unary_parameters
         if streaming_parameters:
-            cls.__annotations__[_STREAM_PARAMS_ANNOTATION] = streaming_parameters
+            cls_annotations[_STREAM_PARAMS_ANNOTATION] = streaming_parameters
         if unary_output_type:
-            cls.__annotations__[_UNARY_OUT_ANNOTATION] = unary_output_type
+            cls_annotations[_UNARY_OUT_ANNOTATION] = unary_output_type
         if streaming_output_type:
-            cls.__annotations__[_STREAM_OUT_ANNOTATION] = streaming_output_type
+            cls_annotations[_STREAM_OUT_ANNOTATION] = streaming_output_type
 
         # Backwards compatibility with old-style @tasks
         if "required_parameters" in kwargs and not unary_parameters:
-            cls.__annotations__[_UNARY_PARAMS_ANNOTATION] = kwargs[
-                "required_parameters"
-            ]
+            cls_annotations[_UNARY_PARAMS_ANNOTATION] = kwargs["required_parameters"]
         if "output_type" in kwargs and not unary_output_type:
             output_type = kwargs["output_type"]
             if cls._is_iterable_type(output_type):
-                cls.__annotations__[_STREAM_OUT_ANNOTATION] = kwargs["output_type"]
+                cls_annotations[_STREAM_OUT_ANNOTATION] = kwargs["output_type"]
             else:
-                cls.__annotations__[_UNARY_OUT_ANNOTATION] = kwargs["output_type"]
+                cls_annotations[_UNARY_OUT_ANNOTATION] = kwargs["output_type"]
         # End Backwards compatibility
 
         error.value_check(
             "<COR12671910E>",
-            _UNARY_PARAMS_ANNOTATION in cls.__annotations__
-            or _STREAM_PARAMS_ANNOTATION in cls.__annotations__,
+            _UNARY_PARAMS_ANNOTATION in cls_annotations
+            or _STREAM_PARAMS_ANNOTATION in cls_annotations,
             "At least one input type must be set on a task",
         )
         error.value_check(
             "<COR12671910E>",
-            _UNARY_OUT_ANNOTATION in cls.__annotations__
-            or _STREAM_OUT_ANNOTATION in cls.__annotations__,
+            _UNARY_OUT_ANNOTATION in cls_annotations
+            or _STREAM_OUT_ANNOTATION in cls_annotations,
             "At least one output type must be set on a task",
         )
 
-        if _UNARY_OUT_ANNOTATION in cls.__annotations__:
+        if _UNARY_OUT_ANNOTATION in cls_annotations:
             error.subclass_check(
                 "<COR12766440E>", cls.get_output_type(output_streaming=False), DataBase
             )
-        if _STREAM_OUT_ANNOTATION in cls.__annotations__:
+        if _STREAM_OUT_ANNOTATION in cls_annotations:
             error.subclass_check(
                 "<COR12766440E>",
                 typing.get_origin(cls.get_output_type(output_streaming=True)),
                 collections.abc.Iterable,
             )
 
-        if _UNARY_PARAMS_ANNOTATION in cls.__annotations__:
+        if _UNARY_PARAMS_ANNOTATION in cls_annotations:
             params_dict = cls.get_required_parameters(input_streaming=False)
             error.type_check("<COR19906440E>", dict, params_dict=params_dict)
             error.type_check_all(
                 "<COR00123440E>", str, params_dict_keys=params_dict.keys()
             )
             # TODO: check proto-ability of things
-        if _STREAM_PARAMS_ANNOTATION in cls.__annotations__:
+        if _STREAM_PARAMS_ANNOTATION in cls_annotations:
             params_dict = cls.get_required_parameters(input_streaming=True)
             error.type_check("<COR19556230E>", dict, params_dict=params_dict)
             error.value_check(
