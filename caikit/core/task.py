@@ -297,26 +297,41 @@ def task(
         class SentimentTask(caikit.TaskBase):
             pass
 
-    and a public model that implements this task might have a .run function that looks like::
+    and a module that implements this task might have methods like::
 
-        def run(raw_document: caikit.interfaces.nlp.RawDocument,
-                inference_mode: str = "fast",
-                device: caikit.interfaces.common.HardwareEnum) ->
-                    caikit.interfaces.nlp.SentimentPrediction:
-            # impl
+        @module(id="b9d98408-84c2-488c-8385-9d698effe60b", task=SentimentTask)
+        class MyModule(ModuleBase):
+
+            @SentimentTask.taskmethod()
+            def run(raw_document: caikit.interfaces.nlp.RawDocument,
+                    inference_mode: str = "fast") ->
+                        caikit.interfaces.nlp.SentimentPrediction:
+                # impl
+
+            @SentimentTask.taskmethod(input_streaming=True, output_streaming=True)
+            def run_bidi_stream(raw_documents: DataStream[caikit.interfaces.nlp.RawDocument])
+                    -> DataStream[caikit.interfaces.nlp.SentimentPrediction]:
+                # impl
 
     Note the run function may include other arguments beyond the minimal required inputs for
     the task.
 
     Args:
-        required_parameters (Dict[str, ValidInputTypes]): The required parameters that all public
-            models' .run functions must contain. A dictionary of parameter name to parameter
-            type, where the types can be in the set of: - Python primitives
+        unary_parameters (Dict[str, ValidInputTypes]): The required parameters that all module's
+            unary-input inference methods must contain. A dictionary of parameter name to parameter
+            type, where the types can be in the set of:
+                - Python primitives
                 - Caikit data models
                 - Iterable containers of the above
                 - Caikit model references (maybe?)
-        output_type (Type[DataBase]): The output type of the task, which all public models'
-            .run functions must return. This must be a caikit data model type.
+        streaming_parameters: The same as unary_parameters, but for streaming-input inference
+            methods. All types must be in the form `Iterable[T]`
+
+        unary_output_type (Type[DataBase]): The unary output type of the task, which all modules'
+            unary-output inference methods must return. This must be a caikit data model type.
+        streaming_output_type (Type[Iterable[Type[DataBase]]]): The streaming output type of the
+            task, which all modules' streaming-output inference methods must return. This must be
+            in the form Iterable[T].
 
     Returns:
         A decorator function for the task class, registering it with caikit's core registry of

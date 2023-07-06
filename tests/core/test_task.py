@@ -320,8 +320,6 @@ def test_task_decorator_adds_taskmethods_to_modules():
 
 
 def test_decorator_adds_default_run_method_to_modules():
-    """This test covers tasks + modules with streaming output"""
-
     @task(
         unary_parameters={"sample_input": SampleInputType},
         unary_output_type=SampleOutputType,
