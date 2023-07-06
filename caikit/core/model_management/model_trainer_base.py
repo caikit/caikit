@@ -14,6 +14,15 @@
 """
 A Trainer is responsible for managing execution of a training job for a given
 module class
+
+Configuration for ModelTrainers lives under the config as follows:
+
+model_management:
+    trainers:
+        <trainer name>:
+            type: <trainer type name>
+            config:
+                <config option>: <value>
 """
 
 # Standard
