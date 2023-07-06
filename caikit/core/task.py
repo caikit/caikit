@@ -54,7 +54,11 @@ class TaskBase:
 
     @dataclasses.dataclass
     class InferenceMethodPtr:
-        method_name: str
+        """Little container class that holds a method name and its flavor of streaming.
+        i.e. the args to a `@TaskClass.taskmethod` decoration.
+        """
+
+        method_name: str  # the simple name of a method, like "run"
         input_streaming: bool
         output_streaming: bool
 
@@ -66,6 +70,14 @@ class TaskBase:
     def taskmethod(
         cls, input_streaming: bool = False, output_streaming: bool = False
     ) -> Callable[[_InferenceMethodBaseT], _InferenceMethodBaseT]:
+        """Decorates a module instancemethod and indicates whether the inputs and outputs should
+        be handled as streams. This will trigger validation that the signature of this method
+        is compatible with the task's definition of input and output types.
+
+        The actual handling of validating the method and registering it is deferred until after
+        the module class is created, which happens outside the context of this decoration.
+        """
+
         def decorator(inference_method: _InferenceMethodBaseT) -> _InferenceMethodBaseT:
             cls.deferred_method_decorators.setdefault(cls, {})
             fq_mod_name = ".".join(
@@ -88,6 +100,12 @@ class TaskBase:
 
     @classmethod
     def deferred_method_decoration(cls, module: Type):
+        """Runs the actual decoration logic that `taskmethod` would have run if the module class
+        existed during its lifetime.
+
+        Validates that all decorated methods match the task's API expectations, and stores the
+        signatures on the module class for access later.
+        """
         if cls.has_inference_method_decorators(module):
             keyname = _make_keyname_for_module(module)
             deferred_decorations = cls.deferred_method_decorators[cls][keyname]
@@ -103,6 +121,7 @@ class TaskBase:
 
     @classmethod
     def has_inference_method_decorators(cls, module_class: Type) -> bool:
+        """Utility that returns true iff a module has any `@TaskClass.taskmethod` decorations"""
         if cls not in cls.deferred_method_decorators:
             return False
         return (
@@ -117,7 +136,13 @@ class TaskBase:
         input_streaming: bool,
         output_streaming: bool,
     ) -> None:
-        #
+        """Validates that the provided method signature meets the api constraints defined in this
+        task, for the given streaming flavors.
+
+        Raises:
+            ValueError if no type annotations were provided on the method
+            TypeError if the type annotations do not meet the task's api constraints
+        """
         if not signature.parameters:
             raise ValueError(
                 "Task could not be validated, no .run parameters were provided"
@@ -260,10 +285,14 @@ def task(
     As an example, the `caikit.interfaces.nlp.SentimentTask` might look like::
 
         @task(
-            required_inputs={
+            unary_parameters={
                 "raw_document": caikit.interfaces.nlp.RawDocument
             },
-            output_type=caikit.interfaces.nlp.SentimentPrediction
+            streaming_parameters={
+                "raw_documents": Iterable[caikit.interfaces.nlp.RawDocument]
+            }
+            unary_output_type=caikit.interfaces.nlp.SentimentPrediction
+            streaming_output_type=Iterable[caikit.interfaces.nlp.SentimentPrediction]
         )
         class SentimentTask(caikit.TaskBase):
             pass
