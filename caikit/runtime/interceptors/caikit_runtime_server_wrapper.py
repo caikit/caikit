@@ -199,15 +199,6 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                     # Get the original grpc.RpcMethodHandler for this RPC method
                     original_rpc_handler = handler.service(DummyHandlerCallDetails(fqm))
 
-                    # Make sure this is a supported RPC flavor
-                    if (
-                        not original_rpc_handler.unary_unary
-                        and not original_rpc_handler.unary_stream
-                    ):
-                        raise NotImplementedError(
-                            "Unary-unary and unary-stream RPCs only!"
-                        )
-
                     # Find the Caikit RPC that maps to this rpc
                     matching_rpcs = [
                         rpc
