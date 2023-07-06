@@ -101,7 +101,7 @@ class RuntimeGRPCServer:
         self.server = CaikitRuntimeServerWrapper(
             server=self.server,
             global_predict=self._global_predict_servicer.Predict,
-            intercepted_svc_descriptor=self.inference_service.descriptor,
+            intercepted_svc_package=self.inference_service,
         )
         service_names.append(self.inference_service.descriptor.full_name)
 
@@ -116,7 +116,7 @@ class RuntimeGRPCServer:
             self.server = CaikitRuntimeServerWrapper(
                 server=self.server,
                 global_predict=global_train_servicer.Train,
-                intercepted_svc_descriptor=self.training_service.descriptor,
+                intercepted_svc_package=self.training_service,
             )
             service_names.append(self.training_service.descriptor.full_name)
 
