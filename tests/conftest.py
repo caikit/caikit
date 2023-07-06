@@ -8,6 +8,7 @@ from unittest.mock import patch
 import copy
 import json
 import os
+import socket
 import sys
 import tempfile
 import uuid
@@ -162,6 +163,24 @@ def modules_fixtures_dir(fixtures_dir):
 @pytest.fixture
 def toolkit_fixtures_dir(fixtures_dir):
     yield os.path.join(fixtures_dir, "toolkit")
+
+
+@pytest.fixture
+def open_port():
+    """Get an open port on localhost
+    Returns:
+        int: Available port
+    """
+    start = 8888
+    end = start + 1000
+    host = "localhost"
+    for port in range(start, end):
+        with socket.socket() as soc:
+            # soc.connect_ex returns 0 if connection is successful,
+            # indicating the port is in use
+            if soc.connect_ex((host, port)) != 0:
+                # So a non-zero code should mean the port is not currently in use
+                return start
 
 
 # IMPLEMENTATION DETAILS ############################################################
