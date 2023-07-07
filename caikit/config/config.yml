@@ -81,7 +81,6 @@ runtime:
     port: 8085
     metrics:
         port: 8086
-    find_available_port: false
     unix_socket_path: /tmp/mmesh/grpc.sock
 
     # Number of workers with which we will run the gRPC server

@@ -17,7 +17,6 @@ from concurrent import futures
 from typing import Optional, Union
 import os
 import signal
-import socket
 
 # Third Party
 from grpc_health.v1 import health, health_pb2_grpc
@@ -73,16 +72,7 @@ class RuntimeGRPCServer:
         self.config = get_config()
         self.inference_service = inference_service
         self.training_service = training_service
-
-        self.port = (
-            self._find_port(self.config.runtime.port)
-            if self.config.runtime.find_available_port
-            else self.config.runtime.port
-        )
-        if self.port != self.config.runtime.port:
-            log.warning(
-                "Port %s was in use, had to find another!", self.config.runtime.port
-            )
+        self.port = self.config.runtime.port
 
         # Initialize basic server
         # py_grpc_prometheus.server_metrics.
@@ -101,7 +91,7 @@ class RuntimeGRPCServer:
         self.server = CaikitRuntimeServerWrapper(
             server=self.server,
             global_predict=self._global_predict_servicer.Predict,
-            intercepted_svc_descriptor=self.inference_service.descriptor,
+            intercepted_svc_package=self.inference_service,
         )
         service_names.append(self.inference_service.descriptor.full_name)
 
@@ -116,7 +106,7 @@ class RuntimeGRPCServer:
             self.server = CaikitRuntimeServerWrapper(
                 server=self.server,
                 global_predict=global_train_servicer.Train,
-                intercepted_svc_descriptor=self.training_service.descriptor,
+                intercepted_svc_package=self.training_service,
             )
             service_names.append(self.training_service.descriptor.full_name)
 
@@ -290,30 +280,6 @@ class RuntimeGRPCServer:
         Useful for unit testing or running local inference.
         """
         return grpc.insecure_channel(f"localhost:{self.port}")
-
-    @classmethod
-    def _find_port(cls, start=8888, end=None, host="127.0.0.1"):
-        """Function to find an available port in a given range
-        Args:
-            start (int): Starting number for port search (inclusive) Default:
-                8888
-            end (Optional[int]): End number for port search (exclusive) Default:
-                start + 1000
-            host (str): Host name or ip address to search on Default: localhost
-        Returns:
-            int: Available port
-        """
-        end = start + 1000 if end is None else end
-        if start < end:
-            with socket.socket() as soc:
-                # soc.connect_ex returns 0 if connection is successful and thus
-                # indicating port is available
-                if soc.connect_ex((host, start)) == 0:
-                    # port is in use, thus connection to it is successful
-                    return cls._find_port(start + 1, end, host)
-
-                # port is open
-                return start
 
     # Context manager impl
     def __enter__(self):

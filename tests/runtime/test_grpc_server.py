@@ -64,7 +64,7 @@ from sample_lib.data_model import (
     SampleOutputType,
     SampleTrainingType,
 )
-from tests.conftest import random_test_id, temp_config
+from tests.conftest import random_test_id
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import runtime_grpc_test_server
 import caikit
@@ -780,7 +780,7 @@ def test_canceling_model_loads_causes_exceptions(runtime_grpc_server):
         assert request_finished.is_set()
 
 
-def test_tls(sample_inference_service):
+def test_tls(sample_inference_service, open_port):
     """Boot up a server with TLS enabled and ping it on a secure channel"""
     ca_key = tls_test_tools.generate_key()[0]
     ca_cert = tls_test_tools.generate_ca_cert(ca_key)
@@ -790,6 +790,7 @@ def test_tls(sample_inference_service):
         server=KeyPair(cert=tls_cert, key=tls_key), client=KeyPair(cert="", key="")
     )
     with runtime_grpc_test_server(
+        open_port,
         inference_service=sample_inference_service,
         training_service=None,
         tls_config_override=tls_config,
@@ -797,7 +798,7 @@ def test_tls(sample_inference_service):
         _assert_connection(_make_secure_channel(server, ca_cert))
 
 
-def test_mtls(sample_inference_service):
+def test_mtls(sample_inference_service, open_port):
     """Boot up a server with mTLS enabled and ping it on a secure channel"""
     ca_key = tls_test_tools.generate_key()[0]
     ca_cert = tls_test_tools.generate_ca_cert(ca_key)
@@ -807,6 +808,7 @@ def test_mtls(sample_inference_service):
         server=KeyPair(cert=tls_cert, key=tls_key), client=KeyPair(cert=ca_cert, key="")
     )
     with runtime_grpc_test_server(
+        open_port,
         inference_service=sample_inference_service,
         training_service=None,
         tls_config_override=tls_config,
@@ -824,7 +826,7 @@ def test_mtls(sample_inference_service):
             stub.Check(health_check_request)
 
 
-def test_certs_can_be_loaded_as_files(sample_inference_service, tmp_path):
+def test_certs_can_be_loaded_as_files(sample_inference_service, tmp_path, open_port):
     """mTLS test with all tls configs loaded from files"""
     ca_key = tls_test_tools.generate_key()[0]
     ca_cert = tls_test_tools.generate_ca_cert(ca_key)
@@ -847,6 +849,7 @@ def test_certs_can_be_loaded_as_files(sample_inference_service, tmp_path):
         client=KeyPair(cert=ca_cert_path, key=""),
     )
     with runtime_grpc_test_server(
+        open_port,
         inference_service=sample_inference_service,
         training_service=None,
         tls_config_override=tls_config,
@@ -858,11 +861,12 @@ def test_certs_can_be_loaded_as_files(sample_inference_service, tmp_path):
 
 
 def test_metrics_stored_after_server_interrupt(
-    sample_task_model_id, sample_inference_service
+    sample_task_model_id, sample_inference_service, open_port
 ):
     """This tests the gRPC server's behaviour when interrupted"""
 
     with runtime_grpc_test_server(
+        open_port,
         inference_service=sample_inference_service,
         training_service=None,
     ) as server:
@@ -893,27 +897,6 @@ def test_metrics_stored_after_server_interrupt(
             assert data[0]["model_type_counters"] == {
                 "<class 'sample_lib.modules.sample_task.sample_implementation.SampleModule'>": 1
             }
-
-
-def test_out_of_range_port(sample_inference_service):
-    """Test that the server can use a port outside of the default 8888-9000
-    range
-    """
-    free_high_port = RuntimeGRPCServer._find_port(50000, 60000)
-    with temp_config(
-        {
-            "runtime": {
-                "port": free_high_port,
-                "find_available_port": False,
-            }
-        },
-        merge_strategy="merge",
-    ):
-        with runtime_grpc_test_server(
-            inference_service=sample_inference_service,
-            training_service=None,
-        ) as server:
-            _assert_connection(grpc.insecure_channel(f"localhost:{free_high_port}"))
 
 
 def test_reflection_enabled(runtime_grpc_server):
@@ -960,9 +943,7 @@ def test_streaming_handlers_are_built_correctly(runtime_grpc_server):
         unary_stream=None,
         stream_stream=None,
     )
-    new_handler = runtime_grpc_server.server._make_new_handler(
-        stream_unary_handler, replace_with_global_predict=False
-    )
+    new_handler = runtime_grpc_server.server._make_new_handler(stream_unary_handler)
     assert new_handler.stream_unary is not None
     assert new_handler.stream_unary.__name__ == "safe_rpc_call"
 
@@ -976,9 +957,7 @@ def test_streaming_handlers_are_built_correctly(runtime_grpc_server):
         unary_stream=None,
         stream_stream=FakeHandler,
     )
-    new_handler = runtime_grpc_server.server._make_new_handler(
-        stream_stream_handler, replace_with_global_predict=False
-    )
+    new_handler = runtime_grpc_server.server._make_new_handler(stream_stream_handler)
     assert new_handler.stream_stream is not None
     assert new_handler.stream_stream.__name__ == "safe_rpc_call"
 

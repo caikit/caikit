@@ -5,14 +5,10 @@ This sets up global test configs when pytest starts
 # Standard
 from contextlib import contextmanager
 from typing import Type
-from unittest.mock import patch
-import copy
-import json
 import os
-import sys
+import socket
 import tempfile
 import time
-import uuid
 
 # Third Party
 from grpc_health.v1 import health_pb2, health_pb2_grpc
@@ -23,19 +19,49 @@ import pytest
 import alog
 
 # Local
-from caikit import get_config
 from caikit.core.data_model.dataobject import render_dataobject_protos
-from caikit.core.toolkit import logging
 from caikit.runtime.grpc_server import RuntimeGRPCServer
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
-from tests.conftest import *
+from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
-import caikit
 
 log = alog.use_channel("TEST-CONFTEST")
+
+
+@pytest.fixture
+def open_port():
+    """Get an open port on localhost
+    Returns:
+        int: Available port
+    """
+    return _open_port()
+
+
+@pytest.fixture(scope="session")
+def session_scoped_open_port():
+    """Get an open port on localhost
+    Returns:
+        int: Available port
+    """
+    return _open_port()
+
+
+def _open_port():
+    # TODO: This has obvious problems where the port returned for use by a test is not immediately
+    # put into use, so parallel tests could attempt to use the same port.
+    start = 8888
+    end = start + 1000
+    host = "localhost"
+    for port in range(start, end):
+        with socket.socket() as soc:
+            # soc.connect_ex returns 0 if connection is successful,
+            # indicating the port is in use
+            if soc.connect_ex((host, port)) != 0:
+                # So a non-zero code should mean the port is not currently in use
+                return port
 
 
 @pytest.fixture(scope="session")
@@ -76,7 +102,7 @@ def sample_train_servicer(sample_train_service) -> GlobalTrainServicer:
 
 
 @contextmanager
-def runtime_grpc_test_server(*args, **kwargs):
+def runtime_grpc_test_server(open_port, *args, **kwargs):
     """Helper to wrap creation of RuntimeGRPCServer in temporary configurations"""
     with tempfile.TemporaryDirectory() as workdir:
         temp_log_dir = os.path.join(workdir, "metering_logs")
@@ -88,6 +114,7 @@ def runtime_grpc_test_server(*args, **kwargs):
                 "runtime": {
                     "metering": {"log_dir": temp_log_dir},
                     "training": {"output_dir": temp_save_dir},
+                    "port": open_port,
                 }
             },
             "merge",
@@ -100,9 +127,10 @@ def runtime_grpc_test_server(*args, **kwargs):
 
 @pytest.fixture(scope="session")
 def runtime_grpc_server(
-    sample_inference_service, sample_train_service
+    session_scoped_open_port, sample_inference_service, sample_train_service
 ) -> RuntimeGRPCServer:
     with runtime_grpc_test_server(
+        session_scoped_open_port,
         inference_service=sample_inference_service,
         training_service=sample_train_service,
     ) as server:

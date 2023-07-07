@@ -55,6 +55,10 @@ class CaikitRPCBase(abc.ABC):
     def request(self) -> "_RequestMessage":
         """Return the internal representation of the request message type for this RPC"""
 
+    @property
+    def name(self) -> str:
+        return self._name
+
     def create_request_data_model(self, package_name: str) -> Type[DataBase]:
         """Dynamically create data model for this RPC's request message"""
         properties = {
@@ -127,7 +131,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         self._method = ModuleClassTrainRPC._mutate_method_signature_for_training(
             method_signature
         )
-        self.name = ModuleClassTrainRPC.module_class_to_rpc_name(self.clz)
+        self._name = ModuleClassTrainRPC.module_class_to_rpc_name(self.clz)
 
         # Compute the mapping from argument name to type for the module's run
         log.debug3("Param Dict: %s", self._method.parameters)
@@ -256,7 +260,7 @@ class TaskPredictRPC(CaikitRPCBase):
         self.return_type = protoable.extract_data_model_type_from_union(return_type)
 
         # Create the rpc name based on the module type
-        self.name = self._task_to_rpc_name()
+        self._name = self._task_to_rpc_name()
 
     @property
     def module_list(self) -> List[Type[ModuleBase]]:
