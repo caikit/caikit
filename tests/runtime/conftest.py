@@ -5,14 +5,10 @@ This sets up global test configs when pytest starts
 # Standard
 from contextlib import contextmanager
 from typing import Type
-from unittest.mock import patch
-import copy
-import json
 import os
-import sys
+import socket
 import tempfile
 import time
-import uuid
 
 # Third Party
 from grpc_health.v1 import health_pb2, health_pb2_grpc
@@ -23,17 +19,14 @@ import pytest
 import alog
 
 # Local
-from caikit import get_config
 from caikit.core.data_model.dataobject import render_dataobject_protos
-from caikit.core.toolkit import logging
 from caikit.runtime.grpc_server import RuntimeGRPCServer
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
-from tests.conftest import *
+from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
-import caikit
 
 log = alog.use_channel("TEST-CONFTEST")
 
