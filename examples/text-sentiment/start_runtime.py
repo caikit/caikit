@@ -13,11 +13,13 @@
 # limitations under the License.
 
 # Standard
-from os import path
+from os import path, chdir
 import sys
 
 # First Party
 import alog
+
+chdir(path.dirname(__file__))
 
 sys.path.append(
     path.abspath(path.join(path.dirname(__file__), "../"))

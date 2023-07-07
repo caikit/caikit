@@ -37,7 +37,7 @@ There are 2 key things to define upfront when using Caikit to manage your AI mod
 
 The `module` defines the entry points for Caikit to manage your model. In other words, it tells Caikit how to load, infer and train your model. An example is the [text sentiment module](https://github.com/caikit/caikit/blob/main/examples/text-sentiment/text_sentiment/runtime_model/hf_module.py). The `data model` defines the input and outputs of the model task. An example is the [text sentiment data model](https://github.com/caikit/caikit/blob/main/examples/text-sentiment/text_sentiment/data_model/classification.py).
 
-The model is served by a [gRPC](https://grpc.io) server which can run as is or in any container runtime, including [Knative](https://knative.dev/docs/) and [KServe](https://www.kubeflow.org/docs/external-add-ons/kserve/kserve/). Here is an example of the [text sentiment server code for gRPC](https://github.com/caikit/caikit/blob/main/examples/text-sentiment/start_runtime.py). This references the module configuration [here](https://github.com/caikit/caikit/blob/main/examples/text-sentiment/models/text_sentiment/config.yml). This configuration specifies the module(s) (which wraps the model(s)) to serve.
+The model is served by a [gRPC](https://grpc.io) server which can run as is or in any container runtime, including [Knative](https://knative.dev/docs/) and [KServe](https://www.kubeflow.org/docs/external-add-ons/kserve/kserve/). Here is an example of the [text sentiment server code for gRPC](https://github.com/caikit/caikit/blob/main/examples/text-sentiment/start_runtime.py). This references the module configuration [here](https://github.com/caikit/caikit/blob/main/examples/text-sentiment/models/text_sentiment/config.yml). This configuration specifies the module(s), which wrap the model(s), to serve.
 
 There is an example of a client [here](https://github.com/caikit/caikit/blob/main/examples/text-sentiment/client.py) which is a simple Python CLI which calls the model and queries it for sentiment analysis on 2 different pieces of text. The client also references the module configuration.
 
@@ -64,6 +64,6 @@ Get going with [Getting Started](#getting-started) or jump into more details wit
 
 Check out our [contributing](CONTRIBUTING.md) guide to learn how to contribute to Caikit.
 
-## Code of conduct
+## Code of Conduct
 
 Participation in the Caikit community is governed by the [Code of Conduct](code-of-conduct.md).
