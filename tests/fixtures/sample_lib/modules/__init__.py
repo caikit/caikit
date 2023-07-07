@@ -6,3 +6,6 @@ from .sample_task import (
     SampleModule,
     SamplePrimitiveModule,
 )
+from .geospatial import (
+    GeoStreamingModule
+)
