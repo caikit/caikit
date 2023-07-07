@@ -110,7 +110,7 @@ class TestDestroyableThread(unittest.TestCase):
 
     def test_event_is_set_on_completion(self):
         event = threading.Event()
-        thread = DestroyableThread(lambda: None, event)
+        thread = DestroyableThread(lambda: None, work_done_event=event)
 
         self.assertFalse(event.is_set())
         thread.start()
@@ -123,7 +123,7 @@ class TestDestroyableThread(unittest.TestCase):
         def thrower():
             raise ValueError("test-any-exception")
 
-        thread = DestroyableThread(thrower, event)
+        thread = DestroyableThread(thrower, work_done_event=event)
 
         self.assertFalse(event.is_set())
         thread.start()

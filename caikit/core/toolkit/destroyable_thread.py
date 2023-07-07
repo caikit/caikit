@@ -58,8 +58,8 @@ class DestroyableThread(threading.Thread, Destroyable):
     def __init__(
         self,
         runnable_func,
-        work_done_event: Optional[threading.Event] = None,
         *runnable_args,
+        work_done_event: Optional[threading.Event] = None,
         **runnable_kwargs
     ):
         threading.Thread.__init__(self)

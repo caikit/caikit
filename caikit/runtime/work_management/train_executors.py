@@ -120,9 +120,9 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
                 log.debug, "Done training %s in: ", module_class.__name__
             ):
                 self._worker = DestroyableThread(
-                    self.__complete_event,
                     TrainSaveExecutorBase._train_and_save,
                     *args,
+                    work_done_event=self.__complete_event,
                     **kwargs,
                 )
                 self._worker.start()
