@@ -229,7 +229,6 @@ class TaskPredictRPC(CaikitRPCBase):
         self._output_streaming = output_streaming
 
         # Aggregate the argument signature types into a single parameters_dict
-        # handle removing non-task type stuff here
         parameters_dict = {}
         default_parameters = {}
         for method in method_signatures:
