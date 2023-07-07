@@ -50,7 +50,7 @@ def test_create_inference_rpcs_uses_task_from_module_decorator():
 
     # SampleModule also implements `SampleTask`
     rpcs = create_inference_rpcs([NewModule, SampleModule])
-    assert len(rpcs) == 2 # SampleModule has 2 streaming flavors
+    assert len(rpcs) == 2  # SampleModule has 2 streaming flavors
     assert NewModule in rpcs[0].module_list
     assert SampleModule in rpcs[0].module_list
 
@@ -124,6 +124,7 @@ def test_create_inference_rpcs_uses_task_from_module_decorator_with_streaming():
         ) -> caikit.core.data_model.DataStream[OtherOutputType]:
             pass
 
+    # Not including NewStreamingModule3 to check that we don't get ClientStreaming RPC generated
     rpcs = create_inference_rpcs(
         [NewStreamingModule1, NewStreamingModule2, SampleModule]
     )
@@ -163,6 +164,7 @@ def test_create_inference_rpcs_uses_task_from_module_decorator_with_streaming():
         ]
     )
     assert len(rpcs) == 6
+    # only checking the new rpcs here
     _test_rpc(
         rpcs,
         task=SampleTask,
@@ -207,7 +209,7 @@ def _test_rpc(
 
 def test_create_inference_rpcs():
     rpcs = create_inference_rpcs([widget_class])
-    assert len(rpcs) == 2 # SampleModule has inference methods for 2 streaming flavors
+    assert len(rpcs) == 2  # SampleModule has inference methods for 2 streaming flavors
     assert widget_class in rpcs[0].module_list
 
 
