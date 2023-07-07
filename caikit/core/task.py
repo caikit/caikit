@@ -176,9 +176,12 @@ class TaskBase:
                 if input_streaming and cls._is_iterable_type(parameter_type):
                     streaming_type = typing.get_args(parameter_type)[0]
 
-                    for iterable_type in typing.get_args(parameter_type):
-                        if cls._subclass_check(iterable_type, streaming_type):
-                            pass
+                    for iterable_type in typing.get_args(signature_type):
+                        if not cls._subclass_check(iterable_type, streaming_type):
+                            raise TypeError(
+                                f"Wrong input type for {parameter_name}, expected {parameter_type} \
+                                  but got {signature_type}"
+                            )
                 else:
                     type_mismatch_errors.append(
                         f"Parameter {parameter_name} has type {signature_type} but type \
@@ -391,7 +394,13 @@ def task(
             error.subclass_check(
                 "<COR12766440E>", cls.get_output_type(output_streaming=False), DataBase
             )
+
         if _STREAM_OUT_ANNOTATION in cls_annotations:
+            if typing.get_origin(cls.get_output_type(output_streaming=True)) is None:
+                raise TypeError(
+                    f"subclass check failed: {cls.get_output_type(output_streaming=True)} is \
+                        not a subclass of (<class 'collections.abc.Iterable'>"
+                )
             error.subclass_check(
                 "<COR12766440E>",
                 typing.get_origin(cls.get_output_type(output_streaming=True)),

@@ -123,7 +123,6 @@ def test_task_inference_rpc_with_streaming():
         streaming_parameters={"sample_inputs": Iterable[SampleInputType]},
         unary_output_type=SampleOutputType,
         streaming_output_type=Iterable[SampleOutputType],
-        # TODO: check if above line fails without iterable
     )
     class TestTask(TaskBase):
         pass
@@ -144,7 +143,7 @@ def test_task_inference_rpc_with_streaming():
 
         @TestTask.taskmethod(input_streaming=True)
         def run_stream_in(
-            self, sample_inputs: Union[SampleInputType, str]
+            self, sample_inputs: DataStream[SampleInputType]
         ) -> SampleOutputType:
             pass
 

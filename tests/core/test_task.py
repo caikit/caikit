@@ -333,14 +333,41 @@ def test_task_decorator_adds_taskmethods_to_modules():
     )
 
 
+def test_task_decorator_datastream_throws_wrong_type():
+    @task(
+        unary_parameters={"sample_input": SampleInputType},
+        unary_output_type=SampleOutputType,
+        streaming_parameters={"sample_inputs": Iterable[SampleInputType]},
+        streaming_output_type=Iterable[SampleOutputType],
+    )
+    class DataStreamStreamingTask(TaskBase):
+        pass
+
+    with pytest.raises(
+        TypeError,
+        match=".*expected .*SampleInputType.* but got .*SampleOutputType",
+    ):
+
+        @caikit.core.module(
+            id=str(uuid.uuid4()),
+            name="DataStreamStreamingModule",
+            version="0.0.1",
+            task=DataStreamStreamingTask,
+        )
+        class DataStreamStreamingModule(caikit.core.ModuleBase):
+            @DataStreamStreamingTask.taskmethod(input_streaming=True)
+            def run_stream_in(
+                self, sample_inputs: caikit.core.data_model.DataStream[SampleOutputType]
+            ) -> SampleOutputType:
+                pass
+
+
 def test_task_decorator_datastream_params():
     @task(
         unary_parameters={"sample_input": SampleInputType},
         unary_output_type=SampleOutputType,
-        streaming_parameters={
-            "sample_inputs": caikit.core.data_model.DataStream[SampleInputType]
-        },
-        streaming_output_type=caikit.core.data_model.DataStream[SampleOutputType],
+        streaming_parameters={"sample_inputs": Iterable[SampleInputType]},
+        streaming_output_type=Iterable[SampleOutputType],
     )
     class DataStreamStreamingTask(TaskBase):
         pass
