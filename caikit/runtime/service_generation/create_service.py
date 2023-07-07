@@ -118,10 +118,12 @@ def _group_modules_by_task(
         if ck_module.TASK_CLASS:
             ck_module_task_name = ck_module.TASK_CLASS.__name__
             if ck_module_task_name is not None:
-                for signature in ck_module._INFERENCE_SIGNATURES:
-                    # TODO keys here should indicate input & output streaming bools for
-                    # readability purposes
+                for (
+                    input_streaming,
+                    output_streaming,
+                    signature,
+                ) in ck_module._INFERENCE_SIGNATURES:
                     task_groups.setdefault(ck_module.TASK_CLASS, {}).setdefault(
-                        (signature[0], signature[1]), []
-                    ).append(signature[2])
+                        (input_streaming, output_streaming), []
+                    ).append(signature)
     return task_groups
