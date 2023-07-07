@@ -22,31 +22,28 @@ merge_strategy: "merge"
 enable_error_checks: true
 # Maximum number of times that a single exception is logged
 max_exception_log_messages: 4
-load_path: null
 
-# Configuration for training/loading via module backends
-module_backends:
-    # Configuration for distributed loading and training. Each has an ordered
-    # list of backends in priority order. Each entry is a mapping with a "type"
-    # field and optionally a "config" field that maps to a blob of config for
-    # the backend instance. Entries may also have a "name" field that must be
-    # unique among entries, allowing for multiple instances of the same type.
-    # For example:
-    #
-    # - type: FOO
-    #   config:
-    #       foo: 123
-    # - type: BAR
-    #   config:
-    #       bar: 456
-    # - type: FOO
-    #   name: BackupFoo
-    #   config:
-    #       bar: 42
-    load_priority:
-        - type: LOCAL
-    train_priority:
-        - type: LOCAL
+# Configuration for managing the lifecycle of models
+model_management:
+    # How models are trained through the ModelManager. Each section is a key/val
+    # mapping from a user-defined label to an object with a "type" and
+    # (optional) "config" key. The "default" key is treated as a special entry
+    # that is used if no version is given explicitly at train() or load() time.
+    trainers:
+        default:
+            type: LOCAL
+    finders:
+        default:
+            type: LOCAL
+            config:
+                load_path: null
+    initializers:
+        default:
+            type: LOCAL
+            config:
+                # List of module backend configurations in priority order
+                backend_priority:
+                    - type: LOCAL
 
 log:
     # Default level for all python loggers

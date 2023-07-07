@@ -4,6 +4,7 @@ This sets up global test configs when pytest starts
 
 # Standard
 from contextlib import contextmanager
+from typing import List, Union
 from unittest.mock import patch
 import copy
 import json
@@ -181,6 +182,26 @@ def open_port():
             if soc.connect_ex((host, port)) != 0:
                 # So a non-zero code should mean the port is not currently in use
                 return start
+
+              
+@contextmanager
+def backend_priority(backend_cfg: Union[List[dict], dict]):
+    if isinstance(backend_cfg, dict):
+        backend_cfg = [backend_cfg]
+    with temp_config(
+        {
+            "model_management": {
+                "finders": {"default": {"type": "LOCAL"}},
+                "initializers": {
+                    "default": {
+                        "type": "LOCAL",
+                        "config": {"backend_priority": backend_cfg},
+                    }
+                },
+            }
+        }
+    ):
+        yield
 
 
 # IMPLEMENTATION DETAILS ############################################################

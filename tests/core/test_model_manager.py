@@ -21,20 +21,16 @@ from unittest import mock
 from unittest.mock import MagicMock
 import os
 import tempfile
-import uuid
 
 # Local
-from caikit.core.module_backends import module_backend_config
-from caikit.core.module_backends.module_backend_config import (
-    configure,
-    configured_load_backends,
-)
-from sample_lib.data_model import SampleTask
+from caikit.core import MODEL_MANAGER, LocalBackend
+from caikit.core.model_management import ModelFinderBase, model_finder_factory
+from caikit.core.modules import ModuleConfig
 
 # Unit Test Infrastructure
 from sample_lib.modules.sample_task import SampleModule
 from tests.base import TestCaseBase
-from tests.conftest import temp_config
+from tests.conftest import backend_priority, temp_config
 
 # NOTE: We do need to import `reset_backend_types` and `reset_module_distribution_registry` for `reset_globals` to work
 from tests.core.helpers import *
@@ -245,19 +241,39 @@ def temp_saved_model(model):
         yield model_path
 
 
+class NoYamlFinder(ModelFinderBase):
+    name = "NOYAML"
+
+    def __init__(self, *_, **__):
+        pass
+
+    def find_model(self, model_path):
+        """This load function doesn't read from model_path, so it definitely does not read the config.yml file"""
+        return ModuleConfig({"module_id": SampleModule.MODULE_ID})
+
+
+class NoYamlInitializer(ModelInitializerBase):
+    name = "NOYAML"
+
+    def __init__(self, *_, **__):
+        pass
+
+    def init(self, model_config):
+        """This load function doesn't read from model_path, so it definitely does not read the config.yml file"""
+        assert model_config.module_id == SampleModule.MODULE_ID
+        return SampleModule()
+
+
+model_finder_factory.register(NoYamlFinder)
+model_initializer_factory.register(NoYamlInitializer)
+
 ## Tests #######################################################################
 
 
 def test_backend_supported_model_load_successfully(reset_globals):
     """Test backend supported model can load successfully"""
-
     _, DummyBar = setup_saved_model(MockBackend)
-    # Configure backend
-    with temp_config(
-        {"module_backends": {"load_priority": [{"type": backend_types.MOCK}]}}
-    ):
-        configure()
-
+    with backend_priority({"type": backend_types.MOCK}):
         dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_BACKEND_MODEL_NAME)
         model = caikit.core.load(dummy_model_path)
         assert isinstance(model, DummyBar)
@@ -266,20 +282,9 @@ def test_backend_supported_model_load_successfully(reset_globals):
 def test_local_model_load_successfully(reset_globals):
     """Test regular / local model can load successfully"""
     DummyFoo, DummyBar = setup_saved_model(MockBackend)
-
-    # Configure backend
-    with temp_config(
-        {
-            "module_backends": {
-                "load_priority": [{"type": backend_types.LOCAL}],
-            }
-        }
-    ):
-        configure()
-
+    with backend_priority({"type": backend_types.LOCAL}):
         dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
         model = caikit.core.load(dummy_model_path)
-
         assert isinstance(model, DummyFoo)
         assert not isinstance(model, DummyBar)
 
@@ -289,16 +294,7 @@ def test_local_model_loaded_backend_successfully(reset_globals):
     if available in SUPPORTED_LOAD_BACKENDS
     """
     _, DummyBar = setup_saved_model(MockBackend)
-    # Configure backend
-    with temp_config(
-        {
-            "module_backends": {
-                "load_priority": [{"type": backend_types.MOCK}],
-            }
-        }
-    ):
-        configure()
-
+    with backend_priority({"type": backend_types.MOCK}):
         DummyBar.SUPPORTED_LOAD_BACKENDS.append("LOCAL")
         dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
         model = caikit.core.load(dummy_model_path)
@@ -309,16 +305,7 @@ def test_backend_model_loaded_as_singleton(reset_globals):
     """Test that backend specific model can be loaded as a singleton"""
 
     _, DummyBar = setup_saved_model(MockBackend)
-    # Configure backend
-    with temp_config(
-        {
-            "module_backends": {
-                "load_priority": [{"type": backend_types.MOCK}],
-            }
-        }
-    ):
-        configure()
-
+    with backend_priority({"type": backend_types.MOCK}):
         dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_BACKEND_MODEL_NAME)
         model1 = caikit.core.load(dummy_model_path, load_singleton=True)
         model2 = caikit.core.load(dummy_model_path, load_singleton=True)
@@ -345,16 +332,7 @@ def test_singleton_cache_with_different_backend(reset_globals):
     """Test singleton cache doesn't stop different backend models"""
 
     _, _ = setup_saved_model(MockBackend)
-    # Configure backend
-    with temp_config(
-        {
-            "module_backends": {
-                "load_priority": [{"type": backend_types.MOCK}],
-            }
-        }
-    ):
-        configure()
-
+    with backend_priority({"type": backend_types.MOCK}):
         dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_BACKEND_MODEL_NAME)
         _ = caikit.core.load(dummy_model_path, load_singleton=True)
 
@@ -379,16 +357,7 @@ def test_load_fails_on_no_supported_backend(reset_globals):
     loading fails.
     """
     _ = setup_saved_model(MockBackend)
-    with temp_config(
-        {
-            "merge_strategy": "override",
-            "module_backends": {
-                "load_priority": [{"type": backend_types.MOCK}],
-                "train_priority": [],
-            },
-        }
-    ):
-        configure()
+    with backend_priority({"type": backend_types.MOCK}):
         with temp_saved_model(NonDistributedModule()) as model_path:
             with pytest.raises(ValueError):
                 caikit.core.load(model_path)
@@ -399,15 +368,7 @@ def test_preferred_backend_enabled(reset_globals):
     loaded with an enabled non-local backend if given as a preferred_backend.
     """
     _, DummyBar = setup_saved_model(MockBackend)
-    with temp_config(
-        {
-            "module_backends": {
-                "load_priority": [{"type": backend_types.MOCK}],
-            }
-        }
-    ):
-        configure()
-
+    with backend_priority({"type": backend_types.MOCK}):
         dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
         model = caikit.core.load(dummy_model_path)
         assert isinstance(model, DummyBar)
@@ -418,20 +379,13 @@ def test_module_backend_instance_is_passed_to_load_classmethod(reset_globals):
     instance of the module backend is passed to .load via the load_backend kwarg.
     """
     _, DummyBar = setup_saved_model(MockBackend)
-    with temp_config(
-        {
-            "module_backends": {
-                "load_priority": [{"type": backend_types.MOCK}],
-            }
-        }
-    ):
-        configure()
+    with backend_priority({"type": backend_types.MOCK}):
         with mock.patch.object(DummyBar, "load", MagicMock()) as mock_load:
             mock_load.return_value = DummyBar()
             dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
-            model = caikit.core.load(dummy_model_path)
+            caikit.core.load(dummy_model_path)
 
-            load_backends = module_backend_config.configured_load_backends()
+            load_backends = configured_backends()
             expected_load_backend = [
                 be for be in load_backends if be.backend_type == backend_types.MOCK
             ][0]
@@ -446,15 +400,7 @@ def test_preferred_backend_disabled(reset_globals):
     local even with a preferred_backend when the preferred backend is disabled.
     """
     DummyFoo, DummyBar = setup_saved_model(MockBackend)
-    with temp_config(
-        {
-            "module_backends": {
-                "load_priority": [{"type": backend_types.LOCAL}],
-            }
-        }
-    ):
-        configure()
-
+    with backend_priority({"type": backend_types.LOCAL}):
         dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
         model = caikit.core.load(dummy_model_path)
         assert isinstance(model, DummyFoo)
@@ -489,15 +435,7 @@ def test_non_local_supported_backend(reset_globals):
         def load(self, *args, **kwargs):
             return DummyBaz()
 
-    with temp_config(
-        {
-            "module_backends": {
-                "load_priority": [{"type": backend_types.MOCK2}],
-            }
-        }
-    ):
-        configure()
-
+    with backend_priority({"type": backend_types.MOCK2}):
         dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_BACKEND_MODEL_NAME)
         model = caikit.core.load(dummy_model_path)
         assert isinstance(model, DummyBaz)
@@ -522,90 +460,104 @@ def test_load_must_return_model():
             caikit.core.load(tempdir)
 
 
-def test_load_with_new_shared_backend(good_model_path, reset_globals):
-    """If a shared laod backend has higher priority than LOCAL, it is used"""
-    loader_name = str(uuid.uuid4())
-    with temp_config(
-        {
-            "module_backends": {
-                "load_priority": [
-                    {"type": TestLoader.backend_type},
-                    {"type": backend_types.LOCAL},
-                ],
-            }
-        }
-    ):
-        configure()
-        model = caikit.core.load(good_model_path)
-        assert model.load_backend.backend_type == TestLoader.backend_type
-
-
-def test_load_with_two_shared_loaders_of_the_same_type(good_model_path, reset_globals):
+def test_load_with_two_shared_initializers_of_the_same_type(
+    good_model_path, reset_globals
+):
     """Multiple instances of one shared loader type can be configured"""
+
     with temp_config(
         {
-            "module_backends": {
-                "load_priority": [
-                    {
-                        "type": TestLoader.backend_type,
+            "model_management": {
+                "finders": {"default": {"type": "LOCAL"}},
+                "initializers": {
+                    "model-one": {
+                        "type": TestInitializer.name,
                         "config": {"model_type": "model one"},
                     },
-                    {
-                        "type": TestLoader.backend_type,
+                    "model-two": {
+                        "type": TestInitializer.name,
                         "config": {"model_type": "model two"},
                     },
-                    {"type": backend_types.LOCAL},
-                ],
+                    "default": {"type": "LOCAL"},
+                },
             }
         }
     ):
-        configure()
-        backends = configured_load_backends()
-        assert len(backends) == 3
+        model_one_loader = MODEL_MANAGER._get_initializer("model-one")
+        model_two_loader = MODEL_MANAGER._get_initializer("model-two")
+
         # plain model load should use first loader
-        model = caikit.core.load(good_model_path)
-        assert model.load_backend is backends[0]
+        model = caikit.core.load(good_model_path, initializer="model-one")
+        assert model_one_loader
+        assert model in model_one_loader.loaded_models
+        assert model not in model_two_loader.loaded_models
 
         # model load that fails in the first loader will use the second
-        model = caikit.core.load(good_model_path, model_type="model two")
-        assert model.load_backend is backends[1]
+        model = caikit.core.load(good_model_path, initializer="model-two")
+        assert model not in model_one_loader.loaded_models
+        assert model in model_two_loader.loaded_models
 
 
 def test_load_does_not_read_config_yml_if_loader_does_not_require_it(
     reset_globals, tmp_path
 ):
     tmpdir = str(tmp_path)
-
     with open(os.path.join(tmpdir, "config.yml"), "w") as f:
         f.write("{this is not yaml} !!@#$%^")
 
-    class NoYamlLoader(SharedLoadBackendBase):
-        backend_type = "NOYAML"
-
-        def stop(self):
-            pass
-
-        def start(self):
-            pass
-
-        def register_config(self, config):
-            pass
-
-        def load(self, model_path, *args, **kwargs):
-            """This load function doesn't read from model_path, so it definitely does not read the config.yml file"""
-            return SampleModule()
-
-    backend_types.register_backend_type(NoYamlLoader)
-
     with temp_config(
         {
-            "module_backends": {
-                "load_priority": [
-                    {"type": NoYamlLoader.backend_type},
-                ]
+            "model_management": {
+                "finders": {
+                    "default": {"type": NoYamlFinder.name},
+                },
+                "initializers": {
+                    "default": {"type": NoYamlInitializer.name},
+                },
             }
         }
     ):
-        configure()
         model = caikit.core.load(tmpdir)
+        assert isinstance(model, SampleModule)
+
+
+def test_load_loader_finder_by_name(reset_globals):
+    """Make sure that non-default loaders and finders can be referenced by name
+    when calling load
+    """
+    with temp_config(
+        {
+            "model_management": {
+                "finders": {
+                    "default": {"type": "LOCAL"},
+                    "other": {"type": NoYamlFinder.name},
+                },
+                "initializers": {
+                    "default": {"type": "LOCAL"},
+                    "other": {"type": NoYamlInitializer.name},
+                },
+            }
+        }
+    ):
+        model = caikit.core.load("unused", finder="other", initializer="other")
+        assert isinstance(model, SampleModule)
+
+
+def test_load_loader_finder_by_value(reset_globals):
+    """Make sure that non-default loaders and finders can be passed by value"""
+    with temp_config(
+        {
+            "model_management": {
+                "finders": {
+                    "default": {"type": "LOCAL"},
+                },
+                "initializers": {
+                    "default": {"type": "LOCAL"},
+                },
+            }
+        }
+    ):
+        model = caikit.core.load(
+            "unused", finder=NoYamlFinder(), initializer=NoYamlInitializer()
+        )
         assert isinstance(model, SampleModule)
