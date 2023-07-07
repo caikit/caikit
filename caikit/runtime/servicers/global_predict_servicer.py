@@ -132,7 +132,7 @@ class GlobalPredictServicer:
 
     def Predict(
         self,
-        request: ProtobufMessage | Iterable[ProtobufMessage],
+        request: Union[ProtobufMessage, Iterable[ProtobufMessage]],
         context: ServicerContext,
         caikit_rpc: TaskPredictRPC,
         *_,
