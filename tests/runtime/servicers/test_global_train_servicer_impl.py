@@ -126,10 +126,7 @@ def test_global_train_other_task(
     train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
         model_name="Other module Training",
         training_data=training_data,
-        # either of the below lines work since it's a Union now
-        # TODO create a separate test, lazy
-        # sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
-        sample_input_str="sample",
+        sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
         batch_size=batch_size,
     )
 
@@ -152,7 +149,7 @@ def test_global_train_other_task(
 
     inference_response = sample_predict_servicer.Predict(
         sample_inference_service.messages.OtherTaskRequest(
-            sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto()
+            sample_input=SampleInputType(name="Gabe").to_proto()
         ),
         Fixtures.build_context(training_response.model_name),
     )
