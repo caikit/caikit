@@ -203,10 +203,10 @@ def test_predict_streaming_module(
 ):
     """Test RPC CaikitRuntime.StreamingTaskPredict successful response"""
     stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
-    predict_request = sample_inference_service.messages.StreamingTaskRequest(
+    predict_request = sample_inference_service.messages.ServerStreamingStreamingTaskRequest(
         sample_input=HAPPY_PATH_INPUT
     )
-    stream = stub.StreamingTaskPredict(
+    stream = stub.ServerStreamingStreamingTaskPredict(
         predict_request, metadata=[("mm-model-id", streaming_task_model_id)]
     )
 
