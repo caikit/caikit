@@ -224,7 +224,6 @@ class TaskPredictRPC(CaikitRPCBase):
                 signatures from concrete modules implementing this task
         """
         self.task = task
-        self._module_list = [method.module for method in method_signatures]
         self._method_signatures = method_signatures
         self._input_streaming = input_streaming
         self._output_streaming = output_streaming
@@ -265,7 +264,7 @@ class TaskPredictRPC(CaikitRPCBase):
         """Returns the list of all caikit.core.modules that this RPC will be for. These should all
         be of the same ai-problem, e.g. my_caikit_library.modules.classification
         """
-        return self._module_list
+        return [method.module for method in self._method_signatures]
 
     @property
     def request(self) -> "_RequestMessage":
@@ -285,14 +284,14 @@ class TaskPredictRPC(CaikitRPCBase):
                 else:
                     new_params[param_name] = param_type
             return new_params
-        else:
-            req_params = self.task.get_required_parameters(input_streaming=False)
-            for param_name, param_type in method_params.items():
-                if param_name in req_params:
-                    new_params[param_name] = req_params[param_name]
-                else:
-                    new_params[param_name] = param_type
-            return new_params
+        # for unary input cases
+        req_params = self.task.get_required_parameters(input_streaming=False)
+        for param_name, param_type in method_params.items():
+            if param_name in req_params:
+                new_params[param_name] = req_params[param_name]
+            else:
+                new_params[param_name] = param_type
+        return new_params
 
     def _task_to_req_name(self) -> str:
         """Helper function to convert the pair of library name and task name to
