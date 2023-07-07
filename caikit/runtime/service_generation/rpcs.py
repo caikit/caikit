@@ -235,7 +235,7 @@ class TaskPredictRPC(CaikitRPCBase):
         default_parameters = {}
         for method in method_signatures:
             default_parameters.update(method.default_parameters)
-            new_params = self._handle_streaming_type(method.parameters)
+            new_params = self._handle_task_inputs(method.parameters)
             primitive_arg_dict = protoable.to_protoable_signature(new_params)
             for arg_name, arg_type in primitive_arg_dict.items():
                 current_val = parameters_dict.get(arg_name, arg_type)
@@ -271,22 +271,28 @@ class TaskPredictRPC(CaikitRPCBase):
     def request(self) -> "_RequestMessage":
         return self._req
 
-    def _handle_streaming_type(self, method_params: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle streaming type inputs and convert them to args,
-        so Iterable[Type] becomes Type"""
+    def _handle_task_inputs(self, method_params: Dict[str, Any]) -> Dict[str, Any]:
+        """Overrides input params with types specified in the Task"""
         new_params = {}
         if self._input_streaming:
-            req_param = self.task.get_required_parameters(input_streaming=True)
+            req_params = self.task.get_required_parameters(input_streaming=True)
             for param_name, param_type in method_params.items():
-                if param_name in req_param:
+                if param_name in req_params:
                     # double check this condition, although it should already have been validated
                     # also assuming both are iterables
-                    if get_args(req_param[param_name])[0] in get_args(param_type):
-                        new_params[param_name] = get_args(req_param[param_name])[0]
+                    if get_args(req_params[param_name])[0] in get_args(param_type):
+                        new_params[param_name] = get_args(req_params[param_name])[0]
                 else:
                     new_params[param_name] = param_type
-                return new_params
-        return method_params
+            return new_params
+        else:
+            req_params = self.task.get_required_parameters(input_streaming=False)
+            for param_name, param_type in method_params.items():
+                if param_name in req_params:
+                    new_params[param_name] = req_params[param_name]
+                else:
+                    new_params[param_name] = param_type
+            return new_params
 
     def _task_to_req_name(self) -> str:
         """Helper function to convert the pair of library name and task name to
