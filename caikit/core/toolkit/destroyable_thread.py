@@ -79,6 +79,18 @@ class DestroyableThread(threading.Thread):
         # know to not do the work
         self.__destroyed = False
 
+    @property
+    def destroyed(self) -> bool:
+        return self.__destroyed
+
+    @property
+    def ran(self) -> bool:
+        return self.__ran
+
+    @property
+    def threw(self) -> bool:
+        return self.__threw
+
     # Run wraps the supplied function with logic to set the event when it finishes, and save any
     # result or raised error
 
