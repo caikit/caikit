@@ -273,6 +273,14 @@ class TaskPredictRPC(CaikitRPCBase):
     def request(self) -> "_RequestMessage":
         return self._req
 
+    @property
+    def input_streaming(self) -> bool:
+        return self._input_streaming
+
+    @property
+    def output_streaming(self) -> bool:
+        return self._output_streaming
+
     def _handle_task_inputs(self, method_params: Dict[str, Any]) -> Dict[str, Any]:
         """Overrides input params with types specified in the Task"""
         new_params = {}

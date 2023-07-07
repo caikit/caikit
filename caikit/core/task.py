@@ -199,7 +199,7 @@ class TaskBase:
     @classmethod
     def get_required_parameters(
         cls, input_streaming: bool
-    ) -> Dict[str, ValidInputTypes]:
+    ) -> Dict[str, Union[ValidInputTypes, Type[Iterable[ValidInputTypes]]]]:
         """Get the set of input types required by this task"""
         if not input_streaming:
             if _UNARY_PARAMS_ANNOTATION not in cls.__annotations__:

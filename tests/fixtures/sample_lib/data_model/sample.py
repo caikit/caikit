@@ -56,6 +56,14 @@ class OtherTask(TaskBase):
     """Another sample `task` for our test models"""
 
 
+@task(
+    streaming_parameters={"lats": Iterable[float], "lons": Iterable[float]},
+    streaming_output_type=Iterable[SampleOutputType],
+)
+class GeoSpatialTask(TaskBase):
+    """A task that flexes streaming capabilities"""
+
+
 # NB: Backwards compatibility test
 @task(
     required_parameters={"sample_input": SampleInputType},

@@ -200,14 +200,9 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                     original_rpc_handler = handler.service(DummyHandlerCallDetails(fqm))
 
                     # Find the Caikit RPC that maps to this rpc
-                    matching_rpcs = [
-                        rpc
-                        for rpc in self._intercepted_svc_package.caikit_rpcs
-                        if rpc.name == method
-                    ]
-                    if len(matching_rpcs) != 1:
+                    caikit_rpc = self._intercepted_svc_package.caikit_rpcs.get(method, None)
+                    if not caikit_rpc:
                         raise ValueError(f"No Caikit RPC Found for method: {method}")
-                    caikit_rpc = matching_rpcs[0]
 
                     # Now, swap out the original unary-unary callable with our
                     # generic predict method, and add this newly re-routed RPC

@@ -95,12 +95,13 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs(
     def req_iterator() -> Iterator[sample_inference_service.messages.BidiStreamingSampleTaskRequest]:
         for i in range(100):
             yield sample_inference_service.messages.BidiStreamingSampleTaskRequest(
-                sample_input=HAPPY_PATH_INPUT
+                sample_inputs=HAPPY_PATH_INPUT
             )
 
     response_stream = sample_predict_servicer.Predict(
         req_iterator(),
         Fixtures.build_context(sample_task_model_id),
+        caikit_rpc=sample_inference_service.caikit_rpcs["BidiStreamingSampleTaskPredict"]
     )
     count = 0
     for response in response_stream:

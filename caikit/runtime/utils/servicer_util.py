@@ -261,14 +261,14 @@ def validate_data_model(
 
 
 def build_caikit_library_request_dict(
-    request: Union[Descriptor, ProtoMessageType],
+    request: ProtoMessageType,
     module_signature: CaikitMethodSignature,
 ) -> Dict[str, Any]:
     """Build the request kwargs dict.
 
     Args:
-        request (Union[Descriptor, ProtoMessageType]):
-            The request proto name or descriptor to deserialize from
+        request (ProtoMessageType):
+            The request proto message to deserialize from
         module_signature (CaikitMethodSignature):
             Module signature or metadata about method on a module
 
