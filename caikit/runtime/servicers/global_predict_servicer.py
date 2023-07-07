@@ -213,7 +213,7 @@ class GlobalPredictServicer:
 
         with self._handle_predict_exceptions(model_id, request_name):
             model = self._model_manager.retrieve_model(model_id)
-            self._verify_model_task(model, request_name)
+            self._verify_model_task(model)
 
             # NB: we previously recorded the size of the request, and timed this module to
             # provide a rudimentary throughput metric of size / time
@@ -296,7 +296,7 @@ class GlobalPredictServicer:
                 StatusCode.INTERNAL, "Unhandled exception during prediction"
             ) from e
 
-    def _verify_model_task(self, model: ModuleBase, request_name: str):
+    def _verify_model_task(self, model: ModuleBase):
         """Raise if the model is not supported for the task"""
         rpc_set: Set[TaskPredictRPC] = self._inference_service.caikit_rpcs
         module_rpc: TaskPredictRPC = next(
@@ -308,14 +308,4 @@ class GlobalPredictServicer:
             raise CaikitRuntimeException(
                 status_code=StatusCode.INVALID_ARGUMENT,
                 message=f"Inference for model class {type(model)} not supported by this runtime",
-            )
-
-        request_rpc: TaskPredictRPC = next(
-            (rpc for rpc in rpc_set if rpc.request.name == request_name), None
-        )
-        if request_rpc != module_rpc:
-            raise CaikitRuntimeException(
-                status_code=StatusCode.INVALID_ARGUMENT,
-                message=f"Wrong inference RPC invoked for model class {type(model)}. "
-                f"Use {module_rpc.name} instead of {request_rpc.name}",
             )

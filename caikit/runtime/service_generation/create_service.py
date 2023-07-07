@@ -44,16 +44,22 @@ def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase
     # Create the RPC for each task
     for task, task_methods in task_groups.items():
         with alog.ContextLog(log.debug, "Generating task RPC for %s", task):
-            try:
-                rpcs.append(TaskPredictRPC(task, task_methods))
-                log.debug("Successfully generated task RPC for %s", task)
-            except Exception as err:  # pylint: disable=broad-exception-caught
-                log.warning(
-                    "Cannot generate task rpc for %s: %s",
-                    task,
-                    err,
-                    exc_info=True,
-                )
+            for streaming_type, method_signatures in task_methods.items():
+                input_streaming, output_streaming = streaming_type
+                try:
+                    rpcs.append(
+                        TaskPredictRPC(
+                            task, method_signatures, input_streaming, output_streaming
+                        )
+                    )
+                    log.debug("Successfully generated task RPC for %s", task)
+                except Exception as err:  # pylint: disable=broad-exception-caught
+                    log.warning(
+                        "Cannot generate task rpc for %s: %s",
+                        task,
+                        err,
+                        exc_info=True,
+                    )
 
     return rpcs
 
@@ -112,7 +118,12 @@ def _group_modules_by_task(
         if ck_module.TASK_CLASS:
             ck_module_task_name = ck_module.TASK_CLASS.__name__
             if ck_module_task_name is not None:
-                task_groups.setdefault(ck_module.TASK_CLASS, []).append(
-                    ck_module.RUN_SIGNATURE
-                )
+                for (
+                    input_streaming,
+                    output_streaming,
+                    signature,
+                ) in ck_module._INFERENCE_SIGNATURES:
+                    task_groups.setdefault(ck_module.TASK_CLASS, {}).setdefault(
+                        (input_streaming, output_streaming), []
+                    ).append(signature)
     return task_groups
