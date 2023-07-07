@@ -283,6 +283,7 @@ def test_task_decorator_adds_taskmethods_to_modules():
     @task(
         unary_parameters={"sample_input": SampleInputType},
         unary_output_type=SampleOutputType,
+        streaming_parameters={"sample_inputs": Iterable[SampleInputType]},
         streaming_output_type=Iterable[SampleOutputType],
     )
     class StreamingTask(TaskBase):
@@ -305,6 +306,12 @@ def test_task_decorator_adds_taskmethods_to_modules():
         ) -> caikit.core.data_model.DataStream[SampleOutputType]:
             pass
 
+        @StreamingTask.taskmethod(input_streaming=True)
+        def run_stream_in(
+            self, sample_inputs: caikit.core.data_model.DataStream[SampleInputType]
+        ) -> SampleOutputType:
+            pass
+
     assert (
         StreamingModule.get_inference_signature(
             input_streaming=False, output_streaming=False
@@ -316,6 +323,103 @@ def test_task_decorator_adds_taskmethods_to_modules():
             input_streaming=False, output_streaming=True
         ).method_name
         == "run_stream_out"
+    )
+
+    assert (
+        StreamingModule.get_inference_signature(
+            input_streaming=True, output_streaming=False
+        ).method_name
+        == "run_stream_in"
+    )
+
+
+def test_task_decorator_datastream_params():
+    @task(
+        unary_parameters={"sample_input": SampleInputType},
+        unary_output_type=SampleOutputType,
+        streaming_parameters={
+            "sample_inputs": caikit.core.data_model.DataStream[SampleInputType]
+        },
+        streaming_output_type=caikit.core.data_model.DataStream[SampleOutputType],
+    )
+    class DataStreamStreamingTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()),
+        name="DataStreamStreamingModule",
+        version="0.0.1",
+        task=DataStreamStreamingTask,
+    )
+    class DataStreamStreamingModule(caikit.core.ModuleBase):
+        @DataStreamStreamingTask.taskmethod()
+        def run(self, sample_input: SampleInputType) -> SampleOutputType:
+            pass
+
+        @DataStreamStreamingTask.taskmethod(output_streaming=True)
+        def run_stream_out(
+            self, sample_input: SampleInputType
+        ) -> caikit.core.data_model.DataStream[SampleOutputType]:
+            pass
+
+        @DataStreamStreamingTask.taskmethod(input_streaming=True)
+        def run_stream_in(
+            self, sample_inputs: caikit.core.data_model.DataStream[SampleInputType]
+        ) -> SampleOutputType:
+            pass
+
+        @DataStreamStreamingTask.taskmethod(input_streaming=True, output_streaming=True)
+        def run_stream_bidi(
+            self, sample_inputs: caikit.core.data_model.DataStream[SampleInputType]
+        ) -> caikit.core.data_model.DataStream[SampleOutputType]:
+            pass
+
+    stream_stream_method_signature = DataStreamStreamingModule.get_inference_signature(
+        input_streaming=False, output_streaming=False
+    )
+
+    out_stream_method_signature = DataStreamStreamingModule.get_inference_signature(
+        input_streaming=False, output_streaming=True
+    )
+
+    in_stream_method_signature = DataStreamStreamingModule.get_inference_signature(
+        input_streaming=True, output_streaming=False
+    )
+
+    bidi_stream_method_signature = DataStreamStreamingModule.get_inference_signature(
+        input_streaming=True, output_streaming=True
+    )
+
+    assert stream_stream_method_signature.method_name == "run"
+    assert stream_stream_method_signature.parameters == {
+        "sample_input": SampleInputType
+    }
+    assert stream_stream_method_signature.return_type == SampleOutputType
+
+    assert out_stream_method_signature.method_name == "run_stream_out"
+    assert out_stream_method_signature.parameters == {"sample_input": SampleInputType}
+    assert (
+        out_stream_method_signature.return_type
+        == caikit.core.data_model.streams.data_stream.DataStream[SampleOutputType]
+    )
+
+    assert in_stream_method_signature.method_name == "run_stream_in"
+    assert in_stream_method_signature.parameters == {
+        "sample_inputs": caikit.core.data_model.streams.data_stream.DataStream[
+            SampleInputType
+        ]
+    }
+    assert in_stream_method_signature.return_type == SampleOutputType
+
+    assert bidi_stream_method_signature.method_name == "run_stream_bidi"
+    assert bidi_stream_method_signature.parameters == {
+        "sample_inputs": caikit.core.data_model.streams.data_stream.DataStream[
+            SampleInputType
+        ]
+    }
+    assert (
+        bidi_stream_method_signature.return_type
+        == caikit.core.data_model.streams.data_stream.DataStream[SampleOutputType]
     )
 
 

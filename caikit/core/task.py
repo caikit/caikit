@@ -173,10 +173,17 @@ class TaskBase:
                     signature_type
                 ) == typing.Union and parameter_type in typing.get_args(signature_type):
                     continue
-                type_mismatch_errors.append(
-                    f"Parameter {parameter_name} has type {signature_type} but type \
-                        {parameter_type} is required"
-                )
+                if input_streaming and cls._is_iterable_type(parameter_type):
+                    streaming_type = typing.get_args(parameter_type)[0]
+
+                    for iterable_type in typing.get_args(parameter_type):
+                        if cls._subclass_check(iterable_type, streaming_type):
+                            pass
+                else:
+                    type_mismatch_errors.append(
+                        f"Parameter {parameter_name} has type {signature_type} but type \
+                            {parameter_type} is required"
+                    )
         if type_mismatch_errors:
             raise TypeError(
                 f"Wrong types provided for parameters to {signature.module}: {type_mismatch_errors}"
