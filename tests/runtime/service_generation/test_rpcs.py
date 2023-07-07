@@ -25,44 +25,6 @@ from caikit.runtime.service_generation.rpcs import ModuleClassTrainRPC, TaskPred
 from sample_lib.data_model import SampleInputType, SampleOutputType
 import caikit.core
 
-# def test_task_inference_rpc_with_client_streaming_union():
-#     @caikit.core.task(
-#         unary_parameters={"sample_input": SampleInputType},
-#         streaming_parameters={"sample_inputs": Iterable[SampleInputType]},
-#         unary_output_type=SampleOutputType,
-#         streaming_output_type=Iterable[SampleOutputType],
-#         # TODO: check if above line fails without iterable
-#     )
-#     class TestTask(TaskBase):
-#         pass
-
-#     @caikit.core.module(
-#         id=str(uuid.uuid4()), name="testest", version="9.9.9", task=TestTask
-#     )
-#     class TestModule(ModuleBase):
-#         @TestTask.taskmethod(input_streaming=True)
-#         def run_stream_in(
-#             self, sample_inputs: Union[DataStream[SampleInputType], str]
-#         ) -> SampleOutputType:
-#             pass
-
-#     rpc = TaskPredictRPC(
-#         task=TestTask,
-#         method_signatures=[
-#             TestModule.get_inference_signature(
-#                 input_streaming=True, output_streaming=False
-#             )
-#         ],
-#         input_streaming=True,
-#         output_streaming=False,
-#     )
-#     assert rpc.request.triples == [(SampleInputType, "sample_inputs", 1)]
-
-#     data_model = rpc.create_request_data_model(package_name="blah")
-#     assert data_model is not None
-
-#     assert rpc.name == "ClientStreamingTestTaskPredict"
-
 
 def test_task_inference_multiples_modules_rpc():
     @caikit.core.task(
