@@ -130,7 +130,7 @@ class GlobalPredictServicer:
 
     def Predict(
         self,
-        request: ProtobufMessage,
+        request: ProtobufMessage | Iterable[ProtobufMessage],
         context: ServicerContext,
         *_,
         **__,

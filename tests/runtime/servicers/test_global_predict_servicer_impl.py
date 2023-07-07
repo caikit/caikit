@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
+from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 try:
@@ -74,7 +75,7 @@ def test_invalid_input_to_a_valid_caikit_core_class_method_raises(
     assert "problem with your input" in context.value.message
 
 
-def test_global_predict_works_on_good_inputs(
+def test_global_predict_works_for_unary_rpcs(
     sample_inference_service, sample_predict_servicer, sample_task_model_id
 ):
     """Global predict of SampleTaskRequest returns a prediction"""
@@ -85,6 +86,27 @@ def test_global_predict_works_on_good_inputs(
         Fixtures.build_context(sample_task_model_id),
     )
     assert response == HAPPY_PATH_RESPONSE
+
+
+def test_global_predict_works_on_bidirectional_streaming_rpcs(
+    sample_inference_service, sample_predict_servicer, sample_task_model_id
+):
+    """Global predict of SampleTaskRequest returns a prediction"""
+    def req_iterator() -> Iterator[sample_inference_service.messages.BidiStreamingSampleTaskRequest]:
+        for i in range(100):
+            yield sample_inference_service.messages.BidiStreamingSampleTaskRequest(
+                sample_input=HAPPY_PATH_INPUT
+            )
+
+    response_stream = sample_predict_servicer.Predict(
+        req_iterator(),
+        Fixtures.build_context(sample_task_model_id),
+    )
+    count = 0
+    for response in response_stream:
+        assert response == HAPPY_PATH_RESPONSE
+        count += 1
+    assert count == 100
 
 
 def test_global_predict_predict_model_direct(
