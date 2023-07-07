@@ -25,43 +25,26 @@ WARNING: This utility is intentionally not a cryptographically secure hash! It
 import random
 import string
 
+# Create a statically seeded instance of Random to perform shuffling in a
+# consistent way
+_RAND_INST = random.Random()
+_RAND_INST.seed(42)
+_CHARSET = string.ascii_letters + string.digits + "-_"
+_SHUFFLED = list(_CHARSET)
+_RAND_INST.shuffle(_SHUFFLED)
 
-class _ReversibleHasherMeta(type):
-    """The _ReversibleHasherMeta is used here to ensure that the random state is
-    only temporarily seeded at import time.
-
-    WARNING: If this class is dynamically imported in a multi-threaded
-        application, other threads that share the random state will be effected
-        by the temporary seed!
-    """
-
-    def __new__(mcs, name, bases, attrs):
-        # Temporarily seed random
-        random_state = random.getstate()
-        random.seed(42)
-
-        # Generate the shuffling of all acceptable characters
-        charset = string.ascii_letters + string.digits + "-_"
-        shuffled = list(charset)
-        random.shuffle(shuffled)
-
-        # Add the mapping attrs to the class
-        fwd_map = dict(zip(charset, shuffled))
-        attrs["FORWARD_MAP"] = fwd_map
-        attrs["BACKWARD_MAP"] = {v: k for k, v in fwd_map.items()}
-
-        # Reset the random state
-        random.setstate(random_state)
-        return super().__new__(mcs, name, bases, attrs)
+# Create the static forward/backward maps for the character set
+FORWARD_MAP = dict(zip(_CHARSET, _SHUFFLED))
+BACKWARD_MAP = {v: k for k, v in FORWARD_MAP.items()}
 
 
-class ReversibleHasher(metaclass=_ReversibleHasherMeta):
+class ReversibleHasher:
     __doc__ = __doc__
 
     @classmethod
     def hash(cls, val: str):
-        return "".join([cls.FORWARD_MAP.get(ch, ch) for ch in val])
+        return "".join([FORWARD_MAP.get(ch, ch) for ch in val])
 
     @classmethod
     def reverse_hash(cls, hash_val: str):
-        return "".join([cls.BACKWARD_MAP.get(ch, ch) for ch in hash_val])
+        return "".join([BACKWARD_MAP.get(ch, ch) for ch in hash_val])
