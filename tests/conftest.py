@@ -183,7 +183,7 @@ def open_port():
                 # So a non-zero code should mean the port is not currently in use
                 return start
 
-              
+
 @contextmanager
 def backend_priority(backend_cfg: Union[List[dict], dict]):
     if isinstance(backend_cfg, dict):
