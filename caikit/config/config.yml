@@ -34,6 +34,7 @@ model_management:
             type: LOCAL
             config:
                 retention_duration: 1d
+                use_subprocess: false
     finders:
         default:
             type: LOCAL

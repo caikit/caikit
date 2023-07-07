@@ -30,11 +30,13 @@ import alog
 
 # Local
 from ..modules import ModuleBase
+from ..toolkit.destroyable_process import DestroyableProcess
 from ..toolkit.destroyable_thread import DestroyableThread
 from ..toolkit.errors import error_handler
 from .model_trainer_base import ModelTrainerBase
+import caikit
 
-log = alog.use_channel("TH-TAINER")
+log = alog.use_channel("LOC-TRNR")
 error = error_handler.get(log)
 
 
@@ -69,6 +71,7 @@ class LocalModelTrainer(ModelTrainerBase):
             save_path: Optional[str],
             save_with_id: bool,
             external_training_id: Optional[str],
+            use_subprocess: bool,
             **kwargs,
         ):
             super().__init__(
@@ -93,13 +96,30 @@ class LocalModelTrainer(ModelTrainerBase):
             self._completion_time = None
 
             # Set up the worker and start it
-            self._complete_event = threading.Event()
-            self._worker = DestroyableThread(
-                self._complete_event,
-                self._train_and_save,
-                *args,
-                **kwargs,
-            )
+            self._use_subprocess = use_subprocess
+            if self._use_subprocess:
+                log.debug2("Running training %s as a SUBPROCESS", self.id)
+                self._worker = DestroyableProcess(
+                    target=self._train_and_save,
+                    return_result=False,
+                    args=args,
+                    kwargs=kwargs,
+                )
+                # If training in a subprocess without a save path, the model
+                # will be unreachable once trained!
+                if not self.save_path:
+                    log.warning(
+                        "<COR28853922W>",
+                        "Training %s launched in a subprocess with no save path",
+                        self.id,
+                    )
+            else:
+                log.debug2("Running training %s as a THREAD", self.id)
+                self._worker = DestroyableThread(
+                    self._train_and_save,
+                    *args,
+                    **kwargs,
+                )
             self._worker.start()
 
         @property
@@ -112,22 +132,19 @@ class LocalModelTrainer(ModelTrainerBase):
             """Every model future must be able to poll the status of the
             training job
             """
-            # If the thread is currently alive it's doing work
+            # If the worker is currently alive it's doing work
             if self._worker.is_alive():
                 return ModelTrainerBase.TrainingStatus.RUNNING
 
-            # If the thread is not alive, threw, and was destroyed, the throw
-            # was caused by a deliberate cancellation
-            if self._worker.destroyed and self._worker.threw:
+            # The worker was canceled while doing work
+            if self._worker.canceled:
                 return ModelTrainerBase.TrainingStatus.CANCELED
 
-            # If the worker threw, but was not destroyed, it was an error in the
-            # train function
+            # The worker threw outside of a cancellation process
             if self._worker.threw:
                 return ModelTrainerBase.TrainingStatus.ERRORED
 
-            # If the thread ran and none of the non-success termination states
-            # is true, it completed successfully
+            # The worker completed its work without being canceled or raising
             if self._worker.ran:
                 return ModelTrainerBase.TrainingStatus.COMPLETED
 
@@ -145,15 +162,40 @@ class LocalModelTrainer(ModelTrainerBase):
 
         def wait(self):
             """Block until the job reaches a terminal state"""
-            self._complete_event.wait()
+            log.debug2("Waiting for %s", self.id)
             self._worker.join()
+            log.debug2("Done waiting for %s", self.id)
+
+            # If running a subprocess, handle abnormal exit codes
+            if self._use_subprocess:
+                if self._worker.exitcode and self._worker.exitcode != os.EX_OK:
+                    if self._worker.exitcode == OOM_EXIT_CODE:
+                        raise MemoryError("Training process died with OOM error!")
+                    raise RuntimeError(
+                        f"Training process died with exit code {self._worker.exitcode}"
+                    )
 
         def load(self) -> ModuleBase:
             """Wait for the training to complete, then return the resulting
             model or raise any errors that happened during training.
             """
             self.wait()
-            return self._worker.get_or_throw()
+            result = self._worker.get_or_throw()
+            if self._use_subprocess:
+                log.debug2("Loading model saved in subprocess")
+                error.value_check(
+                    "<COR16745216E>",
+                    self.save_path,
+                    "Unable to load model trained in subprocess without a save_path",
+                )
+                error.value_check(
+                    "<COR59551640E>",
+                    os.path.exists(self.save_path),
+                    "Unable to load model saved in subprocess at {}",
+                    self.save_path,
+                )
+                result = caikit.load(self.save_path)
+            return result
 
         ## Impl ##
 
@@ -179,6 +221,7 @@ class LocalModelTrainer(ModelTrainerBase):
         """Initialize with a shared dict of all trainings"""
         self._instance_name = instance_name
         self._retention_duration = config.get("retention_duration")
+        self._use_subprocess = config.get("use_subprocess", False)
         if self._retention_duration is not None:
             try:
                 self._retention_duration = timedelta(
@@ -223,6 +266,7 @@ class LocalModelTrainer(ModelTrainerBase):
             save_path=save_path,
             save_with_id=save_with_id,
             external_training_id=external_training_id,
+            use_subprocess=self._use_subprocess,
             **kwargs,
         )
 
