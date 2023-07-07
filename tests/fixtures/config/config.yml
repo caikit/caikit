@@ -1,7 +1,5 @@
 # Config for tests
 runtime:
-    find_available_port: true
-
     metering:
         # Switch on metering by default
         enabled: true
