@@ -28,8 +28,8 @@ from sample_lib.data_model import SampleOutputType
 def test_rpc_is_passed_to_predict_handlers(sample_inference_service, open_port):
     calls = []
 
-    def predict(request, context, rpc):
-        calls.append(rpc)
+    def predict(request, context, caikit_rpc):
+        calls.append(caikit_rpc)
         return SampleOutputType().to_proto()
 
     server = grpc.server(

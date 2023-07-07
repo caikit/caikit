@@ -145,7 +145,7 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                     IN_PROGRESS_GAUGE.labels(rpc_name=rpc.__name__).inc()
                     if caikit_rpc:
                         # Pass through the CaikitRPCBase rpc description to the global handlers
-                        return rpc(request, context, caikit_rpc)
+                        return rpc(request, context, caikit_rpc=caikit_rpc)
                     return rpc(request, context)
 
                 except CaikitRuntimeException as e:
