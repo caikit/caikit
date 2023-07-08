@@ -15,7 +15,7 @@
 # Standard
 from enum import Enum
 from types import ModuleType
-from typing import Callable, Set, Type, Dict
+from typing import Callable, Dict, Set, Type
 import dataclasses
 
 # Third Party

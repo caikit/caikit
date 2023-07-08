@@ -14,11 +14,11 @@
 """A generic module to help Predict and Train servicers
 """
 # Standard
-from typing import Any, Dict, Iterable, Iterator, Union
+from typing import Any, Dict, Iterable, Iterator
 import traceback
 
 # Third Party
-from google.protobuf.descriptor import Descriptor, FieldDescriptor, ServiceDescriptor
+from google.protobuf.descriptor import FieldDescriptor, ServiceDescriptor
 from google.protobuf.message import Message as ProtoMessageType
 import grpc
 

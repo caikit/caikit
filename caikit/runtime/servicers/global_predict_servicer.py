@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
-import itertools
 from contextlib import contextmanager
 from importlib.metadata import version
-from typing import Iterable, Optional, Set, Union, Dict, Any
+from typing import Any, Dict, Iterable, Optional, Set, Union
+import itertools
 import traceback
 
 # Third Party
@@ -169,11 +169,15 @@ class GlobalPredictServicer:
                 ).time():
                     inference_signature = model_class.get_inference_signature(
                         input_streaming=caikit_rpc.input_streaming,
-                        output_streaming=caikit_rpc.output_streaming
+                        output_streaming=caikit_rpc.output_streaming,
                     )
                     # TODO: if inference_signature is none...
                     if caikit_rpc.input_streaming:
-                        caikit_library_request = self._build_caikit_library_request_stream(request, inference_signature, caikit_rpc)
+                        caikit_library_request = (
+                            self._build_caikit_library_request_stream(
+                                request, inference_signature, caikit_rpc
+                            )
+                        )
                     else:
                         caikit_library_request = build_caikit_library_request_dict(
                             request,
@@ -186,7 +190,6 @@ class GlobalPredictServicer:
                     aborter=CallAborter(context)
                     if self.use_abortable_threads
                     else None,
-
                     **caikit_library_request,
                 )
 
@@ -330,10 +333,12 @@ class GlobalPredictServicer:
                 message=f"Inference for model class {type(model)} not supported by this runtime",
             )
 
-    def _build_caikit_library_request_stream(self,
-                                             request_stream: Iterable[ProtobufMessage],
-                                             module_signature: CaikitMethodSignature,
-                                             caikit_rpc: TaskPredictRPC) -> Dict[str, Any]:
+    def _build_caikit_library_request_stream(
+        self,
+        request_stream: Iterable[ProtobufMessage],
+        module_signature: CaikitMethodSignature,
+        caikit_rpc: TaskPredictRPC,
+    ) -> Dict[str, Any]:
         """Builds the kwargs dict to pass to a caikit module.
         Specifically handles the case of constructing input `DataStreams` for some parameters
         which are meant to be streamed in.
@@ -341,21 +346,33 @@ class GlobalPredictServicer:
         See caikit.runtime.build_caikit_library_request_dict
         """
 
-        # [m1, m2, m3 ... ]
-
-
-        # { stream_param: DataStream.from_iterable(request_stream).map(x: x.stream_param), non_stream_param: m1.non_stream_param }
-
         def call_build_request_dict(request: ProtobufMessage) -> Dict[str, Any]:
             return build_caikit_library_request_dict(request, module_signature)
 
-        original_stream, stream_for_peeked_stuff = itertools.tee(request_stream)
-        kwargs_dict = build_caikit_library_request_dict(next(stream_for_peeked_stuff), module_signature)
-
         streaming_params = caikit_rpc.task.get_required_parameters(input_streaming=True)
+
+        num_streams = 1 + len(streaming_params)
+
+        all_the_streams = itertools.tee(request_stream, num_streams)
+
+        stream_num = 0
+        kwargs_dict = build_caikit_library_request_dict(
+            next(all_the_streams[stream_num]), module_signature
+        )
+        stream_num += 1
+
         for param in streaming_params.keys():
-            original_stream, new_stream = itertools.tee(original_stream)
-            param_stream = DataStream.from_iterable(new_stream).map(call_build_request_dict).map(lambda request_dict: request_dict.get(param))
+            def build_getter_from_request_dict(param_name: str) -> Any:
+                def get_fn(request_dict):
+                    return request_dict.get(param_name)
+                return get_fn
+
+            param_stream = (
+                DataStream.from_iterable(all_the_streams[stream_num])
+                .map(call_build_request_dict)
+                .map(build_getter_from_request_dict(param_name=param))
+            )
             kwargs_dict[param] = param_stream
+            stream_num += 1
 
         return kwargs_dict

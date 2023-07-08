@@ -200,7 +200,9 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                     original_rpc_handler = handler.service(DummyHandlerCallDetails(fqm))
 
                     # Find the Caikit RPC that maps to this rpc
-                    caikit_rpc = self._intercepted_svc_package.caikit_rpcs.get(method, None)
+                    caikit_rpc = self._intercepted_svc_package.caikit_rpcs.get(
+                        method, None
+                    )
                     if not caikit_rpc:
                         raise ValueError(f"No Caikit RPC Found for method: {method}")
 

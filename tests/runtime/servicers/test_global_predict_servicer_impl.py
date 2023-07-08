@@ -15,6 +15,7 @@
 from typing import Iterator
 from unittest.mock import MagicMock, patch
 
+# Local
 from sample_lib.modules.geospatial import GeoStreamingModule
 
 try:
@@ -94,7 +95,10 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs(
     sample_inference_service, sample_predict_servicer, sample_task_model_id
 ):
     """Simple test that our SampleModule's bidirectional stream inference fn is supported"""
-    def req_iterator() -> Iterator[sample_inference_service.messages.BidiStreamingSampleTaskRequest]:
+
+    def req_iterator() -> Iterator[
+        sample_inference_service.messages.BidiStreamingSampleTaskRequest
+    ]:
         for i in range(100):
             yield sample_inference_service.messages.BidiStreamingSampleTaskRequest(
                 sample_inputs=HAPPY_PATH_INPUT
@@ -103,7 +107,9 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs(
     response_stream = sample_predict_servicer.Predict(
         req_iterator(),
         Fixtures.build_context(sample_task_model_id),
-        caikit_rpc=sample_inference_service.caikit_rpcs["BidiStreamingSampleTaskPredict"]
+        caikit_rpc=sample_inference_service.caikit_rpcs[
+            "BidiStreamingSampleTaskPredict"
+        ],
     )
     count = 0
     for response in response_stream:
@@ -120,23 +126,25 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs_with_multiple_stre
     mock_manager = MagicMock()
     mock_manager.retrieve_model.return_value = GeoStreamingModule()
 
-    def req_iterator() -> Iterator[sample_inference_service.messages.BidiStreamingGeoSpatialTaskRequest]:
+    def req_iterator() -> Iterator[
+        sample_inference_service.messages.BidiStreamingGeoSpatialTaskRequest
+    ]:
         for i in range(100):
             yield sample_inference_service.messages.BidiStreamingGeoSpatialTaskRequest(
-                lats=i,
-                lons=100-i,
-                name="Gabe"
+                lats=i, lons=100 - i, name="Gabe"
             )
 
     with patch.object(sample_predict_servicer, "_model_manager", mock_manager):
         response_stream = sample_predict_servicer.Predict(
             req_iterator(),
             Fixtures.build_context(sample_task_model_id),
-            caikit_rpc=sample_inference_service.caikit_rpcs["BidiStreamingGeoSpatialTaskPredict"]
+            caikit_rpc=sample_inference_service.caikit_rpcs[
+                "BidiStreamingGeoSpatialTaskPredict"
+            ],
         )
         count = 0
-        for i, response in response_stream:
-            assert response.greeting == f"Hello from Gabe at {i+1}°, {99-i}°"
+        for i, response in enumerate(response_stream):
+            assert response.greeting == f"Hello from Gabe at {i}.0°, {100-i}.0°"
             count += 1
         assert count == 100
 
