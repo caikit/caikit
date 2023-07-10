@@ -57,7 +57,7 @@ from caikit.runtime.protobufs import (
     process_pb2_grpc,
 )
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
-from sample_lib import InnerModule
+from sample_lib import InnerModule, SamplePrimitiveModule
 from sample_lib.data_model import (
     OtherOutputType,
     SampleInputType,
@@ -281,6 +281,43 @@ def test_rpc_validation_on_predict_for_unsupported_model(
         assert context.value.code() == grpc.StatusCode.INVALID_ARGUMENT
         assert "Inference for model class" in str(context.value)
         assert "not supported by this runtime" in str(context.value)
+
+    finally:
+        runtime_grpc_server._global_predict_servicer._model_manager.unload_model(
+            model_id
+        )
+
+
+def test_rpc_validation_on_predict_for_wrong_streaming_flavor(
+    runtime_grpc_server: RuntimeGRPCServer, sample_inference_service, tmp_path
+):
+    """Check that the server catches models that have no supported inference rpc"""
+    unary_only_model = SamplePrimitiveModule()
+    tmpdir = str(tmp_path)
+    unary_only_model.save(tmpdir)
+    model_id = random_test_id()
+    try:
+        runtime_grpc_server._global_predict_servicer._model_manager.load_model(
+            model_id, tmpdir, "foo"
+        )
+
+        stub = sample_inference_service.stub_class(
+            runtime_grpc_server.make_local_channel()
+        )
+        predict_request = sample_inference_service.messages.SampleTaskRequest(
+            sample_input=HAPPY_PATH_INPUT
+        )
+        with pytest.raises(grpc.RpcError) as context:
+            response = stub.ServerStreamingSampleTaskPredict(
+                predict_request, metadata=[("mm-model-id", model_id)]
+            )
+            for r in response:
+                # try to read off the stream
+                pass
+
+        assert context.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+        assert "Model class" in str(context.value)
+        assert "does not support ServerStreamingSampleTaskPredict" in str(context.value)
 
     finally:
         runtime_grpc_server._global_predict_servicer._model_manager.unload_model(

@@ -199,7 +199,7 @@ class TaskBase:
     @classmethod
     def get_required_parameters(
         cls, input_streaming: bool
-    ) -> Dict[str, ValidInputTypes]:
+    ) -> Dict[str, Union[ValidInputTypes, Type[Iterable[ValidInputTypes]]]]:
         """Get the set of input types required by this task"""
         if not input_streaming:
             if _UNARY_PARAMS_ANNOTATION not in cls.__annotations__:
@@ -417,11 +417,6 @@ def task(
         if _STREAM_PARAMS_ANNOTATION in cls_annotations:
             params_dict = cls.get_required_parameters(input_streaming=True)
             error.type_check("<COR19556230E>", dict, params_dict=params_dict)
-            error.value_check(
-                "<COR56569734E>",
-                len(params_dict) == 1,
-                "Only a single streaming input type supported",
-            )
             error.type_check_all(
                 "<COR58796465E>", str, params_dict_keys=params_dict.keys()
             )

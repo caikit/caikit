@@ -2,6 +2,7 @@
 A sample module for sample things!
 """
 # Standard
+from typing import Iterable
 import os
 
 # Local
@@ -69,6 +70,21 @@ class SampleModule(caikit.core.ModuleBase):
         ]
         stream = DataStream.from_iterable(list_)
         return stream
+
+    @SampleTask.taskmethod(input_streaming=True, output_streaming=True)
+    def run_bidi_stream(
+        self, sample_inputs: DataStream[SampleInputType]
+    ) -> Iterable[SampleOutputType]:
+        """
+        Args:
+            sample_inputs (caikit.core.data_model.DataStream[sample_lib.data_model.SampleInputType]): the input
+
+        Returns:
+            caikit.core.data_model.DataStream[sample_lib.data_model.SampleOutputType]: The output
+                stream
+        """
+        for sample_input in sample_inputs:
+            yield self.run(sample_input)
 
     def save(self, model_path):
         module_saver = ModuleSaver(

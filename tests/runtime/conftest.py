@@ -23,6 +23,7 @@ from caikit.core.data_model.dataobject import render_dataobject_protos
 from caikit.runtime.grpc_server import RuntimeGRPCServer
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
+from caikit.runtime.service_generation.rpcs import TaskPredictRPC
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from tests.conftest import random_test_id, temp_config
@@ -183,6 +184,18 @@ def sample_task_model_id(good_model_path) -> str:
 
     # teardown
     model_manager.unload_model(model_id)
+
+
+@pytest.fixture
+def sample_task_unary_rpc(sample_inference_service: ServicePackage) -> TaskPredictRPC:
+    return sample_inference_service.caikit_rpcs["SampleTaskPredict"]
+
+
+@pytest.fixture
+def sample_task_streaming_rpc(
+    sample_inference_service: ServicePackage,
+) -> TaskPredictRPC:
+    return sample_inference_service.caikit_rpcs["ServerStreamingSampleTaskPredict"]
 
 
 @pytest.fixture

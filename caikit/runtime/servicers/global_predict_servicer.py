@@ -14,7 +14,8 @@
 # Standard
 from contextlib import contextmanager
 from importlib.metadata import version
-from typing import Iterable, Optional, Set, Union
+from typing import Any, Dict, Iterable, Optional, Set, Union
+import itertools
 import traceback
 
 # Third Party
@@ -29,7 +30,8 @@ import alog
 # Local
 from caikit import get_config
 from caikit.core import ModuleBase
-from caikit.core.data_model import DataBase
+from caikit.core.data_model import DataBase, DataStream
+from caikit.core.signature_parsing import CaikitMethodSignature
 from caikit.runtime.metrics.rpc_meter import RPCMeter
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage
@@ -130,8 +132,9 @@ class GlobalPredictServicer:
 
     def Predict(
         self,
-        request: ProtobufMessage,
+        request: Union[ProtobufMessage, Iterable[ProtobufMessage]],
         context: ServicerContext,
+        caikit_rpc: TaskPredictRPC,
         *_,
         **__,
     ) -> Union[ProtobufMessage, Iterable[ProtobufMessage]]:
@@ -149,8 +152,9 @@ class GlobalPredictServicer:
                 A Caikit Library data model response object
         """
         # Make sure the request has a model before doing anything
-        request_name = request.DESCRIPTOR.name
         model_id = get_metadata(context, self.MODEL_MESH_MODEL_ID_KEY)
+        request_name = caikit_rpc.request.name
+
         with self._handle_predict_exceptions(model_id, request_name):
             with alog.ContextLog(
                 log.debug, "GlobalPredictServicer.Predict:%s", request_name
@@ -159,17 +163,39 @@ class GlobalPredictServicer:
                 log.debug("<RUN52259029D>", "Retrieving model '%s'", model_id)
                 model = self._model_manager.retrieve_model(model_id)
                 model_class = type(model)
+
+                # Little hackity hack: Calling _verify_model_task upfront here as well to
+                # short-circuit requests where the model is _totally_ unsupported
+                self._verify_model_task(model)
+
                 # Unmarshall the request object into the required module run argument(s)
                 with PREDICT_FROM_PROTO_SUMMARY.labels(
                     grpc_request=request_name, model_id=model_id
                 ).time():
-                    caikit_library_request = build_caikit_library_request_dict(
-                        request,
-                        model_class.RUN_SIGNATURE,
+                    inference_signature = model_class.get_inference_signature(
+                        input_streaming=caikit_rpc.input_streaming,
+                        output_streaming=caikit_rpc.output_streaming,
                     )
+                    if not inference_signature:
+                        raise CaikitRuntimeException(
+                            StatusCode.INVALID_ARGUMENT,
+                            f"Model class {model_class} does not support {caikit_rpc.name}",
+                        )
+                    if caikit_rpc.input_streaming:
+                        caikit_library_request = (
+                            self._build_caikit_library_request_stream(
+                                request, inference_signature, caikit_rpc
+                            )
+                        )
+                    else:
+                        caikit_library_request = build_caikit_library_request_dict(
+                            request,
+                            inference_signature,
+                        )
                 response = self.predict_model(
                     request_name,
                     model_id,
+                    inference_func_name=inference_signature.method_name,
                     aborter=CallAborter(context)
                     if self.use_abortable_threads
                     else None,
@@ -193,6 +219,7 @@ class GlobalPredictServicer:
         self,
         request_name: str,
         model_id: str,
+        inference_func_name: str = "run",
         aborter: Optional[CallAborter] = None,
         **kwargs,
     ) -> Union[DataBase, Iterable[DataBase]]:
@@ -204,6 +231,8 @@ class GlobalPredictServicer:
                 The name of the request message to validate the model's task
             model_id (str):
                 The ID of the loaded model
+            inference_func_name (str):
+                The name of the inference function to run
             aborter (Optional[CallAborter]):
                 If using abortable calls, this is the aborter to use
             **kwargs: Keyword arguments to pass to the model's run function
@@ -224,14 +253,15 @@ class GlobalPredictServicer:
                 "GlobalPredictServicer.Predict.caikit_library_run:%s",
                 request_name,
             ):
+                model_run_fn = getattr(model, inference_func_name)
                 with PREDICT_CAIKIT_LIBRARY_SUMMARY.labels(
                     grpc_request=request_name, model_id=model_id
                 ).time():
                     if aborter is not None:
-                        work = AbortableAction(aborter, model.run, **kwargs)
+                        work = AbortableAction(aborter, model_run_fn, **kwargs)
                         response = work.do()
                     else:
-                        response = model.run(**kwargs)
+                        response = model_run_fn(**kwargs)
 
             # Update Prometheus metrics
             PREDICT_RPC_COUNTER.labels(
@@ -300,7 +330,7 @@ class GlobalPredictServicer:
 
     def _verify_model_task(self, model: ModuleBase):
         """Raise if the model is not supported for the task"""
-        rpc_set: Set[TaskPredictRPC] = self._inference_service.caikit_rpcs
+        rpc_set: Set[TaskPredictRPC] = set(self._inference_service.caikit_rpcs.values())
         module_rpc: TaskPredictRPC = next(
             (rpc for rpc in rpc_set if model.TASK_CLASS == rpc.task),
             None,
@@ -311,3 +341,58 @@ class GlobalPredictServicer:
                 status_code=StatusCode.INVALID_ARGUMENT,
                 message=f"Inference for model class {type(model)} not supported by this runtime",
             )
+
+    def _build_caikit_library_request_stream(
+        self,
+        request_stream: Iterable[ProtobufMessage],
+        module_signature: CaikitMethodSignature,
+        caikit_rpc: TaskPredictRPC,
+    ) -> Dict[str, Any]:
+        """Builds the kwargs dict to pass to a caikit module.
+        Specifically handles the case of constructing input `DataStreams` for some parameters
+        which are meant to be streamed in.
+
+        See caikit.runtime.build_caikit_library_request_dict
+        """
+
+        def call_build_request_dict(request: ProtobufMessage) -> Dict[str, Any]:
+            """This is instead of using a lambda to map each request in the stream"""
+            return build_caikit_library_request_dict(request, module_signature)
+
+        streaming_params = caikit_rpc.task.get_required_parameters(input_streaming=True)
+
+        # We need n+1 streams because the first stream is peeked in order to read all the
+        # non-streaming parameters off of the first message
+        num_streams = 1 + len(streaming_params)
+        all_the_streams = itertools.tee(request_stream, num_streams)
+
+        # Read the non-streaming parameters off of the first message in the stream
+        stream_num = 0
+        kwargs_dict = build_caikit_library_request_dict(
+            next(all_the_streams[stream_num]), module_signature
+        )
+        stream_num += 1
+
+        for param in streaming_params.keys():
+            # For each "streaming" parameter, grab one of the tee'd streams and map it to return
+            # a `DataStream` of that individual parameter
+
+            def build_getter_from_request_dict(param_name: str) -> Any:
+                # This builder is required to correctly closure the `param_name` of the streaming
+                # parameter that we're interested in
+                def get_fn(request_dict):
+                    # Return this parameter out of the request dict
+                    return request_dict.get(param_name)
+
+                return get_fn
+
+            param_stream = (
+                DataStream.from_iterable(all_the_streams[stream_num])
+                .map(call_build_request_dict)
+                .map(build_getter_from_request_dict(param_name=param))
+            )
+            # Add the datastream of this one parameter into the final kwargs dict
+            kwargs_dict[param] = param_stream
+            stream_num += 1
+
+        return kwargs_dict

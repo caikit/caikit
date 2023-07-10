@@ -254,10 +254,15 @@ class TaskPredictRPC(CaikitRPCBase):
         )
 
         # Validate that the return_type of all modules in the grouping matches
-        return_types = {method.return_type for method in method_signatures}
-        assert len(return_types) == 1, f"Found multiple return types for task [{task}]"
-        return_type = list(return_types)[0]
-        self.return_type = protoable.extract_data_model_type_from_union(return_type)
+        return_types = {
+            protoable.get_protoable_return_type(method.return_type)
+            for method in method_signatures
+        }
+        assert len(return_types) == 1, (
+            f"Found multiple return types for task [{task}], rpc: [{self._task_to_rpc_name()}. "
+            f"Return types: {return_types}]"
+        )
+        self.return_type = list(return_types)[0]
 
         # Create the rpc name based on the module type
         self._name = self._task_to_rpc_name()
@@ -272,6 +277,14 @@ class TaskPredictRPC(CaikitRPCBase):
     @property
     def request(self) -> "_RequestMessage":
         return self._req
+
+    @property
+    def input_streaming(self) -> bool:
+        return self._input_streaming
+
+    @property
+    def output_streaming(self) -> bool:
+        return self._output_streaming
 
     def _handle_task_inputs(self, method_params: Dict[str, Any]) -> Dict[str, Any]:
         """Overrides input params with types specified in the Task"""
