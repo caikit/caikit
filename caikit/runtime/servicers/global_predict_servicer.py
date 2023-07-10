@@ -163,6 +163,11 @@ class GlobalPredictServicer:
                 log.debug("<RUN52259029D>", "Retrieving model '%s'", model_id)
                 model = self._model_manager.retrieve_model(model_id)
                 model_class = type(model)
+
+                # Little hackity hack: Calling _verify_model_task upfront here as well to
+                # short-circuit requests where the model is _totally_ unsupported
+                self._verify_model_task(model)
+
                 # Unmarshall the request object into the required module run argument(s)
                 with PREDICT_FROM_PROTO_SUMMARY.labels(
                     grpc_request=request_name, model_id=model_id
@@ -171,7 +176,11 @@ class GlobalPredictServicer:
                         input_streaming=caikit_rpc.input_streaming,
                         output_streaming=caikit_rpc.output_streaming,
                     )
-                    # TODO: if inference_signature is none...
+                    if not inference_signature:
+                        raise CaikitRuntimeException(
+                            StatusCode.INVALID_ARGUMENT,
+                            f"Model class {model_class} does not support {caikit_rpc.name}",
+                        )
                     if caikit_rpc.input_streaming:
                         caikit_library_request = (
                             self._build_caikit_library_request_stream(
