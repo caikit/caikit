@@ -104,8 +104,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
     def __init__(self, tls_config_override: Optional[aconfig.Config] = None):
         super().__init__(get_config().runtime.http.port, tls_config_override)
-        # if not set in config, timeout is None and unvicorn accepts None or number of seconds
-        unvicorn_timeout_graceful_shutdown = get_config().runtime.http.timeout
 
         self.app = FastAPI()
 
@@ -121,6 +119,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         #     ServicePackageFactory.ServiceType.TRAINING,
         # )
         # self.global_train_servicer = GlobalTrainServicer(train_service)
+
         self.package_name = inference_service.descriptor.full_name.rsplit(".", 1)[0]
 
         # Bind all routes to the server
@@ -142,7 +141,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 tls_kwargs["ssl_ca_certs"] = self.tls_config.client.cert
                 tls_kwargs["ssl_cert_reqs"] = ssl.CERT_REQUIRED
 
-        # Start the server and run forever
+        # Start the server with a timeout_graceful_shutdown
+        # if not set in config, this is None and unvicorn accepts None or number of seconds
+        unvicorn_timeout_graceful_shutdown = (
+            get_config().runtime.http.server_shutdown_grace_period_seconds
+        )
         config = uvicorn.Config(
             self.app,
             host="0.0.0.0",
@@ -153,38 +156,55 @@ class RuntimeHTTPServer(RuntimeServerBase):
             **tls_kwargs,
         )
         self.server = uvicorn.Server(config=config)
-        self.uvicorn_server_thread = threading.Thread(target=self.server.run)
 
     def __del__(self):
         if get_config().runtime.metering.enabled:
             self._stop_metering()
 
-    # Override context manager impl
-    def __enter__(self):
-        self.start()
-        return self
+    def start(self, blocking: bool = True):
+        """Boot the gRPC server. Can be non-blocking, or block until shutdown
 
-    # TODO: what should actually happen here?
-    def __exit__(self, type_, value, traceback):
-        pass
+        Args:
+            blocking (boolean): Whether to block until shutdown
+        """
+        if blocking:
+            self.server.run()
+        else:
+            self.run_in_thread()
 
-    def start(self):
-        """Start the server (blocking)"""
-        self.server.run()
+    def stop(self, grace_period_seconds: Union[float, int] = None):
+        """Stop the server, with an optional grace period.
 
-    @contextmanager
-    def run_in_thread(self):
-        self.uvicorn_server_thread.start()
-        try:
-            while not self.server.started:
-                time.sleep(1e-3)
-            log.info("HTTP Server is running in thread")
-            yield
+        Args:
+            grace_period_seconds (Union[float, int]): Grace period for service shutdown.
+                Defaults to application config
+        """
+        if not grace_period_seconds:
+            grace_period_seconds = (
+                self.config.runtime.http.server_shutdown_grace_period_seconds
+            )
 
-        finally:
-            log.info("Shutting down HTTP Server")
-            self.server.should_exit = True
+        log.info("Shutting down HTTP Server")
+        self.server.should_exit = True
+        if (
+            self.uvicorn_server_thread is not None
+            and self.uvicorn_server_thread.is_alive()
+        ):
             self.uvicorn_server_thread.join()
+        else:
+            time.sleep(grace_period_seconds)
+
+        # Ensure we flush out any remaining billing metrics and stop metering
+        if self.config.runtime.metering.enabled:
+            self._stop_metering()
+
+    def run_in_thread(self):
+        self.uvicorn_server_thread = threading.Thread(target=self.server.run)
+        self.uvicorn_server_thread.start()
+        # try:
+        while not self.server.started:
+            time.sleep(1e-3)
+        log.info("HTTP Server is running in thread")
 
     ##########
     ## Impl ##

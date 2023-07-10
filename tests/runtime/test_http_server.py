@@ -23,6 +23,7 @@ import os
 import tempfile
 
 # Third Party
+from fastapi.testclient import TestClient
 import pytest
 import requests
 import tls_test_tools
@@ -48,15 +49,6 @@ def save_key_cert_pair(prefix, workdir, key=None, cert=None):
         with open(crtfile, "w") as handle:
             handle.write(cert)
     return crtfile, keyfile
-
-
-@dataclass
-class SampleServer:
-    server: http_server.RuntimeHTTPServer
-    port: int
-    ca_certfile: Optional[str]
-    client_keyfile: Optional[str]
-    client_certfile: Optional[str]
 
 
 @dataclass
@@ -109,7 +101,7 @@ def generate_tls_configs(
             config_overrides["runtime"] = {"tls": tls_config}
         port = http_server.RuntimeServerBase._find_port()
         config_overrides.setdefault("runtime", {})["http"] = {
-            "timeout": 0.1,  # this is so the server is killed after 0.1 if no test is running
+            "server_shutdown_grace_period_seconds": 0.01,  # this is so the server is killed after 0.1 if no test is running
             "port": port,
             **http_config_overrides,
         }
@@ -124,11 +116,10 @@ def generate_tls_configs(
 def test_insecure_server():
     with generate_tls_configs():
         insecure_http_server = http_server.RuntimeHTTPServer()
-        with insecure_http_server.run_in_thread():
+        # start a non-blocking http server
+        with insecure_http_server:
             resp = requests.get(f"http://localhost:{insecure_http_server.port}/docs")
             resp.raise_for_status()
-
-        insecure_http_server._stop_metering()
 
 
 def test_basic_tls_server():
@@ -138,13 +129,12 @@ def test_basic_tls_server():
         http_server_with_tls = http_server.RuntimeHTTPServer(
             tls_config_override=config_overrides["runtime"]["tls"]
         )
-        with http_server_with_tls.run_in_thread():
+        with http_server_with_tls:
             resp = requests.get(
                 f"https://localhost:{http_server_with_tls.port}/docs",
                 verify=config_overrides["use_in_test"]["ca_cert"],
             )
             resp.raise_for_status()
-        http_server_with_tls._stop_metering()
 
 
 def test_mutual_tls_server():
@@ -154,7 +144,7 @@ def test_mutual_tls_server():
         http_server_with_mtls = http_server.RuntimeHTTPServer(
             tls_config_override=config_overrides["runtime"]["tls"]
         )
-        with http_server_with_mtls.run_in_thread():
+        with http_server_with_mtls:
             resp = requests.get(
                 f"https://localhost:{http_server_with_mtls.port}/docs",
                 verify=config_overrides["use_in_test"]["ca_cert"],
@@ -164,12 +154,6 @@ def test_mutual_tls_server():
                 ),
             )
             resp.raise_for_status()
-        http_server_with_mtls._stop_metering()
-
-
-# Third Party
-## Tests #######################################################################
-from fastapi.testclient import TestClient
 
 
 def test_docs():

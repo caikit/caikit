@@ -80,4 +80,8 @@ class RuntimeServerBase:
         return self
 
     def __exit__(self, type_, value, traceback):
+        # passing 0 as grace period shutdown timeout, this is treated as None,
+        # and will rely on the server's server_shutdown_grace_period_seconds instead
+        # see config runtime.grpc.server_shutdown_grace_period_seconds or
+        # config.runtime.http.server_shutdown_grace_period_seconds
         self.stop(0)
