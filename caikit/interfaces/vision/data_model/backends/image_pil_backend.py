@@ -144,7 +144,7 @@ class ImagePilBackend(DataModelBackendBase):
         if not os.path.isfile(image_data):
             error(
                 "<COR14433331E>",
-                FileNotFoundError("Provided [str] object is not a path to an image"),
+                FileNotFoundError(f"Provided path [{image_data}] is not a file"),
             )
         with open(image_data, "rb") as raw_img:
             image_data = raw_img.read()
