@@ -100,16 +100,13 @@ def test_to_output_dm_type_with_dm():
 
 
 def test_to_output_dm_type_with_union_dm():
-    assert (
-            get_protoable_return_type(Union[SampleOutputType, str])
-            == SampleOutputType
-    )
+    assert get_protoable_return_type(Union[SampleOutputType, str]) == SampleOutputType
 
 
 def test_to_output_dm_type_with_union_optional_dm():
     assert (
-            get_protoable_return_type(Union[Optional[SampleOutputType], str])
-            == SampleOutputType
+        get_protoable_return_type(Union[Optional[SampleOutputType], str])
+        == SampleOutputType
     )
 
 
