@@ -252,8 +252,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
         self.server.stop(grace_period_seconds)
         # Ensure we flush out any remaining billing metrics and stop metering
         if self.config.runtime.metering.enabled:
-            self._global_predict_servicer.rpc_meter.flush_metrics()
-            self._global_predict_servicer.rpc_meter.end_writer_thread()
+            self._global_predict_servicer.stop_metering()
 
     def render_protos(self, proto_out_dir: str) -> None:
         """Renders all the necessary protos for this service into a directory

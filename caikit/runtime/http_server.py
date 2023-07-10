@@ -18,7 +18,6 @@ API based on the task definitions available at boot.
 """
 
 # Standard
-from contextlib import contextmanager
 from functools import partial
 
 # Standardfrom functools import partial
@@ -159,7 +158,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
     def __del__(self):
         if get_config().runtime.metering.enabled:
-            self._stop_metering()
+            self.global_predict_servicer.stop_metering()
 
     def start(self, blocking: bool = True):
         """Boot the gRPC server. Can be non-blocking, or block until shutdown
@@ -196,7 +195,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         # Ensure we flush out any remaining billing metrics and stop metering
         if self.config.runtime.metering.enabled:
-            self._stop_metering()
+            self.global_predict_servicer.stop_metering()
 
     def run_in_thread(self):
         self.uvicorn_server_thread = threading.Thread(target=self.server.run)
@@ -209,10 +208,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
     ##########
     ## Impl ##
     ##########
-    def _stop_metering(self):
-        self.global_predict_servicer.rpc_meter.flush_metrics()
-        self.global_predict_servicer.rpc_meter.end_writer_thread()
-
     def _bind_routes(self, service: ServicePackage):
         """Bind all rpcs as routes to the given app"""
         for rpc in service.caikit_rpcs:
