@@ -21,6 +21,7 @@ images, retrieve/cache data model attributes from the encapsulated PIL image, an
 from typing import Any, Union
 import io
 import os
+import pathlib
 
 # Third Party
 from PIL import Image as PILImage
@@ -62,13 +63,14 @@ class ImagePilBackend(DataModelBackendBase):
     @classmethod
     def coerce_to_pil(
         cls,
-        image_data: Union[PILImage.Image, str, np.ndarray, bytes],
+        image_data: Union[PILImage.Image, pathlib.PosixPath, str, np.ndarray, bytes],
     ) -> PILImage:
         """Given an object representing an image in a wide variety of formats, force it into a
         PIL image representation.
         Supported formats:
             - [PIL.Image.Image] loaded PIL image; this is a no-op
             - [str] path to an image on disk to be loaded
+            - [pathlib.PosixPath] path to an image on disk to be loaded
             - [np.ndarray] Numpy array of type uint8
             - [bytes] Image loaded into a bytes object
 
@@ -85,8 +87,8 @@ class ImagePilBackend(DataModelBackendBase):
         # Load a numpy array; [uint8]
         if isinstance(image_data, np.ndarray):
             return cls._coerce_from_numpy(image_data)
-        # Load a path on disk
-        if isinstance(image_data, str):
+        # Load a path on disk (str or pathlib)
+        if isinstance(image_data, (str, pathlib.PosixPath,)):
             return cls._coerce_from_path(image_data)
         # Load from a bytes object containing the whole image
         if isinstance(image_data, bytes):
@@ -117,25 +119,28 @@ class ImagePilBackend(DataModelBackendBase):
         return PILImage.fromarray(image_data)
 
     @classmethod
-    def _coerce_from_path(cls, image_data: str) -> PILImage:
-        """Given a str, which we assume to be a path to an image on disk, try to load it as a PIL
-        image.
+    def _coerce_from_path(cls, image_data: Union[str, pathlib.PosixPath]) -> PILImage:
+        """Given a str, which we assume to be a path to an image on disk, or a Pathlib object,
+        try to load it as a PIL image.
 
         Args:
-            image_data: str
+            image_data: Union[pathlib.PosixPath, str]
                 Path to be loaded.
         Returns:
             PIL.Image.Image
                 PIL image representation of the image loaded from disk.
         """
-        if not os.path.isfile(image_data):
+        if isinstance(image_data, str) and not os.path.isfile(image_data):
             error(
                 "<COR14433331E>",
                 FileNotFoundError(f"Provided path [{image_data}] is not a file"),
             )
-        with open(image_data, "rb") as raw_img:
-            image_data = raw_img.read()
-        return cls._coerce_from_bytes(image_data)
+        elif isinstance(image_data, pathlib.PosixPath) and not image_data.is_file():
+            error(
+                "<COR14499831E>",
+                FileNotFoundError(f"Provided pathlib [{image_data}] is not a file"),
+            )
+        return PILImage.open(image_data)
 
     @staticmethod
     def _coerce_from_bytes(image_data: bytes) -> PILImage:

@@ -15,6 +15,7 @@
 # Standard
 import io
 import os
+from pathlib import Path
 
 # Third Party
 from PIL import Image as PILImage
@@ -36,8 +37,10 @@ NP_UINT8_DATA = np.asarray(PIL_IMG_DATA)
 
 IMAGE_DATA_KEY = "image_data"
 VALID_INITIALIZATIONS = [
-    # A path to an image;
+    # A path to an image
     {IMAGE_DATA_KEY: HAPPY_IMAGE_PATH},
+    # Pathlib object to an image
+    {IMAGE_DATA_KEY: Path(HAPPY_IMAGE_PATH)},
     # A numpy array of type np.uint8 [0-255]
     {IMAGE_DATA_KEY: NP_UINT8_DATA},
     # A PIL image
@@ -93,6 +96,10 @@ def test_bad_path_initialization():
     with pytest.raises(FileNotFoundError):
         v.data_model.Image(image_data=SAD_IMAGE_PATH)
 
+def test_bad_pathlib_initialization():
+    """Test that we get a FileNotFoundError if we try to load a bad pathlib object."""
+    with pytest.raises(FileNotFoundError):
+        v.data_model.Image(image_data=Path(SAD_IMAGE_PATH))
 
 def test_bad_init_type():
     """Test that we produce a TypeError if we pass a bad type to dm initializer."""
