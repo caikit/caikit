@@ -41,7 +41,7 @@ PIL_SOURCE_TYPES = Union[PILImage.Image, pathlib.PosixPath, str, np.ndarray, byt
 
 
 class ImagePilBackend(DataModelBackendBase):
-    def __init__(self, image_data):
+    def __init__(self, image_data: PIL_SOURCE_TYPES):
         self._image_data = self.__class__.coerce_to_pil(image_data)
         # Unless the PIL image explicitly has information about its format, export
         # serialized image data as a PNG since it's not a lossy compression
