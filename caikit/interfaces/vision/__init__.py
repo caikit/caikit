@@ -18,5 +18,5 @@ try:
     from . import data_model
 except ImportError as import_err:
     raise ImportError(
-        "Unable to import vision data model; did you install with [vision-data-model] extras?"
+        "Unable to import vision data model; did you install with [interfaces-vision] extras?"
     ) from import_err
