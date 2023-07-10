@@ -16,16 +16,12 @@ and download and load them.
 """
 # Standard
 from contextlib import contextmanager
-from unittest import mock
-from unittest.mock import MagicMock
 import os
 import tempfile
-import uuid
 
 # Local
-from caikit.core import MODEL_MANAGER, LocalBackend
+from caikit.core import LocalBackend
 from caikit.core.model_management import ModelFinderBase, model_finder_factory
-from caikit.core.modules import ModuleConfig
 
 # Unit Test Infrastructure
 from sample_lib.modules.sample_task import SampleModule
