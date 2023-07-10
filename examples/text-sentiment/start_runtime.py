@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Standard
-from os import path, chdir
+from os import chdir, path
 import sys
 
 # First Party
