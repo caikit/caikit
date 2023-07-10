@@ -39,6 +39,7 @@ log = alog.use_channel("DATABACK")
 error = error_handler.get(log)
 PIL_SOURCE_TYPES = Union[PILImage.Image, pathlib.PosixPath, str, np.ndarray, bytes]
 
+
 class ImagePilBackend(DataModelBackendBase):
     def __init__(self, image_data):
         self._image_data = self.__class__.coerce_to_pil(image_data)
@@ -88,7 +89,13 @@ class ImagePilBackend(DataModelBackendBase):
         if isinstance(image_data, np.ndarray):
             return cls._coerce_from_numpy(image_data)
         # Load a path on disk (str or pathlib)
-        if isinstance(image_data, (str, pathlib.PosixPath,)):
+        if isinstance(
+            image_data,
+            (
+                str,
+                pathlib.PosixPath,
+            ),
+        ):
             return cls._coerce_from_path(image_data)
         # Load from a bytes object containing the whole image
         if isinstance(image_data, bytes):

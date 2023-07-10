@@ -13,9 +13,9 @@
 # limitations under the License.
 """Tests for image data model and its backend/views."""
 # Standard
+from pathlib import Path
 import io
 import os
-from pathlib import Path
 
 # Third Party
 from PIL import Image as PILImage
@@ -96,10 +96,12 @@ def test_bad_path_initialization():
     with pytest.raises(FileNotFoundError):
         v.data_model.Image(image_data=SAD_IMAGE_PATH)
 
+
 def test_bad_pathlib_initialization():
     """Test that we get a FileNotFoundError if we try to load a bad pathlib object."""
     with pytest.raises(FileNotFoundError):
         v.data_model.Image(image_data=Path(SAD_IMAGE_PATH))
+
 
 def test_bad_init_type():
     """Test that we produce a TypeError if we pass a bad type to dm initializer."""
