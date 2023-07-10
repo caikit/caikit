@@ -43,7 +43,7 @@ runtime-grpc = [
 ]
 
 interfaces-vision = [
-    "pillow"
+    "pillow>=6.2.1,<11.0"
 ]
 
 # NOTE: This is "all" from the user perspective, not the dev perspective
