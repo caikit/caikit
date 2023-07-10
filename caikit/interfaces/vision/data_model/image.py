@@ -40,8 +40,8 @@ class Image(DataObjectBase):
     image_data: Annotated[bytes, FieldNumber(1)]
 
     def __init__(self, *args, **kwargs):
-        # For now, we always delegate to the Numpy image backend, because it's the only one.
-        # In the future, we may have more views etc, but for now, images as numpy arrays is
+        # For now, we always delegate to the PIL image backend, because it's the only one.
+        # In the future, we may have more views etc, but for now, images as PIL Images is
         # the hub format.
         #
         # NOTE: Currently, the args / kwargs here should match up with the proto class, because
