@@ -58,19 +58,6 @@ class ImagePilBackend(DataModelBackendBase):
         # Delegate to common parent logic
         return super().get_attribute(data_model_class, name)
 
-    def cache_attribute(self, name: str, value: Any) -> bool:
-        """Disable attribute caching in this backend; currently we disable everything!
-        Args:
-            name: str
-                The name of the attribute to check
-            value: Any
-                The extracted value
-        Returns:
-            should_cache: bool
-                True if the value should be cached, False otherwise
-        """
-        return False
-
     ##### Type coercion to PIL
     @classmethod
     def coerce_to_pil(
