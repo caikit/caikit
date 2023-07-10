@@ -87,6 +87,8 @@ runtime:
         # Number of workers with which we will run the gRPC server
         server_thread_pool_size: 5
         # gRPC Server shutdown grace period
+        # the server shuts down immediately when stopped,
+        # and all RPCs active at the end of the grace period are aborted
         server_shutdown_grace_period_seconds: 45
         # Listen on a unix socket (model mesh feature)
         unix_socket_path: /tmp/mmesh/grpc.sock
@@ -97,6 +99,7 @@ runtime:
         port: 8080
         # String prefix for API routes
         route_prefix: api/v1
+        # Maximum number of seconds to wait for graceful shutdown
         server_shutdown_grace_period_seconds: 5
 
     # Configuration for the metrics server

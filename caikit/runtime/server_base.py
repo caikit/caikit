@@ -15,6 +15,7 @@
 
 # Standard
 from typing import Optional
+import abc
 import socket
 
 # First Party
@@ -27,7 +28,7 @@ from caikit.config import get_config
 log = alog.use_channel("SERVR-BASE")
 
 
-class RuntimeServerBase:
+class RuntimeServerBase(abc.ABC):
     __doc__ = __doc__
 
     def __init__(self, base_port: int, tls_config_override: Optional[aconfig.Config]):
@@ -74,14 +75,18 @@ class RuntimeServerBase:
                 # port is open
                 return start
 
+    @abc.abstractmethod
+    def start(self, blocking: bool = True):
+        pass
+
+    @abc.abstractmethod
+    def stop(self):
+        pass
+
     # Context manager impl
     def __enter__(self):
         self.start(blocking=False)
         return self
 
     def __exit__(self, type_, value, traceback):
-        # passing 0 as grace period shutdown timeout, this is treated as None,
-        # and will rely on the server's server_shutdown_grace_period_seconds instead
-        # see config runtime.grpc.server_shutdown_grace_period_seconds or
-        # config.runtime.http.server_shutdown_grace_period_seconds
-        self.stop(0)
+        self.stop()

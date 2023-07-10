@@ -171,18 +171,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
         else:
             self.run_in_thread()
 
-    def stop(self, grace_period_seconds: Union[float, int] = None):
+    def stop(self):
         """Stop the server, with an optional grace period.
 
         Args:
             grace_period_seconds (Union[float, int]): Grace period for service shutdown.
                 Defaults to application config
         """
-        if not grace_period_seconds:
-            grace_period_seconds = (
-                self.config.runtime.http.server_shutdown_grace_period_seconds
-            )
-
         log.info("Shutting down HTTP Server")
         self.server.should_exit = True
         if (
@@ -190,8 +185,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
             and self.uvicorn_server_thread.is_alive()
         ):
             self.uvicorn_server_thread.join()
-        else:
-            time.sleep(grace_period_seconds)
 
         # Ensure we flush out any remaining billing metrics and stop metering
         if self.config.runtime.metering.enabled:
@@ -200,7 +193,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def run_in_thread(self):
         self.uvicorn_server_thread = threading.Thread(target=self.server.run)
         self.uvicorn_server_thread.start()
-        # try:
         while not self.server.started:
             time.sleep(1e-3)
         log.info("HTTP Server is running in thread")
