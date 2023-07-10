@@ -32,9 +32,8 @@ from sample_lib.data_model.sample import (
     SampleTrainingType,
 )
 from sample_lib.modules.sample_task.sample_implementation import SampleModule
-from tests.conftest import random_test_id, temp_config
+from tests.conftest import random_test_id
 from tests.fixtures import Fixtures
-from tests.runtime.conftest import sample_task_unary_rpc
 import caikit.core
 
 ## Helpers #####################################################################

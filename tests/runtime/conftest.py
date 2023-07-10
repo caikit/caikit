@@ -28,7 +28,6 @@ from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServic
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
-import caikit.runtime.service_factory
 
 log = alog.use_channel("TEST-CONFTEST")
 

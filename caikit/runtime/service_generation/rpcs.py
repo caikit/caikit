@@ -258,10 +258,10 @@ class TaskPredictRPC(CaikitRPCBase):
             protoable.get_protoable_return_type(method.return_type)
             for method in method_signatures
         }
-        assert (
-            len(return_types) == 1
-        ), f"Found multiple return types for task [{task}], rpc: [{self._task_to_rpc_name()}. " \
-           f"Return types: {return_types}]"
+        assert len(return_types) == 1, (
+            f"Found multiple return types for task [{task}], rpc: [{self._task_to_rpc_name()}. "
+            f"Return types: {return_types}]"
+        )
         self.return_type = list(return_types)[0]
 
         # Create the rpc name based on the module type
