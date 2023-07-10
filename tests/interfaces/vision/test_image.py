@@ -53,8 +53,8 @@ INVALID_INITIALIZATIONS = [
 
 ### Initialization tests
 @pytest.mark.parametrize("happy_kwargs", VALID_INITIALIZATIONS)
-def test_valid_image_initializations(happy_kwargs):
-    """Test that we can build an Caikit Image data model object directly."""
+def test_valid_image_initializations_with_kwargs(happy_kwargs):
+    """Test that we can build an Caikit Image data model object directly [kwargs]."""
     im = v.data_model.Image(**happy_kwargs)
     assert isinstance(im, v.data_model.Image)
     # Ensure that no matter what, we always have the same data
@@ -63,11 +63,29 @@ def test_valid_image_initializations(happy_kwargs):
     assert np.allclose(numpy_im, NP_UINT8_DATA)
 
 
+@pytest.mark.parametrize("happy_kwargs", VALID_INITIALIZATIONS)
+def test_valid_image_initializations_with_positional_args(happy_kwargs):
+    """Test that we can build an Caikit Image data model object directly [positional args]."""
+    im = v.data_model.Image(happy_kwargs[IMAGE_DATA_KEY])
+    assert isinstance(im, v.data_model.Image)
+    # Ensure that no matter what, we always have the same data
+    numpy_im = im.as_numpy()
+    assert isinstance(numpy_im, np.ndarray)
+    assert np.allclose(numpy_im, NP_UINT8_DATA)
+
+
 @pytest.mark.parametrize("sad_kwargs", INVALID_INITIALIZATIONS)
-def test_invalid_initializations(sad_kwargs):
-    """Test that we get a ValueError if we try to init with unsupported types."""
+def test_invalid_initializations_with_kwargs(sad_kwargs):
+    """Test that we get a ValueError if we try to init with unsupported types [kwargs]."""
     with pytest.raises(ValueError):
         v.data_model.Image(**sad_kwargs)
+
+
+@pytest.mark.parametrize("sad_kwargs", INVALID_INITIALIZATIONS)
+def test_invalid_initializations_with_positional_args(sad_kwargs):
+    """Test that we get a ValueError if we try to init with unsupported types [positional args]."""
+    with pytest.raises(ValueError):
+        v.data_model.Image(sad_kwargs[IMAGE_DATA_KEY])
 
 
 def test_bad_path_initialization():
