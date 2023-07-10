@@ -13,6 +13,6 @@
 # limitations under the License.
 
 # Local
-from . import package
+from . import image, package
 from .image import Image
 from .package import VISION_PACKAGE
