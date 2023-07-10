@@ -17,7 +17,7 @@ base class for classes that can be constructed via caikit config
 """
 
 # Standard
-from typing import Type
+from typing import Optional, Type
 import abc
 
 # First Party
@@ -46,7 +46,7 @@ class FactoryConstructible(abc.ABC):
         """
 
     @abc.abstractmethod
-    def __init__(self, config: aconfig.Config):
+    def __init__(self, config: aconfig.Config, instance_name: str):
         """A FactoryConstructible object must be constructed with a config
         object that it uses to pull in all configuration
         """
@@ -84,7 +84,11 @@ class Factory:
         )
         self._registered_types[constructible.name] = constructible
 
-    def construct(self, instance_config: dict) -> FactoryConstructible:
+    def construct(
+        self,
+        instance_config: dict,
+        instance_name: Optional[str] = None,
+    ) -> FactoryConstructible:
         """Construct an instance of the given type"""
         inst_type = instance_config.get(self.__class__.TYPE_KEY)
         inst_cfg = aconfig.Config(
@@ -99,4 +103,5 @@ class Factory:
             self.name,
             inst_type,
         )
-        return inst_cls(inst_cfg)
+        instance_name = instance_name or inst_cls.name
+        return inst_cls(inst_cfg, instance_name)
