@@ -37,7 +37,7 @@ from caikit.core.data_model.data_backends import DataModelBackendBase
 
 log = alog.use_channel("DATABACK")
 error = error_handler.get(log)
-
+PIL_SOURCE_TYPES = Union[PILImage.Image, pathlib.PosixPath, str, np.ndarray, bytes]
 
 class ImagePilBackend(DataModelBackendBase):
     def __init__(self, image_data):
@@ -63,7 +63,7 @@ class ImagePilBackend(DataModelBackendBase):
     @classmethod
     def coerce_to_pil(
         cls,
-        image_data: Union[PILImage.Image, pathlib.PosixPath, str, np.ndarray, bytes],
+        image_data: PIL_SOURCE_TYPES,
     ) -> PILImage:
         """Given an object representing an image in a wide variety of formats, force it into a
         PIL image representation.
