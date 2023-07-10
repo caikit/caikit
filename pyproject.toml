@@ -42,9 +42,13 @@ runtime-grpc = [
     "py-grpc-prometheus>=0.7.0,<0.8",
 ]
 
+interfaces-vision = [
+    "pillow>=6.2.1,<11.0"
+]
+
 # NOTE: This is "all" from the user perspective, not the dev perspective
 all = [
-    "caikit[runtime-grpc]",
+    "caikit[runtime-grpc, interfaces-vision]",
 ]
 
 ## Dev Extra Sets ##
@@ -56,6 +60,7 @@ dev-test = [
     "pytest>=6.2.5,<8.0",
     "tls_test_tools>=0.1.1",
     "wheel>=0.38.4",
+    "caikit[interfaces-vision]",
 ]
 
 dev-docs = [
