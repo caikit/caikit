@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+"""Defines the backend for making Image data model objects work nicely with PIL
+images. The ImagePilBackend outlines the manner in which we coerce our inputs to PIL
+images, retrieve/cache data model attributes from the encapsulated PIL image, and so on.
+"""
+
 # Standard
 from typing import Any, Union
 import io
