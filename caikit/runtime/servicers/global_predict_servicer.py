@@ -356,14 +356,17 @@ class GlobalPredictServicer:
         """
 
         def call_build_request_dict(request: ProtobufMessage) -> Dict[str, Any]:
+            """This is instead of using a lambda to map each request in the stream"""
             return build_caikit_library_request_dict(request, module_signature)
 
         streaming_params = caikit_rpc.task.get_required_parameters(input_streaming=True)
 
+        # We need n+1 streams because the first stream is peeked in order to read all the
+        # non-streaming parameters off of the first message
         num_streams = 1 + len(streaming_params)
-
         all_the_streams = itertools.tee(request_stream, num_streams)
 
+        # Read the non-streaming parameters off of the first message in the stream
         stream_num = 0
         kwargs_dict = build_caikit_library_request_dict(
             next(all_the_streams[stream_num]), module_signature
@@ -371,9 +374,14 @@ class GlobalPredictServicer:
         stream_num += 1
 
         for param in streaming_params.keys():
+            # For each "streaming" parameter, grab one of the tee'd streams and map it to return
+            # a `DataStream` of that individual parameter
 
             def build_getter_from_request_dict(param_name: str) -> Any:
+                # This builder is required to correctly closure the `param_name` of the streaming
+                # parameter that we're interested in
                 def get_fn(request_dict):
+                    # Return this parameter out of the request dict
                     return request_dict.get(param_name)
 
                 return get_fn
@@ -383,6 +391,7 @@ class GlobalPredictServicer:
                 .map(call_build_request_dict)
                 .map(build_getter_from_request_dict(param_name=param))
             )
+            # Add the datastream of this one parameter into the final kwargs dict
             kwargs_dict[param] = param_stream
             stream_num += 1
 
