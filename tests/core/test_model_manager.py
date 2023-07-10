@@ -14,13 +14,13 @@
 """Tests for the model manager, which corrals catalogs to resolve models from names,
 and download and load them.
 """
-
 # Standard
 from contextlib import contextmanager
 from unittest import mock
 from unittest.mock import MagicMock
 import os
 import tempfile
+import uuid
 
 # Local
 from caikit.core import MODEL_MANAGER, LocalBackend
@@ -375,24 +375,23 @@ def test_preferred_backend_enabled(reset_globals):
 
 
 def test_module_backend_instance_is_passed_to_load_classmethod(reset_globals):
-    """When an alternate module implementation is loaded via a backend, the concrete
-    instance of the module backend is passed to .load via the load_backend kwarg.
+    """When a module's load function supports the `load_backend` kwarg, the concrete
+    instance of the module backend is passed in at load time.
     """
-    _, DummyBar = setup_saved_model(MockBackend)
-    with backend_priority({"type": backend_types.MOCK}):
-        with mock.patch.object(DummyBar, "load", MagicMock()) as mock_load:
-            mock_load.return_value = DummyBar()
-            dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
-            caikit.core.load(dummy_model_path)
+    # re-register the local backend because this test clears out the global registries
+    backend_types.register_backend_type(LocalBackend)
 
-            load_backends = configured_backends()
-            expected_load_backend = [
-                be for be in load_backends if be.backend_type == backend_types.MOCK
-            ][0]
+    @caikit.core.modules.module(
+        id=DUMMY_MODULE_ID, name="backend loader", version="0.0.1"
+    )
+    class DummyBackendLoadingModule(caikit.core.ModuleBase):
+        @classmethod
+        def load(cls, model_path: str, load_backend: BackendBase):
+            assert load_backend is not None
+            return cls()
 
-            mock_load.assert_called_with(
-                dummy_model_path, **{"load_backend": expected_load_backend}
-            )
+    dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_LOCAL_MODEL_NAME)
+    caikit.core.load(dummy_model_path)
 
 
 def test_preferred_backend_disabled(reset_globals):

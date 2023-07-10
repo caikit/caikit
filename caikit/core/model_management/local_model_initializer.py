@@ -202,10 +202,7 @@ class LocalModelInitializer(ModelInitializerBase):
         explicitly named load_backend or it has a ** kwarg capture
         """
         sig = inspect.signature(load_fn)
-        return "load_backend" in sig.parameters or any(
-            param.kind == inspect.Parameter.VAR_KEYWORD
-            for param in sig.parameters.values()
-        )
+        return "load_backend" in sig.parameters
 
     def _get_supported_load_backends(self, backend_impl: ModuleBase):
         """Function to get a list of supported load backends
