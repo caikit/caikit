@@ -50,7 +50,7 @@ def test_create_inference_rpcs_uses_task_from_module_decorator():
 
     # SampleModule also implements `SampleTask`
     rpcs = create_inference_rpcs([NewModule, SampleModule])
-    assert len(rpcs) == 2  # SampleModule has 2 streaming flavors
+    assert len(rpcs) == 3  # SampleModule has 3 streaming flavors
     assert NewModule in rpcs[0].module_list
     assert SampleModule in rpcs[0].module_list
 
@@ -143,7 +143,7 @@ def test_create_inference_rpcs_uses_task_from_module_decorator_with_streaming():
         input_streaming=True,
         output_streaming=True,
         expected_name="BidiStreamingSampleTaskPredict",
-        expected_module_list=[NewStreamingModule2],
+        expected_module_list=[NewStreamingModule2, SampleModule],
     )  # bidi stream
     _test_rpc(
         rpcs,
@@ -209,7 +209,7 @@ def _test_rpc(
 
 def test_create_inference_rpcs():
     rpcs = create_inference_rpcs([widget_class])
-    assert len(rpcs) == 2  # SampleModule has inference methods for 2 streaming flavors
+    assert len(rpcs) == 3  # SampleModule has inference methods for 3 streaming flavors
     assert widget_class in rpcs[0].module_list
 
 
@@ -221,22 +221,24 @@ def test_create_inference_rpcs_for_multiple_modules_of_same_type():
     ]
     rpcs = create_inference_rpcs(module_list)
 
-    # only 3 RPCs, SampleModule and SamplePrimitiveModule have task SampleTask but SampleModule has 2 flavors for streaming, OtherModule has task OtherTask
-    assert len(rpcs) == 3
+    # 4 RPCs, SampleModule and SamplePrimitiveModule have task SampleTask with 3 flavors for
+    # streaming, OtherModule has task OtherTask
+    assert len(rpcs) == 4
     assert sample_lib.modules.sample_task.SampleModule in rpcs[0].module_list
     assert sample_lib.modules.sample_task.SamplePrimitiveModule in rpcs[0].module_list
     assert sample_lib.modules.sample_task.SampleModule in rpcs[1].module_list
-    assert sample_lib.modules.other_task.OtherModule in rpcs[2].module_list
+    assert sample_lib.modules.sample_task.SampleModule in rpcs[2].module_list
+    assert sample_lib.modules.other_task.OtherModule in rpcs[-1].module_list
 
 
 def test_create_inference_rpcs_removes_modules_with_no_task():
     module_list = [
-        sample_lib.modules.sample_task.SampleModule,  # has a task, has 2 streaming flavors
+        sample_lib.modules.sample_task.SampleModule,  # has a task, has 3 streaming flavors
         sample_lib.modules.sample_task.InnerModule,  # does not have a task
     ]
     rpcs = create_inference_rpcs(module_list)
 
-    assert len(rpcs) == 2
+    assert len(rpcs) == 3
     assert sample_lib.modules.sample_task.SampleModule in rpcs[0].module_list
     assert sample_lib.modules.sample_task.InnerModule not in rpcs[0].module_list
 
