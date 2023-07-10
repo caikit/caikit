@@ -18,7 +18,6 @@ import pytest
 # First Party
 import alog
 
-import caikit.runtime.service_factory
 # Local
 from caikit.core.data_model.dataobject import render_dataobject_protos
 from caikit.runtime.grpc_server import RuntimeGRPCServer
@@ -29,6 +28,7 @@ from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServic
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
+import caikit.runtime.service_factory
 
 log = alog.use_channel("TEST-CONFTEST")
 
@@ -193,7 +193,9 @@ def sample_task_unary_rpc(sample_inference_service: ServicePackage) -> TaskPredi
 
 
 @pytest.fixture
-def sample_task_streaming_rpc(sample_inference_service: ServicePackage) -> TaskPredictRPC:
+def sample_task_streaming_rpc(
+    sample_inference_service: ServicePackage,
+) -> TaskPredictRPC:
     return sample_inference_service.caikit_rpcs["ServerStreamingSampleTaskPredict"]
 
 

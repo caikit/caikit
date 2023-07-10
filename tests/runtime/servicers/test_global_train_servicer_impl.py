@@ -34,6 +34,7 @@ from sample_lib.data_model.sample import (
 from sample_lib.modules.sample_task.sample_implementation import SampleModule
 from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
+from tests.runtime.conftest import sample_task_unary_rpc
 import caikit.core
 
 ## Helpers #####################################################################
@@ -62,6 +63,7 @@ def test_global_train_sample_task(
     sample_train_servicer,
     sample_inference_service,
     sample_predict_servicer,
+    sample_task_unary_rpc,
 ):
     """Global train of TrainRequest returns a training job with the correct
     model name, and some training id for a basic train function that doesn't
@@ -101,6 +103,7 @@ def test_global_train_sample_task(
             sample_input=SampleInputType(name="Gabe").to_proto()
         ),
         Fixtures.build_context(training_response.model_name),
+        caikit_rpc=sample_task_unary_rpc,
     )
     assert (
         inference_response
@@ -152,6 +155,7 @@ def test_global_train_other_task(
             sample_input=SampleInputType(name="Gabe").to_proto()
         ),
         Fixtures.build_context(training_response.model_name),
+        caikit_rpc=sample_inference_service.caikit_rpcs["OtherTaskPredict"],
     )
     assert (
         inference_response
@@ -167,6 +171,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
     sample_train_servicer,
     sample_inference_service,
     sample_predict_servicer,
+    sample_task_unary_rpc,
 ):
     """Global train of TrainRequest returns a training job with the correct model name, and some training id for a train function that requires another loaded model"""
     sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
@@ -203,6 +208,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
             sample_input=SampleInputType(name="Gabe").to_proto()
         ),
         Fixtures.build_context(training_response.model_name),
+        caikit_rpc=sample_task_unary_rpc,
     )
     assert (
         inference_response
@@ -213,7 +219,10 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
 
 
 def test_run_train_job_works_with_wait(
-    sample_train_service, sample_inference_service, sample_predict_servicer
+    sample_train_service,
+    sample_inference_service,
+    sample_predict_servicer,
+    sample_task_unary_rpc,
 ):
     """Check if run_train_job works as expected for syncronous requests"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
@@ -243,6 +252,7 @@ def test_run_train_job_works_with_wait(
                 sample_input=SampleInputType(name="Test").to_proto()
             ),
             Fixtures.build_context(training_response.model_name),
+            caikit_rpc=sample_task_unary_rpc,
         )
         assert (
             inference_response

@@ -362,9 +362,11 @@ class GlobalPredictServicer:
         stream_num += 1
 
         for param in streaming_params.keys():
+
             def build_getter_from_request_dict(param_name: str) -> Any:
                 def get_fn(request_dict):
                     return request_dict.get(param_name)
+
                 return get_fn
 
             param_stream = (
