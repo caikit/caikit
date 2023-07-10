@@ -43,8 +43,7 @@ def register_backend_type(config_class: Optional[Type[BackendBase]] = None):
     a property of the config_class
 
     Args:
-        config_class: BackendBase
-            Module to configure particular backend
+        config_class (BackendBase): Module to configure particular backend
     """
     # Type validation
     error.type_check(

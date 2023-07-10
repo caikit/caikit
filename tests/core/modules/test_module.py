@@ -22,7 +22,6 @@ import aconfig
 
 # Local
 from caikit.core import ModuleConfig, ModuleLoader
-from caikit.core.module_backends.module_backend_config import configured_load_backends
 from caikit.core.modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
 
 # pylint: disable=import-error
@@ -72,7 +71,7 @@ def configure_alternate_backend_impl():
         def test_fetching_backend(self):
             return [
                 backend
-                for backend in configured_load_backends()
+                for backend in configured_backends()
                 if backend.backend_type == backend_types.MOCK
             ][0]
 
@@ -329,19 +328,29 @@ def test_class_attributes(reset_globals):
     assert DummyBar.MODULE_CLASS
     assert DummyBar.PRODUCER_ID
 
-    # No configured modules before configure
-    assert not configured_load_backends()
-
     # Configure and make sure it can be fetched by the class
     with temp_config(
         {
-            "module_backends": {
-                "load_priority": [{"type": backend_types.MOCK}],
+            "model_management": {
+                "initializers": {
+                    "default": {
+                        "type": "LOCAL",
+                        "config": {
+                            "backend_priority": [
+                                {"type": backend_types.MOCK},
+                            ]
+                        },
+                    },
+                }
             }
         }
     ):
-        caikit.core.module_backends.module_backend_config.configure()
         assert DummyBar.BACKEND_TYPE == backend_types.MOCK
+
+        # Normally non-local backend modules are loaded through caikit.load, so
+        # we need to make sure the local loader has been properly configured to
+        # enable local instance instantiation.
+        assert MODEL_MANAGER._get_initializer("default")
 
         # Make sure an instance can fetch via get_backend()
         inst = DummyBar()

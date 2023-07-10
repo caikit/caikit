@@ -48,8 +48,7 @@ def module_registry() -> Dict[str, "caikit.core.ModuleBase"]:
     Dict[ module_id, module_class ]
 
     Returns:
-        Dict[str, caikit.core.ModuleBase]
-            The module registry
+        Dict[str, caikit.core.ModuleBase]: The module registry
     """
     return MODULE_REGISTRY
 
@@ -66,8 +65,8 @@ def module_backend_registry() -> Dict[
     Dict[ module_id, Dict[ backend_type, Tuple[ backend_impl_class, backend_config_dict ] ] ]
 
     Returns:
-        Dict[str, Dict[str, Tuple["caikit.core.BackendBase", Dict]]]
-            The module backend registry
+        Dict[str, Dict[str, Tuple["caikit.core.BackendBase", Dict]]]: The module
+            backend registry
     """
     # TODO: put a real data structure here instead of nested dicts
     return MODULE_BACKEND_REGISTRY

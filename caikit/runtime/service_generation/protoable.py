@@ -34,8 +34,7 @@ def to_protoable_signature(signature: Dict[str, Type]) -> Dict[str, Type]:
     If there is a Union, pick the protoable type
 
     Args:
-        signature: Dict[str, Type]
-            module signature of parameters and types
+        signature (Dict[str, Type]): module signature of parameters and types
     """
     protoables = {}
     log.debug("Building protoable signature for %s", signature)
@@ -92,7 +91,7 @@ def handle_protoables_in_union(arg_type: Type) -> Type:
     log.debug("Skipping non-protoable argument type [%s]", arg_type)
 
 
-def extract_data_model_type_from_union(arg_type: Type) -> Type:
+def get_protoable_return_type(arg_type: Type) -> Type:
     """Helper function that determines the right data model type to use from a Union"""
 
     # Decompose this type using typing to determine if it's a useful typing hint
@@ -110,7 +109,16 @@ def extract_data_model_type_from_union(arg_type: Type) -> Type:
             log.debug2(
                 "Found data model types in Union: [%s], taking first one", dm_types
             )
-            return extract_data_model_type_from_union(dm_types[0])
+            return get_protoable_return_type(dm_types[0])
+
+    # Handle iterables by returning `Iterable[T]`
+    # py38 compatibility here
+    try:
+        iter(arg_type)
+        if typing_origin:
+            return typing.Iterable[typing_args]
+    except TypeError:
+        pass
 
     # if it's anything else we just return as is
     # we don't actually want to throw errors from service generation

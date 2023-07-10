@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Standard
-from typing import Callable
+from typing import Callable, Optional
 import traceback
 
 # Third Party
@@ -25,6 +25,8 @@ import grpc
 import alog
 
 # Local
+from caikit.runtime.service_factory import ServicePackage
+from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("SERVER-WRAPR")
@@ -44,7 +46,7 @@ class CaikitRuntimeServerWrapper(grpc.Server):
     instead.
     """
 
-    def __init__(self, server, global_predict, intercepted_svc_descriptor):
+    def __init__(self, server, global_predict, intercepted_svc_package: ServicePackage):
         """Initialize a new CaikitRuntimeServerWrapper
 
         Args:
@@ -56,16 +58,18 @@ class CaikitRuntimeServerWrapper(grpc.Server):
 
         self._server = server
         self._global_predict = global_predict
-        self._intercepted_svc_descriptor = intercepted_svc_descriptor
-        self._intercepted_svc_name = self._intercepted_svc_descriptor.full_name
+        self._intercepted_svc_package = intercepted_svc_package
         self._intercepted_methods = []
 
-        for method in self._intercepted_svc_descriptor.methods:
+        for method in self._intercepted_svc_package.descriptor.methods:
             # Take the method short name (e.g., 'SyntaxIzumoPredict') and
             # concatenate it with the intercepted service name to produce
             # a fully qualified RPC method name that we wish to intercept
             # (e.g., '/natural_language_understanding.CaikitRuntime/SyntaxIzumoPredict')
-            fqm = "/%s/%s" % (self._intercepted_svc_name, method.name)
+            fqm = "/%s/%s" % (
+                self._intercepted_svc_package.descriptor.full_name,
+                method.name,
+            )
 
             log.info("<RUN81194024I>", "Intercepting RPC method %s", fqm)
             self._intercepted_methods.append((method.name, fqm))
@@ -82,7 +86,7 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                 The fully-qualified name of the service whose RPC handlers are
                 intercepted by this server wrapper
         """
-        return self._intercepted_svc_name
+        return self._intercepted_svc_package.descriptor.full_name
 
     def intercepted_methods(self):
         """Get the list of intercepted predict RPC methods
@@ -97,7 +101,7 @@ class CaikitRuntimeServerWrapper(grpc.Server):
         return self._intercepted_methods
 
     @staticmethod
-    def safe_rpc_wrapper(rpc):
+    def safe_rpc_wrapper(rpc: Callable, caikit_rpc: Optional[CaikitRPCBase] = None):
         """This wrapper should be used to safely invoke an RPC. If used, it adds automatic error
         handling and conversion to the appropriate response for gRPC, as well as logging indicating
         if the the error was intentional (i.e., thrown as CaikitRuntimeException directly) or
@@ -139,6 +143,9 @@ class CaikitRuntimeServerWrapper(grpc.Server):
             with alog.ContextLog(log.debug, "[Safe RPC]: %s", rpc.__name__):
                 try:
                     IN_PROGRESS_GAUGE.labels(rpc_name=rpc.__name__).inc()
+                    if caikit_rpc:
+                        # Pass through the CaikitRPCBase rpc description to the global handlers
+                        return rpc(request, context, caikit_rpc=caikit_rpc)
                     return rpc(request, context)
 
                 except CaikitRuntimeException as e:
@@ -192,19 +199,19 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                     # Get the original grpc.RpcMethodHandler for this RPC method
                     original_rpc_handler = handler.service(DummyHandlerCallDetails(fqm))
 
-                    # Make sure this is a supported RPC flavor
-                    if (
-                        not original_rpc_handler.unary_unary
-                        and not original_rpc_handler.unary_stream
-                    ):
-                        raise NotImplementedError(
-                            "Unary-unary and unary-stream RPCs only!"
-                        )
+                    # Find the Caikit RPC that maps to this rpc
+                    caikit_rpc = self._intercepted_svc_package.caikit_rpcs.get(
+                        method, None
+                    )
+                    if not caikit_rpc:
+                        raise ValueError(f"No Caikit RPC Found for method: {method}")
 
                     # Now, swap out the original unary-unary callable with our
                     # generic predict method, and add this newly re-routed RPC
                     # method handler to the dict of (method, handler) pairs
-                    safe_rpc_handler = self._make_new_handler(original_rpc_handler)
+                    safe_rpc_handler = self._make_new_handler(
+                        original_rpc_handler, caikit_rpc
+                    )
                     rerouted_rpc_method_handlers[method] = safe_rpc_handler
                     log.info(
                         "<RUN30032825I>",
@@ -236,9 +243,7 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                     # Wrap the RPC handler for this method in a safe RPC call,
                     # but do not replace the handler with a global handler
                     original_rpc_handler = handler._method_handlers[method]
-                    safe_rpc_handler = self._make_new_handler(
-                        original_rpc_handler, replace_with_global_predict=False
-                    )
+                    safe_rpc_handler = self._make_new_handler(original_rpc_handler)
                     handler._method_handlers[method] = safe_rpc_handler
 
                 self._server.add_generic_rpc_handlers(generic_rpc_handlers)
@@ -246,10 +251,10 @@ class CaikitRuntimeServerWrapper(grpc.Server):
     def _make_new_handler(
         self,
         original_rpc_handler: RpcMethodHandler,
-        replace_with_global_predict: bool = True,
+        caikit_rpc: Optional[CaikitRPCBase] = None,
     ):
-        if replace_with_global_predict:
-            behavior = self.safe_rpc_wrapper(self._global_predict)
+        if caikit_rpc:
+            behavior = self.safe_rpc_wrapper(self._global_predict, caikit_rpc)
         else:
             behavior = self.safe_rpc_wrapper(self._get_handler_fn(original_rpc_handler))
 
@@ -298,7 +303,6 @@ class CaikitRuntimeServerWrapper(grpc.Server):
             if the port is 0, or not specified in the address, then gRPC
             runtime will choose a port.
           server_credentials: A ServerCredentials object.
-
         Returns:
           integer:
           An integer port on which server will accept RPC requests.
@@ -333,7 +337,6 @@ class CaikitRuntimeServerWrapper(grpc.Server):
 
         Args:
           grace: A duration of time in seconds or None.
-
         Returns:
           A threading.Event that will be set when this Server has completely
           stopped, i.e. when running RPCs either complete or are aborted and

@@ -191,10 +191,34 @@ def module(
         # Parse the `train` and `run` signatures
         cls_.RUN_SIGNATURE = CaikitMethodSignature(cls_, "run")
         cls_.TRAIN_SIGNATURE = CaikitMethodSignature(cls_, "train")
+        cls_._INFERENCE_SIGNATURES = []
 
         # If the module has a task, validate it:
         if cls_.TASK_CLASS:
-            cls_.TASK_CLASS.validate_run_signature(cls_.RUN_SIGNATURE)
+            if not cls_.TASK_CLASS.has_inference_method_decorators(module_class=cls_):
+                # Hackity hack hack - make sure at least one flavor is supported
+                validated = False
+                validation_errs = []
+                for input_streaming, output_streaming in [
+                    [False, False],
+                    [True, True],
+                    [False, True],
+                ]:
+                    try:
+                        cls_.TASK_CLASS.validate_run_signature(
+                            cls_.RUN_SIGNATURE, input_streaming, output_streaming
+                        )
+                        validated = True
+                        cls_._INFERENCE_SIGNATURES.append(
+                            (input_streaming, output_streaming, cls_.RUN_SIGNATURE)
+                        )
+                        break
+                    except (ValueError, TypeError) as e:
+                        validation_errs.append(e)
+                if not validated:
+                    raise validation_errs[0]
+
+            cls_.TASK_CLASS.deferred_method_decoration(cls_)
 
         # If no backend support described in the class, add current backend
         # as the only backend that can load models trained by this module
@@ -243,19 +267,16 @@ def _register_module_implementation(
     backend_type to the implementation class
 
     Args:
-        implementation_class:  type
-            The class that is used to implement this backend type for the given
-            module_id
-        backend_type:  str
-            Value from MODULE_BACKEND_TYPES that indicates the backend
-            that this class implements
-        module_id:  str
-            The module_id from the caikit.core module registry that this class
-            overloads
-        backend_config_override: Dict
-            Dictionary containing essential overrides for the backend config.
-            This will get stored with the implementation_class class name and will automatically
-            get picked up and merged with other such configs for a specific backend
+        implementation_class (type): The class that is used to implement this
+            backend type for the given module_id
+        backend_type (str): Value from MODULE_BACKEND_TYPES that indicates the
+            backend that this class implements
+        module_id (str): The module_id from the caikit.core module registry that
+            this class overloads
+        backend_config_override (Dict): Dictionary containing essential
+            overrides for the backend config. This will get stored with the
+            implementation_class class name and will automatically get picked up
+            and merged with other such configs for a specific backend
 
     """
 

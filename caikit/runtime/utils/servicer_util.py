@@ -14,11 +14,11 @@
 """A generic module to help Predict and Train servicers
 """
 # Standard
-from typing import Any, Dict, Iterable, Iterator, Union
+from typing import Any, Dict, Iterable, Iterator
 import traceback
 
 # Third Party
-from google.protobuf.descriptor import Descriptor, FieldDescriptor, ServiceDescriptor
+from google.protobuf.descriptor import FieldDescriptor, ServiceDescriptor
 from google.protobuf.message import Message as ProtoMessageType
 import grpc
 
@@ -261,14 +261,14 @@ def validate_data_model(
 
 
 def build_caikit_library_request_dict(
-    request: Union[Descriptor, ProtoMessageType],
+    request: ProtoMessageType,
     module_signature: CaikitMethodSignature,
 ) -> Dict[str, Any]:
     """Build the request kwargs dict.
 
     Args:
-        request (Union[Descriptor, ProtoMessageType]):
-            The request proto name or descriptor to deserialize from
+        request (ProtoMessageType):
+            The request proto message to deserialize from
         module_signature (CaikitMethodSignature):
             Module signature or metadata about method on a module
 

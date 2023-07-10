@@ -4,6 +4,7 @@ This sets up global test configs when pytest starts
 
 # Standard
 from contextlib import contextmanager
+from typing import List, Union
 from unittest.mock import patch
 import copy
 import json
@@ -162,6 +163,26 @@ def modules_fixtures_dir(fixtures_dir):
 @pytest.fixture
 def toolkit_fixtures_dir(fixtures_dir):
     yield os.path.join(fixtures_dir, "toolkit")
+
+
+@contextmanager
+def backend_priority(backend_cfg: Union[List[dict], dict]):
+    if isinstance(backend_cfg, dict):
+        backend_cfg = [backend_cfg]
+    with temp_config(
+        {
+            "model_management": {
+                "finders": {"default": {"type": "LOCAL"}},
+                "initializers": {
+                    "default": {
+                        "type": "LOCAL",
+                        "config": {"backend_priority": backend_cfg},
+                    }
+                },
+            }
+        }
+    ):
+        yield
 
 
 # IMPLEMENTATION DETAILS ############################################################

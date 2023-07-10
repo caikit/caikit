@@ -24,7 +24,7 @@
 
 # Standard
 from io import BytesIO
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 import collections
 import os
 import shutil
@@ -82,6 +82,18 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         """
         self._load_backend = load_backend
 
+    @classmethod
+    def get_inference_signature(
+        cls, input_streaming: bool, output_streaming: bool
+    ) -> Optional["caikit.core.signature_parsing.CaikitMethodSignature"]:
+        """Returns the inference method signature that is capable of running the module's task
+        for the given flavors of input and output streaming
+        """
+        for in_streaming, out_streaming, signature in cls._INFERENCE_SIGNATURES:
+            if in_streaming == input_streaming and out_streaming == output_streaming:
+                return signature
+        return None
+
     @property
     def load_backend(self):
         """Get the backend instance used to load this module. This can be used
@@ -111,11 +123,10 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         """Load a new instance of workflow from a given model_path
 
         Args:
-            model_path: str
-                Path to workflow
+            model_path (str): Path to workflow
         Returns:
-            caikit.core.workflows.base.WorkflowBase
-                A new instance of any given implementation of WorkflowBase
+            caikit.core.workflows.base.WorkflowBase: A new instance of any given
+                implementation of WorkflowBase
         """
         return cls._load(ModuleLoader(model_path), *args, **kwargs)
 
@@ -132,16 +143,14 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         """Time a model `load` call.
 
         Args:
-            *args: list
-                Will be passed to `self.load`.
-            **kwargs:  dict
-                Will be passed to `self.load` -- the only way to pass arbitrary arguments to
-                `self.load` from this function.
+            *args (list): Will be passed to `self.load`.
+            **kwargs (dict): Will be passed to `self.load` -- the only way to
+                pass arbitrary arguments to `self.load` from this function.
 
         Returns:
-            int, caikit.core._ModuleBase
-                The first return value is the total time spent in the `self.load` call. The second
-                return value is the loaded model.
+            int, caikit.core._ModuleBase: The first return value is the total
+                time spent in the `self.load` call. The second return value is
+                the loaded model.
 
         Notes:
             You can pass everything that should go to the run function normally using args/kwargs.
@@ -171,8 +180,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         """Save a model.
 
         Args:
-            model_path: str
-                Path on disk to export the model to.
+            model_path (str): Path on disk to export the model to.
         """
         error(
             "<COR58632237E>",
@@ -188,11 +196,10 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         handled automatically.
 
         Args:
-            *args, **kwargs: dict
-                Optional keyword arguments for saving.
+            *args, **kwargs (dict): Optional keyword arguments for saving.
         Returns:
-            io.BytesIO
-                File like object holding an exported model in memory as a io.BytesIO object.
+            io.BytesIO: File like object holding an exported model in memory as
+                a io.BytesIO object.
         """
         return BytesIO(self.as_bytes(*args, **kwargs))
 
@@ -205,11 +212,9 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         handled automatically.
 
         Args:
-            *args, **kwargs: dict
-                Optional keyword arguments for saving.
+            *args, **kwargs (dict): Optional keyword arguments for saving.
         Returns:
-            bytes
-                bytes object holding an exported model in memory.
+            bytes: bytes object holding an exported model in memory.
         """
         # Open a temporary directory & do all operations relative to that temporary directory.
         with tempfile.TemporaryDirectory() as ephemeral_model_path:
@@ -271,8 +276,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             *args: Variable length argument list to be passed directly to run().
             **kwargs: Arbitrary keyword arguments to be passed directly to run().
         Returns:
-            tuple
-                Iterable of prediction outputs, run as a batch.
+            tuple: Iterable of prediction outputs, run as a batch.
         """
         predictions = []
         fixed_args = {}
@@ -308,22 +312,19 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         """Time a number of runs over set seconds or iterations.
 
         Args:
-            *args: list
-                Will be passed to `self.run`.
-            num_seconds:  int
-                Minimum number of seconds to run timed_run over. Will most likely be more than this
-                value due to its waiting for the each call to `self.run` to finish.
-            num_iterations:  int
-                Minimum number of iterations to run timed_run over. Will run exactly this many
-                times.
-            **kwargs:  dict
-                Will be passed to `self.run`.
+            *args (list): Will be passed to `self.run`.
+            num_seconds (int): Minimum number of seconds to run timed_run over.
+                Will most likely be more than this value due to its waiting for
+                the each call to `self.run` to finish.
+            num_iterations (int): Minimum number of iterations to run timed_run
+                over. Will run exactly this many times.
+            **kwargs (dict): Will be passed to `self.run`.
 
         Returns:
-            int, int, caikit.core.data_model.DataBase
-                The first return value is the total time spent in the `self.run` loop. The second
-                return value is the total number of calls to `self.run` were made.
-                The return value is the output of the module's run method
+            int, int, caikit.core.data_model.DataBase: The first return value is
+                the total time spent in the `self.run` loop. The second return
+                value is the total number of calls to `self.run` were made. The
+                return value is the output of the module's run method
 
         Notes:
             You can pass everything that should go to the run function normally using args/kwargs.
@@ -365,13 +366,12 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         and expand along multiple data streams.
 
         Args:
-            data_stream: caikit.core.data_model.DataStream
-                Datastream to be lazily sequentially processed by the module under consideration.
+            data_stream (caikit.core.data_model.DataStream): Datastream to be
+                lazily sequentially processed by the module under consideration.
             *args: Variable length argument list to be passed directly to run().
             **kwargs: Arbitrary keyword arguments to be passed directly to run().
         Returns:
-            protobufs
-                A DataBase object.
+            protobufs: A DataBase object.
         """
         error.type_check("<COR98214589E>", DataStream, data_stream=data_stream)
         # Ensure that no args/kwargs are DataStreams, since these get passed to stream()
@@ -451,36 +451,35 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         """Run quality evaluation for instance of module
 
         Args:
-            dataset_path:  str
-                Path to where the input "gold set" dataset lives. Most often this is .json file.
-            preprocess_func:  method
-                Function used as proxy for any preliminary steps that need to be taken to run the
-                model on the input text. This helper function ultimately leads to the input to this
+            dataset_path (str): Path to where the input "gold set" dataset
+                lives. Most often this is .json file.
+            preprocess_func (method): Function used as proxy for any preliminary
+                steps that need to be taken to run the model on the input text.
+                This helper function ultimately leads to the input to this
                 module and may involve executing other modules.
             detailed_metrics: boolean (Optional, defaults to False)
                 Only for 'keywords'. Include partial scores and scores over every text in document.
-            labels:  list (Optional, defaults to None)
+            labels: list (Optional, defaults to None)
                 Optional list of class labels to evaluate quality on. By default evaluation is done
                 over all class labels. Using this, you can explicitly mention only a subset of
                 labels to include in the quality evaluation.
             partial_match_metrics: boolean (Optional, defaults to False)
                 Include partial match micro avg F1.
-            max_hierarchy_levels: int
-                Used in hierarchical multilabel multiclass evaluation only. The number of levels in
-                the hierarchy to run model evaluation on,
-                in addition to complete matches.
-            *args, **kwargs:
-                Optional arguments which can be used by goldset/prediction set extraction.
-                keyword arguments:
-                `block_level`: str
+            max_hierarchy_levels (int): Used in hierarchical multilabel
+                multiclass evaluation only. The number of levels in the
+                hierarchy to run model evaluation on, in addition to complete
+                matches.
+            *args, **kwargs: Optional arguments which can be used by goldset/prediction
+                set extraction.
+                Nonekeyword arguments: `block_level`: str
                     For any module that has pre processing steps in the
                     middle of raw text and actual module input, use the input from gold standard
                     labels instead of a pre-process function. Useful for measuring quality for the
                     'block' alone (instead of the module + pre_process pipeline)
         Returns:
-            dict
-                Dictionary of results provided by the `self.evaluator.run` function, depending on
-                the associated `evaluation_type`. Reports things like precision, recall, and f1.
+            dict: Dictionary of results provided by the `self.evaluator.run`
+                function, depending on the associated `evaluation_type`. Reports
+                things like precision, recall, and f1.
         """
         # 1) load dataset
         dataset = self._load_evaluation_dataset(dataset_path)
@@ -530,11 +529,10 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         contrast, if something is not expandable, it will be passed as is to each call.
 
         Args:
-            arg: any
-                Argument to run_batch being considered.
+            arg (any): Argument to run_batch being considered.
         Returns:
-            bool
-                True if the argument is a compatible iterable, False otherwise.
+            bool: True if the argument is a compatible iterable, False
+                otherwise.
         """
         # Throw if generators are passed - can't imagine any situation (for now) where this is
         # something that someone is doing on purpose, so we are a bit specific about this error.
@@ -561,8 +559,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             *args: Variable length argument list to be passed directly to run().
             **kwargs: Arbitrary keyword arguments to be passed directly to run().
         Returns:
-            int
-                Inferred batch size based on expandable iterables.
+            int: Inferred batch size based on expandable iterables.
         """
         batch_size = None
         for _, arg in enumerate(args):
@@ -578,11 +575,10 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         if it conflicts with what we know about the inferred batch size so far.
 
         args:
-            val: any
-                Argument / keyword argument value being inspected.
-            current_batch_size: None | int
-                Current inferred batch size from previous args/kwargs, or None if no inferences
-                have been made on other expandable iterables yet.
+            val (any): Argument / keyword argument value being inspected.
+            current_batch_size (None | int): Current inferred batch size from
+                previous args/kwargs, or None if no inferences have been made on
+                other expandable iterables yet.
         Returns:
             None | inferred batch size.
         """
@@ -606,15 +602,12 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         index correspondes to the current document under consideration.
 
         Args:
-            fixed_args: dict
-                Noniterable args - common across all documents.
-            expanded_args: dict
-                Iterable args - we'll need to index into this to get our doc arg.
-            idx: int
-                Index of the document being considered.
+            fixed_args (dict): Noniterable args - common across all documents.
+            expanded_args (dict): Iterable args - we'll need to index into this
+                to get our doc arg.
+            idx (int): Index of the document being considered.
         Returns:
-            list
-                Args to be run for document [idx].
+            list: Args to be run for document [idx].
         """
         constructed_args = []
         if not expanded_args and not fixed_args:
@@ -649,13 +642,12 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         kwargs instead of cycling through them, because order doesn't matter here.
 
         Args:
-            fixed_args: dict
-                Noniterable valued kwargs - common across all documents.
-            expanded_args: dict
-                Iterable valued kwargs - we'll need to index into these to get our doc kwarg.
+            fixed_args (dict): Noniterable valued kwargs - common across all
+                documents.
+            expanded_args (dict): Iterable valued kwargs - we'll need to index
+                into these to get our doc kwarg.
         Returns:
-            dict
-                Kwargs to be run for document [idx].
+            dict: Kwargs to be run for document [idx].
         """
         constructed_kwargs = fixed_kwargs.copy()
         for arg_name, iterable_arg_val in expanded_kwargs.items():
@@ -672,12 +664,12 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         """Method for extracting gold set from dataset. Implemented in subclass.
 
         Args:
-            dataset:  object
-                In-memory version of whatever is loaded from on-disk. May be json, txt, etc.
+            dataset (object): In-memory version of whatever is loaded from on-
+                disk. May be json, txt, etc.
 
         Returns:
-            list
-                List of labels in the format of the module_type that is being called.
+            list: List of labels in the format of the module_type that is being
+                called.
         """
         error(
             "<COR01455940E>",
@@ -688,17 +680,16 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         """Method for extracting pred set from dataset. Implemented in subclass.
 
         Args:
-            dataset:  object
-                In-memory version of whatever is loaded from on-disk. May be json, txt, etc.
-            preprocess_func:  method
-                Function used as proxy for any preliminary steps that need to be taken to run the
-                model on the input text. This helper function ultimately leads to the input to this
+            dataset (object): In-memory version of whatever is loaded from on-
+                disk. May be json, txt, etc.
+            preprocess_func (method): Function used as proxy for any preliminary
+                steps that need to be taken to run the model on the input text.
+                This helper function ultimately leads to the input to this
                 module and may involve executing other modules.
-            *args, **kwargs: dict
-                Optional keyword arguments for prediction set extraction.
+            *args, **kwargs (dict): Optional keyword arguments for prediction set extraction.
         Returns:
-            list
-                List of labels in the format of the module_type that is being called.
+            list: List of labels in the format of the module_type that is being
+                called.
         """
         error(
             "<COR95693719E>",
@@ -710,13 +701,13 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         """Helper specifically for dataset loading.
 
         Args:
-            dataset_path:  str
-                Path to where the input 'gold set' dataset lives. Most often this is .json file.
+            dataset_path (str): Path to where the input 'gold set' dataset
+                lives. Most often this is .json file.
 
         Returns:
-            object
-                list, dict, or other python object, depending on the input dataset_path extension.
-                Currently only supports `.json` and uses fileio from toolkit.
+            object: list, dict, or other python object, depending on the input
+                dataset_path extension. Currently only supports `.json` and uses
+                fileio from toolkit.
         """
         error.type_check("<COR33285197E>", str, dataset_path=dataset_path)
 
@@ -734,7 +725,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         """Extract the core list of annotations that is needed for quality evaluation
 
         Args:
-            gold_set: list
+            gold_set (list)
         Returns:
             gold_annotations: list
         """
@@ -745,7 +736,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         """Extract the core list of predictions that is needed for quality evaluation
 
         Args:
-            pred_set: list
+            pred_set (list)
         Returns:
             pred_annotations: list
         """
@@ -755,7 +746,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
     def _generate_report(report, gold_set):
         """Generate the quality report output
         Args:
-            report: dict
-            gold_set: list(dict)
+            report (dict)
+            gold_set (list(dict))
         """
         return report

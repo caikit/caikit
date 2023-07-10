@@ -490,8 +490,8 @@ class DataBase(metaclass=_DataBaseMetaClass):
         message or a repeated message
 
         Args:
-            field_name:  str
-                Field name to check (AttributeError raised if name is invalid)
+            field_name (str): Field name to check (AttributeError raised if name
+                is invalid)
 
         Returns:
             data_model_type:  Type[DataBase]
@@ -610,7 +610,6 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
         Args:
             buf: The binary buffer containing a serialized protobufs message
-
         Returns:
             A data model object instantiated from the protobufs message deserialized out of `buf`
         """
@@ -624,12 +623,9 @@ class DataBase(metaclass=_DataBaseMetaClass):
         """Build a DataBase from protobufs.
 
         Args:
-            proto:
-                A protocol buffer to serialize from.
-
+            proto: A protocol buffer to serialize from.
         Returns:
-            protobufs
-                A DataBase object.
+            protobufs: A DataBase object.
         """
         error.type_check("<COR45207671E>", ProtoMessageType, proto=proto)
         if cls._proto_class.DESCRIPTOR.name != proto.DESCRIPTOR.name:
@@ -691,9 +687,12 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 elements = []
                 contained_class = None
                 for item in proto_attr:
-                    if contained_class is None:
-                        contained_class = cls.get_class_for_proto(item)
-                    elements.append(contained_class.from_proto(item))
+                    if item.DESCRIPTOR.full_name == "google.protobuf.Struct":
+                        elements.append(json_dict.struct_to_dict(item))
+                    else:
+                        if contained_class is None:
+                            contained_class = cls.get_class_for_proto(item)
+                        elements.append(contained_class.from_proto(item))
                 kwargs[field] = elements
 
             else:
@@ -713,12 +712,11 @@ class DataBase(metaclass=_DataBaseMetaClass):
         deserialization
 
         Args:
-            json_str: str or dict
-                A stringified JSON specification/dict of the data_model
+            json_str (str or dict): A stringified JSON specification/dict of the
+                data_model
 
         Returns:
-            caikit.core.data_model.DataBase
-                A DataBase object.
+            caikit.core.data_model.DataBase: A DataBase object.
         """
         # Get protobufs class required for parsing
         error.type_check("<COR91037250E>", str, dict, json_str=json_str)
@@ -761,12 +759,9 @@ class DataBase(metaclass=_DataBaseMetaClass):
         """Populate a protobufs with the values from this data model object.
 
         Args:
-            proto:
-                A protocol buffer to be populated.
-
+            proto: A protocol buffer to be populated.
         Returns:
-            protobufs
-                The filled protobufs.
+            protobufs: The filled protobufs.
 
         Notes:
             The protobufs is filled in place, so the argument and the return
@@ -827,8 +822,13 @@ class DataBase(metaclass=_DataBaseMetaClass):
             elif field in self._fields_message_repeated:
                 subproto = getattr(proto, field)
                 for item in attr:
-                    item.fill_proto(subproto.add())
-
+                    elem_type = subproto.add()
+                    if isinstance(item, dict):
+                        elem_type.CopyFrom(
+                            json_dict.dict_to_struct(item, elem_type.__class__)
+                        )
+                    else:
+                        item.fill_proto(elem_type)
             else:
                 error(
                     "<COR71783852E>",
@@ -956,8 +956,8 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 The proto name or descriptor to look up against
 
         Returns:
-            dm_class (Type[DataBase])
-                The data model class corresponding to the given protobuf
+            dm_class (Type[DataBase]): The data model class corresponding to the
+                given protobuf
         """
         error.type_check(
             "<COR46446770E>",
@@ -1002,8 +1002,8 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 or as the unqualified class name
 
         Returns:
-            dm_class (Type[DataBase])
-                The data model class corresponding to the given protobuf
+            dm_class (Type[DataBase]): The data model class corresponding to the
+                given protobuf
         """
         dm_class = _DataBaseMetaClass.class_registry.get(class_name)
         if dm_class is not None:

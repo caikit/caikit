@@ -67,21 +67,22 @@ class DataStream(Generic[T]):
         over the desired data items.
 
         Args:
-            generator_func:  callable(*args, **kwargs)
-                A function that, when called, either (a) constructs a generator or (b) returns a
-                python iterator that yields data items, which may be any python or data model
-                object.  Each time `generator_func` is called, it must recreate the same
-                generator/iterator.  `generator_func` must also produce its elements lazily.
-                If `generator_func` returns, say a list or tuple, then all of the data will be
-                loaded into memory immediately instead of lazily.  `generator_func` is invoked every
-                time that a `DataStream` is iterated over, i.e., when `__iter__` is called.
+            generator_func (callable(*args, **kwargs)): A function that, when
+                called, either (a) constructs a generator or (b) returns a
+                python iterator that yields data items, which may be any python
+                or data model object.  Each time `generator_func` is called, it
+                must recreate the same generator/iterator.  `generator_func`
+                must also produce its elements lazily. If `generator_func`
+                returns, say a list or tuple, then all of the data will be
+                loaded into memory immediately instead of lazily.
+                `generator_func` is invoked every time that a `DataStream` is
+                iterated over, i.e., when `__iter__` is called.
 
-            args, kwargs:
-                Additional arguments passed to `generator_func`.  These are passed every time that
-                `generator_func` is called, i.e., every time we iterate over the data stream.
-                These arguments are generally useful for passing arguments to an initial data loader
-                function (see `.from_csv` for an example).  In order to retain other variables in a
-                `generator_func` consider relying on closures instead of arguments.
+            args, kwargs: Additional arguments passed to `generator_func`.  These are passed every
+                time that `generator_func` is called, i.e., every time we iterate over the data
+                stream. These arguments are generally useful for passing arguments to an initial
+                data loader function (see `.from_csv` for an example).  In order to retain other
+                variables in a `generator_func` consider relying on closures instead of arguments.
 
         Notes:
             The constructor of `DataStream` is not usually invoked directly.  The typical use case
@@ -108,13 +109,13 @@ class DataStream(Generic[T]):
         stream produces a single data item for each element of the iterable..
 
         Args:
-            data:  iterable
-                A list or tuple or other python iterable used to construct a new data stream where
-                each data item contains a single data item.
+            data (iterable): A list or tuple or other python iterable used to
+                construct a new data stream where each data item contains a
+                single data item.
 
         Returns:
-            DataStream
-                A new data stream that produces data items from the elements of `data`.
+            DataStream: A new data stream that produces data items from the
+                elements of `data`.
 
         Examples:
             >>> list_stream = DataStream.from_iterable([1, 2, 3])
@@ -137,14 +138,12 @@ class DataStream(Generic[T]):
         each line is a valid JSON (python dict)
 
         Args:
-            filename: str
-                A path to a utf8 encode text file with JSON lines array, where each line
-                is a valid JSON (python dict)
+            filename (str): A path to a utf8 encode text file with JSON lines
+                array, where each line is a valid JSON (python dict)
 
         Returns:
-            DataStream
-                A new data stream that produces python dict items each containing a
-                single JSON object corresponding to each line
+            DataStream: A new data stream that produces python dict items each
+                containing a single JSON object corresponding to each line
 
         Notes:
             This class method returns a data stream over the valid JSON objects and each
@@ -199,14 +198,12 @@ class DataStream(Generic[T]):
         valid JSON (python dict)
 
         Args:
-            filename: str
-                A path to a utf8 encode text file with JSON array, where each item is a
-                valid JSON (python dict)
+            filename (str): A path to a utf8 encode text file with JSON array,
+                where each item is a valid JSON (python dict)
 
         Returns:
-            DataStream
-                A new data stream that produces python dict items each containing a
-                single JSON object specified by 'filename'
+            DataStream: A new data stream that produces python dict items each
+                containing a single JSON object specified by 'filename'
 
         Notes:
             This class method returns a data stream over the valid JSON objects of a single
@@ -257,20 +254,17 @@ class DataStream(Generic[T]):
         values.
 
         Args:
-            filename:  str
-                A path to a csv file that has rows corresponding to data items and columns
-                corresponding to the elements of each data item.
-            skip:  int
-                Number of lines to skip at the beginning of the csv file.  This is often useful for
-                skipping a header line.
-            args, kwargs:
-                Additional arguments passed to the `csv.reader` function.  These can be used to
-                specify the delimiter or other csv settings.
+            filename (str): A path to a csv file that has rows corresponding to
+                data items and columns corresponding to the elements of each
+                data item.
+            skip (int): Number of lines to skip at the beginning of the csv
+                file.  This is often useful for skipping a header line.
+            args, kwargs: Additional arguments passed to the `csv.reader` function.
+                These can be used to specify the delimiter or other csv settings.
         Returns:
-            DataStream
-                A data stream that produces a data item for each line of the csv file and where each
-                element of the data item corresponds to a column in the csv file.
-        Examples:
+            DataStream: A data stream that produces a data item for each line of
+                the csv file and where each element of the data item corresponds
+                to a column in the csv file.Examples:
             For a sample.csv that looks like:
                 a, b, c
                 d, e, f
@@ -314,17 +308,15 @@ class DataStream(Generic[T]):
         column headers.
 
         Args:
-            filename:  str
-                A path to a csv file that has rows corresponding to data items and columns
-                corresponding to the elements of each data item.
-            args, kwargs:
-                Additional arguments passed to the `csv.reader` function.  These can be used to
-                specify the delimiter or other csv settings.
+            filename (str): A path to a csv file that has rows corresponding to
+                data items and columns corresponding to the elements of each
+                data item.
+            args, kwargs: Additional arguments passed to the `csv.reader` function.
+                These can be used to specify the delimiter or other csv settings.
         Returns:
-            DataStream
-                A data stream that produces a data item for each line of the csv file and where each
-                element of the stream is a dict representation of the fields
-        Examples:
+            DataStream: A data stream that produces a data item for each line of
+                the csv file and where each element of the stream is a dict
+                representation of the fieldsExamples:
             For a sample.csv that looks like:
                 foo, bar, baz
                 a, b, c
@@ -363,13 +355,12 @@ class DataStream(Generic[T]):
         corresponds to a single line of the file.
 
         Args:
-            filename:  str
-                A path to a utf8 encode text file with each line corresponding to a data item.
+            filename (str): A path to a utf8 encode text file with each line
+                corresponding to a data item.
 
         Returns:
-            DataStream
-                A new data stream that produces string data items each containing a single line from
-                the file specified by `filename`.
+            DataStream: A new data stream that produces string data items each
+                containing a single line from the file specified by `filename`.
 
         Notes:
             This class method returns a data stream over the lines of a single text file.  In
@@ -414,8 +405,7 @@ class DataStream(Generic[T]):
             For all other files (besides CSV for now)
                 strings (1 per line)
         Args:
-            filename: str
-                name of file
+            filename (str): name of file
 
         Returns:
             DataStream: resulting datastream from file
@@ -444,19 +434,17 @@ class DataStream(Generic[T]):
         file_handler function does the serialization of individual files
 
         Args:
-            dirname:  str
-                A directory path containing a number of utf8 encoded text files with the `.txt`
-                filename extension.
-            extension: str
-                Extension of the file. Note that all files are read in the same
-                utf8 encoding.
-            file_opener: function
-                Function to deserialize a file on disk to memory
+            dirname (str): A directory path containing a number of utf8 encoded
+                text files with the `.txt` filename extension.
+            extension (str): Extension of the file. Note that all files are read
+                in the same utf8 encoding.
+            file_opener (function): Function to deserialize a file on disk to
+                memory
 
         Returns:
-            DataStream
-                A new data stream that produces string data items each containing the text contained
-                in a single file found in `dirname`.
+            DataStream: A new data stream that produces string data items each
+                containing the text contained in a single file found in
+                `dirname`.
 
         Notes:
             Each data item in this data stream represents the *entire* text contained in a single
@@ -479,17 +467,16 @@ class DataStream(Generic[T]):
         each data item corresponds to the entire text contained in a single file.
 
         Args:
-            dirname:  str
-                A directory path containing a number of utf8 encoded text files with the `.txt`
-                filename extension.
+            dirname (str): A directory path containing a number of utf8 encoded
+                text files with the `.txt` filename extension.
             extension: str (Optional)
                 Optional extension of the text file. Note that all files are read in the same
                 utf8 encoding. Defaults to 'txt'
 
         Returns:
-            DataStream
-                A new data stream that produces string data items each containing the text contained
-                in a single `.txt` (or specified extension) file found in `dirname`.
+            DataStream: A new data stream that produces string data items each
+                containing the text contained in a single `.txt` (or specified
+                extension) file found in `dirname`.
 
         Notes:
             Each data item in this data stream represents the *entire* text contained in a single
@@ -505,17 +492,16 @@ class DataStream(Generic[T]):
         each data item corresponds to the entire serialized JSON contained in a single file.
 
         Args:
-            dirname:  str
-                A directory path containing a number of utf8 encoded text files with the `.txt`
-                filename extension.
+            dirname (str): A directory path containing a number of utf8 encoded
+                text files with the `.txt` filename extension.
             extension: str (Optional)
                 Optional extension of the JSON file. Note that all files are read in the same
                 utf8 encoding. Defaults to 'json'
 
         Returns:
-            DataStream
-                A new data stream that produces string data items each containing the text contained
-                in a single `.json` (or specified extension) file found in `dirname`.
+            DataStream: A new data stream that produces string data items each
+                containing the text contained in a single `.json` (or specified
+                extension) file found in `dirname`.
 
         Notes:
             Each data item in this data stream represents the *entire* text contained in a single
@@ -529,14 +515,12 @@ class DataStream(Generic[T]):
         containing multiple csv files where each file can have 1 or more data item.
 
         Args:
-            dirname:  str
-                A directory path containing a number of csv files
+            dirname (str): A directory path containing a number of csv files
 
         Returns:
-            DataStream
-                A new data stream that is chained from all data streams by reading
-                (from_header_csv) all files in all `.csv` files found in `dirname`.
-                All data items are dicts.
+            DataStream: A new data stream that is chained from all data streams
+                by reading (from_header_csv) all files in all `.csv` files found
+                in `dirname`. All data items are dicts.
         """
         # verify that `dirname` exists
         cls._verify_dir(dirname)
@@ -560,13 +544,12 @@ class DataStream(Generic[T]):
         containing multiple jsonl files where each file can have 1 or more data item.
 
         Args:
-            dirname:  str
-                A directory path containing a number of jsonl files
+            dirname (str): A directory path containing a number of jsonl files
 
         Returns:
-            DataStream
-                A new data stream that is chained from all data streams by reading
-                (from_jsonl) all files in all `.jsonl` files found in `dirname`.
+            DataStream: A new data stream that is chained from all data streams
+                by reading (from_jsonl) all files in all `.jsonl` files found in
+                `dirname`.
         """
         # verify that `dirname` exists
         cls._verify_dir(dirname)
@@ -590,15 +573,14 @@ class DataStream(Generic[T]):
         """Split the current datastream into train/test substreams.
 
         Args:
-            test_split:  float
-                The fraction of examples to assign to the test substream, in [0, 1]
-            seed: int | None
-                The seed for initializing the random assignment.  If not provided, a randomly
-                chosen seed will be used.
+            test_split (float): The fraction of examples to assign to the test
+                substream, in [0, 1]
+            seed (int | None): The seed for initializing the random assignment.
+                If not provided, a randomly chosen seed will be used.
 
         Returns:
-            tuple(DataStream, DataStream)
-                Two substreams: a train set substream, and a test set substream
+            tuple(DataStream, DataStream): Two substreams: a train set
+                substream, and a test set substream
         """
         assert 0.0 <= test_split <= 1.0
 
@@ -625,13 +607,12 @@ class DataStream(Generic[T]):
         the data items from each passed data stream in turn.
 
         Args:
-            args:  tuple(DataStream)
-                A tuple containing the data streams to chain, passed as variadic arguments.
+            args (tuple(DataStream)): A tuple containing the data streams to
+                chain, passed as variadic arguments.
 
         Returns:
-            DataStream
-                A new data stream that produces the data items from the provided data streams
-                sequentially.
+            DataStream: A new data stream that produces the data items from the
+                provided data streams sequentially.
         """
         return DataStream(lambda: itertools.chain(*args))
 
@@ -642,15 +623,15 @@ class DataStream(Generic[T]):
         """Skip elements in the data stream as identified by a passed function.
 
         Args:
-            func:  callable(data_item)
-                The function used to identify data items that will be filtered.  The function takes
-                a single data item as an argument and returns `True` in order to keep the element
-                and `False` in order to skip it.  The default filter function removes falsey values.
+            func (callable(data_item)): The function used to identify data items
+                that will be filtered.  The function takes a single data item as
+                an argument and returns `True` in order to keep the element and
+                `False` in order to skip it.  The default filter function
+                removes falsey values.
 
         Returns:
-            DataStream
-                A new data stream that produces the data items from the current data stream only
-                when `func` evaluates to true.
+            DataStream: A new data stream that produces the data items from the
+                current data stream only when `func` evaluates to true.
         """
         error.value_check(
             "<COR59884427E>", callable(func), "filter function is not callable"
@@ -672,15 +653,13 @@ class DataStream(Generic[T]):
         buffer.
 
         Args:
-            buffer_size: int
-                the size of the buffer space, should be greater than 0
-            seed: int | None
-                The seed for initializing the random assignment.  If not provided, a randomly
-                chosen seed will be used.
+            buffer_size (int): the size of the buffer space, should be greater
+                than 0
+            seed (int | None): The seed for initializing the random assignment.
+                If not provided, a randomly chosen seed will be used.
 
         Returns:
-            DataStream
-                A new data stream after shuffled.
+            DataStream: A new data stream after shuffled.
         """
         # make sure buffer space is valid
         error.type_check("<COR06395206E>", int, buffer_size=buffer_size)
@@ -721,9 +700,8 @@ class DataStream(Generic[T]):
         stream each time it is iterated over.
 
         Returns:
-            DataStream
-                A new data stream that iterates over the evaluated, in-memory data items in this
-                stream.
+            DataStream: A new data stream that iterates over the evaluated, in-
+                memory data items in this stream.
         """
         return DataStream.from_iterable(list(self))
 
@@ -731,14 +709,13 @@ class DataStream(Generic[T]):
         """Apply a function to each element in the data stream.
 
         Args:
-            func:  callable(*args, **kwargs)
-                A function this is lazily applied to each element in the data stream.
+            func (callable(*args, **kwargs)): A function this is lazily applied
+                to each element in the data stream.
             *args, **kwargs
                 Additional arguments to pass `func`.
 
         Returns:
-            DataStream
-                A new data stream with `func` applied to each element.
+            DataStream: A new data stream with `func` applied to each element.
         """
         return DataStream(
             lambda: (func(data_item, *args, **kwargs) for data_item in self)
@@ -748,8 +725,7 @@ class DataStream(Generic[T]):
         """Convert a 2-level nested stream into a flattened stream
 
         Returns:
-            DataStream
-                A new data stream with inner stream items 'flattened'
+            DataStream: A new data stream with inner stream items 'flattened'
         """
 
         def generator_func():
@@ -764,12 +740,11 @@ class DataStream(Generic[T]):
         """Combine the data items of multiple data streams together in tuples.
 
         Args:
-            args:  tuple(DataStream)
-                A tuple containing the data streams to be zip, passed as variadic arguments.
+            args (tuple(DataStream)): A tuple containing the data streams to be
+                zip, passed as variadic arguments.
 
         Returns:
-            DataStream
-                A data stream that produces the zipped data items.
+            DataStream: A data stream that produces the zipped data items.
 
         Notes:
             A `ValueError` is raised when the stream is iterated over if any of the zipped data
@@ -911,12 +886,12 @@ class DataStream(Generic[T]):
         elements of a stream that produces tuples, lists, arrays, et cetra.
 
         Args:
-            idx:  int or slice
-                The index or slice to be applied to each data item.
+            idx (int or slice): The index or slice to be applied to each data
+                item.
 
         Returns:
-            DataStream
-                A new data stream with `data_item[idx]` applied to each data item.
+            DataStream: A new data stream with `data_item[idx]` applied to each
+                data item.
 
         Notes:
             This operation may be somewhat counter intuitive since `data_stream[0]` does not return

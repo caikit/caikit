@@ -6,7 +6,7 @@ import pytest
 
 # Local
 from caikit.runtime.service_generation.protoable import (
-    extract_data_model_type_from_union,
+    get_protoable_return_type,
     to_protoable_signature,
 )
 from sample_lib.data_model import SampleInputType, SampleOutputType
@@ -88,27 +88,24 @@ def test_to_protoable_signature_no_protoable_types():
 
 
 def test_to_output_dm_type_with_None():
-    assert extract_data_model_type_from_union(None) == None
+    assert get_protoable_return_type(None) == None
 
 
 def test_to_output_dm_type_with_raw_primitive():
-    assert extract_data_model_type_from_union(str) == str
+    assert get_protoable_return_type(str) == str
 
 
 def test_to_output_dm_type_with_dm():
-    assert extract_data_model_type_from_union(SampleOutputType) == SampleOutputType
+    assert get_protoable_return_type(SampleOutputType) == SampleOutputType
 
 
 def test_to_output_dm_type_with_union_dm():
-    assert (
-        extract_data_model_type_from_union(Union[SampleOutputType, str])
-        == SampleOutputType
-    )
+    assert get_protoable_return_type(Union[SampleOutputType, str]) == SampleOutputType
 
 
 def test_to_output_dm_type_with_union_optional_dm():
     assert (
-        extract_data_model_type_from_union(Union[Optional[SampleOutputType], str])
+        get_protoable_return_type(Union[Optional[SampleOutputType], str])
         == SampleOutputType
     )
 

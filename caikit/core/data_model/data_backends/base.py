@@ -40,10 +40,9 @@ class DataModelBackendBase(abc.ABC):
         frontend view the functionality needed to lazily extract data.
 
         Args:
-            data_model_class:  Type[DataBase]
-                The frontend data model class that is accessing this attribute
-            name:  str
-                The name of the attribute to access
+            data_model_class (Type[DataBase]): The frontend data model class
+                that is accessing this attribute
+            name (str): The name of the attribute to access
 
         Returns:
             value:  Union[Any, OneofFieldVal]
@@ -61,10 +60,8 @@ class DataModelBackendBase(abc.ABC):
         based on the name/value of the individual field.
 
         Args:
-            name:  str
-                The name of the attribute to check
-            value:  Any
-                The extracted value
+            name (str): The name of the attribute to check
+            value (Any): The extracted value
 
         Returns:
             should_cache:  bool

@@ -126,10 +126,8 @@ def _get_cdm_from_lib(lib_name: str, cdm: UnifiedDataModel):
     """Function to get caikit core CDM from library name
 
     Args:
-        lib_name: str
-            Caikit core library name
-        cdm: UnifiedDataModel
-            Caikit core CDM
+        lib_name (str): Caikit core library name
+        cdm (UnifiedDataModel): Caikit core CDM
     Returns:
         cdm: UnifiedDataModel
     """

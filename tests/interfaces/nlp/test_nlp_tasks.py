@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for the NLP task definitions"""
 # Standard
-from typing import Type
+from typing import Dict, Type
 
 # Third Party
 import pytest
@@ -34,14 +34,21 @@ class InvalidType:
 
 
 @pytest.mark.parametrize(
-    "task", (nlp_tasks.TextGenerationTask, nlp_tasks.TextGenerationStreamTask)
+    "flavor",
+    (
+        {"input_streaming": False, "output_streaming": False},
+        {"input_streaming": False, "output_streaming": True},
+    ),
 )
-def test_tasks(reset_globals, task: Type[TaskBase]):
+def test_tasks(reset_globals, flavor: Dict[str, bool]):
     """Common tests for all tasks"""
     # Only support single required param named "inputs"
-    assert set(task.get_required_parameters().keys()) == {"inputs"}
-    input_type = task.get_required_parameters()["inputs"]
-    output_type = task.get_output_type()
+    task = nlp_tasks.TextGenerationTask
+    assert set(task.get_required_parameters(flavor["input_streaming"]).keys()) == {
+        "inputs"
+    }
+    input_type = task.get_required_parameters(flavor["input_streaming"])["inputs"]
+    output_type = task.get_output_type(flavor["output_streaming"])
 
     # Version with the right signature and nothing else
     @module(id="foo1", name="Foo", version="0.0.0", task=task)
@@ -66,6 +73,7 @@ def test_tasks(reset_globals, task: Type[TaskBase]):
 
         @module(id="foo3", name="Foo", version="0.0.0", task=task)
         class Foo3(ModuleBase):
+            @task.taskmethod(**flavor)
             def run(self, other_name: str) -> output_type:
                 return output_type()
 
@@ -74,6 +82,7 @@ def test_tasks(reset_globals, task: Type[TaskBase]):
 
         @module(id="foo4", name="Foo", version="0.0.0", task=task)
         class Foo4(ModuleBase):
+            @task.taskmethod(**flavor)
             def run(self, inputs: InvalidType) -> output_type:
                 return output_type()
 
@@ -82,5 +91,6 @@ def test_tasks(reset_globals, task: Type[TaskBase]):
 
         @module(id="foo", name="Foo", version="0.0.0", task=task)
         class Foo(ModuleBase):
+            @task.taskmethod(**flavor)
             def run(self, inputs: input_type) -> InvalidType:
                 return "hi there"

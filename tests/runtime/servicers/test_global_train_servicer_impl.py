@@ -32,7 +32,7 @@ from sample_lib.data_model.sample import (
     SampleTrainingType,
 )
 from sample_lib.modules.sample_task.sample_implementation import SampleModule
-from tests.conftest import random_test_id, temp_config
+from tests.conftest import random_test_id
 from tests.fixtures import Fixtures
 import caikit.core
 
@@ -40,12 +40,15 @@ import caikit.core
 
 
 @pytest.fixture(autouse=True, params=[True, False])
-def set_train_location(request):
+def set_train_location(request, sample_train_servicer):
     """This fixture ensures that all tests in this file will be run with both
     subprocess and local training styles
     """
-    with temp_config({"training": {"use_subprocess": request.param}}):
-        yield
+    prev_value = sample_train_servicer.use_subprocess
+    sample_train_servicer.use_subprocess = request.param
+    yield
+    # Reset use_subprocess to previous value
+    sample_train_servicer.use_subprocess = prev_value
 
 
 # Train tests for the GlobalTrainServicer class ############################################################
@@ -59,6 +62,7 @@ def test_global_train_sample_task(
     sample_train_servicer,
     sample_inference_service,
     sample_predict_servicer,
+    sample_task_unary_rpc,
 ):
     """Global train of TrainRequest returns a training job with the correct
     model name, and some training id for a basic train function that doesn't
@@ -78,6 +82,7 @@ def test_global_train_sample_task(
     training_response = sample_train_servicer.Train(
         train_request, Fixtures.build_context("foo")
     )
+
     assert training_response.model_name == model_name
 
     assert training_response.training_id is not None
@@ -97,6 +102,7 @@ def test_global_train_sample_task(
             sample_input=SampleInputType(name="Gabe").to_proto()
         ),
         Fixtures.build_context(training_response.model_name),
+        caikit_rpc=sample_task_unary_rpc,
     )
     assert (
         inference_response
@@ -122,10 +128,7 @@ def test_global_train_other_task(
     train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
         model_name="Other module Training",
         training_data=training_data,
-        # either of the below lines work since it's a Union now
-        # TODO create a separate test, lazy
-        # sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
-        sample_input_str="sample",
+        sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
         batch_size=batch_size,
     )
 
@@ -148,9 +151,10 @@ def test_global_train_other_task(
 
     inference_response = sample_predict_servicer.Predict(
         sample_inference_service.messages.OtherTaskRequest(
-            sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto()
+            sample_input=SampleInputType(name="Gabe").to_proto()
         ),
         Fixtures.build_context(training_response.model_name),
+        caikit_rpc=sample_inference_service.caikit_rpcs["OtherTaskPredict"],
     )
     assert (
         inference_response
@@ -166,6 +170,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
     sample_train_servicer,
     sample_inference_service,
     sample_predict_servicer,
+    sample_task_unary_rpc,
 ):
     """Global train of TrainRequest returns a training job with the correct model name, and some training id for a train function that requires another loaded model"""
     sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
@@ -202,6 +207,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
             sample_input=SampleInputType(name="Gabe").to_proto()
         ),
         Fixtures.build_context(training_response.model_name),
+        caikit_rpc=sample_task_unary_rpc,
     )
     assert (
         inference_response
@@ -212,7 +218,10 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
 
 
 def test_run_train_job_works_with_wait(
-    sample_train_service, sample_inference_service, sample_predict_servicer
+    sample_train_service,
+    sample_inference_service,
+    sample_predict_servicer,
+    sample_task_unary_rpc,
 ):
     """Check if run_train_job works as expected for syncronous requests"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
@@ -242,6 +251,7 @@ def test_run_train_job_works_with_wait(
                 sample_input=SampleInputType(name="Test").to_proto()
             ),
             Fixtures.build_context(training_response.model_name),
+            caikit_rpc=sample_task_unary_rpc,
         )
         assert (
             inference_response
@@ -340,6 +350,7 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_mod
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
     ).to_proto()
+
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
         model_name=random_test_id(),
         batch_size=999,
@@ -351,11 +362,11 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_mod
             train_request, Fixtures.build_context("foo")
         )
 
-        training_result = sample_train_servicer.training_map.get(
+        _ = sample_train_servicer.training_map.get(
             training_response.training_id
         ).result()
 
-    assert f"This may be a problem with your input" in str(context.value.message)
+    assert f"Batch size of 999 is not allowed!" in str(context.value.message)
 
 
 def test_global_train_returns_exit_code_with_oom(

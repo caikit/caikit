@@ -37,8 +37,8 @@ class ModuleConfig(aconfig.Config):
         """Construct a new module configuration object from a dictionary of config options.
 
         Args:
-            config_dict:  dict
-                Dictionary or containing the module's configuration.
+            config_dict (dict): Dictionary or containing the module's
+                configuration.
 
         Notes:
             The following keys are reserved and *must not* be specified at the top level of a
@@ -86,15 +86,14 @@ class ModuleConfig(aconfig.Config):
         """Load a new module configuration from a directory on disk.
 
         Args:
-            model_path: str
-                Path to model directory. At the top level of directory is `config.yml` which holds
-                info about the model. Note that the model_path here is assumed to be operating
-                system correct as a consequence of the way this method is invoked by the model
-                manager.
+            model_path (str): Path to model directory. At the top level of
+                directory is `config.yml` which holds info about the model. Note
+                that the model_path here is assumed to be operating system
+                correct as a consequence of the way this method is invoked by
+                the model manager.
 
         Returns:
-            BlockConfig
-                Instantiated BlockConfig for model given model_path.
+            BlockConfig: Instantiated BlockConfig for model given model_path.
         """
         error.type_check("<COR71170339E>", str, model_path=model_path)
 

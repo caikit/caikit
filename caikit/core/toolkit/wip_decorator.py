@@ -93,10 +93,9 @@ def work_in_progress(*args, **kwargs):
     when the function / class is used.
 
     Args:
-        category: WipCategory
-            Enum specifying what category of message you want to throw
-        action: Action
-            Enum specifying what type of action you want to take.
+        category (WipCategory): Enum specifying what category of message you
+            want to throw
+        action (Action): Enum specifying what type of action you want to take.
             Example: ERROR or WARNING
 
     Example Usage:
@@ -165,12 +164,11 @@ def _decorator_handler(wrapped_obj, category, action):
     """Utility function to cover common decorator handling
     logic.
     Args:
-        wrapped_obj: Callable
-            Class or function to be decorated
-        category: Enum(WipCategory)
-            Enum specifying the category of the message
-        Action: Enum(Action)
-            Enum specifying the action to be taken with the decorator
+        wrapped_obj (Callable): Class or function to be decorated
+        category (Enum(WipCategory)): Enum specifying the category of the
+            message
+        Action (Enum(Action)): Enum specifying the action to be taken with the
+            decorator
     Returns:
         function:
             Decorator function

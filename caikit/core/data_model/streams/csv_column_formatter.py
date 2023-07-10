@@ -57,8 +57,8 @@ class CSVColumnFormatter:
         """Initialize CSVColumnConsolidator
 
         Args:
-            expected_columns: Dict(str, type)
-                (Ordered) dictionary mapping the csv column names to expected types
+            expected_columns (Dict(str, type)): (Ordered) dictionary mapping the
+                csv column names to expected types
         """
         error.type_check("<COR56775937E>", dict, expected_columns=expected_columns)
         error.value_check(
@@ -75,8 +75,7 @@ class CSVColumnFormatter:
         See classdoc for examples
 
         Args:
-            stream: DataStream
-                stream intended to be converted
+            stream (DataStream): stream intended to be converted
 
         Returns:
             DataStream:

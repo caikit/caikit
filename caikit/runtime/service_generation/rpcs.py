@@ -55,6 +55,10 @@ class CaikitRPCBase(abc.ABC):
     def request(self) -> "_RequestMessage":
         """Return the internal representation of the request message type for this RPC"""
 
+    @property
+    def name(self) -> str:
+        return self._name
+
     def create_request_data_model(self, package_name: str) -> Type[DataBase]:
         """Dynamically create data model for this RPC's request message"""
         properties = {
@@ -87,7 +91,8 @@ class CaikitRPCBase(abc.ABC):
 
     def create_rpc_json(self, package_name: str) -> Dict:
         """Return json snippet for the service definition of this RPC"""
-        if self.module_list[0].TASK_CLASS.is_output_streaming_task():
+        if self.module_list[0].TASK_CLASS._is_iterable_type(self.return_type):
+            # if self.module_list[0].TASK_CLASS.is_output_streaming_task():
             output_type_name = (
                 typing.get_args(self.return_type)[0]
                 .get_proto_class()
@@ -126,7 +131,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         self._method = ModuleClassTrainRPC._mutate_method_signature_for_training(
             method_signature
         )
-        self.name = ModuleClassTrainRPC.module_class_to_rpc_name(self.clz)
+        self._name = ModuleClassTrainRPC.module_class_to_rpc_name(self.clz)
 
         # Compute the mapping from argument name to type for the module's run
         log.debug3("Param Dict: %s", self._method.parameters)
@@ -211,6 +216,8 @@ class TaskPredictRPC(CaikitRPCBase):
         self,
         task: Type[TaskBase],
         method_signatures: List[CaikitMethodSignature],
+        input_streaming: bool = False,
+        output_streaming: bool = False,
     ):
         """Initialize a .proto generator with all modules of a given task to convert
 
@@ -221,15 +228,17 @@ class TaskPredictRPC(CaikitRPCBase):
                 signatures from concrete modules implementing this task
         """
         self.task = task
-        self._module_list = [method.module for method in method_signatures]
         self._method_signatures = method_signatures
+        self._input_streaming = input_streaming
+        self._output_streaming = output_streaming
 
         # Aggregate the argument signature types into a single parameters_dict
         parameters_dict = {}
         default_parameters = {}
         for method in method_signatures:
             default_parameters.update(method.default_parameters)
-            primitive_arg_dict = protoable.to_protoable_signature(method.parameters)
+            new_params = self._handle_task_inputs(method.parameters)
+            primitive_arg_dict = protoable.to_protoable_signature(new_params)
             for arg_name, arg_type in primitive_arg_dict.items():
                 current_val = parameters_dict.get(arg_name, arg_type)
                 # TODO: raise runtime error here instead of assert!
@@ -245,29 +254,71 @@ class TaskPredictRPC(CaikitRPCBase):
         )
 
         # Validate that the return_type of all modules in the grouping matches
-        return_types = {method.return_type for method in method_signatures}
-        assert len(return_types) == 1, f"Found multiple return types for task [{task}]"
-        return_type = list(return_types)[0]
-        self.return_type = protoable.extract_data_model_type_from_union(return_type)
+        return_types = {
+            protoable.get_protoable_return_type(method.return_type)
+            for method in method_signatures
+        }
+        assert len(return_types) == 1, (
+            f"Found multiple return types for task [{task}], rpc: [{self._task_to_rpc_name()}. "
+            f"Return types: {return_types}]"
+        )
+        self.return_type = list(return_types)[0]
 
         # Create the rpc name based on the module type
-        self.name = self._task_to_rpc_name()
+        self._name = self._task_to_rpc_name()
 
     @property
     def module_list(self) -> List[Type[ModuleBase]]:
         """Returns the list of all caikit.core.modules that this RPC will be for. These should all
         be of the same ai-problem, e.g. my_caikit_library.modules.classification
         """
-        return self._module_list
+        return [method.module for method in self._method_signatures]
 
     @property
     def request(self) -> "_RequestMessage":
         return self._req
 
+    @property
+    def input_streaming(self) -> bool:
+        return self._input_streaming
+
+    @property
+    def output_streaming(self) -> bool:
+        return self._output_streaming
+
+    def _handle_task_inputs(self, method_params: Dict[str, Any]) -> Dict[str, Any]:
+        """Overrides input params with types specified in the Task"""
+        new_params = {}
+        if self._input_streaming:
+            req_params = self.task.get_required_parameters(input_streaming=True)
+            for param_name, param_type in method_params.items():
+                if param_name in req_params:
+                    # double check this condition, although it should already have been validated
+                    # also assuming both are iterables
+                    if get_args(req_params[param_name])[0] in get_args(param_type):
+                        new_params[param_name] = get_args(req_params[param_name])[0]
+                else:
+                    new_params[param_name] = param_type
+            return new_params
+        # for unary input cases
+        req_params = self.task.get_required_parameters(input_streaming=False)
+        for param_name, param_type in method_params.items():
+            if param_name in req_params:
+                new_params[param_name] = req_params[param_name]
+            else:
+                new_params[param_name] = param_type
+        return new_params
+
     def _task_to_req_name(self) -> str:
         """Helper function to convert the pair of library name and task name to
         a request message name
         """
+        if self._input_streaming and self._output_streaming:
+            return snake_to_upper_camel(f"BidiStreaming{self.task.__name__}_Request")
+        if self._output_streaming:
+            return snake_to_upper_camel(f"ServerStreaming{self.task.__name__}_Request")
+        if self._input_streaming:
+            return snake_to_upper_camel(f"ClientStreaming{self.task.__name__}_Request")
         return snake_to_upper_camel(f"{self.task.__name__}_Request")
 
     def _task_to_rpc_name(self) -> str:
@@ -278,6 +329,12 @@ class TaskPredictRPC(CaikitRPCBase):
 
         return: SampleTaskPredict
         """
+        if self._input_streaming and self._output_streaming:
+            return snake_to_upper_camel(f"BidiStreaming{self.task.__name__}_Predict")
+        if self._output_streaming:
+            return snake_to_upper_camel(f"ServerStreaming{self.task.__name__}_Predict")
+        if self._input_streaming:
+            return snake_to_upper_camel(f"ClientStreaming{self.task.__name__}_Predict")
         return snake_to_upper_camel(f"{self.task.__name__}_Predict")
 
 

@@ -81,6 +81,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
         if handle_terminations:
             signal.signal(signal.SIGINT, self.interrupt)
             signal.signal(signal.SIGTERM, self.interrupt)
+        self.port = self.config.runtime.port
 
         # Initialize basic server
         # py_grpc_prometheus.server_metrics.
@@ -99,7 +100,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
         self.server = CaikitRuntimeServerWrapper(
             server=self.server,
             global_predict=self._global_predict_servicer.Predict,
-            intercepted_svc_descriptor=self.inference_service.descriptor,
+            intercepted_svc_package=self.inference_service,
         )
         service_names.append(self.inference_service.descriptor.full_name)
 
@@ -114,7 +115,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
             self.server = CaikitRuntimeServerWrapper(
                 server=self.server,
                 global_predict=global_train_servicer.Train,
-                intercepted_svc_descriptor=self.training_service.descriptor,
+                intercepted_svc_package=self.training_service,
             )
             service_names.append(self.training_service.descriptor.full_name)
 
@@ -283,6 +284,14 @@ class RuntimeGRPCServer(RuntimeServerBase):
             with open(secret, "r", encoding="utf-8") as secret_file:
                 return secret_file.read()
         return secret
+    
+    # Context manager impl
+    def __enter__(self):
+        self.start(blocking=False)
+        return self
+
+    def __exit__(self, type_, value, traceback):
+        self.stop(0)
 
 
 def main(blocking: bool = True):

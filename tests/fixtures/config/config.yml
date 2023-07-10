@@ -1,7 +1,5 @@
 # Config for tests
 runtime:
-    find_available_ports: true
-
     metering:
         # Switch on metering by default
         enabled: true
@@ -18,8 +16,15 @@ inference_plugin:
     model_mesh:
         runtime_version: mock
 
-module_backends:
-    load_priority:
-        # There is a 'MOCK' backend type defined in our test helpers
-        - type: MOCK
-        - type: LOCAL
+model_management:
+    finders:
+        default:
+            type: LOCAL
+    initializers:
+        default:
+            type: LOCAL
+            config:
+                backend_priority:
+                    # There is a 'MOCK' backend type defined in our test helpers
+                    - type: MOCK
+                    - type: LOCAL

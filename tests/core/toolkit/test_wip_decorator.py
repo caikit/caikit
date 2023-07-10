@@ -14,11 +14,13 @@
 
 # Standard
 import logging
+import re
 
 # Third Party
 import pytest
 
 # Local
+from caikit.core.toolkit import wip_decorator
 from caikit.core.toolkit.wip_decorator import (
     Action,
     TempDisableWIP,
@@ -28,209 +30,233 @@ from caikit.core.toolkit.wip_decorator import (
     work_in_progress,
 )
 
-# Unit Test Infrastructure
-from tests.base import TestCaseBase
+## Helpers #####################################################################
 
 
-class TestWorkInProgressDecorator(TestCaseBase):
-    def setUp(self) -> None:
-        # Enable decorator for each test in case some test wants to test disable functionality
-        enable_wip()
+@pytest.fixture(autouse=True)
+def with_wip():
+    prev_val = wip_decorator._ENABLE_DECORATOR
+    enable_wip()
+    yield
+    wip_decorator._ENABLE_DECORATOR = prev_val
 
-        self.msg_re = "<.*> is still in the {} phase and subject to change!"
-        self.expected_msg_beta = self.msg_re.format(WipCategory.BETA.name)
-        self.expected_msg_wip = self.msg_re.format(WipCategory.WIP.name)
 
-    # Inject caplog to unittest
-    @pytest.fixture(autouse=True)
-    def inject_fixtures(self, caplog):
-        self._caplog = caplog
+msg_re = "<.*> is still in the {} phase and subject to change!"
+expected_msg_beta = msg_re.format(WipCategory.BETA.name)
+expected_msg_wip = msg_re.format(WipCategory.WIP.name)
 
-    ######################## Test decorator on function #########################################
+## Tests #######################################################################
 
-    def test_default_config_fn_no_arg(self):
-        """Test decorator with no config on function with no arguments"""
+######################## Test decorator on function #########################################
 
-        @work_in_progress
-        def foo():
-            pass
 
-        with self._caplog.at_level(logging.WARN):
-            foo()
-            message = self._caplog.records[0].message
-            self.assertRegex(message, self.expected_msg_wip)
+def test_default_config_fn_no_arg(caplog):
+    """Test decorator with no config on function with no arguments"""
 
-    def test_default_config_fn_arg(self):
-        """Test decorator with no config on function with arguments"""
+    @work_in_progress
+    def foo():
+        pass
 
-        @work_in_progress
-        def foo(x):
-            return x
+    with caplog.at_level(logging.WARN):
+        foo()
+        assert any(
+            re.search(expected_msg_wip, record.message) for record in caplog.records
+        )
 
-        argument = 1
-        with self._caplog.at_level(logging.WARN):
-            result = foo(argument)
-            message = self._caplog.records[0].message
-            self.assertRegex(message, self.expected_msg_wip)
-            self.assertEqual(argument, result)
 
-    def test_default_config_fn_kwarg(self):
-        """Test decorator with no config on function with argument and keyword argument"""
+def test_default_config_fn_arg(caplog):
+    """Test decorator with no config on function with arguments"""
 
-        @work_in_progress
-        def foo(x, y=0, z=0):
-            return x + y + z
+    @work_in_progress
+    def foo(x):
+        return x
 
-        argument = 1
-        kwargs = {"y": 1, "z": 1}
-        expected_result = 3
-        with self._caplog.at_level(logging.WARN):
-            result = foo(argument, **kwargs)
-            message = self._caplog.records[0].message
-            self.assertRegex(message, self.expected_msg_wip)
-            self.assertEqual(expected_result, result)
+    argument = 1
+    with caplog.at_level(logging.WARN):
+        result = foo(argument)
+        assert any(
+            re.search(expected_msg_wip, record.message) for record in caplog.records
+        )
+        assert argument == result
 
-    def test_custom_config_fn_arg(self):
-        """Test decorator with custom config and argument"""
 
-        @work_in_progress(category=WipCategory.BETA)
-        def foo(x):
-            return x
+def test_default_config_fn_kwarg(caplog):
+    """Test decorator with no config on function with argument and keyword argument"""
 
-        argument = 1
-        with self._caplog.at_level(logging.WARN):
-            result = foo(argument)
-            message = self._caplog.records[0].message
-            self.assertRegex(message, self.expected_msg_beta)
-            self.assertEqual(argument, result)
+    @work_in_progress
+    def foo(x, y=0, z=0):
+        return x + y + z
 
-    def test_temp_disable_wip_with_ctxt(self):
-        """Test decorator with context based temp decorator disabling"""
+    argument = 1
+    kwargs = {"y": 1, "z": 1}
+    expected_result = 3
+    with caplog.at_level(logging.WARN):
+        result = foo(argument, **kwargs)
+        assert any(
+            re.search(expected_msg_wip, record.message) for record in caplog.records
+        )
+        assert expected_result == result
 
-        @work_in_progress
-        def foo(y=0, z=0):
-            return 1 + y + z
 
-        with self._caplog.at_level(logging.WARN):
-            # Check temp disable
-            with TempDisableWIP():
-                result = foo(1)
-                self.assertEqual(result, 2)
-                # no log lines produced
-                self.assertEqual(len(self._caplog.records), 0)
+def test_custom_config_fn_arg(caplog):
+    """Test decorator with custom config and argument"""
 
-    ######################## Test decorator on class ############################################
+    @work_in_progress(category=WipCategory.BETA)
+    def foo(x):
+        return x
 
-    def test_default_config_class_no_arg(self):
-        """Test decorator with no config on class with no init args"""
+    argument = 1
+    with caplog.at_level(logging.WARN):
+        result = foo(argument)
+        assert any(
+            re.search(expected_msg_beta, record.message) for record in caplog.records
+        )
+        assert argument == result
 
-        @work_in_progress
-        class Foo:
-            pass
 
-        with self._caplog.at_level(logging.WARN):
-            Foo()
-            message = self._caplog.records[0].message
-            self.assertRegex(message, self.expected_msg_wip)
+def test_temp_disable_wip_with_ctxt(caplog):
+    """Test decorator with context based temp decorator disabling"""
 
-    def test_default_config_class_arg(self):
-        """Test decorator with no config on class with init arguments"""
+    @work_in_progress
+    def foo(y=0, z=0):
+        return 1 + y + z
 
-        @work_in_progress
-        class Foo:
-            def __init__(self, x) -> None:
-                self.x = x
+    with caplog.at_level(logging.WARN):
+        # Check temp disable
+        with TempDisableWIP():
+            result = foo(1)
+            assert result == 2
+            # no log lines produced
+            assert len(caplog.records) == 0
 
-        argument = 1
-        with self._caplog.at_level(logging.WARN):
-            result = Foo(argument)
-            message = self._caplog.records[0].message
-            self.assertRegex(message, self.expected_msg_wip)
-            self.assertEqual(argument, result.x)
 
-    def test_default_config_class_kwarg(self):
-        """Test decorator with no config on class with init argument and keyword argument"""
+######################## Test decorator on class ############################################
 
-        @work_in_progress
-        class Foo:
-            def __init__(self, x, y=0, z=0) -> None:
-                self.x = x + y + z
 
-        argument = 1
-        kwargs = {"y": 1, "z": 1}
-        expected_result = 3
-        with self._caplog.at_level(logging.WARN):
-            result = Foo(argument, **kwargs)
-            message = self._caplog.records[0].message
-            self.assertRegex(message, self.expected_msg_wip)
-            self.assertEqual(expected_result, result.x)
+def test_default_config_class_no_arg(caplog):
+    """Test decorator with no config on class with no init args"""
 
-    def test_custom_config_class_arg(self):
-        """Test decorator on class with custom config and init argument"""
+    @work_in_progress
+    class Foo:
+        pass
 
-        @work_in_progress(category=WipCategory.BETA)
-        class Foo:
-            def __init__(self, x) -> None:
-                self.x = x
+    with caplog.at_level(logging.WARN):
+        Foo()
+        assert any(
+            re.search(expected_msg_wip, record.message) for record in caplog.records
+        )
 
-        argument = 1
-        with self._caplog.at_level(logging.WARN):
-            result = Foo(argument)
-            message = self._caplog.records[0].message
-            self.assertRegex(message, self.expected_msg_beta)
-            self.assertEqual(argument, result.x)
 
-    def test_inheritance_of_decorated_class(self):
-        """Test decorator on a class that is inherited by another class
-        still works.
-        """
+def test_default_config_class_arg(caplog):
+    """Test decorator with no config on class with init arguments"""
 
-        @work_in_progress(category=WipCategory.BETA)
-        class Foo:
-            pass
+    @work_in_progress
+    class Foo:
+        def __init__(self, x) -> None:
+            self.x = x
 
-        class Bar(Foo):
-            def __init__(self, x) -> None:
-                self.x = x
+    argument = 1
+    with caplog.at_level(logging.WARN):
+        result = Foo(argument)
+        assert any(
+            re.search(expected_msg_wip, record.message) for record in caplog.records
+        )
+        assert argument == result.x
 
-        argument = 1
-        with self._caplog.at_level(logging.WARN):
-            result = Bar(argument)
-            message = self._caplog.records[0].message
-            self.assertRegex(message, self.expected_msg_beta)
-            self.assertEqual(argument, result.x)
 
-    ######################## Test separate actions #########################################
+def test_default_config_class_kwarg(caplog):
+    """Test decorator with no config on class with init argument and keyword argument"""
 
-    def test_error_action_raises_fn(self):
-        """Test error action passed to decorator function raises"""
-        func = lambda x: x
-        work_in_progress(func, action=Action.ERROR)
-        with self.assertRaises(Exception):
-            func()
+    @work_in_progress
+    class Foo:
+        def __init__(self, x, y=0, z=0) -> None:
+            self.x = x + y + z
 
-    def test_error_action_raises_class(self):
-        """Test error action passed to decorator class raises"""
+    argument = 1
+    kwargs = {"y": 1, "z": 1}
+    expected_result = 3
+    with caplog.at_level(logging.WARN):
+        result = Foo(argument, **kwargs)
+        assert any(
+            re.search(expected_msg_wip, record.message) for record in caplog.records
+        )
+        assert expected_result == result.x
 
-        @work_in_progress(action=Action.ERROR)
-        class Foo:
-            pass
 
-        with self.assertRaises(Exception):
-            Foo()
+def test_custom_config_class_arg(caplog):
+    """Test decorator on class with custom config and init argument"""
 
-    ######################## Test disable functionality #########################################
+    @work_in_progress(category=WipCategory.BETA)
+    class Foo:
+        def __init__(self, x) -> None:
+            self.x = x
 
-    def test_decorator_can_be_disabled(self):
-        """Test that decorator can be disabled using disable_wip function"""
-        func = lambda x: x
-        work_in_progress(func, action=Action.ERROR)
-        # Sanity check that we get exception as expected
-        with self.assertRaises(Exception):
-            func()
-        # Disable decorator
-        disable_wip()
+    argument = 1
+    with caplog.at_level(logging.WARN):
+        result = Foo(argument)
+        assert any(
+            re.search(expected_msg_beta, record.message) for record in caplog.records
+        )
+        assert argument == result.x
 
-        # Try again, this time there should not be any exception
-        result = func(1)
-        self.assertEqual(result, 1)
+
+def test_inheritance_of_decorated_class(caplog):
+    """Test decorator on a class that is inherited by another class
+    still works.
+    """
+
+    @work_in_progress(category=WipCategory.BETA)
+    class Foo:
+        pass
+
+    class Bar(Foo):
+        def __init__(self, x) -> None:
+            self.x = x
+
+    argument = 1
+    with caplog.at_level(logging.WARN):
+        result = Bar(argument)
+        assert any(
+            re.search(expected_msg_beta, record.message) for record in caplog.records
+        )
+        assert argument == result.x
+
+
+######################## Test separate actions #########################################
+
+
+def test_error_action_raises_fn(caplog):
+    """Test error action passed to decorator function raises"""
+    func = lambda x: x
+    work_in_progress(func, action=Action.ERROR)
+    with pytest.raises(Exception):
+        func()
+
+
+def test_error_action_raises_class(caplog):
+    """Test error action passed to decorator class raises"""
+
+    @work_in_progress(action=Action.ERROR)
+    class Foo:
+        pass
+
+    with pytest.raises(Exception):
+        Foo()
+
+
+######################## Test disable functionality #########################################
+
+
+def test_decorator_can_be_disabled(caplog):
+    """Test that decorator can be disabled using disable_wip function"""
+    func = lambda x: x
+    work_in_progress(func, action=Action.ERROR)
+    # Sanity check that we get exception as expected
+    with pytest.raises(Exception):
+        func()
+    # Disable decorator
+    disable_wip()
+
+    # Try again, this time there should not be any exception
+    result = func(1)
+    assert result == 1

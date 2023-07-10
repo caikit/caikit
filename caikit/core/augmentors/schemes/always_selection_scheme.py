@@ -24,13 +24,12 @@ class AlwaysSelectionScheme(SchemeBase):
         """Create a merging augmentor scheme which always applies every contained augmentor.
 
         Args:
-            preserve_order: bool
-                Indicates whether or not the contained augmentors should always be considered in
-                the order that they were provided when they are being applied.
-            augmentors: list(AugmentorBase) | tuple(AugmentorBase)
-                Augmentors to be applied (in same order as selection_probs).
-            random_seed: int
-                Random seed for controlling shuffling behavior.
+            preserve_order (bool): Indicates whether or not the contained
+                augmentors should always be considered in the order that they
+                were provided when they are being applied.
+            augmentors (list(AugmentorBase) | tuple(AugmentorBase)): Augmentors
+                to be applied (in same order as selection_probs).
+            random_seed (int): Random seed for controlling shuffling behavior.
         """
         super().__init__(preserve_order, augmentors, random_seed)
 
@@ -39,11 +38,10 @@ class AlwaysSelectionScheme(SchemeBase):
         shuffled ordering, based on the value of self.preserve_order).
 
         Args:
-            obj: str | caikit.core.data_model.DataBase
-                Object to be augmented.
+            obj (str | caikit.core.data_model.DataBase): Object to be augmented.
         Returns:
-            str | caikit.core.data_model.DataBase
-                Augmented object of same type as input obj.
+            str | caikit.core.data_model.DataBase: Augmented object of same type
+                as input obj.
         """
         output_obj = obj
         for idx in self._current_order:
