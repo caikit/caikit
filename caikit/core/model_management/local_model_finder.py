@@ -47,8 +47,9 @@ class LocalModelFinder(ModelFinderBase):
 
     name = "LOCAL"
 
-    def __init__(self, config: aconfig.Config):
+    def __init__(self, config: aconfig.Config, instance_name: str):
         """Initialize with an optional path prefix"""
+        self._instance_name = instance_name
         self._load_path = config.load_path
 
     def find_model(
@@ -60,6 +61,11 @@ class LocalModelFinder(ModelFinderBase):
         full_model_path = model_path
         if not os.path.exists(model_path) and self._load_path:
             full_model_path = os.path.join(self._load_path, model_path)
-            log.debug2("Looking for %s in %s", model_path, full_model_path)
+            log.debug2(
+                "Looking for %s in %s using %s",
+                model_path,
+                full_model_path,
+                self._instance_name,
+            )
         full_model_path = os.path.normpath(full_model_path)
         return ModuleConfig.load(full_model_path)

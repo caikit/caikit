@@ -202,17 +202,24 @@ class RuntimeHTTPServer(RuntimeServerBase):
     ##########
     def _bind_routes(self, service: ServicePackage):
         """Bind all rpcs as routes to the given app"""
-        for rpc in service.caikit_rpcs:
+        print("in bind_routes")
+        print(service.caikit_rpcs)
+        for rpc in service.caikit_rpcs.values():
+            print("rpc is: ", rpc)
             rpc_info = rpc.create_rpc_json("")
+            if rpc_info["client_streaming"]:
+                raise NotImplementedError(
+                    "No support for input streaming on REST Server yet!"
+                )
             if rpc_info["server_streaming"]:
-                self._add_unary_stream_handler(rpc)
+                self._add_unary_input_stream_output_handler(rpc)
             else:
-                self._add_unary_unary_handler(rpc)
+                self._add_unary_input_unary_output_handler(rpc)
 
-    def _add_unary_unary_handler(self, rpc: CaikitRPCBase):
+    def _add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = self._dataobject_to_pydantic(
-            self._get_request_dataobject(rpc)
+            self._get_request_dataobject(rpc, False)
         )
         pydantic_response = self._dataobject_to_pydantic(
             self._get_response_dataobject(rpc)
@@ -263,9 +270,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 log.error("<RUN51881106E>", err, exc_info=True)
             return Response(content=json.dumps(error_content), status_code=error_code)
 
-    def _add_unary_stream_handler(self, rpc: CaikitRPCBase):
+    def _add_unary_input_stream_output_handler(self, rpc: CaikitRPCBase):
         pydantic_request = self._dataobject_to_pydantic(
-            self._get_request_dataobject(rpc)
+            self._get_request_dataobject(rpc, False)
         )
         pydantic_response = self._dataobject_to_pydantic(
             self._get_response_dataobject(rpc)
@@ -337,11 +344,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
             return route
         raise NotImplementedError("No support for train rpcs yet!")
 
-    def _get_request_dataobject(self, rpc: CaikitRPCBase) -> Type[DataBase]:
+    def _get_request_dataobject(
+        self, rpc: CaikitRPCBase, input_streaming: bool
+    ) -> Type[DataBase]:
         """Get the dataobject request for the given rpc"""
         is_inference_rpc = hasattr(rpc, "task")
         if is_inference_rpc:
-            required_params = rpc.task.get_required_parameters()
+            required_params = rpc.task.get_required_parameters(input_streaming)
         else:  # train
             required_params = {
                 entry[1]: entry[0]
@@ -362,6 +371,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Always create a bundled sub-message for required parameters
         if required_params:
             log.debug3("Using structured inputs type for %s", pkg_name)
+            print("Using structured inputs type for: ", pkg_name)
+            print("Annotations are: ", required_params)
+            print("name is: ", rpc.request.name)
             inputs_type = make_dataobject(
                 name=f"{rpc.request.name}Inputs",
                 annotations=required_params,

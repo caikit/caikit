@@ -56,8 +56,9 @@ class LocalModelInitializer(ModelInitializerBase):
 
     name = "LOCAL"
 
-    def __init__(self, config: aconfig.Config):
+    def __init__(self, config: aconfig.Config, instance_name: str):
         """Construct with the config"""
+        self._instance_name = instance_name
         self._backends = []
         backend_priority = config.get(
             "backend_priority",
@@ -117,7 +118,9 @@ class LocalModelInitializer(ModelInitializerBase):
             # Add the instance to the registry
             self._backends.append(backend_instance)
 
-        log.debug2("All configured backends: %s", self._backends)
+        log.debug2(
+            "All configured backends for %s: %s", self._instance_name, self._backends
+        )
 
     def init(self, model_config: ModuleConfig, **kwargs) -> Optional[ModuleBase]:
         """Given a ModelConfig, attempt to initialize it locally, possibly using

@@ -91,23 +91,10 @@ class CaikitRPCBase(abc.ABC):
 
     def create_rpc_json(self, package_name: str) -> Dict:
         """Return json snippet for the service definition of this RPC"""
-        if self.module_list[0].TASK_CLASS._is_iterable_type(self.return_type):
-            # if self.module_list[0].TASK_CLASS.is_output_streaming_task():
-            output_type_name = (
-                typing.get_args(self.return_type)[0]
-                .get_proto_class()
-                .DESCRIPTOR.full_name
-            )
-            server_streaming = True
-        else:
-            output_type_name = self.return_type.get_proto_class().DESCRIPTOR.full_name
-            server_streaming = False
-
         rpc_json = {
             "name": f"{self.name}",
             "input_type": f"{package_name}.{self.request.name}",
-            "output_type": output_type_name,
-            "server_streaming": server_streaming,
+            "output_type": self.return_type.get_proto_class().DESCRIPTOR.full_name,
         }
         return rpc_json
 
@@ -285,6 +272,26 @@ class TaskPredictRPC(CaikitRPCBase):
     @property
     def output_streaming(self) -> bool:
         return self._output_streaming
+
+    def create_rpc_json(self, package_name: str) -> Dict:
+        """Return json snippet for the service definition of this RPC"""
+        if self.output_streaming:
+            output_type_name = (
+                typing.get_args(self.return_type)[0]
+                .get_proto_class()
+                .DESCRIPTOR.full_name
+            )
+        else:
+            output_type_name = self.return_type.get_proto_class().DESCRIPTOR.full_name
+
+        rpc_json = {
+            "name": f"{self.name}",
+            "input_type": f"{package_name}.{self.request.name}",
+            "output_type": output_type_name,
+            "server_streaming": self.output_streaming,
+            "client_streaming": self.input_streaming,
+        }
+        return rpc_json
 
     def _handle_task_inputs(self, method_params: Dict[str, Any]) -> Dict[str, Any]:
         """Overrides input params with types specified in the Task"""

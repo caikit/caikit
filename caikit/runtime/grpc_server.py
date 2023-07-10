@@ -284,7 +284,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
             with open(secret, "r", encoding="utf-8") as secret_file:
                 return secret_file.read()
         return secret
-    
+
     # Context manager impl
     def __enter__(self):
         self.start(blocking=False)

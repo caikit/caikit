@@ -91,8 +91,6 @@ runtime:
         unix_socket_path: /tmp/mmesh/grpc.sock
     # Service exposure options
     port: 8085
-    metrics:
-        port: 8086
     unix_socket_path: /tmp/mmesh/grpc.sock
 
     # Configuration for the http server
