@@ -13,13 +13,22 @@
 # limitations under the License.
 
 # Standard
-from os import chdir, path
+from os import path
 import sys
 
 # First Party
 import alog
 
-chdir(path.dirname(__file__))
+# Local
+import caikit
+
+models_directory = path.abspath(path.join(path.dirname(__file__), "models"))
+caikit.config.configure(
+    config_dict={
+        "merge_strategy": "merge",
+        "runtime": {"local_models_dir": models_directory},
+    }
+)
 
 sys.path.append(
     path.abspath(path.join(path.dirname(__file__), "../"))
