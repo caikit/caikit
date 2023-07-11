@@ -107,8 +107,17 @@ class SampleModule(caikit.core.ModuleBase):
         training_data: DataStream[SampleTrainingType],
         batch_size: int = 64,
         oom_exit: bool = False,
+        **kwargs,
     ) -> "SampleModule":
         """Sample training method that produces a trained model"""
+
+        # If needed, wait for an event
+        # NOTE: We need to pull this from **kwargs because it's not a valid arg
+        #   for train API deduction. It's only needed for testing purposes, so
+        #   this is definitely a non-standard usage pattern!
+        wait_event = kwargs.get("wait_event")
+        if wait_event is not None:
+            wait_event.wait()
 
         if oom_exit:
             # exit with OOM code. Note _exit method is used to exit the
