@@ -1,5 +1,5 @@
 # Standard
-from typing import Dict, List, Optional, Union
+from typing import Annotated, Dict, List, Optional, Union
 import json
 
 # Third Party
@@ -8,7 +8,6 @@ import pytest
 # Local
 from caikit.core.data_model.base import DataBase
 from caikit.runtime.service_generation.protoable import (
-    _make_union_list_source_type_name,
     get_protoable_return_type,
     to_protoable_signature,
 )
@@ -96,29 +95,6 @@ def test_to_protoable_signature_no_protoable_types():
     )
 
 
-def test_to_output_dm_type_with_None():
-    assert get_protoable_return_type(None) == None
-
-
-def test_to_output_dm_type_with_raw_primitive():
-    assert get_protoable_return_type(str) == str
-
-
-def test_to_output_dm_type_with_dm():
-    assert get_protoable_return_type(SampleOutputType) == SampleOutputType
-
-
-def test_to_output_dm_type_with_union_dm():
-    assert get_protoable_return_type(Union[SampleOutputType, str]) == SampleOutputType
-
-
-def test_to_output_dm_type_with_union_optional_dm():
-    assert (
-        get_protoable_return_type(Union[Optional[SampleOutputType], str])
-        == SampleOutputType
-    )
-
-
 def test_to_protoable_signature_dict():
     assert to_protoable_signature(
         signature={"name": Dict[str, int]},
@@ -156,6 +132,21 @@ def test_to_protoable_signature_optional_list():
     assert union_list_signature == {"optional_param": List[str]}
 
 
+def test_to_protoable_signature_list_w_primitive():
+    union_list_signature = to_protoable_signature(
+        signature={"union_list": Union[List[str], int]},
+    )
+    assert union_list_signature == {
+        "union_list": Union[
+            Annotated[
+                caikit.interfaces.common.data_model.primitive_sequences.StrSequence,
+                "union_list_str_sequence",
+            ],
+            int,
+        ]
+    }
+
+
 def test_to_protoable_signature_multiple_same_type_union_list():
     union_list_signature = to_protoable_signature(
         signature={
@@ -164,8 +155,26 @@ def test_to_protoable_signature_multiple_same_type_union_list():
         },
     )
     assert_sig = {
-        "union_list_arg": caikit.interfaces.common.data_model.UnionListStrIntSource,
-        "union_list_another_arg": caikit.interfaces.common.data_model.UnionListStrIntSource,
+        "union_list_arg": Union[
+            Annotated[
+                caikit.interfaces.common.data_model.primitive_sequences.StrSequence,
+                "union_list_arg_str_sequence",
+            ],
+            Annotated[
+                caikit.interfaces.common.data_model.primitive_sequences.IntSequence,
+                "union_list_arg_int_sequence",
+            ],
+        ],
+        "union_list_another_arg": Union[
+            Annotated[
+                caikit.interfaces.common.data_model.primitive_sequences.StrSequence,
+                "union_list_another_arg_str_sequence",
+            ],
+            Annotated[
+                caikit.interfaces.common.data_model.primitive_sequences.IntSequence,
+                "union_list_another_arg_int_sequence",
+            ],
+        ],
     }
     assert all((union_list_signature.get(k) == v for k, v in assert_sig.items()))
 
@@ -177,7 +186,24 @@ def test_to_protoable_signature_all_types_union_list():
         },
     )
     assert union_list_signature == {
-        "union_list_arg": caikit.interfaces.common.data_model.UnionListStrIntFloatBoolSource
+        "union_list_arg": Union[
+            Annotated[
+                caikit.interfaces.common.data_model.primitive_sequences.StrSequence,
+                "union_list_arg_str_sequence",
+            ],
+            Annotated[
+                caikit.interfaces.common.data_model.primitive_sequences.IntSequence,
+                "union_list_arg_int_sequence",
+            ],
+            Annotated[
+                caikit.interfaces.common.data_model.primitive_sequences.FloatSequence,
+                "union_list_arg_float_sequence",
+            ],
+            Annotated[
+                caikit.interfaces.common.data_model.primitive_sequences.BoolSequence,
+                "union_list_arg_bool_sequence",
+            ],
+        ]
     }
 
 
@@ -201,8 +227,26 @@ def test_to_protoable_signature_multiple_diff_type_union_list():
         },
     )
     assert_sig = {
-        "union_list_arg": caikit.interfaces.common.data_model.UnionListStrIntSource,
-        "union_list_another_arg": caikit.interfaces.common.data_model.UnionListStrBoolSource,
+        "union_list_arg": Union[
+            Annotated[
+                caikit.interfaces.common.data_model.primitive_sequences.StrSequence,
+                "union_list_arg_str_sequence",
+            ],
+            Annotated[
+                caikit.interfaces.common.data_model.primitive_sequences.IntSequence,
+                "union_list_arg_int_sequence",
+            ],
+        ],
+        "union_list_another_arg": Union[
+            Annotated[
+                caikit.interfaces.common.data_model.primitive_sequences.StrSequence,
+                "union_list_another_arg_str_sequence",
+            ],
+            Annotated[
+                caikit.interfaces.common.data_model.primitive_sequences.BoolSequence,
+                "union_list_another_arg_bool_sequence",
+            ],
+        ],
     }
     assert all((union_list_signature.get(k) == v for k, v in assert_sig.items()))
 
@@ -214,49 +258,66 @@ def test_to_protoable_signature_union_list():
         },
     )
     assert union_list_signature == {
-        "union_list_arg": caikit.interfaces.common.data_model.UnionListStrIntSource,
+        "union_list_arg": Union[
+            Annotated[
+                caikit.interfaces.common.data_model.primitive_sequences.StrSequence,
+                "union_list_arg_str_sequence",
+            ],
+            Annotated[
+                caikit.interfaces.common.data_model.primitive_sequences.IntSequence,
+                "union_list_arg_int_sequence",
+            ],
+        ]
     }
-    union_list_dm = union_list_signature["union_list_arg"]
-    assert issubclass(union_list_dm, DataBase)
 
     # str sequence
-    union_list_str_instance = union_list_dm(
-        union_list=union_list_dm.StrSequence(values=["one", "two"])
+    str_seq = caikit.interfaces.common.data_model.primitive_sequences.StrSequence(
+        values=["one", "two"]
     )
-    ## proto test
-    union_list_dm.from_proto(
-        union_list_str_instance.to_proto()
-    ) == union_list_str_instance
-    ## json test
-    union_list_str_json_repr = {"strsequence": {"values": ["one", "two"]}}
-    assert union_list_str_instance.to_json() == json.dumps(union_list_str_json_repr)
-    assert union_list_dm.from_json(union_list_str_json_repr) == union_list_str_instance
 
-    # int sequence
-    union_list_int_instance = union_list_dm(
-        union_list=union_list_dm.IntSequence(values=[1, 2])
-    )
     ## proto test
-    union_list_dm.from_proto(
-        union_list_int_instance.to_proto()
-    ) == union_list_int_instance
+    str_seq.from_proto(str_seq.to_proto()) == str_seq
     ## json test
-    union_list_int_json_repr = {"intsequence": {"values": [1, 2]}}
-    assert union_list_int_instance.to_json() == json.dumps(union_list_int_json_repr)
-    assert union_list_dm.from_json(union_list_int_json_repr) == union_list_int_instance
+    union_list_str_json_repr = {"values": ["one", "two"]}
+    assert str_seq.to_json() == json.dumps(union_list_str_json_repr)
+    assert str_seq.from_json(union_list_str_json_repr) == str_seq
+
+    # int Intuence
+    int_seq = caikit.interfaces.common.data_model.primitive_sequences.IntSequence(
+        values=[1, 2]
+    )
+
+    ## proto test
+    int_seq.from_proto(int_seq.to_proto()) == int_seq
+    ## json test
+    union_list_int_json_repr = {"values": [1, 2]}
+    assert int_seq.to_json() == json.dumps(union_list_int_json_repr)
+    assert int_seq.from_json(union_list_int_json_repr) == int_seq
 
 
 ################################################################
-# _make_union_list_source_type_name
+# get_protoable_return_type
 ################################################################
 
 
-def test_make_union_list_source_type_name():
+def test_to_output_dm_type_with_None():
+    assert get_protoable_return_type(None) == None
+
+
+def test_to_output_dm_type_with_raw_primitive():
+    assert get_protoable_return_type(str) == str
+
+
+def test_to_output_dm_type_with_dm():
+    assert get_protoable_return_type(SampleOutputType) == SampleOutputType
+
+
+def test_to_output_dm_type_with_union_dm():
+    assert get_protoable_return_type(Union[SampleOutputType, str]) == SampleOutputType
+
+
+def test_to_output_dm_type_with_union_optional_dm():
     assert (
-        _make_union_list_source_type_name([List[str], List[int]])
-        == "UnionListStrIntSource"
-    )
-    assert (
-        _make_union_list_source_type_name([List[str], List[bool]])
-        == "UnionListStrBoolSource"
+        get_protoable_return_type(Union[Optional[SampleOutputType], str])
+        == SampleOutputType
     )

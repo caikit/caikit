@@ -2,7 +2,7 @@
 A sample module for sample things!
 """
 # Standard
-from typing import Iterable, List, Union
+from typing import Iterable, List, Optional, Union
 import os
 
 # Local
@@ -105,7 +105,7 @@ class SampleModule(caikit.core.ModuleBase):
     def train(
         cls,
         training_data: DataStream[SampleTrainingType],
-        union_list: Union[List[str], List[int]] = None,
+        union_list: Optional[Union[List[str], List[int]]] = None,
         batch_size: int = 64,
         oom_exit: bool = False,
     ) -> "SampleModule":
@@ -124,6 +124,6 @@ class SampleModule(caikit.core.ModuleBase):
         # Barf if we were incorrectly passed data not in datastream format
         assert isinstance(training_data, DataStream)
         if union_list:
-            assert isinstance(union_list.union_list.values, List)
-            assert len(union_list.union_list.values) > 0
+            assert isinstance(union_list.values, List)
+            assert len(union_list.values) > 0
         return cls(batch_size=batch_size)
