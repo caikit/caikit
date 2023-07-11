@@ -17,7 +17,6 @@ Tests for the caikit HTTP server
 # Standard
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Optional
 import json
 import os
 import tempfile
@@ -87,6 +86,16 @@ def generate_tls_configs(
             )
             # need to save this ca_certfile in config_overrides so the tls tests below can access it from client side
             config_overrides["use_in_test"] = {"ca_cert": ca_certfile}
+
+            # also saving a bad ca_certfile for a failure test case
+            bad_ca_file = os.path.join(workdir, "bad_ca_cert.crt")
+            with open(bad_ca_file, "w") as handle:
+                bad_cert = (
+                    "-----BEGIN CERTIFICATE-----\nfoobar\n-----END CERTIFICATE-----"
+                )
+                handle.write(bad_cert)
+            config_overrides["use_in_test"]["bad_ca_cert"] = bad_ca_file
+
             if mtls:
                 client_certfile, client_keyfile = save_key_cert_pair(
                     "client",
@@ -138,6 +147,22 @@ def test_basic_tls_server():
             resp.raise_for_status()
 
 
+def test_basic_tls_server_with_wrong_cert():
+    with generate_tls_configs(
+        tls=True, mtls=False, http_config_overrides={}
+    ) as config_overrides:
+        http_server_with_tls = http_server.RuntimeHTTPServer(
+            tls_config_override=config_overrides["runtime"]["tls"]
+        )
+        # start a non-blocking http server with basic tls
+        with http_server_with_tls:
+            with pytest.raises(requests.exceptions.SSLError):
+                requests.get(
+                    f"https://localhost:{http_server_with_tls.port}/docs",
+                    verify=config_overrides["use_in_test"]["bad_ca_cert"],
+                )
+
+
 def test_mutual_tls_server():
     with generate_tls_configs(
         tls=True, mtls=True, http_config_overrides={}
@@ -156,6 +181,26 @@ def test_mutual_tls_server():
                 ),
             )
             resp.raise_for_status()
+
+
+def test_mutual_tls_server_with_wrong_cert():
+    with generate_tls_configs(
+        tls=True, mtls=True, http_config_overrides={}
+    ) as config_overrides:
+        http_server_with_mtls = http_server.RuntimeHTTPServer(
+            tls_config_override=config_overrides["runtime"]["tls"]
+        )
+        # start a non-blocking http server with mutual tls
+        with http_server_with_mtls:
+            with pytest.raises(requests.exceptions.SSLError):
+                requests.get(
+                    f"https://localhost:{http_server_with_mtls.port}/docs",
+                    verify=config_overrides["use_in_test"]["ca_cert"],
+                    cert=(
+                        config_overrides["use_in_test"]["client_key"],
+                        config_overrides["use_in_test"]["client_cert"],
+                    ),  # flip the order of key and cert, this will result in SSLError
+                )
 
 
 def test_docs():
