@@ -1,9 +1,12 @@
 # Standard
-from typing import Annotated, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 import json
 
 # Third Party
 import pytest
+
+# First Party
+from py_to_proto.dataclass_to_proto import Annotated
 
 # Local
 from caikit.core.data_model.base import DataBase
