@@ -202,15 +202,16 @@ class RuntimeHTTPServer(RuntimeServerBase):
     ##########
     def _bind_routes(self, service: ServicePackage):
         """Bind all rpcs as routes to the given app"""
-        print("in bind_routes")
-        print(service.caikit_rpcs)
         for rpc in service.caikit_rpcs.values():
-            print("rpc is: ", rpc)
             rpc_info = rpc.create_rpc_json("")
             if rpc_info["client_streaming"]:
-                raise NotImplementedError(
-                    "No support for input streaming on REST Server yet!"
+                # Skipping the binding of this route since we don't have support
+                log.info(
+                    "No support for input streaming on REST Server yet! Skipping this rpc %s with input type %s",
+                    rpc_info["name"],
+                    rpc_info["input_type"],
                 )
+                continue
             if rpc_info["server_streaming"]:
                 self._add_unary_input_stream_output_handler(rpc)
             else:
@@ -371,9 +372,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Always create a bundled sub-message for required parameters
         if required_params:
             log.debug3("Using structured inputs type for %s", pkg_name)
-            print("Using structured inputs type for: ", pkg_name)
-            print("Annotations are: ", required_params)
-            print("name is: ", rpc.request.name)
             inputs_type = make_dataobject(
                 name=f"{rpc.request.name}Inputs",
                 annotations=required_params,

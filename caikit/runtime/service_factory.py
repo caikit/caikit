@@ -135,10 +135,7 @@ class ServicePackageFactory:
             rpc_list = service_generation.create_training_rpcs(clean_modules)
             service_name = f"{ai_domain_name}TrainingService"
 
-        print("in service factory")
-        print("rpc_list is: ", rpc_list)
         rpc_list = [rpc for rpc in rpc_list if rpc.return_type is not None]
-        print("rpc_list after is: ", rpc_list)
 
         request_data_models = [
             rpc.create_request_data_model(package_name) for rpc in rpc_list

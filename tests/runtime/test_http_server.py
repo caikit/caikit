@@ -122,102 +122,104 @@ def test_insecure_server():
             resp.raise_for_status()
 
 
-# def test_basic_tls_server():
-#     with generate_tls_configs(
-#         tls=True, mtls=False, http_config_overrides={}
-#     ) as config_overrides:
-#         http_server_with_tls = http_server.RuntimeHTTPServer(
-#             tls_config_override=config_overrides["runtime"]["tls"]
-#         )
-#         with http_server_with_tls:
-#             resp = requests.get(
-#                 f"https://localhost:{http_server_with_tls.port}/docs",
-#                 verify=config_overrides["use_in_test"]["ca_cert"],
-#             )
-#             resp.raise_for_status()
+def test_basic_tls_server():
+    with generate_tls_configs(
+        tls=True, mtls=False, http_config_overrides={}
+    ) as config_overrides:
+        http_server_with_tls = http_server.RuntimeHTTPServer(
+            tls_config_override=config_overrides["runtime"]["tls"]
+        )
+        # start a non-blocking http server with basic tls
+        with http_server_with_tls:
+            resp = requests.get(
+                f"https://localhost:{http_server_with_tls.port}/docs",
+                verify=config_overrides["use_in_test"]["ca_cert"],
+            )
+            resp.raise_for_status()
 
 
-# def test_mutual_tls_server():
-#     with generate_tls_configs(
-#         tls=True, mtls=True, http_config_overrides={}
-#     ) as config_overrides:
-#         http_server_with_mtls = http_server.RuntimeHTTPServer(
-#             tls_config_override=config_overrides["runtime"]["tls"]
-#         )
-#         with http_server_with_mtls:
-#             resp = requests.get(
-#                 f"https://localhost:{http_server_with_mtls.port}/docs",
-#                 verify=config_overrides["use_in_test"]["ca_cert"],
-#                 cert=(
-#                     config_overrides["use_in_test"]["client_cert"],
-#                     config_overrides["use_in_test"]["client_key"],
-#                 ),
-#             )
-#             resp.raise_for_status()
+def test_mutual_tls_server():
+    with generate_tls_configs(
+        tls=True, mtls=True, http_config_overrides={}
+    ) as config_overrides:
+        http_server_with_mtls = http_server.RuntimeHTTPServer(
+            tls_config_override=config_overrides["runtime"]["tls"]
+        )
+        # start a non-blocking http server with mutual tls
+        with http_server_with_mtls:
+            resp = requests.get(
+                f"https://localhost:{http_server_with_mtls.port}/docs",
+                verify=config_overrides["use_in_test"]["ca_cert"],
+                cert=(
+                    config_overrides["use_in_test"]["client_cert"],
+                    config_overrides["use_in_test"]["client_key"],
+                ),
+            )
+            resp.raise_for_status()
 
 
-# def test_docs():
-#     """Simple check that pinging /docs returns 200"""
-#     server = http_server.RuntimeHTTPServer()
-#     with TestClient(server.app) as client:
-#         response = client.get("/docs")
-#         assert response.status_code == 200
+def test_docs():
+    """Simple check that pinging /docs returns 200"""
+    server = http_server.RuntimeHTTPServer()
+    with TestClient(server.app) as client:
+        response = client.get("/docs")
+        assert response.status_code == 200
 
 
-# def test_inference(sample_task_model_id):
-#     """Simple check that we can ping a model"""
-#     server = http_server.RuntimeHTTPServer()
-#     with TestClient(server.app) as client:
-#         json_input = {"inputs": {"sample_input": {"name": "world"}}}
-#         response = client.post(
-#             f"/api/v1/{sample_task_model_id}/task/sample",
-#             json=json_input,
-#         )
-#         assert response.status_code == 200
-#         json_response = json.loads(response.content.decode(response.default_encoding))
-#         assert json_response["greeting"] == "Hello world"
+def test_inference(sample_task_model_id):
+    """Simple check that we can ping a model"""
+    server = http_server.RuntimeHTTPServer()
+    with TestClient(server.app) as client:
+        json_input = {"inputs": {"sample_input": {"name": "world"}}}
+        response = client.post(
+            f"/api/v1/{sample_task_model_id}/task/sample",
+            json=json_input,
+        )
+        assert response.status_code == 200
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert json_response["greeting"] == "Hello world"
 
 
-# def test_inference_optional_field(sample_task_model_id):
-#     """Simple check for optional fields"""
-#     server = http_server.RuntimeHTTPServer()
-#     with TestClient(server.app) as client:
-#         json_input = {
-#             "inputs": {"sample_input": {"name": "world"}},
-#             "parameters": {"throw": True},
-#         }
-#         response = client.post(
-#             f"/api/v1/{sample_task_model_id}/task/sample",
-#             json=json_input,
-#         )
-#         # this is 500 because we explicitly pass in `throw` as True, which
-#         # raises an internal error in the module
-#         assert response.status_code == 500
+def test_inference_optional_field(sample_task_model_id):
+    """Simple check for optional fields"""
+    server = http_server.RuntimeHTTPServer()
+    with TestClient(server.app) as client:
+        json_input = {
+            "inputs": {"sample_input": {"name": "world"}},
+            "parameters": {"throw": True},
+        }
+        response = client.post(
+            f"/api/v1/{sample_task_model_id}/task/sample",
+            json=json_input,
+        )
+        # this is 500 because we explicitly pass in `throw` as True, which
+        # raises an internal error in the module
+        assert response.status_code == 500
 
 
-# def test_inference_other_task(other_task_model_id):
-#     """Simple check that we can ping a model"""
-#     server = http_server.RuntimeHTTPServer()
-#     with TestClient(server.app) as client:
-#         json_input = {"inputs": {"sample_input": {"name": "world"}}}
-#         response = client.post(
-#             f"/api/v1/{other_task_model_id}/task/other",
-#             json=json_input,
-#         )
-#         assert response.status_code == 200
-#         json_response = json.loads(response.content.decode(response.default_encoding))
-#         assert json_response["farewell"] == "goodbye: world 42 times"
+def test_inference_other_task(other_task_model_id):
+    """Simple check that we can ping a model"""
+    server = http_server.RuntimeHTTPServer()
+    with TestClient(server.app) as client:
+        json_input = {"inputs": {"sample_input": {"name": "world"}}}
+        response = client.post(
+            f"/api/v1/{other_task_model_id}/task/other",
+            json=json_input,
+        )
+        assert response.status_code == 200
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert json_response["farewell"] == "goodbye: world 42 times"
 
 
-# def test_model_not_found():
-#     """Simple check that we can ping a model"""
-#     server = http_server.RuntimeHTTPServer()
-#     with TestClient(server.app) as client:
-#         response = client.post(
-#             f"/api/v1/this_is_not_a_model/task/sample",
-#             json={"inputs": {"name": "world"}},
-#         )
-#         assert response.status_code == 404
+def test_model_not_found():
+    """Simple check that we can ping a model"""
+    server = http_server.RuntimeHTTPServer()
+    with TestClient(server.app) as client:
+        response = client.post(
+            f"/api/v1/this_is_not_a_model/task/sample",
+            json={"inputs": {"name": "world"}},
+        )
+        assert response.status_code == 404
 
 
 # TODO: uncomment later
