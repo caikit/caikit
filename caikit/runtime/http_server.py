@@ -59,7 +59,7 @@ import caikit.core.toolkit.logging
 log = alog.use_channel("HTTP")
 
 # Registry of DM -> Pydantic model mapping to avoid errors when reusing messages
-# across endpoings
+# across endpoints
 PYDANTIC_REGISTRY = {}
 
 
