@@ -268,6 +268,11 @@ class GlobalPredictServicer:
                 self.rpc_meter.update_metrics(str(type(model)))
             return response
 
+    def stop_metering(self):
+        if get_config().runtime.metering.enabled:
+            self.rpc_meter.flush_metrics()
+            self.rpc_meter.end_writer_thread()
+
     ## Implementation Details ##################################################
 
     @contextmanager

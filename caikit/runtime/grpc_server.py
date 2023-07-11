@@ -40,6 +40,7 @@ from caikit.runtime.protobufs import (
     model_runtime_pb2_grpc,
     process_pb2_grpc,
 )
+from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
@@ -55,30 +56,38 @@ from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 # pylint: disable=W0703
 import caikit.core.data_model
 
-log = alog.use_channel("GRPC-SERVR")
+log = alog.use_channel("SERVR-GRPC")
 PROMETHEUS_METRICS_INTERCEPTOR = PromServerInterceptor()
 
 
-class RuntimeGRPCServer:
+class RuntimeGRPCServer(RuntimeServerBase):
     """An implementation of a gRPC server that serves caikit runtimes"""
 
     def __init__(
         self,
         inference_service: ServicePackage,
         training_service: Optional[ServicePackage],
-        tls_config_override: aconfig.Config = None,
+        tls_config_override: Optional[aconfig.Config] = None,
         handle_terminations: bool = False,
     ):
-        self.config = get_config()
+        super().__init__(get_config().runtime.grpc.port, tls_config_override)
         self.inference_service = inference_service
         self.training_service = training_service
+
+        # NOTE: signal function can only be called from main thread of the main
+        # interpreter. If this function is called from a thread (like in tests)
+        # then signal handler cannot be used. Thus, we will only have real
+        # termination_handler when this is called from the __main__.
+        if handle_terminations:
+            signal.signal(signal.SIGINT, self.interrupt)
+            signal.signal(signal.SIGTERM, self.interrupt)
         self.port = self.config.runtime.port
 
         # Initialize basic server
         # py_grpc_prometheus.server_metrics.
         self.server = grpc.server(
             futures.ThreadPoolExecutor(
-                max_workers=self.config.runtime.server_thread_pool_size
+                max_workers=self.config.runtime.grpc.server_thread_pool_size
             ),
             interceptors=(PROMETHEUS_METRICS_INTERCEPTOR,),
         )
@@ -152,29 +161,24 @@ class RuntimeGRPCServer:
         reflection.enable_server_reflection(service_names, self.server)
 
         # Listen on a unix socket as well for model mesh.
-        if self.config.runtime.unix_socket_path and os.path.exists(
-            self.config.runtime.unix_socket_path
+        if self.config.runtime.grpc.unix_socket_path and os.path.exists(
+            self.config.runtime.grpc.unix_socket_path
         ):
             try:
                 self.server.add_insecure_port(
-                    f"unix://{self.config.runtime.unix_socket_path}"
+                    f"unix://{self.config.runtime.grpc.unix_socket_path}"
                 )
                 log.info(
                     "<RUN10001011I>",
                     "Caikit Runtime is communicating through address: unix://%s",
-                    self.config.runtime.unix_socket_path,
+                    self.config.runtime.grpc.unix_socket_path,
                 )
             except RuntimeError:
                 log.info(
                     "<RUN10001100I>",
                     "Binding failed for: unix://%s",
-                    self.config.runtime.unix_socket_path,
+                    self.config.runtime.grpc.unix_socket_path,
                 )
-
-        # Pull TLS config from app config, unless an explicit override was passed
-        self.tls_config = (
-            tls_config_override if tls_config_override else self.config.runtime.tls
-        )
 
         if (
             self.tls_config
@@ -184,8 +188,8 @@ class RuntimeGRPCServer:
             log.info("<RUN10001805I>", "Running with TLS")
 
             tls_server_pair = (
-                bytes(load_secret(self.tls_config.server.key), "utf-8"),
-                bytes(load_secret(self.tls_config.server.cert), "utf-8"),
+                bytes(self._load_secret(self.tls_config.server.key), "utf-8"),
+                bytes(self._load_secret(self.tls_config.server.cert), "utf-8"),
             )
             if self.tls_config.client.cert:
                 log.info("<RUN10001806I>", "Running with mutual TLS")
@@ -193,7 +197,7 @@ class RuntimeGRPCServer:
                 # will verify the client using client cert.
                 server_credentials = grpc.ssl_server_credentials(
                     [tls_server_pair],
-                    root_certificates=load_secret(self.tls_config.client.cert),
+                    root_certificates=self._load_secret(self.tls_config.client.cert),
                     require_client_auth=True,
                 )
             else:
@@ -203,14 +207,6 @@ class RuntimeGRPCServer:
         else:
             log.info("<RUN10001807I>", "Running in insecure mode")
             self.server.add_insecure_port(f"[::]:{self.port}")
-
-        # NOTE: signal function can only be called from main thread of the main interpreter.
-        # If this function is called from a thread (like in tests) then signal handler cannot
-        # be used. Thus, we will only have real termination_handler when this is called from
-        # the __main__.
-        if handle_terminations:
-            signal.signal(signal.SIGINT, self.interrupt)
-            signal.signal(signal.SIGTERM, self.interrupt)
 
     def start(self, blocking: bool = True):
         """Boot the gRPC server. Can be non-blocking, or block until shutdown
@@ -250,15 +246,14 @@ class RuntimeGRPCServer:
             grace_period_seconds (Union[float, int]): Grace period for service shutdown.
                 Defaults to application config
         """
-        if not grace_period_seconds:
+        if grace_period_seconds is None:
             grace_period_seconds = (
-                self.config.runtime.server_shutdown_grace_period_seconds
+                self.config.runtime.grpc.server_shutdown_grace_period_seconds
             )
         self.server.stop(grace_period_seconds)
         # Ensure we flush out any remaining billing metrics and stop metering
         if self.config.runtime.metering.enabled:
-            self._global_predict_servicer.rpc_meter.flush_metrics()
-            self._global_predict_servicer.rpc_meter.end_writer_thread()
+            self._global_predict_servicer.stop_metering()
 
     def render_protos(self, proto_out_dir: str) -> None:
         """Renders all the necessary protos for this service into a directory
@@ -281,6 +276,15 @@ class RuntimeGRPCServer:
         """
         return grpc.insecure_channel(f"localhost:{self.port}")
 
+    @staticmethod
+    def _load_secret(secret: str) -> str:
+        """If the secret points to a file, return the contents (plaintext reads).
+        Else return the string"""
+        if os.path.exists(secret):
+            with open(secret, "r", encoding="utf-8") as secret_file:
+                return secret_file.read()
+        return secret
+
     # Context manager impl
     def __enter__(self):
         self.start(blocking=False)
@@ -290,16 +294,7 @@ class RuntimeGRPCServer:
         self.stop(0)
 
 
-def load_secret(secret: str) -> str:
-    """If the secret points to a file, return the contents (plaintext reads).
-    Else return the string"""
-    if os.path.exists(secret):
-        with open(secret, "r", encoding="utf-8") as secret_file:
-            return secret_file.read()
-    return secret
-
-
-def main():
+def main(blocking: bool = True):
     # Configure using the log level and formatter type specified in config.
     caikit.core.toolkit.logging.configure()
 
@@ -331,7 +326,7 @@ def main():
         training_service=training_service,
         handle_terminations=handle_terminations,
     )
-    server.start()
+    server.start(blocking)
 
 
 if __name__ == "__main__":

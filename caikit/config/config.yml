@@ -77,17 +77,41 @@ runtime:
         client:
             cert: ""
 
+    # Configuration for the grpc server
+    grpc:
+        enabled: true
+        port: 8085
+        # Number of workers with which we will run the gRPC server
+        server_thread_pool_size: 5
+        # gRPC Server shutdown grace period
+        # the server shuts down immediately when stopped,
+        # and all RPCs active at the end of the grace period are aborted
+        server_shutdown_grace_period_seconds: 45
+        # Listen on a unix socket (model mesh feature)
+        unix_socket_path: /tmp/mmesh/grpc.sock
     # Service exposure options
     port: 8085
-    metrics:
-        port: 8086
     unix_socket_path: /tmp/mmesh/grpc.sock
 
-    # Number of workers with which we will run the gRPC server
-    server_thread_pool_size: 5
+    # Configuration for the http server
+    http:
+        enabled: false
+        port: 8080
+        # String prefix for API routes
+        route_prefix: api/v1
+        # Maximum number of seconds to wait for graceful shutdown
+        server_shutdown_grace_period_seconds: 5
+
+    # Configuration for the metrics server
+    metrics:
+        enabled: true
+        port: 8086
+
+    # Use arbitrary available ports if the specified ones aren't free
+    find_available_ports: false
+
+    # Whether or not to abort work on client cancellation
     use_abortable_threads: true
-    # gRPC Server shutdown grace period
-    server_shutdown_grace_period_seconds: 45
 
     # Configuration items for service generation
     service_generation:

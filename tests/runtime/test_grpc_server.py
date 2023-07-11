@@ -15,7 +15,6 @@
 # Have pylint ignore Class XXXX has no YYYY member so that we can use gRPC enums.
 # pylint: disable=E1101
 # Standard
-from contextlib import contextmanager
 from dataclasses import dataclass
 from unittest import mock
 import json
@@ -67,7 +66,7 @@ from sample_lib.data_model import (
 from tests.conftest import random_test_id
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import runtime_grpc_test_server
-import caikit
+import caikit.interfaces.common
 import sample_lib
 
 ## Helpers #####################################################################
