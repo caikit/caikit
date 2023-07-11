@@ -71,7 +71,7 @@ class SamplePrimitiveModule(caikit.core.ModuleBase):
         sample_input: SampleInputType,
         simple_list: List[str],
         union_list: Union[List[str], List[int]],
-        union_list2: Union[List[str], List[int]],
+        union_list2: Union[List[str], List[int], int],
         union_list3: Union[List[str], List[bool]],
         union_list4: Union[List[str], int],
         training_params_json_dict_list: List[JsonDict],
