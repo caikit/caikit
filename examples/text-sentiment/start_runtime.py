@@ -20,7 +20,9 @@ import sys
 import alog
 
 # Local
+from caikit.runtime import grpc_server
 import caikit
+import text_sentiment  # pylint: disable=unused-import
 
 models_directory = path.abspath(path.join(path.dirname(__file__), "models"))
 caikit.config.configure(
@@ -34,12 +36,6 @@ sys.path.append(
     path.abspath(path.join(path.dirname(__file__), "../"))
 )  # Here we assume that `start_runtime` file is at the same level of the `text_sentiment` package
 
-# Local
-import text_sentiment
-
 alog.configure(default_level="debug")
-
-# Local
-from caikit.runtime import grpc_server
 
 grpc_server.main()
