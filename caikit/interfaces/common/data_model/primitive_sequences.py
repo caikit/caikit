@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+This file contains interfaces required for unions of lists
+"""
 
 # Standard
 from typing import List
@@ -23,7 +26,6 @@ from caikit.core.data_model import DataObjectBase, dataobject
 from caikit.interfaces.runtime.data_model.training_management import RUNTIME_PACKAGE
 
 
-# interfaces required for unions of lists
 @dataobject(RUNTIME_PACKAGE)
 class IntSequence(DataObjectBase):
     values: Annotated[List[int], FieldNumber(1)]
