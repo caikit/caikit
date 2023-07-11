@@ -347,7 +347,7 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
     train_request = train_request_class(
         model_name=model_name,
         training_data=training_data,
-        union_list=caikit.interfaces.common.data_model.primitive_sequences.StrSequence(
+        union_list=caikit.interfaces.common.data_model.StrSequence(
             values=["str", "sequence"]
         ),
     ).to_proto()
@@ -468,15 +468,9 @@ def test_train_primitive_model(
     train_request_class = DataBase.get_class_for_name(
         "SampleTaskSamplePrimitiveModuleTrainRequest"
     )
-    union_list_str_dm = (
-        caikit.interfaces.common.data_model.primitive_sequences.StrSequence
-    )
-    union_list_int_dm = (
-        caikit.interfaces.common.data_model.primitive_sequences.IntSequence
-    )
-    union_list_bool_dm = (
-        caikit.interfaces.common.data_model.primitive_sequences.BoolSequence
-    )
+    union_list_str_dm = caikit.interfaces.common.data_model.StrSequence
+    union_list_int_dm = caikit.interfaces.common.data_model.IntSequence
+    union_list_bool_dm = caikit.interfaces.common.data_model.BoolSequence
 
     train_request = train_request_class(
         model_name=model_name,
