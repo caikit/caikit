@@ -303,7 +303,7 @@ def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_r
     )
 
     # model_name is not expected to be passed through
-    expected_arguments = {"training_data"}
+    expected_arguments = {"training_data", "union_list"}
 
     assert expected_arguments == set(caikit.core_request.keys())
 
@@ -378,7 +378,7 @@ def test_global_train_build_caikit_library_request_dict_ok_with_data_stream_file
     )
 
     # model_name is not expected to be passed through
-    expected_arguments = {"training_data"}
+    expected_arguments = {"training_data", "union_list"}
 
     assert expected_arguments == set(caikit.core_request.keys())
 
