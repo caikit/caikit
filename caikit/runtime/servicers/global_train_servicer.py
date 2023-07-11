@@ -16,9 +16,7 @@ from importlib.metadata import version
 from typing import Optional
 from uuid import uuid4
 import concurrent.futures
-import multiprocessing
 import os
-import threading
 import traceback
 
 # Third Party
@@ -201,13 +199,11 @@ class GlobalTrainServicer:
         }
 
         # If running with a subprocess, set the target, events and args accordingly
-        if self.use_subprocess:
-            cancel_event = multiprocessing.Event()
-            target = SubProcessTrainSaveExecutor(cancel_event)
-        else:
-            cancel_event = threading.Event()
-            target = LocalTrainSaveExecutor(cancel_event)
-
+        target = (
+            SubProcessTrainSaveExecutor()
+            if self.use_subprocess
+            else LocalTrainSaveExecutor()
+        )
         log.debug2(
             "Training with %s",
             "SUBPROCESS" if self.use_subprocess else "MAIN PROCESS",

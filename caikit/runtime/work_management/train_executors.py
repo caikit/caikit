@@ -14,7 +14,7 @@
 
 # Standard
 from concurrent.futures.thread import _threads_queues
-from typing import Type
+from typing import List, Type
 import abc
 import multiprocessing
 import os
@@ -29,8 +29,8 @@ import alog
 
 # Local
 from caikit.core.modules import ModuleBase
+from caikit.core.toolkit.destroyable_thread import DestroyableThread
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.work_management.destroyable_thread import DestroyableThread
 import caikit.core
 
 log = alog.use_channel("TRN_EXCTRS")
@@ -90,16 +90,16 @@ class TrainSaveExecutorBase(abc.ABC):
 
 
 class LocalTrainSaveExecutor(TrainSaveExecutorBase):
-    def __init__(self, cancel_event) -> None:
-        self.complete_event = threading.Event()
-
-        # collect all events
-        self.events = [cancel_event, self.complete_event]
+    def __init__(self):
+        self.__complete_event = threading.Event()
+        self.__cancel_event = threading.Event()
 
         # NOTE: worker is assigned at a later stage for Local
         self._worker = None
 
-        self.__cancel_event = cancel_event
+    @property
+    def events(self) -> List[threading.Event]:
+        return [self.__complete_event, self.__cancel_event]
 
     # pylint: disable=arguments-differ
     def train_and_save_model(
@@ -120,13 +120,13 @@ class LocalTrainSaveExecutor(TrainSaveExecutorBase):
                 log.debug, "Done training %s in: ", module_class.__name__
             ):
                 self._worker = DestroyableThread(
-                    self.complete_event,
                     TrainSaveExecutorBase._train_and_save,
                     *args,
+                    work_done_event=self.__complete_event,
                     **kwargs,
                 )
                 self._worker.start()
-                self.complete_event.wait()
+                self.__complete_event.wait()
 
                 if self.__cancel_event.is_set():
                     self.cancel()
@@ -225,13 +225,14 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
                 self._error = self._parent_conn.recv()
             return self._error
 
-    def __init__(self, cancel_event) -> None:
-
-        self.complete_event = multiprocessing.Event()
-        self.events = [cancel_event, self.complete_event]
-
+    def __init__(self):
+        self.__complete_event = multiprocessing.Event()
+        self.__cancel_event = multiprocessing.Event()
         self._worker = None
-        self.__cancel_event = cancel_event
+
+    @property
+    def events(self) -> List[threading.Event]:
+        return [self.__complete_event, self.__cancel_event]
 
     def __del__(self):
         """
@@ -252,7 +253,7 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
     ):
 
         self._worker = self._ErrorCaptureProcess(
-            event=self.complete_event,
+            event=self.__complete_event,
             target=TrainSaveExecutorBase._train_and_save,
             args=(module_class, model_path),
             kwargs=kwargs,
@@ -263,7 +264,7 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             cancellation (termination of subprocess) in case
             cancel_event is triggered
             """
-            self.complete_event.wait()
+            self.__complete_event.wait()
 
             if self.__cancel_event.is_set():
                 # Since we are using process here, we cannot rely on
@@ -297,10 +298,10 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
             # In case complete_event is not set, that means
             # process exit without a handler, this would
             # be the case for example when OS kills the process
-            if not self.complete_event.is_set():
+            if not self.__complete_event.is_set():
                 # Notify cancel thread explicitly about it
                 # which is waiting on complete_event to be set
-                self.complete_event.set()
+                self.__complete_event.set()
 
         # Wait for cancel thread to finish
         # this should happen instantly in either of cases:

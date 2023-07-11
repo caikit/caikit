@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 # Standard
 import threading
 
@@ -18,8 +19,8 @@ import threading
 import alog
 
 # Local
+from caikit.core.toolkit.destroyable_thread import DestroyableThread
 from caikit.runtime.types.aborted_exception import AbortedException
-from caikit.runtime.work_management.destroyable_thread import DestroyableThread
 
 log = alog.use_channel("ABORT-ACTION")
 
@@ -67,7 +68,10 @@ class AbortableAction:
         # Create a new thread to do the work, which will set the event if it finished
         self.__runnable_func = runnable_func
         self.__work_thread = DestroyableThread(
-            self.__done_or_aborted_event, self.__runnable_func, *args, **kwargs
+            self.__runnable_func,
+            *args,
+            work_done_event=self.__done_or_aborted_event,
+            **kwargs
         )
 
     def do(self):
@@ -82,6 +86,7 @@ class AbortableAction:
                 "<RUN14653271I>", "Aborting work in progress: %s", self.__runnable_func
             )
             self.__work_thread.destroy()
+            self.__work_thread.join()
             raise AbortedException("Aborted work: {}".format(self.__runnable_func))
 
         # Options 2: Work thread finished normally. Hooray!
