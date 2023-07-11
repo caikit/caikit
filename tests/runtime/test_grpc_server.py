@@ -15,7 +15,6 @@
 # Have pylint ignore Class XXXX has no YYYY member so that we can use gRPC enums.
 # pylint: disable=E1101
 # Standard
-from contextlib import contextmanager
 from dataclasses import dataclass
 from unittest import mock
 import json
