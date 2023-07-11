@@ -72,7 +72,9 @@ def sample_inference_service(render_protos) -> ServicePackage:
         ServicePackageFactory.ServiceType.INFERENCE,
     )
     if render_protos:
-        render_dataobject_protos("tests/protos")
+        output_dir = os.path.join("tests", "protos")
+        render_dataobject_protos(output_dir)
+        inference_service.service.write_proto_file(output_dir)
     return inference_service
 
 
@@ -92,7 +94,9 @@ def sample_train_service(render_protos) -> ServicePackage:
         ServicePackageFactory.ServiceType.TRAINING,
     )
     if render_protos:
-        render_dataobject_protos("tests/protos")
+        output_dir = os.path.join("tests", "protos")
+        render_dataobject_protos(output_dir)
+        training_service.service.write_proto_file(output_dir)
     return training_service
 
 

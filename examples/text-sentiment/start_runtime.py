@@ -19,6 +19,17 @@ import sys
 # First Party
 import alog
 
+# Local
+import caikit
+
+models_directory = path.abspath(path.join(path.dirname(__file__), "models"))
+caikit.config.configure(
+    config_dict={
+        "merge_strategy": "merge",
+        "runtime": {"local_models_dir": models_directory},
+    }
+)
+
 sys.path.append(
     path.abspath(path.join(path.dirname(__file__), "../"))
 )  # Here we assume that `start_runtime` file is at the same level of the `text_sentiment` package
