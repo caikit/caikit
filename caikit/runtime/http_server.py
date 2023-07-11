@@ -156,6 +156,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         )
         self.server = uvicorn.Server(config=config)
 
+        # Placeholder for thread when running without blocking
+        self._uvicorn_server_thread = None
+
     def __del__(self):
         if get_config().runtime.metering.enabled:
             self.global_predict_servicer.stop_metering()
@@ -181,18 +184,18 @@ class RuntimeHTTPServer(RuntimeServerBase):
         log.info("Shutting down HTTP Server")
         self.server.should_exit = True
         if (
-            self.uvicorn_server_thread is not None
-            and self.uvicorn_server_thread.is_alive()
+            self._uvicorn_server_thread is not None
+            and self._uvicorn_server_thread.is_alive()
         ):
-            self.uvicorn_server_thread.join()
+            self._uvicorn_server_thread.join()
 
         # Ensure we flush out any remaining billing metrics and stop metering
         if self.config.runtime.metering.enabled:
             self.global_predict_servicer.stop_metering()
 
     def run_in_thread(self):
-        self.uvicorn_server_thread = threading.Thread(target=self.server.run)
-        self.uvicorn_server_thread.start()
+        self._uvicorn_server_thread = threading.Thread(target=self.server.run)
+        self._uvicorn_server_thread.start()
         while not self.server.started:
             time.sleep(1e-3)
         log.info("HTTP Server is running in thread")
