@@ -227,7 +227,6 @@ class SubProcessTrainSaveExecutor(TrainSaveExecutorBase):
 
     def __init__(self):
         self.__complete_event = multiprocessing.Event()
-        self.complete_event = multiprocessing.Event()
         self.__cancel_event = multiprocessing.Event()
         self._worker = None
 
