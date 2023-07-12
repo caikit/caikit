@@ -169,7 +169,6 @@ def test_cancel_without_waiting(trainer_type_cfg):
     model_future.cancel()
     assert model_future.get_status() == ModelTrainerBase.TrainingStatus.CANCELED
     assert model_future.get_status().is_terminal
-    model_future.wait()
 
 
 def test_no_retention_time(trainer_type_cfg):
@@ -185,12 +184,12 @@ def test_no_retention_time(trainer_type_cfg):
 
 def test_purge_retention_time(trainer_type_cfg):
     """Test that purging old models works as expected"""
-    trainer = local_trainer(retention_duration="0.1s", **trainer_type_cfg)
+    trainer = local_trainer(retention_duration="1d10s", **trainer_type_cfg)
     model_future = trainer.train(SampleModule, DataStream.from_iterable([]))
     model_future.wait()
     retrieved_future = trainer.get_model_future(model_future.id)
     assert retrieved_future is model_future
-    time.sleep(0.2)
+    model_future._completion_time = model_future._completion_time - timedelta(days=2)
     with pytest.raises(ValueError):
         trainer.get_model_future(model_future.id)
 
@@ -199,7 +198,7 @@ def test_purge_retention_time(trainer_type_cfg):
     "test_params",
     [
         ("1d", timedelta(days=1)),
-        ("0.1s", timedelta(seconds=0.1)),
+        ("0.01s", timedelta(seconds=0.01)),
         ("1d12h3m0.2s", timedelta(days=1, hours=12, minutes=3, seconds=0.2)),
     ],
 )

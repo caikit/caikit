@@ -191,12 +191,16 @@ class LocalModelTrainer(ModelTrainerBase):
                 error.value_check(
                     "<COR16745216E>",
                     self.save_path,
-                    "Unable to load model trained in subprocess without a save_path",
+                    "Unable to load model from training {} "
+                    + "trained in subprocess without a save_path",
+                    self.id,
                 )
                 error.value_check(
                     "<COR59551640E>",
                     os.path.exists(self.save_path),
-                    "Unable to load model saved in subprocess at {}",
+                    "Unable to load model from training {} "
+                    + "saved in subprocess, path does not exist: {}",
+                    self.id,
                     self.save_path,
                 )
                 result = caikit.load(self.save_path)

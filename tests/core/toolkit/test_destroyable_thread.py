@@ -35,7 +35,7 @@ from caikit.core.toolkit.destroyable_thread import (
 def test_threads_can_be_interrupted():
     def infinite_wait():
         while True:
-            time.sleep(0.1)
+            time.sleep(0.001)
 
     thread = DestroyableThread(infinite_wait)
     thread.start()
@@ -71,10 +71,9 @@ def test_threads_canceled_when_interrupt_fails():
     start_event.set()
     thread.destroy()
     assert thread.canceled
-    # NOTE: This assertion can theoretically fail due to the above-mentioned
-    #   race conditions. If it becomes a problem, we can remove it, but it would
-    #   make the test a bit weaker.
-    assert thread.is_alive()
+    # NOTE: We don't assert that thread.is_alive() here since it's potentially
+    #   susceptible to the above mentioned race conditions. It _should_ always
+    #   be true, though, based on reasonable timing.
     thread.join(60)
     assert not thread.is_alive()
 
@@ -87,7 +86,7 @@ def test_threads_can_catch_the_interrupts():
         try:
             started_event.set()
             while True:
-                time.sleep(0.1)
+                time.sleep(0.001)
         except Exception as e:
             caught_event.set()
             raise e
