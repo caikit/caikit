@@ -28,12 +28,14 @@ import alog
 # Local
 from caikit import get_config
 from caikit.core import ModuleBase
+from caikit.core.toolkit.errors import error_handler
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.model_management.model_sizer import ModelSizer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("MODEL-MANAGR")
+error = error_handler.get(log)
 
 MODEL_SIZE_GAUGE = Gauge(
     "total_loaded_models_size",
@@ -65,6 +67,9 @@ class ModelManager:
 
     __model_size_gauge_lock = threading.Lock()
 
+    # Model type name used when loading local models
+    _STANDALONE_MODEL = "standalone-model"
+
     def __init__(self):
         """Initialize a ModelManager instance."""
         # Re-instantiating this is a programming error
@@ -79,13 +84,26 @@ class ModelManager:
         # set up the local map for model ID to loaded model
         self.loaded_models: Dict[str, LoadedModel] = {}
 
-        # Optionally load models mounted into a local directory
-        local_models_path = get_config().runtime.local_models_dir
-        if os.path.exists(local_models_path) and len(os.listdir(local_models_path)) > 0:
-            log.info("<RUN44739400I>", "Loading local models into Caikit Runtime...")
-            self.load_local_models(local_models_path)
+        # Keep track of the local model cache dir and make sure it's valid
+        runtime_cfg = get_config().runtime
+        self._local_models_cache_dir = runtime_cfg.local_models_cache_dir
+        if self._local_models_cache_dir:
+            error.value_check(
+                "<RUN75903138E>", os.path.isdir(self._local_models_cache_dir)
+            )
 
-    def load_model(self, model_id, local_model_path, model_type) -> int:
+        # Optionally load models mounted into a local directory
+        local_models_dir = runtime_cfg.local_models_dir
+        if os.path.exists(local_models_dir) and len(os.listdir(local_models_dir)) > 0:
+            log.info("<RUN44739400I>", "Loading local models into Caikit Runtime...")
+            self.load_local_models(local_models_dir)
+
+    def load_model(
+        self,
+        model_id: str,
+        local_model_path: str,
+        model_type: str,
+    ) -> int:
         """Load a model using model_path (in Cloud Object Storage) & give it a model ID
         Args:
             model_id (string):  Model ID string for the model to load.
@@ -97,62 +115,80 @@ class ModelManager:
         with LOAD_MODEL_DURATION_SUMMARY.labels(model_type=model_type).time():
             if model_id in self.loaded_models:
                 log.debug("Model '%s' is already loaded", model_id)
-                return self.loaded_models[model_id].size()
+            else:
+                try:
+                    model = self.model_loader.load_model(
+                        model_id, local_model_path, model_type
+                    )
+                except Exception as ex:
+                    self.__increment_load_model_exception_count_metric(model_type)
+                    raise ex
 
-            try:
-                model = self.model_loader.load_model(
+                model_size = self.model_sizer.get_model_size(
                     model_id, local_model_path, model_type
                 )
-            except Exception as ex:
-                self.__increment_load_model_exception_count_metric(model_type)
-                raise ex
+                model.set_size(model_size)
 
-            model_size = self.model_sizer.get_model_size(
-                model_id, local_model_path, model_type
-            )
-            model.set_size(model_size)
+                # Add model + helpful metadata to our loaded models map
+                self.loaded_models[model_id] = model
 
-            # Add model + helpful metadata to our loaded models map
-            self.loaded_models[model_id] = model
+                # Update Prometheus metrics
+                self.__increment_model_count_metric(model_type, model_id)
+                self.__report_total_model_size_metric()
 
-            # Update Prometheus metrics
-            self.__increment_model_count_metric(model_type, model_id)
-            self.__report_total_model_size_metric()
+            # If using a local models cache, save it to the cache.
+            #
+            # NOTE: This assumes immutable model ids! If a model id is reused
+            #   with different content, this will not update the content in the
+            #   cache directory.
+            if self._local_models_cache_dir:
+                model_cache_path = os.path.join(self._local_models_cache_dir, model_id)
+                if not os.path.exists(model_cache_path):
+                    log.debug("Caching local model %s", model_id)
+                    model.module().save(model_cache_path)
 
             return self.loaded_models[model_id].size()
 
-    def load_local_models(self, local_model_dir):
+    def load_local_models(self, local_models_dir: str):
         """Load models mounted into a local directory
+
         Args:
-            local_model_dir (string):  Path to the local model directory
-        Returns:
-            None
+            local_models_dir (str): The directory where local models are stored
         """
-        for model_base_path in os.listdir(local_model_dir):
+        for model_base_path in os.listdir(local_models_dir):
             try:
-                # Use the file name as the model id
-                model_id = model_base_path
-                model_path = os.path.join(local_model_dir, model_base_path)
-                self.load_model(model_id, model_path, "standalone-model")
-            except CaikitRuntimeException as e:
+                self.load_local_model(model_base_path, local_models_dir)
+            except CaikitRuntimeException as err:
                 log.warning(
                     "<RUN56627484W>",
                     "Failed to load model %s: %s",
                     model_base_path,
-                    repr(e),
+                    repr(err),
                     exc_info=True,
                 )
                 continue
 
         if len(self.loaded_models) == 0:
             log.error(
-                "<RUN56336804E>", "No models loaded in directory: %s", local_model_dir
+                "<RUN56336804E>", "No models loaded in directory: %s", local_models_dir
             )
             raise CaikitRuntimeException(
                 StatusCode.INTERNAL, "No standalone models loaded"
             )
 
-    def unload_model(self, model_id) -> int:
+    def load_local_model(self, model_id: str, local_models_dir: str):
+        """Try to load a model in local_models_dir by its id
+
+        Args:
+            model_id (str): Model ID that is the name of the directory or zip in
+                the local_models_dir
+            local_models_dir (str): The directory where local models are stored
+        """
+        # Use the file name as the model id
+        model_path = os.path.join(local_models_dir, model_id)
+        self.load_model(model_id, model_path, self._STANDALONE_MODEL)
+
+    def unload_model(self, model_id: str) -> int:
         """Unload a model by ID model.
 
         Args:
@@ -192,7 +228,7 @@ class ModelManager:
 
         return model_size
 
-    def unload_all_models(self) -> None:
+    def unload_all_models(self):
         """Unload all loaded models. This will also remove any lingering artifacts from strangely
         packaged zip files, which initially resulted in load failures."""
         try:
@@ -203,7 +239,7 @@ class ModelManager:
                 StatusCode.INTERNAL, "All models could not be unloaded!!"
             ) from ex
 
-    def get_model_size(self, model_id) -> int:
+    def get_model_size(self, model_id: str) -> int:
         """Look up size of a model by model ID.
         Args:
             model_id (string):  Model ID string for the model. Throw Exception if empty,
@@ -241,7 +277,9 @@ class ModelManager:
         self.__report_total_model_size_metric()
         return loaded_model.size()
 
-    def estimate_model_size(self, model_id, local_model_path, model_type) -> int:
+    def estimate_model_size(
+        self, model_id: str, local_model_path: str, model_type: str
+    ) -> int:
         """Predict size of a model using model ID and path.
         Args:
             model_id (string):  Model ID string for the model to predict size of.
@@ -252,7 +290,7 @@ class ModelManager:
         """
         return self.model_sizer.get_model_size(model_id, local_model_path, model_type)
 
-    def retrieve_model(self, model_id) -> ModuleBase:
+    def retrieve_model(self, model_id: str) -> ModuleBase:
         """Retrieve a model from the loaded model map by model ID.
 
         Args:
@@ -267,17 +305,34 @@ class ModelManager:
             )
 
         # Now retrieve the model
-        if model_id not in self.loaded_models:
-            # We should not encounter this scenario, so if it happens, log
-            # it as an error-level log
-            msg = "Model '%s' not loaded" % model_id
-            log.error(
-                {"log_code": "<RUN61105243E>", "message": msg, "model_id": model_id}
+        found = model_id in self.loaded_models
+
+        # If enabled, try to load the model from local_models_dir
+        if not found and self._local_models_cache_dir:
+            log.debug("Attempting to lazily load local model %s", model_id)
+            try:
+                self.load_local_model(model_id, self._local_models_cache_dir)
+                log.info("<RUN75038623I>", "Lazily loaded %s", model_id)
+                found = True
+            except CaikitRuntimeException as err:
+                log.debug2(
+                    "Unable to lazily load %s: %s",
+                    model_id,
+                    repr(err),
+                    exc_info=True,
+                )
+
+        # If still not found, log and return NOT_FOUND
+        if not found:
+            msg = f"Model '{model_id}' not loaded"
+            log.debug(
+                {"log_code": "<RUN61105243D>", "message": msg, "model_id": model_id}
             )
             raise CaikitRuntimeException(
                 StatusCode.NOT_FOUND, msg, {"model_id": model_id}
             )
 
+        # Return the loaded model
         return self.loaded_models[model_id].module()
 
     def __report_total_model_size_metric(self):
