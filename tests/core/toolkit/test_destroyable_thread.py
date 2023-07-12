@@ -38,11 +38,22 @@ def test_threads_can_be_interrupted():
             time.sleep(0.1)
 
     thread = DestroyableThread(infinite_wait)
-
     thread.start()
     thread.destroy()
+    assert thread.canceled
     thread.join(60)
+    assert not thread.is_alive()
 
+
+def test_threads_canceled_when_interrupt_fails():
+    def long_sleep():
+        time.sleep(0.2)
+
+    thread = DestroyableThread(long_sleep)
+    thread.start()
+    thread.destroy()
+    assert thread.canceled
+    thread.join(60)
     assert not thread.is_alive()
 
 

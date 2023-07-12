@@ -74,6 +74,7 @@ class DestroyableThread(threading.Thread, Destroyable):
         self.__runnable_result = None
         self.__runnable_exception = None
         self.__threw = False
+        self.__started = False
         self.__ran = False
 
         # In case `destroy` is called before Python has actually started the thread, we need to
@@ -86,7 +87,7 @@ class DestroyableThread(threading.Thread, Destroyable):
 
     @property
     def canceled(self) -> bool:
-        return self.destroyed and self.threw
+        return self.destroyed and self.__started
 
     @property
     def ran(self) -> bool:
@@ -116,6 +117,7 @@ class DestroyableThread(threading.Thread, Destroyable):
             )
             self.__raise()
 
+        self.__started = True
         try:
             self.__runnable_result = self.runnable_func(
                 *self.runnable_args, **self.runnable_kwargs
