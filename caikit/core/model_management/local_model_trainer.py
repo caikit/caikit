@@ -132,13 +132,14 @@ class LocalModelTrainer(ModelTrainerBase):
             """Every model future must be able to poll the status of the
             training job
             """
+            # The worker was canceled while doing work. It may still be in the
+            # process of terminating and thus still alive.
+            if self._worker.canceled:
+                return ModelTrainerBase.TrainingStatus.CANCELED
+
             # If the worker is currently alive it's doing work
             if self._worker.is_alive():
                 return ModelTrainerBase.TrainingStatus.RUNNING
-
-            # The worker was canceled while doing work
-            if self._worker.canceled:
-                return ModelTrainerBase.TrainingStatus.CANCELED
 
             # The worker threw outside of a cancellation process
             if self._worker.threw:
@@ -157,8 +158,8 @@ class LocalModelTrainer(ModelTrainerBase):
             with alog.ContextTimer(
                 log.debug2, "Done canceling training %s in: ", self.id
             ):
+                log.debug3("Destroying worker in %s", self.id)
                 self._worker.destroy()
-                self.wait()
 
         def wait(self):
             """Block until the job reaches a terminal state"""
@@ -171,9 +172,10 @@ class LocalModelTrainer(ModelTrainerBase):
                 if self._worker.exitcode and self._worker.exitcode != os.EX_OK:
                     if self._worker.exitcode == OOM_EXIT_CODE:
                         raise MemoryError("Training process died with OOM error!")
-                    raise RuntimeError(
-                        f"Training process died with exit code {self._worker.exitcode}"
-                    )
+                    if not self._worker.canceled:
+                        raise RuntimeError(
+                            f"Training process died with exit code {self._worker.exitcode}"
+                        )
 
         def load(self) -> ModuleBase:
             """Wait for the training to complete, then return the resulting
