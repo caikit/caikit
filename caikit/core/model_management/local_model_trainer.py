@@ -101,9 +101,12 @@ class LocalModelTrainer(ModelTrainerBase):
                 log.debug2("Running training %s as a SUBPROCESS", self.id)
                 self._worker = DestroyableProcess(
                     target=self._train_and_save,
-                    return_result=False,
+                    return_result=True,
                     args=args,
-                    kwargs=kwargs,
+                    kwargs={
+                        "return_completion_time": True,
+                        **kwargs,
+                    },
                 )
                 # If training in a subprocess without a save path, the model
                 # will be unreachable once trained!
@@ -169,6 +172,7 @@ class LocalModelTrainer(ModelTrainerBase):
 
             # If running a subprocess, handle abnormal exit codes
             if self._use_subprocess:
+                self._completion_time = self._worker.get_or_throw()
                 if self._worker.exitcode and self._worker.exitcode != os.EX_OK:
                     if self._worker.exitcode == OOM_EXIT_CODE:
                         raise MemoryError("Training process died with OOM error!")
@@ -182,7 +186,6 @@ class LocalModelTrainer(ModelTrainerBase):
             model or raise any errors that happened during training.
             """
             self.wait()
-            result = self._worker.get_or_throw()
             if self._use_subprocess:
                 log.debug2("Loading model saved in subprocess")
                 error.value_check(
@@ -197,11 +200,13 @@ class LocalModelTrainer(ModelTrainerBase):
                     self.save_path,
                 )
                 result = caikit.load(self.save_path)
+            else:
+                result = self._worker.get_or_throw()
             return result
 
         ## Impl ##
 
-        def _train_and_save(self, *args, **kwargs):
+        def _train_and_save(self, *args, return_completion_time=False, **kwargs):
             """Function that will run in the worker thread"""
             with alog.ContextTimer(log.debug, "Training %s finished in: ", self.id):
                 trained_model = self._module_class.train(*args, **kwargs)
@@ -210,26 +215,32 @@ class LocalModelTrainer(ModelTrainerBase):
                 with alog.ContextTimer(log.debug, "Training %s saved in: ", self.id):
                     trained_model.save(self.save_path)
             self._completion_time = datetime.now()
+            log.debug2("Completion time for %s: %s", self.id, self._completion_time)
+            if return_completion_time:
+                return self._completion_time
             return trained_model
 
     ## Interface ##
 
     # Expression for parsing retention policy
     _timedelta_expr = re.compile(
-        r"^((?P<days>\d+?)d)?((?P<hours>\d+?)hr)?((?P<minutes>\d+?)m)?((?P<seconds>\d*\.?\d*?)s)?$"
+        r"^((?P<days>\d+?)d)?((?P<hours>\d+?)h)?((?P<minutes>\d+?)m)?((?P<seconds>\d*\.?\d*?)s)?$"
     )
 
     def __init__(self, config: aconfig.Config, instance_name: str):
         """Initialize with a shared dict of all trainings"""
         self._instance_name = instance_name
-        self._retention_duration = config.get("retention_duration")
         self._use_subprocess = config.get("use_subprocess", False)
+        self._retention_duration = config.get("retention_duration")
         if self._retention_duration is not None:
             try:
+                log.debug2("Parsing retention duration: %s", self._retention_duration)
                 self._retention_duration = timedelta(
                     **{
                         key: float(val)
-                        for key, val in self._timedelta_expr.match("23d")
+                        for key, val in self._timedelta_expr.match(
+                            self._retention_duration
+                        )
                         .groupdict()
                         .items()
                         if val is not None
@@ -238,7 +249,9 @@ class LocalModelTrainer(ModelTrainerBase):
             except AttributeError:
                 error(
                     "<COR63897671E>",
-                    f"Invalid retention_duration: {self._retention_duration}",
+                    ValueError(
+                        f"Invalid retention_duration: {self._retention_duration}"
+                    ),
                 )
 
         # The shared dict of futures and a lock to serialize mutations to it
