@@ -104,7 +104,7 @@ class TestTrainer(ModelTrainerBase):
 
         def __init__(self, parent, trained_model, save_path, save_with_id):
             super().__init__(
-                parent_name=parent.instance_name,
+                trainer_name=parent.instance_name,
                 training_id=str(uuid.uuid4()),
                 save_path=save_path,
                 save_with_id=save_with_id,

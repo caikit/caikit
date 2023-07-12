@@ -65,7 +65,7 @@ class LocalModelTrainer(ModelTrainerBase):
 
         def __init__(
             self,
-            parent_name: str,
+            trainer_name: str,
             module_class: Type[ModuleBase],
             *args,
             save_path: Optional[str],
@@ -75,7 +75,7 @@ class LocalModelTrainer(ModelTrainerBase):
             **kwargs,
         ):
             super().__init__(
-                parent_name=parent_name,
+                trainer_name=trainer_name,
                 training_id=str(uuid.uuid4()),
                 save_with_id=save_with_id,
                 save_path=save_path,
