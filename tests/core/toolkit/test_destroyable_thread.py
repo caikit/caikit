@@ -46,13 +46,35 @@ def test_threads_can_be_interrupted():
 
 
 def test_threads_canceled_when_interrupt_fails():
-    def long_sleep():
-        time.sleep(0.2)
+    """This test exercises the case where the DestroyableThread fails to
+    interrupt the thread with the internal exception on destroy(). The easiest
+    way to simulate this is with a "long" `time.sleep` but that still doesn't
+    fully guarantee that it will always be free of race conditions. In
+    particular, the following two are still possible:
 
-    thread = DestroyableThread(long_sleep)
+    1. The destroy() call lands in between waiting on the start event and
+        beginning the time.sleep. This would cause the thread to die cleanly.
+    2. The assertion that thread.is_alive() lands after the time.sleep has
+        finished and the destroying exception has done its job to kill the
+        thread.
+    """
+    start_event = threading.Event()
+    end_event = threading.Event()
+
+    def blocking_fn():
+        start_event.wait()
+        time.sleep(0.01)
+        end_event.wait()
+
+    thread = DestroyableThread(blocking_fn)
     thread.start()
+    start_event.set()
     thread.destroy()
     assert thread.canceled
+    # NOTE: This assertion can theoretically fail due to the above-mentioned
+    #   race conditions. If it becomes a problem, we can remove it, but it would
+    #   make the test a bit weaker.
+    assert thread.is_alive()
     thread.join(60)
     assert not thread.is_alive()
 
