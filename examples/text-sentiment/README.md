@@ -15,10 +15,15 @@ Install the dependencies: `pip install -r requirements.txt`
 
 ## Running the Caikit runtime
 
-In one terminal, start the runtime server:
+In one terminal, start the runtime grpc server:
 
 ```shell
 python3 start_runtime.py
+```
+
+You can alternatively start the REST server with
+```shell
+python3 start_runtime.py --protocol http
 ```
 
 You should see output similar to the following:
@@ -57,6 +62,10 @@ In another terminal, run the client code:
 
 ```shell
 python3 client.py
+```
+Or, for the REST client:
+```shell
+python3 client.py --protocol http
 ```
 
 The client code calls the model and queries it for sentiment analysis on 2 different pieces of text.

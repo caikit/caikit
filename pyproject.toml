@@ -79,6 +79,7 @@ dev-fmt = [
     "pre-commit>=3.0.4,<4.0",
     "pylint>=2.16.2,<3.0",
     "pydeps==1.12.10",
+    "requests==2.31.0"
 ]
 
 dev-build = [
