@@ -72,6 +72,10 @@ runtime:
     # be a snake case string, e.g., caikit_nlp or caikit_cv.
     library: sample_lib # TODO: replace with libraries below when runtime can support multiple libraries
     local_models_dir: models
+    # If not null, runtime will look in local_models_cache_dir for a named model
+    # when an inference call contains a model id that is not already loaded. It
+    # will also save loaded models to the cache dir on successful loading.
+    local_models_cache_dir: null
 
     # TLS configs
     tls:
