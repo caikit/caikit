@@ -4,6 +4,7 @@ A sample module for sample things!
 # Standard
 from typing import Iterable
 import os
+import time
 
 # Local
 from ...data_model.sample import (
@@ -107,8 +108,29 @@ class SampleModule(caikit.core.ModuleBase):
         training_data: DataStream[SampleTrainingType],
         batch_size: int = 64,
         oom_exit: bool = False,
+        sleep_time: float = 0,
+        sleep_increment: float = 0.001,
+        **kwargs,
     ) -> "SampleModule":
         """Sample training method that produces a trained model"""
+
+        # If needed, wait for an event
+        # NOTE: We need to pull this from **kwargs because it's not a valid arg
+        #   for train API deduction. It's only needed for testing purposes, so
+        #   this is definitely a non-standard usage pattern!
+        wait_event = kwargs.get("wait_event")
+        if wait_event is not None:
+            wait_event.wait()
+
+        # If needed, wait for a long time
+        # NOTE: DestroyableThread is a "best effort" at destroying a threaded
+        #   work and is not actually capable of destroying many type of work. If
+        #   this is written as time.sleep(sleep_time), the interrupt will not
+        #   work.
+        if sleep_time:
+            start_time = time.time()
+            while time.time() - sleep_time < start_time:
+                time.sleep(sleep_increment)
 
         if oom_exit:
             # exit with OOM code. Note _exit method is used to exit the

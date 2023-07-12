@@ -32,6 +32,10 @@ model_management:
     trainers:
         default:
             type: LOCAL
+            config:
+                # Format: XdXhXmXs
+                retention_duration: 1d
+                use_subprocess: false
     finders:
         default:
             type: LOCAL

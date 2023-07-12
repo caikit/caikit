@@ -68,13 +68,13 @@ class ModelTrainerBase(FactoryConstructible):
 
         def __init__(
             self,
-            parent_name: str,
+            trainer_name: str,
             training_id: str,
             save_with_id: bool,
             save_path: Optional[str],
         ):
             self._id = self.__class__.ID_DELIMITER.join(
-                [ReversibleHasher.hash(parent_name), training_id]
+                [ReversibleHasher.hash(trainer_name), training_id]
             )
             self._save_path = self.__class__._save_path_with_id(
                 save_path,

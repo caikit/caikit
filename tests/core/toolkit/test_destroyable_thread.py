@@ -35,14 +35,46 @@ from caikit.core.toolkit.destroyable_thread import (
 def test_threads_can_be_interrupted():
     def infinite_wait():
         while True:
-            time.sleep(0.1)
+            time.sleep(0.001)
 
     thread = DestroyableThread(infinite_wait)
-
     thread.start()
     thread.destroy()
+    assert thread.canceled
     thread.join(60)
+    assert not thread.is_alive()
 
+
+def test_threads_canceled_when_interrupt_fails():
+    """This test exercises the case where the DestroyableThread fails to
+    interrupt the thread with the internal exception on destroy(). The easiest
+    way to simulate this is with a "long" `time.sleep` but that still doesn't
+    fully guarantee that it will always be free of race conditions. In
+    particular, the following two are still possible:
+
+    1. The destroy() call lands in between waiting on the start event and
+        beginning the time.sleep. This would cause the thread to die cleanly.
+    2. The assertion that thread.is_alive() lands after the time.sleep has
+        finished and the destroying exception has done its job to kill the
+        thread.
+    """
+    start_event = threading.Event()
+    end_event = threading.Event()
+
+    def blocking_fn():
+        start_event.wait()
+        time.sleep(0.01)
+        end_event.wait()
+
+    thread = DestroyableThread(blocking_fn)
+    thread.start()
+    start_event.set()
+    thread.destroy()
+    assert thread.canceled
+    # NOTE: We don't assert that thread.is_alive() here since it's potentially
+    #   susceptible to the above mentioned race conditions. It _should_ always
+    #   be true, though, based on reasonable timing.
+    thread.join(60)
     assert not thread.is_alive()
 
 
@@ -54,7 +86,7 @@ def test_threads_can_catch_the_interrupts():
         try:
             started_event.set()
             while True:
-                time.sleep(0.1)
+                time.sleep(0.001)
         except Exception as e:
             caught_event.set()
             raise e
