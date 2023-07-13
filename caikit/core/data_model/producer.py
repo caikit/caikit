@@ -16,9 +16,8 @@ Common data model objects used to identify the producer of a given output
 """
 
 # Local
-from .dataobject import CAIKIT_DATA_MODEL, DataObjectBase, dataobject
-
-PACKAGE_COMMON = f"{CAIKIT_DATA_MODEL}.common"
+from .dataobject import DataObjectBase, dataobject
+from .package import PACKAGE_COMMON
 
 
 @dataobject(PACKAGE_COMMON)
