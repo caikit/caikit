@@ -205,6 +205,9 @@ def test_mutual_tls_server_with_wrong_cert():
                 )
 
 
+## Inference Tests #######################################################################
+
+
 def test_docs():
     """Simple check that pinging /docs returns 200"""
     server = http_server.RuntimeHTTPServer()
@@ -379,20 +382,21 @@ def test_http_server_shutdown_with_model_poll(open_port):
         assert not server_proc.killed
 
 
-# TODO: uncomment later
-# def test_train():
-#     server = http_server.RuntimeHTTPServer()
-#     with TestClient(server.app) as client:
-#         json_input = {
-#             "inputs": {
-#                 "model_name": "sample_task_train",
-#                 "training_data": {"jsondata": {"number": 1}},
-#             }
-#         }
-#         response = client.post(
-#             f"/api/v1/asdf/SampleTaskSampleModuleTrain",
-#             json=json_input,
-#         )
-#         assert response.status_code == 200
-#         json_response = json.loads(response.content.decode(response.default_encoding))
-#         assert json_response["greeting"] == "Hello world"
+## Train Tests #######################################################################
+
+
+def test_train():
+    server = http_server.RuntimeHTTPServer()
+    with TestClient(server.app) as client:
+        json_input = {
+            "inputs": {
+                "model_name": "sample_task_train",
+                "training_data": {"jsondata": {"number": 1}},
+            }
+        }
+        response = client.post(
+            f"/api/v1/SampleTaskSampleModuleTrain",
+            json=json_input,
+        )
+        assert response.status_code == 200
+        # json_response = json.loads(response.content.decode(response.default_encoding))

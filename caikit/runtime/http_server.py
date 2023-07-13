@@ -51,9 +51,15 @@ from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
 from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
-from caikit.runtime.service_generation.rpcs import CaikitRPCBase
+from caikit.runtime.service_generation.rpcs import (
+    CaikitRPCBase,
+    ModuleClassTrainRPC,
+    TaskPredictRPC,
+)
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
+from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from caikit.runtime.work_management.train_executors import LocalTrainSaveExecutor
 import caikit.core.toolkit.logging
 
 ## Globals #####################################################################
@@ -118,11 +124,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
         self.global_predict_servicer = GlobalPredictServicer(inference_service)
 
         # Set up the central train servicer
-        # TODO: uncomment later on
-        # train_service = ServicePackageFactory().get_service_package(
-        #     ServicePackageFactory.ServiceType.TRAINING,
-        # )
-        # self.global_train_servicer = GlobalTrainServicer(train_service)
+        train_service = ServicePackageFactory().get_service_package(
+            ServicePackageFactory.ServiceType.TRAINING,
+        )
+        self.global_train_servicer = GlobalTrainServicer(train_service)
 
         self.package_name = inference_service.descriptor.full_name.rsplit(".", 1)[0]
 
@@ -133,7 +138,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         # Bind all routes to the server
         self._bind_routes(inference_service)
-        # self._bind_routes(train_service)
+        self._bind_routes(train_service)
 
         # Parse TLS configuration
         tls_kwargs = {}
@@ -229,18 +234,21 @@ class RuntimeHTTPServer(RuntimeServerBase):
         """Bind all rpcs as routes to the given app"""
         for rpc in service.caikit_rpcs.values():
             rpc_info = rpc.create_rpc_json("")
-            if rpc_info["client_streaming"]:
-                # Skipping the binding of this route since we don't have support
-                log.info(
-                    "No support for input streaming on REST Server yet! Skipping this rpc %s with input type %s",
-                    rpc_info["name"],
-                    rpc_info["input_type"],
-                )
-                continue
-            if rpc_info["server_streaming"]:
-                self._add_unary_input_stream_output_handler(rpc)
-            else:
-                self._add_unary_input_unary_output_handler(rpc)
+            if isinstance(rpc, TaskPredictRPC):
+                if hasattr(rpc, "input_streaming") and rpc.input_streaming:
+                    # Skipping the binding of this route since we don't have support
+                    log.info(
+                        "No support for input streaming on REST Server yet! Skipping this rpc %s with input type %s",
+                        rpc_info["name"],
+                        rpc_info["input_type"],
+                    )
+                    continue
+                if hasattr(rpc, "output_streaming") and rpc.output_streaming:
+                    self._add_unary_input_stream_output_handler(rpc)
+                else:
+                    self._add_unary_input_unary_output_handler(rpc)
+            elif isinstance(rpc, ModuleClassTrainRPC):
+                self._train_add_unary_input_unary_output_handler(rpc)
 
     def _get_request_params(
         self, rpc: CaikitRPCBase, request: Type[pydantic.BaseModel]
@@ -265,6 +273,68 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # remove non-none items
         request_params = {k: v for k, v in combined_dict.items() if v is not None}
         return request_params
+    
+    def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
+        """Add a unary:unary request handler for this RPC signature"""
+        pydantic_request = self._dataobject_to_pydantic(
+            self._get_request_dataobject(rpc, False)
+        )
+        pydantic_response = self._dataobject_to_pydantic(
+            self._get_response_dataobject(rpc)
+        )
+
+        @self.app.post(self._get_route(rpc))
+        # pylint: disable=unused-argument
+        async def _handler(
+            request: pydantic_request, context: Request
+        ) -> pydantic_response:
+            log.debug("In unary handler for %s for model %s", rpc.name)
+            loop = asyncio.get_running_loop()
+            request_params = self._get_request_params(rpc, request=request)
+            # for k, v in combined_no_none.items():
+            #     setattr(request, k, v)
+            # setattr(request, **combined_no_none)
+            model_class = self.global_train_servicer.get_module_class(
+                "SampleTaskSampleModuleTrainRequest"
+            )
+            model_name = request_params.pop("model_name")
+
+            try:
+                # call = partial(
+                #     self.global_train_servicer.run_async,
+                #     runnable_executor=LocalTrainSaveExecutor(),
+                #     kwargs=request_params,
+                #     model_name=request_params["model_name"],
+                #     model_path="training_dir"
+                # )
+                call = partial(
+                    self.global_train_servicer.run_training_job,
+                    model=model_class,
+                    model_name=model_name,
+                    training_id="1234",
+                    training_output_dir="training_dir",
+                    extra_kwargs=request_params,
+                    context=context,
+                )
+                return await loop.run_in_executor(None, call)
+            except CaikitRuntimeException as err:
+                error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
+                error_content = {
+                    "details": err.message,
+                    "code": error_code,
+                    "id": err.id,
+                }
+            except Exception as err:  # pylint: disable=broad-exception-caught
+                error_code = 500
+                error_content = {
+                    "details": f"Unhandled exception: {str(err)}",
+                    "code": error_code,
+                    "id": None,
+                }
+                log.error("<RUN51881106E>", err, exc_info=True)
+            return Response(content=json.dumps(error_content), status_code=error_code)
+
+
 
     def _add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
@@ -393,10 +463,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 route = "/" + route
             return route
         if rpc.name.endswith("Train"):
-
-            route = "/".join(
-                [self.config.runtime.http.route_prefix, "{model_id}", rpc.name]
-            )
+            route = "/".join([self.config.runtime.http.route_prefix, rpc.name])
             if route[0] != "/":
                 route = "/" + route
             return route
