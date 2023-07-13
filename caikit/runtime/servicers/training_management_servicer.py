@@ -15,15 +15,19 @@
 # Have pylint ignore Class XXXX has no YYYY member so that we can use gRPC enums.
 # pylint: disable=E1101
 
+# Third Party
+import grpc
+
 # First Party
 import alog
 
 # Local
+from caikit.core import MODEL_MANAGER
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingInfoResponse,
 )
-from caikit.runtime.model_management.training_manager import TrainingManager
+from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("MR-SERVICR-I")
 
@@ -32,16 +36,23 @@ class TrainingManagementServicerImpl:
     """This class contains the implementation of all of the RPCs that are required to run a
     service in Model Mesh as a Model-Runtime."""
 
-    def __init__(self):
-        self.training_manager = TrainingManager.get_instance()
-
     def GetTrainingStatus(self, request, context):  # pylint: disable=unused-argument
         """Missing associated documentation comment in .proto file."""
         training_info = TrainingInfoRequest.from_proto(request)
 
-        return TrainingInfoResponse(
-            training_id=training_info.training_id,
-            status=self.training_manager.get_training_status(
-                training_info.training_id
-            ).value,
-        ).to_proto()
+        try:
+            model_future = MODEL_MANAGER.get_model_future(
+                training_id=training_info.training_id
+            )
+
+            return TrainingInfoResponse(
+                training_id=training_info.training_id,
+                status=model_future.get_status(),
+            ).to_proto()
+        except ValueError as err:
+            raise CaikitRuntimeException(
+                grpc.StatusCode.NOT_FOUND,
+                "{} not found in the list of currently running training jobs".format(
+                    training_info.training_id,
+                ),
+            ) from err

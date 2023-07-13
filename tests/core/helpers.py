@@ -21,9 +21,7 @@ import pytest
 
 # Local
 from caikit.core import MODEL_MANAGER
-
-# Add mock backend
-# This is set in the base test config's load_priority list
+from caikit.core.data_model import TrainingStatus
 from caikit.core.model_management import (
     ModelInitializerBase,
     ModelTrainerBase,
@@ -41,6 +39,8 @@ from caikit.core.registries import (
 )
 
 
+# Add mock backend
+# This is set in the base test config's load_priority list
 class MockBackend(BackendBase):
     backend_type = "MOCK"
 
@@ -94,9 +94,7 @@ class TestTrainer(ModelTrainerBase):
 
     def __init__(self, config, instance_name):
         self.instance_name = instance_name
-        self.canned_status = config.get(
-            "canned_status", ModelTrainerBase.TrainingStatus.RUNNING
-        )
+        self.canned_status = config.get("canned_status", TrainingStatus.RUNNING)
         self._futures = {}
 
     class TestModelFuture(ModelTrainerBase.ModelFutureBase):
@@ -116,9 +114,9 @@ class TestTrainer(ModelTrainerBase):
 
         def get_status(self):
             if self._completed:
-                return ModelTrainerBase.TrainingStatus.COMPLETED
+                return TrainingStatus.COMPLETED
             if self._canceled:
-                return ModelTrainerBase.TrainingStatus.CANCELED
+                return TrainingStatus.CANCELED
             return self._parent.canned_status
 
         def cancel(self):
