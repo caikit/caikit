@@ -186,6 +186,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
                 new_params[name] = ModelPointer
             else:
                 new_params[name] = protoable.handle_protoables_in_union(
+                    field_name=name,
                     arg_type=typ,
                 )
 
