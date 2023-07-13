@@ -13,14 +13,13 @@
 # limitations under the License.
 # Standard
 from importlib.metadata import version
-from typing import Optional
-from uuid import uuid4
-import concurrent.futures
+from typing import Optional, Type, Union
 import os
 import traceback
 
 # Third Party
 from google.protobuf.descriptor import FieldDescriptor
+from google.protobuf.message import Message as ProtoMessageType
 from grpc import ServicerContext, StatusCode
 
 # First Party
@@ -28,9 +27,10 @@ import alog
 
 # Local
 from caikit import get_config
+from caikit.core import MODEL_MANAGER, ModuleBase
+from caikit.core.data_model import DataBase
 from caikit.interfaces.runtime.data_model import TrainingJob
 from caikit.runtime.model_management.model_manager import ModelManager
-from caikit.runtime.model_management.training_manager import TrainingManager
 from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.rpcs import ModuleClassTrainRPC
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -38,10 +38,6 @@ from caikit.runtime.utils.import_util import clean_lib_names, get_data_model
 from caikit.runtime.utils.servicer_util import (
     build_caikit_library_request_dict,
     validate_data_model,
-)
-from caikit.runtime.work_management.train_executors import (
-    LocalTrainSaveExecutor,
-    SubProcessTrainSaveExecutor,
 )
 import caikit.core
 
@@ -59,20 +55,8 @@ class GlobalTrainServicer:
     def __init__(self, training_service: ServicePackage):
         self._training_service = training_service
         self._model_manager = ModelManager.get_instance()
-        self.training_manager = TrainingManager.get_instance()
-        # NOTE: we are using ThreadPoolExecutor for simplicity of the
-        # the API with an intent to handle the training job
-        # in an async fashion with "Futures".
-        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        # store the map of model ids to job ids
-        self.training_map = self.training_manager.training_futures
         caikit_config = get_config()
         self.training_output_dir = caikit_config.runtime.training.output_dir
-        self.auto_load_trained_model = (
-            caikit_config.runtime.training.auto_load_trained_model
-        )
-
-        self.use_subprocess = caikit_config.runtime.training.use_subprocess
 
         # TODO: think about if we really want to do this here:
         self.cdm = get_data_model()
@@ -99,13 +83,18 @@ class GlobalTrainServicer:
         )
         super()
 
-    def Train(self, request, context, *_, **__) -> TrainingJob:
+    def Train(
+        self,
+        request,
+        context: ServicerContext,
+        *_,
+        **__,
+    ) -> TrainingJob:
         """Global predict RPC -- Mocks the invocation of a Caikit Library module.train()
         method for a loaded Caikit Library model
         Args:
-            request(object):
-                A deserialized RPC request message
-            context(grpc.ServicerContext): Context object (contains request metadata, etc)
+            request (object): A deserialized RPC request message
+            context (ServicerContext): Context object (contains request metadata, etc)
         Returns:
             caikit.interfaces.runtime.data_model.TrainingJob:
                 A TrainingJob data model response object
@@ -115,31 +104,30 @@ class GlobalTrainServicer:
 
         try:
             with alog.ContextLog(log.debug, outer_scope_name):
+                module = None
                 for mod in caikit.core.registries.module_registry().values():
                     if mod.TASK_CLASS:
                         train_request_for_mod = (
                             ModuleClassTrainRPC.module_class_to_req_name(mod)
                         )
                         if train_request_for_mod == desc_name:
-                            model = mod
+                            module = mod
                             break
 
                 # At this point, if model is still None, we don't know the module this request
                 # is for
-                if model is None:
+                if module is None:
                     raise CaikitRuntimeException(
                         StatusCode.INTERNAL,
                         "Global Train not able to parse module for this Train Request",
                     )
-                # generate a unique training id
-                training_id = str(uuid4())
                 return self.run_training_job(
                     request=request,
-                    model=model,
-                    training_id=training_id,
+                    module=module,
                     training_output_dir=self.training_output_dir,
+                    wait=False,
                     context=context,
-                )
+                ).to_proto()
 
         except CaikitRuntimeException as e:
             log_dict = {
@@ -177,57 +165,49 @@ class GlobalTrainServicer:
 
     def run_training_job(
         self,
-        request,
-        model,
-        training_id,
-        training_output_dir,
-        context: ServicerContext,
-        wait=False,
+        request: Union[ProtoMessageType, DataBase],
+        module: Type[ModuleBase],
+        training_output_dir: str,
+        *,
+        context: Optional[ServicerContext] = None,
+        wait: bool = False,
+        **kwargs,
     ) -> TrainingJob:
         """Builds the request dict for calling the train function asynchronously,
-        then returns the thread id"""
+        then returns the thread id
+
+        Args:
+            request (Union[ProtoMessageType, DataBase]): The message that
+                stimulated this request
+            module (Type[ModuleBase]): The module class to train
+            training_output_dir (str): The base directory where trained models
+                should be saved
+
+        Kwargs:
+            context (Optional[ServicerContext]): The grpc context for the
+                request if called from a grpc handler
+            wait (bool): Whether or not to block until the training is complete
+
+        Returns:
+            training_job (TrainingJob): The job handle for the training with the
+                job's ID and the model's name
+        """
 
         # Figure out where this model will be saved
-        model_name = request.model_name
-        model_path = self._get_model_path(training_output_dir, model_name, training_id)
+        model_path = self._get_model_path(training_output_dir, request.model_name)
 
-        # Build the full set of kwargs for the train and save call
-        kwargs = {
-            "module_class": model,
-            "model_path": model_path,
-            **build_caikit_library_request_dict(request, model.TRAIN_SIGNATURE),
-        }
-
-        # If running with a subprocess, set the target, events and args accordingly
-        target = (
-            SubProcessTrainSaveExecutor()
-            if self.use_subprocess
-            else LocalTrainSaveExecutor()
-        )
-        log.debug2(
-            "Training with %s",
-            "SUBPROCESS" if self.use_subprocess else "MAIN PROCESS",
+        # Build the full set of kwargs for the train call
+        kwargs.update(
+            {
+                "module": module,
+                "save_path": model_path,
+                "save_with_id": True,
+                **build_caikit_library_request_dict(request, module.TRAIN_SIGNATURE),
+            }
         )
 
-        # start training asynchronously
-        thread_future = self.run_async(
-            runnable_executor=target,
-            kwargs=kwargs,
-            model_name=model_name,
-            model_path=model_path,
-        )
-
-        self.training_map[training_id] = thread_future
-
-        # Create a callback to register termination of training
-        def rpc_termination_callback():
-            """Function to be called when the RPC is terminated.
-            This can happen when the training is completed or
-            when we receive a cancellation request.
-            """
-            for event in target.events:
-                if not event.is_set():
-                    event.set()
+        # Submit the request to the model manager
+        model_future = MODEL_MANAGER.train(**kwargs)
 
         # if requested, wait for training to complete, thus
         # allowing different servicers to cancel the request
@@ -239,69 +219,56 @@ class GlobalTrainServicer:
         # API which would integrate with different training backends
         # as per their interface requirements.
         if wait:
-            # NOTE: callback registration needs to be before
-            # waiting for the future, otherwise request will wait before registering
-            # callback
-            # Add callback for termination of request
-            callback_registered = context.add_callback(rpc_termination_callback)
 
-            if not callback_registered:
-                log.warning(
-                    "<RUN54118242W>",
-                    "Failed to register rpc termination callback, aborting rpc",
-                )
-                raise CaikitRuntimeException(
-                    StatusCode.ABORTED,
-                    "Could not register RPC callback, call has likely terminated.",
-                )
+            # Register the cancellation callback if given a context
+            if context is not None:
 
-            with alog.ContextTimer(log.debug, "Training %s complete in: ", training_id):
-                thread_future.result()
+                # Create a callback to register termination of training
+                def rpc_termination_callback():
+                    """Cancel the model future if it has not yet completed"""
+                    if not model_future.get_status().is_terminal:
+                        log.warning(
+                            "<RUN36361257W>", "Canceling training %s", model_future.id
+                        )
+                        model_future.cancel()
+
+                # NOTE: callback registration needs to be before waiting for the
+                #   future, otherwise request will wait before registering
+                #   callback.
+                callback_registered = context.add_callback(rpc_termination_callback)
+                if not callback_registered:
+                    log.warning(
+                        "<RUN54118242W>",
+                        "Failed to register rpc termination callback, aborting rpc",
+                    )
+                    raise CaikitRuntimeException(
+                        StatusCode.ABORTED,
+                        "Could not register RPC callback, call has likely terminated.",
+                    )
+
+            with alog.ContextTimer(
+                log.debug, "Training %s complete in: ", model_future.id
+            ):
+                model_future.wait()
 
         # return TrainingJob object
         return TrainingJob(
-            model_name=request.model_name, training_id=training_id
-        ).to_proto()
-
-    def run_async(
-        self,
-        runnable_executor,
-        kwargs,
-        model_name,
-        model_path,
-    ) -> concurrent.futures.Future:
-        """Runs the train function in a thread and saves the trained model in a callback"""
-
-        if self.auto_load_trained_model:
-
-            def target(*args, **kwargs):
-                runnable_executor.train_and_save_model(*args, **kwargs)
-                return self._load_trained_model(model_name, model_path)
-
-        else:
-            target = runnable_executor.train_and_save_model
-
-        return self.executor.submit(target, **kwargs)
+            model_name=request.model_name,
+            training_id=model_future.id,
+        )
 
     def _get_model_path(
         self,
         training_output_dir: Optional[str],
         model_name: str,
-        training_id: str,
     ) -> str:
         """Get the right output path for a given model"""
-
-        # make sure we create the right path for saving the trained model
-        # The path depends on training_output_dir. If it's provided, use it
-        # otherwise use the default
-        if training_output_dir is not None:
-            if training_id in training_output_dir:
-                model_path = os.path.join(training_output_dir, model_name)
-            else:  # create a subdir with training_id
-                model_path = os.path.join(training_output_dir, training_id, model_name)
-        else:
-            model_path = os.path.join(self.training_output_dir, training_id, model_name)
-        return model_path
+        base_dir = (
+            training_output_dir
+            if training_output_dir is not None
+            else self.training_output_dir
+        )
+        return os.path.join(base_dir, model_name)
 
     def _load_trained_model(self, model_name: str, model_path: str):
         log.debug("Autoloading trained model %s", model_name)

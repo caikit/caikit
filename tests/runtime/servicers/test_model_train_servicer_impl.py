@@ -23,7 +23,8 @@ import grpc
 import pytest
 
 # Local
-from caikit.interfaces.runtime.data_model import TrainingStatus
+from caikit.core import MODEL_MANAGER
+from caikit.core.model_management.model_trainer_base import ModelTrainerBase
 from caikit.runtime.protobufs import process_pb2
 from caikit.runtime.servicers.model_train_servicer import ModelTrainServicerImpl
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -197,13 +198,8 @@ def test_model_train_sample_widget(sample_model_train_servicer, output_dir):
     assert os.path.isdir(training_output_dir)
 
     # Make sure that the request completed synchronously
-    assert (
-        sample_model_train_servicer._gts.training_manager.get_training_status(
-            training_id
-        )
-        == TrainingStatus.COMPLETED
-    )
-    assert sample_model_train_servicer._gts.training_map[training_id].done()
+    model_future = MODEL_MANAGER.get_model_future(training_response.trainingID)
+    assert model_future.get_status() == ModelTrainerBase.TrainingStatus.COMPLETED
 
     # Make sure that the return object looks right
     assert isinstance(training_response, process_pb2.ProcessResponse)

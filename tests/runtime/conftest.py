@@ -4,7 +4,7 @@ This sets up global test configs when pytest starts
 
 # Standard
 from contextlib import contextmanager
-from typing import Type
+from typing import Type, Union
 import os
 import socket
 import tempfile
@@ -19,8 +19,10 @@ import pytest
 import alog
 
 # Local
+from caikit.core import MODEL_MANAGER
 from caikit.core.data_model.dataobject import render_dataobject_protos
 from caikit.runtime.grpc_server import RuntimeGRPCServer
+from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
@@ -233,6 +235,29 @@ def other_task_model_id(other_good_model_path) -> str:
 
     # teardown
     model_manager.unload_model(model_id)
+
+
+def register_trained_model(
+    servicer: Union[RuntimeGRPCServer, GlobalPredictServicer],
+    model_id: str,
+    training_id: str,
+):
+    """Helper to auto-load a model that has completed training. This replaces
+    the old auto-load feature which was only needed for unit tests
+    """
+    model_future = MODEL_MANAGER.get_model_future(training_id)
+    model = model_future.load()
+    loaded_model = (
+        LoadedModel.Builder()
+        .id(model_id)
+        .type("trained")
+        .path("")
+        .module(model)
+        .build()
+    )
+    if isinstance(servicer, RuntimeGRPCServer):
+        servicer = servicer._global_predict_servicer
+    servicer._model_manager.loaded_models[model_id] = loaded_model
 
 
 # IMPLEMENTATION DETAILS ############################################################

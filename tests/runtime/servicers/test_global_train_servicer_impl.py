@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
+from contextlib import contextmanager
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 import multiprocessing
 import threading
 import time
-import uuid
 
 # Third Party
 import pytest
 
 # Local
+from caikit.core import MODEL_MANAGER
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model.sample import (
@@ -32,23 +33,41 @@ from sample_lib.data_model.sample import (
     SampleTrainingType,
 )
 from sample_lib.modules.sample_task.sample_implementation import SampleModule
-from tests.conftest import random_test_id
+from tests.conftest import random_test_id, temp_config
+from tests.core.helpers import reset_model_manager
 from tests.fixtures import Fixtures
+from tests.runtime.conftest import register_trained_model
 import caikit.core
 
 ## Helpers #####################################################################
 
 
+@contextmanager
+def set_use_subprocess(use_subprocess: bool):
+    with temp_config(
+        {
+            "model_management": {
+                "trainers": {
+                    "default": {
+                        "config": {
+                            "use_subprocess": use_subprocess,
+                        }
+                    }
+                }
+            }
+        },
+        "merge",
+    ):
+        yield
+
+
 @pytest.fixture(autouse=True, params=[True, False])
-def set_train_location(request, sample_train_servicer):
+def set_train_location(request, sample_train_servicer, reset_model_manager):
     """This fixture ensures that all tests in this file will be run with both
     subprocess and local training styles
     """
-    prev_value = sample_train_servicer.use_subprocess
-    sample_train_servicer.use_subprocess = request.param
-    yield
-    # Reset use_subprocess to previous value
-    sample_train_servicer.use_subprocess = prev_value
+    with set_use_subprocess(request.param):
+        yield
 
 
 # Train tests for the GlobalTrainServicer class ############################################################
@@ -87,10 +106,13 @@ def test_global_train_sample_task(
 
     assert training_response.training_id is not None
     assert isinstance(training_response.training_id, str)
+    register_trained_model(
+        sample_predict_servicer,
+        training_response.model_name,
+        training_response.training_id,
+    )
 
-    result = sample_train_servicer.training_map.get(
-        training_response.training_id
-    ).result()
+    result = MODEL_MANAGER.get_model_future(training_response.training_id).load()
     assert result.batch_size == 42
     assert (
         result.MODULE_CLASS
@@ -136,13 +158,15 @@ def test_global_train_other_task(
         train_request, Fixtures.build_context("foo")
     )
     assert training_response.model_name == "Other module Training"
-
     assert training_response.training_id is not None
     assert isinstance(training_response.training_id, str)
+    register_trained_model(
+        sample_predict_servicer,
+        training_response.model_name,
+        training_response.training_id,
+    )
 
-    result = sample_train_servicer.training_map.get(
-        training_response.training_id
-    ).result()
+    result = MODEL_MANAGER.get_model_future(training_response.training_id).load()
     assert result.batch_size == batch_size
     assert (
         result.MODULE_CLASS
@@ -187,15 +211,18 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
     training_response = sample_train_servicer.Train(
         training_request, Fixtures.build_context("foo")
     )
-
     assert training_response.model_name == "AnotherWidget_Training"
     assert training_response.training_id is not None
     assert isinstance(training_response.training_id, str)
+    register_trained_model(
+        sample_predict_servicer,
+        training_response.model_name,
+        training_response.training_id,
+    )
 
-    training_result = sample_train_servicer.training_map.get(
+    training_result = MODEL_MANAGER.get_model_future(
         training_response.training_id
-    ).result()
-
+    ).load()
     assert (
         training_result.MODULE_CLASS
         == "sample_lib.modules.sample_task.composite_module.CompositeModule"
@@ -238,13 +265,15 @@ def test_run_train_job_works_with_wait(
         training_response = servicer.run_training_job(
             train_request,
             SampleModule,
-            training_id="dummy-training-id",
             training_output_dir=tmp_dir,
             context=Fixtures.build_context("foo"),
             wait=True,
         )
-
-        assert training_response.training_id == "dummy-training-id"
+        register_trained_model(
+            sample_predict_servicer,
+            training_response.model_name,
+            training_response.training_id,
+        )
 
         inference_response = sample_predict_servicer.Predict(
             sample_inference_service.messages.SampleTaskRequest(
@@ -259,62 +288,6 @@ def test_run_train_job_works_with_wait(
                 greeting="Hello Test",
             ).to_proto()
         )
-
-
-def test_run_train_job_works_with_no_autoload(sample_train_service):
-    """Check if run_train_job works with no auto-load doesn't load model"""
-    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    training_data = stream_type(
-        jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
-    ).to_proto()
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=str(uuid.uuid4()),
-        batch_size=42,
-        training_data=training_data,
-    )
-    servicer = GlobalTrainServicer(training_service=sample_train_service)
-    servicer.auto_load_trained_model = False
-    init_loaded_models_count = len(servicer._model_manager.loaded_models)
-
-    with TemporaryDirectory() as tmp_dir:
-        training_response = servicer.run_training_job(
-            train_request,
-            SampleModule,
-            training_id="dummy-training-id",
-            training_output_dir=tmp_dir,
-            context=Fixtures.build_context("foo"),
-            wait=True,
-        )
-        assert training_response.training_id == "dummy-training-id"
-        assert init_loaded_models_count == len(servicer._model_manager.loaded_models)
-
-
-def test_run_train_job_works_with_autoload(sample_train_service):
-    """Check if run_train_job works with auto-load loading the model"""
-    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    training_data = stream_type(
-        jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
-    ).to_proto()
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=str(uuid.uuid4()),
-        batch_size=42,
-        training_data=training_data,
-    )
-    servicer = GlobalTrainServicer(training_service=sample_train_service)
-    servicer.auto_load_trained_model = True
-    init_loaded_models_count = len(servicer._model_manager.loaded_models)
-
-    with TemporaryDirectory() as tmp_dir:
-        training_response = servicer.run_training_job(
-            train_request,
-            SampleModule,
-            training_id="dummy-training-id-2",
-            training_output_dir=tmp_dir,
-            context=Fixtures.build_context("foo"),
-            wait=True,
-        )
-        assert training_response.training_id == "dummy-training-id-2"
-        assert init_loaded_models_count < len(servicer._model_manager.loaded_models)
 
 
 #############
@@ -357,16 +330,13 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_mod
         training_data=training_data,
     )
 
-    with pytest.raises(CaikitRuntimeException) as context:
+    with pytest.raises(ValueError) as context:
         training_response = sample_train_servicer.Train(
             train_request, Fixtures.build_context("foo")
         )
+        MODEL_MANAGER.get_model_future(training_response.training_id).load()
 
-        _ = sample_train_servicer.training_map.get(
-            training_response.training_id
-        ).result()
-
-    assert f"Batch size of 999 is not allowed!" in str(context.value.message)
+    assert f"Batch size of 999 is not allowed!" in str(context.value)
 
 
 def test_global_train_returns_exit_code_with_oom(
@@ -385,15 +355,14 @@ def test_global_train_returns_exit_code_with_oom(
     )
 
     # Enable sub-processing for test
-    sample_train_servicer.use_subprocess = True
+    with set_use_subprocess(True):
+        with pytest.raises(MemoryError) as context:
+            training_response = sample_train_servicer.Train(
+                train_request, Fixtures.build_context("foo")
+            )
+            MODEL_MANAGER.get_model_future(training_response.training_id).wait()
 
-    with pytest.raises(CaikitRuntimeException) as context:
-        training_response = sample_train_servicer.Train(
-            train_request, Fixtures.build_context("foo")
-        )
-        sample_train_servicer.training_map.get(training_response.training_id).result()
-
-    assert f"Training process died with OOM error!" in str(context.value.message)
+    assert f"Training process died with OOM error!" in str(context.value)
 
 
 #####################################################################
