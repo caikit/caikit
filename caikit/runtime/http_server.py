@@ -18,9 +18,6 @@ API based on the task definitions available at boot.
 """
 # Standard
 from functools import partial
-from types import NoneType
-
-# Standardfrom functools import partial
 from typing import Iterable, List, Optional, Type, Union, get_args, get_origin
 import asyncio
 import enum
@@ -293,7 +290,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         ) -> EventSourceResponse:
             log.debug("In streaming handler for %s", rpc.name)
             request_kwargs = {
-                field: getattr(request, field) for field in request.__fields__
+                field: getattr(request, field) for field in request.model_fields
             }
 
             async def _generator() -> pydantic_response:
@@ -433,7 +430,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             return int
         if np.issubclass_(field_type, np.floating):
             return float
-        if field_type in (int, float, bool, str, bytes, NoneType):
+        if field_type in (int, float, bool, str, bytes, type(None)):
             return field_type
         if isinstance(field_type, type) and issubclass(field_type, enum.Enum):
             return field_type
