@@ -26,12 +26,12 @@ model_management:
 """
 
 # Standard
-from enum import Enum
 from typing import Optional, Type
 import abc
 import os
 
 # Local
+from ..data_model import TrainingStatus
 from ..modules import ModuleBase
 from ..toolkit.factory import FactoryConstructible
 from ..toolkit.reversible_hasher import ReversibleHasher
@@ -39,25 +39,6 @@ from ..toolkit.reversible_hasher import ReversibleHasher
 
 class ModelTrainerBase(FactoryConstructible):
     __doc__ = __doc__
-
-    class TrainingStatus(Enum):
-        """A given training job must be in exactly one of these states at all
-        times
-        """
-
-        QUEUED = 1
-        RUNNING = 2
-        COMPLETED = 3
-        CANCELED = 4
-        ERRORED = 5
-
-        @property
-        def is_terminal(self):
-            return self in [
-                self.__class__.COMPLETED,
-                self.__class__.CANCELED,
-                self.__class__.ERRORED,
-            ]
 
     class ModelFutureBase(abc.ABC):
         """Every Trainer must implement a ModelFuture class that can access the
@@ -97,7 +78,7 @@ class ModelTrainerBase(FactoryConstructible):
             return self._save_path
 
         @abc.abstractmethod
-        def get_status(self) -> "TrainingStatus":
+        def get_status(self) -> TrainingStatus:
             """Every model future must be able to poll the status of the
             training job
             """

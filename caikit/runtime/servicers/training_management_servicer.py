@@ -23,11 +23,9 @@ import alog
 
 # Local
 from caikit.core import MODEL_MANAGER
-from caikit.core.model_management.model_trainer_base import ModelTrainerBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingInfoResponse,
-    TrainingStatus,
 )
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
@@ -37,15 +35,6 @@ log = alog.use_channel("MR-SERVICR-I")
 class TrainingManagementServicerImpl:
     """This class contains the implementation of all of the RPCs that are required to run a
     service in Model Mesh as a Model-Runtime."""
-
-    # TODO: Align training status enums!
-    STATUS_MAPPING = {
-        ModelTrainerBase.TrainingStatus.QUEUED: TrainingStatus.NOT_STARTED,
-        ModelTrainerBase.TrainingStatus.RUNNING: TrainingStatus.PROCESSING,
-        ModelTrainerBase.TrainingStatus.COMPLETED: TrainingStatus.COMPLETED,
-        ModelTrainerBase.TrainingStatus.CANCELED: TrainingStatus.HALTED,
-        ModelTrainerBase.TrainingStatus.ERRORED: TrainingStatus.FAILED,
-    }
 
     def GetTrainingStatus(self, request, context):  # pylint: disable=unused-argument
         """Missing associated documentation comment in .proto file."""
@@ -58,7 +47,7 @@ class TrainingManagementServicerImpl:
 
             return TrainingInfoResponse(
                 training_id=training_info.training_id,
-                status=self.STATUS_MAPPING[model_future.get_status()].value,
+                status=model_future.get_status(),
             ).to_proto()
         except ValueError as err:
             raise CaikitRuntimeException(

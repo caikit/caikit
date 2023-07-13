@@ -61,10 +61,10 @@ def test_training_runs(training_management_servicer, training_pool):
         wait_event=event,
     )
 
-    # send a request, check it's processing
+    # send a request, check it's running
     request = TrainingInfoRequest(training_id=model_future.id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
-    assert response.status == TrainingStatus.PROCESSING.value
+    assert response.status == TrainingStatus.RUNNING.value
 
     event.set()
     model_future.wait()
@@ -119,4 +119,4 @@ def test_training_fails(training_management_servicer, training_pool):
     request = TrainingInfoRequest(training_id=model_future.id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
 
-    assert response.status == TrainingStatus.FAILED.value
+    assert response.status == TrainingStatus.ERRORED.value

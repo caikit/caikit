@@ -88,9 +88,9 @@ def is_good_train_response(
     assert isinstance(actual_response.training_id, str)
     assert actual_response.model_name == model_name
 
-    status = TrainingStatus.PROCESSING.value
+    status = TrainingStatus.RUNNING.value
     i = 0
-    while status == TrainingStatus.PROCESSING.value:
+    while status == TrainingStatus.RUNNING.value:
         training_info_request = TrainingInfoRequest(
             training_id=actual_response.training_id
         )
@@ -102,7 +102,7 @@ def is_good_train_response(
             )
         )
         status = training_management_response.status
-        assert status != TrainingStatus.FAILED.value
+        assert status != TrainingStatus.ERRORED.value
         i += 1
         assert i < 100, "Waited too long for training to complete"
 

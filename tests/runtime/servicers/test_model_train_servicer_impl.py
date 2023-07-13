@@ -24,7 +24,7 @@ import pytest
 
 # Local
 from caikit.core import MODEL_MANAGER
-from caikit.core.model_management.model_trainer_base import ModelTrainerBase
+from caikit.core.data_model import TrainingStatus
 from caikit.runtime.protobufs import process_pb2
 from caikit.runtime.servicers.model_train_servicer import ModelTrainServicerImpl
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -199,7 +199,7 @@ def test_model_train_sample_widget(sample_model_train_servicer, output_dir):
 
     # Make sure that the request completed synchronously
     model_future = MODEL_MANAGER.get_model_future(training_response.trainingID)
-    assert model_future.get_status() == ModelTrainerBase.TrainingStatus.COMPLETED
+    assert model_future.get_status() == TrainingStatus.COMPLETED
 
     # Make sure that the return object looks right
     assert isinstance(training_response, process_pb2.ProcessResponse)

@@ -16,7 +16,6 @@ Tests for LocalModelTrainer
 """
 # Standard
 from datetime import timedelta
-from typing import Optional
 import multiprocessing
 import os
 import tempfile
@@ -30,12 +29,11 @@ import pytest
 import aconfig
 
 # Local
-from caikit.core.data_model import DataStream
+from caikit.core.data_model import DataStream, TrainingStatus
 from caikit.core.model_management.local_model_trainer import (
     OOM_EXIT_CODE,
     LocalModelTrainer,
 )
-from caikit.core.model_management.model_trainer_base import ModelTrainerBase
 from sample_lib.modules import SampleModule
 
 ## Helpers #####################################################################
@@ -77,13 +75,13 @@ def test_train_and_get_status(trainer_type_cfg):
         DataStream.from_iterable([]),
         wait_event=wait_event,
     )
-    assert model_future.get_status() == ModelTrainerBase.TrainingStatus.RUNNING
+    assert model_future.get_status() == TrainingStatus.RUNNING
     assert not model_future.get_status().is_terminal
 
     # Let the training proceed and wait for it to complete
     wait_event.set()
     model_future.wait()
-    assert model_future.get_status() == ModelTrainerBase.TrainingStatus.COMPLETED
+    assert model_future.get_status() == TrainingStatus.COMPLETED
     assert model_future.get_status().is_terminal
 
     # Re-fetch the future by ID
@@ -139,12 +137,12 @@ def test_cancel_clean_termination(trainer_type_cfg):
         training_data=DataStream.from_iterable([]),
         sleep_time=1000,
     )
-    assert model_future.get_status() == ModelTrainerBase.TrainingStatus.RUNNING
+    assert model_future.get_status() == TrainingStatus.RUNNING
     assert not model_future.get_status().is_terminal
 
     # Cancel the future
     model_future.cancel()
-    assert model_future.get_status() == ModelTrainerBase.TrainingStatus.CANCELED
+    assert model_future.get_status() == TrainingStatus.CANCELED
     assert model_future.get_status().is_terminal
     model_future.wait()
 
@@ -161,13 +159,13 @@ def test_cancel_without_waiting(trainer_type_cfg):
         sleep_time=0.5,
         sleep_increment=0.5,
     )
-    assert model_future.get_status() == ModelTrainerBase.TrainingStatus.RUNNING
+    assert model_future.get_status() == TrainingStatus.RUNNING
     assert not model_future.get_status().is_terminal
 
     # Cancel the future and make sure it reports canceled, even though the
     # function is still sleeping
     model_future.cancel()
-    assert model_future.get_status() == ModelTrainerBase.TrainingStatus.CANCELED
+    assert model_future.get_status() == TrainingStatus.CANCELED
     assert model_future.get_status().is_terminal
 
 
