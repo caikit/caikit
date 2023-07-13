@@ -422,6 +422,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         return dm_obj
 
     @classmethod
+    # pylint: disable=too-many-return-statements
     def _get_pydantic_type(cls, field_type: type) -> type:
         """Recursive helper to get a valid pydantic type for every field type"""
         if get_origin(field_type) is Annotated:
