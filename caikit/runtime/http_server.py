@@ -18,6 +18,7 @@ API based on the task definitions available at boot.
 """
 # Standard
 from functools import partial
+from types import NoneType
 
 # Standardfrom functools import partial
 from typing import Iterable, List, Optional, Type, Union, get_args, get_origin
@@ -425,8 +426,30 @@ class RuntimeHTTPServer(RuntimeServerBase):
     # pylint: disable=too-many-return-statements
     def _get_pydantic_type(cls, field_type: type) -> type:
         """Recursive helper to get a valid pydantic type for every field type"""
+        # pylint: disable=too-many-return-statements
+
+        # Leaves: we should have primitive types and enums
+        if np.issubclass_(field_type, np.integer):
+            return int
+        if np.issubclass_(field_type, np.floating):
+            return float
+        if field_type in (int, float, bool, str, bytes, NoneType):
+            return field_type
+        if isinstance(field_type, type) and issubclass(field_type, enum.Enum):
+            return field_type
+
+        # These can be nested within other data models
+        if (
+            isinstance(field_type, type)
+            and issubclass(field_type, DataBase)
+            and not issubclass(field_type, pydantic.BaseModel)
+        ):
+            # NB: for data models we're calling the data model conversion fn
+            return cls._dataobject_to_pydantic(field_type)
+
+        # And then all of these types can be nested in other type annotations
         if get_origin(field_type) is Annotated:
-            field_type = get_args(field_type)[0]
+            return cls._get_pydantic_type(get_args(field_type)[0])
         if get_origin(field_type) is Union:
             return Union.__getitem__(
                 tuple(
@@ -438,17 +461,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
             )
         if get_origin(field_type) is list:
             return List[cls._get_pydantic_type(get_args(field_type)[0])]
-        if np.issubclass_(field_type, np.integer):
-            return int
-        if np.issubclass_(field_type, np.floating):
-            return float
-        if isinstance(field_type, type) and issubclass(field_type, enum.Enum):
-            return field_type
-        if hasattr(field_type, "__annotations__") and not issubclass(
-            field_type, pydantic.BaseModel
-        ):
-            return cls._dataobject_to_pydantic(field_type)
-        return field_type
+
+        raise TypeError(f"Cannot get pydantic type for type [{field_type}]")
 
     @classmethod
     def _dataobject_to_pydantic(
