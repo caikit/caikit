@@ -233,7 +233,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # pylint: disable=unused-argument
         async def _handler(
             model_id: str, request: pydantic_request, context: Request
-        ) -> pydantic_response | Response:
+        ) -> Union[pydantic_response, Response]:
             log.debug("In unary handler for %s for model %s", rpc.name, model_id)
             loop = asyncio.get_running_loop()
             request_kwargs = {
