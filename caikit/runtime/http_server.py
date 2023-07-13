@@ -16,12 +16,12 @@ This module holds the implementation of caikit's primary HTTP server entrypoint.
 The server is responsible for binding caikit workloads to a consistent REST/SSE
 API based on the task definitions available at boot.
 """
-
+import enum
 # Standard
 from functools import partial
 
 # Standardfrom functools import partial
-from typing import Iterable, Optional, Type, Union, get_args, get_origin
+from typing import Iterable, Optional, Type, Union, get_args, get_origin, List
 import asyncio
 import json
 import re
@@ -229,11 +229,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
             self._get_response_dataobject(rpc)
         )
 
-        @self.app.post(self._get_route(rpc))
+        @self.app.post(self._get_route(rpc), response_model=pydantic_response)
         # pylint: disable=unused-argument
         async def _handler(
             model_id: str, request: pydantic_request, context: Request
-        ) -> pydantic_response:
+        ) -> pydantic_response | Response:
             log.debug("In unary handler for %s for model %s", rpc.name, model_id)
             loop = asyncio.get_running_loop()
             request_kwargs = {
@@ -249,14 +249,18 @@ class RuntimeHTTPServer(RuntimeServerBase):
             # remove non-none items
             combined_no_none = {k: v for k, v in combined_dict.items() if v is not None}
 
+            log.debug4("Sending request %s to model id %s", combined_no_none, model_id)
             try:
+                # TODO: use `async_wrap_*`?
                 call = partial(
                     self.global_predict_servicer.predict_model,
                     model_id=model_id,
                     request_name=rpc.request.name,
                     **combined_no_none,
                 )
-                return await loop.run_in_executor(None, call)
+                result = await loop.run_in_executor(None, call)
+                log.debug4("Response from model %s is %s", model_id, result)
+                return result
             except CaikitRuntimeException as err:
                 error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
                 error_content = {
@@ -431,10 +435,14 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     )
                 )
             )
+        if get_origin(field_type) is list:
+            return List[cls._get_pydantic_type(get_args(field_type)[0])]
         if np.issubclass_(field_type, np.integer):
             return int
         if np.issubclass_(field_type, np.floating):
             return float
+        if isinstance(field_type, type) and issubclass(field_type, enum.Enum):
+            return field_type
         if hasattr(field_type, "__annotations__") and not issubclass(
             field_type, pydantic.BaseModel
         ):
@@ -456,7 +464,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             for field_name, field_type in dm_class.__annotations__.items()
         }
         pydantic_model = type(pydantic.BaseModel)(
-            dm_class.full_name,
+            dm_class.get_proto_class().DESCRIPTOR.full_name,
             (pydantic.BaseModel,),
             {
                 "__annotations__": annotations,
