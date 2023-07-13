@@ -16,13 +16,13 @@ This module holds the implementation of caikit's primary HTTP server entrypoint.
 The server is responsible for binding caikit workloads to a consistent REST/SSE
 API based on the task definitions available at boot.
 """
-import enum
 # Standard
 from functools import partial
 
 # Standardfrom functools import partial
-from typing import Iterable, Optional, Type, Union, get_args, get_origin, List
+from typing import Iterable, List, Optional, Type, Union, get_args, get_origin
 import asyncio
+import enum
 import json
 import re
 import ssl

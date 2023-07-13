@@ -17,10 +17,10 @@ Tests for the caikit HTTP server
 # Standard
 from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import List
 import json
 import os
 import tempfile
-from typing import List
 
 # Third Party
 from fastapi.testclient import TestClient
@@ -31,10 +31,10 @@ import tls_test_tools
 # First Party
 import aconfig
 
-from caikit.core import dataobject, DataObjectBase
+# Local
+from caikit.core import DataObjectBase, dataobject
 from caikit.core.data_model import DataBase
 from caikit.interfaces.nlp.data_model import GeneratedTextStreamResult, GeneratedToken
-# Local
 from caikit.runtime import http_server
 from tests.conftest import temp_config
 
@@ -289,6 +289,7 @@ def test_pydantic_wrapping_with_enums():
 
 def test_pydantic_wrapping_with_lists():
     """Check that pydantic wrapping works on data models with lists"""
+
     @dataobject(package="test.test")
     class Bar(DataObjectBase):
         baz: int
