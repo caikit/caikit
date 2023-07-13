@@ -59,7 +59,6 @@ from caikit.runtime.service_generation.rpcs import (
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.work_management.train_executors import LocalTrainSaveExecutor
 import caikit.core.toolkit.logging
 
 ## Globals #####################################################################
@@ -288,7 +287,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         async def _handler(
             request: pydantic_request, context: Request
         ) -> pydantic_response:
-            log.debug("In unary handler for %s for model %s", rpc.name)
+            log.debug("In unary handler for %s", rpc.name)
             loop = asyncio.get_running_loop()
             request_params = self._get_request_params(rpc, request=request)
             # for k, v in combined_no_none.items():
