@@ -18,7 +18,7 @@ API based on the task definitions available at boot.
 """
 # Standard
 from functools import partial
-from typing import Iterable, List, Optional, Type, Union, get_args, get_origin
+from typing import Iterable, List, Optional, Type, Union, get_args
 import asyncio
 import enum
 import json
@@ -36,7 +36,7 @@ import pydantic
 import uvicorn
 
 # First Party
-from py_to_proto.dataclass_to_proto import Annotated  # Imported here for 3.8 compat
+from py_to_proto.dataclass_to_proto import Annotated, get_origin  # Imported here for 3.8 compat
 import aconfig
 import alog
 
