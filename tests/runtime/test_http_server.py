@@ -291,19 +291,19 @@ def test_pydantic_wrapping_with_lists():
     """Check that pydantic wrapping works on data models with lists"""
 
     @dataobject(package="test.test")
-    class Bar(DataObjectBase):
+    class BarTest(DataObjectBase):
         baz: int
 
     @dataobject(package="test.test")
-    class Foo(DataObjectBase):
-        bars: List[Bar]
+    class FooTest(DataObjectBase):
+        bars: List[BarTest]
 
-    foo = Foo(bars=[Bar(1)])
+    foo = FooTest(bars=[BarTest(1)])
     assert foo.bars[0].baz == 1
 
-    http_server.RuntimeHTTPServer._dataobject_to_pydantic(Foo)
+    http_server.RuntimeHTTPServer._dataobject_to_pydantic(FooTest)
 
-    foo = Foo(bars=[Bar(1)])
+    foo = FooTest(bars=[BarTest(1)])
     assert foo.bars[0].baz == 1
 
 
