@@ -290,11 +290,11 @@ def test_pydantic_wrapping_with_enums():
 def test_pydantic_wrapping_with_lists():
     """Check that pydantic wrapping works on data models with lists"""
 
-    @dataobject(package="test.test")
+    @dataobject(package="http")
     class BarTest(DataObjectBase):
         baz: int
 
-    @dataobject(package="test.test")
+    @dataobject(package="http")
     class FooTest(DataObjectBase):
         bars: List[BarTest]
 
