@@ -14,9 +14,9 @@
 # Standard
 from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch
-import copy
 import os
 import shutil
+import tempfile
 
 # Third Party
 import grpc
@@ -408,3 +408,89 @@ def test_estimate_model_size_throws_if_model_sizer_throws():
         with pytest.raises(CaikitRuntimeException) as context:
             MODEL_MANAGER.estimate_model_size(model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE)
         assert context.value.status_code == grpc.StatusCode.UNAVAILABLE
+
+
+def test_model_manager_replicas_with_disk_caching(
+    good_model_path, other_good_model_path
+):
+    """Test that multiple model manager instances can co-exist and share a set
+    of models when local_models_cache is used.
+
+    This test simulates running concurrent replicas of caikit.runtime that are
+    logically independent from one another.
+    """
+    # NOTE: This test requires that the ModelManager class not be a singleton.
+    #   To accomplish this, the singleton instance is temporarily removed.
+    try:
+        # Set up a temporary directory to use as the local cache and configure
+        with tempfile.TemporaryDirectory() as cache_dir:
+            with temp_config(
+                {
+                    "runtime": {
+                        "local_models_cache_dir": cache_dir,
+                        "unload_local_models_cache": True,
+                    },
+                },
+                "merge",
+            ):
+                # Make two standalone manager instances
+                ModelManager._ModelManager__instance = None
+                manager_one = ModelManager.get_instance()
+                assert manager_one is not MODEL_MANAGER
+                assert manager_one._local_models_cache_dir == cache_dir
+                ModelManager._ModelManager__instance = None
+                manager_two = ModelManager.get_instance()
+                assert manager_two is not manager_one
+                assert manager_two._local_models_cache_dir == cache_dir
+
+                # Trying to retrieve a model that is not loaded in either and is
+                # not saved in the cache dir should yield NOT_FOUND
+                model_id_one = random_test_id()
+                with pytest.raises(CaikitRuntimeException) as context:
+                    manager_one.retrieve_model(model_id_one)
+                assert context.value.status_code == grpc.StatusCode.NOT_FOUND
+                with pytest.raises(CaikitRuntimeException) as context:
+                    manager_two.retrieve_model(model_id_one)
+                assert context.value.status_code == grpc.StatusCode.NOT_FOUND
+
+                # Place a saved model into the cache dir manually
+                model_one_path = os.path.join(cache_dir, model_id_one)
+                shutil.copytree(good_model_path, model_one_path)
+
+                # Retrieve the model by ID and ensure it's available now
+                model_one = manager_one.retrieve_model(model_id_one)
+                assert isinstance(model_one, ModuleBase)
+                assert (
+                    manager_one.loaded_models.get(model_id_one)
+                    and manager_one.loaded_models[model_id_one].module() is model_one
+                )
+
+                # Make sure the same model is available on the second manager
+                assert manager_two.loaded_models.get(model_id_one) is None
+                assert manager_two.retrieve_model(model_id_one)
+                assert manager_two.loaded_models.get(model_id_one)
+
+                # Load another good model directly which does not pre-exist in
+                # the cache dir and make sure it is automatically available in
+                # the second manager
+                model_id_two = random_test_id()
+                model_two_path = os.path.join(cache_dir, model_id_two)
+                assert not os.path.exists(model_two_path)
+                manager_one.load_model(
+                    model_id_two, other_good_model_path, "test-model"
+                )
+                assert os.path.exists(model_two_path)
+                assert manager_one.retrieve_model(model_id_two)
+                assert manager_two.retrieve_model(model_id_two)
+
+                # Unload the model from the first manager and make sure it gets
+                # removed from the cache dir, but not the original path.
+                manager_one.unload_model(model_id_two)
+                assert not os.path.exists(model_two_path)
+                assert os.path.exists(other_good_model_path)
+                with pytest.raises(CaikitRuntimeException) as context:
+                    manager_one.retrieve_model(model_id_two)
+                assert context.value.status_code == grpc.StatusCode.NOT_FOUND
+
+    finally:
+        ModelManager._ModelManager__instance = MODEL_MANAGER

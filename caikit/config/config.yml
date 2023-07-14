@@ -76,6 +76,13 @@ runtime:
     # when an inference call contains a model id that is not already loaded. It
     # will also save loaded models to the cache dir on successful loading.
     local_models_cache_dir: null
+    # If using a local_models_cache_dir, this enables purging local cache models
+    # from disk when unloading them
+    #
+    # WARNING: This should not be used if your local_models_cache_dir overlaps
+    #   with your local_models_dir as it could cause persistent model files to
+    #   be removed!
+    unload_local_models_cache: false
 
     # TLS configs
     tls:

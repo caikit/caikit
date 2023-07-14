@@ -16,6 +16,7 @@ from collections import Counter as DictCounter
 from typing import Dict
 import gc
 import os
+import shutil
 import threading
 
 # Third Party
@@ -91,12 +92,26 @@ class ModelManager:
             error.value_check(
                 "<RUN75903138E>", os.path.isdir(self._local_models_cache_dir)
             )
+        self._unload_local_models_cache = runtime_cfg.unload_local_models_cache
 
         # Optionally load models mounted into a local directory
         local_models_dir = runtime_cfg.local_models_dir
         if os.path.exists(local_models_dir) and len(os.listdir(local_models_dir)) > 0:
             log.info("<RUN44739400I>", "Loading local models into Caikit Runtime...")
             self.load_local_models(local_models_dir)
+
+        # If the local_models_dir and local_models_cache_dir overlap and purging
+        # is enabled, raise a big warning!
+        if (
+            self._local_models_cache_dir
+            and local_models_dir == self._local_models_cache_dir
+            and self._unload_local_models_cache
+        ):
+            log.warning(
+                "<RUN41922990W>",
+                "WARNING! Running with unsafe unloading may cause model artifact loss. "
+                + "Use local_models_dir != local_models_cache_dir to avoid this",
+            )
 
     def load_model(
         self,
@@ -225,6 +240,22 @@ class ModelManager:
         # Update Prometheus metrics
         self.__report_total_model_size_metric()
         self.__decrement_model_count_metric(model_type, model_id)
+
+        # If using a local model cache and purging is enabled, delete the cached
+        # model from disk
+        if self._local_models_cache_dir and self._unload_local_models_cache:
+            cache_model_path = os.path.join(self._local_models_cache_dir, model_id)
+            if os.path.exists(cache_model_path):
+                log.info(
+                    "<RUN21819699I>",
+                    "Purging cache model %s at %s",
+                    model_id,
+                    cache_model_path,
+                )
+                if os.path.isdir(cache_model_path):
+                    shutil.rmtree(cache_model_path)
+                else:
+                    os.remove(cache_model_path)
 
         return model_size
 
