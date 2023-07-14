@@ -15,7 +15,7 @@
 # Standard
 from enum import Enum
 from types import ModuleType
-from typing import Callable, Dict, Set, Type
+from typing import Callable, Set, Type
 import dataclasses
 
 # Third Party
@@ -78,7 +78,7 @@ class ServicePackage:
     ]
     stub_class: Type
     messages: ModuleType
-    caikit_rpcs: Dict[str, CaikitRPCBase]
+    caikit_rpcs: Set[CaikitRPCBase]
 
 
 class ServicePackageFactory:
@@ -116,7 +116,7 @@ class ServicePackageFactory:
                 registration_function=grpc_service.registration_function,
                 stub_class=grpc_service.client_stub_class,
                 messages=None,  # we don't need messages here
-                caikit_rpcs={},  # No caikit RPCs
+                caikit_rpcs=set(),  # No caikit RPCs
             )
 
         # First make sure we import the data model for the correct library
@@ -174,7 +174,7 @@ class ServicePackageFactory:
             registration_function=grpc_service.registration_function,
             stub_class=grpc_service.client_stub_class,
             messages=client_module,
-            caikit_rpcs={rpc.name: rpc for rpc in rpc_list},
+            caikit_rpcs=set(rpc_list),
         )
 
     # Implementation details for pure python service packages #
