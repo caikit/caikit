@@ -17,6 +17,7 @@ Tests for the caikit HTTP server
 # Standard
 from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import List
 import json
 import os
 import tempfile
@@ -31,6 +32,9 @@ import tls_test_tools
 import aconfig
 
 # Local
+from caikit.core import DataObjectBase, dataobject
+from caikit.core.data_model import DataBase
+from caikit.interfaces.nlp.data_model import GeneratedTextStreamResult, GeneratedToken
 from caikit.runtime import http_server
 from tests.conftest import temp_config
 
@@ -265,6 +269,42 @@ def test_model_not_found():
             json={"inputs": {"name": "world"}},
         )
         assert response.status_code == 404
+
+
+def test_pydantic_wrapping_with_enums():
+    """Check that the pydantic wrapping works on our data models when they have enums"""
+    # The NLP GeneratedTextStreamResult data model contains enums
+
+    # Check that our data model is fine and dandy
+    token = GeneratedToken(text="foo")
+    assert token.text == "foo"
+
+    # Wrap the containing data model in pydantic
+    http_server.RuntimeHTTPServer._dataobject_to_pydantic(GeneratedTextStreamResult)
+
+    # Check that our data model is _still_ fine and dandy
+    token = GeneratedToken(text="foo")
+    assert token.text == "foo"
+
+
+def test_pydantic_wrapping_with_lists():
+    """Check that pydantic wrapping works on data models with lists"""
+
+    @dataobject(package="http")
+    class BarTest(DataObjectBase):
+        baz: int
+
+    @dataobject(package="http")
+    class FooTest(DataObjectBase):
+        bars: List[BarTest]
+
+    foo = FooTest(bars=[BarTest(1)])
+    assert foo.bars[0].baz == 1
+
+    http_server.RuntimeHTTPServer._dataobject_to_pydantic(FooTest)
+
+    foo = FooTest(bars=[BarTest(1)])
+    assert foo.bars[0].baz == 1
 
 
 # TODO: uncomment later

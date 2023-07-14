@@ -16,13 +16,11 @@ This module holds the implementation of caikit's primary HTTP server entrypoint.
 The server is responsible for binding caikit workloads to a consistent REST/SSE
 API based on the task definitions available at boot.
 """
-
 # Standard
 from functools import partial
-
-# Standardfrom functools import partial
-from typing import Iterable, Optional, Type, Union, get_args, get_origin
+from typing import Iterable, List, Optional, Type, Union, get_args
 import asyncio
+import enum
 import json
 import re
 import ssl
@@ -38,7 +36,10 @@ import pydantic
 import uvicorn
 
 # First Party
-from py_to_proto.dataclass_to_proto import Annotated  # Imported here for 3.8 compat
+from py_to_proto.dataclass_to_proto import (  # Imported here for 3.8 compat
+    Annotated,
+    get_origin,
+)
 import aconfig
 import alog
 
@@ -229,11 +230,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
             self._get_response_dataobject(rpc)
         )
 
-        @self.app.post(self._get_route(rpc))
+        @self.app.post(self._get_route(rpc), response_model=pydantic_response)
         # pylint: disable=unused-argument
         async def _handler(
             model_id: str, request: pydantic_request, context: Request
-        ) -> pydantic_response:
+        ) -> Union[pydantic_response, Response]:
             log.debug("In unary handler for %s for model %s", rpc.name, model_id)
             loop = asyncio.get_running_loop()
             request_kwargs = {
@@ -249,14 +250,18 @@ class RuntimeHTTPServer(RuntimeServerBase):
             # remove non-none items
             combined_no_none = {k: v for k, v in combined_dict.items() if v is not None}
 
+            log.debug4("Sending request %s to model id %s", combined_no_none, model_id)
             try:
+                # TODO: use `async_wrap_*`?
                 call = partial(
                     self.global_predict_servicer.predict_model,
                     model_id=model_id,
                     request_name=rpc.request.name,
                     **combined_no_none,
                 )
-                return await loop.run_in_executor(None, call)
+                result = await loop.run_in_executor(None, call)
+                log.debug4("Response from model %s is %s", model_id, result)
+                return result
             except CaikitRuntimeException as err:
                 error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
                 error_content = {
@@ -288,7 +293,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         ) -> EventSourceResponse:
             log.debug("In streaming handler for %s", rpc.name)
             request_kwargs = {
-                field: getattr(request, field) for field in request.__fields__
+                field: getattr(request, field) for field in request.model_fields
             }
 
             async def _generator() -> pydantic_response:
@@ -418,10 +423,33 @@ class RuntimeHTTPServer(RuntimeServerBase):
         return dm_obj
 
     @classmethod
+    # pylint: disable=too-many-return-statements
     def _get_pydantic_type(cls, field_type: type) -> type:
         """Recursive helper to get a valid pydantic type for every field type"""
+        # pylint: disable=too-many-return-statements
+
+        # Leaves: we should have primitive types and enums
+        if np.issubclass_(field_type, np.integer):
+            return int
+        if np.issubclass_(field_type, np.floating):
+            return float
+        if field_type in (int, float, bool, str, bytes, type(None)):
+            return field_type
+        if isinstance(field_type, type) and issubclass(field_type, enum.Enum):
+            return field_type
+
+        # These can be nested within other data models
+        if (
+            isinstance(field_type, type)
+            and issubclass(field_type, DataBase)
+            and not issubclass(field_type, pydantic.BaseModel)
+        ):
+            # NB: for data models we're calling the data model conversion fn
+            return cls._dataobject_to_pydantic(field_type)
+
+        # And then all of these types can be nested in other type annotations
         if get_origin(field_type) is Annotated:
-            field_type = get_args(field_type)[0]
+            return cls._get_pydantic_type(get_args(field_type)[0])
         if get_origin(field_type) is Union:
             return Union.__getitem__(
                 tuple(
@@ -431,15 +459,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     )
                 )
             )
-        if np.issubclass_(field_type, np.integer):
-            return int
-        if np.issubclass_(field_type, np.floating):
-            return float
-        if hasattr(field_type, "__annotations__") and not issubclass(
-            field_type, pydantic.BaseModel
-        ):
-            return cls._dataobject_to_pydantic(field_type)
-        return field_type
+        if get_origin(field_type) is list:
+            return List[cls._get_pydantic_type(get_args(field_type)[0])]
+
+        raise TypeError(f"Cannot get pydantic type for type [{field_type}]")
 
     @classmethod
     def _dataobject_to_pydantic(
@@ -456,7 +479,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             for field_name, field_type in dm_class.__annotations__.items()
         }
         pydantic_model = type(pydantic.BaseModel)(
-            dm_class.full_name,
+            dm_class.get_proto_class().DESCRIPTOR.full_name,
             (pydantic.BaseModel,),
             {
                 "__annotations__": annotations,
