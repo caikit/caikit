@@ -14,6 +14,7 @@
 # Standard
 from collections import Counter as DictCounter
 from typing import Dict
+import atexit
 import gc
 import os
 import shutil
@@ -88,11 +89,27 @@ class ModelManager:
         # Keep track of the local model cache dir and make sure it's valid
         runtime_cfg = get_config().runtime
         self._local_models_cache_dir = runtime_cfg.local_models_cache_dir
-        if self._local_models_cache_dir:
-            error.value_check(
-                "<RUN75903138E>", os.path.isdir(self._local_models_cache_dir)
-            )
+        error.value_check(
+            "<RUN75903138E>",
+            not self._local_models_cache_dir
+            or os.path.isdir(self._local_models_cache_dir),
+            "Invalid local_models_cache_dir: {}",
+            self._local_models_cache_dir,
+        )
         self._unload_local_models_cache = runtime_cfg.unload_local_models_cache
+        self._uncache_period_seconds = runtime_cfg.uncache_period_seconds
+        error.value_check(
+            "<RUN44773514E>",
+            not self._unload_local_models_cache or self._uncache_period_seconds,
+            "Must set runtime.uncache_period_seconds with runtime.unload_local_models_cache",
+        )
+        self._uncache_period_timer = None
+        if self._local_models_cache_dir and self._unload_local_models_cache:
+            self._uncache_period_timer = threading.Timer(
+                self._uncache_period_seconds, self._unload_uncached_models
+            )
+            self._uncache_period_timer.start()
+            atexit.register(self.shut_down)
 
         # Optionally load models mounted into a local directory
         local_models_dir = runtime_cfg.local_models_dir
@@ -102,16 +119,22 @@ class ModelManager:
 
         # If the local_models_dir and local_models_cache_dir overlap and purging
         # is enabled, raise a big warning!
-        if (
-            self._local_models_cache_dir
-            and local_models_dir == self._local_models_cache_dir
-            and self._unload_local_models_cache
-        ):
-            log.warning(
+        (
+            not self._local_models_cache_dir
+            or local_models_dir != self._local_models_cache_dir
+            or not self._unload_local_models_cache
+            or log.warning(
                 "<RUN41922990W>",
                 "WARNING! Running with unsafe unloading may cause model artifact loss. "
                 + "Use local_models_dir != local_models_cache_dir to avoid this",
             )
+        )
+
+    def shut_down(self):
+        """Shut down cache purging"""
+        timer = getattr(self, "_uncache_period_timer", None)
+        if timer is not None:
+            timer.cancel()
 
     def load_model(
         self,
@@ -128,11 +151,12 @@ class ModelManager:
             Model_size (int) : Size of the loaded model in bytes
         """
         with LOAD_MODEL_DURATION_SUMMARY.labels(model_type=model_type).time():
-            if model_id in self.loaded_models:
+            loaded_model = self.loaded_models.get(model_id)
+            if loaded_model is not None:
                 log.debug("Model '%s' is already loaded", model_id)
             else:
                 try:
-                    model = self.model_loader.load_model(
+                    loaded_model = self.model_loader.load_model(
                         model_id, local_model_path, model_type
                     )
                 except Exception as ex:
@@ -142,10 +166,10 @@ class ModelManager:
                 model_size = self.model_sizer.get_model_size(
                     model_id, local_model_path, model_type
                 )
-                model.set_size(model_size)
+                loaded_model.set_size(model_size)
 
                 # Add model + helpful metadata to our loaded models map
-                self.loaded_models[model_id] = model
+                self.loaded_models[model_id] = loaded_model
 
                 # Update Prometheus metrics
                 self.__increment_model_count_metric(model_type, model_id)
@@ -160,9 +184,9 @@ class ModelManager:
                 model_cache_path = os.path.join(self._local_models_cache_dir, model_id)
                 if not os.path.exists(model_cache_path):
                     log.debug("Caching local model %s", model_id)
-                    model.module().save(model_cache_path)
+                    loaded_model.module().save(model_cache_path)
 
-            return self.loaded_models[model_id].size()
+            return loaded_model.size()
 
     def load_local_models(self, local_models_dir: str):
         """Load models mounted into a local directory
@@ -365,6 +389,38 @@ class ModelManager:
 
         # Return the loaded model
         return self.loaded_models[model_id].module()
+
+    def _unload_uncached_models(self):
+        """If local caching is enabled and cache unloading is enabled, scan the
+        cache directory and unload any currently loaded models that are no
+        longer there. This allows unloads on one replica to sync to others.
+        """
+        if self._local_models_cache_dir and self._unload_local_models_cache:
+            try:
+                cached_models = os.listdir(self._local_models_cache_dir)
+            except FileNotFoundError:
+                return
+            uncached_models = [
+                model_id
+                for model_id in self.loaded_models
+                if model_id not in cached_models
+            ]
+            log.debug2("Uncached models: %s", uncached_models)
+            for model_id in uncached_models:
+                self.unload_model(model_id)
+
+            # If running periodically, kick off the next iteration
+            if self._uncache_period_seconds:
+                if (
+                    self._uncache_period_timer is not None
+                    and self._uncache_period_timer.is_alive()
+                ):
+                    log.debug2("Canceling live timer")
+                    self._uncache_period_timer.cancel()
+                self._uncache_period_timer = threading.Timer(
+                    self._uncache_period_seconds, self._unload_uncached_models
+                )
+                self._uncache_period_timer.start()
 
     def __report_total_model_size_metric(self):
         # Just a happy little lock to ensure that with concurrent loading and unloading,

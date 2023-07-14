@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
+from contextlib import contextmanager
 from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch
 import os
 import shutil
 import tempfile
+import time
 
 # Third Party
 import grpc
@@ -42,6 +44,21 @@ MODEL_MANAGER = ModelManager.get_instance()
 def tear_down():
     yield
     MODEL_MANAGER.unload_all_models()
+
+
+@contextmanager
+def non_singleton_model_managers(num_mgrs=1, *args, **kwargs):
+    with temp_config(*args, **kwargs):
+        instances = []
+        try:
+            for _ in range(num_mgrs):
+                ModelManager._ModelManager__instance = None
+                instances.append(ModelManager.get_instance())
+            yield instances
+        finally:
+            for inst in instances:
+                inst.shut_down()
+            ModelManager._ModelManager__instance = MODEL_MANAGER
 
 
 # ****************************** Integration Tests ****************************** #
@@ -421,76 +438,113 @@ def test_model_manager_replicas_with_disk_caching(
     """
     # NOTE: This test requires that the ModelManager class not be a singleton.
     #   To accomplish this, the singleton instance is temporarily removed.
-    try:
-        # Set up a temporary directory to use as the local cache and configure
-        with tempfile.TemporaryDirectory() as cache_dir:
-            with temp_config(
-                {
-                    "runtime": {
-                        "local_models_cache_dir": cache_dir,
-                        "unload_local_models_cache": True,
-                    },
+    with tempfile.TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            2,
+            {
+                "runtime": {
+                    "local_models_cache_dir": cache_dir,
+                    "unload_local_models_cache": True,
                 },
-                "merge",
-            ):
-                # Make two standalone manager instances
-                ModelManager._ModelManager__instance = None
-                manager_one = ModelManager.get_instance()
-                assert manager_one is not MODEL_MANAGER
-                assert manager_one._local_models_cache_dir == cache_dir
-                ModelManager._ModelManager__instance = None
-                manager_two = ModelManager.get_instance()
-                assert manager_two is not manager_one
-                assert manager_two._local_models_cache_dir == cache_dir
+            },
+            "merge",
+        ) as managers:
+            # Make two standalone manager instances
+            manager_one, manager_two = managers
+            assert manager_two is not manager_one
+            assert manager_one._local_models_cache_dir == cache_dir
+            assert manager_two._local_models_cache_dir == cache_dir
 
-                # Trying to retrieve a model that is not loaded in either and is
-                # not saved in the cache dir should yield NOT_FOUND
-                model_id_one = random_test_id()
-                with pytest.raises(CaikitRuntimeException) as context:
-                    manager_one.retrieve_model(model_id_one)
-                assert context.value.status_code == grpc.StatusCode.NOT_FOUND
-                with pytest.raises(CaikitRuntimeException) as context:
-                    manager_two.retrieve_model(model_id_one)
-                assert context.value.status_code == grpc.StatusCode.NOT_FOUND
+            # Trying to retrieve a model that is not loaded in either and is
+            # not saved in the cache dir should yield NOT_FOUND
+            model_id_one = random_test_id()
+            with pytest.raises(CaikitRuntimeException) as context:
+                manager_one.retrieve_model(model_id_one)
+            assert context.value.status_code == grpc.StatusCode.NOT_FOUND
+            with pytest.raises(CaikitRuntimeException) as context:
+                manager_two.retrieve_model(model_id_one)
+            assert context.value.status_code == grpc.StatusCode.NOT_FOUND
 
-                # Place a saved model into the cache dir manually
-                model_one_path = os.path.join(cache_dir, model_id_one)
-                shutil.copytree(good_model_path, model_one_path)
+            # Place a saved model into the cache dir manually
+            model_one_path = os.path.join(cache_dir, model_id_one)
+            shutil.copytree(good_model_path, model_one_path)
 
-                # Retrieve the model by ID and ensure it's available now
-                model_one = manager_one.retrieve_model(model_id_one)
-                assert isinstance(model_one, ModuleBase)
-                assert (
-                    manager_one.loaded_models.get(model_id_one)
-                    and manager_one.loaded_models[model_id_one].module() is model_one
-                )
+            # Retrieve the model by ID and ensure it's available now
+            model_one = manager_one.retrieve_model(model_id_one)
+            assert isinstance(model_one, ModuleBase)
+            assert (
+                manager_one.loaded_models.get(model_id_one)
+                and manager_one.loaded_models[model_id_one].module() is model_one
+            )
 
-                # Make sure the same model is available on the second manager
-                assert manager_two.loaded_models.get(model_id_one) is None
-                assert manager_two.retrieve_model(model_id_one)
-                assert manager_two.loaded_models.get(model_id_one)
+            # Make sure the same model is available on the second manager
+            assert manager_two.loaded_models.get(model_id_one) is None
+            assert manager_two.retrieve_model(model_id_one)
+            assert manager_two.loaded_models.get(model_id_one)
 
-                # Load another good model directly which does not pre-exist in
-                # the cache dir and make sure it is automatically available in
-                # the second manager
-                model_id_two = random_test_id()
-                model_two_path = os.path.join(cache_dir, model_id_two)
-                assert not os.path.exists(model_two_path)
-                manager_one.load_model(
-                    model_id_two, other_good_model_path, "test-model"
-                )
-                assert os.path.exists(model_two_path)
-                assert manager_one.retrieve_model(model_id_two)
-                assert manager_two.retrieve_model(model_id_two)
+            # Load another good model directly which does not pre-exist in
+            # the cache dir and make sure it is automatically available in
+            # the second manager
+            model_id_two = random_test_id()
+            model_two_path = os.path.join(cache_dir, model_id_two)
+            assert not os.path.exists(model_two_path)
+            manager_one.load_model(model_id_two, other_good_model_path, "test-model")
+            assert os.path.exists(model_two_path)
+            assert manager_one.retrieve_model(model_id_two)
+            assert manager_two.retrieve_model(model_id_two)
 
-                # Unload the model from the first manager and make sure it gets
-                # removed from the cache dir, but not the original path.
-                manager_one.unload_model(model_id_two)
-                assert not os.path.exists(model_two_path)
-                assert os.path.exists(other_good_model_path)
-                with pytest.raises(CaikitRuntimeException) as context:
-                    manager_one.retrieve_model(model_id_two)
-                assert context.value.status_code == grpc.StatusCode.NOT_FOUND
+            # Unload the model from the first manager and make sure it gets
+            # removed from the cache dir, but not the original path.
+            manager_one.unload_model(model_id_two)
+            assert not os.path.exists(model_two_path)
+            assert os.path.exists(other_good_model_path)
+            with pytest.raises(CaikitRuntimeException) as context:
+                manager_one.retrieve_model(model_id_two)
+            assert context.value.status_code == grpc.StatusCode.NOT_FOUND
 
-    finally:
-        ModelManager._ModelManager__instance = MODEL_MANAGER
+            # Trigger the second manager to purge its loaded models that are
+            # not in the cache and make sure it's no longer available there
+            assert manager_two.retrieve_model(model_id_two)
+            manager_two._unload_uncached_models()
+            with pytest.raises(CaikitRuntimeException) as context:
+                manager_two.retrieve_model(model_id_two)
+            assert context.value.status_code == grpc.StatusCode.NOT_FOUND
+
+
+def test_model_manager_disk_caching_periodic_purge(good_model_path):
+    """Make sure that when using disk caching, the manager periodically purges
+    its loaded models based on their presence in the cache
+    """
+    purge_period = 0.001
+    with tempfile.TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            2,
+            {
+                "runtime": {
+                    "local_models_cache_dir": cache_dir,
+                    "unload_local_models_cache": True,
+                    "uncache_period_seconds": purge_period,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager_one, manager_two = managers
+
+            # Load the model on the first manager and get it loaded into the
+            # the second by fetching it
+            model_id = random_test_id()
+            model_cache_path = os.path.join(cache_dir, model_id)
+            assert not os.path.exists(model_cache_path)
+            manager_one.load_model(model_id, good_model_path, "test-model")
+            assert os.path.exists(model_cache_path)
+            assert manager_two.retrieve_model(model_id)
+
+            # Unload it from two
+            manager_two.unload_model(model_id)
+            assert model_id not in manager_two.loaded_models
+            assert not os.path.exists(model_cache_path)
+
+            # Wait for the purge period to expire and make sure one also doesn't
+            # have it loaded anymore
+            time.sleep(purge_period * 2)
+            assert not model_id in manager_one.loaded_models

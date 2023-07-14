@@ -83,6 +83,8 @@ runtime:
     #   with your local_models_dir as it could cause persistent model files to
     #   be removed!
     unload_local_models_cache: false
+    # Period interval for unloading models that have been deleted from the cache
+    uncache_period_seconds: 60
 
     # TLS configs
     tls:
