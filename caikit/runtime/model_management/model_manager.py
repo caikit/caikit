@@ -119,7 +119,7 @@ class ModelManager:
 
         # If the local_models_dir and local_models_cache_dir overlap and purging
         # is enabled, raise a big warning!
-        (
+        (  # pylint: disable=expression-not-assigned
             not self._local_models_cache_dir
             or local_models_dir != self._local_models_cache_dir
             or not self._unload_local_models_cache

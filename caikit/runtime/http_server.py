@@ -451,7 +451,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         if get_origin(field_type) is Annotated:
             return cls._get_pydantic_type(get_args(field_type)[0])
         if get_origin(field_type) is Union:
-            return Union.__getitem__(
+            return Union.__getitem__(  # pylint: disable=unnecessary-dunder-call
                 tuple(
                     (
                         cls._get_pydantic_type(arg_type)
