@@ -125,8 +125,15 @@ class ServicePackageFactory:
 
         caikit_config = get_config()
         lib = caikit_config.runtime.library
-        ai_domain_name = snake_to_upper_camel(lib.replace("caikit_", ""))
-        package_name = f"caikit.runtime.{ai_domain_name}"
+        default_ai_domain_name = snake_to_upper_camel(lib.replace("caikit_", ""))
+        ai_domain_name = (
+            caikit_config.runtime.service_generation.domain or default_ai_domain_name
+        )
+
+        default_package_name = f"caikit.runtime.{ai_domain_name}"
+        package_name = (
+            caikit_config.runtime.service_generation.package or default_package_name
+        )
 
         # Then do API introspection to come up with all the API definitions to support
         clean_modules = ServicePackageFactory._get_and_filter_modules(
