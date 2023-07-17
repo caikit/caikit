@@ -13,9 +13,7 @@
 # limitations under the License.
 
 # Standard
-from os import path
 import json
-import sys
 
 # Third Party
 from start_runtime import protocol_arg
