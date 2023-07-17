@@ -85,7 +85,7 @@ class ModelManager:
         self._loaded_models_lock = threading.Lock()
 
         # Optionally load models mounted into a local directory
-        self._local_models_dir = get_config().runtime.local_models_dir
+        self._local_models_dir = get_config().runtime.local_models_dir or ""
         if (
             os.path.exists(self._local_models_dir)
             and len(os.listdir(self._local_models_dir)) > 0
@@ -184,6 +184,8 @@ class ModelManager:
         Args:
             wait (bool): Wait for loading to complete
         """
+        if not self._local_models_dir:
+            return
 
         # Get the list of models on disk
         disk_models = os.listdir(self._local_models_dir)
@@ -367,7 +369,7 @@ class ModelManager:
 
         # Now retrieve the model
         model_loaded = model_id in self.loaded_models
-        if not model_loaded and self._lazy_load_local_models:
+        if not model_loaded and self._lazy_load_local_models and self._local_models_dir:
             local_model_path = os.path.join(self._local_models_dir, model_id)
             if os.path.exists(local_model_path):
                 log.debug2(
