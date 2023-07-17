@@ -215,7 +215,7 @@ def test_docs():
         assert response.status_code == 200
 
 
-def test_sample_module_inference(sample_task_model_id):
+def test_inference_sample_task(sample_task_model_id):
     """Simple check that we can ping a model"""
     server = http_server.RuntimeHTTPServer()
     with TestClient(server.app) as client:
@@ -229,7 +229,7 @@ def test_sample_module_inference(sample_task_model_id):
         assert json_response["greeting"] == "Hello world"
 
 
-def test_inference_optional_field(sample_task_model_id):
+def test_inference_sample_task_optional_field(sample_task_model_id):
     """Simple check for optional fields"""
     server = http_server.RuntimeHTTPServer()
     with TestClient(server.app) as client:
