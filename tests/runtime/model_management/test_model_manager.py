@@ -309,7 +309,7 @@ class TestModelManager(unittest.TestCase):
 
         with patch.object(self.model_manager, "model_loader", mock_loader):
             with patch.object(self.model_manager, "model_sizer", mock_sizer):
-                mock_loader.load_model.return_value = LoadedModel.Builder().build()
+                mock_loader.load_model.return_value = LoadedModel()
                 mock_sizer.get_model_size.return_value = expected_model_size
 
                 model_size = self.model_manager.load_model(
@@ -350,7 +350,11 @@ class TestModelManager(unittest.TestCase):
             with patch.object(self.model_manager, "model_sizer", mock_sizer):
                 mock_sizer.get_model_size.return_value = 1
                 mock_loader.load_model.return_value = (
-                    LoadedModel.Builder().module(expected_module).build()
+                    LoadedModel.Builder()
+                    .model(expected_module)
+                    .id("foo")
+                    .type("bar")
+                    .build()
                 )
                 self.model_manager.load_model(model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE)
 
@@ -366,7 +370,7 @@ class TestModelManager(unittest.TestCase):
 
         with patch.object(self.model_manager, "model_loader", mock_loader):
             with patch.object(self.model_manager, "model_sizer", mock_sizer):
-                mock_loader.load_model.return_value = LoadedModel.Builder().build()
+                mock_loader.load_model.return_value = LoadedModel()
                 mock_sizer.get_model_size.return_value = expected_model_size
 
                 self.model_manager.load_model(model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE)

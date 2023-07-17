@@ -73,6 +73,9 @@ runtime:
     library: sample_lib # TODO: replace with libraries below when runtime can support multiple libraries
     local_models_dir: models
 
+    # Number of threads to make available for load jobs (null => all)
+    load_threads: null
+
     # TLS configs
     tls:
         server:

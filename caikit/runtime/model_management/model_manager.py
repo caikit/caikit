@@ -278,7 +278,7 @@ class ModelManager:
                 StatusCode.NOT_FOUND, msg, {"model_id": model_id}
             )
 
-        return self.loaded_models[model_id].module()
+        return self.loaded_models[model_id].model()
 
     def __report_total_model_size_metric(self):
         # Just a happy little lock to ensure that with concurrent loading and unloading,

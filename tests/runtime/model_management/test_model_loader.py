@@ -64,8 +64,8 @@ def test_load_model_ok_response(model_loader):
         local_model_path=Fixtures.get_good_model_path(),
         model_type=Fixtures.get_good_model_type(),
     )
-    assert loaded_model.module() is not None
-    assert isinstance(loaded_model.module(), base.ModuleBase)
+    assert loaded_model.model() is not None
+    assert isinstance(loaded_model.model(), base.ModuleBase)
     assert model_id == loaded_model.id()
     assert Fixtures.get_good_model_type() == loaded_model.type()
     assert Fixtures.get_good_model_path() == loaded_model.path()
@@ -82,8 +82,8 @@ def test_load_model_archive(model_loader):
         local_model_path=Fixtures.get_good_model_archive_path(),
         model_type=Fixtures.get_good_model_type(),
     )
-    assert loaded_model.module() is not None
-    assert isinstance(loaded_model.module(), base.ModuleBase)
+    assert loaded_model.model() is not None
+    assert isinstance(loaded_model.model(), base.ModuleBase)
 
 
 def test_load_model_error_not_found_response(model_loader):
@@ -168,7 +168,7 @@ def test_with_batching(model_loader):
         "load_with_batch",
         Fixtures.get_good_model_path(),
         model_type="fake_batch_module",
-    ).module()
+    ).model()
     assert isinstance(model, Batcher)
     assert model._batch_size == get_config().runtime.batching.fake_batch_module.size
 
@@ -177,7 +177,7 @@ def test_with_batching(model_loader):
         "load_without_batch",
         Fixtures.get_good_model_path(),
         model_type=Fixtures.get_good_model_type(),
-    ).module()
+    ).model()
     assert not isinstance(model, Batcher)
 
 
@@ -190,7 +190,7 @@ def test_with_batching_by_default(model_loader):
             "load_with_batch_default",
             Fixtures.get_good_model_path(),
             model_type=Fixtures.get_good_model_type(),
-        ).module()
+        ).model()
         assert isinstance(model, Batcher)
         assert model._batch_size == cfg.runtime.batching.default.size
 
@@ -214,7 +214,7 @@ def test_with_batching_collect_delay(model_loader):
             "load_with_batch_default",
             Fixtures.get_good_model_path(),
             model_type=model_type,
-        ).module()
+        ).model()
         assert isinstance(model, Batcher)
         assert model._batch_size == getattr(cfg.runtime.batching, model_type).size
         assert (
@@ -282,5 +282,44 @@ def test_load_distributed_impl():
                         random_test_id(),
                         model_path,
                         model_type=model_type,
-                    ).module()
+                    ).model()
                     assert isinstance(model, DistributedGadget)
+
+
+def test_load_model_without_waiting_success(model_loader):
+    """Make sure that loading a model can defer the model to a future and access
+    the loaded model when complete
+    """
+    model_id = random_test_id()
+    loaded_model = model_loader.load_model(
+        model_id=model_id,
+        local_model_path=Fixtures.get_good_model_path(),
+        model_type=Fixtures.get_good_model_type(),
+        wait=False,
+    )
+    # Block to get the model
+    assert loaded_model.model() is not None
+    assert isinstance(loaded_model.model(), base.ModuleBase)
+    assert model_id == loaded_model.id()
+    assert Fixtures.get_good_model_type() == loaded_model.type()
+    assert Fixtures.get_good_model_path() == loaded_model.path()
+
+    # Models are not sized by the loader
+    assert loaded_model.size() == 0
+
+
+def test_load_model_without_waiting_deferred_error(model_loader):
+    """Make sure that loading a model can defer the model to a future and raise
+    when the future is used if the loading failed
+    """
+    model_id = random_test_id()
+    loaded_model = model_loader.load_model(
+        model_id=model_id,
+        local_model_path=Fixtures.get_bad_model_archive_path(),
+        model_type="not_real",
+        wait=False,
+    )
+    with pytest.raises(CaikitRuntimeException) as context:
+        loaded_model.model()
+    assert context.value.status_code == grpc.StatusCode.INTERNAL
+    assert model_id in context.value.message
