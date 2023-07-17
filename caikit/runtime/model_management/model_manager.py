@@ -13,7 +13,7 @@
 # limitations under the License.
 # Standard
 from collections import Counter as DictCounter
-from typing import Dict
+from typing import Dict, Optional
 import gc
 import os
 import threading
@@ -32,6 +32,7 @@ from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.model_management.model_sizer import ModelSizer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from caikit.runtime.work_management.abortable_action import ActionAborter
 
 log = alog.use_channel("MODEL-MANAGR")
 
@@ -71,86 +72,177 @@ class ModelManager:
         assert self.__class__.__instance is None, "This class is a singleton!"
         ModelManager.__instance = self
 
-        # Pull in a ModelLoader
+        # Pull in a ModelLoader and ModelSizer
         self.model_loader = ModelLoader.get_instance()
-        # And a ModelSizer
         self.model_sizer = ModelSizer.get_instance()
 
-        # set up the local map for model ID to loaded model
+        # In-memory mapping of model_id to LoadedModel instance
         self.loaded_models: Dict[str, LoadedModel] = {}
 
-        # Optionally load models mounted into a local directory
-        local_models_path = get_config().runtime.local_models_dir
-        if os.path.exists(local_models_path) and len(os.listdir(local_models_path)) > 0:
-            log.info("<RUN44739400I>", "Loading local models into Caikit Runtime...")
-            self.load_local_models(local_models_path)
+        # Lock for mutating operations on loaded_models
+        self._loaded_models_lock = threading.Lock()
 
-    def load_model(self, model_id, local_model_path, model_type) -> int:
+        # Optionally load models mounted into a local directory
+        self._local_models_dir = get_config().runtime.local_models_dir
+        if (
+            os.path.exists(self._local_models_dir)
+            and len(os.listdir(self._local_models_dir)) > 0
+        ):
+            log.info("<RUN44739400I>", "Loading local models into Caikit Runtime...")
+            self.initialize_local_models()
+
+    def load_model(
+        self,
+        model_id: str,
+        local_model_path: str,
+        model_type: str,
+        wait: bool = True,
+        aborter: Optional[ActionAborter] = None,
+    ) -> int:
         """Load a model using model_path (in Cloud Object Storage) & give it a model ID
         Args:
-            model_id (string):  Model ID string for the model to load.
-            local_model_path (string): Local path to load the model from.
-            model_type (string): Type of the model to load.
+            model_id (str):  Model ID string for the model to load.
+            local_model_path (str): Local path to load the model from.
+            model_type (str): Type of the model to load.
+            wait (bool): Wait for the model to finish loading
         Returns:
             Model_size (int) : Size of the loaded model in bytes
         """
         with LOAD_MODEL_DURATION_SUMMARY.labels(model_type=model_type).time():
-            if model_id in self.loaded_models:
+
+            # If already loaded, just return the size
+            model = self.loaded_models.get(model_id)
+            if model is not None:
                 log.debug("Model '%s' is already loaded", model_id)
-                return self.loaded_models[model_id].size()
+                return model.size()
 
-            try:
-                model = self.model_loader.load_model(
-                    model_id, local_model_path, model_type
-                )
-            except Exception as ex:
-                self.__increment_load_model_exception_count_metric(model_type)
-                raise ex
+            # Grab the mutation lock and load the model if needed
+            with self._loaded_models_lock:
+                # Re-check now that the mutation lock is held
+                model = self.loaded_models.get(model_id)
+                if model is None:
+                    log.debug("Loading %s from %s", model_id, local_model_path)
+                    try:
+                        model = self.model_loader.load_model(
+                            model_id,
+                            local_model_path,
+                            model_type,
+                            wait=False,
+                            aborter=aborter,
+                        )
+                    except Exception as ex:
+                        self.__increment_load_model_exception_count_metric(model_type)
+                        raise ex
 
-            model_size = self.model_sizer.get_model_size(
-                model_id, local_model_path, model_type
-            )
-            model.set_size(model_size)
+                    # Estimate the model's size and update the LoadedModel
+                    model_size = self.model_sizer.get_model_size(
+                        model_id, local_model_path, model_type
+                    )
+                    model.set_size(model_size)
 
-            # Add model + helpful metadata to our loaded models map
-            self.loaded_models[model_id] = model
+                    # Add model + helpful metadata to our loaded models map
+                    self.loaded_models[model_id] = model
 
-            # Update Prometheus metrics
-            self.__increment_model_count_metric(model_type, model_id)
-            self.__report_total_model_size_metric()
+                    # Update Prometheus metrics
+                    self.__increment_model_count_metric(model_type, model_id)
+                    self.__report_total_model_size_metric()
 
-            return self.loaded_models[model_id].size()
+            # If waiting, do so outside of the mutation lock
+            if wait:
+                try:
+                    model.wait()
+                except CaikitRuntimeException:
+                    self.unload_model(model_id)
+                    raise
 
-    def load_local_models(self, local_model_dir):
-        """Load models mounted into a local directory
-        Args:
-            local_model_dir (string):  Path to the local model directory
-        Returns:
-            None
-        """
-        for model_base_path in os.listdir(local_model_dir):
-            try:
-                # Use the file name as the model id
-                model_id = model_base_path
-                model_path = os.path.join(local_model_dir, model_base_path)
-                self.load_model(model_id, model_path, "standalone-model")
-            except CaikitRuntimeException as e:
-                log.warning(
-                    "<RUN56627484W>",
-                    "Failed to load model %s: %s",
-                    model_base_path,
-                    repr(e),
-                    exc_info=True,
-                )
-                continue
+            # Return the model's size
+            return model.size()
 
+    def initialize_local_models(self):
+        self.sync_local_models(wait=True)
         if len(self.loaded_models) == 0:
             log.error(
-                "<RUN56336804E>", "No models loaded in directory: %s", local_model_dir
+                "<RUN56336804E>",
+                "No models loaded in directory: %s",
+                self._local_models_dir,
             )
             raise CaikitRuntimeException(
                 StatusCode.INTERNAL, "No standalone models loaded"
             )
+
+    def sync_local_models(self, wait: bool = False):
+        """Sync in-memory models with models in the configured local_model_dir
+
+        New models will be loaded and models previously loaded from local will
+        be unloaded.
+
+        Args:
+            wait (bool): Wait for loading to complete
+        """
+
+        # Get the list of models on disk
+        disk_models = os.listdir(self._local_models_dir)
+
+        # Find all models that aren't currently loaded
+        # NOTE: If one of these models gets loaded after this check, that will
+        #   be handled in load_models
+        new_models = [
+            model_id for model_id in disk_models if model_id not in self.loaded_models
+        ]
+        log.debug("New local models: %s", new_models)
+
+        # Find all models that are currently loaded from the local models dir
+        # that no longer exist
+        unload_models = [
+            model_id
+            for model_id, loaded_model in self.loaded_models.items()
+            if model_id not in disk_models
+            and loaded_model.path.startswith(
+                self._local_models_dir,
+            )
+        ]
+        log.debug("Unloaded local models: %s", unload_models)
+
+        # Load new models
+        for model_id in new_models:
+            try:
+                # Use the file name as the model id
+                model_path = os.path.join(self._local_models_dir, model_id)
+                self.load_model(model_id, model_path, "standalone-model", wait=False)
+            except CaikitRuntimeException as err:
+                log.warning(
+                    "<RUN56627484W>",
+                    "Failed to load model %s: %s",
+                    model_id,
+                    repr(err),
+                    exc_info=True,
+                )
+                continue
+
+        # Unload old models
+        for model_id in unload_models:
+            log.debug2("Unloading local model %s", model_id)
+            self.unload_model(model_id)
+
+        # Wait for models to load and purge out any that failed
+        if wait:
+            for model_id in new_models:
+                loaded_model = self.loaded_models.get(model_id)
+                # If somehow already purged, there's nothing to wait on
+                if loaded_model is None:
+                    continue
+                # Wait for it and make sure it didn't fail
+                try:
+                    loaded_model.wait()
+                except CaikitRuntimeException as err:
+                    log.warning(
+                        "<RUN56627485W>",
+                        "Failed to load model %s: %s",
+                        model_id,
+                        repr(err),
+                        exc_info=True,
+                    )
+                    self.unload_model(model_id)
 
     def unload_model(self, model_id) -> int:
         """Unload a model by ID model.

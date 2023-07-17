@@ -90,7 +90,7 @@ class TestModelRuntimeServicerImpl(unittest.TestCase):
         mock_manager = MagicMock()
         started = Event()
 
-        def never_return(*args):
+        def never_return(*args, **kwargs):
             started.set()
             while True:
                 time.sleep(0.01)

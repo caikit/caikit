@@ -13,7 +13,7 @@
 # limitations under the License.
 # Standard
 from concurrent.futures import ThreadPoolExecutor
-from typing import Union
+from typing import Optional, Union
 
 # Third Party
 from grpc import StatusCode
@@ -28,6 +28,10 @@ from caikit.core import MODEL_MANAGER
 from caikit.runtime.model_management.batcher import Batcher
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from caikit.runtime.work_management.abortable_action import (
+    AbortableAction,
+    ActionAborter,
+)
 import caikit.core
 
 log = alog.use_channel("MODEL-LOADER")
@@ -60,14 +64,18 @@ class ModelLoader:
         local_model_path: str,
         model_type: str,
         wait: bool = True,
+        aborter: Optional[ActionAborter] = None,
     ) -> LoadedModel:
         """Load a model using model_path (in Cloud Object Storage) & give it a model ID.
         This always cleans up files on disk, no matter if the load succeeds or fails
 
         Args:
-            model_id (str):  Model ID string for the model to load.
+            model_id (str): Model ID string for the model to load.
             local_model_path (str): Local filesystem path to load the model from.
             model_type (str): Type of the model to load.
+            wait (bool): Whether or not to wait for the load to complete
+            aborter (Optional[ActionAborter]): An aborter to use that will allow
+                the call's parent to abort the load
         Returns:
             model (LoadedModel) : The model that was loaded
         """
@@ -83,9 +91,13 @@ class ModelLoader:
             model_builder.model(self._load_module(*args))
         else:
             log.debug2("Loading model %s async", model_id)
-            model_builder.model_future(
-                self._load_thread_pool.submit(self._load_module, *args)
-            )
+            if aborter is not None:
+                log.debug3("Using abortable action to load %s", model_id)
+                action = AbortableAction(aborter, self._load_module, *args)
+                future = self._load_thread_pool.submit(action.do)
+            else:
+                future = self._load_thread_pool.submit(self._load_module, *args)
+            model_builder.model_future(future)
 
         # Return the built model
         return model_builder.build()

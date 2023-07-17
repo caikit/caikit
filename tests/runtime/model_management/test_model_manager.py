@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
+from contextlib import contextmanager
 from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch
-import copy
 import os
 import shutil
 
@@ -44,6 +44,14 @@ def tear_down():
     MODEL_MANAGER.unload_all_models()
 
 
+@contextmanager
+def temp_local_models_dir(workdir, model_manager=MODEL_MANAGER):
+    prev_local_models_dir = model_manager._local_models_dir
+    model_manager._local_models_dir = workdir
+    yield
+    model_manager._local_models_dir = prev_local_models_dir
+
+
 # ****************************** Integration Tests ****************************** #
 # These tests do not patch in mocks, the manager will use real instances of its dependencies
 
@@ -66,7 +74,8 @@ def test_load_local_models():
             os.path.join(tempdir, "model2.zip"),
         )
 
-        MODEL_MANAGER.load_local_models(tempdir)
+        with temp_local_models_dir(tempdir):
+            MODEL_MANAGER.initialize_local_models()
         assert len(MODEL_MANAGER.loaded_models) == 2
         assert "model1" in MODEL_MANAGER.loaded_models.keys()
         assert "model2.zip" in MODEL_MANAGER.loaded_models.keys()
@@ -102,7 +111,8 @@ def test_model_manager_raises_if_all_local_models_fail_to_load():
             os.path.join(tempdir, "model2.zip"),
         )
         with pytest.raises(CaikitRuntimeException) as ctx:
-            MODEL_MANAGER.load_local_models(tempdir)
+            with temp_local_models_dir(tempdir):
+                MODEL_MANAGER.initialize_local_models()
         assert grpc.StatusCode.INTERNAL == ctx.value.status_code
 
 
@@ -113,6 +123,7 @@ def test_load_model_error_response():
             model_id=random_test_id(),
             local_model_path=Fixtures().get_invalid_model_archive_path(),
             model_type="categories_esa",
+            wait=True,
         )
 
     assert context.value.status_code == grpc.StatusCode.NOT_FOUND
@@ -315,7 +326,9 @@ def test_load_model():
 
     with patch.object(MODEL_MANAGER, "model_loader", mock_loader):
         with patch.object(MODEL_MANAGER, "model_sizer", mock_sizer):
-            mock_loader.load_model.return_value = LoadedModel()
+            loaded_model = LoadedModel()
+            loaded_model._model = "something"
+            mock_loader.load_model.return_value = loaded_model
             mock_sizer.get_model_size.return_value = expected_model_size
 
             model_size = MODEL_MANAGER.load_model(
@@ -323,7 +336,11 @@ def test_load_model():
             )
             assert expected_model_size == model_size
             mock_loader.load_model.assert_called_once_with(
-                model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE
+                model_id,
+                ANY_MODEL_PATH,
+                ANY_MODEL_TYPE,
+                wait=False,
+                aborter=None,
             )
             mock_sizer.get_model_size.assert_called_once_with(
                 model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE
@@ -377,7 +394,9 @@ def test_get_model_size_returns_size_from_model_sizer():
 
     with patch.object(MODEL_MANAGER, "model_loader", mock_loader):
         with patch.object(MODEL_MANAGER, "model_sizer", mock_sizer):
-            mock_loader.load_model.return_value = LoadedModel()
+            loaded_model = LoadedModel()
+            loaded_model._model = "something"
+            mock_loader.load_model.return_value = loaded_model
             mock_sizer.get_model_size.return_value = expected_model_size
 
             MODEL_MANAGER.load_model(model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE)

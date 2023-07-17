@@ -57,12 +57,14 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             )
             caikit_config = get_config()
             if caikit_config.runtime.use_abortable_threads:
+                aborter = CallAborter(context)
                 work = AbortableAction(
-                    CallAborter(context),
+                    aborter,
                     self.model_manager.load_model,
                     request.modelId,
                     request.modelPath,
                     request.modelType,
+                    aborter=aborter,
                 )
                 model_size = work.do()
             else:
