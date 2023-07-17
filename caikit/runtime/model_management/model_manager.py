@@ -66,6 +66,8 @@ class ModelManager:
 
     __model_size_gauge_lock = threading.Lock()
 
+    _LOCAL_MODEL_TYPE = "standalone-model"
+
     def __init__(self):
         """Initialize a ModelManager instance."""
         # Re-instantiating this is a programming error
@@ -90,6 +92,9 @@ class ModelManager:
         ):
             log.info("<RUN44739400I>", "Loading local models into Caikit Runtime...")
             self.initialize_local_models()
+
+        # Keep track of whether lazy loading is enabled
+        self._lazy_load_local_models = get_config().runtime.lazy_load_local_models
 
     def load_model(
         self,
@@ -208,7 +213,9 @@ class ModelManager:
             try:
                 # Use the file name as the model id
                 model_path = os.path.join(self._local_models_dir, model_id)
-                self.load_model(model_id, model_path, "standalone-model", wait=False)
+                self.load_model(
+                    model_id, model_path, self._LOCAL_MODEL_TYPE, wait=False
+                )
             except CaikitRuntimeException as err:
                 log.warning(
                     "<RUN56627484W>",
@@ -359,12 +366,25 @@ class ModelManager:
             )
 
         # Now retrieve the model
-        if model_id not in self.loaded_models:
-            # We should not encounter this scenario, so if it happens, log
-            # it as an error-level log
+        model_loaded = model_id in self.loaded_models
+        if not model_loaded and self._lazy_load_local_models:
+            local_model_path = os.path.join(self._local_models_dir, model_id)
+            if os.path.exists(local_model_path):
+                log.debug2(
+                    "Lazy loading local model %s from %s", model_id, local_model_path
+                )
+                self.load_model(
+                    model_id=model_id,
+                    local_model_path=local_model_path,
+                    model_type=self._LOCAL_MODEL_TYPE,
+                    wait=True,
+                )
+                model_loaded = True
+
+        if not model_loaded:
             msg = "Model '%s' not loaded" % model_id
-            log.error(
-                {"log_code": "<RUN61105243E>", "message": msg, "model_id": model_id}
+            log.debug(
+                {"log_code": "<RUN61105243D>", "message": msg, "model_id": model_id}
             )
             raise CaikitRuntimeException(
                 StatusCode.NOT_FOUND, msg, {"model_id": model_id}
