@@ -215,11 +215,11 @@ def test_docs():
         assert response.status_code == 200
 
 
-def test_inference(sample_task_model_id):
+def test_sample_module_inference(sample_task_model_id):
     """Simple check that we can ping a model"""
     server = http_server.RuntimeHTTPServer()
     with TestClient(server.app) as client:
-        json_input = {"inputs": {"sample_input": {"name": "world"}}}
+        json_input = {"inputs": {"name": "world"}}
         response = client.post(
             f"/api/v1/{sample_task_model_id}/task/sample",
             json=json_input,
@@ -250,7 +250,7 @@ def test_inference_other_task(other_task_model_id):
     """Simple check that we can ping a model"""
     server = http_server.RuntimeHTTPServer()
     with TestClient(server.app) as client:
-        json_input = {"inputs": {"sample_input": {"name": "world"}}}
+        json_input = {"inputs": {"name": "world"}}
         response = client.post(
             f"/api/v1/{other_task_model_id}/task/other",
             json=json_input,

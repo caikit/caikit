@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Standard
+from os import path
+import json
+import sys
+
 # Third Party
 from start_runtime import protocol_arg
 import grpc
@@ -19,9 +24,17 @@ import requests
 
 # Local
 from caikit.runtime.service_factory import ServicePackageFactory
-from text_sentiment.data_model import TextInput
+import caikit
 
 if __name__ == "__main__":
+    caikit.config.configure(
+        config_dict={
+            "merge_strategy": "merge",
+            "runtime": {
+                "library": "text_sentiment",
+            },
+        }
+    )
 
     inference_service = ServicePackageFactory().get_service_package(
         ServicePackageFactory.ServiceType.INFERENCE,
@@ -39,9 +52,8 @@ if __name__ == "__main__":
 
         # Run inference for two sample prompts
         for text in ["I am not feeling well today!", "Today is a nice sunny day"]:
-            input_text_proto = TextInput(text=text).to_proto()
             request = inference_service.messages.HuggingFaceSentimentTaskRequest(
-                text_input=input_text_proto
+                text_input=text
             )
             response = client_stub.HuggingFaceSentimentTaskPredict(
                 request, metadata=[("mm-model-id", model_id)], timeout=1
@@ -53,14 +65,14 @@ if __name__ == "__main__":
         port = 8080
         # Run inference for two sample prompts
         for text in ["I am not feeling well today!", "Today is a nice sunny day"]:
-            payload = {"inputs": {"text_input": {"text": text}}}
+            payload = {"inputs": text}
             response = requests.post(
                 f"http://localhost:{port}/api/v1/{model_id}/task/hugging-face-sentiment",
                 json=payload,
                 timeout=1,
             )
-            print("Text:", text)
-            print("RESPONSE:", response.json())
+            print("\nText:", text)
+            print("RESPONSE:", json.dumps(response.json(), indent=4))
 
     else:
         print("--protocol must be one of [grpc, http]")

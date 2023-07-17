@@ -240,13 +240,19 @@ class RuntimeHTTPServer(RuntimeServerBase):
             request_kwargs = {
                 field: getattr(request, field) for field in request.__fields__
             }
+            required_params = rpc.task.get_required_parameters(False)
+            if len(required_params) == 1:
+                input_name = list(required_params.keys())[0]
             # flatten inputs and params into a dict
             # would have been useful to call dataobject.to_dict()
             # but unfortunately we now have converted pydantic objects
             combined_dict = {}
             for field in request_kwargs:
                 if request_kwargs[field]:
-                    combined_dict.update(**dict(request_kwargs[field]))
+                    if field == "inputs" and input_name:
+                        combined_dict.update({input_name: request_kwargs[field]})
+                    else:
+                        combined_dict.update(**dict(request_kwargs[field]))
             # remove non-none items
             combined_no_none = {k: v for k, v in combined_dict.items() if v is not None}
 
@@ -377,13 +383,19 @@ class RuntimeHTTPServer(RuntimeServerBase):
             pkg_name = f"caikit.http.{rpc.task.__name__}"
         else:
             pkg_name = f"caikit.http.{rpc.name}"
-        # Always create a bundled sub-message for required parameters
-        if required_params:
+
+        # Create a bundled sub-message for required parameters for multiple params
+        if len(required_params) > 1:
             log.debug3("Using structured inputs type for %s", pkg_name)
             inputs_type = make_dataobject(
                 name=f"{rpc.request.name}Inputs",
                 annotations=required_params,
                 package=pkg_name,
+            )
+        elif required_params:
+            inputs_type = list(required_params.values())[0]
+            log.debug3(
+                "Using single inputs type for task %s: %s", pkg_name, inputs_type
             )
 
         # Always create a bundled sub-message for optional parameters
