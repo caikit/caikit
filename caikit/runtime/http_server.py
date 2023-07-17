@@ -237,10 +237,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
         ) -> Union[pydantic_response, Response]:
             log.debug("In unary handler for %s for model %s", rpc.name, model_id)
             loop = asyncio.get_running_loop()
-            request_kwargs = {
-                field: getattr(request, field) for field in request.__fields__
-            }
+            request_kwargs = dict(request)
             required_params = rpc.task.get_required_parameters(False)
+            input_name = None
+            # handle required param input name
             if len(required_params) == 1:
                 input_name = list(required_params.keys())[0]
             # flatten inputs and params into a dict
@@ -249,7 +249,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             combined_dict = {}
             for field in request_kwargs:
                 if request_kwargs[field]:
-                    if field == "inputs" and input_name:
+                    if field == REQUIRED_INPUTS_KEY and input_name:
                         combined_dict.update({input_name: request_kwargs[field]})
                     else:
                         combined_dict.update(**dict(request_kwargs[field]))
