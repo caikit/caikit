@@ -91,6 +91,13 @@ class ModelManager:
         # Optionally load models mounted into a local directory
         runtime_cfg = get_config().runtime
         self._local_models_dir = runtime_cfg.local_models_dir or ""
+        if self._local_models_dir and not os.path.exists(self._local_models_dir):
+            log.warning(
+                "<RUN53709826W>",
+                "Invalid runtime.local_models_dir %s. Does not exist",
+                self._local_models_dir,
+            )
+            self._local_models_dir = ""
 
         # Keep track of whether lazy loading is enabled
         self._lazy_load_local_models = runtime_cfg.lazy_load_local_models
@@ -119,12 +126,9 @@ class ModelManager:
             atexit.register(self.shut_down)
 
         # Do the initial local models load
-        if (
-            os.path.exists(self._local_models_dir)
-            and len(os.listdir(self._local_models_dir)) > 0
-        ):
+        if self._local_models_dir:
             log.info("<RUN44739400I>", "Loading local models into Caikit Runtime...")
-            self.initialize_local_models()
+            self.sync_local_models(wait=True)
 
     def shut_down(self):
         """Shut down cache purging"""
@@ -196,18 +200,6 @@ class ModelManager:
             # Return the model's size
             return model.size()
 
-    def initialize_local_models(self):
-        self.sync_local_models(wait=True)
-        if len(self.loaded_models) == 0:
-            log.error(
-                "<RUN56336804E>",
-                "No models loaded in directory: %s",
-                self._local_models_dir,
-            )
-            raise CaikitRuntimeException(
-                StatusCode.INTERNAL, "No standalone models loaded"
-            )
-
     def sync_local_models(self, wait: bool = False):
         """Sync in-memory models with models in the configured local_model_dir
 
@@ -243,7 +235,7 @@ class ModelManager:
             model_id
             for model_id, loaded_model in self.loaded_models.items()
             if model_id not in disk_models
-            and loaded_model.path.startswith(
+            and loaded_model.path().startswith(
                 self._local_models_dir,
             )
         ]
@@ -293,6 +285,11 @@ class ModelManager:
 
         # If running periodically, kick off the next iteration
         if self._enable_lazy_load_poll:
+            if self._lazy_sync_timer is None:
+                log.info(
+                    "Initializing local_models_dir sync with period %s",
+                    self._lazy_load_poll_period_seconds,
+                )
             if self._lazy_sync_timer is not None and self._lazy_sync_timer.is_alive():
                 log.debug2("Canceling live timer")
                 self._lazy_sync_timer.cancel()
