@@ -234,7 +234,7 @@ def test_inference_sample_task_optional_field(sample_task_model_id):
     server = http_server.RuntimeHTTPServer()
     with TestClient(server.app) as client:
         json_input = {
-            "inputs": {"sample_input": {"name": "world"}},
+            "inputs": {"name": "world"},
             "parameters": {"throw": True},
         }
         response = client.post(
