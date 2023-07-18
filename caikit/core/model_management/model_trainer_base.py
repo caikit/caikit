@@ -97,6 +97,10 @@ class ModelTrainerBase(FactoryConstructible):
 
         ## Common Impl ##
 
+        def result(self) -> ModuleBase:
+            """Support result() to match concurrent.futures.Future"""
+            return self.load()
+
         @classmethod
         def _save_path_with_id(
             cls,
