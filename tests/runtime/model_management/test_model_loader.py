@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
+from concurrent.futures import Future
 from contextlib import contextmanager
 from unittest import mock
 import copy
@@ -51,6 +52,12 @@ def temp_model_loader():
 @pytest.fixture
 def model_loader():
     return ModelLoader.get_instance()
+
+
+def make_model_future(model_instance):
+    fake_future = Future()
+    fake_future.result = lambda *_, **__: model_instance
+    return fake_future
 
 
 ## Tests #######################################################################
@@ -94,7 +101,7 @@ def test_load_model_error_not_found_response(model_loader):
             model_id=model_id,
             local_model_path="test/this/does/not/exist.zip",
             model_type="categories_esa",
-        )
+        ).wait()
     assert context.value.status_code == grpc.StatusCode.NOT_FOUND
     assert model_id in context.value.message
 
@@ -107,7 +114,7 @@ def test_load_invalid_model_error_response(model_loader):
             model_id=model_id,
             local_model_path=Fixtures.get_bad_model_archive_path(),
             model_type="not_real",
-        )
+        ).wait()
     assert context.value.status_code == grpc.StatusCode.INTERNAL
     assert model_id in context.value.message
 
@@ -144,7 +151,7 @@ def test_nonzip_extract_fails(model_loader):
             model_id,
             Fixtures.get_invalid_model_archive_path(),
             Fixtures.get_good_model_type(),
-        )
+        ).wait()
     # This ends up returning a FileNotFoundError from caikit core.
     # maybe not the best? But it does include an error message at least
     assert (
@@ -295,7 +302,6 @@ def test_load_model_without_waiting_success(model_loader):
         model_id=model_id,
         local_model_path=Fixtures.get_good_model_path(),
         model_type=Fixtures.get_good_model_type(),
-        wait=False,
     )
     # Block to get the model
     assert loaded_model.model() is not None
@@ -317,7 +323,6 @@ def test_load_model_without_waiting_deferred_error(model_loader):
         model_id=model_id,
         local_model_path=Fixtures.get_bad_model_archive_path(),
         model_type="not_real",
-        wait=False,
     )
     with pytest.raises(CaikitRuntimeException) as context:
         loaded_model.model()

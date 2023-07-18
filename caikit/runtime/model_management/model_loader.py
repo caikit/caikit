@@ -63,7 +63,6 @@ class ModelLoader:
         model_id: str,
         local_model_path: str,
         model_type: str,
-        wait: bool = True,
         aborter: Optional[ActionAborter] = None,
         fail_callback: Optional[Callable] = None,
     ) -> LoadedModel:
@@ -74,7 +73,6 @@ class ModelLoader:
             model_id (str): Model ID string for the model to load.
             local_model_path (str): Local filesystem path to load the model from.
             model_type (str): Type of the model to load.
-            wait (bool): Whether or not to wait for the load to complete
             aborter (Optional[ActionAborter]): An aborter to use that will allow
                 the call's parent to abort the load
             fail_callback (Optional[Callable]): Optional no-arg callback to call
@@ -91,22 +89,18 @@ class ModelLoader:
             .fail_callback(fail_callback)
         )
 
-        # Set up the loading to be async or sync
+        # Set up the async loading
         args = (local_model_path, model_id, model_type)
-        if wait:
-            log.debug2("Loading model %s synchronously", model_id)
-            model_builder.model(self._load_module(*args))
+        log.debug2("Loading model %s async", model_id)
+        if aborter is not None:
+            log.debug3("Using abortable action to load %s", model_id)
+            action = AbortableAction(aborter, self._load_module, *args)
+            future = self._load_thread_pool.submit(action.do)
         else:
-            log.debug2("Loading model %s async", model_id)
-            if aborter is not None:
-                log.debug3("Using abortable action to load %s", model_id)
-                action = AbortableAction(aborter, self._load_module, *args)
-                future = self._load_thread_pool.submit(action.do)
-            else:
-                future = self._load_thread_pool.submit(self._load_module, *args)
-            model_builder.model_future(future)
+            future = self._load_thread_pool.submit(self._load_module, *args)
+        model_builder.model_future(future)
 
-        # Return the built model
+        # Return the built model with the future handle
         return model_builder.build()
 
     def _load_module(

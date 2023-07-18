@@ -252,7 +252,7 @@ def register_trained_model(
         .id(model_id)
         .type("trained")
         .path("")
-        .model(model_future.load())
+        .model_future(model_future)
         .build()
     )
     if isinstance(servicer, RuntimeGRPCServer):

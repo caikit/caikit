@@ -60,14 +60,6 @@ class LoadedModel:
             self._model_to_build._caikit_model_future = caikit_model_future
             return self
 
-        def model(self, caikit_model: ModuleBase) -> "LoadedModel.Builder":
-            """Set a pre-loaded model (mutually exclusive with model_future)"""
-            error.value_check(
-                "<RUN47705258E>", self._model_to_build._caikit_model_future is None
-            )
-            self._model_to_build._model = caikit_model
-            return self
-
         def fail_callback(self, callback: Callable) -> "LoadedModel.Builder":
             self._model_to_build._fail_callback = callback
             return self
@@ -87,16 +79,12 @@ class LoadedModel:
         def build(self) -> "LoadedModel":
             error.value_check(
                 "<RUN12786023E>",
-                (
-                    self._model_to_build._caikit_model_future
-                    or self._model_to_build._model
-                )
+                self._model_to_build._caikit_model_future
                 and self._model_to_build._model_id
                 and self._model_to_build._model_type,
                 "Cannot build LoadedModel with incomplete required fields."
-                + " Future: {}, Model: {}, ID: {}, Type: {}",
+                + " Future: {}, ID: {}, Type: {}",
                 self._model_to_build._caikit_model_future,
-                self._model_to_build._model,
                 self._model_to_build._model_id,
                 self._model_to_build._model_type,
             )

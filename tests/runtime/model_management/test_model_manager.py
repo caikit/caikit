@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
+from concurrent.futures import Future
 from contextlib import contextmanager
 from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch
@@ -463,7 +464,6 @@ def test_load_model():
                 ANY_MODEL_PATH,
                 ANY_MODEL_TYPE,
             )
-            assert call_args.kwargs["wait"] == False
             assert call_args.kwargs["aborter"] is None
             assert "fail_callback" in call_args.kwargs
             mock_sizer.get_model_size.assert_called_once_with(
@@ -496,9 +496,11 @@ def test_retrieve_model_returns_the_module_from_the_model_loader():
     with patch.object(MODEL_MANAGER, "model_loader", mock_loader):
         with patch.object(MODEL_MANAGER, "model_sizer", mock_sizer):
             mock_sizer.get_model_size.return_value = 1
+            model_future = Future()
+            model_future.result = lambda *_, **__: expected_module
             mock_loader.load_model.return_value = (
                 LoadedModel.Builder()
-                .model(expected_module)
+                .model_future(model_future)
                 .id("foo")
                 .type("bar")
                 .build()

@@ -172,7 +172,6 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
                             model_id,
                             local_model_path,
                             model_type,
-                            wait=False,
                             aborter=aborter,
                             fail_callback=partial(self.unload_model, model_id),
                         )
