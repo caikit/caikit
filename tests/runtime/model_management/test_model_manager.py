@@ -70,6 +70,28 @@ def non_singleton_model_managers(num_mgrs=1, *args, **kwargs):
             ModelManager._ModelManager__instance = MODEL_MANAGER
 
 
+class SlowLoader:
+    """Helper class to simulate slow loading"""
+
+    def __init__(self, load_result="STUB"):
+        self._load_result = load_result
+        self._load_start_event = threading.Event()
+        self._load_end_event = threading.Event()
+
+    def load(self, *_, **__):
+        self._load_start_event.wait()
+        self._load_end_event.set()
+        if isinstance(self._load_result, Exception):
+            raise self._load_result
+        return self._load_result
+
+    def unblock_load(self):
+        self._load_start_event.set()
+
+    def done_loading(self):
+        return self._load_end_event.is_set()
+
+
 # ****************************** Integration Tests ****************************** #
 # These tests do not patch in mocks, the manager will use real instances of its dependencies
 
@@ -82,6 +104,13 @@ def test_load_model_ok_response():
         model_type=Fixtures.get_good_model_type(),
     )
     assert model_size > 0
+
+
+@pytest.mark.parametrize("model_id", ["", b"bytes-id", 123])
+def test_retrieve_invalid_model_ids(model_id):
+    with pytest.raises(CaikitRuntimeException) as context:
+        MODEL_MANAGER.retrieve_model(model_id)
+    assert context.value.status_code == grpc.StatusCode.INVALID_ARGUMENT
 
 
 def test_load_model_no_size_update():
@@ -448,6 +477,57 @@ def test_model_manager_disk_caching_periodic_sync(good_model_path):
             assert mgr_one_unloaded and mgr_two_unloaded
 
 
+def test_load_local_model_deleted_dir():
+    """Make sure losing the local_models_dir out from under a running manager
+    doesn't kill the whole thing
+    """
+    with TemporaryDirectory() as tempdir:
+        cache_dir = os.path.join(tempdir, "cache_dir")
+        os.makedirs(cache_dir)
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                    "lazy_load_poll_period_seconds": 0.001,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+
+            # Make sure the timer started
+            assert manager._lazy_sync_timer is not None
+
+            # Delete the cache dir and make force a sync
+            shutil.rmtree(cache_dir)
+            manager.sync_local_models(wait=True)
+
+            # Make sure the timer is removed
+            assert manager._lazy_sync_timer is None
+
+
+def test_load_local_model_deleted_dir():
+    """Make sure bad models in local_models_dir at boot don't cause exceptions"""
+    with TemporaryDirectory() as cache_dir:
+        model_id = random_test_id()
+        model_cache_path = os.path.join(cache_dir, model_id)
+        os.makedirs(model_cache_path)
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": False,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+            assert not manager.loaded_models
+
+
 # ****************************** Unit Tests ****************************** #
 # These tests patch in mocks for the manager's dependencies, to test its code in isolation
 
@@ -530,25 +610,15 @@ def test_unload_partially_loaded():
     """Make sure that when unloading a model that is still loading, the load
     completes correctly
     """
-    model_id = random_test_id()
-    expected_module = "something"
-    mock_sizer = MagicMock()
-    mock_loader = MagicMock()
-
     # Set up a "slow load" that we can use to ensure that the loading has
     # completed successfully
-    load_start_event = threading.Event()
-    load_done_event = threading.Event()
-
-    def slow_load(*_, **__):
-        load_start_event.wait()
-        time.sleep(0.001)
-        load_done_event.set()
-        return expected_module
-
+    slow_loader = SlowLoader()
     pool = ThreadPoolExecutor()
-    model_future = pool.submit(slow_load)
+    model_future = pool.submit(slow_loader.load)
 
+    model_id = random_test_id()
+    mock_sizer = MagicMock()
+    mock_loader = MagicMock()
     with patch.object(MODEL_MANAGER, "model_loader", mock_loader):
         with patch.object(MODEL_MANAGER, "model_sizer", mock_sizer):
             mock_sizer.get_model_size.return_value = 1
@@ -567,11 +637,95 @@ def test_unload_partially_loaded():
             unload_future = pool.submit(MODEL_MANAGER.unload_model, model_id)
 
             # Unblock the load
-            load_start_event.set()
+            assert not slow_loader.done_loading()
+            slow_loader.unblock_load()
 
             # Make sure unload completes and the model finished loading
             unload_future.result()
-            assert load_done_event.is_set()
+            assert slow_loader.done_loading()
+
+
+def test_unload_unexpected_error_loaded():
+    """Make sure that when unloading a model that is still loading, errors when
+    waiting for the load to complete are handled
+    """
+    # Set up a "slow load" that we can use to ensure that the loading has
+    # completed successfully
+    slow_loader = SlowLoader(RuntimeError("yikes"))
+    pool = ThreadPoolExecutor()
+    model_future = pool.submit(slow_loader.load)
+
+    model_id = random_test_id()
+    mock_sizer = MagicMock()
+    mock_loader = MagicMock()
+    with patch.object(MODEL_MANAGER, "model_loader", mock_loader):
+        with patch.object(MODEL_MANAGER, "model_sizer", mock_sizer):
+            mock_sizer.get_model_size.return_value = 1
+            mock_loader.load_model.return_value = (
+                LoadedModel.Builder()
+                .model_future(model_future)
+                .id("foo")
+                .type("bar")
+                .build()
+            )
+            MODEL_MANAGER.load_model(
+                model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE, wait=False
+            )
+
+            # Start the unload assertion that will block on loading
+            unload_future = pool.submit(MODEL_MANAGER.unload_model, model_id)
+
+            # Unblock the load
+            assert not slow_loader.done_loading()
+            slow_loader.unblock_load()
+
+            # Make sure unload completes and the model finished loading
+            with pytest.raises(CaikitRuntimeException) as context:
+                unload_future.result()
+            assert context.value.status_code == grpc.StatusCode.INTERNAL
+            assert slow_loader.done_loading()
+
+
+def test_reload_partially_loaded():
+    """Make sure that attempting to reload a model that has already started to
+    load simply returns the existing LoadedModel
+    """
+    # Set up a "slow load" that we can use to ensure that the loading has
+    # completed successfully
+    slow_loader = SlowLoader()
+    pool = ThreadPoolExecutor()
+    model_future = pool.submit(slow_loader.load)
+
+    model_id = random_test_id()
+    mock_sizer = MagicMock()
+    mock_loader = MagicMock()
+    special_model_size = 123321
+    with patch.object(MODEL_MANAGER, "model_loader", mock_loader):
+        with patch.object(MODEL_MANAGER, "model_sizer", mock_sizer):
+            mock_sizer.get_model_size.return_value = special_model_size
+            mock_loader.load_model.return_value = (
+                LoadedModel.Builder()
+                .model_future(model_future)
+                .id("foo")
+                .type("bar")
+                .build()
+            )
+            model_size = MODEL_MANAGER.load_model(
+                model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE, wait=False
+            )
+            assert model_size == special_model_size
+            assert (
+                MODEL_MANAGER.load_model(
+                    model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE, wait=False
+                )
+                == special_model_size
+            )
+
+            # Unblock the load
+            assert not slow_loader.done_loading()
+            slow_loader.unblock_load()
+            model_future.result()
+            assert slow_loader.done_loading()
 
 
 def test_get_model_size_returns_size_from_model_sizer():
