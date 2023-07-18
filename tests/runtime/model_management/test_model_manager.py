@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
-from concurrent.futures import Future
+from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import contextmanager
 from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch
 import os
 import shutil
+import threading
 import time
 
 # Third Party
@@ -509,6 +510,54 @@ def test_retrieve_model_returns_the_module_from_the_model_loader():
 
             model = MODEL_MANAGER.retrieve_model(model_id)
             assert expected_module == model
+
+
+def test_unload_partially_loaded():
+    """Make sure that when unloading a model that is still loading, the load
+    completes correctly
+    """
+    model_id = random_test_id()
+    expected_module = "something"
+    mock_sizer = MagicMock()
+    mock_loader = MagicMock()
+
+    # Set up a "slow load" that we can use to ensure that the loading has
+    # completed successfully
+    load_start_event = threading.Event()
+    load_done_event = threading.Event()
+
+    def slow_load(*_, **__):
+        load_start_event.wait()
+        time.sleep(0.001)
+        load_done_event.set()
+        return expected_module
+
+    pool = ThreadPoolExecutor()
+    model_future = pool.submit(slow_load)
+
+    with patch.object(MODEL_MANAGER, "model_loader", mock_loader):
+        with patch.object(MODEL_MANAGER, "model_sizer", mock_sizer):
+            mock_sizer.get_model_size.return_value = 1
+            mock_loader.load_model.return_value = (
+                LoadedModel.Builder()
+                .model_future(model_future)
+                .id("foo")
+                .type("bar")
+                .build()
+            )
+            MODEL_MANAGER.load_model(
+                model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE, wait=False
+            )
+
+            # Start the unload assertion that will block on loading
+            unload_future = pool.submit(MODEL_MANAGER.unload_model, model_id)
+
+            # Unblock the load
+            load_start_event.set()
+
+            # Make sure unload completes and the model finished loading
+            unload_future.result()
+            assert load_done_event.is_set()
 
 
 def test_get_model_size_returns_size_from_model_sizer():

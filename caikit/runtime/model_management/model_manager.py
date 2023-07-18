@@ -318,7 +318,13 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
 
         # Delete the model and remove it from the model map
         try:
-            del self.loaded_models[model_id]
+            model = self.loaded_models.pop(model_id)
+            # If the model is still loading, we need to wait for it to finish so
+            # that we can do our best to fully free it
+            model.wait()
+            del model
+        except CaikitRuntimeException:
+            raise
         except Exception as ex:
             log.debug("Model '%s' failed to unload with error: %s", model_id, repr(ex))
             raise CaikitRuntimeException(
