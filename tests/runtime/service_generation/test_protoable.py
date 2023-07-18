@@ -222,6 +222,15 @@ def test_to_protoable_signature_throws_unknown_type():
         )
 
 
+def test_to_protoable_signature_empty_list_arg():
+    """Empty list arg is ignored by is_protoable_type"""
+    assert to_protoable_signature(
+        signature={
+            "union_list_arg": Union[List, int],
+        },
+    ) == {"union_list_arg": int}
+
+
 def test_to_protoable_signature_multiple_diff_type_union_list():
     union_list_signature = to_protoable_signature(
         signature={

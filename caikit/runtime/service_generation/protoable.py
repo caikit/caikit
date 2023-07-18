@@ -105,6 +105,7 @@ def get_union_list_type(field_name: str, union_protoables: List) -> Type[DataBas
     param_list = []
     for arg in union_protoables:
         if get_origin(arg) is list:
+            # Note: is_protoable_type ignores any list type without args
             arg_type = get_args(arg)[0]
             arg_name = f"{arg_type.__name__.capitalize()}Sequence"
             if not hasattr(common_dm_package, arg_name):
