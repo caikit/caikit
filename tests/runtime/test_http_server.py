@@ -271,6 +271,18 @@ def test_model_not_found():
         assert response.status_code == 404
 
 
+def test_inference_sample_task_throws_incorrect_input(sample_task_model_id):
+    """error check for a request with incorrect input"""
+    server = http_server.RuntimeHTTPServer()
+    with TestClient(server.app) as client:
+        json_input = {"blah": {"sample_input": {"name": "world"}}}
+        response = client.post(
+            f"/api/v1/{sample_task_model_id}/task/sample",
+            json=json_input,
+        )
+        assert response.status_code == 400
+
+
 def test_pydantic_wrapping_with_enums():
     """Check that the pydantic wrapping works on our data models when they have enums"""
     # The NLP GeneratedTextStreamResult data model contains enums
