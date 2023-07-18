@@ -19,7 +19,7 @@ the runtime.
 
 # Standard
 from concurrent.futures import Future
-from typing import Optional
+from typing import Callable, Optional
 
 # First Party
 import alog
@@ -27,6 +27,7 @@ import alog
 # Local
 from caikit.core import ModuleBase
 from caikit.core.toolkit.errors import error_handler
+from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("LOADED-MODEL")
 error = error_handler.get(log)
@@ -67,6 +68,10 @@ class LoadedModel:
             self._model_to_build._model = caikit_model
             return self
 
+        def fail_callback(self, callback: Callable) -> "LoadedModel.Builder":
+            self._model_to_build._fail_callback = callback
+            return self
+
         def path(self, model_path: str) -> "LoadedModel.Builder":
             self._model_to_build._model_path = model_path
             return self
@@ -101,6 +106,7 @@ class LoadedModel:
         # Use the builder ^^
         self._caikit_model_future: Optional[CaikitModelFuture] = None
         self._model: Optional[ModuleBase] = None
+        self._fail_callback: Optional[Callable] = None
         self._model_id: str = ""
         self._model_path: str = ""
         self._model_type: str = ""
@@ -115,7 +121,12 @@ class LoadedModel:
 
     def wait(self):
         if self._model is None:
-            self._model = self._caikit_model_future.result()
+            try:
+                self._model = self._caikit_model_future.result()
+            except CaikitRuntimeException:
+                if self._fail_callback:
+                    self._fail_callback()
+                raise
 
     def type(self) -> str:
         return self._model_type

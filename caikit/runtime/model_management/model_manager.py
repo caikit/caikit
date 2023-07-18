@@ -13,6 +13,7 @@
 # limitations under the License.
 # Standard
 from collections import Counter as DictCounter
+from functools import partial
 from typing import Dict, Optional
 import atexit
 import gc
@@ -169,6 +170,7 @@ class ModelManager:
                             model_type,
                             wait=False,
                             aborter=aborter,
+                            fail_callback=partial(self.unload_model, model_id),
                         )
                     except Exception as ex:
                         self.__increment_load_model_exception_count_metric(model_type)
@@ -189,11 +191,7 @@ class ModelManager:
 
             # If waiting, do so outside of the mutation lock
             if wait:
-                try:
-                    model.wait()
-                except CaikitRuntimeException:
-                    self.unload_model(model_id)
-                    raise
+                model.wait()
 
             # Return the model's size
             return model.size()
@@ -292,7 +290,6 @@ class ModelManager:
                         repr(err),
                         exc_info=True,
                     )
-                    self.unload_model(model_id)
 
         # If running periodically, kick off the next iteration
         if self._enable_lazy_load_poll:
@@ -418,9 +415,9 @@ class ModelManager:
                 StatusCode.INVALID_ARGUMENT, "Missing required model ID"
             )
 
-        # Now retrieve the model
+        # Now retrieve the model and fall back to lazy loading
         model_loaded = model_id in self.loaded_models
-        if not model_loaded and self._lazy_load_local_models and self._local_models_dir:
+        if not model_loaded and self._lazy_load_local_models:
             local_model_path = os.path.join(self._local_models_dir, model_id)
             if os.path.exists(local_model_path):
                 log.debug2(
@@ -434,6 +431,7 @@ class ModelManager:
                 )
                 model_loaded = True
 
+        # If still not loaded, there's nothing to find, so raise NOT_FOUND
         if not model_loaded:
             msg = "Model '%s' not loaded" % model_id
             log.debug(
@@ -443,6 +441,8 @@ class ModelManager:
                 StatusCode.NOT_FOUND, msg, {"model_id": model_id}
             )
 
+        # NOTE: If the model is partially loaded, this call will wait on the
+        #   model future in the LoadedModel
         return self.loaded_models[model_id].model()
 
     def __report_total_model_size_metric(self):

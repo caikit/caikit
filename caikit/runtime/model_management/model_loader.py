@@ -13,7 +13,7 @@
 # limitations under the License.
 # Standard
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Union
+from typing import Callable, Optional, Union
 
 # Third Party
 from grpc import StatusCode
@@ -65,9 +65,10 @@ class ModelLoader:
         model_type: str,
         wait: bool = True,
         aborter: Optional[ActionAborter] = None,
+        fail_callback: Optional[Callable] = None,
     ) -> LoadedModel:
-        """Load a model using model_path (in Cloud Object Storage) & give it a model ID.
-        This always cleans up files on disk, no matter if the load succeeds or fails
+        """Load a model using model_path (in Cloud Object Storage) & give it a
+        model ID
 
         Args:
             model_id (str): Model ID string for the model to load.
@@ -76,12 +77,18 @@ class ModelLoader:
             wait (bool): Whether or not to wait for the load to complete
             aborter (Optional[ActionAborter]): An aborter to use that will allow
                 the call's parent to abort the load
+            fail_callback (Optional[Callable]): Optional no-arg callback to call
+                on load failure
         Returns:
             model (LoadedModel) : The model that was loaded
         """
         # Set up the basics of the model's metadata
         model_builder = (
-            LoadedModel.Builder().id(model_id).type(model_type).path(local_model_path)
+            LoadedModel.Builder()
+            .id(model_id)
+            .type(model_type)
+            .path(local_model_path)
+            .fail_callback(fail_callback)
         )
 
         # Set up the loading to be async or sync

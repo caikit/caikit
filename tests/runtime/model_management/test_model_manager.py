@@ -335,13 +335,16 @@ def test_load_model():
                 model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE
             )
             assert expected_model_size == model_size
-            mock_loader.load_model.assert_called_once_with(
+            mock_loader.load_model.assert_called_once()
+            call_args = mock_loader.load_model.call_args
+            assert call_args.args == (
                 model_id,
                 ANY_MODEL_PATH,
                 ANY_MODEL_TYPE,
-                wait=False,
-                aborter=None,
             )
+            assert call_args.kwargs["wait"] == False
+            assert call_args.kwargs["aborter"] is None
+            assert "fail_callback" in call_args.kwargs
             mock_sizer.get_model_size.assert_called_once_with(
                 model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE
             )
