@@ -37,7 +37,7 @@ error = error_handler.get(log)
 # NOTE: 3.9 introduced subscript typing for Futures
 try:
     CaikitModelFuture = Future[ModuleBase]  # pylint: disable=unsubscriptable-object
-except TypeError:
+except TypeError:  # pragma: no cover
     CaikitModelFuture = Future
 
 
@@ -136,8 +136,8 @@ class LoadedModel:
             self._size = model_size
         elif self._size != model_size:
             log.warning(
-                "COM62206343W",
-                "Attempted to set size of model %s to %v, but it was already %v",
+                "<RUN46815705W>",
+                "Attempted to set size of model %s to %s, but it was already %s",
                 self.id(),
                 model_size,
                 self.size(),

@@ -84,6 +84,20 @@ def test_load_model_ok_response():
     assert model_size > 0
 
 
+def test_load_model_no_size_update():
+    model_id = random_test_id()
+    model_size = MODEL_MANAGER.load_model(
+        model_id=model_id,
+        local_model_path=Fixtures.get_good_model_path(),
+        model_type=Fixtures.get_good_model_type(),
+    )
+    assert model_size > 0
+    loaded_model = MODEL_MANAGER.loaded_models[model_id]
+    assert loaded_model.size() == model_size
+    loaded_model.set_size(model_size * 2)
+    assert loaded_model.size() == model_size
+
+
 def test_load_local_models():
     with TemporaryDirectory() as tempdir:
         shutil.copytree(Fixtures.get_good_model_path(), os.path.join(tempdir, "model1"))
