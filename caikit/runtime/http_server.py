@@ -235,10 +235,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # would have been useful to call dataobject.to_dict()
         # but unfortunately we now have converted pydantic objects
         combined_dict = {}
-        for field in request_kwargs:
-            if request_kwargs[field]:
+        for field, value in request_kwargs.items():
+            if value:
                 if field == REQUIRED_INPUTS_KEY and input_name:
-                    combined_dict.update({input_name: request_kwargs[field]})
+                    combined_dict[input_name] = value
                 else:
                     combined_dict.update(**dict(request_kwargs[field]))
         # remove non-none items
