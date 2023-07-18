@@ -16,15 +16,18 @@ This file contains our logic about what constitutes a proto-able for RPC generat
 """
 
 # Standard
-from typing import Dict, Type, Union, get_args, get_origin
+from typing import Dict, List, Type, Union, get_args, get_origin
 import typing
 
 # First Party
+from py_to_proto.dataclass_to_proto import Annotated, OneofField
 import alog
 
 # Local
+from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import DATAOBJECT_PY_TO_PROTO_TYPES
 from caikit.runtime.service_generation.type_helpers import is_data_model_type
+import caikit
 
 log = alog.use_channel("PROTOABLES")
 
@@ -39,14 +42,14 @@ def to_protoable_signature(signature: Dict[str, Type]) -> Dict[str, Type]:
     protoables = {}
     log.debug("Building protoable signature for %s", signature)
     for arg, arg_type in signature.items():
-        protoable_type = handle_protoables_in_union(arg_type)
+        protoable_type = handle_protoables_in_union(arg, arg_type)
         if protoable_type:
             protoables[arg] = protoable_type
 
     return protoables
 
 
-def handle_protoables_in_union(arg_type: Type) -> Type:
+def handle_protoables_in_union(field_name: str, arg_type: Type) -> Type:
     """Handles various protoable arg types from a Union.
 
     If arg_type is a union, then this will return the union back if all types in it are proto-able,
@@ -66,6 +69,11 @@ def handle_protoables_in_union(arg_type: Type) -> Type:
                 for union_val in typing.get_args(arg_type)
                 if is_protoable_type(union_val)
             ]
+            # handle a union containing lists in a separate way
+            if len(union_protoables) > 1 and any(
+                typing.get_origin(arg) is list for arg in union_protoables
+            ):
+                return get_union_list_type(field_name, union_protoables)
             # if all are protoable, return the union (which will create a oneof)
             if len(union_protoables) == len(typing.get_args(arg_type)):
                 return arg_type
@@ -89,6 +97,35 @@ def handle_protoables_in_union(arg_type: Type) -> Type:
             return union_protoables[0]
         return arg_type
     log.debug("Skipping non-protoable argument type [%s]", arg_type)
+
+
+def get_union_list_type(field_name: str, union_protoables: List) -> Type[DataBase]:
+    """Create a union from list type objects"""
+    common_dm_package = caikit.interfaces.common.data_model
+    param_list = []
+    for arg in union_protoables:
+        if get_origin(arg) is list:
+            # Note: is_protoable_type ignores any list type without args
+            arg_type = get_args(arg)[0]
+            arg_name = f"{arg_type.__name__.capitalize()}Sequence"
+            if not hasattr(common_dm_package, arg_name):
+                raise AttributeError(
+                    f"Unable to find {arg_name} in {common_dm_package}"
+                )
+            data_obj = getattr(common_dm_package, arg_name, None)
+            if data_obj is None:
+                raise AttributeError(
+                    f"Unable to find {arg_name} in {common_dm_package}"
+                )
+            param_list.append(
+                Annotated[
+                    data_obj,
+                    OneofField(field_name + "_" + arg_type.__name__ + "_" + "sequence"),
+                ]
+            )
+        else:
+            param_list.append(arg)
+    return Union.__getitem__(tuple((param_list)))
 
 
 def get_protoable_return_type(arg_type: Type) -> Type:

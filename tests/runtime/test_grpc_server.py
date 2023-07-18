@@ -339,12 +339,18 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
         jsondata=stream_type.JsonData(
             data=[SampleTrainingType(1), SampleTrainingType(2)]
         )
-    ).to_proto()
+    )
     model_name = random_test_id()
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+    train_request_class = DataBase.get_class_for_name(
+        "SampleTaskSampleModuleTrainRequest"
+    )
+    train_request = train_request_class(
         model_name=model_name,
         training_data=training_data,
-    )
+        union_list=caikit.interfaces.common.data_model.StrSequence(
+            values=["str", "sequence"]
+        ),
+    ).to_proto()
 
     actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
 
@@ -474,13 +480,18 @@ def test_train_primitive_model(
     train_request_class = DataBase.get_class_for_name(
         "SampleTaskSamplePrimitiveModuleTrainRequest"
     )
+    union_list_str_dm = caikit.interfaces.common.data_model.StrSequence
+    union_list_int_dm = caikit.interfaces.common.data_model.IntSequence
+    union_list_bool_dm = caikit.interfaces.common.data_model.BoolSequence
+
     train_request = train_request_class(
         model_name=model_name,
         sample_input=SampleInputType(name="Gabe"),
         simple_list=["hello", "world"],
-        union_list_str_sequence=train_request_class.UnionListStrSequence(
-            values=["str", "sequence"]
-        ),
+        union_list=union_list_str_dm(values=["str", "sequence"]),
+        union_list2=union_list_int_dm(values=[1, 2]),
+        union_list3=union_list_bool_dm(values=[True, False]),
+        union_list4=123,
         training_params_json_dict={"foo": {"bar": [1, 2, 3]}},
         training_params_json_dict_list=[{"foo": {"bar": [1, 2, 3]}}],
         training_params_dict={"layer_sizes": 100, "window_scaling": 200},
