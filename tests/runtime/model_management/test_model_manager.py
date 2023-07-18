@@ -17,6 +17,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch
 import os
 import shutil
+import time
 
 # Third Party
 import grpc
@@ -52,6 +53,21 @@ def temp_local_models_dir(workdir, model_manager=MODEL_MANAGER):
     model_manager._local_models_dir = prev_local_models_dir
 
 
+@contextmanager
+def non_singleton_model_managers(num_mgrs=1, *args, **kwargs):
+    with temp_config(*args, **kwargs):
+        instances = []
+        try:
+            for _ in range(num_mgrs):
+                ModelManager._ModelManager__instance = None
+                instances.append(ModelManager.get_instance())
+            yield instances
+        finally:
+            for inst in instances:
+                inst.shut_down()
+            ModelManager._ModelManager__instance = MODEL_MANAGER
+
+
 # ****************************** Integration Tests ****************************** #
 # These tests do not patch in mocks, the manager will use real instances of its dependencies
 
@@ -75,7 +91,7 @@ def test_load_local_models():
         )
 
         with temp_local_models_dir(tempdir):
-            MODEL_MANAGER.initialize_local_models()
+            MODEL_MANAGER.sync_local_models(wait=True)
         assert len(MODEL_MANAGER.loaded_models) == 2
         assert "model1" in MODEL_MANAGER.loaded_models.keys()
         assert "model2.zip" in MODEL_MANAGER.loaded_models.keys()
@@ -99,21 +115,6 @@ def test_model_manager_loads_local_models_on_init():
             assert "model1" in MODEL_MANAGER.loaded_models.keys()
             assert "model2.zip" in MODEL_MANAGER.loaded_models.keys()
             assert "model-does-not-exist.zip" not in MODEL_MANAGER.loaded_models.keys()
-
-
-def test_model_manager_raises_if_all_local_models_fail_to_load():
-    with TemporaryDirectory() as tempdir:
-        shutil.copy(
-            Fixtures.get_bad_model_archive_path(), os.path.join(tempdir, "model1")
-        )
-        shutil.copy(
-            Fixtures.get_invalid_model_archive_path(),
-            os.path.join(tempdir, "model2.zip"),
-        )
-        with pytest.raises(CaikitRuntimeException) as ctx:
-            with temp_local_models_dir(tempdir):
-                MODEL_MANAGER.initialize_local_models()
-        assert grpc.StatusCode.INTERNAL == ctx.value.status_code
 
 
 def test_load_model_error_response():
@@ -309,6 +310,126 @@ def test_estimate_model_size_error_not_found_response():
             model_type="categories_esa",
         )
     assert context.value.status_code == grpc.StatusCode.NOT_FOUND
+
+
+def test_model_manager_replicas_with_disk_caching(good_model_path):
+    """Test that multiple model manager instances can co-exist and share a set
+    of models when local_models_cache is used.
+
+    This test simulates running concurrent replicas of caikit.runtime that are
+    logically independent from one another.
+    """
+    # NOTE: This test requires that the ModelManager class not be a singleton.
+    #   To accomplish this, the singleton instance is temporarily removed.
+    with TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            2,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                    "lazy_load_poll_period_seconds": 0,
+                },
+            },
+            "merge",
+        ) as managers:
+            # Make two standalone manager instances
+            manager_one, manager_two = managers
+            assert manager_two is not manager_one
+            assert manager_one._local_models_dir == cache_dir
+            assert manager_two._local_models_dir == cache_dir
+
+            # Trying to retrieve a model that is not loaded in either and is
+            # not saved in the cache dir should yield NOT_FOUND
+            model_id = random_test_id()
+            with pytest.raises(CaikitRuntimeException) as context:
+                manager_one.retrieve_model(model_id)
+            assert context.value.status_code == grpc.StatusCode.NOT_FOUND
+            with pytest.raises(CaikitRuntimeException) as context:
+                manager_two.retrieve_model(model_id)
+            assert context.value.status_code == grpc.StatusCode.NOT_FOUND
+
+            # Place a saved model into the cache dir manually
+            model_one_path = os.path.join(cache_dir, model_id)
+            shutil.copytree(good_model_path, model_one_path)
+
+            # Retrieve the model by ID and ensure it's available now
+            model_one = manager_one.retrieve_model(model_id)
+            assert isinstance(model_one, ModuleBase)
+            assert (
+                manager_one.loaded_models.get(model_id)
+                and manager_one.loaded_models[model_id].model() is model_one
+            )
+
+            # Make sure the same model is available on the second manager
+            assert manager_two.loaded_models.get(model_id) is None
+            assert manager_two.retrieve_model(model_id)
+            assert manager_two.loaded_models.get(model_id)
+
+            # Remove the model from the local dir and trigger both managers to
+            # sync their local model dirs to make sure it gets removed
+            shutil.rmtree(model_one_path)
+            manager_one.sync_local_models(wait=True)
+            manager_two.sync_local_models(wait=True)
+            with pytest.raises(CaikitRuntimeException) as context:
+                manager_one.retrieve_model(model_id)
+            with pytest.raises(CaikitRuntimeException) as context:
+                manager_two.retrieve_model(model_id)
+
+
+def test_model_manager_disk_caching_periodic_sync(good_model_path):
+    """Make sure that when using disk caching, the manager periodically syncs
+    its loaded models based on their presence in the cache
+    """
+    purge_period = 0.001
+    with TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            2,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                    "lazy_load_poll_period_seconds": purge_period,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager_one, manager_two = managers
+
+            # Load the model on the first manager and get it loaded into the
+            # the first by fetching it
+            model_id = random_test_id()
+            model_cache_path = os.path.join(cache_dir, model_id)
+            assert not os.path.exists(model_cache_path)
+            shutil.copytree(good_model_path, model_cache_path)
+            assert manager_one.retrieve_model(model_id)
+            assert model_id in manager_one.loaded_models
+
+            # Wait for the sync period and make sure it's available in the
+            # second manager
+            start = time.time()
+            mgr_two_loaded = False
+            while (time.time() - start) < (purge_period * 1000):
+                time.sleep(purge_period)
+                if model_id in manager_two.loaded_models:
+                    mgr_two_loaded = True
+                    break
+            assert mgr_two_loaded
+
+            # Remove the model from disk and wait to ensure that the model gets
+            # unloaded
+            shutil.rmtree(model_cache_path)
+            start = time.time()
+            mgr_one_unloaded = False
+            mgr_two_unloaded = False
+            while (time.time() - start) < (purge_period * 1000):
+                if model_id not in manager_one.loaded_models:
+                    mgr_one_unloaded = True
+                if model_id not in manager_two.loaded_models:
+                    mgr_two_unloaded = True
+                if mgr_one_unloaded and mgr_two_unloaded:
+                    break
+            assert mgr_one_unloaded and mgr_two_unloaded
 
 
 # ****************************** Unit Tests ****************************** #
