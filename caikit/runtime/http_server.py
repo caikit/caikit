@@ -18,7 +18,7 @@ API based on the task definitions available at boot.
 """
 # Standard
 from functools import partial
-from typing import Iterable, List, Optional, Type, Union, get_args
+from typing import Any, Dict, Iterable, List, Optional, Type, Union, get_args
 import asyncio
 import enum
 import json
@@ -221,6 +221,30 @@ class RuntimeHTTPServer(RuntimeServerBase):
             else:
                 self._add_unary_input_unary_output_handler(rpc)
 
+    def _get_request_params(
+        self, rpc: CaikitRPCBase, request: "pydantic_request"
+    ) -> Dict[str, Any]:
+        """get the request params based on the RPC's req params"""
+        request_kwargs = dict(request)
+        required_params = rpc.task.get_required_parameters(False)
+        input_name = None
+        # handle required param input name
+        if len(required_params) == 1:
+            input_name = list(required_params.keys())[0]
+        # flatten inputs and params into a dict
+        # would have been useful to call dataobject.to_dict()
+        # but unfortunately we now have converted pydantic objects
+        combined_dict = {}
+        for field in request_kwargs:
+            if request_kwargs[field]:
+                if field == REQUIRED_INPUTS_KEY and input_name:
+                    combined_dict.update({input_name: request_kwargs[field]})
+                else:
+                    combined_dict.update(**dict(request_kwargs[field]))
+        # remove non-none items
+        request_params = {k: v for k, v in combined_dict.items() if v is not None}
+        return request_params
+
     def _add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = self._dataobject_to_pydantic(
@@ -237,33 +261,17 @@ class RuntimeHTTPServer(RuntimeServerBase):
         ) -> Union[pydantic_response, Response]:
             log.debug("In unary handler for %s for model %s", rpc.name, model_id)
             loop = asyncio.get_running_loop()
-            request_kwargs = dict(request)
-            required_params = rpc.task.get_required_parameters(False)
-            input_name = None
-            # handle required param input name
-            if len(required_params) == 1:
-                input_name = list(required_params.keys())[0]
-            # flatten inputs and params into a dict
-            # would have been useful to call dataobject.to_dict()
-            # but unfortunately we now have converted pydantic objects
-            combined_dict = {}
-            for field in request_kwargs:
-                if request_kwargs[field]:
-                    if field == REQUIRED_INPUTS_KEY and input_name:
-                        combined_dict.update({input_name: request_kwargs[field]})
-                    else:
-                        combined_dict.update(**dict(request_kwargs[field]))
-            # remove non-none items
-            combined_no_none = {k: v for k, v in combined_dict.items() if v is not None}
 
-            log.debug4("Sending request %s to model id %s", combined_no_none, model_id)
+            request_params = self._get_request_params(rpc, request)
+
+            log.debug4("Sending request %s to model id %s", request_params, model_id)
             try:
                 # TODO: use `async_wrap_*`?
                 call = partial(
                     self.global_predict_servicer.predict_model,
                     model_id=model_id,
                     request_name=rpc.request.name,
-                    **combined_no_none,
+                    **request_params,
                 )
                 result = await loop.run_in_executor(None, call)
                 log.debug4("Response from model %s is %s", model_id, result)
@@ -298,9 +306,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
             model_id: str, request: pydantic_request, context: Request
         ) -> EventSourceResponse:
             log.debug("In streaming handler for %s", rpc.name)
-            request_kwargs = {
-                field: getattr(request, field) for field in request.model_fields
-            }
+
+            request_params = self._get_request_params(rpc, request)
+            log.debug4("Sending request %s to model id %s", request_params, model_id)
 
             async def _generator() -> pydantic_response:
                 try:
@@ -309,7 +317,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         self.global_predict_servicer.predict_model(
                             model_id=model_id,
                             request_name=rpc.request.name,
-                            **request_kwargs,
+                            inference_func_name="run_stream_out",
+                            **request_params,
                         )
                     ):
                         yield result

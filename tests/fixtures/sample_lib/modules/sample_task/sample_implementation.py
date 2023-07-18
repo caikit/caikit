@@ -25,10 +25,11 @@ class SampleModule(caikit.core.ModuleBase):
     POISON_PILL_NAME = "Bob Marley"
     POISON_PILL_BATCH_SIZE = 999
 
-    def __init__(self, batch_size=64, learning_rate=0.0015):
+    def __init__(self, batch_size=64, learning_rate=0.0015, stream_size=10):
         super().__init__()
         self.batch_size = batch_size
         self.learning_rate = learning_rate
+        self.stream_size = stream_size
 
     @classmethod
     def load(cls, model_path, **kwargs):
@@ -66,7 +67,7 @@ class SampleModule(caikit.core.ModuleBase):
                 stream
         """
         list_ = [
-            SampleOutputType(f"Hello {sample_input.name}")
+            SampleOutputType(f"Hello {sample_input.name} stream")
             for x in range(self.stream_size)
         ]
         stream = DataStream.from_iterable(list_)
