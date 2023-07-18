@@ -156,6 +156,9 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         with LOAD_MODEL_DURATION_SUMMARY.labels(model_type=model_type).time():
 
             # If already loaded, just return the size
+            # NOTE: We make the dict access atomic here to avoid the race where
+            #   we check if model_id in the map, then re-look it up to get the
+            #   size which could fail if it is unloaded between the two.
             model = self.loaded_models.get(model_id)
             if model is not None:
                 log.debug("Model '%s' is already loaded", model_id)
@@ -241,16 +244,20 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         log.debug("Unloaded local models: %s", unload_models)
 
         # Load new models
+        # NOTE: No need for error handling here since load_model will not enter
+        #   failure conditions when not blocking
         for model_id in new_models:
             model_path = os.path.join(self._local_models_dir, model_id)
             self.load_model(model_id, model_path, self._LOCAL_MODEL_TYPE, wait=False)
 
         # Unload old models
+        # NOTE: No need for error handling here since unload_model will warn on
+        #   errors and move on
         for model_id in unload_models:
             log.debug2("Unloading local model %s", model_id)
             self.unload_model(model_id)
 
-        # Wait for models to load and purge out any that failed
+        # Wait for models to load
         if wait:
             for model_id in new_models:
                 loaded_model = self.loaded_models.get(model_id)

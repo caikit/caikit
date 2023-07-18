@@ -55,8 +55,6 @@ class LoadedModel:
         def model_future(
             self, caikit_model_future: CaikitModelFuture
         ) -> "LoadedModel.Builder":
-            """Set a model future (mutually exclusive with model)"""
-            error.value_check("<RUN47705258E>", self._model_to_build._model is None)
             self._model_to_build._caikit_model_future = caikit_model_future
             return self
 
