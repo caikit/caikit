@@ -111,16 +111,20 @@ def get_union_list_type(field_name: str, union_protoables: List) -> Type[DataBas
                 raise AttributeError(
                     f"Unable to find {arg_name} in {common_dm_package}"
                 )
-            do = getattr(common_dm_package, arg_name)
+            data_obj = getattr(common_dm_package, arg_name, None)
+            if data_obj is None:
+                raise AttributeError(
+                    f"Unable to find {arg_name} in {common_dm_package}"
+                )
             param_list.append(
                 Annotated[
-                    do,
+                    data_obj,
                     OneofField(field_name + "_" + arg_type.__name__ + "_" + "sequence"),
                 ]
             )
         else:
             param_list.append(arg)
-    return Union[tuple(param_list)]
+    return Union.__getitem__(tuple((param_list)))
 
 
 def get_protoable_return_type(arg_type: Type) -> Type:
