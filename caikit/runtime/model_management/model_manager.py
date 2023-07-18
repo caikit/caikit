@@ -208,9 +208,6 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         Args:
             wait (bool): Wait for loading to complete
         """
-        if not self._local_models_dir:
-            return
-
         # Get the list of models on disk
         # NOTE: If the local_models_dir has disappeared, this is likely a unit
         #   test with a temp dir, but in any event, we should stop trying to
@@ -218,6 +215,9 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         try:
             disk_models = os.listdir(self._local_models_dir)
         except FileNotFoundError:
+            if self._lazy_sync_timer is not None:
+                self._lazy_sync_timer.cancel()
+                self._lazy_sync_timer = None
             return
 
         # Find all models that aren't currently loaded
@@ -242,21 +242,8 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
 
         # Load new models
         for model_id in new_models:
-            try:
-                # Use the file name as the model id
-                model_path = os.path.join(self._local_models_dir, model_id)
-                self.load_model(
-                    model_id, model_path, self._LOCAL_MODEL_TYPE, wait=False
-                )
-            except CaikitRuntimeException as err:
-                log.warning(
-                    "<RUN56627484W>",
-                    "Failed to load model %s: %s",
-                    model_id,
-                    repr(err),
-                    exc_info=True,
-                )
-                continue
+            model_path = os.path.join(self._local_models_dir, model_id)
+            self.load_model(model_id, model_path, self._LOCAL_MODEL_TYPE, wait=False)
 
         # Unload old models
         for model_id in unload_models:
@@ -267,8 +254,12 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         if wait:
             for model_id in new_models:
                 loaded_model = self.loaded_models.get(model_id)
-                # If somehow already purged, there's nothing to wait on
-                if loaded_model is None:
+                # If somehow already purged, there's nothing to wait on. This is
+                # extremely unlikely since it would require another thread to
+                # explicitly call unload on the model AND have the model finish
+                # loading between then and now. Better to be safe than sorry,
+                # though!
+                if loaded_model is None:  # pragma: no cover
                     continue
                 # Wait for it and make sure it didn't fail
                 try:
@@ -343,16 +334,11 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
 
         return model_size
 
-    def unload_all_models(self) -> None:
-        """Unload all loaded models. This will also remove any lingering artifacts from strangely
-        packaged zip files, which initially resulted in load failures."""
-        try:
-            self.loaded_models.clear()
-        except Exception as ex:
-            log.debug("Unload all models failed with error: %s", repr(ex))
-            raise CaikitRuntimeException(
-                StatusCode.INTERNAL, "All models could not be unloaded!!"
-            ) from ex
+    def unload_all_models(self):
+        """Unload all loaded models"""
+        all_model_ids = list(self.loaded_models.keys())
+        for model_id in all_model_ids:
+            self.unload_model(model_id)
 
     def get_model_size(self, model_id) -> int:
         """Look up size of a model by model ID.
@@ -373,22 +359,6 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             )
 
         loaded_model = self.loaded_models[model_id]
-
-        # Model sizes should all be cached
-        if not loaded_model.has_size():
-            # This really shouldn't happen, because we size the models on load
-            log.warning(
-                "<RUN61106343W>",
-                "Loaded model %s unexpectedly did not have a size. Sizing it again now.",
-                model_id,
-            )
-            loaded_model.set_size(
-                self.model_sizer.get_model_size(
-                    model_id, loaded_model.path(), loaded_model.type()
-                )
-            )
-            self.loaded_models[model_id] = loaded_model
-
         self.__report_total_model_size_metric()
         return loaded_model.size()
 
@@ -403,16 +373,16 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         """
         return self.model_sizer.get_model_size(model_id, local_model_path, model_type)
 
-    def retrieve_model(self, model_id) -> ModuleBase:
+    def retrieve_model(self, model_id: str) -> ModuleBase:
         """Retrieve a model from the loaded model map by model ID.
 
         Args:
-            model_id(string): Model ID of the model to retrieve
+            model_id (str): Model ID of the model to retrieve
         Returns:
             response (caikit.core.module.ModuleBase):
                 A loaded Caikit model
         """
-        if not model_id:
+        if not model_id or not isinstance(model_id, str):
             raise CaikitRuntimeException(
                 StatusCode.INVALID_ARGUMENT, "Missing required model ID"
             )
