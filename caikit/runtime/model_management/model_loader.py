@@ -102,7 +102,9 @@ class ModelLoader:
         # Return the built model
         return model_builder.build()
 
-    def _load_module(self, model_path, model_id, model_type):
+    def _load_module(
+        self, model_path: str, model_id: str, model_type: str
+    ) -> LoadedModel:
         try:
             log.info("<RUN89711114I>", "Loading model '%s'", model_id)
 

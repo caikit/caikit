@@ -14,6 +14,7 @@
 # Standard
 from collections import Counter as DictCounter
 from typing import Dict, Optional
+import atexit
 import gc
 import os
 import threading
@@ -28,6 +29,7 @@ import alog
 # Local
 from caikit import get_config
 from caikit.core import ModuleBase
+from caikit.core.toolkit.errors import error_handler
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.model_management.model_sizer import ModelSizer
@@ -35,6 +37,7 @@ from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.work_management.abortable_action import ActionAborter
 
 log = alog.use_channel("MODEL-MANAGR")
+error = error_handler.get(log)
 
 MODEL_SIZE_GAUGE = Gauge(
     "total_loaded_models_size",
@@ -85,7 +88,36 @@ class ModelManager:
         self._loaded_models_lock = threading.Lock()
 
         # Optionally load models mounted into a local directory
-        self._local_models_dir = get_config().runtime.local_models_dir or ""
+        runtime_cfg = get_config().runtime
+        self._local_models_dir = runtime_cfg.local_models_dir or ""
+
+        # Keep track of whether lazy loading is enabled
+        self._lazy_load_local_models = runtime_cfg.lazy_load_local_models
+        error.value_check(
+            "<RUN44773514E>",
+            not self._lazy_load_local_models or self._local_models_dir,
+            "Must set runtime.local_models_dir with runtime.lazy_load_local_models",
+        )
+
+        # Set up local model periodic sync
+        self._lazy_load_poll_period_seconds = runtime_cfg.lazy_load_poll_period_seconds
+        error.type_check(
+            "<RUN59138047E>",
+            int,
+            float,
+            allow_none=True,
+            lazy_load_poll_period_seconds=self._lazy_load_poll_period_seconds,
+        )
+        self._lazy_sync_timer = None
+        self._enable_lazy_load_poll = (
+            self._local_models_dir
+            and self._lazy_load_local_models
+            and self._lazy_load_poll_period_seconds
+        )
+        if self._enable_lazy_load_poll:
+            atexit.register(self.shut_down)
+
+        # Do the initial local models load
         if (
             os.path.exists(self._local_models_dir)
             and len(os.listdir(self._local_models_dir)) > 0
@@ -93,8 +125,11 @@ class ModelManager:
             log.info("<RUN44739400I>", "Loading local models into Caikit Runtime...")
             self.initialize_local_models()
 
-        # Keep track of whether lazy loading is enabled
-        self._lazy_load_local_models = get_config().runtime.lazy_load_local_models
+    def shut_down(self):
+        """Shut down cache purging"""
+        timer = getattr(self, "_lazy_sync_timer", None)
+        if timer is not None:
+            timer.cancel()
 
     def load_model(
         self,
@@ -188,7 +223,13 @@ class ModelManager:
             return
 
         # Get the list of models on disk
-        disk_models = os.listdir(self._local_models_dir)
+        # NOTE: If the local_models_dir has disappeared, this is likely a unit
+        #   test with a temp dir, but in any event, we should stop trying to
+        #   sync going forward
+        try:
+            disk_models = os.listdir(self._local_models_dir)
+        except FileNotFoundError:
+            return
 
         # Find all models that aren't currently loaded
         # NOTE: If one of these models gets loaded after this check, that will
@@ -252,6 +293,16 @@ class ModelManager:
                         exc_info=True,
                     )
                     self.unload_model(model_id)
+
+        # If running periodically, kick off the next iteration
+        if self._enable_lazy_load_poll:
+            if self._lazy_sync_timer is not None and self._lazy_sync_timer.is_alive():
+                log.debug2("Canceling live timer")
+                self._lazy_sync_timer.cancel()
+            self._lazy_sync_timer = threading.Timer(
+                self._lazy_load_poll_period_seconds, self.sync_local_models
+            )
+            self._lazy_sync_timer.start()
 
     def unload_model(self, model_id) -> int:
         """Unload a model by ID model.
