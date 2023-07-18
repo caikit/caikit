@@ -22,25 +22,24 @@ from typing import List
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
 
 # Local
-from caikit.core.data_model import DataObjectBase, dataobject
-from caikit.interfaces.runtime.data_model.training_management import RUNTIME_PACKAGE
+from caikit.core.data_model import PACKAGE_COMMON, DataObjectBase, dataobject
 
 
-@dataobject(RUNTIME_PACKAGE)
+@dataobject(PACKAGE_COMMON)
 class IntSequence(DataObjectBase):
     values: Annotated[List[int], FieldNumber(1)]
 
 
-@dataobject(RUNTIME_PACKAGE)
+@dataobject(PACKAGE_COMMON)
 class FloatSequence(DataObjectBase):
     values: Annotated[List[float], FieldNumber(1)]
 
 
-@dataobject(RUNTIME_PACKAGE)
+@dataobject(PACKAGE_COMMON)
 class StrSequence(DataObjectBase):
     values: Annotated[List[str], FieldNumber(1)]
 
 
-@dataobject(RUNTIME_PACKAGE)
+@dataobject(PACKAGE_COMMON)
 class BoolSequence(DataObjectBase):
     values: Annotated[List[bool], FieldNumber(1)]
