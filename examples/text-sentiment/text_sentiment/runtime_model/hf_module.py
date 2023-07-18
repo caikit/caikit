@@ -20,15 +20,11 @@ from transformers import pipeline  # pylint: disable=import-error
 
 # Local
 from caikit.core import ModuleBase, ModuleLoader, ModuleSaver, TaskBase, module, task
-from text_sentiment.data_model.classification import (
-    ClassificationPrediction,
-    ClassInfo,
-    TextInput,
-)
+from text_sentiment.data_model.classification import ClassificationPrediction, ClassInfo
 
 
 @task(
-    required_parameters={"text_input": TextInput},
+    required_parameters={"text_input": str},
     output_type=ClassificationPrediction,
 )
 class HuggingFaceSentimentTask(TaskBase):
@@ -52,15 +48,15 @@ class HuggingFaceSentimentModule(ModuleBase):
         self.sentiment_pipeline = model
 
     def run(  # pylint: disable=arguments-differ
-        self, text_input: TextInput
+        self, text_input: str
     ) -> ClassificationPrediction:
         """Run HF sentiment analysis
         Args:
-            text_input: TextInput
+            text_input: str
         Returns:
             ClassificationPrediction: predicted classes with their confidence score.
         """
-        raw_results = self.sentiment_pipeline([text_input.text])
+        raw_results = self.sentiment_pipeline([text_input])
 
         class_info = []
         for result in raw_results:

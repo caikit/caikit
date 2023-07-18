@@ -215,11 +215,11 @@ def test_docs():
         assert response.status_code == 200
 
 
-def test_inference(sample_task_model_id):
+def test_inference_sample_task(sample_task_model_id):
     """Simple check that we can ping a model"""
     server = http_server.RuntimeHTTPServer()
     with TestClient(server.app) as client:
-        json_input = {"inputs": {"sample_input": {"name": "world"}}}
+        json_input = {"inputs": {"name": "world"}}
         response = client.post(
             f"/api/v1/{sample_task_model_id}/task/sample",
             json=json_input,
@@ -229,12 +229,12 @@ def test_inference(sample_task_model_id):
         assert json_response["greeting"] == "Hello world"
 
 
-def test_inference_optional_field(sample_task_model_id):
+def test_inference_sample_task_optional_field(sample_task_model_id):
     """Simple check for optional fields"""
     server = http_server.RuntimeHTTPServer()
     with TestClient(server.app) as client:
         json_input = {
-            "inputs": {"sample_input": {"name": "world"}},
+            "inputs": {"name": "world"},
             "parameters": {"throw": True},
         }
         response = client.post(
@@ -250,7 +250,7 @@ def test_inference_other_task(other_task_model_id):
     """Simple check that we can ping a model"""
     server = http_server.RuntimeHTTPServer()
     with TestClient(server.app) as client:
-        json_input = {"inputs": {"sample_input": {"name": "world"}}}
+        json_input = {"inputs": {"name": "world"}}
         response = client.post(
             f"/api/v1/{other_task_model_id}/task/other",
             json=json_input,
@@ -269,6 +269,18 @@ def test_model_not_found():
             json={"inputs": {"name": "world"}},
         )
         assert response.status_code == 404
+
+
+def test_inference_sample_task_throws_incorrect_input(sample_task_model_id):
+    """error check for a request with incorrect input"""
+    server = http_server.RuntimeHTTPServer()
+    with TestClient(server.app) as client:
+        json_input = {"blah": {"sample_input": {"name": "world"}}}
+        response = client.post(
+            f"/api/v1/{sample_task_model_id}/task/sample",
+            json=json_input,
+        )
+        assert response.status_code == 400
 
 
 def test_pydantic_wrapping_with_enums():
