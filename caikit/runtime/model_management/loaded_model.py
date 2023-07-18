@@ -36,7 +36,7 @@ error = error_handler.get(log)
 # A future object that will yield an instance of a caikit module (a model)
 # NOTE: 3.9 introduced subscript typing for Futures
 try:
-    CaikitModelFuture = Future[ModuleBase]
+    CaikitModelFuture = Future[ModuleBase]  # pylint: disable=unsubscriptable-object
 except TypeError:
     CaikitModelFuture = Future
 

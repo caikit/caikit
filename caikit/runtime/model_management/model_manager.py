@@ -61,7 +61,7 @@ LOAD_MODEL_DURATION_SUMMARY = Summary(
 LOCAL_MODEL_TYPE = "LOCAL"
 
 
-class ModelManager:
+class ModelManager:  # pylint: disable=too-many-instance-attributes
     """Model Manager class. The singleton class contains the core implementational details
     for the Model Runtime (i.e., load/unload functionality, etc). It does not provide the core
     details for predict calls."""
