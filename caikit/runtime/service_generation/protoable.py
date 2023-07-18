@@ -104,7 +104,7 @@ def get_union_list_type(field_name: str, union_protoables: List) -> Type[DataBas
     common_dm_package = caikit.interfaces.common.data_model
     param_list = []
     for arg in union_protoables:
-        if get_origin(arg) == list:
+        if get_origin(arg) is list:
             arg_type = get_args(arg)[0]
             arg_name = f"{arg_type.__name__.capitalize()}Sequence"
             if not hasattr(common_dm_package, arg_name):
