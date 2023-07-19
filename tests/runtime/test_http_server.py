@@ -258,7 +258,7 @@ def test_inference_other_task(other_task_model_id):
 
 
 def test_inference_streaming_sample_module(sample_task_model_id):
-    """Simple check that we can ping a model"""
+    """Simple check for testing a happy path unary-stream case"""
     server = http_server.RuntimeHTTPServer()
     with TestClient(server.app) as client:
         json_input = {"inputs": {"name": "world"}}
