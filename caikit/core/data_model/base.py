@@ -451,6 +451,9 @@ class DataBase(metaclass=_DataBaseMetaClass):
         defined in the interface definitions.  If not, an exception will be thrown at runtime.
     """
 
+    # TODO: make this not hard-coded
+    _UNION_TYPES = ["IntSequence", "FloatSequence", "StrSequence", "BoolSequence"]
+
     @dataclass
     class OneofFieldVal:
         """Helper struct that backends can use to return information about
@@ -654,8 +657,12 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 )
 
             if field in cls._fields_primitive or field in cls._fields_enum:
-                # special case for oneofs
-                if field not in cls._fields_to_oneof or proto.HasField(field):
+                if field in cls._fields_to_oneof:
+                    if proto.HasField(field):
+                        # "foo_bar_int" has original field name "foo_bar"
+                        original_field_name = "_".join(field.split("_")[:-1])
+                        kwargs[original_field_name] = proto_attr
+                else:
                     kwargs[field] = proto_attr
             elif (
                 field in cls._fields_primitive_repeated
@@ -687,6 +694,15 @@ class DataBase(metaclass=_DataBaseMetaClass):
                         == timestamp.TIMESTAMP_PROTOBUF_NAME
                     ):
                         kwargs[field] = timestamp.proto_to_datetime(proto_attr)
+                    elif any(
+                        proto_attr.DESCRIPTOR.full_name.endswith(u_type)
+                        for u_type in cls._UNION_TYPES
+                    ):
+                        # "foo_bar_int_sequence" has original field name "foo_bar"
+                        original_field_name = "_".join(field.split("_")[:-2])
+                        contained_class = cls.get_class_for_proto(proto_attr)
+                        contained_obj = contained_class.from_proto(proto_attr)
+                        kwargs[original_field_name] = getattr(contained_obj, "values")
                     else:
                         contained_class = cls.get_class_for_proto(proto_attr)
                         contained_obj = contained_class.from_proto(proto_attr)
@@ -778,6 +794,31 @@ class DataBase(metaclass=_DataBaseMetaClass):
             The protobufs is filled in place, so the argument and the return
             value are the same at the end of this call.
         """
+        # Fill proto for the oneofs. Example: given union_list, fill in union_list_str_sequence
+        if self._fields_oneofs_map:
+            for one_of, union_fields in self._fields_oneofs_map.items():
+                attr = getattr(self, one_of)
+                if attr is None:
+                    continue
+
+                if isinstance(attr, List):
+                    # try to fill the subproto with this attr
+                    for u_field in union_fields:
+                        # check that this is a StrSequence, IntSequence, BoolSequence or
+                        # FloatSequence, and not a primitive
+                        if u_field in self._fields_message:
+                            subproto = getattr(proto, u_field)
+                            if any(
+                                subproto.DESCRIPTOR.full_name.endswith(u_type)
+                                for u_type in self._UNION_TYPES
+                            ):
+                                seq_dm = subproto.__class__
+                                try:
+                                    subproto.CopyFrom(seq_dm(values=attr))
+                                    log.debug4("Successfully fill proto for", u_field)
+                                except TypeError:
+                                    log.debug4("not the correct union list type")
+
         for field in self.fields:
             try:
                 attr = getattr(self, field)

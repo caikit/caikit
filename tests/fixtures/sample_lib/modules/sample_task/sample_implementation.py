@@ -157,6 +157,6 @@ class SampleModule(caikit.core.ModuleBase):
             # Consume the stream
             pass
         if union_list:
-            assert isinstance(union_list.values, List)
-            assert len(union_list.values) > 0
+            assert isinstance(union_list, List)
+            assert len(union_list) > 0
         return cls(batch_size=batch_size)
