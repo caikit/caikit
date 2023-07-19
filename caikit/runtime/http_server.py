@@ -222,7 +222,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 self._add_unary_input_unary_output_handler(rpc)
 
     def _get_request_params(
-        self, rpc: CaikitRPCBase, request: "pydantic_request"
+        self, rpc: CaikitRPCBase, request: Type[pydantic.BaseModel]
     ) -> Dict[str, Any]:
         """get the request params based on the RPC's req params"""
         request_kwargs = dict(request)
