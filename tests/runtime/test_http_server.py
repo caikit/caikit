@@ -28,9 +28,6 @@ import pytest
 import requests
 import tls_test_tools
 
-# First Party
-import aconfig
-
 # Local
 from caikit.core import DataObjectBase, dataobject
 from caikit.core.data_model import DataBase
@@ -258,6 +255,25 @@ def test_inference_other_task(other_task_model_id):
         assert response.status_code == 200
         json_response = json.loads(response.content.decode(response.default_encoding))
         assert json_response["farewell"] == "goodbye: world 42 times"
+
+
+def test_inference_streaming_sample_module(sample_task_model_id):
+    """Simple check for testing a happy path unary-stream case"""
+    server = http_server.RuntimeHTTPServer()
+    with TestClient(server.app) as client:
+        json_input = {"inputs": {"name": "world"}}
+        stream = client.post(
+            f"/api/v1/{sample_task_model_id}/task/server-streaming-sample",
+            json=json_input,
+        )
+        assert stream.status_code == 200
+        assert (
+            stream.content.decode(stream.default_encoding).count("SampleOutputType")
+            == 10
+        )
+        assert (
+            b"SampleOutputType(greeting='Hello world stream')\r\n\r\n" in stream.content
+        )
 
 
 def test_model_not_found():
