@@ -226,7 +226,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
     ) -> Dict[str, Any]:
         """get the request params based on the RPC's req params"""
         request_kwargs = dict(request)
-        required_params = rpc.task.get_required_parameters(False)
+        required_params = rpc.task.get_required_parameters(rpc.input_streaming)
         input_name = None
         # handle required param input name
         if len(required_params) == 1:
