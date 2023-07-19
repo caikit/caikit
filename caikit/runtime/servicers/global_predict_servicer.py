@@ -46,7 +46,7 @@ from caikit.runtime.utils.servicer_util import (
     validate_data_model,
 )
 from caikit.runtime.work_management.abortable_action import AbortableAction
-from caikit.runtime.work_management.call_aborter import CallAborter
+from caikit.runtime.work_management.rpc_aborter import RpcAborter
 
 PREDICT_RPC_COUNTER = Counter(
     "predict_rpc_count",
@@ -196,9 +196,7 @@ class GlobalPredictServicer:
                     request_name,
                     model_id,
                     inference_func_name=inference_signature.method_name,
-                    aborter=CallAborter(context)
-                    if self.use_abortable_threads
-                    else None,
+                    aborter=RpcAborter(context) if self.use_abortable_threads else None,
                     **caikit_library_request,
                 )
 
@@ -217,7 +215,7 @@ class GlobalPredictServicer:
         request_name: str,
         model_id: str,
         inference_func_name: str = "run",
-        aborter: Optional[CallAborter] = None,
+        aborter: Optional[RpcAborter] = None,
         **kwargs,
     ) -> Union[DataBase, Iterable[DataBase]]:
         """Run a prediction against the given model using the raw arguments to
@@ -230,7 +228,7 @@ class GlobalPredictServicer:
                 The ID of the loaded model
             inference_func_name (str):
                 The name of the inference function to run
-            aborter (Optional[CallAborter]):
+            aborter (Optional[RpcAborter]):
                 If using abortable calls, this is the aborter to use
             **kwargs: Keyword arguments to pass to the model's run function
         Returns:

@@ -16,11 +16,11 @@ import threading
 import unittest
 
 # Local
-from caikit.runtime.work_management.call_aborter import CallAborter
+from caikit.runtime.work_management.rpc_aborter import RpcAborter
 from tests.fixtures import Fixtures
 
 
-class TestCallAborter(unittest.TestCase):
+class TestRpcAborter(unittest.TestCase):
     """This test suite tests the call aborter utility"""
 
     CHANNEL = None
@@ -29,7 +29,7 @@ class TestCallAborter(unittest.TestCase):
     def test_call_aborter_sets_event(self):
         ctx = Fixtures.build_context("call_aborter_event_party")
         # Create a new Call aborter
-        aborter = CallAborter(ctx)
+        aborter = RpcAborter(ctx)
         # Create a new threading event and add it to the call aborter
         event = threading.Event()
         aborter.add_event(event)
@@ -41,7 +41,7 @@ class TestCallAborter(unittest.TestCase):
     def test_call_aborter_sets_event_added_after_termination(self):
         ctx = Fixtures.build_context("call_aborter_event_party")
         # Create a new call aborter
-        aborter = CallAborter(ctx)
+        aborter = RpcAborter(ctx)
         # Cancel the call before creating the threading event and adding to the aborter
         ctx.cancel()
         event = threading.Event()

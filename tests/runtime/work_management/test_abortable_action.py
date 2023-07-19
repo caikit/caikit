@@ -19,7 +19,7 @@ import unittest
 # Local
 from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.work_management.abortable_action import AbortableAction
-from caikit.runtime.work_management.call_aborter import CallAborter
+from caikit.runtime.work_management.rpc_aborter import RpcAborter
 from tests.fixtures import Fixtures
 
 
@@ -29,7 +29,7 @@ class TestAbortableAction(unittest.TestCase):
     def setUp(self):
         """This method runs before each test begins to run"""
         self.rpc_context = Fixtures.build_context()
-        self.aborter = CallAborter(self.rpc_context)
+        self.aborter = RpcAborter(self.rpc_context)
 
     def test_it_can_run_a_function(self):
         expected_result = "test-any-result"
