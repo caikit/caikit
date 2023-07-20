@@ -72,6 +72,15 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
 
     _LOCAL_MODEL_TYPE = "standalone-model"
 
+    ## Construction ##
+
+    @classmethod
+    def get_instance(cls) -> "ModelManager":
+        """This method returns the instance of Model Manager"""
+        if not cls.__instance:
+            cls.__instance = ModelManager()
+        return cls.__instance
+
     def __init__(self):
         """Initialize a ModelManager instance."""
         # Re-instantiating this is a programming error
@@ -135,6 +144,8 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         timer = getattr(self, "_lazy_sync_timer", None)
         if timer is not None:
             timer.cancel()
+
+    ## Model Management ##
 
     def load_model(
         self,
@@ -211,74 +222,22 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         Args:
             wait (bool): Wait for loading to complete
         """
-        # Get the list of models on disk
-        # NOTE: If the local_models_dir has disappeared, this is likely a unit
-        #   test with a temp dir, but in any event, we should stop trying to
-        #   sync going forward
         try:
-            disk_models = os.listdir(self._local_models_dir)
-        except FileNotFoundError:
-            if self._lazy_sync_timer is not None:
-                self._lazy_sync_timer.cancel()
-                self._lazy_sync_timer = None
-            return
-
-        # Find all models that aren't currently loaded
-        # NOTE: If one of these models gets loaded after this check, that will
-        #   be handled in load_models
-        new_models = [
-            model_id for model_id in disk_models if model_id not in self.loaded_models
-        ]
-        log.debug("New local models: %s", new_models)
-
-        # Find all models that are currently loaded from the local models dir
-        # that no longer exist
-        unload_models = [
-            model_id
-            for model_id, loaded_model in self.loaded_models.items()
-            if model_id not in disk_models
-            and loaded_model.path().startswith(
+            self._local_models_dir_sync(wait)
+        except StopIteration:
+            log.warning(
+                "<RUN56519883W>",
+                "local_models_dir %s unreachable. Terminating synchronization",
                 self._local_models_dir,
             )
-        ]
-        log.debug("Unloaded local models: %s", unload_models)
-
-        # Load new models
-        # NOTE: No need for error handling here since load_model will not enter
-        #   failure conditions when not blocking
-        for model_id in new_models:
-            model_path = os.path.join(self._local_models_dir, model_id)
-            self.load_model(model_id, model_path, self._LOCAL_MODEL_TYPE, wait=False)
-
-        # Unload old models
-        # NOTE: No need for error handling here since unload_model will warn on
-        #   errors and move on
-        for model_id in unload_models:
-            log.debug2("Unloading local model %s", model_id)
-            self.unload_model(model_id)
-
-        # Wait for models to load
-        if wait:
-            for model_id in new_models:
-                loaded_model = self.loaded_models.get(model_id)
-                # If somehow already purged, there's nothing to wait on. This is
-                # extremely unlikely since it would require another thread to
-                # explicitly call unload on the model AND have the model finish
-                # loading between then and now. Better to be safe than sorry,
-                # though!
-                if loaded_model is None:  # pragma: no cover
-                    continue
-                # Wait for it and make sure it didn't fail
-                try:
-                    loaded_model.wait()
-                except CaikitRuntimeException as err:
-                    log.warning(
-                        "<RUN56627485W>",
-                        "Failed to load model %s: %s",
-                        model_id,
-                        repr(err),
-                        exc_info=True,
-                    )
+            self._enable_lazy_load_poll = False
+        except Exception as err:  # pylint: disable=broad-exception-caught
+            log.warning(
+                "<RUN44524933W>",
+                "Exception raised during local_models_dir sync: %s",
+                str(err),
+                exc_info=True,
+            )
 
         # If running periodically, kick off the next iteration
         if self._enable_lazy_load_poll:
@@ -424,6 +383,79 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         #   model future in the LoadedModel
         return self.loaded_models[model_id].model()
 
+    ## Implementation Details ##
+
+    def _local_models_dir_sync(self, wait: bool = False):
+        """This function implements the mechanics of synchronizing the
+        local_models_dir and the in-memory loaded_models map. It may raise and
+        therefore errors should be handled by the wrapper function.
+
+        NOTE: In the case that the local_models_dir becomes unreadable, it will
+            raise StopIteration to indicate that any periodic synchronization
+            should terminate.
+        """
+        # Get the list of models on disk
+        # NOTE: If the local_models_dir has disappeared, this is likely a unit
+        #   test with a temp dir, but in any event, we should stop trying to
+        #   sync going forward
+        try:
+            disk_models = os.listdir(self._local_models_dir)
+        except FileNotFoundError:
+            raise StopIteration()
+
+        # Find all models that aren't currently loaded
+        new_models = [
+            model_id for model_id in disk_models if model_id not in self.loaded_models
+        ]
+        log.debug("New local models: %s", new_models)
+
+        # Find all models that are currently loaded from the local models dir
+        # that no longer exist
+        unload_models = [
+            model_id
+            for model_id, loaded_model in self.loaded_models.items()
+            if model_id not in disk_models
+            and loaded_model.path().startswith(
+                self._local_models_dir,
+            )
+        ]
+        log.debug("Unloaded local models: %s", unload_models)
+
+        # Load new models
+        for model_id in new_models:
+            model_path = os.path.join(self._local_models_dir, model_id)
+            self.load_model(model_id, model_path, self._LOCAL_MODEL_TYPE, wait=False)
+
+        # Unload old models
+        # NOTE: No need for error handling here since unload_model will warn on
+        #   errors and move on
+        for model_id in unload_models:
+            log.debug2("Unloading local model %s", model_id)
+            self.unload_model(model_id)
+
+        # Wait for models to load
+        if wait:
+            for model_id in new_models:
+                loaded_model = self.loaded_models.get(model_id)
+                # If somehow already purged, there's nothing to wait on. This is
+                # extremely unlikely since it would require another thread to
+                # explicitly call unload on the model AND have the model finish
+                # loading between then and now. Better to be safe than sorry,
+                # though!
+                if loaded_model is None:  # pragma: no cover
+                    continue
+                # Wait for it and make sure it didn't fail
+                try:
+                    loaded_model.wait()
+                except CaikitRuntimeException as err:
+                    log.warning(
+                        "<RUN56627485W>",
+                        "Failed to load model %s: %s",
+                        model_id,
+                        repr(err),
+                        exc_info=True,
+                    )
+
     def __report_total_model_size_metric(self):
         # Just a happy little lock to ensure that with concurrent loading and unloading,
         # the last metric reported will be correct.
@@ -446,10 +478,3 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
     @staticmethod
     def __increment_load_model_exception_count_metric(model_type):
         LOAD_MODEL_EXCEPTION_COUNTER.labels(model_type=model_type).inc()
-
-    @classmethod
-    def get_instance(cls) -> "ModelManager":
-        """This method returns the instance of Model Manager"""
-        if not cls.__instance:
-            cls.__instance = ModelManager()
-        return cls.__instance

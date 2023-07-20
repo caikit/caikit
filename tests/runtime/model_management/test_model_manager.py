@@ -500,8 +500,13 @@ def test_load_local_model_deleted_dir():
             # Make sure the timer started
             assert manager._lazy_sync_timer is not None
 
-            # Delete the cache dir and make force a sync
+            # Delete the cache dir and force a sync
             shutil.rmtree(cache_dir)
+            while True:
+                try:
+                    os.listdir(cache_dir)
+                except FileNotFoundError:
+                    break
             manager.sync_local_models(wait=True)
 
             # Make sure the timer is removed
@@ -774,3 +779,31 @@ def test_estimate_model_size_throws_if_model_sizer_throws():
         with pytest.raises(CaikitRuntimeException) as context:
             MODEL_MANAGER.estimate_model_size(model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE)
         assert context.value.status_code == grpc.StatusCode.UNAVAILABLE
+
+
+def test_periodic_sync_handles_errors():
+    """Test that any exception raised during syncing local models is handled
+    without terminating the polling loop
+    """
+
+    class SecretException(Exception):
+        pass
+
+    with TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+            with patch.object(manager, "_local_models_dir_sync") as mock_sync:
+                mock_sync.side_effect = SecretException()
+                assert manager._lazy_sync_timer is not None
+                manager.sync_local_models(True)
+                mock_sync.assert_called_once()
+                assert manager._lazy_sync_timer is not None
