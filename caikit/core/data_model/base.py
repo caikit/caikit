@@ -453,6 +453,12 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
     # TODO: make this not hard-coded
     _UNION_TYPES = ["IntSequence", "FloatSequence", "StrSequence", "BoolSequence"]
+    _UNION_FIELD_NAMES = [
+        "_int_sequence",
+        "_float_sequence",
+        "_str_sequence",
+        "_bool_sequence",
+    ]
 
     @dataclass
     class OneofFieldVal:
@@ -579,18 +585,10 @@ class DataBase(metaclass=_DataBaseMetaClass):
         # field name is foo_<type>_sequence (ex: foo_str_sequence)
         if isinstance(val, list) and field_name.endswith("_sequence"):
             if len(val) == 0:
-                log.info(
-                    "Assuming the type since list is empty"
-                )
+                log.info("Assuming the type is valid since list is empty")
                 return True
 
             list_type = type(val[0]).__name__
-            print(
-                "in _is_valid_type_for_field, checking if ",
-                f"{list_type}_sequence",
-                " is in ",
-                field_name,
-            )
             return f"{list_type}_sequence" in field_name
 
         # If it's a data object or an enum and the descriptors match, it's a
@@ -830,12 +828,6 @@ class DataBase(metaclass=_DataBaseMetaClass):
             if attr is None:
                 continue
             if field in self._fields_primitive:
-                print(
-                    "in fill proto, filling a primitive, ",
-                    field,
-                    " and attr is: ",
-                    attr,
-                )
                 setattr(proto, field, attr)
             elif field in self._fields_enum:
                 if isinstance(attr, Enum):
@@ -862,12 +854,6 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 subproto.extend(attr)
 
             elif field in self._fields_message:
-                print(
-                    "in fill_proto, field is a message type ",
-                    field,
-                    "and attr is: ",
-                    attr,
-                )
                 subproto = getattr(proto, field)
                 if subproto.DESCRIPTOR.full_name == json_dict.STRUCT_PROTOBUF_NAME:
                     subproto.CopyFrom(
@@ -885,10 +871,8 @@ class DataBase(metaclass=_DataBaseMetaClass):
                     try:
                         subproto.CopyFrom(seq_dm(values=attr))
                         log.debug4("Successfully fill proto for", field)
-                        print("in fill_proto, Successfully fill proto for", field)
                     except TypeError:
                         log.debug4("not the correct union list type")
-                        print("in fill_proto, not the correct union list type")
                 else:
                     attr.fill_proto(subproto)
 
@@ -958,7 +942,19 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
         if "default" not in kwargs:
             kwargs["default"] = _default_serialization_overrides
-        return json.dumps(self.to_dict(), **kwargs)
+
+        dict_val = self.to_dict()
+        # if this class has union of lists, converting the union list field into the one_of
+        # Ex: converting dict from {"foo_str_sequence": ["a","b"]} to {"foo": ["a","b"]}
+        if self._fields_to_oneof:
+            for field, one_of in self._fields_to_oneof.items():
+                if any(field.endswith(u_field) for u_field in self._UNION_FIELD_NAMES):
+                    # this is a union list type, ex: field is "foo_str_sequence"
+                    if field in dict_val:
+                        dict_val[one_of] = dict_val[field]
+                        del dict_val[field]
+
+        return json.dumps(dict_val, **kwargs)
 
     def __repr__(self):
         """Human-friendly representation."""
