@@ -266,11 +266,18 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
             log.debug4("Sending request %s to model id %s", request_params, model_id)
             try:
+                model = self.global_predict_servicer._model_manager.retrieve_model(
+                    model_id
+                )
+
                 # TODO: use `async_wrap_*`?
                 call = partial(
                     self.global_predict_servicer.predict_model,
                     model_id=model_id,
                     request_name=rpc.request.name,
+                    inference_func_name=model.get_inference_signature(
+                        output_streaming=False, input_streaming=False
+                    ).method_name,
                     **request_params,
                 )
                 result = await loop.run_in_executor(None, call)
@@ -310,10 +317,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
             request_params = self._get_request_params(rpc, request)
             log.debug4("Sending request %s to model id %s", request_params, model_id)
 
-            model = self.global_predict_servicer._model_manager.retrieve_model(model_id)
-
             async def _generator() -> pydantic_response:
                 try:
+                    model = self.global_predict_servicer._model_manager.retrieve_model(
+                        model_id
+                    )
+
                     log.debug("In stream generator for %s", rpc.name)
                     async for result in async_wrap_iter(
                         self.global_predict_servicer.predict_model(
