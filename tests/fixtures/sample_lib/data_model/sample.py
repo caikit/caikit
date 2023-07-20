@@ -7,6 +7,7 @@ import typing
 
 # Local
 from caikit.core import DataObjectBase, TaskBase, dataobject, task
+from caikit.core.data_model import ProducerId
 
 
 @dataobject(package="caikit_data_model.sample_lib")
@@ -29,6 +30,7 @@ class OtherOutputType(DataObjectBase):
     """A simple return type for the `other_task` task"""
 
     farewell: str
+    producer_id: ProducerId
 
 
 @dataobject(package="caikit_data_model.sample_lib")

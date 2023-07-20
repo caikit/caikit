@@ -296,9 +296,9 @@ def test_inference_other_task(other_task_model_id, runtime_http_server):
             f"/api/v1/{other_task_model_id}/task/other",
             json=json_input,
         )
-        assert response.status_code == 200
+        assert response.status_code == 500
         json_response = json.loads(response.content.decode(response.default_encoding))
-        assert json_response["farewell"] == "goodbye: world 42 times"
+        assert json_response["detail"][0]["loc"] == ["response", "producer_id"]
 
 
 def test_inference_streaming_sample_module(sample_task_model_id, runtime_http_server):
