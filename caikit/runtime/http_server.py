@@ -254,10 +254,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
     ) -> Dict[str, Any]:
         """get the request params based on the RPC's req params"""
         request_kwargs = dict(request)
-        required_params = rpc.task.get_required_parameters(rpc.input_streaming)
         input_name = None
+        required_params = None
+        if isinstance(rpc, TaskPredictRPC):
+            required_params = rpc.task.get_required_parameters(rpc.input_streaming)
         # handle required param input name
-        if len(required_params) == 1:
+        if required_params and len(required_params) == 1:
             input_name = list(required_params.keys())[0]
         # flatten inputs and params into a dict
         # would have been useful to call dataobject.to_dict()
@@ -276,7 +278,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = self._dataobject_to_pydantic(
-            self._get_request_dataobject(rpc, False)
+            self._get_request_dataobject(rpc)
         )
         pydantic_response = self._dataobject_to_pydantic(
             self._get_response_dataobject(rpc)
@@ -293,10 +295,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
             # for k, v in combined_no_none.items():
             #     setattr(request, k, v)
             # setattr(request, **combined_no_none)
-            model_class = self.global_train_servicer.get_module_class(
-                "SampleTaskSampleModuleTrainRequest"
-            )
-            model_name = request_params.pop("model_name")
+            module = rpc.clz
+            # model_name = request_params.pop("model_name")
 
             try:
                 # call = partial(
@@ -308,12 +308,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 # )
                 call = partial(
                     self.global_train_servicer.run_training_job,
-                    model=model_class,
-                    model_name=model_name,
-                    training_id="1234",
+                    request=request,
+                    module=module,
+                    # model_name=model_name,
                     training_output_dir="training_dir",
-                    extra_kwargs=request_params,
+                    request_params=request_params,
                     context=context,
+                    wait=True,
                 )
                 return await loop.run_in_executor(None, call)
             except CaikitRuntimeException as err:
@@ -338,7 +339,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def _add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = self._dataobject_to_pydantic(
-            self._get_request_dataobject(rpc, False)
+            self._get_request_dataobject(rpc)
         )
         pydantic_response = self._dataobject_to_pydantic(
             self._get_response_dataobject(rpc)
@@ -392,7 +393,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
     def _add_unary_input_stream_output_handler(self, rpc: CaikitRPCBase):
         pydantic_request = self._dataobject_to_pydantic(
-            self._get_request_dataobject(rpc, False)
+            self._get_request_dataobject(rpc)
         )
         pydantic_response = self._dataobject_to_pydantic(
             self._get_response_dataobject(rpc)
@@ -469,12 +470,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
         raise NotImplementedError("No support for train rpcs yet!")
 
     def _get_request_dataobject(
-        self, rpc: CaikitRPCBase, input_streaming: bool
+        self, rpc: CaikitRPCBase
     ) -> Type[DataBase]:
         """Get the dataobject request for the given rpc"""
         is_inference_rpc = hasattr(rpc, "task")
         if is_inference_rpc:
-            required_params = rpc.task.get_required_parameters(input_streaming)
+            required_params = rpc.task.get_required_parameters(rpc.input_streaming)
         else:  # train
             required_params = {
                 entry[1]: entry[0]
@@ -582,6 +583,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
             ]
         if get_origin(field_type) is list:
             return List[cls._get_pydantic_type(get_args(field_type)[0])]
+        
+        if get_origin(field_type) is dict:
+            return field_type
 
         raise TypeError(f"Cannot get pydantic type for type [{field_type}]")
 

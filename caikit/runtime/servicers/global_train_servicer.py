@@ -195,16 +195,34 @@ class GlobalTrainServicer:
                 job's ID and the model's name
         """
 
+        model_name = getattr(request, "model_name", None)
+        if model_name is None:
+            # try to get it from kwargs
+            model_name = kwargs.get("request_params", None)
+        if model_name is None:
+            raise CaikitRuntimeException(
+                StatusCode.INVALID_ARGUMENT,
+                "Model name not provided for this request",
+            )
         # Figure out where this model will be saved
-        model_path = self._get_model_path(training_output_dir, request.model_name)
-
+        model_path = self._get_model_path(training_output_dir, "blah")
+        request_params = kwargs.get("request_params", None)
+        if isinstance(request, ProtoMessageType):
+            request_params = build_caikit_library_request_dict(
+                request, module.TRAIN_SIGNATURE
+            )
+        if request_params is None:
+            raise CaikitRuntimeException(
+                StatusCode.INVALID_ARGUMENT,
+                "Could not figoure out params for this request",
+            )
         # Build the full set of kwargs for the train call
         kwargs.update(
             {
                 "module": module,
                 "save_path": model_path,
                 "save_with_id": self.save_with_id,
-                **build_caikit_library_request_dict(request, module.TRAIN_SIGNATURE),
+                **request_params,
             }
         )
 
@@ -266,7 +284,7 @@ class GlobalTrainServicer:
 
         # return TrainingJob object
         return TrainingJob(
-            model_name=request.model_name,
+            model_name="blah",
             training_id=model_future.id,
         )
 

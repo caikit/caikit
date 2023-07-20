@@ -34,6 +34,7 @@ from caikit.core import DataObjectBase, dataobject
 from caikit.interfaces.nlp.data_model import GeneratedTextStreamResult, GeneratedToken
 from caikit.runtime import http_server
 from tests.conftest import temp_config
+import sample_lib
 from tests.runtime.conftest import ModuleSubproc, open_port
 
 ## Helpers #####################################################################
@@ -385,13 +386,16 @@ def test_http_server_shutdown_with_model_poll(open_port):
 ## Train Tests #######################################################################
 
 
+# stt = PYDANTIC_REGISTRY.get(caikit.core.data_model.base.DataStreamSourceSampleTrainingType)
+# jd = PYDANTIC_REGISTRY.get(caikit.core.data_model.base.DataStreamSourceSampleTrainingType.JsonData)
+# jd.model_validate_json('{"data": [{"number": 1}]}')
 def test_train():
     server = http_server.RuntimeHTTPServer()
     with TestClient(server.app) as client:
         json_input = {
             "inputs": {
                 "model_name": "sample_task_train",
-                "training_data": {"jsondata": {"number": 1}},
+                "training_data": {"data_stream": {"data": [{"number": 1}]}},
             }
         }
         response = client.post(
@@ -399,4 +403,8 @@ def test_train():
             json=json_input,
         )
         assert response.status_code == 200
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert json_response["training_id"]
+        assert json_response["model_name"]
+        print(response)
         # json_response = json.loads(response.content.decode(response.default_encoding))
