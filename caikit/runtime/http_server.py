@@ -274,7 +274,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # remove non-none items
         request_params = {k: v for k, v in combined_dict.items() if v is not None}
         return request_params
-    
+
     def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = self._dataobject_to_pydantic(
@@ -333,8 +333,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 }
                 log.error("<RUN51881106E>", err, exc_info=True)
             return Response(content=json.dumps(error_content), status_code=error_code)
-
-
 
     def _add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
@@ -469,9 +467,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             return route
         raise NotImplementedError("No support for train rpcs yet!")
 
-    def _get_request_dataobject(
-        self, rpc: CaikitRPCBase
-    ) -> Type[DataBase]:
+    def _get_request_dataobject(self, rpc: CaikitRPCBase) -> Type[DataBase]:
         """Get the dataobject request for the given rpc"""
         is_inference_rpc = hasattr(rpc, "task")
         if is_inference_rpc:
@@ -583,7 +579,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             ]
         if get_origin(field_type) is list:
             return List[cls._get_pydantic_type(get_args(field_type)[0])]
-        
+
         if get_origin(field_type) is dict:
             return field_type
 
