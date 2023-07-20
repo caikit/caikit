@@ -400,8 +400,8 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         #   sync going forward
         try:
             disk_models = os.listdir(self._local_models_dir)
-        except FileNotFoundError:
-            raise StopIteration()
+        except FileNotFoundError as err:
+            raise StopIteration() from err
 
         # Find all models that aren't currently loaded
         new_models = [

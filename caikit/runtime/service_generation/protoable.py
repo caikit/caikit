@@ -125,7 +125,7 @@ def get_union_list_type(field_name: str, union_protoables: List) -> Type[DataBas
             )
         else:
             param_list.append(arg)
-    return Union.__getitem__(tuple((param_list)))
+    return Union[tuple(param_list)]  # type: ignore
 
 
 def get_protoable_return_type(arg_type: Type) -> Type:
