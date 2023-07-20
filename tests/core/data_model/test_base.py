@@ -569,19 +569,20 @@ def test_union_of_lists_are_serializable():
             {
                 "ComplexType": {
                     "foo": "Union[List[str], List[bool]]",
+                    "bar": "Union[List[str], List[bool], int]",
                 },
             }
         )
     ) as dm:
-        msg = dm.ComplexType(foo=["hello", "world"])
+        msg = dm.ComplexType(foo=["hello", "world"], bar=1)
         # Make sure we can proto and back
         recon_msg = dm.ComplexType.from_proto(msg.to_proto())
         assert isinstance(recon_msg, dm.ComplexType)
         assert recon_msg.foo == ["hello", "world"]
         # Make sure we can json and back
-        # recon_msg = dm.ComplexType.from_json(msg.to_json())
-        # assert isinstance(recon_msg, dm.ComplexType)
-        # assert recon_msg.foo == ["hello", "world"]
+        recon_msg = dm.ComplexType.from_json(msg.to_json())
+        assert isinstance(recon_msg, dm.ComplexType)
+        assert recon_msg.foo == ["hello", "world"]
 
 
 ###############
