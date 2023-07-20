@@ -244,7 +244,6 @@ def test_compiled_proto_oneof():
             dm.ThingOne(foo=1, fooster="asdf")
 
 
-@pytest.mark.skip(reason="wip")
 def test_compiled_proto_oneof_union_list():
     """Make sure that support for 'compiled' protos works for Union of lists"""
     # pylint: disable=duplicate-code

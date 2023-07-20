@@ -575,6 +575,24 @@ class DataBase(metaclass=_DataBaseMetaClass):
         if val is None:
             return False
 
+        # If val is a list, this maybe a union of list field
+        # field name is foo_<type>_sequence (ex: foo_str_sequence)
+        if isinstance(val, list) and field_name.endswith("_sequence"):
+            if len(val) == 0:
+                log.info(
+                    "Assuming the type since list is empty"
+                )
+                return True
+
+            list_type = type(val[0]).__name__
+            print(
+                "in _is_valid_type_for_field, checking if ",
+                f"{list_type}_sequence",
+                " is in ",
+                field_name,
+            )
+            return f"{list_type}_sequence" in field_name
+
         # If it's a data object or an enum and the descriptors match, it's a
         # good type
         if (
@@ -794,30 +812,6 @@ class DataBase(metaclass=_DataBaseMetaClass):
             The protobufs is filled in place, so the argument and the return
             value are the same at the end of this call.
         """
-        # Fill proto for the oneofs. Example: given union_list, fill in union_list_str_sequence
-        if self._fields_oneofs_map:
-            for one_of, union_fields in self._fields_oneofs_map.items():
-                attr = getattr(self, one_of)
-                if attr is None:
-                    continue
-
-                if isinstance(attr, List):
-                    # try to fill the subproto with this attr
-                    for u_field in union_fields:
-                        # check that this is a StrSequence, IntSequence, BoolSequence or
-                        # FloatSequence, and not a primitive
-                        if u_field in self._fields_message:
-                            subproto = getattr(proto, u_field)
-                            if any(
-                                subproto.DESCRIPTOR.full_name.endswith(u_type)
-                                for u_type in self._UNION_TYPES
-                            ):
-                                seq_dm = subproto.__class__
-                                try:
-                                    subproto.CopyFrom(seq_dm(values=attr))
-                                    log.debug4("Successfully fill proto for", u_field)
-                                except TypeError:
-                                    log.debug4("not the correct union list type")
 
         for field in self.fields:
             try:
@@ -835,8 +829,13 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
             if attr is None:
                 continue
-
             if field in self._fields_primitive:
+                print(
+                    "in fill proto, filling a primitive, ",
+                    field,
+                    " and attr is: ",
+                    attr,
+                )
                 setattr(proto, field, attr)
             elif field in self._fields_enum:
                 if isinstance(attr, Enum):
@@ -863,6 +862,12 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 subproto.extend(attr)
 
             elif field in self._fields_message:
+                print(
+                    "in fill_proto, field is a message type ",
+                    field,
+                    "and attr is: ",
+                    attr,
+                )
                 subproto = getattr(proto, field)
                 if subproto.DESCRIPTOR.full_name == json_dict.STRUCT_PROTOBUF_NAME:
                     subproto.CopyFrom(
@@ -871,6 +876,19 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 elif subproto.DESCRIPTOR.full_name == timestamp.TIMESTAMP_PROTOBUF_NAME:
                     timestamp_proto = timestamp.datetime_to_proto(attr)
                     subproto.CopyFrom(timestamp_proto)
+                # check that this is any of the self._UNION_TYPES
+                elif any(
+                    subproto.DESCRIPTOR.full_name.endswith(u_type)
+                    for u_type in self._UNION_TYPES
+                ):
+                    seq_dm = subproto.__class__
+                    try:
+                        subproto.CopyFrom(seq_dm(values=attr))
+                        log.debug4("Successfully fill proto for", field)
+                        print("in fill_proto, Successfully fill proto for", field)
+                    except TypeError:
+                        log.debug4("not the correct union list type")
+                        print("in fill_proto, not the correct union list type")
                 else:
                     attr.fill_proto(subproto)
 
