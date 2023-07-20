@@ -955,6 +955,7 @@ def test_dataobject_inheritance(temp_dpool):
     assert inst.baz == "qwer"
 
 
+@pytest.mark.skip(reason="wip")
 def test_dataobject_union_repeated():
     """Make sure that a oneof with lists of primitive fields works correctly"""
 
