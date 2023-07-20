@@ -485,14 +485,14 @@ class RuntimeHTTPServer(RuntimeServerBase):
         if get_origin(field_type) is Annotated:
             return cls._get_pydantic_type(get_args(field_type)[0])
         if get_origin(field_type) is Union:
-            return Union.__getitem__(
+            return Union[  # type: ignore
                 tuple(
                     (
                         cls._get_pydantic_type(arg_type)
                         for arg_type in get_args(field_type)
                     )
                 )
-            )
+            ]
         if get_origin(field_type) is list:
             return List[cls._get_pydantic_type(get_args(field_type)[0])]
 

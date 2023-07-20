@@ -26,11 +26,12 @@ import alog
 
 # Local
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from caikit.runtime.work_management.abortable_action import ActionAborter
 
 log = alog.use_channel("CALL-ABORTER")
 
 
-class CallAborter:
+class RpcAborter(ActionAborter):
     """
     This class registers a callback with a grpc context, to be called in the event of rpc
     termination. Termination could be nominal (we returned a response) but we should have

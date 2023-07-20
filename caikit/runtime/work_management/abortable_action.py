@@ -13,6 +13,8 @@
 # limitations under the License.
 
 # Standard
+from typing import Callable
+import abc
 import threading
 
 # First Party
@@ -23,6 +25,21 @@ from caikit.core.toolkit.destroyable_thread import DestroyableThread
 from caikit.runtime.types.aborted_exception import AbortedException
 
 log = alog.use_channel("ABORT-ACTION")
+
+
+class ActionAborter(abc.ABC):
+    """Simple interface to wrap up a notification that an action must abort.
+
+    Children of this class can bind to any notification tool (e.g. grpc context)
+    """
+
+    @abc.abstractmethod
+    def must_abort(self) -> bool:
+        """Indicate whether or not the action must be aborted"""
+
+    @abc.abstractmethod
+    def add_event(self, event: threading.Event):
+        """Add an event to notify when abort happens"""
 
 
 class AbortableAction:
@@ -40,17 +57,23 @@ class AbortableAction:
         Instances of this class create a threading.Event, which will be used to signal that either:
         - The RPC was terminated
         - The heavy work that we wanted to complete is done
-        This is done by using a CallAborter and a DestroyableThread.
-        Registering the event with the CallAborter will cause it to set when the RPC is
+        This is done by using a RpcAborter and a DestroyableThread.
+        Registering the event with the RpcAborter will cause it to set when the RPC is
         terminated, and creating a DestroyableThread with the event will cause it to set when
         the thread terminates.
 
         The action will start the DestroyableThread and then wait on the event. When it wakes, it
-        will check the reason and destroy the thread if it was woken by the CallAborter or return
+        will check the reason and destroy the thread if it was woken by the RpcAborter or return
         the result if it was woken by the thread completing.
     """
 
-    def __init__(self, call_aborter, runnable_func, *args, **kwargs):
+    def __init__(
+        self,
+        call_aborter: ActionAborter,
+        runnable_func: Callable,
+        *args,
+        **kwargs,
+    ):
         """
         Args:
             call_aborter - call aborter capable of aborting the runnable_func
@@ -71,7 +94,7 @@ class AbortableAction:
             self.__runnable_func,
             *args,
             work_done_event=self.__done_or_aborted_event,
-            **kwargs
+            **kwargs,
         )
 
     def do(self):

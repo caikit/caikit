@@ -3,6 +3,7 @@ This sets up global test configs when pytest starts
 """
 
 # Standard
+from concurrent.futures import Future
 from contextlib import contextmanager
 from typing import Type, Union
 import os
@@ -246,13 +247,12 @@ def register_trained_model(
     the old auto-load feature which was only needed for unit tests
     """
     model_future = MODEL_MANAGER.get_model_future(training_id)
-    model = model_future.load()
     loaded_model = (
         LoadedModel.Builder()
         .id(model_id)
         .type("trained")
         .path("")
-        .module(model)
+        .model_future(model_future)
         .build()
     )
     if isinstance(servicer, RuntimeGRPCServer):

@@ -73,6 +73,17 @@ runtime:
     library: sample_lib # TODO: replace with libraries below when runtime can support multiple libraries
     local_models_dir: models
 
+    # If enabled, the models in local_models_dir will be periodically sync'ed
+    # with the in-memory models. New models that are not in-memory that are
+    # found in local_models_dir will be loaded and existing models that were
+    # previously loaded from local_models_dir, but are no longer present will be
+    # unloaded.
+    lazy_load_local_models: false
+    lazy_load_poll_period_seconds: 10
+
+    # Number of threads to make available for load jobs (null => all)
+    load_threads: null
+
     # TLS configs
     tls:
         server:

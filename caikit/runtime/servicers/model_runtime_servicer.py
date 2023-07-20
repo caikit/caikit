@@ -25,7 +25,7 @@ from caikit.runtime.protobufs import model_runtime_pb2, model_runtime_pb2_grpc
 from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.work_management.abortable_action import AbortableAction
-from caikit.runtime.work_management.call_aborter import CallAborter
+from caikit.runtime.work_management.rpc_aborter import RpcAborter
 
 log = alog.use_channel("MR-SERVICR-I")
 
@@ -57,12 +57,14 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             )
             caikit_config = get_config()
             if caikit_config.runtime.use_abortable_threads:
+                aborter = RpcAborter(context)
                 work = AbortableAction(
-                    CallAborter(context),
+                    aborter,
                     self.model_manager.load_model,
                     request.modelId,
                     request.modelPath,
                     request.modelType,
+                    aborter=aborter,
                 )
                 model_size = work.do()
             else:

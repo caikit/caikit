@@ -828,7 +828,7 @@ def test_canceling_model_loads_causes_exceptions(runtime_grpc_server):
         modelKey="bar",
     )
 
-    def never_return(*args):
+    def never_return(*args, **kwargs):
         request_received.set()
         try:
             while True:

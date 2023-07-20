@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
-from typing import Union
+from concurrent.futures import ThreadPoolExecutor
+from typing import Callable, Optional, Union
 
 # Third Party
 from grpc import StatusCode
@@ -27,6 +28,10 @@ from caikit.core import MODEL_MANAGER
 from caikit.runtime.model_management.batcher import Batcher
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from caikit.runtime.work_management.abortable_action import (
+    AbortableAction,
+    ActionAborter,
+)
 import caikit.core
 
 log = alog.use_channel("MODEL-LOADER")
@@ -48,43 +53,64 @@ class ModelLoader:
         # Re-instantiating this is a programming error
         assert self.__class__.__instance is None, "This class is a singleton!"
         ModelLoader.__instance = self
-        # Instead of storing self.config = get_config(), we will call get_config() everywhere
-        # since this class is a singleton and configuration may be updated during its
-        # lifetime
+        self._load_thread_pool = ThreadPoolExecutor(get_config().runtime.load_threads)
+        # Instead of storing config-based batching information here, we call
+        # get_config() when needed to support dynamic config changes for
+        # batching
 
-    def load_model(self, model_id, local_model_path, model_type) -> LoadedModel:
-        """Load a model using model_path (in Cloud Object Storage) & give it a model ID.
-        This always cleans up files on disk, no matter if the load succeeds or fails
+    def load_model(
+        self,
+        model_id: str,
+        local_model_path: str,
+        model_type: str,
+        aborter: Optional[ActionAborter] = None,
+        fail_callback: Optional[Callable] = None,
+    ) -> LoadedModel:
+        """Start loading a model from disk and associate the ID/size with it
 
         Args:
-            model_id (string):  Model ID string for the model to load.
-            local_model_path (string): Local filesystem path to load the model from.
-            model_type (string): Type of the model to load.
+            model_id (str): Model ID string for the model to load.
+            local_model_path (str): Local filesystem path to load the model from.
+            model_type (str): Type of the model to load.
+            aborter (Optional[ActionAborter]): An aborter to use that will allow
+                the call's parent to abort the load
+            fail_callback (Optional[Callable]): Optional no-arg callback to call
+                on load failure
         Returns:
             model (LoadedModel) : The model that was loaded
         """
-        with CAIKIT_CORE_LOAD_DURATION_SUMMARY.labels(model_type=model_type).time():
-            caikit_core_model = self._load_module(
-                local_model_path, model_id, model_type
-            )
-
-        model = (
+        # Set up the basics of the model's metadata
+        model_builder = (
             LoadedModel.Builder()
             .id(model_id)
             .type(model_type)
             .path(local_model_path)
-            .module(caikit_core_model)
-            .build()
+            .fail_callback(fail_callback)
         )
 
-        return model
+        # Set up the async loading
+        args = (local_model_path, model_id, model_type)
+        log.debug2("Loading model %s async", model_id)
+        if aborter is not None:
+            log.debug3("Using abortable action to load %s", model_id)
+            action = AbortableAction(aborter, self._load_module, *args)
+            future = self._load_thread_pool.submit(action.do)
+        else:
+            future = self._load_thread_pool.submit(self._load_module, *args)
+        model_builder.model_future(future)
 
-    def _load_module(self, model_path, model_id, model_type):
+        # Return the built model with the future handle
+        return model_builder.build()
+
+    def _load_module(
+        self, model_path: str, model_id: str, model_type: str
+    ) -> LoadedModel:
         try:
             log.info("<RUN89711114I>", "Loading model '%s'", model_id)
 
             # Load using the caikit.core
-            model = caikit.core.load(model_path)
+            with CAIKIT_CORE_LOAD_DURATION_SUMMARY.labels(model_type=model_type).time():
+                model = caikit.core.load(model_path)
 
             # If this model needs batching, configure a Batcher to wrap it
             model = self._wrap_in_batcher_if_configured(

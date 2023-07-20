@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
+from concurrent.futures import Future
 from contextlib import contextmanager
 from unittest import mock
 import copy
@@ -53,6 +54,12 @@ def model_loader():
     return ModelLoader.get_instance()
 
 
+def make_model_future(model_instance):
+    fake_future = Future()
+    fake_future.result = lambda *_, **__: model_instance
+    return fake_future
+
+
 ## Tests #######################################################################
 
 
@@ -64,8 +71,8 @@ def test_load_model_ok_response(model_loader):
         local_model_path=Fixtures.get_good_model_path(),
         model_type=Fixtures.get_good_model_type(),
     )
-    assert loaded_model.module() is not None
-    assert isinstance(loaded_model.module(), base.ModuleBase)
+    assert loaded_model.model() is not None
+    assert isinstance(loaded_model.model(), base.ModuleBase)
     assert model_id == loaded_model.id()
     assert Fixtures.get_good_model_type() == loaded_model.type()
     assert Fixtures.get_good_model_path() == loaded_model.path()
@@ -82,8 +89,8 @@ def test_load_model_archive(model_loader):
         local_model_path=Fixtures.get_good_model_archive_path(),
         model_type=Fixtures.get_good_model_type(),
     )
-    assert loaded_model.module() is not None
-    assert isinstance(loaded_model.module(), base.ModuleBase)
+    assert loaded_model.model() is not None
+    assert isinstance(loaded_model.model(), base.ModuleBase)
 
 
 def test_load_model_error_not_found_response(model_loader):
@@ -94,7 +101,7 @@ def test_load_model_error_not_found_response(model_loader):
             model_id=model_id,
             local_model_path="test/this/does/not/exist.zip",
             model_type="categories_esa",
-        )
+        ).wait()
     assert context.value.status_code == grpc.StatusCode.NOT_FOUND
     assert model_id in context.value.message
 
@@ -107,7 +114,7 @@ def test_load_invalid_model_error_response(model_loader):
             model_id=model_id,
             local_model_path=Fixtures.get_bad_model_archive_path(),
             model_type="not_real",
-        )
+        ).wait()
     assert context.value.status_code == grpc.StatusCode.INTERNAL
     assert model_id in context.value.message
 
@@ -144,7 +151,7 @@ def test_nonzip_extract_fails(model_loader):
             model_id,
             Fixtures.get_invalid_model_archive_path(),
             Fixtures.get_good_model_type(),
-        )
+        ).wait()
     # This ends up returning a FileNotFoundError from caikit core.
     # maybe not the best? But it does include an error message at least
     assert (
@@ -168,7 +175,7 @@ def test_with_batching(model_loader):
         "load_with_batch",
         Fixtures.get_good_model_path(),
         model_type="fake_batch_module",
-    ).module()
+    ).model()
     assert isinstance(model, Batcher)
     assert model._batch_size == get_config().runtime.batching.fake_batch_module.size
 
@@ -177,7 +184,7 @@ def test_with_batching(model_loader):
         "load_without_batch",
         Fixtures.get_good_model_path(),
         model_type=Fixtures.get_good_model_type(),
-    ).module()
+    ).model()
     assert not isinstance(model, Batcher)
 
 
@@ -190,7 +197,7 @@ def test_with_batching_by_default(model_loader):
             "load_with_batch_default",
             Fixtures.get_good_model_path(),
             model_type=Fixtures.get_good_model_type(),
-        ).module()
+        ).model()
         assert isinstance(model, Batcher)
         assert model._batch_size == cfg.runtime.batching.default.size
 
@@ -214,7 +221,7 @@ def test_with_batching_collect_delay(model_loader):
             "load_with_batch_default",
             Fixtures.get_good_model_path(),
             model_type=model_type,
-        ).module()
+        ).model()
         assert isinstance(model, Batcher)
         assert model._batch_size == getattr(cfg.runtime.batching, model_type).size
         assert (
@@ -282,5 +289,42 @@ def test_load_distributed_impl():
                         random_test_id(),
                         model_path,
                         model_type=model_type,
-                    ).module()
+                    ).model()
                     assert isinstance(model, DistributedGadget)
+
+
+def test_load_model_without_waiting_success(model_loader):
+    """Make sure that loading a model can defer the model to a future and access
+    the loaded model when complete
+    """
+    model_id = random_test_id()
+    loaded_model = model_loader.load_model(
+        model_id=model_id,
+        local_model_path=Fixtures.get_good_model_path(),
+        model_type=Fixtures.get_good_model_type(),
+    )
+    # Block to get the model
+    assert loaded_model.model() is not None
+    assert isinstance(loaded_model.model(), base.ModuleBase)
+    assert model_id == loaded_model.id()
+    assert Fixtures.get_good_model_type() == loaded_model.type()
+    assert Fixtures.get_good_model_path() == loaded_model.path()
+
+    # Models are not sized by the loader
+    assert loaded_model.size() == 0
+
+
+def test_load_model_without_waiting_deferred_error(model_loader):
+    """Make sure that loading a model can defer the model to a future and raise
+    when the future is used if the loading failed
+    """
+    model_id = random_test_id()
+    loaded_model = model_loader.load_model(
+        model_id=model_id,
+        local_model_path=Fixtures.get_bad_model_archive_path(),
+        model_type="not_real",
+    )
+    with pytest.raises(CaikitRuntimeException) as context:
+        loaded_model.model()
+    assert context.value.status_code == grpc.StatusCode.INTERNAL
+    assert model_id in context.value.message
