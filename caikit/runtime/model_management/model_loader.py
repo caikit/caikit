@@ -66,8 +66,7 @@ class ModelLoader:
         aborter: Optional[ActionAborter] = None,
         fail_callback: Optional[Callable] = None,
     ) -> LoadedModel:
-        """Load a model using model_path (in Cloud Object Storage) & give it a
-        model ID
+        """Start loading a model from disk and associate the ID/size with it
 
         Args:
             model_id (str): Model ID string for the model to load.
