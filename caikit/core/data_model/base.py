@@ -451,16 +451,6 @@ class DataBase(metaclass=_DataBaseMetaClass):
         defined in the interface definitions.  If not, an exception will be thrown at runtime.
     """
 
-    # TODO: make this not hard-coded
-    _UNION_TYPES = ["IntSequence", "FloatSequence", "StrSequence", "BoolSequence"]
-    _UNION_FIELD_NAMES = [
-        "_int_sequence",
-        "_float_sequence",
-        "_str_sequence",
-        "_bool_sequence",
-    ]
-    _UNION_PRIMITIVE_NAMES = "_int", "_float", "_bool", "_str"
-
     @dataclass
     class OneofFieldVal:
         """Helper struct that backends can use to return information about
@@ -975,10 +965,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
         if self._fields_oneofs_map:
             for one_of, fields in self._fields_oneofs_map.items():
                 # make sure that this one_of is a union of lists
-                if any(
-                    any(field.endswith(u_field) for u_field in self._UNION_FIELD_NAMES)
-                    for field in fields
-                ):
+                if any(field.endswith("_sequence") for field in fields):
                     for field in fields:
                         if field in dict_val:
                             dict_val[one_of] = dict_val[field]
