@@ -310,6 +310,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
             request_params = self._get_request_params(rpc, request)
             log.debug4("Sending request %s to model id %s", request_params, model_id)
 
+            model = self.global_predict_servicer._model_manager.retrieve_model(model_id)
+
             async def _generator() -> pydantic_response:
                 try:
                     log.debug("In stream generator for %s", rpc.name)
@@ -317,7 +319,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         self.global_predict_servicer.predict_model(
                             model_id=model_id,
                             request_name=rpc.request.name,
-                            inference_func_name="run_stream_out",
+                            inference_func_name=model.get_inference_signature(
+                                output_streaming=True, input_streaming=False
+                            ).method_name,
                             **request_params,
                         )
                     ):
