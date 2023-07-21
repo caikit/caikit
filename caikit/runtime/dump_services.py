@@ -50,7 +50,9 @@ def dump_http_services(output_dir: str):
     with TestClient(server.app) as client:
         response = client.get("/openapi.json")
         response.raise_for_status()
-        with open(os.path.join(output_dir, "openapi.json"), "w") as handle:
+        with open(
+            os.path.join(output_dir, "openapi.json"), "w", encoding="utf-8"
+        ) as handle:
             handle.write(json.dumps(response.json(), indent=2))
 
 
