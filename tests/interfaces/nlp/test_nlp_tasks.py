@@ -13,13 +13,13 @@
 # limitations under the License.
 """Tests for the NLP task definitions"""
 # Standard
-from typing import Dict, Type
+from typing import Dict
 
 # Third Party
 import pytest
 
 # Local
-from caikit.core import ModuleBase, TaskBase, module
+from caikit.core import ModuleBase, module
 from caikit.interfaces.nlp import tasks as nlp_tasks
 from tests.core.helpers import *
 
@@ -42,18 +42,18 @@ class InvalidType:
 )
 def test_tasks(reset_globals, flavor: Dict[str, bool]):
     """Common tests for all tasks"""
-    # Only support single required param named "inputs"
+    # Only support single required param named "text"
     task = nlp_tasks.TextGenerationTask
     assert set(task.get_required_parameters(flavor["input_streaming"]).keys()) == {
-        "inputs"
+        "text"
     }
-    input_type = task.get_required_parameters(flavor["input_streaming"])["inputs"]
+    input_type = task.get_required_parameters(flavor["input_streaming"])["text"]
     output_type = task.get_output_type(flavor["output_streaming"])
 
     # Version with the right signature and nothing else
     @module(id="foo1", name="Foo", version="0.0.0", task=task)
     class Foo1(ModuleBase):
-        def run(self, inputs: input_type) -> output_type:
+        def run(self, text: input_type) -> output_type:
             return output_type()
 
     # Version with the right signature plus extra args
@@ -61,7 +61,7 @@ def test_tasks(reset_globals, flavor: Dict[str, bool]):
     class Foo2(ModuleBase):
         def run(
             self,
-            inputs: input_type,
+            text: input_type,
             workit: bool,
             makeit: bool,
             doit: bool,
@@ -83,7 +83,7 @@ def test_tasks(reset_globals, flavor: Dict[str, bool]):
         @module(id="foo4", name="Foo", version="0.0.0", task=task)
         class Foo4(ModuleBase):
             @task.taskmethod(**flavor)
-            def run(self, inputs: InvalidType) -> output_type:
+            def run(self, text: InvalidType) -> output_type:
                 return output_type()
 
     # Version with bad return type
@@ -92,5 +92,5 @@ def test_tasks(reset_globals, flavor: Dict[str, bool]):
         @module(id="foo", name="Foo", version="0.0.0", task=task)
         class Foo(ModuleBase):
             @task.taskmethod(**flavor)
-            def run(self, inputs: input_type) -> InvalidType:
+            def run(self, text: input_type) -> InvalidType:
                 return "hi there"
