@@ -7,7 +7,7 @@ import sys
 
 # Local
 from caikit.runtime import grpc_server
-from caikit.runtime.dump_services import dump_services
+from caikit.runtime.dump_services import dump_grpc_services
 
 # Need to set env before importing grpc_server
 os.environ["ENVIRONMENT"] = "test"
@@ -19,7 +19,7 @@ sys.path.append(
 
 # dump protos
 shutil.rmtree("protos", ignore_errors=True)
-dump_services("protos")
+dump_grpc_services("protos")
 
 # create a sample.json file for training
 with open(os.path.join("protos", "sample.json"), "w", encoding="utf-8") as handle:

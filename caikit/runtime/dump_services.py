@@ -13,6 +13,8 @@
 # limitations under the License.
 
 # Standard
+import json
+import os
 import sys
 
 # Local
@@ -21,10 +23,8 @@ from .service_factory import ServicePackageFactory
 import caikit
 
 
-def dump_services(output_dir: str):
-    """
-    Utility for rendering the all generated interfaces to proto files
-    """
+def dump_grpc_services(output_dir: str):
+    """Utility for rendering the all generated interfaces to proto files"""
     inf_svc = ServicePackageFactory.get_service_package(
         ServicePackageFactory.ServiceType.INFERENCE,
     )
@@ -34,11 +34,35 @@ def dump_services(output_dir: str):
     train_mgt_svc = ServicePackageFactory.get_service_package(
         ServicePackageFactory.ServiceType.TRAINING_MANAGEMENT,
     )
-
     render_dataobject_protos(output_dir)
     inf_svc.service.write_proto_file(output_dir)
     train_svc.service.write_proto_file(output_dir)
     train_mgt_svc.service.write_proto_file(output_dir)
+
+
+def dump_http_services(output_dir: str):
+    """Dump out the openapi.json for the HTTP server"""
+
+    # Import the HTTP components inside the dump function to avoid requiring
+    # them when dumping grpc interfaces without the `runtime-http` optional
+    # dependencies installed.
+
+    # Third Party
+    from fastapi.testclient import TestClient  # pylint: disable=import-outside-toplevel
+
+    # Local
+    from .http_server import (  # pylint: disable=import-outside-toplevel
+        RuntimeHTTPServer,
+    )
+
+    server = RuntimeHTTPServer()
+    with TestClient(server.app) as client:
+        response = client.get("/openapi.json")
+        response.raise_for_status()
+        with open(
+            os.path.join(output_dir, "openapi.json"), "w", encoding="utf-8"
+        ) as handle:
+            handle.write(json.dumps(response.json(), indent=2))
 
 
 if __name__ == "__main__":
@@ -47,4 +71,5 @@ if __name__ == "__main__":
     # Set up logging so users can set LOG_LEVEL etc
     caikit.core.toolkit.logging.configure()
 
-    dump_services(out_dir)
+    dump_grpc_services(out_dir)
+    dump_http_services(out_dir)
