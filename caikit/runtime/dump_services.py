@@ -17,12 +17,8 @@ import json
 import os
 import sys
 
-# Third Party
-from fastapi.testclient import TestClient
-
 # Local
 from ..core.data_model import render_dataobject_protos
-from .http_server import RuntimeHTTPServer
 from .service_factory import ServicePackageFactory
 import caikit
 
@@ -46,6 +42,19 @@ def dump_grpc_services(output_dir: str):
 
 def dump_http_services(output_dir: str):
     """Dump out the openapi.json for the HTTP server"""
+
+    # Import the HTTP components inside the dump function to avoid requiring
+    # them when dumping grpc interfaces without the `runtime-http` optional
+    # dependencies installed.
+
+    # Third Party
+    from fastapi.testclient import TestClient  # pylint: disable=import-outside-toplevel
+
+    # Local
+    from .http_server import (  # pylint: disable=import-outside-toplevel
+        RuntimeHTTPServer,
+    )
+
     server = RuntimeHTTPServer()
     with TestClient(server.app) as client:
         response = client.get("/openapi.json")
