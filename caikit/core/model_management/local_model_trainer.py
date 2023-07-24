@@ -132,7 +132,7 @@ class LocalModelTrainer(ModelTrainerBase):
 
         ## Interface ##
 
-        def get_status(self) -> TrainingInfo:
+        def get_info(self) -> TrainingInfo:
             """Every model future must be able to poll the status of the
             training job
             """

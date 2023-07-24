@@ -47,7 +47,7 @@ class TrainingManagementServicerImpl:
 
             return TrainingInfoResponse(
                 training_id=training_info.training_id,
-                status=model_future.get_status(),
+                status=model_future.get_info(),
             ).to_proto()
         except ValueError as err:
             raise CaikitRuntimeException(

@@ -112,7 +112,7 @@ class TestTrainer(ModelTrainerBase):
             self._canceled = False
             self._completed = False
 
-        def get_status(self):
+        def get_info(self):
             if self._completed:
                 return TrainingInfo(status=TrainingStatus.COMPLETED)
             if self._canceled:

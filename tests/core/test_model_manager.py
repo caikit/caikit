@@ -604,12 +604,12 @@ def test_train_with_wait(reset_globals):
         unfinished_train_future = caikit.train(
             SampleModule, DataStream.from_iterable([])
         )
-        assert unfinished_train_future.get_status().status == TrainingStatus.RUNNING
+        assert unfinished_train_future.get_info().status == TrainingStatus.RUNNING
         # Call with wait and make sure it is COMPLETED
         finished_train_future = caikit.train(
             SampleModule, DataStream.from_iterable([]), wait=True
         )
-        assert finished_train_future.get_status().status == TrainingStatus.COMPLETED
+        assert finished_train_future.get_info().status == TrainingStatus.COMPLETED
 
 
 def test_train_with_save_path(reset_globals):
@@ -620,9 +620,9 @@ def test_train_with_save_path(reset_globals):
             train_future = caikit.train(
                 SampleModule, DataStream.from_iterable([]), save_path=save_path
             )
-            assert train_future.get_status().status == TrainingStatus.RUNNING
+            assert train_future.get_info().status == TrainingStatus.RUNNING
             assert not os.path.exists(save_path)
             assert train_future.save_path == save_path
             train_future.wait()
-            assert train_future.get_status().status == TrainingStatus.COMPLETED
+            assert train_future.get_info().status == TrainingStatus.COMPLETED
             assert os.path.exists(save_path)

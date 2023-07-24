@@ -199,7 +199,7 @@ def test_model_train_sample_widget(sample_model_train_servicer, output_dir):
 
     # Make sure that the request completed synchronously
     model_future = MODEL_MANAGER.get_model_future(training_response.trainingID)
-    assert model_future.get_status().status == TrainingStatus.COMPLETED
+    assert model_future.get_info().status == TrainingStatus.COMPLETED
 
     # Make sure that the return object looks right
     assert isinstance(training_response, process_pb2.ProcessResponse)
