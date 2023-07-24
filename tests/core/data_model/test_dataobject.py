@@ -997,11 +997,24 @@ def test_dataobject_union_repeated():
     proto_repr_foo = foo1.to_proto()
     assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
+    # test native python list
+    foo_int_native = Foo([1, 2])
+    assert foo_int_native.which_oneof("foo") == "foo_int_sequence"
+    proto_repr_foo = foo_int_native.to_proto()
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+
     # dict test
     assert foo1.to_dict() == {"foo_int_sequence": {"values": [1, 2]}}
+    assert foo_int_native.to_dict() == {"foo_int_sequence": {"values": [1, 2]}}
 
     # json round trip
     json_repr_foo = foo1.to_json()
+    assert json.loads(json_repr_foo) == {"foo": [1, 2]}
+    foo_json_repr = Foo.from_json(json_repr_foo)
+    assert foo_json_repr.to_json() == json_repr_foo
+
+    # test native python list json round trip
+    json_repr_foo = foo_int_native.to_json()
     assert json.loads(json_repr_foo) == {"foo": [1, 2]}
     foo_json_repr = Foo.from_json(json_repr_foo)
     assert foo_json_repr.to_json() == json_repr_foo
@@ -1011,6 +1024,18 @@ def test_dataobject_union_repeated():
     assert foo2.which_oneof("foo") == "foo_str_sequence"
     proto_repr_foo2 = foo2.to_proto()
     assert Foo.from_proto(proto=proto_repr_foo2).to_proto() == proto_repr_foo2
+
+    # test native python list
+    foo_str_native = Foo(["hello", "world"])
+    assert foo_str_native.which_oneof("foo") == "foo_str_sequence"
+    proto_repr_foo2 = foo_str_native.to_proto()
+    assert Foo.from_proto(proto=proto_repr_foo2).to_proto() == proto_repr_foo2
+
+    # dict test
+    assert foo2.to_dict() == {"foo_str_sequence": {"values": ["hello", "world"]}}
+    assert foo_str_native.to_dict() == {
+        "foo_str_sequence": {"values": ["hello", "world"]}
+    }
 
     # Bar
     # proto round trip

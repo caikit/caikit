@@ -925,7 +925,14 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 or self.which_oneof(self._fields_to_oneof[field]) == field
             ):
                 fields_to_dict.append(field)
-        return {field: self._field_to_dict_element(field) for field in fields_to_dict}
+
+        to_dict = {}
+        for field in fields_to_dict:
+            dict_value = self._field_to_dict_element(field)
+            if field.endswith("_sequence") and "values" not in dict_value:
+                dict_value = {"values": dict_value}
+            to_dict[field] = dict_value
+        return to_dict
 
     def to_kwargs(self) -> dict:
         """Convert to flat dictionary representation. (Like .to_dict, but not recursive)
