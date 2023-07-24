@@ -226,7 +226,7 @@ class GlobalTrainServicer:
                 # Create a callback to register termination of training
                 def rpc_termination_callback():
                     """Cancel the model future if it has not yet completed"""
-                    if not model_future.get_info().is_terminal:
+                    if not model_future.get_info().status.is_terminal:
                         log.warning(
                             "<RUN36361257W>", "Canceling training %s", model_future.id
                         )
