@@ -15,7 +15,7 @@
 
 # Standard
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 # Third Party
 import numpy as np
@@ -40,6 +40,8 @@ class FinishReason(Enum):
     CANCELLED = 3
     TIME_LIMIT = 4
     STOP_SEQUENCE = 5
+    TOKEN_LIMIT = 6
+    ERROR = 7
 
 
 @dataobject(package=NLP_PACKAGE)
@@ -67,6 +69,6 @@ class TokenStreamDetails(DataObjectBase):
 
 @dataobject(package=NLP_PACKAGE)
 class GeneratedTextStreamResult(DataObjectBase):
-    token: Annotated[GeneratedToken, FieldNumber(1)]
-    generated_text: Annotated[Optional[str], FieldNumber(2)]
+    generated_text: Annotated[str, FieldNumber(1)]
+    tokens: Annotated[Optional[List[GeneratedToken]], FieldNumber(2)]
     details: Annotated[Optional[TokenStreamDetails], FieldNumber(3)]
