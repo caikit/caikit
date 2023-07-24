@@ -20,9 +20,9 @@ from typing import List
 
 # Local
 from ..toolkit.wip_decorator import Action, WipCategory, work_in_progress
-from .dataobject import DataObjectBase, dataobject
+from .dataobject import dataobject, DataObjectBase
 from .package import PACKAGE_COMMON
-from .training_state import TrainingState
+from .training_status import TrainingStatus
 
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
@@ -32,4 +32,4 @@ class TrainingInfo(DataObjectBase):
     # TODO: Add elements to conveying other useful information
     # regarding training status, such as iterations progressed
     # evaluation so far, etc.
-    state: TrainingState
+    status: TrainingStatus

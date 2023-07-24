@@ -30,4 +30,4 @@ from .producer import PACKAGE_COMMON, ProducerId
 from .streams import data_stream
 from .streams.data_stream import *
 from .training_info import TrainingInfo
-from .training_state import TrainingState
+from .training_status import TrainingStatus

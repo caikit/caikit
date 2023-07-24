@@ -88,9 +88,9 @@ def is_good_train_response(
     assert isinstance(actual_response.training_id, str)
     assert actual_response.model_name == model_name
 
-    state = TrainingStatus.RUNNING.value
+    status = TrainingStatus.RUNNING.value
     i = 0
-    while state == TrainingStatus.RUNNING.value:
+    while status == TrainingStatus.RUNNING.value:
         training_info_request = TrainingInfoRequest(
             training_id=actual_response.training_id
         )
@@ -101,12 +101,12 @@ def is_good_train_response(
                 )
             )
         )
-        state = training_management_response.state
-        assert state != TrainingStatus.ERRORED.value
+        status = training_management_response.status
+        assert status != TrainingStatus.ERRORED.value
         i += 1
         assert i < 100, "Waited too long for training to complete"
 
-    assert state == TrainingStatus.COMPLETED.value
+    assert status == TrainingStatus.COMPLETED.value
 
 
 ## Tests #######################################################################
@@ -169,7 +169,7 @@ def test_model_train(runtime_grpc_server):
     response: TrainingInfoResponse = TrainingInfoResponse.from_proto(
         training_management_stub.GetTrainingStatus(training_info_request)
     )
-    assert response.state == TrainingStatus.COMPLETED.value
+    assert response.status == TrainingStatus.COMPLETED.value
 
     # Make sure we wait for training to finish
     result = MODEL_MANAGER.get_model_future(response.training_id).load()

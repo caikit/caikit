@@ -29,7 +29,7 @@ import pytest
 import aconfig
 
 # Local
-from caikit.core.data_model import DataStream, TrainingState
+from caikit.core.data_model import DataStream, TrainingStatus
 from caikit.core.model_management.local_model_trainer import (
     OOM_EXIT_CODE,
     LocalModelTrainer,
@@ -75,14 +75,14 @@ def test_train_and_get_status(trainer_type_cfg):
         DataStream.from_iterable([]),
         wait_event=wait_event,
     )
-    assert model_future.get_status().state == TrainingState.RUNNING
-    assert not model_future.get_status().state.is_terminal
+    assert model_future.get_status().status == TrainingStatus.RUNNING
+    assert not model_future.get_status().status.is_terminal
 
     # Let the training proceed and wait for it to complete
     wait_event.set()
     model_future.wait()
-    assert model_future.get_status().state == TrainingState.COMPLETED
-    assert model_future.get_status().state.is_terminal
+    assert model_future.get_status().status == TrainingStatus.COMPLETED
+    assert model_future.get_status().status.is_terminal
 
     # Re-fetch the future by ID
     fetched_future = trainer.get_model_future(model_future.id)
@@ -137,13 +137,13 @@ def test_cancel_clean_termination(trainer_type_cfg):
         training_data=DataStream.from_iterable([]),
         sleep_time=1000,
     )
-    assert model_future.get_status().state == TrainingState.RUNNING
-    assert not model_future.get_status().state.is_terminal
+    assert model_future.get_status().status == TrainingStatus.RUNNING
+    assert not model_future.get_status().status.is_terminal
 
     # Cancel the future
     model_future.cancel()
-    assert model_future.get_status().state == TrainingState.CANCELED
-    assert model_future.get_status().state.is_terminal
+    assert model_future.get_status().status == TrainingStatus.CANCELED
+    assert model_future.get_status().status.is_terminal
     model_future.wait()
 
 
@@ -159,14 +159,14 @@ def test_cancel_without_waiting(trainer_type_cfg):
         sleep_time=0.5,
         sleep_increment=0.5,
     )
-    assert model_future.get_status().state == TrainingState.RUNNING
-    assert not model_future.get_status().state.is_terminal
+    assert model_future.get_status().status == TrainingStatus.RUNNING
+    assert not model_future.get_status().status.is_terminal
 
     # Cancel the future and make sure it reports canceled, even though the
     # function is still sleeping
     model_future.cancel()
-    assert model_future.get_status().state == TrainingState.CANCELED
-    assert model_future.get_status().state.is_terminal
+    assert model_future.get_status().status == TrainingStatus.CANCELED
+    assert model_future.get_status().status.is_terminal
 
 
 def test_no_retention_time(trainer_type_cfg):

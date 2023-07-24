@@ -29,7 +29,7 @@ import aconfig
 import alog
 
 # Local
-from ..data_model import TrainingInfo, TrainingState
+from ..data_model import TrainingInfo, TrainingStatus
 from ..modules import ModuleBase
 from ..toolkit.destroyable_process import DestroyableProcess
 from ..toolkit.destroyable_thread import DestroyableThread
@@ -140,22 +140,22 @@ class LocalModelTrainer(ModelTrainerBase):
             # The worker was canceled while doing work. It may still be in the
             # process of terminating and thus still alive.
             if self._worker.canceled:
-                return TrainingInfo(state=TrainingState.CANCELED)
+                return TrainingInfo(status=TrainingStatus.CANCELED)
 
             # If the worker is currently alive it's doing work
             if self._worker.is_alive():
-                return TrainingInfo(state=TrainingState.RUNNING)
+                return TrainingInfo(status=TrainingStatus.RUNNING)
 
             # The worker threw outside of a cancellation process
             if self._worker.threw:
-                return TrainingInfo(state=TrainingState.ERRORED)
+                return TrainingInfo(status=TrainingStatus.ERRORED)
 
             # The worker completed its work without being canceled or raising
             if self._worker.ran:
-                return TrainingInfo(state=TrainingState.COMPLETED)
+                return TrainingInfo(status=TrainingStatus.COMPLETED)
 
             # If it's not alive and not done, it hasn't started yet
-            return TrainingInfo(state=TrainingState.QUEUED)
+            return TrainingInfo(status=TrainingStatus.QUEUED)
 
         def cancel(self):
             """Terminate the given training"""
