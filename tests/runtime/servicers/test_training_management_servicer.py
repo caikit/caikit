@@ -75,6 +75,72 @@ def test_training_runs(training_management_servicer, training_pool):
     assert response.state == TrainingStatus.COMPLETED.value
 
 
+def test_training_can_cancel(training_management_servicer):
+    # Create a future and set it in the training manager
+    event = threading.Event()
+    model_future = MODEL_MANAGER.train(
+        SampleModule,
+        DataStream.from_iterable([]),
+        wait_event=event,
+    )
+
+    # send a request, check it's running
+    request = TrainingInfoRequest(training_id=model_future.id).to_proto()
+    response = training_management_servicer.GetTrainingStatus(request, context=None)
+    assert response.status == TrainingStatus.RUNNING.value
+
+    event.set()
+    model_future.wait()
+
+    # cancel the training request, check that its status is now canceled
+    training_management_servicer.CancelTraining(request, context=None)
+
+    response = training_management_servicer.GetTrainingStatus(request, context=None)
+    assert response.status == TrainingStatus.CANCELED.value
+
+
+def test_training_cancel_on_correct_id(training_management_servicer):
+    # Create a future and set it in the training manager
+    event_1 = threading.Event()
+    model_future_1 = MODEL_MANAGER.train(
+        SampleModule,
+        DataStream.from_iterable([]),
+        wait_event=event_1,
+    )
+
+    event_2 = threading.Event()
+    model_future_2 = MODEL_MANAGER.train(
+        SampleModule,
+        DataStream.from_iterable([1, 2, 3]),
+        wait_event=event_2,
+    )
+
+    # send train requests, check they're running
+    request_1 = TrainingInfoRequest(training_id=model_future_1.id).to_proto()
+    response_1 = training_management_servicer.GetTrainingStatus(request_1, context=None)
+    assert response_1.status == TrainingStatus.RUNNING.value
+
+    request_2 = TrainingInfoRequest(training_id=model_future_2.id).to_proto()
+    response_2 = training_management_servicer.GetTrainingStatus(request_2, context=None)
+    assert response_2.status == TrainingStatus.RUNNING.value
+
+    event_1.set()
+    model_future_1.wait()
+
+    event_2.set()
+    model_future_2.wait()
+
+    # cancel the first training request, check that its status is now canceled
+    # and the status of second training request is completed
+    training_management_servicer.CancelTraining(request_1, context=None)
+
+    response_1 = training_management_servicer.GetTrainingStatus(request_1, context=None)
+    assert response_1.status == TrainingStatus.CANCELED.value
+
+    response_2 = training_management_servicer.GetTrainingStatus(request_2, context=None)
+    assert response_2.status == TrainingStatus.COMPLETED.value
+
+
 def test_training_complete_status(training_management_servicer, training_pool):
 
     # Create a future and set it in the training manager
@@ -104,6 +170,36 @@ def test_training_status_incorrect_id(training_management_servicer):
     assert (
         "some_random_id not found in the list of currently running training jobs"
         in context.value.message
+    )
+
+
+def test_training_raises_when_cancel_on_incorrect_id(training_management_servicer):
+    # Create a future and set it in the training manager
+    event = threading.Event()
+    model_future = MODEL_MANAGER.train(
+        SampleModule,
+        DataStream.from_iterable([]),
+        wait_event=event,
+    )
+
+    # send a request, check it's running
+    request = TrainingInfoRequest(training_id=model_future.id).to_proto()
+    response = training_management_servicer.GetTrainingStatus(request, context=None)
+    assert response.status == TrainingStatus.RUNNING.value
+
+    event.set()
+    model_future.wait()
+
+    # cancel the training request, check that its status is now canceled
+    cancel_request = TrainingInfoRequest(training_id="some_random_id").to_proto()
+    with pytest.raises(CaikitRuntimeException) as context:
+        training_management_servicer.CancelTraining(cancel_request, context=None)
+
+    assert context.value.status_code == grpc.StatusCode.NOT_FOUND
+    assert (
+        "some_random_id not found in the list of currently running training jobs."
+        in context.value.message
+        and "Did not perform cancel" in context.value.message
     )
 
 

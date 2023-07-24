@@ -61,3 +61,23 @@ class TrainingManagementServicerImpl:
                     training_info.training_id,
                 ),
             ) from err
+
+    def CancelTraining(self, request, context):  # pylint: disable=unused-argument
+        """Cancel a training future."""
+        training_info = TrainingInfoRequest.from_proto(request)
+
+        try:
+            model_future = MODEL_MANAGER.get_model_future(
+                training_id=training_info.training_id
+            )
+
+            model_future.cancel()
+
+        except ValueError as err:
+            raise CaikitRuntimeException(
+                grpc.StatusCode.NOT_FOUND,
+                "{} not found in the list of currently running training jobs. \
+                    Did not perform cancel.".format(
+                    training_info.training_id,
+                ),
+            ) from err
