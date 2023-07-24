@@ -24,6 +24,7 @@ import alog
 
 # Local
 from caikit.config import get_config
+from caikit.core import MODEL_MANAGER
 
 log = alog.use_channel("SERVR-BASE")
 
@@ -45,6 +46,10 @@ class RuntimeServerBase(abc.ABC):
         self.tls_config = (
             tls_config_override if tls_config_override else self.config.runtime.tls
         )
+
+        # Make sure all core model management components have been proactively
+        # initialized in the main thread before the server boots
+        MODEL_MANAGER.initialize_components()
 
     @classmethod
     def _find_port(cls, start=8888, end=None, host="127.0.0.1"):
