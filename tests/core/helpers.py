@@ -21,7 +21,7 @@ import pytest
 
 # Local
 from caikit.core import MODEL_MANAGER
-from caikit.core.data_model import TrainingStatus
+from caikit.core.data_model import TrainingInfo, TrainingState
 from caikit.core.model_management import (
     ModelInitializerBase,
     ModelTrainerBase,
@@ -94,7 +94,7 @@ class TestTrainer(ModelTrainerBase):
 
     def __init__(self, config, instance_name):
         self.instance_name = instance_name
-        self.canned_status = config.get("canned_status", TrainingStatus.RUNNING)
+        self.canned_state = config.get("canned_state", TrainingState.RUNNING)
         self._futures = {}
 
     class TestModelFuture(ModelTrainerBase.ModelFutureBase):
@@ -114,10 +114,10 @@ class TestTrainer(ModelTrainerBase):
 
         def get_status(self):
             if self._completed:
-                return TrainingStatus.COMPLETED
+                return TrainingInfo(state=TrainingState.COMPLETED)
             if self._canceled:
-                return TrainingStatus.CANCELED
-            return self._parent.canned_status
+                return TrainingInfo(state=TrainingState.CANCELED)
+            return TrainingInfo(state=self._parent.canned_state)
 
         def cancel(self):
             self._canceled = True

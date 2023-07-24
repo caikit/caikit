@@ -31,7 +31,7 @@ import abc
 import os
 
 # Local
-from ..data_model import TrainingStatus
+from ..data_model import TrainingInfo
 from ..modules import ModuleBase
 from ..toolkit.factory import FactoryConstructible
 from ..toolkit.reversible_hasher import ReversibleHasher
@@ -78,7 +78,7 @@ class ModelTrainerBase(FactoryConstructible):
             return self._save_path
 
         @abc.abstractmethod
-        def get_status(self) -> TrainingStatus:
+        def get_status(self) -> TrainingInfo:
             """Every model future must be able to poll the status of the
             training job
             """

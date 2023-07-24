@@ -23,8 +23,8 @@ import pytest
 
 # Local
 from caikit.core import MODEL_MANAGER
-from caikit.core.data_model import DataStream
-from caikit.interfaces.runtime.data_model import TrainingInfoRequest, TrainingStatus
+from caikit.core.data_model import DataStream, TrainingState
+from caikit.interfaces.runtime.data_model import TrainingInfoRequest
 from caikit.runtime.servicers.training_management_servicer import (
     TrainingManagementServicerImpl,
 )
@@ -64,7 +64,7 @@ def test_training_runs(training_management_servicer, training_pool):
     # send a request, check it's running
     request = TrainingInfoRequest(training_id=model_future.id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
-    assert response.status == TrainingStatus.RUNNING.value
+    assert response.state == TrainingState.RUNNING.value
 
     event.set()
     model_future.wait()
@@ -72,7 +72,7 @@ def test_training_runs(training_management_servicer, training_pool):
     # Ensure it's now done
     request = TrainingInfoRequest(training_id=model_future.id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
-    assert response.status == TrainingStatus.COMPLETED.value
+    assert response.state == TrainingState.COMPLETED.value
 
 
 def test_training_complete_status(training_management_servicer, training_pool):
@@ -91,7 +91,7 @@ def test_training_complete_status(training_management_servicer, training_pool):
     response = training_management_servicer.GetTrainingStatus(request, context=None)
 
     assert re.match("<class '.*TrainingInfoResponse'>", str(type(response)))
-    assert response.status == TrainingStatus.COMPLETED.value
+    assert response.status == TrainingState.COMPLETED.value
 
 
 def test_training_status_incorrect_id(training_management_servicer):
@@ -119,4 +119,4 @@ def test_training_fails(training_management_servicer, training_pool):
     request = TrainingInfoRequest(training_id=model_future.id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
 
-    assert response.status == TrainingStatus.ERRORED.value
+    assert response.status == TrainingState.ERRORED.value

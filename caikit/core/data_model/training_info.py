@@ -20,7 +20,7 @@ from typing import List
 
 # Local
 from ..toolkit.wip_decorator import Action, WipCategory, work_in_progress
-from .dataobject import dataobject, DataObjectBase
+from .dataobject import DataObjectBase, dataobject
 from .package import PACKAGE_COMMON
 from .training_state import TrainingState
 

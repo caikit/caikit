@@ -19,5 +19,5 @@ from .training_management import (
     TrainingInfoRequest,
     TrainingInfoResponse,
     TrainingJob,
-    TrainingStatus,
+    TrainingState,
 )

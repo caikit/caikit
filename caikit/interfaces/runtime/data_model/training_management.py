@@ -16,7 +16,7 @@
 import alog
 
 # Local
-from caikit.core.data_model import DataObjectBase, TrainingStatus, dataobject
+from caikit.core.data_model import DataObjectBase, TrainingState, dataobject
 from caikit.core.toolkit.wip_decorator import Action, WipCategory, work_in_progress
 
 log = alog.use_channel("MDLOPS")
@@ -47,7 +47,7 @@ class ModelPointer(DataObjectBase):
 @dataobject(RUNTIME_PACKAGE)
 class TrainingInfoResponse(DataObjectBase):
     training_id: str
-    status: TrainingStatus
+    state: TrainingState
     submission_timestamp: str
     completion_timestamp: str
     error_code: str

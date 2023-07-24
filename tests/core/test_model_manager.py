@@ -21,7 +21,7 @@ import tempfile
 
 # Local
 from caikit.core import LocalBackend
-from caikit.core.data_model import DataStream, TrainingStatus
+from caikit.core.data_model import DataStream, TrainingState
 from caikit.core.model_management import ModelFinderBase, model_finder_factory
 
 # Unit Test Infrastructure
@@ -604,12 +604,12 @@ def test_train_with_wait(reset_globals):
         unfinished_train_future = caikit.train(
             SampleModule, DataStream.from_iterable([])
         )
-        assert unfinished_train_future.get_status() == TrainingStatus.RUNNING
+        assert unfinished_train_future.get_status().state == TrainingState.RUNNING
         # Call with wait and make sure it is COMPLETED
         finished_train_future = caikit.train(
             SampleModule, DataStream.from_iterable([]), wait=True
         )
-        assert finished_train_future.get_status() == TrainingStatus.COMPLETED
+        assert finished_train_future.get_status().state == TrainingState.COMPLETED
 
 
 def test_train_with_save_path(reset_globals):
@@ -620,9 +620,9 @@ def test_train_with_save_path(reset_globals):
             train_future = caikit.train(
                 SampleModule, DataStream.from_iterable([]), save_path=save_path
             )
-            assert train_future.get_status() == TrainingStatus.RUNNING
+            assert train_future.get_status().state == TrainingState.RUNNING
             assert not os.path.exists(save_path)
             assert train_future.save_path == save_path
             train_future.wait()
-            assert train_future.get_status() == TrainingStatus.COMPLETED
+            assert train_future.get_status().state == TrainingState.COMPLETED
             assert os.path.exists(save_path)
