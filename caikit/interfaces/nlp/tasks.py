@@ -24,7 +24,7 @@ from .data_model.text_generation import GeneratedTextResult, GeneratedTextStream
 
 
 @task(
-    unary_parameters={"inputs": str},
+    unary_parameters={"text": str},
     unary_output_type=GeneratedTextResult,
     streaming_output_type=Iterable[GeneratedTextStreamResult],
 )
