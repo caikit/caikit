@@ -26,7 +26,7 @@ from .package import PACKAGE_COMMON
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
 @dataobject(PACKAGE_COMMON)
-class TrainingStatus(Enum):
+class TrainingState(Enum):
     QUEUED = 1
     RUNNING = 2
     COMPLETED = 3

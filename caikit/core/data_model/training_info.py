@@ -11,23 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-"""Common data model containing all data structures that are passed in and out of modules.
+"""
+Common data model enum used for reporting training information
 """
 
+# Standard
+from typing import List
+
 # Local
-from . import base, data_backends, enums, producer, protobufs
-from .base import DataBase
-from .dataobject import (
-    CAIKIT_DATA_MODEL,
-    DataObjectBase,
-    dataobject,
-    render_dataobject_protos,
-)
-from .enums import *
-from .producer import PACKAGE_COMMON, ProducerId
-from .streams import data_stream
-from .streams.data_stream import *
-from .training_info import TrainingInfo
+from ..toolkit.wip_decorator import Action, WipCategory, work_in_progress
+from .dataobject import dataobject, DataObjectBase
+from .package import PACKAGE_COMMON
 from .training_state import TrainingState
+
+
+@work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
+@dataobject(PACKAGE_COMMON)
+class TrainingInfo(DataObjectBase):
+    errors: List[str]
+    # TODO: Add elements to conveying other useful information
+    # regarding training status, such as iterations progressed
+    # evaluation so far, etc.
+    state: TrainingState
