@@ -629,7 +629,7 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
 
 
 def test_train_and_succesfully_cancel_training(
-    train_stub, sample_train_service, training_management_stub, sample_task_model_id
+    train_stub, sample_train_service, training_management_stub
 ):
     # train a model, make sure training is running
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
@@ -664,6 +664,72 @@ def test_train_and_succesfully_cancel_training(
         training_info_request.to_proto()
     )
     assert canceled_response.status == TrainingStatus.CANCELED.value
+
+
+def test_cancel_does_not_affect_other_models(
+    train_stub, sample_train_service, training_management_stub
+):
+    # train a model, make sure training is running
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    training_data = stream_type(
+        jsondata=stream_type.JsonData(
+            data=[SampleTrainingType(1), SampleTrainingType(2)]
+        )
+    )
+    model_name = random_test_id()
+    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+        model_name=model_name, training_data=training_data.to_proto()
+    )
+    train_response = train_stub.SampleTaskSampleModuleTrain(train_request)
+
+    assert dir(train_response) == dir(HAPPY_PATH_TRAIN_RESPONSE)
+    assert train_response.training_id is not None
+    assert isinstance(train_response.training_id, str)
+    assert train_response.model_name == model_name
+
+    training_id = train_response.training_id
+    training_info_request = TrainingInfoRequest(training_id=training_id)
+    training_management_response: TrainingInfoResponse = (
+        TrainingInfoResponse.from_proto(
+            training_management_stub.GetTrainingStatus(training_info_request.to_proto())
+        )
+    )
+
+    assert training_management_response.status == TrainingStatus.RUNNING.value
+
+    # train another model
+    model_name2 = random_test_id()
+    train_request2 = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+        model_name=model_name2, training_data=training_data.to_proto()
+    )
+    train_response2 = train_stub.SampleTaskSampleModuleTrain(train_request2)
+
+    # cancel the first training
+    canceled_response = training_management_stub.CancelTraining(
+        training_info_request.to_proto()
+    )
+    assert canceled_response.status == TrainingStatus.CANCELED.value
+
+    # second training should be COMPLETED
+    status = TrainingStatus.RUNNING.value
+    i = 0
+    while status == TrainingStatus.RUNNING.value:
+        training_info_request = TrainingInfoRequest(
+            training_id=train_response2.training_id
+        )
+        training_management_response: TrainingInfoResponse = (
+            TrainingInfoResponse.from_proto(
+                training_management_stub.GetTrainingStatus(
+                    training_info_request.to_proto()
+                )
+            )
+        )
+        status = training_management_response.status
+        assert status != TrainingStatus.ERRORED.value
+        i += 1
+        assert i < 100, "Waited too long for training to complete"
+
+    assert status == TrainingStatus.COMPLETED.value
 
 
 #### Error cases for train tests #####
