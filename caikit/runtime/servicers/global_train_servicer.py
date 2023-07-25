@@ -57,6 +57,7 @@ class GlobalTrainServicer:
         self._model_manager = ModelManager.get_instance()
         caikit_config = get_config()
         self.training_output_dir = caikit_config.runtime.training.output_dir
+        self.save_with_id = caikit_config.runtime.training.save_with_id
 
         # TODO: think about if we really want to do this here:
         self.cdm = get_data_model()
@@ -201,7 +202,7 @@ class GlobalTrainServicer:
             {
                 "module": module,
                 "save_path": model_path,
-                "save_with_id": True,
+                "save_with_id": self.save_with_id,
                 **build_caikit_library_request_dict(request, module.TRAIN_SIGNATURE),
             }
         )

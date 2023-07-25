@@ -10,7 +10,6 @@ runtime:
 
     training:
         output_dir: test/training_output
-        auto_load_trained_model: true
 
 inference_plugin:
     model_mesh:

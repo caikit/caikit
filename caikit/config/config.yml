@@ -163,6 +163,7 @@ runtime:
     training:
         # The directory to save trained models in
         output_dir: training_output
+        save_with_id: true
 
 inference_plugin:
     model_mesh:
