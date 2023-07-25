@@ -164,6 +164,25 @@ def test_model_train_incorrect_train_request_raises(
         assert e.value.status_code == grpc.StatusCode.INTERNAL
 
 
+def test_model_train_validation_error_raises(sample_model_train_servicer, output_dir):
+    """Test that if there is validation error we are able to raise it"""
+
+    training_id = str(uuid.uuid4())
+    model_train_request = process_pb2.ProcessRequest(
+        trainingID=training_id,
+        customTrainingID=str(uuid.uuid4()),
+        request_dict={
+            "train_module": "00110203-0405-0607-0809-0a0b02dd0e0f",
+            "training_params": '{"model_name": "abc", "training_data": [1], "batch_size": 999}',
+        },
+        training_input_dir="training_input_dir",
+        training_output_dir=os.path.join(output_dir, training_id),
+    )
+    with pytest.raises(CaikitRuntimeException):
+        context = Fixtures.build_context("foo")
+        sample_model_train_servicer.Run(model_train_request, context)
+
+
 #####################################################################
 # Normal tests
 def test_model_train_sample_widget(sample_model_train_servicer, output_dir):

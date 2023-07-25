@@ -30,10 +30,8 @@ import aconfig
 
 # Local
 from caikit.core.data_model import DataStream, TrainingStatus
-from caikit.core.model_management.local_model_trainer import (
-    OOM_EXIT_CODE,
-    LocalModelTrainer,
-)
+from caikit.core.model_management.local_model_trainer import LocalModelTrainer
+from caikit.core.toolkit.destroyable_process import OOM_EXIT_CODE
 from sample_lib.modules import SampleModule
 
 ## Helpers #####################################################################

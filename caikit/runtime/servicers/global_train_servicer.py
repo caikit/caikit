@@ -250,6 +250,9 @@ class GlobalTrainServicer:
                 log.debug, "Training %s complete in: ", model_future.id
             ):
                 model_future.wait()
+                training_info = model_future.get_info()
+                if training_info.errors:
+                    raise training_info.errors[0]
 
         # return TrainingJob object
         return TrainingJob(

@@ -41,9 +41,6 @@ log = alog.use_channel("LOC-TRNR")
 error = error_handler.get(log)
 
 
-OOM_EXIT_CODE = 137
-
-
 # 🌶️🌶️🌶️
 # Fix for python3.9, 3.10 and 3.11 issue where forked processes always exit with exitcode 1
 # when it's created inside a ThreadPoolExecutor: https://github.com/python/cpython/issues/88110
@@ -176,13 +173,7 @@ class LocalModelTrainer(ModelTrainerBase):
 
             # If running a subprocess, handle abnormal exit codes
             if self._use_subprocess:
-                if self._worker.exitcode and self._worker.exitcode != os.EX_OK:
-                    if self._worker.exitcode == OOM_EXIT_CODE:
-                        raise MemoryError("Training process died with OOM error!")
-                    if not self._worker.canceled:
-                        raise RuntimeError(
-                            f"Training process died with exit code {self._worker.exitcode}"
-                        )
+                self._completion_time = datetime.now()
 
         def load(self) -> ModuleBase:
             """Wait for the training to complete, then return the resulting

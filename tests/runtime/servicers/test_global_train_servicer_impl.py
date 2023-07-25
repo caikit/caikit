@@ -330,13 +330,15 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_mod
         training_data=training_data,
     )
 
-    with pytest.raises(ValueError) as context:
-        training_response = sample_train_servicer.Train(
-            train_request, Fixtures.build_context("foo")
-        )
-        MODEL_MANAGER.get_model_future(training_response.training_id).load()
+    training_response = sample_train_servicer.Train(
+        train_request, Fixtures.build_context("foo")
+    )
+    MODEL_MANAGER.get_model_future(training_response.training_id).wait()
 
-    assert f"Batch size of 999 is not allowed!" in str(context.value)
+    future_info = MODEL_MANAGER.get_model_future(
+        training_response.training_id
+    ).get_info()
+    assert f"Batch size of 999 is not allowed!" in future_info.errors[0]
 
 
 def test_global_train_returns_exit_code_with_oom(
@@ -356,13 +358,15 @@ def test_global_train_returns_exit_code_with_oom(
 
     # Enable sub-processing for test
     with set_use_subprocess(True):
-        with pytest.raises(MemoryError) as context:
-            training_response = sample_train_servicer.Train(
-                train_request, Fixtures.build_context("foo")
-            )
-            MODEL_MANAGER.get_model_future(training_response.training_id).wait()
+        training_response = sample_train_servicer.Train(
+            train_request, Fixtures.build_context("foo")
+        )
+        MODEL_MANAGER.get_model_future(training_response.training_id).wait()
 
-    assert f"Training process died with OOM error!" in str(context.value)
+        future_info = MODEL_MANAGER.get_model_future(
+            training_response.training_id
+        ).get_info()
+        assert f"Training process died with OOM error!" in future_info.errors[0]
 
 
 #####################################################################
