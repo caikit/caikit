@@ -145,7 +145,8 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         timer = getattr(self, "_lazy_sync_timer", None)
         if timer is not None:
             timer.cancel()
-            timer.join()
+            if timer.is_alive():
+                timer.join()
 
     ## Model Management ##
 
