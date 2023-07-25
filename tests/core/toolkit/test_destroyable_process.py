@@ -54,6 +54,15 @@ def test_processes_can_return_results():
     assert not proc.threw
 
 
+def test_process_not_canceled_after_success():
+    proc = DestroyableProcess(lambda: None)
+    proc.start()
+    proc.join()
+    assert not proc.canceled
+    proc.destroy()
+    assert not proc.canceled
+
+
 def test_processes_can_be_set_to_not_return_results():
     expected = "test-any-result"
     proc = DestroyableProcess(lambda: expected, return_result=False)
