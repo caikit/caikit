@@ -17,10 +17,11 @@ Common data model enum used for reporting training status
 
 # Standard
 from enum import Enum
+from typing import List
 
 # Local
 from ..toolkit.wip_decorator import Action, WipCategory, work_in_progress
-from .dataobject import dataobject
+from .dataobject import DataObjectBase, dataobject
 from .package import PACKAGE_COMMON
 
 
@@ -40,3 +41,12 @@ class TrainingStatus(Enum):
             self.__class__.CANCELED,
             self.__class__.ERRORED,
         ]
+
+@work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
+@dataobject(PACKAGE_COMMON)
+class TrainingInfo(DataObjectBase):
+    errors: Annotated[List[str], FieldNumber(1)]
+    # TODO: Add elements to conveying other useful information
+    # regarding training status, such as iterations progressed
+    # evaluation so far, etc.
+    status: TrainingStatus
