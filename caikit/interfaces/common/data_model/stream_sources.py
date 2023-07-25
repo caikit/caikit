@@ -42,10 +42,7 @@ class Directory(DataObjectBase):
 
 
 @dataobject(PACKAGE_COMMON)
-class S3Files(DataObjectBase):
-    # List of file paths relative to the bucket
-    files: Annotated[List[str], FieldNumber(1)]
-
+class S3Base(DataObjectBase):
     # URI info
     endpoint: Annotated[str, FieldNumber(2)]  # begins with `http://` or `https://`
     region: Annotated[str, FieldNumber(3)]
@@ -58,3 +55,15 @@ class S3Files(DataObjectBase):
     # IAM credentials
     IAM_id: Annotated[str, FieldNumber(7)]
     IAM_api_key: Annotated[str, FieldNumber(8)]
+
+
+@dataobject(PACKAGE_COMMON)
+class S3Files(S3Base):
+    # List of file paths relative to the bucket
+    files: Annotated[List[str], FieldNumber(1)]
+
+
+@dataobject(PACKAGE_COMMON)
+class S3Path(S3Base):
+    # Path relative to the bucket
+    path: Annotated[str, FieldNumber(1)]
