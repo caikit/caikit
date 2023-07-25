@@ -87,7 +87,7 @@ class DestroyableThread(threading.Thread, Destroyable):
 
     @property
     def canceled(self) -> bool:
-        return self.destroyed and self.__started
+        return self.destroyed and self.__started and not self.__ran
 
     @property
     def ran(self) -> bool:
