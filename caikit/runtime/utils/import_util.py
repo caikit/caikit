@@ -30,6 +30,7 @@ import alog
 
 # Local
 from caikit import get_config
+from caikit.core import MODEL_MANAGER
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit.core
 
@@ -86,8 +87,7 @@ def get_data_model(config: aconfig.Config = None) -> UnifiedDataModel:
     Returns:
         (module): Handle to the module after dynamic wild import
     """
-    if not config:
-        config = get_config()
+    config = config or get_config()
     lib_names = clean_lib_names(config.runtime.library)
 
     # Add all caikit.interfaces.X modules
@@ -118,6 +118,14 @@ def get_data_model(config: aconfig.Config = None) -> UnifiedDataModel:
     # Get data model from lib_names
     for lib_name in base_lib_names:
         cdm = _get_cdm_from_lib(lib_name, cdm)
+
+    # Ensure that all model management components have been initialized
+    # TODO: This function has a _ton_ of side effects! We need to split it up
+    #   and isolate these side effects in appropriately named functions.
+    #   Specifically, this function is not only responsible for creating the
+    #   data model, but it performs the dynamic import of the domain library and
+    #   initializes the model management components.
+    MODEL_MANAGER.initialize_components()
 
     return cdm
 
