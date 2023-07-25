@@ -19,6 +19,8 @@ from dataclasses import dataclass
 from unittest import mock
 import json
 import os
+import signal
+import tempfile
 import threading
 import time
 import uuid
@@ -66,7 +68,11 @@ from sample_lib.data_model import (
 from tests.conftest import random_test_id
 from tests.core.helpers import *
 from tests.fixtures import Fixtures
-from tests.runtime.conftest import register_trained_model, runtime_grpc_test_server
+from tests.runtime.conftest import (
+    ModuleSubproc,
+    register_trained_model,
+    runtime_grpc_test_server,
+)
 import caikit.interfaces.common
 import sample_lib
 
@@ -1053,6 +1059,31 @@ def test_streaming_handlers_are_built_correctly(runtime_grpc_server):
     assert new_handler.stream_stream.__name__ == "safe_rpc_call"
 
 
+def test_grpc_sever_shutdown_with_model_poll(open_port):
+    """Test that a SIGINT successfully shuts down the running server"""
+    with tempfile.TemporaryDirectory() as workdir:
+        server_proc = ModuleSubproc(
+            "caikit.runtime.grpc_server",
+            kill_timeout=30.0,
+            RUNTIME_GRPC_PORT=str(open_port),
+            RUNTIME_LOCAL_MODELS_DIR=workdir,
+            RUNTIME_LAZY_LOAD_LOCAL_MODELS="true",
+            RUNTIME_LAZY_LOAD_POLL_PERIOD_SECONDS="0.1",
+        )
+        with server_proc as proc:
+
+            # Wait for the server to be up
+            _assert_connection(
+                grpc.insecure_channel(f"localhost:{open_port}"), max_failures=500
+            )
+
+            # Signal the server to shut down
+            proc.send_signal(signal.SIGINT)
+
+        # Make sure the process was not killed
+        assert not server_proc.killed
+
+
 # Test implementation details #########################
 @dataclass
 class KeyPair:
@@ -1087,7 +1118,7 @@ def _make_secure_channel(
     return grpc.secure_channel(f"localhost:{server.port}", credentials=credentials)
 
 
-def _assert_connection(channel):
+def _assert_connection(channel, max_failures=20):
     """Check that we can ping the server on this channel.
 
     Assumes that it will come up, but it's hard to distinguish between a failure to boot and a
@@ -1097,9 +1128,7 @@ def _assert_connection(channel):
     failures = 0
     while not done:
         try:
-            stub = health_pb2_grpc.HealthStub(channel)
-            health_check_request = health_pb2.HealthCheckRequest()
-            stub.Check(health_check_request)
+            health_pb2_grpc.HealthStub(channel).Check(health_pb2.HealthCheckRequest())
             done = True
         except grpc.RpcError as e:
             log.debug(
@@ -1108,5 +1137,5 @@ def _assert_connection(channel):
 
             time.sleep(0.1)
             failures += 1
-            if failures > 20:
+            if failures > max_failures:
                 raise e

@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import List
 import json
 import os
+import signal
 import tempfile
 
 # Third Party
@@ -30,10 +31,10 @@ import tls_test_tools
 
 # Local
 from caikit.core import DataObjectBase, dataobject
-from caikit.core.data_model import DataBase
 from caikit.interfaces.nlp.data_model import GeneratedTextStreamResult, GeneratedToken
 from caikit.runtime import http_server
 from tests.conftest import temp_config
+from tests.runtime.conftest import ModuleSubproc, open_port
 
 ## Helpers #####################################################################
 
@@ -333,6 +334,40 @@ def test_pydantic_wrapping_with_lists():
 
     foo = FooTest(bars=[BarTest(1)])
     assert foo.bars[0].baz == 1
+
+
+def test_http_server_shutdown_with_model_poll(open_port):
+    """Test that a SIGINT successfully shuts down the running server"""
+    with tempfile.TemporaryDirectory() as workdir:
+        server_proc = ModuleSubproc(
+            "caikit.runtime.http_server",
+            RUNTIME_HTTP_PORT=str(open_port),
+            RUNTIME_LOCAL_MODELS_DIR=workdir,
+            RUNTIME_LAZY_LOAD_LOCAL_MODELS="true",
+            RUNTIME_LAZY_LOAD_POLL_PERIOD_SECONDS="0.1",
+        )
+        with server_proc as proc:
+            # Wait for the server to be up
+            while True:
+                try:
+                    resp = requests.get(
+                        f"http://localhost:{open_port}{http_server.HEALTH_ENDPOINT}",
+                        timeout=0.1,
+                    )
+                    resp.raise_for_status()
+                    break
+                except (
+                    requests.HTTPError,
+                    requests.ConnectionError,
+                    requests.ConnectTimeout,
+                ):
+                    pass
+
+            # Signal the server to shut down
+            proc.send_signal(signal.SIGINT)
+
+        # Make sure the process was not killed
+        assert not server_proc.killed
 
 
 # TODO: uncomment later
