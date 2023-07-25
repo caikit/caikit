@@ -29,6 +29,13 @@ import alog
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import _make_oneof_init, make_dataobject
 from caikit.core.data_model.streams.data_stream import DataStream
+from caikit.core.toolkit.errors import error_handler
+from caikit.interfaces.common.data_model.stream_sources import (
+    Directory,
+    File,
+    ListOfFiles,
+    S3Files,
+)
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit
 
@@ -41,6 +48,7 @@ import caikit.interfaces.common
 _DATA_STREAM_SOURCE_TYPES = {}
 
 log = alog.use_channel("DSTRM-SRC")
+error = error_handler.get(log)
 
 
 class DataStreamSourceBase(DataStream):
@@ -88,6 +96,15 @@ class DataStreamSourceBase(DataStream):
         if set_field is None:
             log.debug3("Returning empty data stream")
             return DataStream.from_iterable([])
+
+        # If a S3 pointer is given, raise not implemented
+        if set_field == "s3files":
+            error(
+                "<COR80419785E>",
+                NotImplementedError(
+                    "S3Files are not implemented as stream sources in this runtime."
+                ),
+            )
 
         # If jsondata, pull from the data elements directly
         if set_field == "jsondata":
@@ -194,11 +211,12 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
         cls_name = _make_data_stream_source_type_name(data_element_type)
         log.debug("Creating DataStreamSource[%s] -> %s", data_element_type, cls_name)
 
-        # Set up the "sub classes." In python, this is the same as creating a
+        # Set up the "sub class." In python, this is the same as creating a
         # standalone class with a __qualname__ that nests it under a parent
         # class. We do this outside the declaration of the parent class so that
-        # these classes can be referenced within the Union annotation for the
-        # outer class itself.
+        # this class can be referenced within the Union annotation for the
+        # outer class itself. This class needs to be created dynamically because
+        # it encapsulates type information about the elements of the data stream.
         package = "caikit_data_model.runtime"
         JsonData = make_dataobject(
             package=package,
@@ -206,27 +224,6 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
             name="JsonData",
             attrs={"__qualname__": f"{cls_name}.JsonData"},
             annotations={"data": List[data_element_type]},
-        )
-        File = make_dataobject(
-            package=package,
-            proto_name=f"{cls_name}File",
-            name="File",
-            attrs={"__qualname__": f"{cls_name}.File"},
-            annotations={"filename": str},
-        )
-        ListOfFiles = make_dataobject(
-            package=package,
-            proto_name=f"{cls_name}ListOfFiles",
-            name="ListOfFiles",
-            attrs={"__qualname__": f"{cls_name}.ListOfFiles"},
-            annotations={"files": List[str]},
-        )
-        Directory = make_dataobject(
-            package=package,
-            proto_name=f"{cls_name}Directory",
-            name="Directory",
-            attrs={"__qualname__": f"{cls_name}.Directory"},
-            annotations={"dirname": str, "extension": str},
         )
 
         # Create the outer class that encapsulates the Union (oneof) or the
@@ -241,6 +238,7 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
                 File.__name__: File,
                 ListOfFiles.__name__: ListOfFiles,
                 Directory.__name__: Directory,
+                S3Files.__name__: S3Files,
             },
             annotations={
                 "data_stream": Union[
@@ -248,6 +246,7 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
                     Annotated[File, OneofField(File.__name__.lower())],
                     Annotated[ListOfFiles, OneofField(ListOfFiles.__name__.lower())],
                     Annotated[Directory, OneofField(Directory.__name__.lower())],
+                    Annotated[S3Files, OneofField(S3Files.__name__.lower())],
                 ],
             },
         )

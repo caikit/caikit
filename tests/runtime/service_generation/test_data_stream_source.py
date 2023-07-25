@@ -12,6 +12,7 @@ import pytest
 # Local
 from caikit.core.data_model import DataObjectBase, dataobject
 from caikit.core.data_model.streams.data_stream import DataStream
+from caikit.interfaces.common.data_model.stream_sources import S3Files
 from caikit.runtime.service_generation.data_stream_source import (
     DataStreamSourceBase,
     _make_data_stream_source_type_name,
@@ -507,3 +508,22 @@ def test_make_data_stream_source_no_files_w_ext_dir(
     with pytest.raises(CaikitRuntimeException) as e:
         ds.to_data_stream()
     assert "contains no source files with extension" in e.value.message
+
+
+def test_s3_not_implemented(sample_train_service, sample_jsonl_dir):
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    ds = stream_type(s3files=S3Files())
+    # Explicit .to_data_stream will fail
+    with pytest.raises(
+        NotImplementedError,
+        match="S3Files are not implemented as stream sources in this runtime.",
+    ) as e:
+        ds.to_data_stream()
+
+    # And so would iterating on the data stream source directly
+    with pytest.raises(
+        NotImplementedError,
+        match="S3Files are not implemented as stream sources in this runtime.",
+    ) as e:
+        for val in ds:
+            _ = val
