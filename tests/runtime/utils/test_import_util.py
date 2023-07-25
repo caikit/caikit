@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # Standard
+from unittest import mock
 import inspect
 import sys
 
@@ -20,6 +21,7 @@ import sys
 import pytest
 
 # Local
+from caikit.core import MODEL_MANAGER
 from caikit.core.data_model.base import DataBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import (
@@ -140,3 +142,28 @@ def test_multiple_caikit_libraries():
                 and issubclass(attr_val, DataBase)
             ]
             assert all(attrs_match)
+
+
+def test_get_data_model_init_components_after_import():
+    """Make sure that the model_manager's init_components is called _after_ the
+    dynamic import of the runtime library
+    """
+    with temp_config({"runtime": {"library": "sample_lib"}}):
+        call_mock = mock.MagicMock()
+        with mock.patch.object(
+            MODEL_MANAGER,
+            "initialize_components",
+            call_mock,
+        ):
+            with mock.patch(
+                "caikit.runtime.utils.import_util._get_cdm_from_lib", call_mock
+            ):
+                get_data_model()
+                # Make sure the mock was called for both _get_cdm_from_lib and
+                # initialize_components
+                assert len(call_mock.call_args_list) > 1
+
+                # Make sure the last call is the only one with no args
+                # indicating that it's the call to initialize_components
+                assert not call_mock.call_args_list[-1].args
+                assert all(call.args for call in call_mock.call_args_list[:-1])
