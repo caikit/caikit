@@ -141,9 +141,12 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
 
     def shut_down(self):
         """Shut down cache purging"""
+        self._enable_lazy_load_poll = False
         timer = getattr(self, "_lazy_sync_timer", None)
         if timer is not None:
             timer.cancel()
+            if timer.is_alive():
+                timer.join()
 
     ## Model Management ##
 
@@ -247,8 +250,15 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
                     self._lazy_load_poll_period_seconds,
                 )
             if self._lazy_sync_timer is not None and self._lazy_sync_timer.is_alive():
-                log.debug2("Canceling live timer")
+                log.debug3("Canceling live timer")
                 self._lazy_sync_timer.cancel()
+            log.debug3(
+                "Starting next poll timer for %ss", self._lazy_load_poll_period_seconds
+            )
+            log.debug4(
+                "All open threads: %s",
+                [thread.name for thread in threading.enumerate()],
+            )
             self._lazy_sync_timer = threading.Timer(
                 self._lazy_load_poll_period_seconds, self.sync_local_models
             )

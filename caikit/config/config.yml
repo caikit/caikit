@@ -104,9 +104,6 @@ runtime:
         server_shutdown_grace_period_seconds: 45
         # Listen on a unix socket (model mesh feature)
         unix_socket_path: /tmp/mmesh/grpc.sock
-    # Service exposure options
-    port: 8085
-    unix_socket_path: /tmp/mmesh/grpc.sock
 
     # Configuration for the http server
     http:

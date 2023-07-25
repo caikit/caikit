@@ -81,7 +81,6 @@ class RuntimeGRPCServer(RuntimeServerBase):
         if handle_terminations:
             signal.signal(signal.SIGINT, self.interrupt)
             signal.signal(signal.SIGTERM, self.interrupt)
-        self.port = self.config.runtime.port
 
         # Initialize basic server
         # py_grpc_prometheus.server_metrics.
@@ -246,6 +245,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
             grace_period_seconds (Union[float, int]): Grace period for service shutdown.
                 Defaults to application config
         """
+        log.debug("Shutting down grpc server")
         if grace_period_seconds is None:
             grace_period_seconds = (
                 self.config.runtime.grpc.server_shutdown_grace_period_seconds
@@ -254,6 +254,8 @@ class RuntimeGRPCServer(RuntimeServerBase):
         # Ensure we flush out any remaining billing metrics and stop metering
         if self.config.runtime.metering.enabled:
             self._global_predict_servicer.stop_metering()
+        # Shut down the model manager's model polling if enabled
+        self._shut_down_model_manager()
 
     def render_protos(self, proto_out_dir: str) -> None:
         """Renders all the necessary protos for this service into a directory
@@ -297,10 +299,16 @@ class RuntimeGRPCServer(RuntimeServerBase):
 def main(blocking: bool = True):
     # Configure using the log level and formatter type specified in config.
     caikit.core.toolkit.logging.configure()
+    log.debug("Starting up caikit.runtime.grpc_server")
 
     # Start serving Prometheus metrics
     caikit_config = get_config()
-    start_http_server(caikit_config.runtime.metrics.port)
+    if caikit_config.runtime.metrics.enabled:
+        log.info(
+            "Serving prometheus metrics on port %s", caikit_config.runtime.metrics.port
+        )
+        with alog.ContextTimer(log.info, "Booted metrics server in "):
+            start_http_server(caikit_config.runtime.metrics.port)
 
     # Enable signal handling
     handle_terminations = True

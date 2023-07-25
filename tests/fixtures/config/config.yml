@@ -1,5 +1,7 @@
 # Config for tests
 runtime:
+    metrics:
+        enabled: false
     metering:
         # Switch on metering by default
         enabled: true

@@ -24,6 +24,7 @@ import alog
 
 # Local
 from caikit.config import get_config
+from caikit.runtime.model_management.model_manager import ModelManager
 
 log = alog.use_channel("SERVR-BASE")
 
@@ -45,6 +46,7 @@ class RuntimeServerBase(abc.ABC):
         self.tls_config = (
             tls_config_override if tls_config_override else self.config.runtime.tls
         )
+        log.debug4("Full caikit config: %s", get_config())
 
     @classmethod
     def _find_port(cls, start=8888, end=None, host="127.0.0.1"):
@@ -74,6 +76,10 @@ class RuntimeServerBase(abc.ABC):
 
                 # port is open
                 return start
+
+    def _shut_down_model_manager(self):
+        """Shared utility for shutting down the model manager"""
+        ModelManager.get_instance().shut_down()
 
     @abc.abstractmethod
     def start(self, blocking: bool = True):

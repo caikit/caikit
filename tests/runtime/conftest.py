@@ -3,12 +3,15 @@ This sets up global test configs when pytest starts
 """
 
 # Standard
-from concurrent.futures import Future
 from contextlib import contextmanager
 from typing import Type, Union
 import os
+import shlex
 import socket
+import subprocess
+import sys
 import tempfile
+import threading
 import time
 
 # Third Party
@@ -122,7 +125,7 @@ def runtime_grpc_test_server(open_port, *args, **kwargs):
                 "runtime": {
                     "metering": {"log_dir": temp_log_dir},
                     "training": {"output_dir": temp_save_dir},
-                    "port": open_port,
+                    "grpc": {"port": open_port},
                 }
             },
             "merge",
@@ -258,6 +261,48 @@ def register_trained_model(
     if isinstance(servicer, RuntimeGRPCServer):
         servicer = servicer._global_predict_servicer
     servicer._model_manager.loaded_models[model_id] = loaded_model
+
+
+class ModuleSubproc:
+    def __init__(
+        self, module_to_run: str, *args, kill_timeout: float = 10.0, **env_vars
+    ):
+        """Run the given python as a subprocess and kill it after the given timeout"""
+        # Set up the command
+        cmd = f"{sys.executable} -m {module_to_run}"
+        for arg in args:
+            cmd += f" {arg}"
+        self._cmd = shlex.split(cmd)
+
+        # Set up the environment
+        self._env = {**os.environ, **env_vars}
+        self._env["PYTHONPATH"] = ":".join(sys.path)
+
+        # Start the process
+        self.proc = None
+        self._killed = False
+
+        # Start the timer that will kill the process
+        self._kill_timer = threading.Timer(kill_timeout, self._kill_proc)
+
+    @property
+    def killed(self):
+        return self._killed
+
+    def _kill_proc(self):
+        self._killed = True
+        if self.proc is not None:
+            self.proc.kill()
+
+    def __enter__(self):
+        self.proc = subprocess.Popen(self._cmd, env=self._env)
+        self._kill_timer.start()
+        return self.proc
+
+    def __exit__(self, *_):
+        self.proc.wait()
+        self._kill_timer.cancel()
+        self._kill_timer.join()
 
 
 # IMPLEMENTATION DETAILS ############################################################
