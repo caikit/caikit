@@ -213,7 +213,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             self._uvicorn_server_thread.join()
 
         # Ensure we flush out any remaining billing metrics and stop metering
-        if self.config.runtime.metering.enabled:
+        if get_config().runtime.metering.enabled:
             self.global_predict_servicer.stop_metering()
 
         # Shut down the model manager's model polling if enabled
@@ -467,13 +467,18 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 re.sub("Task$", "", re.sub("Predict$", "", rpc.name)),
             ).lower()
             route = "/".join(
-                [self.config.runtime.http.route_prefix, "{model_id}", "task", task_name]
+                [
+                    get_config().runtime.http.route_prefix,
+                    "{model_id}",
+                    "task",
+                    task_name,
+                ]
             )
             if route[0] != "/":
                 route = "/" + route
             return route
         if rpc.name.endswith("Train"):
-            route = "/".join([self.config.runtime.http.route_prefix, rpc.name])
+            route = "/".join([get_config().runtime.http.route_prefix, rpc.name])
             if route[0] != "/":
                 route = "/" + route
             return route
