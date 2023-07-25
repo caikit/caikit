@@ -628,6 +628,44 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
     assert inference_response == HAPPY_PATH_RESPONSE
 
 
+def test_train_and_succesfully_cancel_training(
+    train_stub, sample_train_service, training_management_stub, sample_task_model_id
+):
+    # train a model, make sure training is running
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    training_data = stream_type(
+        jsondata=stream_type.JsonData(
+            data=[SampleTrainingType(1), SampleTrainingType(2)]
+        )
+    )
+    model_name = random_test_id()
+    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+        model_name=model_name, training_data=training_data.to_proto()
+    )
+    train_response = train_stub.SampleTaskSampleModuleTrain(train_request)
+
+    assert dir(train_response) == dir(HAPPY_PATH_TRAIN_RESPONSE)
+    assert train_response.training_id is not None
+    assert isinstance(train_response.training_id, str)
+    assert train_response.model_name == model_name
+
+    training_id = train_response.training_id
+    training_info_request = TrainingInfoRequest(training_id=training_id)
+    training_management_response: TrainingInfoResponse = (
+        TrainingInfoResponse.from_proto(
+            training_management_stub.GetTrainingStatus(training_info_request.to_proto())
+        )
+    )
+
+    assert training_management_response.status == TrainingStatus.RUNNING.value
+
+    # cancel the training
+    canceled_response = training_management_stub.CancelTraining(
+        training_info_request.to_proto()
+    )
+    assert canceled_response.status == TrainingStatus.CANCELED.value
+
+
 #### Error cases for train tests #####
 def test_train_fake_module_error_response_with_unloaded_model(
     train_stub, sample_train_service

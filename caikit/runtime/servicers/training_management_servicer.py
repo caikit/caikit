@@ -73,6 +73,11 @@ class TrainingManagementServicerImpl:
 
             model_future.cancel()
 
+            return TrainingInfoResponse(
+                training_id=training_info.training_id,
+                status=model_future.get_status(),
+            ).to_proto()
+
         except ValueError as err:
             raise CaikitRuntimeException(
                 grpc.StatusCode.NOT_FOUND,
