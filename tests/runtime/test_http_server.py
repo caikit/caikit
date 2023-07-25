@@ -34,7 +34,6 @@ from caikit.core import MODEL_MANAGER, DataObjectBase, dataobject
 from caikit.interfaces.nlp.data_model import GeneratedTextStreamResult, GeneratedToken
 from caikit.runtime import http_server
 from tests.conftest import temp_config
-import sample_lib
 from tests.runtime.conftest import ModuleSubproc, open_port, register_trained_model
 
 ## Helpers #####################################################################
