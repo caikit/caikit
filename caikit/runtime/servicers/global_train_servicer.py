@@ -205,7 +205,7 @@ class GlobalTrainServicer:
                 "Model name not provided for this request",
             )
         # Figure out where this model will be saved
-        model_path = self._get_model_path(training_output_dir, "blah")
+        model_path = self._get_model_path(training_output_dir, model_name)
         request_params = kwargs.get("request_params", None)
         if isinstance(request, ProtoMessageType):
             request_params = build_caikit_library_request_dict(
@@ -284,7 +284,7 @@ class GlobalTrainServicer:
 
         # return TrainingJob object
         return TrainingJob(
-            model_name="blah",
+            model_name=model_name,
             training_id=model_future.id,
         )
 
