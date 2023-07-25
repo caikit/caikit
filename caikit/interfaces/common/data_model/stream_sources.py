@@ -57,30 +57,4 @@ class S3Files(DataObjectBase):
 
     # IAM credentials
     IAM_id: Annotated[str, FieldNumber(7)]
-    IAM_api_ky: Annotated[str, FieldNumber(8)]
-
-    # TLS info
-    CA_bundle_key: Annotated[str, FieldNumber(9)]
-
-
-# File = make_dataobject(
-#             package=package,
-#             proto_name=f"{cls_name}File",
-#             name="File",
-#             attrs={"__qualname__": f"{cls_name}.File"},
-#             annotations={"filename": str},
-#         )
-#         ListOfFiles = make_dataobject(
-#             package=package,
-#             proto_name=f"{cls_name}ListOfFiles",
-#             name="ListOfFiles",
-#             attrs={"__qualname__": f"{cls_name}.ListOfFiles"},
-#             annotations={"files": List[str]},
-#         )
-#         Directory = make_dataobject(
-#             package=package,
-#             proto_name=f"{cls_name}Directory",
-#             name="Directory",
-#             attrs={"__qualname__": f"{cls_name}.Directory"},
-#             annotations={"dirname": str, "extension": str},
-#         )
+    IAM_api_key: Annotated[str, FieldNumber(8)]
