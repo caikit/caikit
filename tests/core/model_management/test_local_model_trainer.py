@@ -20,7 +20,6 @@ import multiprocessing
 import os
 import tempfile
 import threading
-import time
 
 # Third Party
 import pytest
