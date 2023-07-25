@@ -4,9 +4,7 @@ This sets up global test configs when pytest starts
 
 # Standard
 from contextlib import contextmanager
-from types import ModuleType
 from typing import Type, Union
-import copy
 import os
 import shlex
 import socket
@@ -277,8 +275,7 @@ class ModuleSubproc:
         self._cmd = shlex.split(cmd)
 
         # Set up the environment
-        self._env = copy.deepcopy(os.environ)
-        self._env.update(env_vars)
+        self._env = {**os.environ, **env_vars}
         self._env["PYTHONPATH"] = ":".join(sys.path)
 
         # Start the process
