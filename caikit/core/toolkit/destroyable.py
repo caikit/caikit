@@ -52,3 +52,8 @@ class Destroyable(abc.ABC):
     @abc.abstractmethod
     def destroy(self):
         """Cancel any in-progress work"""
+
+    @property
+    @abc.abstractmethod
+    def error(self) -> bool:
+        """Return the error information to user if one occurred"""

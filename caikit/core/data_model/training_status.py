@@ -19,11 +19,14 @@ Common data model enum used for reporting training status
 from enum import Enum
 from typing import List
 
+# First Party
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
+
 # Local
 from .dataobject import DataObjectBase, dataobject
 from .package import PACKAGE_COMMON
 
-# First
+
 @dataobject(PACKAGE_COMMON)
 class TrainingStatus(Enum):
     QUEUED = 1
@@ -39,6 +42,7 @@ class TrainingStatus(Enum):
             self.__class__.CANCELED,
             self.__class__.ERRORED,
         ]
+
 
 @dataobject(PACKAGE_COMMON)
 class TrainingInfo(DataObjectBase):

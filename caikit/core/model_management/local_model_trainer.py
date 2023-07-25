@@ -148,7 +148,9 @@ class LocalModelTrainer(ModelTrainerBase):
 
             # The worker threw outside of a cancellation process
             if self._worker.threw:
-                return TrainingInfo(status=TrainingStatus.ERRORED)
+                return TrainingInfo(
+                    status=TrainingStatus.ERRORED, errors=[str(self._worker.error)]
+                )
 
             # The worker completed its work without being canceled or raising
             if self._worker.ran:
@@ -174,7 +176,6 @@ class LocalModelTrainer(ModelTrainerBase):
 
             # If running a subprocess, handle abnormal exit codes
             if self._use_subprocess:
-                self._completion_time = self._worker.get_or_throw()
                 if self._worker.exitcode and self._worker.exitcode != os.EX_OK:
                     if self._worker.exitcode == OOM_EXIT_CODE:
                         raise MemoryError("Training process died with OOM error!")

@@ -204,3 +204,23 @@ def test_retention_duration_parse(test_params):
     """Make sure the regex for the duration can parse all expected durations"""
     trainer = local_trainer(retention_duration=test_params[0])
     assert trainer._retention_duration == test_params[1]
+
+
+def test_get_into_return_error(trainer_type_cfg):
+    """Test that failed training returns error properly"""
+    trainer = local_trainer(**trainer_type_cfg)
+
+    model_future = trainer.train(
+        SampleModule,
+        DataStream.from_iterable([]),
+        batch_size=SampleModule.POISON_PILL_BATCH_SIZE,
+    )
+    # assert model_future.get_info().status == TrainingStatus.RUNNING
+    # assert not model_future.get_info().status.is_terminal
+
+    # Let the training proceed and wait for it to complete
+    model_future.wait()
+    assert model_future.get_info().status == TrainingStatus.ERRORED
+    assert model_future.get_info().status.is_terminal
+    assert isinstance(model_future.get_info().errors, list)
+    assert model_future.get_info().errors[0] == "Batch size of 999 is not allowed!"
