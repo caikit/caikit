@@ -141,13 +141,11 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
 
     def shut_down(self):
         """Shut down cache purging"""
-        log.info("Shutting down runtime ModelManager")
         self._enable_lazy_load_poll = False
         timer = getattr(self, "_lazy_sync_timer", None)
         if timer is not None:
-            with alog.ContextTimer(log.debug, "Done shutting down poll in "):
-                timer.cancel()
-                timer.join()
+            timer.cancel()
+            timer.join()
 
     ## Model Management ##
 
