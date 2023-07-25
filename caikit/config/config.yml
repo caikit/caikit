@@ -92,9 +92,6 @@ runtime:
         client:
             cert: ""
 
-    # Service exposure options
-    unix_socket_path: /tmp/mmesh/grpc.sock
-
     # Configuration for the grpc server
     grpc:
         enabled: true
