@@ -20,12 +20,10 @@ from enum import Enum
 from typing import List
 
 # Local
-from ..toolkit.wip_decorator import Action, WipCategory, work_in_progress
 from .dataobject import DataObjectBase, dataobject
 from .package import PACKAGE_COMMON
 
-
-@work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
+# First
 @dataobject(PACKAGE_COMMON)
 class TrainingStatus(Enum):
     QUEUED = 1
@@ -42,7 +40,6 @@ class TrainingStatus(Enum):
             self.__class__.ERRORED,
         ]
 
-@work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
 @dataobject(PACKAGE_COMMON)
 class TrainingInfo(DataObjectBase):
     errors: Annotated[List[str], FieldNumber(1)]
