@@ -102,7 +102,6 @@ class LocalModelTrainer(ModelTrainerBase):
                     return_result=True,
                     args=args,
                     kwargs={
-                        "return_completion_time": True,
                         **kwargs,
                     },
                 )
@@ -170,10 +169,7 @@ class LocalModelTrainer(ModelTrainerBase):
             log.debug2("Waiting for %s", self.id)
             self._worker.join()
             log.debug2("Done waiting for %s", self.id)
-
-            # If running a subprocess, handle abnormal exit codes
-            if self._use_subprocess:
-                self._completion_time = datetime.now()
+            self._completion_time = self._completion_time or datetime.now()
 
         def load(self) -> ModuleBase:
             """Wait for the training to complete, then return the resulting
@@ -204,7 +200,7 @@ class LocalModelTrainer(ModelTrainerBase):
 
         ## Impl ##
 
-        def _train_and_save(self, *args, return_completion_time=False, **kwargs):
+        def _train_and_save(self, *args, **kwargs):
             """Function that will run in the worker thread"""
             with alog.ContextTimer(log.debug, "Training %s finished in: ", self.id):
                 trained_model = self._module_class.train(*args, **kwargs)
@@ -212,10 +208,7 @@ class LocalModelTrainer(ModelTrainerBase):
                 log.debug("Saving training %s to %s", self.id, self.save_path)
                 with alog.ContextTimer(log.debug, "Training %s saved in: ", self.id):
                     trained_model.save(self.save_path)
-            self._completion_time = datetime.now()
             log.debug2("Completion time for %s: %s", self.id, self._completion_time)
-            if return_completion_time:
-                return self._completion_time
             return trained_model
 
     ## Interface ##

@@ -50,4 +50,4 @@ class TrainingInfo(DataObjectBase):
     # TODO: Add elements to conveying other useful information
     # regarding training status, such as iterations progressed
     # evaluation so far, etc.
-    status: TrainingStatus
+    status: Annotated[TrainingStatus, FieldNumber(2)]
