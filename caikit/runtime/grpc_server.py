@@ -81,7 +81,6 @@ class RuntimeGRPCServer(RuntimeServerBase):
         if handle_terminations:
             signal.signal(signal.SIGINT, self.interrupt)
             signal.signal(signal.SIGTERM, self.interrupt)
-        self.port = self.config.runtime.port
 
         # Initialize basic server
         # py_grpc_prometheus.server_metrics.

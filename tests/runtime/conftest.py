@@ -122,7 +122,7 @@ def runtime_grpc_test_server(open_port, *args, **kwargs):
                 "runtime": {
                     "metering": {"log_dir": temp_log_dir},
                     "training": {"output_dir": temp_save_dir},
-                    "port": open_port,
+                    "grpc": {"port": open_port},
                 }
             },
             "merge",
