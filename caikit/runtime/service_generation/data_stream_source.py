@@ -102,7 +102,7 @@ class DataStreamSourceBase(DataStream):
             error(
                 "<COR80419785E>",
                 NotImplementedError(
-                    f"S3Files are not implemented as stream sources in this runtime."
+                    "S3Files are not implemented as stream sources in this runtime."
                 ),
             )
 
