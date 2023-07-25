@@ -86,3 +86,10 @@ class TrainingManagementServicerImpl:
                     training_info.training_id,
                 ),
             ) from err
+        except Exception as err:
+            raise CaikitRuntimeException(
+                grpc.StatusCode.INTERNAL,
+                "Failed to cancel training id {}".format(
+                    training_info.training_id,
+                ),
+            ) from err

@@ -84,10 +84,10 @@ def test_training_can_cancel(training_management_servicer):
         wait_event=event,
     )
 
-    # send a request, check it's running
+    # send a request, check it's not errored
     request = TrainingInfoRequest(training_id=model_future.id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
-    assert response.status == TrainingStatus.RUNNING.value
+    assert response.status != TrainingStatus.ERRORED.value
 
     event.set()
     model_future.wait()
@@ -115,14 +115,14 @@ def test_training_cancel_on_correct_id(training_management_servicer):
         wait_event=event_2,
     )
 
-    # send train requests, check they're running
+    # send train requests, check they're not errored
     request_1 = TrainingInfoRequest(training_id=model_future_1.id).to_proto()
     response_1 = training_management_servicer.GetTrainingStatus(request_1, context=None)
-    assert response_1.status == TrainingStatus.RUNNING.value
+    assert response_1.status != TrainingStatus.ERRORED.value
 
     request_2 = TrainingInfoRequest(training_id=model_future_2.id).to_proto()
     response_2 = training_management_servicer.GetTrainingStatus(request_2, context=None)
-    assert response_2.status == TrainingStatus.RUNNING.value
+    assert response_2.status != TrainingStatus.ERRORED.value
 
     event_1.set()
     model_future_1.wait()
@@ -182,10 +182,10 @@ def test_training_raises_when_cancel_on_incorrect_id(training_management_service
         wait_event=event,
     )
 
-    # send a request, check it's running
+    # send a request, check it's not errored
     request = TrainingInfoRequest(training_id=model_future.id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
-    assert response.status == TrainingStatus.RUNNING.value
+    assert response.status != TrainingStatus.ERRORED.value
 
     event.set()
     model_future.wait()

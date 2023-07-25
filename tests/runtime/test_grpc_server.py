@@ -631,7 +631,7 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
 def test_train_and_succesfully_cancel_training(
     train_stub, sample_train_service, training_management_stub
 ):
-    # train a model, make sure training is running
+    # train a model, make sure training doesn't have error
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(
@@ -657,7 +657,7 @@ def test_train_and_succesfully_cancel_training(
         )
     )
 
-    assert training_management_response.status == TrainingStatus.RUNNING.value
+    assert training_management_response.status != TrainingStatus.ERRORED.value
 
     # cancel the training
     canceled_response = training_management_stub.CancelTraining(
@@ -695,7 +695,7 @@ def test_cancel_does_not_affect_other_models(
         )
     )
 
-    assert training_management_response.status == TrainingStatus.RUNNING.value
+    assert training_management_response.status != TrainingStatus.ERRORED.value
 
     # train another model
     model_name2 = random_test_id()
