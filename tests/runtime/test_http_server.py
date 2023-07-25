@@ -389,10 +389,11 @@ def test_http_server_shutdown_with_model_poll(open_port):
 # TODO: move train to tmp dir
 def test_train_sample_task():
     server = http_server.RuntimeHTTPServer()
+    model_name = "sample_task_train"
     with TestClient(server.app) as client:
         json_input = {
             "inputs": {
-                "model_name": "sample_task_train",
+                "model_name": model_name,
                 "training_data": {"data_stream": {"file": "hello"}},
             },
             "parameters": {"batch_size": 42},
@@ -408,9 +409,7 @@ def test_train_sample_task():
             training_response.content.decode(training_response.default_encoding)
         )
         assert (training_id := training_json_response["training_id"])
-        assert (
-            model_name := training_json_response["model_name"]
-        ) == "sample_task_train"
+        assert (model_name := training_json_response["model_name"]) == model_name
 
         # assert trained model
         result = MODEL_MANAGER.get_model_future(training_id).load()
@@ -430,7 +429,7 @@ def test_train_sample_task():
         # test inferencing on new model
         json_input_inference = {"inputs": {"name": "world"}}
         response = client.post(
-            f"/api/v1/sample_task_train/task/sample",
+            f"/api/v1/{model_name}/task/sample",
             json=json_input_inference,
         )
         assert response.status_code == 200
@@ -440,20 +439,49 @@ def test_train_sample_task():
 
 def test_train_other_task():
     server = http_server.RuntimeHTTPServer()
+    model_name = "other_task_train"
     with TestClient(server.app) as client:
         json_input = {
             "inputs": {
-                "model_name": "other_task_train",
+                "model_name": model_name,
                 "training_data": {"data_stream": {"data": [1, 2]}},
                 "sample_input": {"name": "test"},
             }
         }
-        response = client.post(
+
+        training_response = client.post(
             f"/api/v1/OtherTaskOtherModuleTrain",
             json=json_input,
         )
+        # assert training response
+        assert training_response.status_code == 200
+        training_json_response = json.loads(
+            training_response.content.decode(training_response.default_encoding)
+        )
+        assert (training_id := training_json_response["training_id"])
+        assert (model_name := training_json_response["model_name"]) == model_name
+
+        # assert trained model
+        result = MODEL_MANAGER.get_model_future(training_id).load()
+        assert result.batch_size == 64
+        assert (
+            result.MODULE_CLASS
+            == "sample_lib.modules.other_task.other_implementation.OtherModule"
+        )
+
+        # register the newly trained model for inferencing
+        register_trained_model(
+            server.global_predict_servicer,
+            model_name,
+            training_id,
+        )
+
+        # test inferencing on new model
+        json_input_inference = {"inputs": {"name": "world"}}
+        response = client.post(
+            f"/api/v1/{model_name}/task/other",
+            json=json_input_inference,
+        )
         assert response.status_code == 200
         json_response = json.loads(response.content.decode(response.default_encoding))
-        assert json_response["training_id"]
-        assert json_response["model_name"] == "other_task_train"
-        # json_response = json.loads(response.content.decode(response.default_encoding))
+        assert json_response["farewell"] == "goodbye: world 64 times"
