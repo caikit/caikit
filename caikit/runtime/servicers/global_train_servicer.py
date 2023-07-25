@@ -198,7 +198,7 @@ class GlobalTrainServicer:
         model_name = getattr(request, "model_name", None)
         if model_name is None:
             # try to get it from kwargs
-            model_name = kwargs.get("request_params", None)
+            model_name = kwargs.get("model_name", None)
         if model_name is None:
             raise CaikitRuntimeException(
                 StatusCode.INVALID_ARGUMENT,
