@@ -1069,6 +1069,7 @@ def test_grpc_sever_shutdown_with_model_poll(open_port):
             RUNTIME_LOCAL_MODELS_DIR=workdir,
             RUNTIME_LAZY_LOAD_LOCAL_MODELS="true",
             RUNTIME_LAZY_LOAD_POLL_PERIOD_SECONDS="0.1",
+            RUNTIME_METRICS_ENABLED="false",
         )
         with server_proc as proc:
 

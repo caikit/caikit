@@ -299,10 +299,16 @@ class RuntimeGRPCServer(RuntimeServerBase):
 def main(blocking: bool = True):
     # Configure using the log level and formatter type specified in config.
     caikit.core.toolkit.logging.configure()
+    log.debug("Starting up caikit.runtime.grpc_server")
 
     # Start serving Prometheus metrics
     caikit_config = get_config()
-    start_http_server(caikit_config.runtime.metrics.port)
+    if caikit_config.runtime.metrics.enabled:
+        log.info(
+            "Serving prometheus metrics on port %s", caikit_config.runtime.metrics.port
+        )
+        with alog.ContextTimer(log.info, "Booted metrics server in "):
+            start_http_server(caikit_config.runtime.metrics.port)
 
     # Enable signal handling
     handle_terminations = True
