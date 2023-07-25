@@ -25,6 +25,7 @@ NOTE: The "fork" start method is used for two reasons:
 from functools import partial
 from typing import Any, Callable, Optional, Tuple
 import multiprocessing
+import os
 
 # First Party
 import alog
@@ -35,6 +36,8 @@ from .destroyable import Destroyable
 log = alog.use_channel("DESTROY-PROC")
 
 FORK_CTX = multiprocessing.get_context("fork")
+
+OOM_EXIT_CODE = 137
 
 
 class DestroyableProcess(
@@ -175,8 +178,17 @@ class DestroyableProcess(
     @property
     def error(self) -> Optional[Exception]:
         self._update_result()
+
         if isinstance(self.__result, Exception):
             return self.__result
+
+        if self.exitcode and self.exitcode != os.EX_OK:
+            if self.exitcode == OOM_EXIT_CODE:
+                return MemoryError("Training process died with OOM error!")
+            if not self.canceled:
+                return RuntimeError(
+                    f"Training process died with exit code {self.exitcode}"
+                )
 
     @property
     def completion_event(self) -> multiprocessing.Event:

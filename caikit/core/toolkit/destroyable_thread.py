@@ -221,6 +221,11 @@ class DestroyableThread(threading.Thread, Destroyable):
                 async_exception_result,
             )
 
+    @property
+    def error(self) -> Optional[Exception]:
+        if isinstance(self.__runnable_exception, Exception):
+            return self.__runnable_exception
+
     def __get_id(self):
         # Returns the thread if if the thread is running
         for thread in threading.enumerate():

@@ -29,7 +29,7 @@ import aconfig
 import alog
 
 # Local
-from ..data_model import TrainingStatus
+from ..data_model import TrainingInfo, TrainingStatus
 from ..modules import ModuleBase
 from ..toolkit.destroyable_process import DestroyableProcess
 from ..toolkit.destroyable_thread import DestroyableThread
@@ -39,9 +39,6 @@ import caikit
 
 log = alog.use_channel("LOC-TRNR")
 error = error_handler.get(log)
-
-
-OOM_EXIT_CODE = 137
 
 
 # 🌶️🌶️🌶️
@@ -105,7 +102,6 @@ class LocalModelTrainer(ModelTrainerBase):
                     return_result=True,
                     args=args,
                     kwargs={
-                        "return_completion_time": True,
                         **kwargs,
                     },
                 )
@@ -132,29 +128,32 @@ class LocalModelTrainer(ModelTrainerBase):
 
         ## Interface ##
 
-        def get_status(self) -> TrainingStatus:
+        def get_info(self) -> TrainingInfo:
             """Every model future must be able to poll the status of the
             training job
             """
+
             # The worker was canceled while doing work. It may still be in the
             # process of terminating and thus still alive.
             if self._worker.canceled:
-                return TrainingStatus.CANCELED
+                return TrainingInfo(status=TrainingStatus.CANCELED)
 
             # If the worker is currently alive it's doing work
             if self._worker.is_alive():
-                return TrainingStatus.RUNNING
+                return TrainingInfo(status=TrainingStatus.RUNNING)
 
             # The worker threw outside of a cancellation process
             if self._worker.threw:
-                return TrainingStatus.ERRORED
+                return TrainingInfo(
+                    status=TrainingStatus.ERRORED, errors=[str(self._worker.error)]
+                )
 
             # The worker completed its work without being canceled or raising
             if self._worker.ran:
-                return TrainingStatus.COMPLETED
+                return TrainingInfo(status=TrainingStatus.COMPLETED)
 
             # If it's not alive and not done, it hasn't started yet
-            return TrainingStatus.QUEUED
+            return TrainingInfo(status=TrainingStatus.QUEUED)
 
         def cancel(self):
             """Terminate the given training"""
@@ -170,17 +169,7 @@ class LocalModelTrainer(ModelTrainerBase):
             log.debug2("Waiting for %s", self.id)
             self._worker.join()
             log.debug2("Done waiting for %s", self.id)
-
-            # If running a subprocess, handle abnormal exit codes
-            if self._use_subprocess:
-                self._completion_time = self._worker.get_or_throw()
-                if self._worker.exitcode and self._worker.exitcode != os.EX_OK:
-                    if self._worker.exitcode == OOM_EXIT_CODE:
-                        raise MemoryError("Training process died with OOM error!")
-                    if not self._worker.canceled:
-                        raise RuntimeError(
-                            f"Training process died with exit code {self._worker.exitcode}"
-                        )
+            self._completion_time = self._completion_time or datetime.now()
 
         def load(self) -> ModuleBase:
             """Wait for the training to complete, then return the resulting
@@ -211,7 +200,7 @@ class LocalModelTrainer(ModelTrainerBase):
 
         ## Impl ##
 
-        def _train_and_save(self, *args, return_completion_time=False, **kwargs):
+        def _train_and_save(self, *args, **kwargs):
             """Function that will run in the worker thread"""
             with alog.ContextTimer(log.debug, "Training %s finished in: ", self.id):
                 trained_model = self._module_class.train(*args, **kwargs)
@@ -219,10 +208,7 @@ class LocalModelTrainer(ModelTrainerBase):
                 log.debug("Saving training %s to %s", self.id, self.save_path)
                 with alog.ContextTimer(log.debug, "Training %s saved in: ", self.id):
                     trained_model.save(self.save_path)
-            self._completion_time = datetime.now()
             log.debug2("Completion time for %s: %s", self.id, self._completion_time)
-            if return_completion_time:
-                return self._completion_time
             return trained_model
 
     ## Interface ##

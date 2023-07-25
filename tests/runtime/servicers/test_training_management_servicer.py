@@ -23,8 +23,8 @@ import pytest
 
 # Local
 from caikit.core import MODEL_MANAGER
-from caikit.core.data_model import DataStream
-from caikit.interfaces.runtime.data_model import TrainingInfoRequest, TrainingStatus
+from caikit.core.data_model import DataStream, TrainingStatus
+from caikit.interfaces.runtime.data_model import TrainingInfoRequest
 from caikit.runtime.servicers.training_management_servicer import (
     TrainingManagementServicerImpl,
 )
