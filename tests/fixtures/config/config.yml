@@ -10,7 +10,6 @@ runtime:
 
     training:
         output_dir: test/training_output
-        save_with_id: true
 
 inference_plugin:
     model_mesh:
