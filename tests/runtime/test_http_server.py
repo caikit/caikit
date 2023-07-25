@@ -30,10 +30,11 @@ import requests
 import tls_test_tools
 
 # Local
-from caikit.core import DataObjectBase, dataobject
+from caikit.core import MODEL_MANAGER, DataObjectBase, dataobject
 from caikit.interfaces.nlp.data_model import GeneratedTextStreamResult, GeneratedToken
 from caikit.runtime import http_server
 from tests.conftest import temp_config
+from tests.runtime.conftest import register_trained_model
 import sample_lib
 from tests.runtime.conftest import ModuleSubproc, open_port
 
@@ -392,19 +393,49 @@ def test_train_sample_task():
         json_input = {
             "inputs": {
                 "model_name": "sample_task_train",
-                # "training_data": {"data_stream": {"data": [{"number": 1}]}},
                 "training_data": {"data_stream": {"file": "hello"}},
-            }
+            },
+            "parameters": {"batch_size": 42},
         }
-        response = client.post(
+        training_response = client.post(
             f"/api/v1/SampleTaskSampleModuleTrain",
             json=json_input,
         )
+
+        # assert training response
+        assert training_response.status_code == 200
+        training_json_response = json.loads(
+            training_response.content.decode(training_response.default_encoding)
+        )
+        assert (training_id := training_json_response["training_id"])
+        assert (
+            model_name := training_json_response["model_name"]
+        ) == "sample_task_train"
+
+        # assert trained model
+        result = MODEL_MANAGER.get_model_future(training_id).load()
+        assert result.batch_size == 42
+        assert (
+            result.MODULE_CLASS
+            == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
+        )
+
+        # register the newly trained model for inferencing
+        register_trained_model(
+            server.global_predict_servicer,
+            model_name,
+            training_id,
+        )
+
+        # test inferencing on new model
+        json_input_inference = {"inputs": {"name": "world"}}
+        response = client.post(
+            f"/api/v1/sample_task_train/task/sample",
+            json=json_input_inference,
+        )
         assert response.status_code == 200
         json_response = json.loads(response.content.decode(response.default_encoding))
-        assert json_response["training_id"]
-        assert json_response["model_name"]
-        # json_response = json.loads(response.content.decode(response.default_encoding))
+        assert json_response["greeting"] == "Hello world"
 
 
 def test_train_other_task():
