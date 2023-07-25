@@ -157,6 +157,15 @@ class RuntimeHTTPServer(RuntimeServerBase):
         )
         self.server = uvicorn.Server(config=config)
 
+        # Patch the exit handler to call this server's stop
+        original_handler = self.server.handle_exit
+
+        def shutdown_wrapper(*args, **kwargs):
+            original_handler(*args, **kwargs)
+            self.stop()
+
+        self.server.handle_exit = shutdown_wrapper
+
         # Placeholder for thread when running without blocking
         self._uvicorn_server_thread = None
 
@@ -193,6 +202,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Ensure we flush out any remaining billing metrics and stop metering
         if self.config.runtime.metering.enabled:
             self.global_predict_servicer.stop_metering()
+
+        # Shut down the model manager's model polling if enabled
+        self._shut_down_model_manager()
 
     def run_in_thread(self):
         self._uvicorn_server_thread = threading.Thread(target=self.server.run)

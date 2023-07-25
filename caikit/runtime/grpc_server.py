@@ -246,6 +246,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
             grace_period_seconds (Union[float, int]): Grace period for service shutdown.
                 Defaults to application config
         """
+        log.debug("Shutting down grpc server")
         if grace_period_seconds is None:
             grace_period_seconds = (
                 self.config.runtime.grpc.server_shutdown_grace_period_seconds
@@ -254,6 +255,8 @@ class RuntimeGRPCServer(RuntimeServerBase):
         # Ensure we flush out any remaining billing metrics and stop metering
         if self.config.runtime.metering.enabled:
             self._global_predict_servicer.stop_metering()
+        # Shut down the model manager's model polling if enabled
+        self._shut_down_model_manager()
 
     def render_protos(self, proto_out_dir: str) -> None:
         """Renders all the necessary protos for this service into a directory
