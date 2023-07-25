@@ -111,6 +111,10 @@ def validate_data_stream(data_stream, length, data_item_type, data_item_length=N
 
 
 def test_make_data_stream_source_type_name():
+    assert "DataStreamSourceInt" == _make_data_stream_source_type_name(int)
+    assert "DataStreamSourceFloat" == _make_data_stream_source_type_name(float)
+    assert "DataStreamSourceStr" == _make_data_stream_source_type_name(str)
+    assert "DataStreamSourceBool" == _make_data_stream_source_type_name(bool)
     assert "DataStreamSourceSampleTrainingType" == _make_data_stream_source_type_name(
         SampleTrainingType
     )
