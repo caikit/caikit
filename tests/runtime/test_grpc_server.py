@@ -64,6 +64,7 @@ from sample_lib.data_model import (
     SampleTrainingType,
 )
 from tests.conftest import random_test_id
+from tests.core.helpers import *
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import register_trained_model, runtime_grpc_test_server
 import caikit.interfaces.common
@@ -181,6 +182,25 @@ def test_model_train(runtime_grpc_server):
     # Fields with defaults have expected values
     assert result.batch_size == 64
     assert result.learning_rate == 0.0015
+
+
+def test_components_preinitialized(
+    reset_globals, open_port, sample_inference_service, sample_train_service
+):
+    """Test that all model management components get pre-initialized when the
+    server is instantiated
+    """
+    assert not MODEL_MANAGER._trainers
+    assert not MODEL_MANAGER._finders
+    assert not MODEL_MANAGER._initializers
+    with runtime_grpc_test_server(
+        open_port,
+        inference_service=sample_inference_service,
+        training_service=sample_train_service,
+    ):
+        assert MODEL_MANAGER._trainers
+        assert MODEL_MANAGER._finders
+        assert MODEL_MANAGER._initializers
 
 
 def test_predict_sample_module_ok_response(

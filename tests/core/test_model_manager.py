@@ -569,6 +569,37 @@ def test_load_loader_finder_by_value(reset_globals):
         assert isinstance(model, SampleModule)
 
 
+def test_initialize_all_components(reset_globals):
+    """Make sure that calling initialize_components will proactively create all
+    component instances from config
+    """
+    with temp_config(
+        {
+            "model_management": {
+                "trainers": {
+                    "default": {"type": "LOCAL"},
+                    "foobar": {"type": "LOCAL"},
+                },
+                "finders": {
+                    "default": {"type": "LOCAL"},
+                    "foobar": {"type": "LOCAL"},
+                },
+                "initializers": {
+                    "default": {"type": "LOCAL"},
+                    "foobar": {"type": "LOCAL"},
+                },
+            }
+        }
+    ):
+        assert not MODEL_MANAGER._trainers
+        assert not MODEL_MANAGER._finders
+        assert not MODEL_MANAGER._initializers
+        MODEL_MANAGER.initialize_components()
+        assert set(MODEL_MANAGER._trainers.keys()) == {"default", "foobar"}
+        assert set(MODEL_MANAGER._finders.keys()) == {"default", "foobar"}
+        assert set(MODEL_MANAGER._initializers.keys()) == {"default", "foobar"}
+
+
 def test_train_by_module_class(reset_globals):
     """Make sure training can be accessed through the central train function
     with the class directly

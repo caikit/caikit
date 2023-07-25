@@ -75,6 +75,19 @@ class ModelManager:
         self._initializers = {}
         self.__singleton_lock = Lock()
 
+    def initialize_components(self):
+        """Proactively initialize all configured trainer/finder/initializer
+        component instances. This is a separate call to enable explicit config.
+        """
+        # Initialize all configured components
+        mm_config = get_config().model_management
+        for trainer in mm_config.trainers:
+            self._get_trainer(trainer)
+        for finder in mm_config.finders:
+            self._get_finder(finder)
+        for initializer in mm_config.initializers:
+            self._get_initializer(initializer)
+
     ## Public ##################################################################
 
     def train(
