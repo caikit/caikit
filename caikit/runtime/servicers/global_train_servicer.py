@@ -198,7 +198,7 @@ class GlobalTrainServicer:
         model_name = getattr(request, "model_name", None)
         if model_name is None:
             # try to get it from kwargs
-            model_name = kwargs.get("model_name", None)
+            model_name = kwargs.pop("model_name", None)
         if model_name is None:
             raise CaikitRuntimeException(
                 StatusCode.INVALID_ARGUMENT,
@@ -206,7 +206,7 @@ class GlobalTrainServicer:
             )
         # Figure out where this model will be saved
         model_path = self._get_model_path(training_output_dir, model_name)
-        request_params = kwargs.get("request_params", None)
+        request_params = kwargs.pop("request_params", None)
         if isinstance(request, ProtoMessageType):
             request_params = build_caikit_library_request_dict(
                 request, module.TRAIN_SIGNATURE
@@ -242,6 +242,7 @@ class GlobalTrainServicer:
 
             # Register the cancellation callback if given a context
             if context is not None:
+                # TODO: check type of context to be grpc context
 
                 # Create a callback to register termination of training
                 def rpc_termination_callback():

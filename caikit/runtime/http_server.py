@@ -292,28 +292,39 @@ class RuntimeHTTPServer(RuntimeServerBase):
             log.debug("In unary handler for %s", rpc.name)
             loop = asyncio.get_running_loop()
             request_params = self._get_request_params(rpc, request=request)
-            # for k, v in combined_no_none.items():
-            #     setattr(request, k, v)
-            # setattr(request, **combined_no_none)
             module = rpc.clz
-            # model_name = request_params.pop("model_name")
+            model_name = request_params.pop("model_name")
+            # handle datastreams
+            if training_data := request_params.get("training_data", None):
+                # get json from pydantic model
+                training_data_json = training_data.model_dump_json()
+                substituted_json = ""
+                if type(training_data.data_stream) == PYDANTIC_REGISTRY.get(
+                    PYDANTIC_REGISTRY.get(type(training_data)).JsonData
+                ):
+                    # substitute data_stream in json repr with jsondata
+                    substituted_json = training_data_json.replace(
+                        "data_stream", "jsondata"
+                    )
+                elif type(training_data.data_stream) == PYDANTIC_REGISTRY.get(
+                    PYDANTIC_REGISTRY.get(type(training_data)).File
+                ):
+                    # substitute data_stream in json repr with file
+                    substituted_json = training_data_json.replace("data_stream", "file")
 
+                json_data_obj = PYDANTIC_REGISTRY.get(type(training_data)).from_json(
+                    substituted_json
+                )
+                request_params["training_data"] = json_data_obj
             try:
-                # call = partial(
-                #     self.global_train_servicer.run_async,
-                #     runnable_executor=LocalTrainSaveExecutor(),
-                #     kwargs=request_params,
-                #     model_name=request_params["model_name"],
-                #     model_path="training_dir"
-                # )
                 call = partial(
                     self.global_train_servicer.run_training_job,
                     request=request,
                     module=module,
-                    # model_name=model_name,
                     training_output_dir="training_dir",
                     request_params=request_params,
-                    context=context,
+                    # context=context,
+                    model_name=model_name,
                     wait=True,
                 )
                 return await loop.run_in_executor(None, call)
@@ -396,6 +407,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         pydantic_response = self._dataobject_to_pydantic(
             self._get_response_dataobject(rpc)
         )
+
         # pylint: disable=unused-argument
         @self.app.post(self._get_route(rpc), response_model=pydantic_response)
         async def _handler(
@@ -608,6 +620,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
             },
         )
         PYDANTIC_REGISTRY[dm_class] = pydantic_model
+        # also store the reverse mapping for easy retrieval
+        # should be fine since we only check for dm_class in this dict
+        PYDANTIC_REGISTRY[pydantic_model] = dm_class
         return pydantic_model
 
     @staticmethod
