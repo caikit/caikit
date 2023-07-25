@@ -277,7 +277,7 @@ class ModuleSubproc:
         self._cmd = shlex.split(cmd)
 
         # Set up the environment
-        self._env = copy.copy(os.environ)
+        self._env = copy.deepcopy(os.environ)
         self._env.update(env_vars)
         self._env["PYTHONPATH"] = ":".join(sys.path)
 
