@@ -299,15 +299,21 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 # get json from pydantic model
                 training_data_json = training_data.model_dump_json()
                 substituted_json = ""
-                if type(training_data.data_stream) == PYDANTIC_REGISTRY.get(
-                    PYDANTIC_REGISTRY.get(type(training_data)).JsonData
+                if isinstance(
+                    training_data.data_stream,
+                    PYDANTIC_REGISTRY.get(
+                        PYDANTIC_REGISTRY.get(type(training_data)).JsonData
+                    ),
                 ):
                     # substitute data_stream in json repr with jsondata
                     substituted_json = training_data_json.replace(
                         "data_stream", "jsondata"
                     )
-                elif type(training_data.data_stream) == PYDANTIC_REGISTRY.get(
-                    PYDANTIC_REGISTRY.get(type(training_data)).File
+                elif isinstance(
+                    training_data.data_stream,
+                    PYDANTIC_REGISTRY.get(
+                        PYDANTIC_REGISTRY.get(type(training_data)).File
+                    ),
                 ):
                     # substitute data_stream in json repr with file
                     substituted_json = training_data_json.replace("data_stream", "file")
