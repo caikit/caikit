@@ -92,6 +92,9 @@ GRPC_CODE_TO_HTTP = {
 REQUIRED_INPUTS_KEY = "inputs"
 OPTIONAL_INPUTS_KEY = "parameters"
 
+# Endpoint to use for health checks
+HEALTH_ENDPOINT = "/health"
+
 ## RuntimeHTTPServer ###########################################################
 
 
@@ -121,6 +124,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # self.global_train_servicer = GlobalTrainServicer(train_service)
 
         self.package_name = inference_service.descriptor.full_name.rsplit(".", 1)[0]
+
+        # Add the health endpoint
+        self.app.get(HEALTH_ENDPOINT)(self._health_check)
 
         # Bind all routes to the server
         self._bind_routes(inference_service)
@@ -534,6 +540,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
         )
         PYDANTIC_REGISTRY[dm_class] = pydantic_model
         return pydantic_model
+
+    @staticmethod
+    def _health_check():
+        log.debug4("Server healthy")
 
 
 ## Main ########################################################################
