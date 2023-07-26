@@ -226,3 +226,48 @@ def test_model_train_sample_widget(sample_model_train_servicer, output_dir):
         trainingID=model_train_request.trainingID,
         customTrainingID=model_train_request.customTrainingID,
     )
+
+
+def test_files_from_training_input_dir_are_used(
+    sample_model_train_servicer, output_dir
+):
+    """The MT request comes with a `training_input_dir` field.
+    If datastreams reference files, they may exist inside this dynamically-created directory.
+    The servicer should detect this and direct datastreams to that directory.
+    """
+    training_id = str(uuid.uuid4())
+
+    training_output_dir = os.path.join(output_dir, training_id)
+    training_input_dir = os.path.join(output_dir, training_id, "inputs")
+    input_file_name = "data.json"
+
+    os.makedirs(training_input_dir, exist_ok=True)
+    with open(os.path.join(training_input_dir, input_file_name), "w") as f:
+        json.dump([sample_lib.data_model.SampleTrainingType(number=1).to_dict()], f)
+
+    model_train_request = process_pb2.ProcessRequest(
+        trainingID=training_id,
+        customTrainingID=str(uuid.uuid4()),
+        request_dict={
+            "train_module": "00110203-0405-0607-0809-0a0b02dd0e0f",
+            "training_params": json.dumps(
+                {
+                    "model_name": "abc",
+                    "training_data": {
+                        "file": {
+                            "filename": input_file_name  # This is relative to training_input_dir
+                        },
+                    },
+                }
+            ),
+        },
+        training_input_dir=training_input_dir,
+        training_output_dir=training_output_dir,
+    )
+    context = Fixtures.build_context("test-any-unresponsive-model")
+    training_response = sample_model_train_servicer.Run(model_train_request, context)
+    assert os.path.isdir(training_output_dir)
+
+    # Make sure that the training succeeded
+    model_future = MODEL_MANAGER.get_model_future(training_response.trainingID)
+    assert model_future.get_info().status == TrainingStatus.COMPLETED
