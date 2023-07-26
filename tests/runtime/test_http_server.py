@@ -32,6 +32,7 @@ import tls_test_tools
 # Local
 from caikit.core import MODEL_MANAGER, DataObjectBase, dataobject
 from caikit.interfaces.nlp.data_model import GeneratedTextStreamResult, GeneratedToken
+from caikit.runtime import http_server
 from caikit.runtime.http_server import RuntimeHTTPServer
 from tests.conftest import temp_config
 from tests.runtime.conftest import ModuleSubproc, open_port, register_trained_model
