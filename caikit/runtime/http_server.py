@@ -185,10 +185,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Placeholder for thread when running without blocking
         self._uvicorn_server_thread = None
 
-    def __del__(self):
-        if get_config().runtime.metering.enabled:
-            self.global_predict_servicer.stop_metering()
-
     def start(self, blocking: bool = True):
         """Boot the gRPC server. Can be non-blocking, or block until shutdown
 
