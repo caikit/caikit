@@ -113,6 +113,15 @@ def test_threads_can_return_results():
     assert expected == thread.get_or_throw()
 
 
+def test_threads_not_canceled_after_success():
+    thread = DestroyableThread(lambda: None)
+    thread.start()
+    thread.join()
+    assert not thread.canceled
+    thread.destroy()
+    assert not thread.canceled
+
+
 def test_threads_can_throw():
     expected = ValueError("test-any-error")
 
