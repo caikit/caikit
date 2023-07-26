@@ -75,7 +75,7 @@ def test_training_runs(training_management_servicer, training_pool):
     assert response.state == TrainingStatus.COMPLETED.value
 
 
-def test_training_can_cancel(training_management_servicer):
+def test_training_cannot_cancel_on_completed_training(training_management_servicer):
     # Create a future and set it in the training manager
     event = threading.Event()
     model_future = MODEL_MANAGER.train(
@@ -92,11 +92,11 @@ def test_training_can_cancel(training_management_servicer):
     event.set()
     model_future.wait()
 
-    # cancel the training request, check that its status is now canceled
+    # cancel the training request, check that its status is still completed because it was completed
     training_management_servicer.CancelTraining(request, context=None)
 
     response = training_management_servicer.GetTrainingStatus(request, context=None)
-    assert response.status == TrainingStatus.CANCELED.value
+    assert response.status == TrainingStatus.COMPLETED.value
 
 
 def test_training_cancel_on_correct_id(training_management_servicer):
