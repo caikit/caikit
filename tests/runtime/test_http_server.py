@@ -300,6 +300,15 @@ def test_inference_sample_task_throws_incorrect_input(sample_task_model_id):
         assert response.status_code == 400
 
 
+def test_health_check_ok():
+    """Make sure the health check returns OK"""
+    server = http_server.RuntimeHTTPServer()
+    with TestClient(server.app) as client:
+        response = client.get(http_server.HEALTH_ENDPOINT)
+        assert response.status_code == 200
+        assert response.text == "OK"
+
+
 def test_pydantic_wrapping_with_enums():
     """Check that the pydantic wrapping works on our data models when they have enums"""
     # The NLP GeneratedTextStreamResult data model contains enums

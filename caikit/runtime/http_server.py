@@ -29,6 +29,7 @@ import time
 
 # Third Party
 from fastapi import FastAPI, Request, Response
+from fastapi.responses import PlainTextResponse
 from grpc import StatusCode
 from sse_starlette import EventSourceResponse, ServerSentEvent
 import numpy as np
@@ -126,7 +127,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         self.package_name = inference_service.descriptor.full_name.rsplit(".", 1)[0]
 
         # Add the health endpoint
-        self.app.get(HEALTH_ENDPOINT)(self._health_check)
+        self.app.get(HEALTH_ENDPOINT, response_class=PlainTextResponse)(
+            self._health_check
+        )
 
         # Bind all routes to the server
         self._bind_routes(inference_service)
@@ -542,8 +545,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         return pydantic_model
 
     @staticmethod
-    def _health_check():
+    def _health_check() -> str:
         log.debug4("Server healthy")
+        return "OK"
 
 
 ## Main ########################################################################
