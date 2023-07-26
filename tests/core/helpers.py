@@ -21,10 +21,11 @@ import pytest
 
 # Local
 from caikit.core import MODEL_MANAGER
-from caikit.core.data_model import TrainingInfo, TrainingStatus
+from caikit.core.data_model import TrainingStatus
 from caikit.core.model_management import (
     ModelInitializerBase,
     ModelTrainerBase,
+    TrainingInfo,
     model_initializer_factory,
     model_trainer_factory,
 )

@@ -262,7 +262,7 @@ class GlobalTrainServicer:
                     )
                     if isinstance(model_future, LocalModelTrainer.LocalModelFuture):
                         raise model_future._worker.error
-                    raise RuntimeError(training_info.errors[0])
+                    raise training_info.errors[0]
 
         # return TrainingJob object
         return TrainingJob(

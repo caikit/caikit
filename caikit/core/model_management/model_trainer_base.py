@@ -28,13 +28,20 @@ model_management:
 # Standard
 from typing import Optional, Type
 import abc
+import dataclasses
 import os
 
 # Local
-from ..data_model import TrainingInfo
+from ..data_model import TrainingStatus
 from ..modules import ModuleBase
 from ..toolkit.factory import FactoryConstructible
 from ..toolkit.reversible_hasher import ReversibleHasher
+
+
+@dataclasses.dataclass
+class TrainingInfo:
+    status: TrainingStatus
+    errors: Optional[Exception] = None
 
 
 class ModelTrainerBase(FactoryConstructible):

@@ -220,4 +220,6 @@ def test_get_into_return_error(trainer_type_cfg):
     assert model_future.get_info().status == TrainingStatus.ERRORED
     assert model_future.get_info().status.is_terminal
     assert isinstance(model_future.get_info().errors, list)
-    assert model_future.get_info().errors[0] == "Batch size of 999 is not allowed!"
+    assert model_future.get_info().errors[0] == ValueError(
+        "Batch size of 999 is not allowed!"
+    )
