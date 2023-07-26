@@ -67,6 +67,9 @@ log = alog.use_channel("HTTP")
 
 # Registry of DM -> Pydantic model mapping to avoid errors when reusing messages
 # across endpoints
+# It is essentially a 2-way map, you give it a
+# pydantic model, it gives you back a DM class, you give it a
+# DM class, you get back a pydantic model.
 PYDANTIC_REGISTRY = {}
 
 
@@ -292,13 +295,44 @@ class RuntimeHTTPServer(RuntimeServerBase):
             log.debug("In unary handler for %s", rpc.name)
             loop = asyncio.get_running_loop()
             request_params = self._get_request_params(rpc, request=request)
-            module = rpc.clz
-            model_name = request_params.pop("model_name")
-            # handle datastreams
+
+            build_request_params_dict(request_params)
+            try:
+                call = partial(
+                    self.global_train_servicer.run_training_job,
+                    request=request,
+                    module=rpc.clz,
+                    training_output_dir="training_dir",
+                    request_params=request_params,
+                    # context=context,
+                    wait=True,
+                )
+                return await loop.run_in_executor(None, call)
+            except CaikitRuntimeException as err:
+                error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
+                error_content = {
+                    "details": err.message,
+                    "code": error_code,
+                    "id": err.id,
+                }
+            except Exception as err:  # pylint: disable=broad-exception-caught
+                error_code = 500
+                error_content = {
+                    "details": f"Unhandled exception: {str(err)}",
+                    "code": error_code,
+                    "id": None,
+                }
+                log.error("<RUN51881106E>", err, exc_info=True)
+            return Response(content=json.dumps(error_content), status_code=error_code)
+
+        def build_request_params_dict(request_params: Dict[str, any]) -> Dict[str, any]:
             if training_data := request_params.get("training_data", None):
                 # get json from pydantic model
                 training_data_json = training_data.model_dump_json()
                 substituted_json = ""
+                # we're asking PYDANTIC_REGISTRY to give us back a pydantic
+                # model of a JsonData, but we first want to get the DM class
+                # for the type of training_data, hence nested calls.
                 if isinstance(
                     training_data.data_stream,
                     PYDANTIC_REGISTRY.get(
@@ -322,34 +356,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     substituted_json
                 )
                 request_params["training_data"] = json_data_obj
-            try:
-                call = partial(
-                    self.global_train_servicer.run_training_job,
-                    request=request,
-                    module=module,
-                    training_output_dir="training_dir",
-                    request_params=request_params,
-                    # context=context,
-                    model_name=model_name,
-                    wait=True,
-                )
-                return await loop.run_in_executor(None, call)
-            except CaikitRuntimeException as err:
-                error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
-                error_content = {
-                    "details": err.message,
-                    "code": error_code,
-                    "id": err.id,
-                }
-            except Exception as err:  # pylint: disable=broad-exception-caught
-                error_code = 500
-                error_content = {
-                    "details": f"Unhandled exception: {str(err)}",
-                    "code": error_code,
-                    "id": None,
-                }
-                log.error("<RUN51881106E>", err, exc_info=True)
-            return Response(content=json.dumps(error_content), status_code=error_code)
+            return request_params
 
     def _add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
