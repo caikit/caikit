@@ -29,6 +29,7 @@ import alog
 from caikit import get_config
 from caikit.core import MODEL_MANAGER, ModuleBase
 from caikit.core.data_model import DataBase
+from caikit.core.model_management.local_model_trainer import LocalModelTrainer
 from caikit.interfaces.runtime.data_model import TrainingJob
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage
@@ -253,7 +254,15 @@ class GlobalTrainServicer:
                 model_future.wait()
                 training_info = model_future.get_info()
                 if training_info.errors:
-                    raise training_info.errors[0]
+                    log.info(
+                        "Training %s failed with error: %s. "
+                        "Re-raising exception for synchronous response",
+                        model_future.id,
+                        training_info.errors[0],
+                    )
+                    if isinstance(model_future, LocalModelTrainer.LocalModelFuture):
+                        raise model_future._worker.error
+                    raise RuntimeError(training_info.errors[0])
 
         # return TrainingJob object
         return TrainingJob(

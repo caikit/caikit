@@ -16,7 +16,7 @@ Common interface for destroyable threads and processes
 """
 
 # Standard
-from typing import Any
+from typing import Any, Optional
 import abc
 
 
@@ -55,5 +55,5 @@ class Destroyable(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def error(self) -> bool:
+    def error(self) -> Optional[Exception]:
         """Return the error information to user if one occurred"""
