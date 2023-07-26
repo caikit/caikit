@@ -28,7 +28,6 @@ from caikit.core.data_model import ProducerId
 from caikit.interfaces.ts.data_model.backends.dfcache import EnsureCached
 from caikit.interfaces.ts.data_model.backends.util import (
     iteritems_workaround,
-    mock_pd_groupby,
     pd_timestamp_to_seconds,
     strip_periodic,
 )
@@ -750,3 +749,48 @@ def test_mts_len():
     )
 
     assert len(mts) == 40
+
+
+@pytest.mark.filterwarnings(
+    "ignore:.*loads all data into the driver's memory.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
+    "ignore:toPandas attempted Arrow optimization.*:UserWarning",
+)
+def test_dm_serializes_spark_vectors():
+    # Standard
+    from datetime import datetime
+
+    # Third Party
+    from pyspark.ml.linalg import Vectors, VectorUDT
+    from pyspark.sql.types import (
+        ArrayType,
+        DateType,
+        StringType,
+        StructField,
+        StructType,
+    )
+
+    v = Vectors.dense([1.0, 2.0])
+    schema = StructType(
+        [
+            StructField("date", DateType(), True),
+            StructField("id", StringType(), True),
+            StructField("value", VectorUDT(), True),
+        ]
+    )
+
+    data = [
+        (datetime(year=2020, month=1, day=1), "id", v),
+    ]
+    df = spark.createDataFrame(data=data, schema=schema)
+
+    mts = dm.TimeSeries(
+        df,
+        key_column="id",
+        timestamp_column="date",
+        value_columns=["value"],
+    )
+
+    # test round trip
+    json_str = mts.to_json()
+    mts2 = dm.TimeSeries.from_json(json_str)
+    assert json_str == mts2.to_json()
