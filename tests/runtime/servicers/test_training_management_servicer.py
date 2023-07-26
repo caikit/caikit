@@ -128,9 +128,11 @@ def test_training_cancel_on_correct_id(training_management_servicer):
     response_1 = training_management_servicer.GetTrainingStatus(request_1, context=None)
     assert response_1.status == TrainingStatus.CANCELED.value
 
+    # release the blocked training that is waiting to clean up
     unblock = threading.Thread(target=unblock_training_thread)
     unblock.start()
 
+    # training number 2 should still complete
     request_2 = TrainingInfoRequest(training_id=model_future_2.id).to_proto()
     response_2 = training_management_servicer.GetTrainingStatus(request_2, context=None)
     assert response_2.status == TrainingStatus.COMPLETED.value
