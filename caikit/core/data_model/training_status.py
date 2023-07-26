@@ -19,7 +19,7 @@ Common data model enum used for reporting training status
 from enum import Enum
 
 # Local
-from .dataobject import DataObjectBase, dataobject
+from .dataobject import dataobject
 from .package import PACKAGE_COMMON
 
 
