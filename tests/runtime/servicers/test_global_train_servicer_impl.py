@@ -338,7 +338,7 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_mod
     future_info = MODEL_MANAGER.get_model_future(
         training_response.training_id
     ).get_info()
-    assert f"Batch size of 999 is not allowed!" in future_info.errors[0]
+    assert f"Batch size of 999 is not allowed!" in str(future_info.errors[0])
 
 
 def test_global_train_returns_exit_code_with_oom(
@@ -366,7 +366,7 @@ def test_global_train_returns_exit_code_with_oom(
         future_info = MODEL_MANAGER.get_model_future(
             training_response.training_id
         ).get_info()
-        assert f"Training process died with OOM error!" in future_info.errors[0]
+        assert f"Training process died with OOM error!" in str(future_info.errors[0])
 
 
 #####################################################################

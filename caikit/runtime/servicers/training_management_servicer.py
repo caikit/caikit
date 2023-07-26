@@ -45,10 +45,14 @@ class TrainingManagementServicerImpl:
                 training_id=training_info.training_id
             )
 
+            reasons = []
+            if model_future.get_info().errors:
+                reasons = [str(error) for error in model_future.get_info().errors]
+
             return TrainingInfoResponse(
                 training_id=training_info.training_id,
                 status=model_future.get_info().status,
-                reasons=[str(error) for error in model_future.get_info().errors],
+                reasons=reasons,
             ).to_proto()
         except ValueError as err:
             raise CaikitRuntimeException(
