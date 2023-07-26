@@ -25,6 +25,7 @@ from .base import (
     TimeSeriesBackendBase,
     UncachedBackendMixin,
 )
+from ..toolkit.optional_dependencies import HAVE_PYSPARK
 from .util import iteritems_workaround, pd_timestamp_to_seconds
 from caikit.core.data_model import DataBase, ProducerId
 from caikit.core.toolkit.errors import error_handler
@@ -149,7 +150,7 @@ class PandasTimeSeriesBackend(TimeSeriesBackendBase):
     """The PandasTimeSeriesBackend is responsible for managing the standard
     in-memory representation of a TimeSeries
     """
-
+    
     def __init__(
         self,
         data_frame: pd.DataFrame,
@@ -303,6 +304,15 @@ class PandasValueSequenceBackend(UncachedBackendMixin, StrictFieldBackendMixin):
 
     # This dtype is what shows up for non-periodic date ranges
     _TIMESTAMP_DTYPE = np.dtype("datetime64[ns]")
+    
+    # What types do we consider to be vector types
+    _DEFAULT_VECTOR_TYPES = [list, np.ndarray]
+    if HAVE_PYSPARK:
+        # pyspark.pandas.DataFrame objects can contain
+        # pyspark specific objects
+        import pyspark
+        from pyspark.ml.linalg import Vector as SVector
+        _DEFAULT_VECTOR_TYPES.append(SVector)
 
     def __init__(self, data_frame: pd.Series, col_name: str):
         """Initialize with the data frame and the value column name"""
@@ -331,7 +341,7 @@ class PandasValueSequenceBackend(UncachedBackendMixin, StrictFieldBackendMixin):
         #  serializable
         # this is making the assumption that we have at least one value in the dataframe
         elif str(self._dtype) == "object" and isinstance(
-            self._df[self._col_name].iloc[0], (list, np.ndarray)
+            self._df[self._col_name].iloc[0], tuple(PandasValueSequenceBackend._DEFAULT_VECTOR_TYPES)
         ):
             self._sequence_type = time_types.ValueSequence.VectorValueSequence
             self._valid_oneof = "val_vector"
