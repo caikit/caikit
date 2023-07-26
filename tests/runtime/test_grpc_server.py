@@ -628,7 +628,7 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
     assert inference_response == HAPPY_PATH_RESPONSE
 
 
-def test_train_and_succesfully_cancel_training(
+def test_train_and_successfully_cancel_training(
     train_stub, sample_train_service, training_management_stub
 ):
     # train a model, make sure training doesn't have error
@@ -639,15 +639,11 @@ def test_train_and_succesfully_cancel_training(
         )
     )
     model_name = random_test_id()
+    # start a training that sleeps for a long time, so I can cancel
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=model_name, training_data=training_data.to_proto()
+        model_name=model_name, training_data=training_data.to_proto(), sleep_time=1
     )
     train_response = train_stub.SampleTaskSampleModuleTrain(train_request)
-
-    assert dir(train_response) == dir(HAPPY_PATH_TRAIN_RESPONSE)
-    assert train_response.training_id is not None
-    assert isinstance(train_response.training_id, str)
-    assert train_response.model_name == model_name
 
     training_id = train_response.training_id
     training_info_request = TrainingInfoRequest(training_id=training_id)
@@ -656,9 +652,9 @@ def test_train_and_succesfully_cancel_training(
             training_management_stub.GetTrainingStatus(training_info_request.to_proto())
         )
     )
-
-    assert training_management_response.status != TrainingStatus.ERRORED.value
-
+    assert (
+        training_management_response.status == TrainingStatus.RUNNING.value
+    ), "Could not cancel this training within 1s"
     # cancel the training
     canceled_response = training_management_stub.CancelTraining(
         training_info_request.to_proto()
@@ -677,8 +673,9 @@ def test_cancel_does_not_affect_other_models(
         )
     )
     model_name = random_test_id()
+    # start a training that sleeps for a long time, so I can cancel
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=model_name, training_data=training_data.to_proto()
+        model_name=model_name, training_data=training_data.to_proto(), sleep_time=1
     )
     train_response = train_stub.SampleTaskSampleModuleTrain(train_request)
 
@@ -695,16 +692,17 @@ def test_cancel_does_not_affect_other_models(
         )
     )
 
-    assert training_management_response.status != TrainingStatus.ERRORED.value
-
     # train another model
     model_name2 = random_test_id()
     train_request2 = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=model_name2, training_data=training_data.to_proto()
+        model_name=model_name2, training_data=training_data.to_proto(), sleep_time=0.09
     )
     train_response2 = train_stub.SampleTaskSampleModuleTrain(train_request2)
 
     # cancel the first training
+    assert (
+        training_management_response.status == TrainingStatus.RUNNING.value
+    ), "Could not cancel this training within 1s"
     canceled_response = training_management_stub.CancelTraining(
         training_info_request.to_proto()
     )
