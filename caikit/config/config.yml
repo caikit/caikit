@@ -119,9 +119,6 @@ runtime:
         enabled: true
         port: 8086
 
-    # Use arbitrary available ports if the specified ones aren't free
-    find_available_ports: false
-
     # Whether or not to abort work on client cancellation
     use_abortable_threads: true
 
