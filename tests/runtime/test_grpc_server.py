@@ -455,9 +455,11 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
 
     train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
         model_name="Bar Training",
-        sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
-        batch_size=100,
         training_data=training_data,
+        training_parameters={
+            "sample_input_sampleinputtype": SampleInputType(name="Gabe").to_proto(),
+            "batch_size": 100,
+        }
     )
     actual_response = train_stub.OtherTaskOtherModuleTrain(train_request)
     is_good_train_response(
@@ -568,8 +570,10 @@ def test_train_fake_module_ok_response_with_datastream_jsondata(
     model_name = random_test_id()
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
         model_name=model_name,
-        batch_size=42,
         training_data=training_data,
+        training_parameters={
+            "batch_size": 2,
+        }
     )
 
     actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
