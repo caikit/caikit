@@ -76,8 +76,8 @@ class SamplePrimitiveModule(caikit.core.ModuleBase):
         union_list4: Union[List[str], int],
         training_params_json_dict_list: List[JsonDict],
         training_params_json_dict: JsonDict = None,
-        training_params_dict: Dict[str, int] = field(default_factory=dict),
-        training_params_dict_int: Dict[int, float] = field(default_factory=dict),
+        training_params_dict: Dict[str, int] = None,
+        training_params_dict_int: Dict[int, float] = None,
     ) -> "SamplePrimitiveModule":
         """Sample training method that produces a trained model"""
         assert type(sample_input) == SampleInputType
