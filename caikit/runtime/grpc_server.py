@@ -16,12 +16,10 @@
 from concurrent import futures
 from typing import Optional, Union
 import os
-import signal
 
 # Third Party
 from grpc_health.v1 import health, health_pb2_grpc
 from grpc_reflection.v1alpha import reflection
-from prometheus_client import start_http_server
 from py_grpc_prometheus.prometheus_server_interceptor import PromServerInterceptor
 import grpc
 
@@ -49,7 +47,6 @@ from caikit.runtime.servicers.model_train_servicer import ModelTrainServicerImpl
 from caikit.runtime.servicers.training_management_servicer import (
     TrainingManagementServicerImpl,
 )
-from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 # Have pylint ignore broad exception catching in this file so that we can log all
 # unexpected errors using alog.
@@ -68,19 +65,10 @@ class RuntimeGRPCServer(RuntimeServerBase):
         inference_service: ServicePackage,
         training_service: Optional[ServicePackage] = None,
         tls_config_override: Optional[aconfig.Config] = None,
-        handle_terminations: bool = False,
     ):
         super().__init__(get_config().runtime.grpc.port, tls_config_override)
         self.inference_service = inference_service
         self.training_service = training_service
-
-        # NOTE: signal function can only be called from main thread of the main
-        # interpreter. If this function is called from a thread (like in tests)
-        # then signal handler cannot be used. Thus, we will only have real
-        # termination_handler when this is called from the __main__.
-        if handle_terminations:
-            signal.signal(signal.SIGINT, self.interrupt)
-            signal.signal(signal.SIGTERM, self.interrupt)
 
         # Initialize basic server
         # py_grpc_prometheus.server_metrics.
@@ -226,18 +214,6 @@ class RuntimeGRPCServer(RuntimeServerBase):
         if blocking:
             self.server.wait_for_termination(None)
 
-    def interrupt(self, signal_, _stack_frame):
-        """Interrupt the server. Implements the interface for Python signal.signal
-
-        Reference: https://docs.python.org/3/library/signal.html#signal.signal
-        """
-        log.info(
-            "<RUN81000120I>",
-            "Caikit Runtime received interrupt signal %s, shutting down",
-            signal_,
-        )
-        self.stop()
-
     def stop(self, grace_period_seconds: Union[float, int] = None):
         """Stop the server, with an optional grace period.
 
@@ -245,7 +221,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
             grace_period_seconds (Union[float, int]): Grace period for service shutdown.
                 Defaults to application config
         """
-        log.debug("Shutting down grpc server")
+        log.info("Shutting down grpc server")
         if grace_period_seconds is None:
             grace_period_seconds = (
                 self.config.runtime.grpc.server_shutdown_grace_period_seconds
@@ -294,48 +270,3 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
     def __exit__(self, type_, value, traceback):
         self.stop(0)
-
-
-def main(blocking: bool = True):
-    # Configure using the log level and formatter type specified in config.
-    caikit.core.toolkit.logging.configure()
-    log.debug("Starting up caikit.runtime.grpc_server")
-
-    # Start serving Prometheus metrics
-    caikit_config = get_config()
-    if caikit_config.runtime.metrics.enabled:
-        log.info(
-            "Serving prometheus metrics on port %s", caikit_config.runtime.metrics.port
-        )
-        with alog.ContextTimer(log.info, "Booted metrics server in "):
-            start_http_server(caikit_config.runtime.metrics.port)
-
-    # Enable signal handling
-    handle_terminations = True
-
-    # We should always be able to stand up an inference service
-    inference_service: ServicePackage = ServicePackageFactory.get_service_package(
-        ServicePackageFactory.ServiceType.INFERENCE,
-    )
-
-    # But maybe not always a training service
-    try:
-        training_service: Optional[
-            ServicePackage
-        ] = ServicePackageFactory.get_service_package(
-            ServicePackageFactory.ServiceType.TRAINING,
-        )
-    except CaikitRuntimeException as e:
-        log.warning("Cannot stand up training service, disabling training: %s", e)
-        training_service = None
-
-    server = RuntimeGRPCServer(
-        inference_service=inference_service,
-        training_service=training_service,
-        handle_terminations=handle_terminations,
-    )
-    server.start(blocking)
-
-
-if __name__ == "__main__":
-    main()

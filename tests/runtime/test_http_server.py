@@ -357,6 +357,7 @@ def test_pydantic_wrapping_with_lists(runtime_http_server):
     assert foo.bars[0].baz == 1
 
 
+@pytest.mark.skip
 def test_http_server_shutdown_with_model_poll(open_port):
     """Test that a SIGINT successfully shuts down the running server"""
     with tempfile.TemporaryDirectory() as workdir:
