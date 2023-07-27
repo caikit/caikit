@@ -87,7 +87,7 @@ HAPPY_PATH_TRAIN_RESPONSE = TrainingJob(
 ).to_proto()
 
 
-def is_good_train_response(
+def assert_training_successful(
     actual_response, expected, model_name, training_management_stub
 ):
     assert dir(actual_response) == dir(expected)
@@ -95,24 +95,15 @@ def is_good_train_response(
     assert isinstance(actual_response.training_id, str)
     assert actual_response.model_name == model_name
 
-    status = TrainingStatus.RUNNING.value
-    i = 0
-    while status == TrainingStatus.RUNNING.value:
-        training_info_request = TrainingInfoRequest(
-            training_id=actual_response.training_id
-        )
-        training_management_response: TrainingStatusResponse = (
-            TrainingStatusResponse.from_proto(
-                training_management_stub.GetTrainingStatus(
-                    training_info_request.to_proto()
-                )
-            )
-        )
-        status = training_management_response.state
-        assert status != TrainingStatus.ERRORED.value
-        i += 1
-        assert i < 100, "Waited too long for training to complete"
+    MODEL_MANAGER.get_model_future(actual_response.training_id).wait()
 
+    training_info_request = TrainingInfoRequest(training_id=actual_response.training_id)
+    training_management_response: TrainingStatusResponse = (
+        TrainingStatusResponse.from_proto(
+            training_management_stub.GetTrainingStatus(training_info_request.to_proto())
+        )
+    )
+    status = training_management_response.status
     assert status == TrainingStatus.COMPLETED.value
 
 
@@ -380,7 +371,7 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
 
     actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
 
-    is_good_train_response(
+    assert_training_successful(
         actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name, training_management_stub
     )
     register_trained_model(
@@ -415,7 +406,7 @@ def test_train_fake_module_ok_response_with_loaded_model_can_predict_with_traine
         model_name=model_name, sample_block=sample_model
     )
     actual_response = train_stub.SampleTaskCompositeModuleTrain(train_request)
-    is_good_train_response(
+    assert_training_successful(
         actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name, training_management_stub
     )
     register_trained_model(
@@ -460,7 +451,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
         training_data=training_data,
     )
     actual_response = train_stub.OtherTaskOtherModuleTrain(train_request)
-    is_good_train_response(
+    assert_training_successful(
         actual_response,
         HAPPY_PATH_TRAIN_RESPONSE,
         "Bar Training",
@@ -525,7 +516,7 @@ def test_train_primitive_model(
     ).to_proto()
 
     training_response = train_stub.SampleTaskSamplePrimitiveModuleTrain(train_request)
-    is_good_train_response(
+    assert_training_successful(
         training_response,
         HAPPY_PATH_TRAIN_RESPONSE,
         model_name,
@@ -573,7 +564,7 @@ def test_train_fake_module_ok_response_with_datastream_jsondata(
     )
 
     actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
-    is_good_train_response(
+    assert_training_successful(
         actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name, training_management_stub
     )
     register_trained_model(
@@ -611,7 +602,7 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
     )
 
     actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
-    is_good_train_response(
+    assert_training_successful(
         actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name, training_management_stub
     )
     register_trained_model(
@@ -647,8 +638,8 @@ def test_train_and_successfully_cancel_training(
 
     training_id = train_response.training_id
     training_info_request = TrainingInfoRequest(training_id=training_id)
-    training_management_response: TrainingInfoResponse = (
-        TrainingInfoResponse.from_proto(
+    training_management_response: TrainingStatusResponse = (
+        TrainingStatusResponse.from_proto(
             training_management_stub.GetTrainingStatus(training_info_request.to_proto())
         )
     )
@@ -686,8 +677,8 @@ def test_cancel_does_not_affect_other_models(
 
     training_id = train_response.training_id
     training_info_request = TrainingInfoRequest(training_id=training_id)
-    training_management_response: TrainingInfoResponse = (
-        TrainingInfoResponse.from_proto(
+    training_management_response: TrainingStatusResponse = (
+        TrainingStatusResponse.from_proto(
             training_management_stub.GetTrainingStatus(training_info_request.to_proto())
         )
     )
@@ -709,25 +700,12 @@ def test_cancel_does_not_affect_other_models(
     assert canceled_response.status == TrainingStatus.CANCELED.value
 
     # second training should be COMPLETED
-    status = TrainingStatus.RUNNING.value
-    i = 0
-    while status == TrainingStatus.RUNNING.value:
-        training_info_request = TrainingInfoRequest(
-            training_id=train_response2.training_id
-        )
-        training_management_response: TrainingInfoResponse = (
-            TrainingInfoResponse.from_proto(
-                training_management_stub.GetTrainingStatus(
-                    training_info_request.to_proto()
-                )
-            )
-        )
-        status = training_management_response.status
-        assert status != TrainingStatus.ERRORED.value
-        i += 1
-        assert i < 100, "Waited too long for training to complete"
-
-    assert status == TrainingStatus.COMPLETED.value
+    assert_training_successful(
+        train_response2,
+        HAPPY_PATH_TRAIN_RESPONSE,
+        model_name2,
+        training_management_stub,
+    )
 
 
 #### Error cases for train tests #####
