@@ -187,7 +187,7 @@ def test_training_raises_when_cancel_on_incorrect_id(training_management_service
     event.set()
     model_future.wait()
 
-    # cancel the training request, check that its status is now canceled
+    # cancel a training with wrong training id
     cancel_request = TrainingInfoRequest(training_id="some_random_id").to_proto()
     with pytest.raises(CaikitRuntimeException) as context:
         training_management_servicer.CancelTraining(cancel_request, context=None)
