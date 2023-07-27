@@ -1,0 +1,206 @@
+"""
+The core data model object for a TimeSeries Evaluator.
+"""
+# Standard
+from typing import List, Union
+
+try:
+    # Standard
+    from typing import Annotated
+except ImportError:  # pragma: no cover
+    # Third Party
+    from typing_extensions import Annotated
+
+# Third Party
+import pandas as pd
+
+# First Party
+from py_to_proto.dataclass_to_proto import FieldNumber, OneofField
+import alog
+
+# Local
+from .package import TS_PACKAGE
+from caikit.core import DataObjectBase
+from caikit.core.data_model import ProducerId, dataobject
+from caikit.core.toolkit.errors import error_handler
+
+log = alog.use_channel("TSEDM")
+error = error_handler.get(log)
+
+## TimeSeries Evaluator ##################################################################
+
+
+@dataobject(package=TS_PACKAGE)
+class Id(DataObjectBase):
+    """A single instance of Id
+    Representation of ids that can be either text or index. Customized
+    this way to be able to work with repeated
+    """
+
+    value: Union[
+        Annotated[str, OneofField("text"), FieldNumber(1)],
+        Annotated[int, OneofField("index"), FieldNumber(2)],
+    ]
+
+
+@dataobject(package=TS_PACKAGE)
+class EvaluationRecord(DataObjectBase):
+    """A single EvaluationRecord for EvaluationResult
+    Representation of EvaluationRecord for each row in the dataframe
+    EvaluationRecord{id_values=["A", "B"], metric_values=[0.234, 0.568, 0.417], offset="overall"}
+    """
+
+    id_values: List[Id]
+    metric_values: List[float]
+    offset: Id
+
+    def __init__(self, id_values=None, metric_values=None, offset=None):
+        """Construct a new EvaluationRecord instance
+
+        EvaluationRecord
+
+        Args:
+            id_values: list(Id)
+                List of Id values for the record
+            metric_values: list(float)
+                List of Id values containing metric results for the record
+            offset: (optional) Id
+                offset associated with the record
+        """
+
+        error.type_check_all(
+            "<WTS26895394E>", str, int, Id, allow_none=True, id_values=id_values
+        )
+        error.type_check_all("<WTS25875394E>", float, metric_values=metric_values)
+        error.type_check("<WTS25873484E>", str, int, Id, allow_none=True, offset=offset)
+
+        super().__init__()
+
+        self.id_values = (
+            []
+            if id_values is None
+            else [
+                Id(id_value) if not isinstance(id_value, Id) else id_value
+                for id_value in id_values
+            ]
+        )
+
+        self.metric_values = metric_values
+
+        self.offset = (
+            None
+            if offset is None
+            else Id(offset)
+            if not isinstance(offset, Id)
+            else offset
+        )
+
+
+@dataobject(package=TS_PACKAGE)
+class EvaluationResult(DataObjectBase):
+    """EvaluationResult containing the evaluation results
+    Representation of EvaluationResult stores rows of the dataframe as list of records string lists to keep track of id and metric columns
+    """
+
+    records: List[EvaluationRecord]
+    id_cols: List[str]
+    metric_cols: List[str]
+    offset_col: str
+    producer_id: ProducerId
+
+    def __init__(
+        self,
+        records=None,
+        id_cols=None,
+        metric_cols=None,
+        offset_col=None,
+        df=None,
+        producer_id=None,
+    ):
+        """Construct a new EvaluationResult instance
+
+        EvaluationResult
+
+        Args:
+            records: list(EvaluationRecord)
+                List of Evaluation Record instances
+            id_cols: list(string)
+                List of string containing id column names (Optional)
+            metric_cols: list(string)
+                List of string containing metric value column names
+            offset_col: string
+                Name of offset column in dataframe if exists (Optional)
+            df: pandas dataframe
+                initial input dataframe from which to store the results
+            producer_id:  ProducerId | None
+                The module that produced this evaluation result.
+        """
+
+        error.type_check_all("<WTS25782594E>", str, allow_none=True, id_cols=id_cols)
+        error.type_check_all("<WTS28634484E>", str, metric_cols=metric_cols)
+        error.type_check("<WTS28485384E>", str, allow_none=True, offset_col=offset_col)
+        error.type_check(
+            "<WTS28485385E>",
+            tuple,
+            ProducerId,
+            allow_none=True,
+            producer_id=producer_id,
+        )
+
+        super().__init__()
+
+        self.id_cols = [] if id_cols is None else id_cols
+        self.metric_cols = metric_cols
+        self.offset_col = offset_col
+        self.producer_id = producer_id
+
+        if df is not None:
+            if self.offset_col is not None:
+                error.value_check(
+                    "<WTS28484474E>",
+                    self.offset_col in df.columns,
+                    f"Specified '{self.offset_col}' offset column not in dataframe",
+                )
+
+            self.records = [
+                EvaluationRecord(
+                    id_values=(
+                        None
+                        if len(self.id_cols) == 0
+                        else df.loc[i, self.id_cols].values.tolist()
+                    ),
+                    metric_values=df.loc[i, self.metric_cols].values.tolist(),
+                    offset=(
+                        None if self.offset_col is None else df.loc[i, self.offset_col]
+                    ),
+                )
+                for i in range(len(df))
+            ]
+        else:
+            error.type_check_all("<WTS32696407E>", EvaluationRecord, records=records)
+            self.records = records
+
+    def as_pandas(self) -> "pd.DataFrame":
+        """Generate and return a pandas DataFrame"""
+
+        records = []
+
+        for record in self.records:
+            id_values = []
+            metric_values = []
+            offset = None
+
+            id_values = [v.value for v in record.id_values]
+            metric_values = record.metric_values
+            if record.offset:
+                offset = record.offset.value
+
+            records.append(id_values + metric_values + [offset])
+
+        df = pd.DataFrame(
+            records, columns=self.id_cols + self.metric_cols + [self.offset_col]
+        )
+        if record.offset is None:
+            df.drop([self.offset_col], axis=1, inplace=True)
+
+        return df
