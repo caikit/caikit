@@ -34,7 +34,7 @@ from caikit.core import DataObjectBase, dataobject
 from caikit.interfaces.nlp.data_model import GeneratedTextStreamResult, GeneratedToken
 from caikit.runtime import http_server
 from tests.conftest import temp_config
-from tests.runtime.conftest import ModuleSubproc, open_port
+from tests.runtime.conftest import ModuleSubproc
 
 ## Helpers #####################################################################
 
@@ -66,7 +66,7 @@ class TLSConfig:
 
 @contextmanager
 def generate_tls_configs(
-    tls: bool = False, mtls: bool = False, **http_config_overrides
+    port: int, tls: bool = False, mtls: bool = False, **http_config_overrides
 ):
     """Helper to generate tls configs"""
     with tempfile.TemporaryDirectory() as workdir:
@@ -110,7 +110,6 @@ def generate_tls_configs(
                 config_overrides["use_in_test"]["client_key"] = client_keyfile
 
             config_overrides["runtime"] = {"tls": tls_config}
-        port = http_server.RuntimeServerBase._find_port()
         config_overrides.setdefault("runtime", {})["http"] = {
             "server_shutdown_grace_period_seconds": 0.01,  # this is so the server is killed after 0.1 if no test is running
             "port": port,
@@ -124,8 +123,8 @@ def generate_tls_configs(
 ## Insecure and TLS Tests #######################################################################
 
 
-def test_insecure_server():
-    with generate_tls_configs():
+def test_insecure_server(open_port):
+    with generate_tls_configs(open_port):
         insecure_http_server = http_server.RuntimeHTTPServer()
         # start a non-blocking http server
         with insecure_http_server:
@@ -133,9 +132,9 @@ def test_insecure_server():
             resp.raise_for_status()
 
 
-def test_basic_tls_server():
+def test_basic_tls_server(open_port):
     with generate_tls_configs(
-        tls=True, mtls=False, http_config_overrides={}
+        open_port, tls=True, mtls=False, http_config_overrides={}
     ) as config_overrides:
         http_server_with_tls = http_server.RuntimeHTTPServer(
             tls_config_override=config_overrides["runtime"]["tls"]
@@ -149,9 +148,9 @@ def test_basic_tls_server():
             resp.raise_for_status()
 
 
-def test_basic_tls_server_with_wrong_cert():
+def test_basic_tls_server_with_wrong_cert(open_port):
     with generate_tls_configs(
-        tls=True, mtls=False, http_config_overrides={}
+        open_port, tls=True, mtls=False, http_config_overrides={}
     ) as config_overrides:
         http_server_with_tls = http_server.RuntimeHTTPServer(
             tls_config_override=config_overrides["runtime"]["tls"]
@@ -165,9 +164,9 @@ def test_basic_tls_server_with_wrong_cert():
                 )
 
 
-def test_mutual_tls_server():
+def test_mutual_tls_server(open_port):
     with generate_tls_configs(
-        tls=True, mtls=True, http_config_overrides={}
+        open_port, tls=True, mtls=True, http_config_overrides={}
     ) as config_overrides:
         http_server_with_mtls = http_server.RuntimeHTTPServer(
             tls_config_override=config_overrides["runtime"]["tls"]
@@ -185,9 +184,9 @@ def test_mutual_tls_server():
             resp.raise_for_status()
 
 
-def test_mutual_tls_server_with_wrong_cert():
+def test_mutual_tls_server_with_wrong_cert(open_port):
     with generate_tls_configs(
-        tls=True, mtls=True, http_config_overrides={}
+        open_port, tls=True, mtls=True, http_config_overrides={}
     ) as config_overrides:
         http_server_with_mtls = http_server.RuntimeHTTPServer(
             tls_config_override=config_overrides["runtime"]["tls"]
