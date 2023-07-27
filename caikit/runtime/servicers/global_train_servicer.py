@@ -103,7 +103,6 @@ class GlobalTrainServicer:
         """
         desc_name = request.DESCRIPTOR.name
         outer_scope_name = "GlobalTrainServicer.Train:%s" % desc_name
-
         try:
             with alog.ContextLog(log.debug, outer_scope_name):
                 module = None
@@ -195,18 +194,32 @@ class GlobalTrainServicer:
                 job's ID and the model's name
         """
 
+
         # Figure out where this model will be saved
         model_path = self._get_model_path(training_output_dir, request.model_name)
 
-        # Build the full set of kwargs for the train call
-        kwargs.update(
-            {
-                "module": module,
-                "save_path": model_path,
-                "save_with_id": self.save_with_id,
-                **build_caikit_library_request_dict(request, module.TRAIN_SIGNATURE),
-            }
-        )
+        if hasattr(request, "training_parameters"):
+            # Build the full set of kwargs for the train call
+            kwargs.update(
+                {
+                    "module": module,
+                    "save_path": model_path,
+                    "save_with_id": self.save_with_id,
+                    **build_caikit_library_request_dict(request.training_parameters, module.TRAIN_SIGNATURE),
+                }
+            )
+        else:
+            # Build the full set of kwargs for the train call
+            kwargs.update(
+                {
+                    "module": module,
+                    "save_path": model_path,
+                    "save_with_id": self.save_with_id,
+                    **build_caikit_library_request_dict(request, module.TRAIN_SIGNATURE),
+                }
+            )
+
+        breakpoint()
 
         # Submit the request to the model manager
         model_future = MODEL_MANAGER.train(**kwargs)

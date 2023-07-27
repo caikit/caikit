@@ -133,15 +133,17 @@ def test_model_train(runtime_grpc_server):
             "training_params": json.dumps(
                 {
                     "model_name": "abc",
-                    "training_data": {
-                        "jsondata": {
-                            "data": [
-                                sample_lib.data_model.SampleTrainingType(
-                                    number=1
-                                ).to_dict()
-                            ]
+                    "training_parameters": {
+                        "training_data": {
+                            "jsondata": {
+                                "data": [
+                                    sample_lib.data_model.SampleTrainingType(
+                                        number=1
+                                    ).to_dict()
+                                ]
+                            },
                         },
-                    },
+                    }
                 }
             ),
         },
@@ -455,10 +457,10 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
 
     train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
         model_name="Bar Training",
-        training_data=training_data,
         training_parameters={
             "sample_input_sampleinputtype": SampleInputType(name="Gabe").to_proto(),
             "batch_size": 100,
+            "training_data": training_data,
         }
     )
     actual_response = train_stub.OtherTaskOtherModuleTrain(train_request)
@@ -570,9 +572,9 @@ def test_train_fake_module_ok_response_with_datastream_jsondata(
     model_name = random_test_id()
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
         model_name=model_name,
-        training_data=training_data,
         training_parameters={
             "batch_size": 2,
+            "training_data": training_data
         }
     )
 
@@ -611,7 +613,9 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
     model_name = random_test_id()
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
         model_name=model_name,
-        training_data=training_data,
+        training_parameters={
+            "traning_data": training_data,
+        }
     )
 
     actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
