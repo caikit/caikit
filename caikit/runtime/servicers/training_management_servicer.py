@@ -73,9 +73,14 @@ class TrainingManagementServicerImpl:
 
             model_future.cancel()
 
-            return TrainingInfoResponse(
+            reasons = []
+            if model_future.get_info().errors:
+                reasons = [str(error) for error in model_future.get_info().errors]
+
+            return TrainingStatusResponse(
                 training_id=training_info.training_id,
-                status=model_future.get_info().status,
+                state=model_future.get_info().status,
+                reasons=reasons,
             ).to_proto()
 
         except ValueError as err:

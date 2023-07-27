@@ -87,7 +87,7 @@ def test_training_cannot_cancel_on_completed_training(training_management_servic
     # send a request, check it's not errored
     request = TrainingInfoRequest(training_id=model_future.id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
-    assert response.status != TrainingStatus.ERRORED.value
+    assert response.state != TrainingStatus.ERRORED.value
 
     event.set()
     model_future.wait()
@@ -95,7 +95,7 @@ def test_training_cannot_cancel_on_completed_training(training_management_servic
     # cancel the training request, but this won't change its status as it was finished
     training_management_servicer.CancelTraining(request, context=None)
     response = training_management_servicer.GetTrainingStatus(request, context=None)
-    assert response.status == TrainingStatus.COMPLETED.value
+    assert response.state == TrainingStatus.COMPLETED.value
 
 
 def test_training_cancel_on_correct_id(training_management_servicer):
@@ -113,7 +113,7 @@ def test_training_cancel_on_correct_id(training_management_servicer):
 
     request_1 = TrainingInfoRequest(training_id=model_future_1.id).to_proto()
     response_1 = training_management_servicer.GetTrainingStatus(request_1, context=None)
-    assert response_1.status == TrainingStatus.RUNNING.value
+    assert response_1.state == TrainingStatus.RUNNING.value
 
     # Model 2 has no wait event, should proceed to complete training
     model_future_2 = MODEL_MANAGER.train(
@@ -126,7 +126,7 @@ def test_training_cancel_on_correct_id(training_management_servicer):
     training_management_servicer.CancelTraining(request_1, context=None)
 
     response_1 = training_management_servicer.GetTrainingStatus(request_1, context=None)
-    assert response_1.status == TrainingStatus.CANCELED.value
+    assert response_1.state == TrainingStatus.CANCELED.value
 
     # release the blocked training that is waiting to clean up
     unblock = threading.Thread(target=unblock_training_thread)
@@ -135,7 +135,7 @@ def test_training_cancel_on_correct_id(training_management_servicer):
     # training number 2 should still complete
     request_2 = TrainingInfoRequest(training_id=model_future_2.id).to_proto()
     response_2 = training_management_servicer.GetTrainingStatus(request_2, context=None)
-    assert response_2.status == TrainingStatus.COMPLETED.value
+    assert response_2.state == TrainingStatus.COMPLETED.value
 
 
 def test_training_complete_status(training_management_servicer, training_pool):
@@ -182,7 +182,7 @@ def test_training_raises_when_cancel_on_incorrect_id(training_management_service
     # send a request, check it's not errored
     request = TrainingInfoRequest(training_id=model_future.id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
-    assert response.status != TrainingStatus.ERRORED.value
+    assert response.state != TrainingStatus.ERRORED.value
 
     event.set()
     model_future.wait()

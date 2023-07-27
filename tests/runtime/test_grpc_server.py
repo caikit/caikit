@@ -103,7 +103,7 @@ def assert_training_successful(
             training_management_stub.GetTrainingStatus(training_info_request.to_proto())
         )
     )
-    status = training_management_response.status
+    status = training_management_response.state
     assert status == TrainingStatus.COMPLETED.value
 
 
@@ -632,7 +632,7 @@ def test_train_and_successfully_cancel_training(
     model_name = random_test_id()
     # start a training that sleeps for a long time, so I can cancel
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=model_name, training_data=training_data.to_proto(), sleep_time=1
+        model_name=model_name, training_data=training_data.to_proto(), sleep_time=10
     )
     train_response = train_stub.SampleTaskSampleModuleTrain(train_request)
 
@@ -644,13 +644,13 @@ def test_train_and_successfully_cancel_training(
         )
     )
     assert (
-        training_management_response.status == TrainingStatus.RUNNING.value
-    ), "Could not cancel this training within 1s"
+        training_management_response.state == TrainingStatus.RUNNING.value
+    ), "Could not cancel this training within 10s"
     # cancel the training
     canceled_response = training_management_stub.CancelTraining(
         training_info_request.to_proto()
     )
-    assert canceled_response.status == TrainingStatus.CANCELED.value
+    assert canceled_response.state == TrainingStatus.CANCELED.value
 
 
 def test_cancel_does_not_affect_other_models(
@@ -666,7 +666,7 @@ def test_cancel_does_not_affect_other_models(
     model_name = random_test_id()
     # start a training that sleeps for a long time, so I can cancel
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=model_name, training_data=training_data.to_proto(), sleep_time=1
+        model_name=model_name, training_data=training_data.to_proto(), sleep_time=10
     )
     train_response = train_stub.SampleTaskSampleModuleTrain(train_request)
 
@@ -686,18 +686,18 @@ def test_cancel_does_not_affect_other_models(
     # train another model
     model_name2 = random_test_id()
     train_request2 = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=model_name2, training_data=training_data.to_proto(), sleep_time=0.09
+        model_name=model_name2, training_data=training_data.to_proto()
     )
     train_response2 = train_stub.SampleTaskSampleModuleTrain(train_request2)
 
     # cancel the first training
     assert (
-        training_management_response.status == TrainingStatus.RUNNING.value
-    ), "Could not cancel this training within 1s"
+        training_management_response.state == TrainingStatus.RUNNING.value
+    ), "Could not cancel this training within 10s"
     canceled_response = training_management_stub.CancelTraining(
         training_info_request.to_proto()
     )
-    assert canceled_response.status == TrainingStatus.CANCELED.value
+    assert canceled_response.state == TrainingStatus.CANCELED.value
 
     # second training should be COMPLETED
     assert_training_successful(
