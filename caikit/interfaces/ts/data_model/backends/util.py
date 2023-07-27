@@ -8,6 +8,9 @@ from typing import Any, Iterable, List, Union
 import numpy as np
 import pandas as pd
 
+# Local
+from ...data_model.toolkit.optional_dependencies import HAVE_PYSPARK, pyspark
+
 
 def mock_pd_groupby(a_df_like, by: List[str], return_pandas_api=False):
     """Roughly mocks the behavior of pandas groupBy but on a spark dataframe."""
@@ -124,6 +127,14 @@ def iteritems_workaround(series: Any, force_list: bool = False) -> Iterable:
 
     if isinstance(series, pd.Series):
         return series
+
+    # handle an edge case of pyspark.ml.linalg.DenseVector
+    if HAVE_PYSPARK:
+        if isinstance(series, pyspark.pandas.series.Series) and isinstance(
+            series[0], pyspark.ml.linalg.DenseVector
+        ):
+            return [x.values.tolist() for x in series.to_numpy()]
+
 
     # note that we're forcing a list only if we're not
     # a native pandas series
