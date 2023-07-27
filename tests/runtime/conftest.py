@@ -19,6 +19,7 @@ from fastapi.testclient import TestClient
 from grpc_health.v1 import health_pb2, health_pb2_grpc
 import grpc
 import pytest
+import requests
 
 # First Party
 import alog
@@ -184,6 +185,10 @@ def runtime_http_test_server(open_port, *args, **kwargs):
                 yield server
 
 
+# This is honestly not required for fastAPI testing
+# as they have a built-in TestClient that's capable
+# of testing http routes. I've kept it here just
+# in case we need a working http server for testing
 @pytest.fixture(scope="session")
 def runtime_http_server(
     http_session_scoped_open_port, sample_inference_service, sample_train_service
@@ -378,11 +383,12 @@ def _check_http_server_readiness(server):
     done = False
     while not done:
         try:
-            with TestClient(server.app) as client:
-                response = client.get(http_server.HEALTH_ENDPOINT)
-                assert response.status_code == 200
-                assert response.text == "OK"
-                done = True
+            response = requests.get(
+                f"http://localhost:{server.port}{http_server.HEALTH_ENDPOINT}"
+            )
+            assert response.status_code == 200
+            assert response.text == "OK"
+            done = True
         except AssertionError:
             log.debug(
                 "[HTTP server not ready]; will try to reconnect to test server in 0.1 second."
