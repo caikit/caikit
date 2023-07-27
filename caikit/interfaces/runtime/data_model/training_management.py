@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Standard
+from datetime import datetime
+from typing import List
+
 # First Party
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
 import alog
 
 # Local
@@ -45,9 +50,9 @@ class ModelPointer(DataObjectBase):
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
 @dataobject(RUNTIME_PACKAGE)
-class TrainingInfoResponse(DataObjectBase):
-    training_id: str
-    status: TrainingStatus
-    submission_timestamp: str
-    completion_timestamp: str
-    error_code: str
+class TrainingStatusResponse(DataObjectBase):
+    training_id: Annotated[str, FieldNumber(1)]
+    state: Annotated[TrainingStatus, FieldNumber(2)]
+    submission_timestamp: Annotated[datetime, FieldNumber(3)]
+    completion_timestamp: Annotated[datetime, FieldNumber(4)]
+    reasons: Annotated[List[str], FieldNumber(5)]

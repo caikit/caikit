@@ -29,12 +29,12 @@ import aconfig
 import alog
 
 # Local
-from ..data_model import TrainingInfo, TrainingStatus
+from ..data_model import TrainingStatus
 from ..modules import ModuleBase
 from ..toolkit.destroyable_process import DestroyableProcess
 from ..toolkit.destroyable_thread import DestroyableThread
 from ..toolkit.errors import error_handler
-from .model_trainer_base import ModelTrainerBase
+from .model_trainer_base import ModelTrainerBase, TrainingInfo
 import caikit
 
 log = alog.use_channel("LOC-TRNR")
@@ -145,7 +145,7 @@ class LocalModelTrainer(ModelTrainerBase):
             # The worker threw outside of a cancellation process
             if self._worker.threw:
                 return TrainingInfo(
-                    status=TrainingStatus.ERRORED, errors=[str(self._worker.error)]
+                    status=TrainingStatus.ERRORED, errors=[self._worker.error]
                 )
 
             # The worker completed its work without being canceled or raising

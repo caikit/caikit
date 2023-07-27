@@ -25,7 +25,7 @@ import alog
 from caikit.core import MODEL_MANAGER
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
-    TrainingInfoResponse,
+    TrainingStatusResponse,
 )
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
@@ -45,9 +45,14 @@ class TrainingManagementServicerImpl:
                 training_id=training_info.training_id
             )
 
-            return TrainingInfoResponse(
+            reasons = []
+            if model_future.get_info().errors:
+                reasons = [str(error) for error in model_future.get_info().errors]
+
+            return TrainingStatusResponse(
                 training_id=training_info.training_id,
-                status=model_future.get_info().status,
+                state=model_future.get_info().status,
+                reasons=reasons,
             ).to_proto()
         except ValueError as err:
             raise CaikitRuntimeException(

@@ -17,7 +17,7 @@ from . import training_management
 from .training_management import (
     ModelPointer,
     TrainingInfoRequest,
-    TrainingInfoResponse,
     TrainingJob,
     TrainingStatus,
+    TrainingStatusResponse,
 )
