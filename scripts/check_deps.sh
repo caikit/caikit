@@ -18,9 +18,15 @@ then
     exit 1
 fi
 
-if < deps.txt grep -q ".*caikit_interfaces.*\->.*caikit_core.*"
+if < deps.txt grep -q ".*caikit_interfaces.*\->.*caikit_core.module*"
 then
-    echo "Fail: The core is importing the interfaces!"
+    echo "Fail: The core module definitions are importing the interfaces!"
+    exit 1
+fi
+
+if < deps.txt grep -q ".*caikit_interfaces.*\->.*caikit_core.data_model.*"
+then
+    echo "Fail: The core data model is importing the interfaces!"
     exit 1
 fi
 
