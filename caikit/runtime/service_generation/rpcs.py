@@ -169,7 +169,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         # Change return type for async training interface
         return_type = TrainingJob
 
-        new_params = {"model_name": str}
+        training_params = {}
         for name, typ in signature.parameters.items():
             if type_helpers.has_data_stream(typ):
                 # Assume this is training data
@@ -180,15 +180,21 @@ class ModuleClassTrainRPC(CaikitRPCBase):
                     len(element_types) == 1
                 ), "Cannot handle DataStream with multiple type args"
                 element_type = element_types[0]
-                new_params[name] = make_data_stream_source(element_type)
+                training_params[name] = make_data_stream_source(element_type)
             elif type_helpers.is_model_type(typ):
                 # Found a model pointer
-                new_params[name] = ModelPointer
+                training_params[name] = ModelPointer
             else:
-                new_params[name] = protoable.handle_protoables_in_union(
+                training_params[name] = protoable.handle_protoables_in_union(
                     field_name=name,
                     arg_type=typ,
                 )
+
+        param_object = make_dataobject(
+            name=f"{signature.module.__name__}TrainingParameters",
+            annotations=training_params,
+        )
+        new_params = {"model_name": str, "training_parameters": param_object}
 
         return CustomSignature(
             original_signature=signature, parameters=new_params, return_type=return_type

@@ -256,4 +256,5 @@ def test_module_train_rpc():
     data_model = rpc.create_request_data_model(package_name="blah")
     assert data_model is not None
 
+    assert data_model.parameters is not None
     assert rpc.name == "TestTaskTestModuleTrain"
