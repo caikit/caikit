@@ -15,6 +15,7 @@ import threading
 import time
 
 # Third Party
+from fastapi.testclient import TestClient
 from grpc_health.v1 import health_pb2, health_pb2_grpc
 import grpc
 import pytest
@@ -25,6 +26,7 @@ import alog
 # Local
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model.dataobject import render_dataobject_protos
+from caikit.runtime import http_server
 from caikit.runtime.grpc_server import RuntimeGRPCServer
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
@@ -146,6 +148,43 @@ def runtime_grpc_server(
         training_service=sample_train_service,
     ) as server:
         _check_server_readiness(server)
+        yield server
+
+
+@contextmanager
+def runtime_http_test_server(open_port, *args, **kwargs):
+    """Helper to wrap creation of RuntimeHTTPServer in temporary configurations"""
+    with tempfile.TemporaryDirectory() as workdir:
+        temp_log_dir = os.path.join(workdir, "metering_logs")
+        temp_save_dir = os.path.join(workdir, "training_output")
+        os.makedirs(temp_log_dir)
+        os.makedirs(temp_save_dir)
+        with temp_config(
+            {
+                "runtime": {
+                    "metering": {"log_dir": temp_log_dir},
+                    "training": {"output_dir": temp_save_dir},
+                    "http": {"port": open_port},
+                }
+            },
+            "merge",
+        ):
+            with http_server.RuntimeHTTPServer(*args, **kwargs) as server:
+                # Give tests access to the workdir
+                server.workdir = workdir
+                yield server
+
+
+@pytest.fixture(scope="session")
+def runtime_http_server(
+    session_scoped_open_port, sample_inference_service, sample_train_service
+) -> http_server.RuntimeHTTPServer:
+    with runtime_http_test_server(
+        session_scoped_open_port,
+        inference_service=sample_inference_service,
+        training_service=sample_train_service,
+    ) as server:
+        _check_http_server_readiness(server)
         yield server
 
 
@@ -322,4 +361,21 @@ def _check_server_readiness(server):
             done = True
         except grpc.RpcError:
             log.debug("[RpcError]; will try to reconnect to test server in 0.1 second.")
+            time.sleep(0.1)
+
+
+def _check_http_server_readiness(server):
+    """Check server readiness"""
+    done = False
+    while not done:
+        try:
+            with TestClient(server.app) as client:
+                response = client.get(http_server.HEALTH_ENDPOINT)
+                assert response.status_code == 200
+                assert response.text == "OK"
+                done = True
+        except AssertionError:
+            log.debug(
+                "[HTTP server not ready]; will try to reconnect to test server in 0.1 second."
+            )
             time.sleep(0.1)

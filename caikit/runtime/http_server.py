@@ -106,15 +106,18 @@ class RuntimeHTTPServer(RuntimeServerBase):
     ## Interface ##
     ###############
 
-    def __init__(self, tls_config_override: Optional[aconfig.Config] = None):
+    def __init__(
+        self,
+        inference_service: ServicePackage,
+        #  # pylint: disable=unused-argument
+        training_service: Optional[ServicePackage],
+        tls_config_override: Optional[aconfig.Config] = None,
+    ):
         super().__init__(get_config().runtime.http.port, tls_config_override)
 
         self.app = FastAPI()
 
         # Set up the central predict servicer
-        inference_service = ServicePackageFactory().get_service_package(
-            ServicePackageFactory.ServiceType.INFERENCE,
-        )
         self.global_predict_servicer = GlobalPredictServicer(inference_service)
 
         # Set up the central train servicer
@@ -178,12 +181,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Placeholder for thread when running without blocking
         self._uvicorn_server_thread = None
 
-    def __del__(self):
-        if get_config().runtime.metering.enabled:
-            self.global_predict_servicer.stop_metering()
-
     def start(self, blocking: bool = True):
-        """Boot the gRPC server. Can be non-blocking, or block until shutdown
+        """Boot the http server. Can be non-blocking, or block until shutdown
 
         Args:
             blocking (boolean): Whether to block until shutdown
@@ -328,6 +327,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         pydantic_response = self._dataobject_to_pydantic(
             self._get_response_dataobject(rpc)
         )
+
         # pylint: disable=unused-argument
         @self.app.post(self._get_route(rpc), response_model=pydantic_response)
         async def _handler(
@@ -393,7 +393,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 route = "/" + route
             return route
         if rpc.name.endswith("Train"):
-
             route = "/".join(
                 [self.config.runtime.http.route_prefix, "{model_id}", rpc.name]
             )
@@ -555,7 +554,17 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
 def main():
     caikit.core.toolkit.logging.configure()
-    server = RuntimeHTTPServer()
+
+    # This code will live in caikt/runtime/__main__.py eventually
+    inference_service = ServicePackageFactory().get_service_package(
+        ServicePackageFactory.ServiceType.INFERENCE,
+    )
+    training_service = ServicePackageFactory().get_service_package(
+        ServicePackageFactory.ServiceType.TRAINING,
+    )
+    server = RuntimeHTTPServer(
+        inference_service=inference_service, training_service=training_service
+    )
     server.start()
 
 
