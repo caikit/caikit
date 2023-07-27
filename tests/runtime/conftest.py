@@ -58,6 +58,15 @@ def session_scoped_open_port():
     return _open_port()
 
 
+@pytest.fixture(scope="session")
+def http_session_scoped_open_port():
+    """Get an open port on localhost
+    Returns:
+        int: Available port
+    """
+    return _open_port()
+
+
 def _open_port():
     # TODO: This has obvious problems where the port returned for use by a test is not immediately
     # put into use, so parallel tests could attempt to use the same port.
@@ -177,10 +186,10 @@ def runtime_http_test_server(open_port, *args, **kwargs):
 
 @pytest.fixture(scope="session")
 def runtime_http_server(
-    session_scoped_open_port, sample_inference_service, sample_train_service
+    http_session_scoped_open_port, sample_inference_service, sample_train_service
 ) -> http_server.RuntimeHTTPServer:
     with runtime_http_test_server(
-        session_scoped_open_port,
+        http_session_scoped_open_port,
         inference_service=sample_inference_service,
         training_service=sample_train_service,
     ) as server:
