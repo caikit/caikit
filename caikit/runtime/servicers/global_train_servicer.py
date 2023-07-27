@@ -28,7 +28,7 @@ import alog
 # Local
 from caikit import get_config
 from caikit.core import MODEL_MANAGER, ModuleBase
-from caikit.core.data_model import DataBase
+from caikit.interfaces.common.data_model.stream_sources import S3Path
 from caikit.interfaces.runtime.data_model import TrainingJob
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage
@@ -86,7 +86,7 @@ class GlobalTrainServicer:
 
     def Train(
         self,
-        request,
+        request: ProtoMessageType,
         context: ServicerContext,
         *_,
         **__,
@@ -150,7 +150,7 @@ class GlobalTrainServicer:
             log.warning(log_dict)
             raise CaikitRuntimeException(
                 StatusCode.INVALID_ARGUMENT,
-                f"Exception raised during inference. This may be a problem with your input: {e}",
+                f"Exception raised during training. This may be a problem with your input: {e}",
             ) from e
 
         except Exception as e:
@@ -166,7 +166,7 @@ class GlobalTrainServicer:
 
     def run_training_job(
         self,
-        request: Union[ProtoMessageType, DataBase],
+        request: ProtoMessageType,
         module: Type[ModuleBase],
         training_output_dir: str,
         *,
@@ -178,8 +178,7 @@ class GlobalTrainServicer:
         then returns the thread id
 
         Args:
-            request (Union[ProtoMessageType, DataBase]): The message that
-                stimulated this request
+            request (ProtoMessageType): The message that stimulated this request
             module (Type[ModuleBase]): The module class to train
             training_output_dir (str): The base directory where trained models
                 should be saved
@@ -193,9 +192,20 @@ class GlobalTrainServicer:
             training_job (TrainingJob): The job handle for the training with the
                 job's ID and the model's name
         """
+        request_data_model = caikit.core.data_model.DataBase.get_class_for_proto(
+            request
+        ).from_proto(request)
 
         # Figure out where this model will be saved
-        model_path = self._get_model_path(training_output_dir, request.model_name)
+        model_path: Union[str, S3Path]
+        if request_data_model.output_path:
+            # If we got an S3 storage link, just pass that along to the trainer
+            model_path: S3Path = request_data_model.output_path
+        else:
+            # Otherwise, append the model name to the specified output directory
+            model_path: str = self._get_model_path(
+                training_output_dir, request_data_model.model_name
+            )
 
         # Build the full set of kwargs for the train call
         kwargs.update(

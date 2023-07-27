@@ -29,6 +29,7 @@ import zipfile
 import alog
 
 # Local
+from ..interfaces.common.data_model.stream_sources import S3Path
 from .model_management import (
     ModelFinderBase,
     ModelInitializerBase,
@@ -95,7 +96,7 @@ class ModelManager:
         module: Union[Type[ModuleBase], str],
         *args,
         trainer: Union[str, ModelTrainerBase] = "default",
-        save_path: Optional[str] = None,
+        save_path: Optional[Union[str, S3Path]] = None,
         save_with_id: bool = False,
         wait: bool = False,
         **kwargs,
@@ -119,8 +120,9 @@ class ModelManager:
             trainer (Union[str, ModelTrainerBase]): The trainer to use. If given
                 as a string, this is a key in the global config at
                 model_management.trainers.
-            save_path (Optional[str]): Path on disk where the model should be
-                saved (may be relative to a remote trainer's filesystem)
+            save_path (Optional[Union[str, S3Path]]): Path where the model should be
+                saved (may be relative to a remote trainer's filesystem, or link to S3
+                storage)
             save_with_id (bool): Inject the training ID into the save path for
                 the output model
             wait (bool): Wait for training to complete before returning
@@ -144,7 +146,7 @@ class ModelManager:
         error.subclass_check("<COR05418775E>", module, ModuleBase)
 
         # Get the trainer to use
-        trainer = self._get_trainer(trainer)
+        trainer: ModelTrainerBase = self._get_trainer(trainer)
 
         # Start the training
         with alog.ContextTimer(log.debug, "Started training in: "):

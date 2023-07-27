@@ -18,7 +18,7 @@ The LocalModelTrainer uses a local thread to launch and manage each training job
 # Standard
 from concurrent.futures.thread import _threads_queues
 from datetime import datetime, timedelta
-from typing import Optional, Type
+from typing import Optional, Type, Union
 import os
 import re
 import threading
@@ -29,6 +29,7 @@ import aconfig
 import alog
 
 # Local
+from ...interfaces.common.data_model.stream_sources import S3Path
 from ..data_model import TrainingStatus
 from ..modules import ModuleBase
 from ..toolkit.destroyable_process import DestroyableProcess
@@ -66,7 +67,7 @@ class LocalModelTrainer(ModelTrainerBase):
             trainer_name: str,
             module_class: Type[ModuleBase],
             *args,
-            save_path: Optional[str],
+            save_path: Optional[Union[str, S3Path]],
             save_with_id: bool,
             external_training_id: Optional[str],
             use_subprocess: bool,
