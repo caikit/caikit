@@ -26,12 +26,13 @@ model_management:
 """
 
 # Standard
-from typing import List, Optional, Type
+from typing import List, Optional, Type, Union
 import abc
 import dataclasses
 import os
 
 # Local
+from ...interfaces.common.data_model.stream_sources import S3Path
 from ..data_model import TrainingStatus
 from ..modules import ModuleBase
 from ..toolkit.factory import FactoryConstructible
@@ -59,8 +60,11 @@ class ModelTrainerBase(FactoryConstructible):
             trainer_name: str,
             training_id: str,
             save_with_id: bool,
-            save_path: Optional[str],
+            save_path: Optional[Union[str, S3Path]],
         ):
+            # Trainers should deal with an S3 ref first and not pass it along here
+            if save_path and isinstance(save_path, S3Path):
+                raise ValueError("S3 output path not supported by this runtime")
             self._id = self.__class__.ID_DELIMITER.join(
                 [ReversibleHasher.hash(trainer_name), training_id]
             )
@@ -135,7 +139,7 @@ class ModelTrainerBase(FactoryConstructible):
         self,
         module_class: Type[ModuleBase],
         *args,
-        save_path: Optional[str] = None,
+        save_path: Optional[Union[str, S3Path]] = None,
         save_with_id: bool = False,
         **kwargs,
     ) -> "ModelFutureBase":

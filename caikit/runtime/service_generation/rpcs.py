@@ -30,6 +30,7 @@ from py_to_proto.dataclass_to_proto import (  # NOTE: Imported from here for com
 import alog
 
 # Local
+from ...interfaces.common.data_model.stream_sources import S3Path
 from . import protoable, type_helpers
 from .compatibility_checker import ApiFieldNames
 from .data_stream_source import make_data_stream_source
@@ -169,7 +170,10 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         # Change return type for async training interface
         return_type = TrainingJob
 
-        new_params = {"model_name": str}
+        # Start with extra metaparameters
+        # - model_name: user-provided custom ID for the model to train
+        # - output_path: pointer to some storage where the model will be saved
+        new_params = {"model_name": str, "output_path": S3Path}
         for name, typ in signature.parameters.items():
             if type_helpers.has_data_stream(typ):
                 # Assume this is training data

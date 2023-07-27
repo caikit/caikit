@@ -144,7 +144,7 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
             )
             raise CaikitRuntimeException(
                 grpc.StatusCode.INVALID_ARGUMENT,
-                f"Exception raised during inference. This may be a problem with your input: {e}",
+                f"Exception raised during training. This may be a problem with your input: {e}",
             ) from e
 
         except Exception as e:

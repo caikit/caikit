@@ -3,6 +3,7 @@
 __pycache__
 .coverage
 .coverage.*
+durations/*
 coverage*.xml
 dist
 htmlcov

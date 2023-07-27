@@ -20,10 +20,12 @@ import threading
 import time
 
 # Third Party
+import grpc
 import pytest
 
 # Local
 from caikit.core import MODEL_MANAGER
+from caikit.interfaces.common.data_model.stream_sources import S3Path
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model.sample import (
@@ -367,6 +369,29 @@ def test_global_train_returns_exit_code_with_oom(
             training_response.training_id
         ).get_info()
         assert f"Training process died with OOM error!" in str(future_info.errors[0])
+
+
+def test_local_trainer_rejects_s3_output_paths(
+    sample_train_service, sample_train_servicer
+):
+    """Test that if an output_path references S3 but the trainer does not know how to handle it, an error is raised"""
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    training_data = stream_type(
+        jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
+    ).to_proto()
+    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+        model_name=random_test_id(),
+        output_path=S3Path(path="foo").to_proto(),
+        batch_size=42,
+        training_data=training_data,
+        oom_exit=True,
+    )
+
+    with pytest.raises(
+        CaikitRuntimeException, match=".*S3 output path not supported by this runtime"
+    ) as ctx:
+        sample_train_servicer.Train(train_request, Fixtures.build_context("foo"))
+    assert ctx.value.status_code == grpc.StatusCode.INVALID_ARGUMENT
 
 
 #####################################################################
