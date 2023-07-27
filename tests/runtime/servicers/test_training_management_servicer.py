@@ -64,7 +64,7 @@ def test_training_runs(training_management_servicer, training_pool):
     # send a request, check it's running
     request = TrainingInfoRequest(training_id=model_future.id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
-    assert response.status == TrainingStatus.RUNNING.value
+    assert response.state == TrainingStatus.RUNNING.value
 
     event.set()
     model_future.wait()
@@ -72,7 +72,7 @@ def test_training_runs(training_management_servicer, training_pool):
     # Ensure it's now done
     request = TrainingInfoRequest(training_id=model_future.id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
-    assert response.status == TrainingStatus.COMPLETED.value
+    assert response.state == TrainingStatus.COMPLETED.value
 
 
 def test_training_complete_status(training_management_servicer, training_pool):
@@ -90,8 +90,8 @@ def test_training_complete_status(training_management_servicer, training_pool):
     request = TrainingInfoRequest(training_id=model_future.id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
 
-    assert re.match("<class '.*TrainingInfoResponse'>", str(type(response)))
-    assert response.status == TrainingStatus.COMPLETED.value
+    assert re.match("<class '.*TrainingStatusResponse'>", str(type(response)))
+    assert response.state == TrainingStatus.COMPLETED.value
 
 
 def test_training_status_incorrect_id(training_management_servicer):
@@ -119,4 +119,4 @@ def test_training_fails(training_management_servicer, training_pool):
     request = TrainingInfoRequest(training_id=model_future.id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
 
-    assert response.status == TrainingStatus.ERRORED.value
+    assert response.state == TrainingStatus.ERRORED.value

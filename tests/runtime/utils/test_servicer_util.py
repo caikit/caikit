@@ -45,12 +45,12 @@ import sample_lib
 def test_servicer_util_validate_caikit_library_class_exists_returns_caikit_class():
     """Test that validate_caikit_library_class_exists returns a caikit class object"""
     validated_class = validate_caikit_library_class_exists(
-        get_data_model(), "TrainingInfoResponse"
+        get_data_model(), "TrainingStatusResponse"
     )
 
     assert issubclass(
         validated_class,
-        caikit.interfaces.runtime.data_model.training_management.TrainingInfoResponse,
+        caikit.interfaces.runtime.data_model.training_management.TrainingStatusResponse,
     )
 
     """

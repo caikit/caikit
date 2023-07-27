@@ -33,7 +33,7 @@ from caikit import get_config
 from caikit.core import ModuleBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
-    TrainingInfoResponse,
+    TrainingStatusResponse,
 )
 from caikit.runtime import service_generation
 from caikit.runtime.service_generation.rpcs import CaikitRPCBase, snake_to_upper_camel
@@ -49,7 +49,7 @@ TRAINING_MANAGEMENT_SERVICE_SPEC = {
             {
                 "name": "GetTrainingStatus",
                 "input_type": TrainingInfoRequest.get_proto_class().DESCRIPTOR.full_name,
-                "output_type": TrainingInfoResponse.get_proto_class().DESCRIPTOR.full_name,
+                "output_type": TrainingStatusResponse.get_proto_class().DESCRIPTOR.full_name,
             }
         ]
     }

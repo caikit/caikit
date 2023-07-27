@@ -26,7 +26,7 @@ model_management:
 """
 
 # Standard
-from typing import Optional, Type
+from typing import List, Optional, Type
 import abc
 import dataclasses
 import os
@@ -41,7 +41,7 @@ from ..toolkit.reversible_hasher import ReversibleHasher
 @dataclasses.dataclass
 class TrainingInfo:
     status: TrainingStatus
-    errors: Optional[Exception] = None
+    errors: Optional[List[Exception]] = None
 
 
 class ModelTrainerBase(FactoryConstructible):

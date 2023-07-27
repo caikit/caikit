@@ -45,9 +45,9 @@ from caikit.core import MODEL_MANAGER
 from caikit.core.data_model.base import DataBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
-    TrainingInfoResponse,
     TrainingJob,
     TrainingStatus,
+    TrainingStatusResponse,
 )
 from caikit.runtime.grpc_server import RuntimeGRPCServer
 from caikit.runtime.model_management.model_manager import ModelManager
@@ -101,14 +101,14 @@ def is_good_train_response(
         training_info_request = TrainingInfoRequest(
             training_id=actual_response.training_id
         )
-        training_management_response: TrainingInfoResponse = (
-            TrainingInfoResponse.from_proto(
+        training_management_response: TrainingStatusResponse = (
+            TrainingStatusResponse.from_proto(
                 training_management_stub.GetTrainingStatus(
                     training_info_request.to_proto()
                 )
             )
         )
-        status = training_management_response.status
+        status = training_management_response.state
         assert status != TrainingStatus.ERRORED.value
         i += 1
         assert i < 100, "Waited too long for training to complete"
@@ -173,10 +173,10 @@ def test_model_train(runtime_grpc_server):
     )
 
     # MT training is sync, so it should be COMPLETE immediately
-    response: TrainingInfoResponse = TrainingInfoResponse.from_proto(
+    response: TrainingStatusResponse = TrainingStatusResponse.from_proto(
         training_management_stub.GetTrainingStatus(training_info_request)
     )
-    assert response.status == TrainingStatus.COMPLETED.value
+    assert response.state == TrainingStatus.COMPLETED.value
 
     # Make sure we wait for training to finish
     result = MODEL_MANAGER.get_model_future(response.training_id).load()

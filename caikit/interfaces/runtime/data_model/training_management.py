@@ -50,9 +50,9 @@ class ModelPointer(DataObjectBase):
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
 @dataobject(RUNTIME_PACKAGE)
-class TrainingInfoResponse(DataObjectBase):
+class TrainingStatusResponse(DataObjectBase):
     training_id: Annotated[str, FieldNumber(1)]
-    status: Annotated[TrainingStatus, FieldNumber(2)]
+    state: Annotated[TrainingStatus, FieldNumber(2)]
     submission_timestamp: Annotated[datetime, FieldNumber(3)]
     completion_timestamp: Annotated[datetime, FieldNumber(4)]
     reasons: Annotated[List[str], FieldNumber(5)]
