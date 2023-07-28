@@ -15,7 +15,7 @@
 import concurrent.futures
 import re
 import threading
-import uuid
+import time
 
 # Third Party
 import grpc
@@ -75,6 +75,82 @@ def test_training_runs(training_management_servicer, training_pool):
     assert response.state == TrainingStatus.COMPLETED.value
 
 
+def test_training_cannot_cancel_on_completed_training(training_management_servicer):
+    # Create a future and set it in the training manager
+    event = threading.Event()
+    model_future = MODEL_MANAGER.train(
+        SampleModule,
+        DataStream.from_iterable([]),
+        wait_event=event,
+    )
+
+    # send a request, check it's not errored
+    request = TrainingInfoRequest(training_id=model_future.id).to_proto()
+    response = training_management_servicer.GetTrainingStatus(request, context=None)
+    assert response.state != TrainingStatus.ERRORED.value
+
+    event.set()
+    model_future.wait()
+
+    # cancel the training request, but this won't change its status as it was finished
+    training_management_servicer.CancelTraining(request, context=None)
+    response = training_management_servicer.GetTrainingStatus(request, context=None)
+    assert response.state == TrainingStatus.COMPLETED.value
+
+
+def test_training_cancel_on_correct_id(training_management_servicer):
+    # Create a training future for first model with a long runtime
+    # NOTE: We cannot use a single log time.sleep or a threading.Event().wait
+    #   here because those are not actually destroyable via DestroyableThread.
+    #   Instead, we use the sleep_time argument that runs a loop of short sleeps
+    #   and then we verify below that the training duration was far less than
+    #   this configured sleep time.
+    start_event = threading.Event()
+    model_future_1 = MODEL_MANAGER.train(
+        SampleModule,
+        DataStream.from_iterable([]),
+        sleep_time=100,
+        start_event=start_event,
+    )
+
+    # Wait until the training has started to ensure it is interrupted in flight
+    start_event.wait()
+
+    request_1 = TrainingInfoRequest(training_id=model_future_1.id).to_proto()
+    response_1 = training_management_servicer.GetTrainingStatus(request_1, context=None)
+    assert response_1.state == TrainingStatus.RUNNING.value
+
+    # Model 2 has no wait event, should proceed to complete training
+    model_future_2 = MODEL_MANAGER.train(
+        SampleModule,
+        DataStream.from_iterable([1, 2, 3]),
+    )
+
+    # Cancel first training
+    request_1 = TrainingInfoRequest(training_id=model_future_1.id).to_proto()
+    training_management_servicer.CancelTraining(request_1, context=None)
+
+    response_1 = training_management_servicer.GetTrainingStatus(request_1, context=None)
+    assert response_1.state == TrainingStatus.CANCELED.value
+
+    # Make sure the model future completes without the blocking event being set
+    start_time = time.time()
+    model_future_1.wait()
+    # Sanity check that the model did not wait for anywhere close to the full
+    # 100 seconds
+    wait_time = time.time() - start_time
+    assert wait_time < 5
+    assert (
+        training_management_servicer.GetTrainingStatus(request_1, context=None).state
+        == TrainingStatus.CANCELED.value
+    )
+
+    # training number 2 should still complete
+    request_2 = TrainingInfoRequest(training_id=model_future_2.id).to_proto()
+    response_2 = training_management_servicer.GetTrainingStatus(request_2, context=None)
+    assert response_2.state == TrainingStatus.COMPLETED.value
+
+
 def test_training_complete_status(training_management_servicer, training_pool):
 
     # Create a future and set it in the training manager
@@ -104,6 +180,36 @@ def test_training_status_incorrect_id(training_management_servicer):
     assert (
         "some_random_id not found in the list of currently running training jobs"
         in context.value.message
+    )
+
+
+def test_training_raises_when_cancel_on_incorrect_id(training_management_servicer):
+    # Create a future and set it in the training manager
+    event = threading.Event()
+    model_future = MODEL_MANAGER.train(
+        SampleModule,
+        DataStream.from_iterable([]),
+        wait_event=event,
+    )
+
+    # send a request, check it's not errored
+    request = TrainingInfoRequest(training_id=model_future.id).to_proto()
+    response = training_management_servicer.GetTrainingStatus(request, context=None)
+    assert response.state != TrainingStatus.ERRORED.value
+
+    event.set()
+    model_future.wait()
+
+    # cancel a training with wrong training id
+    cancel_request = TrainingInfoRequest(training_id="some_random_id").to_proto()
+    with pytest.raises(CaikitRuntimeException) as context:
+        training_management_servicer.CancelTraining(cancel_request, context=None)
+
+    assert context.value.status_code == grpc.StatusCode.NOT_FOUND
+    assert (
+        "some_random_id not found in the list of currently running training jobs."
+        in context.value.message
+        and "Did not perform cancel" in context.value.message
     )
 
 

@@ -50,7 +50,12 @@ TRAINING_MANAGEMENT_SERVICE_SPEC = {
                 "name": "GetTrainingStatus",
                 "input_type": TrainingInfoRequest.get_proto_class().DESCRIPTOR.full_name,
                 "output_type": TrainingStatusResponse.get_proto_class().DESCRIPTOR.full_name,
-            }
+            },
+            {
+                "name": "CancelTraining",
+                "input_type": TrainingInfoRequest.get_proto_class().DESCRIPTOR.full_name,
+                "output_type": TrainingStatusResponse.get_proto_class().DESCRIPTOR.full_name,
+            },
         ]
     }
 }

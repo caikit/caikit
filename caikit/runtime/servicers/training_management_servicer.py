@@ -61,3 +61,40 @@ class TrainingManagementServicerImpl:
                     training_info.training_id,
                 ),
             ) from err
+
+    def CancelTraining(self, request, context):  # pylint: disable=unused-argument
+        """Cancel a training future."""
+        training_info = TrainingInfoRequest.from_proto(request)
+
+        try:
+            model_future = MODEL_MANAGER.get_model_future(
+                training_id=training_info.training_id
+            )
+
+            model_future.cancel()
+
+            reasons = []
+            if model_future.get_info().errors:
+                reasons = [str(error) for error in model_future.get_info().errors]
+
+            return TrainingStatusResponse(
+                training_id=training_info.training_id,
+                state=model_future.get_info().status,
+                reasons=reasons,
+            ).to_proto()
+
+        except ValueError as err:
+            raise CaikitRuntimeException(
+                grpc.StatusCode.NOT_FOUND,
+                "{} not found in the list of currently running training jobs. \
+                    Did not perform cancel.".format(
+                    training_info.training_id,
+                ),
+            ) from err
+        except Exception as err:
+            raise CaikitRuntimeException(
+                grpc.StatusCode.INTERNAL,
+                "Failed to cancel training id {}".format(
+                    training_info.training_id,
+                ),
+            ) from err

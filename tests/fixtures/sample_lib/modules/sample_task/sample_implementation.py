@@ -116,6 +116,11 @@ class SampleModule(caikit.core.ModuleBase):
     ) -> "SampleModule":
         """Sample training method that produces a trained model"""
 
+        # If requested, set an event to indicate that the training has started
+        start_event = kwargs.get("start_event")
+        if start_event is not None:
+            start_event.set()
+
         # If needed, wait for an event
         # NOTE: We need to pull this from **kwargs because it's not a valid arg
         #   for train API deduction. It's only needed for testing purposes, so
