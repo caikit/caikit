@@ -438,7 +438,7 @@ def test_create_single_timeseries_dm():
     assert mts.timeseries[0].to_proto() == ts.to_proto()
     assert mts.timeseries[0].to_json() == ts.to_json()
 
-    reserved_key = "_TS_RESERVED"
+    reserved_key = dm.TimeSeries._DEFAULT_ID_COL
 
     spark_mts = mts.as_spark(is_multi=True)
     assert isinstance(spark_mts, pyspark.sql.DataFrame)

@@ -31,7 +31,8 @@ class TimeSeries(DataObjectBase):
     id_labels: List[str]
     producer_id: ProducerId
 
-    _TEMP_TS_COL = "__ts"
+    _DEFAULT_ID_COL = "_TS_RESERVED"
+    _DEFAULT_TS_COL = "timestamp"
 
     def __init__(self, *args, **kwargs):
         """Constructing a MultiTimeSeries will currently delegate
@@ -134,7 +135,7 @@ class TimeSeries(DataObjectBase):
 
             for i in range(len(key_columns)):
                 id = ts.ids.values[i]
-                df[key_columns[i]] = [id for _ in range(df.shape[0])]
+                df[key_columns[i]] = [id] * df.shape[0]
             dfs.append(df)
         ignore_index = True  # timestamp_column != ""
         result = pd.concat(dfs, ignore_index=ignore_index)
@@ -170,7 +171,7 @@ class TimeSeries(DataObjectBase):
             # add a RESERVED id column with constant value
             if is_multi is not None and is_multi:
                 df = df.copy(deep=True)
-                df["WATSON_TS_RESERVED"] = np.zeros(len(df), dtype=np.int32)
+                df[self.__class__._DEFAULT_ID_COL] = np.zeros(len(df), dtype=np.int32)
             return df
 
         backend_df = self._get_pd_df()[0]
@@ -179,11 +180,11 @@ class TimeSeries(DataObjectBase):
         # if we want to include timestamps, but it is not already in the dataframe, we need to add it
         if include_timestamps and timestamp_column is None:
             backend_df = backend_df.copy()  # is this required???
-            ts_column = "timestamp"
-            backend_df[ts_column] = [0 for _ in range(len(backend_df))]
+            ts_column = self.__class__._DEFAULT_TS_COL
+            backend_df[ts_column] = [0] * len(backend_df)
             backend_df[ts_column] = backend_df.groupby(
                 self._backend._key_column, sort=False
-            )["timestamp"].transform(lambda x: [i for i in range(len(x))])
+            )[ts_column].transform(lambda x: list(range(len(x))))
             return backend_df
         # if we do not want timestamps, but we already have them in the dataframe, we need to return a view without timestamps
         elif (
@@ -206,7 +207,9 @@ class TimeSeries(DataObjectBase):
             if is_multi is not None and is_multi:
                 df = df.pandas_api()
                 df = df.copy(deep=True)
-                df["WATSON_TS_RESERVED"] = np.zeros(len(df), dtype=np.int32).tolist()
+                df[self.__class__._DEFAULT_ID_COL] = np.zeros(
+                    len(df), dtype=np.int32
+                ).tolist()
                 df = df.to_spark()
             return df
 

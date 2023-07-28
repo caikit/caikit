@@ -76,9 +76,7 @@ class SingleTimeSeries(DataObjectBase):
         Annotated[StringIDSequence, OneofField("id_str"), FieldNumber(40)],
     ]
 
-    _TEMP_TS_COL = "__ts"
     _DEFAULT_TS_COL = "timestamp"
-
     _private_slots = ("_which_oneof_time_sequence", "_which_oneof_ids")
 
     # TODO: We need to clean up the init semantics
@@ -296,9 +294,7 @@ class SingleTimeSeries(DataObjectBase):
         if include_timestamps and self.timestamp_label is None:
             dftouse = backend_df.copy(deep=False)  # this does seem to be necessary
             dftouse[self.__class__._DEFAULT_TS_COL] = (
-                [
-                    x for x in range(len(dftouse))
-                ]  # no support for assignment with generators
+                list(range(len(dftouse)))
                 if isinstance(dftouse, pyspark.pandas.DataFrame)
                 else np.arange(len(dftouse))
             )
