@@ -21,20 +21,8 @@ import sys
 import alog
 
 # Local
-from caikit.runtime import grpc_server, http_server
+from caikit.runtime.__main__ import main
 import caikit
-
-
-def protocol_arg():
-    parser = argparse.ArgumentParser(description="protocol switch")
-    parser.add_argument(
-        "--protocol", type=str, default="grpc", help="Specify a protocol: grpc or http"
-    )
-
-    args = parser.parse_args()
-    print(f"The specified protocol is: {args.protocol}")
-    return args.protocol
-
 
 if __name__ == "__main__":
     models_directory = path.abspath(path.join(path.dirname(__file__), "models"))
@@ -44,6 +32,8 @@ if __name__ == "__main__":
             "runtime": {
                 "local_models_dir": models_directory,
                 "library": "text_sentiment",
+                "grpc": {"enabled": True},
+                "http": {"enabled": True},
             },
         }
     )
@@ -55,10 +45,4 @@ if __name__ == "__main__":
 
     alog.configure(default_level="debug")
 
-    protocol = protocol_arg()
-    if protocol == "grpc":
-        grpc_server.main()
-    elif protocol == "http":
-        http_server.main()
-    else:
-        print("--protocol must be one of [grpc, http]")
+    main()
