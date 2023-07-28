@@ -76,11 +76,20 @@ class LocalModelTrainer(ModelTrainerBase):
         ):
             super().__init__(
                 trainer_name=trainer_name,
-                training_id=external_training_id or str(uuid.uuid4()),
+                training_id=str(uuid.uuid4()),
                 save_with_id=save_with_id,
                 save_path=save_path,
                 model_name=model_name,
             )
+            # 🌶️🌶️🌶️ For the external training id override, we don't want to include the
+            # reversible hash bit on the id. Therefore, we have to re-do the id and save
+            # path stuff done in the super() init here instead
+            if external_training_id is not None:
+                # No extra hash bit
+                self._id = external_training_id
+                self._save_path = self._save_path_with_id(
+                    save_path, save_with_id, external_training_id, model_name
+                )
 
             self._module_class = module_class
 

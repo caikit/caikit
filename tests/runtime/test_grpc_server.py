@@ -116,6 +116,7 @@ def test_model_train(runtime_grpc_server):
         runtime_grpc_server.make_local_channel()
     )
     training_id = str(uuid.uuid4())
+    model_name = "abc"
     model_train_request = process_pb2.ProcessRequest(
         trainingID=training_id,
         customTrainingID=str(uuid.uuid4()),
@@ -123,7 +124,7 @@ def test_model_train(runtime_grpc_server):
             "train_module": "00110203-0405-0607-0809-0a0b02dd0e0f",
             "training_params": json.dumps(
                 {
-                    "model_name": "abc",
+                    "model_name": model_name,
                     "training_data": {
                         "jsondata": {
                             "data": [
@@ -170,7 +171,12 @@ def test_model_train(runtime_grpc_server):
     assert response.state == TrainingStatus.COMPLETED.value
 
     # Make sure we wait for training to finish
-    result = MODEL_MANAGER.get_model_future(response.training_id).load()
+    model_future = MODEL_MANAGER.get_model_future(response.training_id)
+    result = model_future.load()
+
+    # Make sure we put the path bits in the right order: base/training_id/model_name
+    training_id_and_model_name_path_bit = os.path.join(training_id, model_name)
+    assert training_id_and_model_name_path_bit in model_future.save_path
 
     assert (
         result.MODULE_CLASS
