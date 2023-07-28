@@ -213,6 +213,7 @@ class GlobalTrainServicer:
                 "module": module,
                 "save_path": model_path,
                 "save_with_id": self.save_with_id,
+                "model_name": request_data_model.model_name,
                 **build_caikit_library_request_dict(request, module.TRAIN_SIGNATURE),
             }
         )

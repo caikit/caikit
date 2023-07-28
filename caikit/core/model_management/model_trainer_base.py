@@ -61,6 +61,7 @@ class ModelTrainerBase(FactoryConstructible):
             training_id: str,
             save_with_id: bool,
             save_path: Optional[Union[str, S3Path]],
+            model_name: Optional[str],
         ):
             # Trainers should deal with an S3 ref first and not pass it along here
             if save_path and isinstance(save_path, S3Path):
@@ -72,6 +73,7 @@ class ModelTrainerBase(FactoryConstructible):
                 save_path,
                 save_with_id,
                 self._id,
+                model_name,
             )
 
         @property
@@ -118,6 +120,7 @@ class ModelTrainerBase(FactoryConstructible):
             save_path: Optional[str],
             save_with_id: bool,
             training_id: str,
+            model_name: Optional[str],
         ) -> Optional[str]:
             """If asked to save_with_id, child classes should use this shared
             utility to construct the final save path
@@ -128,10 +131,14 @@ class ModelTrainerBase(FactoryConstructible):
                 return save_path
 
             # If told to save with the ID in the path, inject it right before the
-            # final portion of the path which is assumed to be the model ID.
+            # final portion of the path which is assumed to be the model name.
             path_parts = os.path.split(save_path)
+            if model_name:
+                model_name_part = model_name
+            else:
+                model_name_part = path_parts[-1:]
             return os.path.join(
-                *list(path_parts[:-1] + (training_id,) + path_parts[-1:])
+                *list(path_parts[:-1] + (training_id,) + model_name_part)
             )
 
     @abc.abstractmethod
@@ -141,6 +148,7 @@ class ModelTrainerBase(FactoryConstructible):
         *args,
         save_path: Optional[Union[str, S3Path]] = None,
         save_with_id: bool = False,
+        model_name: Optional[str] = None,
         **kwargs,
     ) -> "ModelFutureBase":
         """Start training the given module and return a future to the trained

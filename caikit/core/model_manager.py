@@ -98,6 +98,7 @@ class ModelManager:
         trainer: Union[str, ModelTrainerBase] = "default",
         save_path: Optional[Union[str, S3Path]] = None,
         save_with_id: bool = False,
+        model_name: Optional[str] = None,
         wait: bool = False,
         **kwargs,
     ) -> ModelTrainerBase.ModelFutureBase:
@@ -120,11 +121,13 @@ class ModelManager:
             trainer (Union[str, ModelTrainerBase]): The trainer to use. If given
                 as a string, this is a key in the global config at
                 model_management.trainers.
-            save_path (Optional[Union[str, S3Path]]): Path where the model should be
+            save_path (Optional[Union[str, S3Path]]): Base path where the model should be
                 saved (may be relative to a remote trainer's filesystem, or link to S3
                 storage)
             save_with_id (bool): Inject the training ID into the save path for
                 the output model
+            model_name (Optional[str]): Name of model that will be appended
+                to the end of the save_path
             wait (bool): Wait for training to complete before returning
             **kwargs: Additional keyword arguments to pass through to the
                 modules's train function
@@ -155,6 +158,7 @@ class ModelManager:
                 *args,
                 save_path=save_path,
                 save_with_id=save_with_id,
+                model_name=model_name,
                 **kwargs,
             )
             log.debug(
