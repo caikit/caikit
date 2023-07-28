@@ -76,6 +76,7 @@ def test_threads_canceled_when_interrupt_fails():
     #   be true, though, based on reasonable timing.
     thread.join(60)
     assert not thread.is_alive()
+    assert thread.canceled
 
 
 def test_threads_can_catch_the_interrupts():
