@@ -16,6 +16,7 @@ from contextlib import contextmanager
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 import multiprocessing
+import os
 import threading
 import time
 
@@ -114,7 +115,13 @@ def test_global_train_sample_task(
         training_response.training_id,
     )
 
-    result = MODEL_MANAGER.get_model_future(training_response.training_id).load()
+    model_future = MODEL_MANAGER.get_model_future(training_response.training_id)
+    expected_save_path_bits = os.path.join(
+        training_response.training_id, training_response.model_name
+    )
+    assert expected_save_path_bits in model_future.save_path
+
+    result = model_future.load()
     assert result.batch_size == 42
     assert (
         result.MODULE_CLASS

@@ -124,6 +124,44 @@ def test_save_with_id(trainer_type_cfg, save_path):
     assert os.path.exists(model_future.save_path)
 
 
+def test_save_with_id_and_model_name(trainer_type_cfg, save_path):
+    """Test that saving with the training id and model name
+    correctly injects the ID and name in the save path
+    """
+    trainer = local_trainer(**trainer_type_cfg)
+    model_future = trainer.train(
+        SampleModule,
+        training_data=DataStream.from_iterable([]),
+        save_path=save_path,
+        save_with_id=True,
+        model_name="abc",
+    )
+    model_future.wait()
+    assert model_future.save_path != save_path
+    assert model_future.id in model_future.save_path
+    assert "abc" in model_future.save_path
+    assert os.path.exists(model_future.save_path)
+
+
+def test_save_with_model_name(trainer_type_cfg, save_path):
+    """Test that saving with the model name correctly
+    injects the model name in the save path
+    """
+    trainer = local_trainer(**trainer_type_cfg)
+    model_future = trainer.train(
+        SampleModule,
+        training_data=DataStream.from_iterable([]),
+        save_path=save_path,
+        save_with_id=False,
+        model_name="abc",
+    )
+    model_future.wait()
+    assert model_future.save_path != save_path
+    assert model_future.id not in model_future.save_path
+    assert "abc" in model_future.save_path
+    assert os.path.exists(model_future.save_path)
+
+
 def test_cancel_clean_termination(trainer_type_cfg):
     """Test that cancelling an in-progress training successfully destroys the
     training when the training is run in a way that can be shut down cleanly

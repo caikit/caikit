@@ -14,7 +14,6 @@
 # Standard
 from importlib.metadata import version
 from typing import Optional, Type, Union
-import os
 import traceback
 
 # Third Party
@@ -202,10 +201,10 @@ class GlobalTrainServicer:
             # If we got an S3 storage link, just pass that along to the trainer
             model_path: S3Path = request_data_model.output_path
         else:
-            # Otherwise, append the model name to the specified output directory
-            model_path: str = self._get_model_path(
-                training_output_dir, request_data_model.model_name
-            )
+            # Otherwise, use either:
+            # 1. The provided `training_output_dir` here, or
+            # 2. The configured `runtime.training.output_dir`
+            model_path: str = training_output_dir or self.training_output_dir
 
         # Build the full set of kwargs for the train call
         kwargs.update(
@@ -213,6 +212,7 @@ class GlobalTrainServicer:
                 "module": module,
                 "save_path": model_path,
                 "save_with_id": self.save_with_id,
+                "model_name": request_data_model.model_name,
                 **build_caikit_library_request_dict(request, module.TRAIN_SIGNATURE),
             }
         )
@@ -276,19 +276,6 @@ class GlobalTrainServicer:
             model_name=request.model_name,
             training_id=model_future.id,
         )
-
-    def _get_model_path(
-        self,
-        training_output_dir: Optional[str],
-        model_name: str,
-    ) -> str:
-        """Get the right output path for a given model"""
-        base_dir = (
-            training_output_dir
-            if training_output_dir is not None
-            else self.training_output_dir
-        )
-        return os.path.join(base_dir, model_name)
 
     def _load_trained_model(self, model_name: str, model_path: str):
         log.debug("Autoloading trained model %s", model_name)

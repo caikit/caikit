@@ -61,6 +61,7 @@ class ModelTrainerBase(FactoryConstructible):
             training_id: str,
             save_with_id: bool,
             save_path: Optional[Union[str, S3Path]],
+            model_name: Optional[str] = None,
         ):
             # Trainers should deal with an S3 ref first and not pass it along here
             if save_path and isinstance(save_path, S3Path):
@@ -72,6 +73,7 @@ class ModelTrainerBase(FactoryConstructible):
                 save_path,
                 save_with_id,
                 self._id,
+                model_name,
             )
 
         @property
@@ -118,21 +120,25 @@ class ModelTrainerBase(FactoryConstructible):
             save_path: Optional[str],
             save_with_id: bool,
             training_id: str,
+            model_name: Optional[str],
         ) -> Optional[str]:
             """If asked to save_with_id, child classes should use this shared
             utility to construct the final save path
             """
             if save_path is None:
                 return save_path
-            if not save_with_id or training_id in save_path:
-                return save_path
 
-            # If told to save with the ID in the path, inject it right before the
-            # final portion of the path which is assumed to be the model ID.
-            path_parts = os.path.split(save_path)
-            return os.path.join(
-                *list(path_parts[:-1] + (training_id,) + path_parts[-1:])
-            )
+            final_path_parts = [save_path]
+            # If told to save with the ID in the path, inject it before the
+            # model name.
+            if save_with_id and training_id not in save_path:
+                # (Don't inject training id if its already in the path)
+                final_path_parts.append(training_id)
+
+            if model_name and model_name not in save_path:
+                final_path_parts.append(model_name)
+
+            return os.path.join(*final_path_parts)
 
     @abc.abstractmethod
     def train(
@@ -141,6 +147,7 @@ class ModelTrainerBase(FactoryConstructible):
         *args,
         save_path: Optional[Union[str, S3Path]] = None,
         save_with_id: bool = False,
+        model_name: Optional[str] = None,
         **kwargs,
     ) -> "ModelFutureBase":
         """Start training the given module and return a future to the trained

@@ -69,6 +69,7 @@ class LocalModelTrainer(ModelTrainerBase):
             *args,
             save_path: Optional[Union[str, S3Path]],
             save_with_id: bool,
+            model_name: Optional[str],
             external_training_id: Optional[str],
             use_subprocess: bool,
             **kwargs,
@@ -78,15 +79,16 @@ class LocalModelTrainer(ModelTrainerBase):
                 training_id=str(uuid.uuid4()),
                 save_with_id=save_with_id,
                 save_path=save_path,
+                model_name=model_name,
             )
-
-            # If an external id is given, use it explicitly
+            # 🌶️🌶️🌶️ For the external training id override, we don't want to include the
+            # reversible hash bit on the id. Therefore, we have to re-do the id and save
+            # path stuff done in the super() init here instead
             if external_training_id is not None:
+                # No extra hash bit
                 self._id = external_training_id
                 self._save_path = self._save_path_with_id(
-                    save_path,
-                    save_with_id,
-                    external_training_id,
+                    save_path, save_with_id, external_training_id, model_name
                 )
 
             self._module_class = module_class
@@ -257,6 +259,7 @@ class LocalModelTrainer(ModelTrainerBase):
         save_path: Optional[str] = None,
         save_with_id: bool = False,
         external_training_id: Optional[str] = None,
+        model_name: Optional[str] = None,
         **kwargs,
     ) -> "LocalModelFuture":
         """Start training the given module and return a future to the trained
@@ -274,6 +277,7 @@ class LocalModelTrainer(ModelTrainerBase):
             save_with_id=save_with_id,
             external_training_id=external_training_id,
             use_subprocess=self._use_subprocess,
+            model_name=model_name,
             **kwargs,
         )
 
