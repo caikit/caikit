@@ -14,7 +14,6 @@
 
 # Standard
 from os import path
-import argparse
 import sys
 
 # First Party
