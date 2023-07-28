@@ -17,7 +17,7 @@ Tests for the caikit HTTP server
 # Standard
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import List
+from typing import Dict, List
 import json
 import os
 import signal
@@ -67,7 +67,7 @@ class TLSConfig:
 @contextmanager
 def generate_tls_configs(
     port: int, tls: bool = False, mtls: bool = False, **http_config_overrides
-):
+) -> Dict[str, Dict]:
     """Helper to generate tls configs"""
     with tempfile.TemporaryDirectory() as workdir:
         config_overrides = {}
@@ -138,7 +138,7 @@ def test_basic_tls_server(sample_inference_service, sample_train_service, open_p
             open_port,
             inference_service=sample_inference_service,
             training_service=sample_train_service,
-            tls_config_override=config_overrides["runtime"]["tls"],
+            tls_config_override=config_overrides,
         ) as http_server_with_tls:
             # start a non-blocking http server with basic tls
             resp = requests.get(
@@ -158,7 +158,7 @@ def test_basic_tls_server_with_wrong_cert(
             open_port,
             inference_service=sample_inference_service,
             training_service=sample_train_service,
-            tls_config_override=config_overrides["runtime"]["tls"],
+            tls_config_override=config_overrides,
         ) as http_server_with_tls:
             # start a non-blocking http server with basic tls
             with pytest.raises(requests.exceptions.SSLError):
@@ -176,7 +176,7 @@ def test_mutual_tls_server(sample_inference_service, sample_train_service, open_
             open_port,
             inference_service=sample_inference_service,
             training_service=sample_train_service,
-            tls_config_override=config_overrides["runtime"]["tls"],
+            tls_config_override=config_overrides,
         ) as http_server_with_mtls:
             # start a non-blocking http server with mutual tls
             resp = requests.get(
@@ -200,7 +200,7 @@ def test_mutual_tls_server_with_wrong_cert(
             open_port,
             inference_service=sample_inference_service,
             training_service=sample_train_service,
-            tls_config_override=config_overrides["runtime"]["tls"],
+            tls_config_override=config_overrides,
         ) as http_server_with_mtls:
             # start a non-blocking http server with mutual tls
             with pytest.raises(requests.exceptions.SSLError):
@@ -219,6 +219,13 @@ def test_docs(runtime_http_server):
     with TestClient(runtime_http_server.app) as client:
         response = client.get("/docs")
         assert response.status_code == 200
+
+
+def test_docs_using_running_http_server(runtime_http_server):
+    """Simple check that pinging /docs returns 200
+    but pints the actual running server"""
+    response = requests.get(f"http://localhost:{runtime_http_server.port}/docs")
+    assert response.status_code == 200
 
 
 def test_inference_sample_task(sample_task_model_id, runtime_http_server):

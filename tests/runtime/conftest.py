@@ -4,7 +4,7 @@ This sets up global test configs when pytest starts
 
 # Standard
 from contextlib import contextmanager
-from typing import Type, Union
+from typing import Dict, Type, Union
 import os
 import shlex
 import socket
@@ -179,7 +179,12 @@ def runtime_http_test_server(open_port, *args, **kwargs):
             },
             "merge",
         ):
+            config_overrides = {}
+            if "tls_config_override" in kwargs:
+                config_overrides = kwargs["tls_config_override"]
+                kwargs["tls_config_override"] = config_overrides["runtime"]["tls"]
             with http_server.RuntimeHTTPServer(*args, **kwargs) as server:
+                _check_http_server_readiness(server, config_overrides)
                 # Give tests access to the workdir
                 server.workdir = workdir
                 yield server
@@ -187,18 +192,18 @@ def runtime_http_test_server(open_port, *args, **kwargs):
 
 # This is honestly not required for fastAPI testing
 # as they have a built-in TestClient that's capable
-# of testing http routes. I've kept it here just
-# in case we need a working http server for testing
+# of testing http routes. I've kept it here for tests that
+# need a working http server
 @pytest.fixture(scope="session")
 def runtime_http_server(
     http_session_scoped_open_port, sample_inference_service, sample_train_service
 ) -> http_server.RuntimeHTTPServer:
+    """yields an actual running http server"""
     with runtime_http_test_server(
         http_session_scoped_open_port,
         inference_service=sample_inference_service,
         training_service=sample_train_service,
     ) as server:
-        _check_http_server_readiness(server)
         yield server
 
 
@@ -374,23 +379,39 @@ def _check_server_readiness(server):
             stub.Check(health_check_request)
             done = True
         except grpc.RpcError:
-            log.debug("[RpcError]; will try to reconnect to test server in 0.1 second.")
-            time.sleep(0.1)
+            log.debug(
+                "[RpcError]; will try to reconnect to test server in 0.01 second."
+            )
+            time.sleep(0.01)
 
 
-def _check_http_server_readiness(server):
-    """Check server readiness"""
+def _check_http_server_readiness(server, config_overrides: Dict[str, Dict]):
+    mode = "http"
+    verify = None
+    cert = None
+    # tls
+    if config_overrides:
+        mode = "https"
+        verify = config_overrides["use_in_test"]["ca_cert"]
+        # mtls
+        if "client_cert" and "client_key" in config_overrides["use_in_test"]:
+            cert = (
+                config_overrides["use_in_test"]["client_cert"],
+                config_overrides["use_in_test"]["client_key"],
+            )
     done = False
     while not done:
         try:
             response = requests.get(
-                f"http://localhost:{server.port}{http_server.HEALTH_ENDPOINT}"
+                f"{mode}://localhost:{server.port}{http_server.HEALTH_ENDPOINT}",
+                verify=verify,
+                cert=cert,
             )
             assert response.status_code == 200
             assert response.text == "OK"
             done = True
         except AssertionError:
             log.debug(
-                "[HTTP server not ready]; will try to reconnect to test server in 0.1 second."
+                "[HTTP server not ready]; will try to reconnect to test server in 0.01 second."
             )
-            time.sleep(0.1)
+            time.sleep(0.01)

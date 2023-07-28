@@ -110,7 +110,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         self,
         inference_service: ServicePackage,
         #  # pylint: disable=unused-argument
-        training_service: Optional[ServicePackage],
+        training_service: Optional[ServicePackage] = None,
         tls_config_override: Optional[aconfig.Config] = None,
     ):
         super().__init__(get_config().runtime.http.port, tls_config_override)
@@ -180,6 +180,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         # Placeholder for thread when running without blocking
         self._uvicorn_server_thread = None
+
+    def __del__(self):
+        if get_config().runtime.metering.enabled:
+            self.global_predict_servicer.stop_metering()
 
     def start(self, blocking: bool = True):
         """Boot the http server. Can be non-blocking, or block until shutdown

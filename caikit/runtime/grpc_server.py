@@ -66,7 +66,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
     def __init__(
         self,
         inference_service: ServicePackage,
-        training_service: Optional[ServicePackage],
+        training_service: Optional[ServicePackage] = None,
         tls_config_override: Optional[aconfig.Config] = None,
         handle_terminations: bool = False,
     ):
