@@ -15,7 +15,7 @@
 import concurrent.futures
 import re
 import threading
-import uuid
+import time
 
 # Third Party
 import grpc
@@ -99,17 +99,22 @@ def test_training_cannot_cancel_on_completed_training(training_management_servic
 
 
 def test_training_cancel_on_correct_id(training_management_servicer):
-    # Create a training future for first model with a wait event
-    event_1 = threading.Event()
+    # Create a training future for first model with a long runtime
+    # NOTE: We cannot use a single log time.sleep or a threading.Event().wait
+    #   here because those are not actually destroyable via DestroyableThread.
+    #   Instead, we use the sleep_time argument that runs a loop of short sleeps
+    #   and then we verify below that the training duration was far less than
+    #   this configured sleep time.
+    start_event = threading.Event()
     model_future_1 = MODEL_MANAGER.train(
         SampleModule,
         DataStream.from_iterable([]),
-        wait_event=event_1,
+        sleep_time=100,
+        start_event=start_event,
     )
 
-    def unblock_training_thread():
-        event_1.set()
-        model_future_1.wait()
+    # Wait until the training has started to ensure it is interrupted in flight
+    start_event.wait()
 
     request_1 = TrainingInfoRequest(training_id=model_future_1.id).to_proto()
     response_1 = training_management_servicer.GetTrainingStatus(request_1, context=None)
@@ -128,9 +133,17 @@ def test_training_cancel_on_correct_id(training_management_servicer):
     response_1 = training_management_servicer.GetTrainingStatus(request_1, context=None)
     assert response_1.state == TrainingStatus.CANCELED.value
 
-    # release the blocked training that is waiting to clean up
-    unblock = threading.Thread(target=unblock_training_thread)
-    unblock.start()
+    # Make sure the model future completes without the blocking event being set
+    start_time = time.time()
+    model_future_1.wait()
+    # Sanity check that the model did not wait for anywhere close to the full
+    # 100 seconds
+    wait_time = time.time() - start_time
+    assert wait_time < 5
+    assert (
+        training_management_servicer.GetTrainingStatus(request_1, context=None).state
+        == TrainingStatus.CANCELED.value
+    )
 
     # training number 2 should still complete
     request_2 = TrainingInfoRequest(training_id=model_future_2.id).to_proto()
