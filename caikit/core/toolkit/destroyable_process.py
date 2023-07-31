@@ -35,13 +35,11 @@ from .destroyable import Destroyable
 
 log = alog.use_channel("DESTROY-PROC")
 
-FORK_CTX = multiprocessing.get_context("fork")
-
 OOM_EXIT_CODE = 137
 
 
 class DestroyableProcess(
-    FORK_CTX.Process, Destroyable
+    multiprocessing.Process, Destroyable
 ):  # pylint: disable=too-many-instance-attributes
     __doc__ = __doc__
 
@@ -56,8 +54,8 @@ class DestroyableProcess(
         **_kwargs,
     ):
         """Initialize with an event to use to signal completion"""
-        self._parent_conn, self._child_conn = FORK_CTX.Pipe()
-        self._completion_event = completion_event or FORK_CTX.Event()
+        self._parent_conn, self._child_conn = multiprocessing.Pipe()
+        self._completion_event = completion_event or multiprocessing.Event()
         self._destroy_grace_period = destroy_grace_period
         self._return_result = return_result
 

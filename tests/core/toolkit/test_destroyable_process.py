@@ -13,20 +13,43 @@
 # limitations under the License.
 
 # Standard
+import multiprocessing
 import time
 
 # Third Party
 import pytest
 
 # Local
-from caikit.core.toolkit.destroyable_process import FORK_CTX, DestroyableProcess
+from caikit.core.toolkit.destroyable_process import DestroyableProcess
+
+## Helpers #####################################################################
+
+
+EXPECTED_THROW = ValueError("test-any-error")
+EXPECTED_SUCCESS = "test-any-result"
+
+
+def infinite_wait():
+    while True:
+        time.sleep(0.1)
+
+
+def long_sleep():
+    time.sleep(1000)
+
+
+def thrower():
+    raise EXPECTED_THROW
+
+
+def succeeder():
+    return EXPECTED_SUCCESS
+
+
+## Tests #######################################################################
 
 
 def test_processes_can_be_interrupted():
-    def infinite_wait():
-        while True:
-            time.sleep(0.1)
-
     proc = DestroyableProcess(infinite_wait)
     proc.start()
     assert not proc.destroyed
@@ -43,11 +66,10 @@ def test_processes_can_be_interrupted():
 
 
 def test_processes_can_return_results():
-    expected = "test-any-result"
-    proc = DestroyableProcess(lambda: expected)
+    proc = DestroyableProcess(succeeder)
     proc.start()
     proc.join()
-    assert expected == proc.get_or_throw()
+    assert EXPECTED_SUCCESS == proc.get_or_throw()
     assert not proc.destroyed
     assert not proc.canceled
     assert proc.ran
@@ -55,7 +77,7 @@ def test_processes_can_return_results():
 
 
 def test_process_not_canceled_after_success():
-    proc = DestroyableProcess(lambda: None)
+    proc = DestroyableProcess(succeeder)
     proc.start()
     proc.join()
     assert not proc.canceled
@@ -64,8 +86,7 @@ def test_process_not_canceled_after_success():
 
 
 def test_processes_can_be_set_to_not_return_results():
-    expected = "test-any-result"
-    proc = DestroyableProcess(lambda: expected, return_result=False)
+    proc = DestroyableProcess(succeeder, return_result=False)
     proc.start()
     proc.join()
     assert proc.get_or_throw() is None
@@ -76,11 +97,6 @@ def test_processes_can_be_set_to_not_return_results():
 
 
 def test_processes_can_throw():
-    expected = ValueError("test-any-error")
-
-    def thrower():
-        raise expected
-
     proc = DestroyableProcess(thrower)
     proc.start()
     proc.join()
@@ -92,11 +108,11 @@ def test_processes_can_throw():
     with pytest.raises(ValueError) as ctx:
         proc.get_or_throw()
 
-    assert str(expected) == str(ctx.value)
+    assert str(EXPECTED_THROW) == str(ctx.value)
 
 
 def test_processes_will_not_execute_if_destroyed_before_starting():
-    proc = DestroyableProcess(lambda: time.sleep(1000))
+    proc = DestroyableProcess(long_sleep)
     proc.destroy()
     proc.start()
     assert not proc.is_alive()
@@ -110,8 +126,8 @@ def test_processes_will_not_execute_if_destroyed_before_starting():
 
 
 def test_event_is_set_on_completion():
-    event = FORK_CTX.Event()
-    proc = DestroyableProcess(lambda: None, completion_event=event)
+    event = multiprocessing.Event()
+    proc = DestroyableProcess(succeeder, completion_event=event)
     assert not event.is_set()
     proc.start()
     proc.join()
@@ -123,11 +139,7 @@ def test_event_is_set_on_completion():
 
 
 def test_event_is_set_on_exception():
-    event = FORK_CTX.Event()
-
-    def thrower():
-        raise ValueError("test-any-exception")
-
+    event = multiprocessing.Event()
     proc = DestroyableProcess(thrower, completion_event=event)
     assert not event.is_set()
     proc.start()
@@ -140,7 +152,7 @@ def test_event_is_set_on_exception():
 
 
 def test_default_event_is_set_on_completion():
-    proc = DestroyableProcess(lambda: None)
+    proc = DestroyableProcess(succeeder)
     assert not proc.completion_event.is_set()
     proc.start()
     proc.join()
