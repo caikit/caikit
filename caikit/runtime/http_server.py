@@ -557,15 +557,29 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
 
 def main():
+
     caikit.core.toolkit.logging.configure()
+    log.debug("Starting up caikit.runtime.http_server")
 
     # This code will live in caikt/runtime/__main__.py eventually
-    inference_service = ServicePackageFactory().get_service_package(
+    # pylint: disable=duplicate-code
+
+    # We should always be able to stand up an inference service
+    inference_service: ServicePackage = ServicePackageFactory.get_service_package(
         ServicePackageFactory.ServiceType.INFERENCE,
     )
-    training_service = ServicePackageFactory().get_service_package(
-        ServicePackageFactory.ServiceType.TRAINING,
-    )
+
+    # But maybe not always a training service
+    try:
+        training_service: Optional[
+            ServicePackage
+        ] = ServicePackageFactory.get_service_package(
+            ServicePackageFactory.ServiceType.TRAINING,
+        )
+    except CaikitRuntimeException as e:
+        log.warning("Cannot stand up training service, disabling training: %s", e)
+        training_service = None
+
     server = RuntimeHTTPServer(
         inference_service=inference_service, training_service=training_service
     )
