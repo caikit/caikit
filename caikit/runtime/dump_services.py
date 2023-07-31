@@ -20,6 +20,7 @@ import sys
 # Local
 from ..core.data_model import render_dataobject_protos
 from .service_factory import ServicePackageFactory
+from caikit.config.config import get_config
 import caikit
 
 
@@ -78,5 +79,7 @@ if __name__ == "__main__":
     # Set up logging so users can set LOG_LEVEL etc
     caikit.core.toolkit.logging.configure()
 
-    dump_grpc_services(out_dir)
-    dump_http_services(out_dir)
+    if get_config().runtime.grpc.enabled:
+        dump_grpc_services(out_dir)
+    if get_config().runtime.http.enabled:
+        dump_http_services(out_dir)
