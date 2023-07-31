@@ -209,7 +209,7 @@ def test_training_raises_when_cancel_on_incorrect_id(training_management_service
     assert (
         "some_random_id not found in the list of currently running training jobs."
         in context.value.message
-        and "Did not perform cancel" in context.value.message
+        and "Could not perform cancel" in context.value.message
     )
 
 
