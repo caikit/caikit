@@ -68,7 +68,6 @@ class RuntimeGRPCServer(RuntimeServerBase):
     ):
         super().__init__(get_config().runtime.grpc.port, tls_config_override)
 
-        signal.signal(signal.SIGINT, self.interrupt)
         # Initialize basic server
         # py_grpc_prometheus.server_metrics.
         self.server = grpc.server(
@@ -283,6 +282,8 @@ def main(blocking: bool = True):
         start_http_server(get_config().runtime.metrics.port)
 
     server = RuntimeGRPCServer()
+    signal.signal(signal.SIGINT, server.interrupt)
+
     server.start(blocking)
 
 

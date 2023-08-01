@@ -115,8 +115,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         self.app = FastAPI()
 
-        signal.signal(signal.SIGINT, self.interrupt)
-
         # Set up the central predict servicer
         self.global_predict_servicer = GlobalPredictServicer(self.inference_service)
 
@@ -566,6 +564,7 @@ def main(blocking: bool = True):
     with alog.ContextTimer(log.info, "Booted metrics server in "):
         start_http_server(get_config().runtime.metrics.port)
     server = RuntimeHTTPServer()
+    signal.signal(signal.SIGINT, server.interrupt)
     server.start(blocking)
 
 
