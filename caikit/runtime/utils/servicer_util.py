@@ -289,8 +289,8 @@ class ServicePackageStreamWrapper(DataStreamSourceBase):
         NOTE: We _intentionally_ don't initialize the base class here and
             instead we forward
         """
-        super().__init__()
         self._stream = stream
+        super().__init__()
         update_wrapper(self, stream)
 
     def __getstate__(self) -> Tuple[str, str, type, bytes]:
@@ -343,6 +343,19 @@ class ServicePackageStreamWrapper(DataStreamSourceBase):
     def __getattr__(self, name: str) -> Any:
         """Forward all getattr requests to the underlying stream"""
         return getattr(self._stream, name)
+
+    def __setattr__(self, name: str, val: Any):
+        """Forward attribute setting for generic attrs to the stream"""
+        if name == "_stream":
+            super().__setattr__(name, val)
+        else:
+            stream_attrs = list(self._stream.__class__.__annotations__.keys()) + list(
+                self._stream.get_proto_class().DESCRIPTOR.fields_by_name.keys()
+            )
+            if name in stream_attrs:
+                setattr(self._stream, name, val)
+            else:
+                super().__setattr__(name, val)
 
 
 class SpawnProcessModelWrapper(ModuleBase):
