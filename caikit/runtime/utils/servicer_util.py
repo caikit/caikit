@@ -14,7 +14,10 @@
 """A generic module to help Predict and Train servicers
 """
 # Standard
-from typing import Any, Dict, Iterable, Iterator
+from functools import update_wrapper
+from typing import Any, Dict, Iterable, Iterator, Tuple
+import multiprocessing
+import sys
 import traceback
 
 # Third Party
@@ -26,13 +29,19 @@ import grpc
 import alog
 
 # Local
+from caikit.core import ModuleBase
 from caikit.core.data_model import DataStream
 from caikit.core.data_model.base import DataBase
 from caikit.core.signature_parsing import CaikitMethodSignature
 from caikit.interfaces.runtime.data_model.training_management import ModelPointer
 from caikit.runtime.model_management.model_manager import ModelManager
+from caikit.runtime.service_generation.data_stream_source import (
+    DataStreamSourceBase,
+    make_data_stream_source,
+)
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import get_data_model
+import caikit.core.data_model.base
 
 log = alog.use_channel("SERVICR-UTIL")
 
@@ -260,6 +269,82 @@ def validate_data_model(
         validate_caikit_library_class_method_exists(caikit_Library_class, "to_proto")
 
 
+class ServicePackageStreamWrapper(DataStream):
+    """This class wraps up a DataStreamSourceBase derived class so that it can
+    be safely pickled to a subprocess using "spawn".
+
+    When using "spawn" to start a subprocess, a clean python process is created
+    and none of the runtime code leading to the creation is re-executed. For
+    most classes that are created at import time, this is fine, but for
+    dynamically created classes like those created with make_data_stream_source,
+    the class is not recreated on spawn and cannot be looked up.
+
+    To get around this, when unpickling this class, it falls back to performing
+    service generation dynamically if the class doesn't already exist
+    """
+
+    def __init__(self, stream: DataStreamSourceBase):
+        """Initialize with the data stream source to wrap
+
+        NOTE: We _intentionally_ don't initialize the base class here and
+            instead we forward
+        """
+        super().__init__(stream._generator)
+        self._stream = stream
+        update_wrapper(self, stream)
+
+    def __getstate__(self) -> Tuple[str, str, type, bytes]:
+        """Pickle as a tuple of primitive types
+
+        Returns:
+            stream_module_name (str): The name of the module that holds the
+                stream source class
+            stream_class_name (str): The name of the stream source class itself
+            stream_class_element_type (type): The type of the elements for this
+                stream source
+            content (bytes): The serialized bytes content of the underlying
+                stream source as a dataobject
+        """
+        return (
+            self._stream.__class__.__module__,
+            self._stream.__class__.__name__,
+            self._stream.__class__.ELEMENT_TYPE,
+            self._stream.__getstate__(),
+        )
+
+    def __setstate__(self, pickled: Tuple[str, str, type, bytes]):
+        """Unpickle the values from pickling and fall back to dynamic service
+        generation if needed.
+
+        Args:
+            pickled (Tuple[str, str, type, bytes]): The four elements created
+                when pickling this instance
+        """
+        stream_type_module, stream_type_name, element_type_class, stream_bytes = pickled
+        try:
+            mod = sys.modules[stream_type_module]
+            stream_type = getattr(mod, stream_type_name)
+        except (KeyError, AttributeError):
+            # Local
+            from caikit.runtime.service_factory import (  # pylint: disable=import-outside-toplevel
+                ServicePackageFactory,
+            )
+
+            ServicePackageFactory.get_service_package(
+                ServicePackageFactory.ServiceType.INFERENCE
+            )
+            ServicePackageFactory.get_service_package(
+                ServicePackageFactory.ServiceType.TRAINING
+            )
+            stream_type = make_data_stream_source(element_type_class)
+        self._stream = stream_type.__new__(stream_type)
+        self._stream.__setstate__(stream_bytes)
+
+    def __getattr__(self, name: str) -> Any:
+        """Forward all getattr requests to the underlying stream"""
+        return getattr(self._stream, name)
+
+
 def build_caikit_library_request_dict(
     request: ProtoMessageType,
     module_signature: CaikitMethodSignature,
@@ -313,13 +398,22 @@ def build_caikit_library_request_dict(
         for absent_field_name in absent_field_names:
             kwargs_dict.pop(absent_field_name)
 
-        # 3. Model Pointers
+        # 3. Handle type conversions
+        updated_kwargs = {}
         for field_name, field_value in kwargs_dict.items():
+
+            # 3.1 Model Pointers
             if isinstance(field_value, ModelPointer):
-                log.debug2("field_value is a ModelPointer obj")
+                log.debug2("field %s value is a ModelPointer obj", field_name)
                 model_manager = ModelManager.get_instance()
                 model_retrieved = model_manager.retrieve_model(field_value.model_id)
                 kwargs_dict[field_name] = model_retrieved
+
+            # 3.2 Data streams
+            elif isinstance(field_value, DataStreamSourceBase):
+                log.debug2("field %s value is a DataStreamSourceBase", field_name)
+                updated_kwargs[field_name] = ServicePackageStreamWrapper(field_value)
+        kwargs_dict.update(updated_kwargs)
 
         log.debug2("caikit_library_request_dict returned is: %s", kwargs_dict)
 
