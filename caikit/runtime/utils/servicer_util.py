@@ -269,7 +269,7 @@ def validate_data_model(
         validate_caikit_library_class_method_exists(caikit_Library_class, "to_proto")
 
 
-class ServicePackageStreamWrapper(DataStream):
+class ServicePackageStreamWrapper(DataStreamSourceBase):
     """This class wraps up a DataStreamSourceBase derived class so that it can
     be safely pickled to a subprocess using "spawn".
 
@@ -289,7 +289,7 @@ class ServicePackageStreamWrapper(DataStream):
         NOTE: We _intentionally_ don't initialize the base class here and
             instead we forward
         """
-        super().__init__(stream._generator)
+        super().__init__()
         self._stream = stream
         update_wrapper(self, stream)
 
