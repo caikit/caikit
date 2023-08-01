@@ -555,7 +555,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         return "OK"
 
 
-def main():
+def main(blocking: bool = True):
 
     # pylint: disable=duplicate-code
     # Start serving Prometheus metrics
@@ -566,7 +566,7 @@ def main():
     with alog.ContextTimer(log.info, "Booted metrics server in "):
         start_http_server(get_config().runtime.metrics.port)
     server = RuntimeHTTPServer()
-    server.start()
+    server.start(blocking)
 
 
 if __name__ == "__main__":

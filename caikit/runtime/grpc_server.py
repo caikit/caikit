@@ -271,7 +271,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
         self.stop(0)
 
 
-def main():
+def main(blocking: bool = True):
 
     # pylint: disable=duplicate-code
     # Start serving Prometheus metrics
@@ -283,7 +283,7 @@ def main():
         start_http_server(get_config().runtime.metrics.port)
 
     server = RuntimeGRPCServer()
-    server.start()
+    server.start(blocking)
 
 
 if __name__ == "__main__":
