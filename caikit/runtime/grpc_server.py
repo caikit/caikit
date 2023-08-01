@@ -16,10 +16,12 @@
 from concurrent import futures
 from typing import Optional, Union
 import os
+import signal
 
 # Third Party
 from grpc_health.v1 import health, health_pb2_grpc
 from grpc_reflection.v1alpha import reflection
+from prometheus_client import start_http_server
 from py_grpc_prometheus.prometheus_server_interceptor import PromServerInterceptor
 import grpc
 
@@ -62,14 +64,11 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
     def __init__(
         self,
-        inference_service: ServicePackage,
-        training_service: Optional[ServicePackage] = None,
         tls_config_override: Optional[aconfig.Config] = None,
     ):
         super().__init__(get_config().runtime.grpc.port, tls_config_override)
-        self.inference_service = inference_service
-        self.training_service = training_service
 
+        signal.signal(signal.SIGINT, self.interrupt)
         # Initialize basic server
         # py_grpc_prometheus.server_metrics.
         self.server = grpc.server(
@@ -270,3 +269,22 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
     def __exit__(self, type_, value, traceback):
         self.stop(0)
+
+
+def main():
+
+    # pylint: disable=duplicate-code
+    # Start serving Prometheus metrics
+    if get_config().runtime.metrics.enabled:
+        log.info(
+            "Serving prometheus metrics on port %s", get_config().runtime.metrics.port
+        )
+    with alog.ContextTimer(log.info, "Booted metrics server in "):
+        start_http_server(get_config().runtime.metrics.port)
+
+    server = RuntimeGRPCServer()
+    server.start()
+
+
+if __name__ == "__main__":
+    main()

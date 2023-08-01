@@ -23,6 +23,7 @@ import asyncio
 import enum
 import json
 import re
+import signal
 import ssl
 import threading
 import time
@@ -31,6 +32,7 @@ import time
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import PlainTextResponse
 from grpc import StatusCode
+from prometheus_client import start_http_server
 from sse_starlette import EventSourceResponse, ServerSentEvent
 import numpy as np
 import pydantic
@@ -107,17 +109,16 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
     def __init__(
         self,
-        inference_service: ServicePackage,
-        #  # pylint: disable=unused-argument
-        training_service: Optional[ServicePackage] = None,
         tls_config_override: Optional[aconfig.Config] = None,
     ):
         super().__init__(get_config().runtime.http.port, tls_config_override)
 
         self.app = FastAPI()
 
+        signal.signal(signal.SIGINT, self.interrupt)
+
         # Set up the central predict servicer
-        self.global_predict_servicer = GlobalPredictServicer(inference_service)
+        self.global_predict_servicer = GlobalPredictServicer(self.inference_service)
 
         # Set up the central train servicer
         # TODO: uncomment later on
@@ -126,7 +127,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # )
         # self.global_train_servicer = GlobalTrainServicer(train_service)
 
-        self.package_name = inference_service.descriptor.full_name.rsplit(".", 1)[0]
+        self.package_name = self.inference_service.descriptor.full_name.rsplit(".", 1)[
+            0
+        ]
 
         # Add the health endpoint
         self.app.get(HEALTH_ENDPOINT, response_class=PlainTextResponse)(
@@ -134,7 +137,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         )
 
         # Bind all routes to the server
-        self._bind_routes(inference_service)
+        self._bind_routes(self.inference_service)
         # self._bind_routes(train_service)
 
         # Parse TLS configuration
@@ -550,3 +553,21 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def _health_check() -> str:
         log.debug4("Server healthy")
         return "OK"
+
+
+def main():
+
+    # pylint: disable=duplicate-code
+    # Start serving Prometheus metrics
+    if get_config().runtime.metrics.enabled:
+        log.info(
+            "Serving prometheus metrics on port %s", get_config().runtime.metrics.port
+        )
+    with alog.ContextTimer(log.info, "Booted metrics server in "):
+        start_http_server(get_config().runtime.metrics.port)
+    server = RuntimeHTTPServer()
+    server.start()
+
+
+if __name__ == "__main__":
+    main()

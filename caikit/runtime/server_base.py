@@ -24,6 +24,9 @@ import alog
 # Local
 from caikit.config import get_config
 from caikit.runtime.model_management.model_manager import ModelManager
+from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
+from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+import caikit
 
 log = alog.use_channel("SERVR-BASE")
 
@@ -38,6 +41,37 @@ class RuntimeServerBase(abc.ABC):
             tls_config_override if tls_config_override else self.config.runtime.tls
         )
         log.debug4("Full caikit config: %s", get_config())
+
+        # Configure using the log level and formatter type specified in config.
+        caikit.core.toolkit.logging.configure()
+
+        # We should always be able to stand up an inference service
+        self.inference_service: ServicePackage = (
+            ServicePackageFactory.get_service_package(
+                ServicePackageFactory.ServiceType.INFERENCE,
+            )
+        )
+
+        # But maybe not always a training service
+        try:
+            training_service: Optional[
+                ServicePackage
+            ] = ServicePackageFactory.get_service_package(
+                ServicePackageFactory.ServiceType.TRAINING,
+            )
+        except CaikitRuntimeException as e:
+            log.warning("Cannot stand up training service, disabling training: %s", e)
+            training_service = None
+
+        self.training_service = training_service
+
+    def interrupt(self, signal_, _stack_frame):
+        log.info(
+            "<RUN87630120I>",
+            "Caikit Runtime received interrupt signal %s, shutting down",
+            signal_,
+        )
+        self.stop()
 
     def _shut_down_model_manager(self):
         """Shared utility for shutting down the model manager"""

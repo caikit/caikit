@@ -130,14 +130,12 @@ def test_insecure_server(runtime_http_server, open_port):
         resp.raise_for_status()
 
 
-def test_basic_tls_server(sample_inference_service, sample_train_service, open_port):
+def test_basic_tls_server(open_port):
     with generate_tls_configs(
         open_port, tls=True, mtls=False, http_config_overrides={}
     ) as config_overrides:
         with runtime_http_test_server(
             open_port,
-            inference_service=sample_inference_service,
-            training_service=sample_train_service,
             tls_config_override=config_overrides,
         ) as http_server_with_tls:
             # start a non-blocking http server with basic tls
@@ -148,16 +146,12 @@ def test_basic_tls_server(sample_inference_service, sample_train_service, open_p
             resp.raise_for_status()
 
 
-def test_basic_tls_server_with_wrong_cert(
-    sample_inference_service, sample_train_service, open_port
-):
+def test_basic_tls_server_with_wrong_cert(open_port):
     with generate_tls_configs(
         open_port, tls=True, mtls=False, http_config_overrides={}
     ) as config_overrides:
         with runtime_http_test_server(
             open_port,
-            inference_service=sample_inference_service,
-            training_service=sample_train_service,
             tls_config_override=config_overrides,
         ) as http_server_with_tls:
             # start a non-blocking http server with basic tls
@@ -168,14 +162,12 @@ def test_basic_tls_server_with_wrong_cert(
                 )
 
 
-def test_mutual_tls_server(sample_inference_service, sample_train_service, open_port):
+def test_mutual_tls_server(open_port):
     with generate_tls_configs(
         open_port, tls=True, mtls=True, http_config_overrides={}
     ) as config_overrides:
         with runtime_http_test_server(
             open_port,
-            inference_service=sample_inference_service,
-            training_service=sample_train_service,
             tls_config_override=config_overrides,
         ) as http_server_with_mtls:
             # start a non-blocking http server with mutual tls
@@ -190,16 +182,12 @@ def test_mutual_tls_server(sample_inference_service, sample_train_service, open_
             resp.raise_for_status()
 
 
-def test_mutual_tls_server_with_wrong_cert(
-    sample_inference_service, sample_train_service, open_port
-):
+def test_mutual_tls_server_with_wrong_cert(open_port):
     with generate_tls_configs(
         open_port, tls=True, mtls=True, http_config_overrides={}
     ) as config_overrides:
         with runtime_http_test_server(
             open_port,
-            inference_service=sample_inference_service,
-            training_service=sample_train_service,
             tls_config_override=config_overrides,
         ) as http_server_with_mtls:
             # start a non-blocking http server with mutual tls
@@ -357,7 +345,6 @@ def test_pydantic_wrapping_with_lists(runtime_http_server):
     assert foo.bars[0].baz == 1
 
 
-@pytest.mark.skip
 def test_http_server_shutdown_with_model_poll(open_port):
     """Test that a SIGINT successfully shuts down the running server"""
     with tempfile.TemporaryDirectory() as workdir:

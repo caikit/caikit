@@ -56,14 +56,7 @@ def dump_http_services(output_dir: str):
         RuntimeHTTPServer,
     )
 
-    inf_svc = ServicePackageFactory.get_service_package(
-        ServicePackageFactory.ServiceType.INFERENCE,
-    )
-    train_svc = ServicePackageFactory.get_service_package(
-        ServicePackageFactory.ServiceType.TRAINING,
-    )
-
-    server = RuntimeHTTPServer(inference_service=inf_svc, training_service=train_svc)
+    server = RuntimeHTTPServer()
     with TestClient(server.app) as client:
         response = client.get("/openapi.json")
         response.raise_for_status()

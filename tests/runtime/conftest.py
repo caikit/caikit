@@ -150,12 +150,10 @@ def runtime_grpc_test_server(open_port, *args, **kwargs):
 
 @pytest.fixture(scope="session")
 def runtime_grpc_server(
-    session_scoped_open_port, sample_inference_service, sample_train_service
+    session_scoped_open_port,
 ) -> RuntimeGRPCServer:
     with runtime_grpc_test_server(
         session_scoped_open_port,
-        inference_service=sample_inference_service,
-        training_service=sample_train_service,
     ) as server:
         _check_server_readiness(server)
         yield server
@@ -196,13 +194,11 @@ def runtime_http_test_server(open_port, *args, **kwargs):
 # need a working http server
 @pytest.fixture(scope="session")
 def runtime_http_server(
-    http_session_scoped_open_port, sample_inference_service, sample_train_service
+    http_session_scoped_open_port,
 ) -> http_server.RuntimeHTTPServer:
     """yields an actual running http server"""
     with runtime_http_test_server(
         http_session_scoped_open_port,
-        inference_service=sample_inference_service,
-        training_service=sample_train_service,
     ) as server:
         yield server
 
