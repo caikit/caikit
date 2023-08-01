@@ -15,7 +15,7 @@
 """
 # Standard
 from functools import update_wrapper
-from typing import Any, Dict, Iterable, Iterator, Tuple
+from typing import Any, Dict, Iterable, Iterator, Optional, Tuple
 import multiprocessing
 import sys
 import traceback
@@ -345,6 +345,64 @@ class ServicePackageStreamWrapper(DataStream):
         return getattr(self._stream, name)
 
 
+class SpawnProcessModelWrapper(ModuleBase):
+    """This class wraps up a model to make it safe to pass to a spawned
+    subprocess. It will not be efficient, but it will be safe!
+    """
+
+    def __init__(self, model_id: str, model: ModuleBase):
+        super().__init__()
+        self._model_id = model_id
+        self._model = model
+
+    def __getattr__(self, name):
+        """Forward attributes that are not found on the base class to the model
+
+        NOTE: This does _not_ forward base class attributes since those are
+            resolved before __getattr__ is called.
+        """
+        return getattr(self._model, name)
+
+    def save(self, *args, **kwargs):
+        """Directly forward save to the model so that it is not called by the
+        base class
+        """
+        return self._model.save(*args, **kwargs)
+
+    def run(self, *args, **kwargs):
+        """Directly forward run to the model so that it is not called by the
+        base class
+        """
+        return self._model.run(*args, **kwargs)
+
+    def __getstate__(self) -> Tuple[str, Optional[bytes]]:
+        """When pickling, only send the serialized model body for non-fork. This
+        is not a general-purpose pickle solution for models, but makes them safe
+        for training jobs that need to move models between processes.
+        """
+        start_method = multiprocessing.get_start_method()
+        body = None
+        if start_method != "fork":
+            body = self._model.as_bytes()
+        return self._model_id, body
+
+    def __setstate__(self, pickled: Tuple[str, Optional[bytes]]):
+        """When unpickling, deserialize the body if the model is not already
+        loaded in the model manager. This must be used in conjunction with the
+        above __getstate__ across a process boundary and should not be used as a
+        general-purpose deserialization for models.
+        """
+        model_id, body = pickled
+        model_manager = ModelManager.get_instance()
+        try:
+            retrieved_model = model_manager.retrieve_model(model_id)
+        except CaikitRuntimeException:
+            assert body is not None, "Cannot unpickle non-loaded model without a body"
+            retrieved_model = caikit.core.load(body)
+        self._model = retrieved_model
+        self._model_id = model_id
+
+
 def build_caikit_library_request_dict(
     request: ProtoMessageType,
     module_signature: CaikitMethodSignature,
@@ -407,7 +465,9 @@ def build_caikit_library_request_dict(
                 log.debug2("field %s value is a ModelPointer obj", field_name)
                 model_manager = ModelManager.get_instance()
                 model_retrieved = model_manager.retrieve_model(field_value.model_id)
-                kwargs_dict[field_name] = model_retrieved
+                updated_kwargs[field_name] = SpawnProcessModelWrapper(
+                    field_value.model_id, model_retrieved
+                )
 
             # 3.2 Data streams
             elif isinstance(field_value, DataStreamSourceBase):
