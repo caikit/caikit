@@ -46,11 +46,18 @@ def succeeder():
     return EXPECTED_SUCCESS
 
 
+@pytest.fixture(
+    params=["fork", "forkserver", "spawn"],
+)
+def process_type(request):
+    yield request.param
+
+
 ## Tests #######################################################################
 
 
-def test_processes_can_be_interrupted():
-    proc = DestroyableProcess(infinite_wait)
+def test_processes_can_be_interrupted(process_type):
+    proc = DestroyableProcess(process_type, infinite_wait)
     proc.start()
     assert not proc.destroyed
     assert not proc.canceled
@@ -65,8 +72,8 @@ def test_processes_can_be_interrupted():
     assert not proc.threw
 
 
-def test_processes_can_return_results():
-    proc = DestroyableProcess(succeeder)
+def test_processes_can_return_results(process_type):
+    proc = DestroyableProcess(process_type, succeeder)
     proc.start()
     proc.join()
     assert EXPECTED_SUCCESS == proc.get_or_throw()
@@ -76,8 +83,8 @@ def test_processes_can_return_results():
     assert not proc.threw
 
 
-def test_process_not_canceled_after_success():
-    proc = DestroyableProcess(succeeder)
+def test_process_not_canceled_after_success(process_type):
+    proc = DestroyableProcess(process_type, succeeder)
     proc.start()
     proc.join()
     assert not proc.canceled
@@ -85,8 +92,8 @@ def test_process_not_canceled_after_success():
     assert not proc.canceled
 
 
-def test_processes_can_be_set_to_not_return_results():
-    proc = DestroyableProcess(succeeder, return_result=False)
+def test_processes_can_be_set_to_not_return_results(process_type):
+    proc = DestroyableProcess(process_type, succeeder, return_result=False)
     proc.start()
     proc.join()
     assert proc.get_or_throw() is None
@@ -96,8 +103,8 @@ def test_processes_can_be_set_to_not_return_results():
     assert not proc.threw
 
 
-def test_processes_can_throw():
-    proc = DestroyableProcess(thrower)
+def test_processes_can_throw(process_type):
+    proc = DestroyableProcess(process_type, thrower)
     proc.start()
     proc.join()
     assert not proc.destroyed
@@ -111,8 +118,8 @@ def test_processes_can_throw():
     assert str(EXPECTED_THROW) == str(ctx.value)
 
 
-def test_processes_will_not_execute_if_destroyed_before_starting():
-    proc = DestroyableProcess(long_sleep)
+def test_processes_will_not_execute_if_destroyed_before_starting(process_type):
+    proc = DestroyableProcess(process_type, long_sleep)
     proc.destroy()
     proc.start()
     assert not proc.is_alive()
@@ -125,9 +132,9 @@ def test_processes_will_not_execute_if_destroyed_before_starting():
     assert proc.threw
 
 
-def test_event_is_set_on_completion():
+def test_event_is_set_on_completion(process_type):
     event = multiprocessing.Event()
-    proc = DestroyableProcess(succeeder, completion_event=event)
+    proc = DestroyableProcess(process_type, succeeder, completion_event=event)
     assert not event.is_set()
     proc.start()
     proc.join()
@@ -138,9 +145,9 @@ def test_event_is_set_on_completion():
     assert not proc.threw
 
 
-def test_event_is_set_on_exception():
+def test_event_is_set_on_exception(process_type):
     event = multiprocessing.Event()
-    proc = DestroyableProcess(thrower, completion_event=event)
+    proc = DestroyableProcess(process_type, thrower, completion_event=event)
     assert not event.is_set()
     proc.start()
     proc.join()
@@ -151,8 +158,8 @@ def test_event_is_set_on_exception():
     assert proc.threw
 
 
-def test_default_event_is_set_on_completion():
-    proc = DestroyableProcess(succeeder)
+def test_default_event_is_set_on_completion(process_type):
+    proc = DestroyableProcess(process_type, succeeder)
     assert not proc.completion_event.is_set()
     proc.start()
     proc.join()
