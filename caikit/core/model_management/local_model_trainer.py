@@ -72,6 +72,7 @@ class LocalModelTrainer(ModelTrainerBase):
             model_name: Optional[str],
             external_training_id: Optional[str],
             use_subprocess: bool,
+            subprocess_start_method: str,
             **kwargs,
         ):
             super().__init__(
@@ -101,6 +102,7 @@ class LocalModelTrainer(ModelTrainerBase):
             if self._use_subprocess:
                 log.debug2("Running training %s as a SUBPROCESS", self.id)
                 self._worker = DestroyableProcess(
+                    start_method=subprocess_start_method,
                     target=self._train_and_save,
                     return_result=True,
                     args=args,
@@ -225,6 +227,7 @@ class LocalModelTrainer(ModelTrainerBase):
         """Initialize with a shared dict of all trainings"""
         self._instance_name = instance_name
         self._use_subprocess = config.get("use_subprocess", False)
+        self._subprocess_start_method = config.get("subprocess_start_method", "spawn")
         self._retention_duration = config.get("retention_duration")
         if self._retention_duration is not None:
             try:
@@ -277,6 +280,7 @@ class LocalModelTrainer(ModelTrainerBase):
             save_with_id=save_with_id,
             external_training_id=external_training_id,
             use_subprocess=self._use_subprocess,
+            subprocess_start_method=self._subprocess_start_method,
             model_name=model_name,
             **kwargs,
         )
