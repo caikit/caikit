@@ -283,6 +283,7 @@ def main(blocking: bool = True):
 
     server = RuntimeGRPCServer()
     signal.signal(signal.SIGINT, server.interrupt)
+    signal.signal(signal.SIGTERM, server.interrupt)
 
     server.start(blocking)
 

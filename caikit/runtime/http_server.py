@@ -565,6 +565,7 @@ def main(blocking: bool = True):
         start_http_server(get_config().runtime.metrics.port)
     server = RuntimeHTTPServer()
     signal.signal(signal.SIGINT, server.interrupt)
+    signal.signal(signal.SIGTERM, server.interrupt)
     server.start(blocking)
 
 
