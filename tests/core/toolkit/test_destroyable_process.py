@@ -133,7 +133,7 @@ def test_processes_will_not_execute_if_destroyed_before_starting(process_type):
 
 
 def test_event_is_set_on_completion(process_type):
-    event = multiprocessing.Event()
+    event = multiprocessing.get_context(process_type).Event()
     proc = DestroyableProcess(process_type, succeeder, completion_event=event)
     assert not event.is_set()
     proc.start()
@@ -146,7 +146,7 @@ def test_event_is_set_on_completion(process_type):
 
 
 def test_event_is_set_on_exception(process_type):
-    event = multiprocessing.Event()
+    event = multiprocessing.get_context(process_type).Event()
     proc = DestroyableProcess(process_type, thrower, completion_event=event)
     assert not event.is_set()
     proc.start()

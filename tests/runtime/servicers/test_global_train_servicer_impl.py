@@ -25,6 +25,7 @@ import grpc
 import pytest
 
 # Local
+from caikit.config import get_config
 from caikit.core import MODEL_MANAGER
 from caikit.interfaces.common.data_model.stream_sources import S3Path
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
@@ -423,9 +424,11 @@ def test_global_train_aborts_long_running_trains(
         oom_exit=False,
     )
 
-    # sample_train_servicer.use_subprocess = True
     if sample_train_servicer.use_subprocess:
-        test_event = multiprocessing.Event()
+        start_method = (
+            get_config().model_management.trainers.default.config.subprocess_start_method
+        )
+        test_event = multiprocessing.get_context(start_method).Event()
     else:
         test_event = threading.Event()
 
