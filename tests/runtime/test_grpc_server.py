@@ -1033,10 +1033,10 @@ def test_certs_can_be_loaded_as_files(tmp_path, open_port):
         )
 
 
-def test_metrics_stored_after_server_stopped(
+def test_metrics_stored_after_server_interrupt(
     sample_task_model_id, sample_inference_service, open_port
 ):
-    """This tests the gRPC server's behaviour when stopped"""
+    """This tests the gRPC server's behaviour when interrupted"""
 
     with runtime_grpc_test_server(
         open_port,
@@ -1049,8 +1049,8 @@ def test_metrics_stored_after_server_stopped(
             predict_request, metadata=[("mm-model-id", sample_task_model_id)]
         )
 
-        # stop server
-        server.stop()
+        # Interrupt server
+        server.interrupt(None, None)
 
         # Assertions on the created metrics file
         with open(server._global_predict_servicer.rpc_meter.file_path) as f:
