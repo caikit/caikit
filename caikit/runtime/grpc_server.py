@@ -16,7 +16,6 @@
 from concurrent import futures
 from typing import Optional, Union
 import os
-import signal
 
 # Third Party
 from grpc_health.v1 import health, health_pb2_grpc
@@ -272,11 +271,8 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
 
 def main(blocking: bool = True):
-
     server = RuntimeGRPCServer()
-    signal.signal(signal.SIGINT, server.interrupt)
-    signal.signal(signal.SIGTERM, server.interrupt)
-
+    server._intercept_interrupt_signal()
     server.start(blocking)
 
 

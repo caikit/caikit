@@ -23,7 +23,6 @@ import asyncio
 import enum
 import json
 import re
-import signal
 import ssl
 import threading
 import time
@@ -556,10 +555,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
 
 def main(blocking: bool = True):
-
     server = RuntimeHTTPServer()
-    signal.signal(signal.SIGINT, server.interrupt)
-    signal.signal(signal.SIGTERM, server.interrupt)
+    server._intercept_interrupt_signal()
     server.start(blocking)
 
 

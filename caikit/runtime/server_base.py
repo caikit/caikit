@@ -16,6 +16,7 @@
 # Standard
 from typing import Optional
 import abc
+import signal
 
 # Third Party
 from prometheus_client import start_http_server
@@ -80,6 +81,11 @@ class RuntimeServerBase(abc.ABC):
             with alog.ContextTimer(log.info, "Booted metrics server in "):
                 start_http_server(get_config().runtime.metrics.port)
             cls._metrics_server_started = True
+
+    def _intercept_interrupt_signal(self) -> None:
+        """intercept signal handler"""
+        signal.signal(signal.SIGINT, self.interrupt)
+        signal.signal(signal.SIGTERM, self.interrupt)
 
     def interrupt(self, signal_, _stack_frame):
         log.info(
