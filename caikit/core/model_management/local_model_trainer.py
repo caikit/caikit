@@ -106,7 +106,7 @@ class LocalModelTrainer(ModelTrainerBase):
                 self._worker = DestroyableProcess(
                     start_method=self._subprocess_start_method,
                     target=self._train_and_save,
-                    return_result=True,
+                    return_result=False,
                     args=args,
                     kwargs={
                         **kwargs,
