@@ -59,7 +59,7 @@ from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 ## Globals #####################################################################
 
-log = alog.use_channel("HTTP")
+log = alog.use_channel("SERVR-HTTP")
 
 # Registry of DM -> Pydantic model mapping to avoid errors when reusing messages
 # across endpoints
