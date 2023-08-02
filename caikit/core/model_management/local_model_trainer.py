@@ -271,6 +271,16 @@ class LocalModelTrainer(ModelTrainerBase):
         # Always purge old futures
         self._purge_old_futures()
 
+        # Wrap any models in the kwargs for safe spawning if needed
+        if self._use_subprocess and self._subprocess_start_method != "fork":
+            wrapped_models = {
+                key: _SpawnProcessModelWrapper(val)
+                for key, val in kwargs.items()
+                if isinstance(val, ModuleBase)
+            }
+            log.debug2("Subprocess wrapped models: %s", wrapped_models.keys())
+            kwargs.update(wrapped_models)
+
         # Create the new future
         model_future = self.LocalModelFuture(
             self._instance_name,
@@ -326,3 +336,49 @@ class LocalModelTrainer(ModelTrainerBase):
                 # NOTE: Concurrent purges could have already done this, so don't
                 #   error if the id is already gone
                 self._futures.pop(fid, None)
+
+
+class _SpawnProcessModelWrapper(ModuleBase):
+    """This class wraps up a model to make it safe to pass to a spawned
+    subprocess. It will not be efficient, but it will be safe!
+    """
+
+    def __init__(self, model: ModuleBase):
+        super().__init__()
+        self._model = model
+
+    def __getattr__(self, name):
+        """Forward attributes that are not found on the base class to the model
+
+        NOTE: This does _not_ forward base class attributes since those are
+            resolved before __getattr__ is called.
+        """
+        return getattr(self._model, name)
+
+    def save(self, *args, **kwargs):
+        """Directly forward save to the model so that it is not called by the
+        base class
+        """
+        return self._model.save(*args, **kwargs)
+
+    def run(self, *args, **kwargs):
+        """Directly forward run to the model so that it is not called by the
+        base class
+        """
+        return self._model.run(*args, **kwargs)
+
+    def __getstate__(self) -> bytes:
+        """When pickling, only send the serialized model body for non-fork. This
+        is not a general-purpose pickle solution for models, but makes them safe
+        for training jobs that need to move models between processes.
+        """
+        return self._model.as_bytes()
+
+    def __setstate__(self, pickled: bytes):
+        """When unpickling, deserialize the body if the model is not already
+        loaded in the model manager. This must be used in conjunction with the
+        above __getstate__ across a process boundary and should not be used as a
+        general-purpose deserialization for models.
+        """
+        retrieved_model = caikit.core.load(pickled)
+        self._model = retrieved_model
