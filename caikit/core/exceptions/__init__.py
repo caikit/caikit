@@ -13,4 +13,5 @@
 # limitations under the License.
 
 # Local
+from . import error_handler
 from .validation_error import DataValidationError

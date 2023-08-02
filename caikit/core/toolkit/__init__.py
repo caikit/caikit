@@ -18,7 +18,6 @@ may find helpful methods in here for more advanced use of this library.
 """
 # Local
 from . import compatibility, logging
-from .errors import *
 from .fileio import *
 from .quality_evaluation import (
     EvalTypes,
