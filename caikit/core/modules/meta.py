@@ -73,8 +73,8 @@ import functools
 import alog
 
 # Local
+from ..exceptions import error_handler
 from .config import ModuleConfig
-from caikit.core.toolkit.errors import error_handler
 
 log = alog.use_channel("METADATA_INJECT")
 error = error_handler.get(log)

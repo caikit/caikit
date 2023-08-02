@@ -31,6 +31,7 @@ _warnings.filterwarnings("ignore")
 
 # Local
 from .data_model import DataObjectBase, dataobject
+from .exceptions import DataValidationError, error_handler
 from .model_manager import *
 from .module_backends import *
 from .modules import ModuleBase, ModuleConfig, ModuleLoader, ModuleSaver, module

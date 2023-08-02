@@ -22,7 +22,7 @@ import random
 import alog
 
 # Local
-from ...toolkit.errors import error_handler
+from ...exceptions import error_handler
 from .base import SchemeBase
 
 log = alog.use_channel("RMULT_AUG_SCHEME")

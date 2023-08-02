@@ -24,7 +24,7 @@ from typing import Dict
 import alog
 
 # Local
-from ...toolkit.errors import error_handler
+from ...exceptions import error_handler
 from .. import DataStream
 
 log = alog.use_channel("CSVCLMNCNSLDTR")

@@ -29,7 +29,7 @@ import munch
 import alog
 
 # Local
-from ..toolkit.errors import error_handler
+from ..exceptions import error_handler
 
 log = alog.use_channel("DATAM")
 error = error_handler.get(log)

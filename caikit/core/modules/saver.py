@@ -27,9 +27,9 @@ import uuid
 import alog
 
 # Local
+from ..exceptions import error_handler
 from ..modules.config import ModuleConfig
 from ..toolkit import ObjectSerializer
-from ..toolkit.errors import error_handler
 from ..toolkit.wip_decorator import TempDisableWIP
 from .base import ModuleBase
 from .loader import ModuleLoader

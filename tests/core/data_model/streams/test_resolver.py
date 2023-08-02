@@ -22,7 +22,7 @@ import uuid
 # Local
 from caikit.core.data_model import DataStream
 from caikit.core.data_model.streams.resolver import DataStreamResolver
-from caikit.core.toolkit.errors import DataValidationError
+from caikit.core.exceptions.validation_error import DataValidationError
 from tests.base import TestCaseBase
 
 

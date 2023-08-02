@@ -19,7 +19,7 @@
 import alog
 
 # Local
-from ..toolkit.errors import error_handler
+from ..exceptions import error_handler
 from .base import AugmentorBase
 from .schemes import SchemeBase
 

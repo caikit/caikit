@@ -25,7 +25,8 @@ from typing import Dict
 import alog
 
 # Local
-from ...toolkit.errors import DataValidationError, error_handler
+from ...exceptions import error_handler
+from ...exceptions.validation_error import DataValidationError
 from .. import DataStream
 
 log = alog.use_channel("DATSTRMVLDTR")

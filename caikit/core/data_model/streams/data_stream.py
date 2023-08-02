@@ -36,8 +36,8 @@ import alog
 
 # Local
 from ...augmentors import AugmentorBase
+from ...exceptions import error_handler
 from ...toolkit import fileio
-from ...toolkit.errors import error_handler
 
 log = alog.use_channel("DATSTRM")
 error = error_handler.get(log)

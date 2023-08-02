@@ -23,8 +23,8 @@ from typing import Optional, Type
 import alog
 
 # Local
+from ..exceptions import error_handler
 from ..registries import module_backend_classes, module_backend_types
-from ..toolkit.errors import error_handler
 from ..toolkit.wip_decorator import Action, WipCategory, work_in_progress
 from .base import BackendBase
 

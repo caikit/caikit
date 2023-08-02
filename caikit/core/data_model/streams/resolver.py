@@ -22,7 +22,7 @@ from typing import Dict
 import alog
 
 # Local
-from ...toolkit.errors import error_handler
+from ...exceptions import error_handler
 from .. import DataStream
 from .converter import DataStreamConverter
 from .csv_column_formatter import CSVColumnFormatter

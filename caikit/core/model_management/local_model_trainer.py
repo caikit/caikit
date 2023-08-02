@@ -31,10 +31,10 @@ import alog
 # Local
 from ...interfaces.common.data_model.stream_sources import S3Path
 from ..data_model import TrainingStatus
+from ..exceptions import error_handler
 from ..modules import ModuleBase
 from ..toolkit.destroyable_process import DestroyableProcess
 from ..toolkit.destroyable_thread import DestroyableThread
-from ..toolkit.errors import error_handler
 from .model_trainer_base import ModelTrainerBase, TrainingInfo
 import caikit
 

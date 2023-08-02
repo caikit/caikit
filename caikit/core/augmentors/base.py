@@ -20,7 +20,7 @@ import random
 import alog
 
 # Local
-from ..toolkit.errors import error_handler
+from ..exceptions import error_handler
 
 log = alog.use_channel("AUGMENT_BASE")
 error = error_handler.get(log)

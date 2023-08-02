@@ -36,6 +36,7 @@ import aconfig
 import alog
 
 # Local
+from ..exceptions import error_handler
 from ..module_backends import BackendBase, backend_types
 from ..modules import ModuleBase, ModuleConfig
 from ..modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
@@ -44,7 +45,6 @@ from ..registries import (
     module_backend_registry,
     module_backend_types,
 )
-from ..toolkit.errors import error_handler
 from .model_initializer_base import ModelInitializerBase
 
 log = alog.use_channel("LLOAD")

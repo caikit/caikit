@@ -24,7 +24,7 @@ import pytest
 import alog
 
 # Local
-from caikit.core.toolkit.errors import error_handler
+from caikit.core.exceptions import error_handler
 
 # Unit Test Infrastructure
 from tests.base import TestCaseBase

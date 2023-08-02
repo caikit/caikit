@@ -22,7 +22,7 @@ import importlib
 import alog
 
 # Local
-from ..toolkit.errors import error_handler
+from ..exceptions import error_handler
 from ..toolkit.factory import Factory, FactoryConstructible
 from .local_model_finder import LocalModelFinder
 from .local_model_initializer import LocalModelInitializer
