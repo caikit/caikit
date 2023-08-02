@@ -1,9 +1,6 @@
 # Standard
 import signal
 
-# Third Party
-from prometheus_client import start_http_server
-
 # First Party
 import alog
 
