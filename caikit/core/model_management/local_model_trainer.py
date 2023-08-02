@@ -35,6 +35,7 @@ from ..modules import ModuleBase
 from ..toolkit.destroyable_process import DestroyableProcess
 from ..toolkit.destroyable_thread import DestroyableThread
 from ..toolkit.errors import error_handler
+from ..toolkit.logging import configure as configure_logging
 from .model_trainer_base import ModelTrainerBase, TrainingInfo
 import caikit
 
@@ -99,10 +100,11 @@ class LocalModelTrainer(ModelTrainerBase):
 
             # Set up the worker and start it
             self._use_subprocess = use_subprocess
+            self._subprocess_start_method = subprocess_start_method
             if self._use_subprocess:
                 log.debug2("Running training %s as a SUBPROCESS", self.id)
                 self._worker = DestroyableProcess(
-                    start_method=subprocess_start_method,
+                    start_method=self._subprocess_start_method,
                     target=self._train_and_save,
                     return_result=True,
                     args=args,
@@ -207,6 +209,9 @@ class LocalModelTrainer(ModelTrainerBase):
 
         def _train_and_save(self, *args, **kwargs):
             """Function that will run in the worker thread"""
+            # If running in a spawned subprocess, reconfigure logging
+            if self._use_subprocess and self._subprocess_start_method != "fork":
+                configure_logging()
             with alog.ContextTimer(log.debug, "Training %s finished in: ", self.id):
                 trained_model = self._module_class.train(*args, **kwargs)
             if self.save_path is not None:
