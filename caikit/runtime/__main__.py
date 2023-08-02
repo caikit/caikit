@@ -42,15 +42,6 @@ def main():
     # # Start the servers
     # #####################
 
-    # pylint: disable=duplicate-code
-    # Start serving Prometheus metrics
-    if get_config().runtime.metrics.enabled:
-        log.info(
-            "Serving prometheus metrics on port %s", get_config().runtime.metrics.port
-        )
-        with alog.ContextTimer(log.info, "Booted metrics server in "):
-            start_http_server(get_config().runtime.metrics.port)
-
     # Start serving http server
     if get_config().runtime.http.enabled:
         log.debug("Starting up caikit.runtime.http_server")

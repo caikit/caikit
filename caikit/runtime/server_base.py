@@ -17,6 +17,9 @@
 from typing import Optional
 import abc
 
+# Third Party
+from prometheus_client import start_http_server
+
 # First Party
 import aconfig
 import alog
@@ -33,6 +36,7 @@ log = alog.use_channel("SERVR-BASE")
 
 class RuntimeServerBase(abc.ABC):
     __doc__ = __doc__
+    _metrics_server_started = False
 
     def __init__(self, base_port: int, tls_config_override: Optional[aconfig.Config]):
         self.config = get_config()
@@ -64,6 +68,18 @@ class RuntimeServerBase(abc.ABC):
             training_service = None
 
         self.training_service = training_service
+
+    @classmethod
+    def _start_metrics_server(cls) -> None:
+        """Start a single instance of the metrics server based on configuration"""
+        if not cls._metrics_server_started and get_config().runtime.metrics.enabled:
+            log.info(
+                "Serving prometheus metrics on port %s",
+                get_config().runtime.metrics.port,
+            )
+            with alog.ContextTimer(log.info, "Booted metrics server in "):
+                start_http_server(get_config().runtime.metrics.port)
+            cls._metrics_server_started = True
 
     def interrupt(self, signal_, _stack_frame):
         log.info(

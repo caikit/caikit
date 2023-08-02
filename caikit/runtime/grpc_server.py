@@ -21,7 +21,6 @@ import signal
 # Third Party
 from grpc_health.v1 import health, health_pb2_grpc
 from grpc_reflection.v1alpha import reflection
-from prometheus_client import start_http_server
 from py_grpc_prometheus.prometheus_server_interceptor import PromServerInterceptor
 import grpc
 
@@ -76,6 +75,8 @@ class RuntimeGRPCServer(RuntimeServerBase):
             ),
             interceptors=(PROMETHEUS_METRICS_INTERCEPTOR,),
         )
+        # Start metrics server
+        RuntimeServerBase._start_metrics_server()
 
         # Start tracking service names for reflection
         service_names = [reflection.SERVICE_NAME]
@@ -271,15 +272,6 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
 
 def main(blocking: bool = True):
-
-    # pylint: disable=duplicate-code
-    # Start serving Prometheus metrics
-    if get_config().runtime.metrics.enabled:
-        log.info(
-            "Serving prometheus metrics on port %s", get_config().runtime.metrics.port
-        )
-    with alog.ContextTimer(log.info, "Booted metrics server in "):
-        start_http_server(get_config().runtime.metrics.port)
 
     server = RuntimeGRPCServer()
     signal.signal(signal.SIGINT, server.interrupt)

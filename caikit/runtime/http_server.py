@@ -32,7 +32,6 @@ import time
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import PlainTextResponse
 from grpc import StatusCode
-from prometheus_client import start_http_server
 from sse_starlette import EventSourceResponse, ServerSentEvent
 import numpy as np
 import pydantic
@@ -114,6 +113,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         super().__init__(get_config().runtime.http.port, tls_config_override)
 
         self.app = FastAPI()
+
+        # Start metrics server
+        RuntimeServerBase._start_metrics_server()
 
         # Set up the central predict servicer
         self.global_predict_servicer = GlobalPredictServicer(self.inference_service)
@@ -555,14 +557,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
 def main(blocking: bool = True):
 
-    # pylint: disable=duplicate-code
-    # Start serving Prometheus metrics
-    if get_config().runtime.metrics.enabled:
-        log.info(
-            "Serving prometheus metrics on port %s", get_config().runtime.metrics.port
-        )
-    with alog.ContextTimer(log.info, "Booted metrics server in "):
-        start_http_server(get_config().runtime.metrics.port)
     server = RuntimeHTTPServer()
     signal.signal(signal.SIGINT, server.interrupt)
     signal.signal(signal.SIGTERM, server.interrupt)
