@@ -17,6 +17,7 @@
 from typing import List
 
 # First Party
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
 import alog
 
 # Local
@@ -33,11 +34,11 @@ class Token(DataObjectBase):
     tokenization chosen or the task being implemented.
     """
 
-    start: int
-    end: int
-    text: str
+    start: Annotated[int, FieldNumber(1)]
+    end: Annotated[int, FieldNumber(2)]
+    text: Annotated[str, FieldNumber(3)]
 
 
 @dataobject(package=NLP_PACKAGE)
 class TokenizationResult(DataObjectBase):
-    results: List[Token]
+    results: Annotated[List[Token], FieldNumber(1)]

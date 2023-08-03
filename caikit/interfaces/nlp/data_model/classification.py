@@ -17,6 +17,7 @@
 from typing import List, Optional
 
 # First Party
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
 import alog
 
 # Local
@@ -29,55 +30,59 @@ log = alog.use_channel("DATAM")
 
 @dataobject(package=NLP_PACKAGE)
 class ClassificationTrainRecord(DataObjectBase):
-    text: str
-    labels: List[str]
+    text: Annotated[str, FieldNumber(1)]
+    labels: Annotated[List[str], FieldNumber(2)]
 
 
 @dataobject(package=NLP_PACKAGE)
 class Classification(DataObjectBase):
-    label: str
-    score: float
+    label: Annotated[str, FieldNumber(1)]
+    score: Annotated[float, FieldNumber(2)]
 
 
 @dataobject(package=NLP_PACKAGE)
 class ClassificationResult(DataObjectBase):
-    results: List[Classification]
+    results: Annotated[List[Classification], FieldNumber(1)]
 
 
-# NOTE: This is meant to align with the HuggingFace token classification task:
+# NOTE: Annotated[This is meant to align with the HuggingFace token classification task:
 # https://huggingface.co/docs/transformers/tasks/token_classification#inference
 # The field `word` does not necessarily correspond to a single "word",
 # and `entity` may not always be applicable beyond "entity" in the NER
 # (named entity recognition) sense
 @dataobject(package=NLP_PACKAGE)
 class TokenClassification(DataObjectBase):
-    start: int
-    end: int
-    word: str  # could be thought of as text
-    entity: str  # could be thought of as label
-    entity_group: str  # could be thought of as aggregate label, if applicable
-    score: float
-    token_count: Optional[int]
+    start: Annotated[int, FieldNumber(1)]
+    end: Annotated[int, FieldNumber(2)]
+    word: Annotated[str, FieldNumber(3)]  # could be thought of as text
+    entity: Annotated[str, FieldNumber(4)]  # could be thought of as label
+    entity_group: Annotated[
+        str, FieldNumber(5)
+    ]  # could be thought of as aggregate label, if applicable
+    score: Annotated[float, FieldNumber(6)]
+    token_count: Annotated[Optional[int], FieldNumber(7)]
 
 
 @dataobject(package=NLP_PACKAGE)
 class TokenClassificationResult(DataObjectBase):
-    results: List[TokenClassification]
+    results: Annotated[List[TokenClassification], FieldNumber(1)]
 
 
 # Streaming result that indicates up to where in stream is processed
 @dataobject(package=NLP_PACKAGE)
 class StreamingTokenClassificationResult(TokenClassificationResult):
     # Result index up to which text is processed
-    processed_index: int
+    processed_index: Annotated[int, FieldNumber(2)]
 
 
 @dataobject(package=NLP_PACKAGE)
 class ClassifiedGeneratedTextResult(DataObjectBase):
-    text: str
-    results: Optional[List[TokenClassification]]
-    details: Optional[TokenStreamDetails]  # Should this be for stream
+    text: Annotated[str, FieldNumber(1)]
+    results: Annotated[Optional[List[TokenClassification]], FieldNumber(2)]
+    details: Annotated[
+        Optional[TokenStreamDetails], FieldNumber(3)
+    ]  # Should this be for stream
 
 
 class ClassifiedGeneratedTextStreamResult(ClassifiedGeneratedTextResult):
-    processed_index: int
+    processed_index: Annotated[int, FieldNumber(4)]
