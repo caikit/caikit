@@ -193,8 +193,9 @@ class ErrorHandler:
                 self(
                     log_code,
                     TypeError(
-                        "type check failed: variable `{}` has type `{}` not in `{}`".format(
-                            name, type_name, valid_type_names
+                        "type check failed: variable `{}` has type `{}` "
+                        "(fully qualified name `{}`) not in `{}`".format(
+                            name, type_name, self._fqname(variable), valid_type_names
                         )
                     ),
                 )
@@ -455,3 +456,10 @@ class ErrorHandler:
                     log_code,
                     NotADirectoryError("Path `{}` is not a directory".format(dir_path)),
                 )
+
+    def _fqname(self, o) -> str:
+        try:
+            class_ = o.__class__
+            return ".".join([class_.__module__, class_.__qualname__])
+        except Exception:  # pylint: disable=broad-exception-caught
+            return str(type)
