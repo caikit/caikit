@@ -81,7 +81,9 @@ class StreamingTokenClassificationResult(TokenClassificationResult):
 @dataobject(package=NLP_PACKAGE)
 class ClassifiedGeneratedTextResult(DataObjectBase):
     text: Annotated[str, FieldNumber(1)]
-    results: Annotated[Optional[List[TokenClassification]], FieldNumber(2)]
+    token_classification_results: Annotated[
+        Optional[List[TokenClassification]], FieldNumber(2)
+    ]
     finish_reason: Annotated[Optional[FinishReason], FieldNumber(3)]
     token_count: Annotated[Optional[int], FieldNumber(4)]
     seed: Annotated[Optional[np.uint64], FieldNumber(5)]
