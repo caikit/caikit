@@ -41,11 +41,10 @@ class TrainingManagementServicerImpl:
     def GetTrainingStatus(self, request, context):  # pylint: disable=unused-argument
         """Get the status of a training by ID"""
         training_info = TrainingInfoRequest.from_proto(request)
-
+        model_future = self._get_model_future(
+            training_info.training_id, operation="get_status"
+        )
         try:
-            model_future = self._get_model_future(
-                training_info.training_id, operation="get_status"
-            )
             reasons = []
             if model_future.get_info().errors:
                 reasons = [str(error) for error in model_future.get_info().errors]
@@ -55,8 +54,8 @@ class TrainingManagementServicerImpl:
                 state=model_future.get_info().status,
                 reasons=reasons,
             ).to_proto()
-        except CaikitRuntimeException as err:
-            raise err
+        except CaikitCoreException as err:
+            raise_caikit_runtime_exception(exception=err)
         except Exception as err:
             raise CaikitRuntimeException(
                 grpc.StatusCode.INTERNAL,
@@ -68,11 +67,10 @@ class TrainingManagementServicerImpl:
     def CancelTraining(self, request, context):  # pylint: disable=unused-argument
         """Cancel a training future."""
         training_info = TrainingInfoRequest.from_proto(request)
+        model_future = self._get_model_future(
+            training_info.training_id, operation="cancel"
+        )
         try:
-            model_future = self._get_model_future(
-                training_info.training_id, operation="cancel"
-            )
-
             model_future.cancel()
 
             reasons = []
@@ -84,8 +82,8 @@ class TrainingManagementServicerImpl:
                 state=model_future.get_info().status,
                 reasons=reasons,
             ).to_proto()
-        except CaikitRuntimeException as err:
-            raise err
+        except CaikitCoreException as err:
+            raise_caikit_runtime_exception(exception=err)
         except Exception as err:
             log.debug2(
                 "Unexpected error trying to cancel training id %s: [%s]",

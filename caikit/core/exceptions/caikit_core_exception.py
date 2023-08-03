@@ -22,7 +22,7 @@ from enum import Enum
 class CaikitCoreStatusCode(Enum):
     NOT_FOUND = 1
     INVALID_ARGUMENT = 2
-    CONNECTION = 3
+    CONNECTION_ERROR = 3
     UNAUTHORIZED = 4
     FORBIDDEN = 5
 

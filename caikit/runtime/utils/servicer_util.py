@@ -479,7 +479,7 @@ def raise_caikit_runtime_exception(exception: CaikitCoreException):
             exception.Message,
         ) from exception
 
-    if exception.StatusCode == CaikitCoreStatusCode.CONNECTION:
+    if exception.StatusCode == CaikitCoreStatusCode.CONNECTION_ERROR:
         log.debug2("Connection Error: [%s]", exception.Message, exc_info=True)
         raise CaikitRuntimeException(
             grpc.StatusCode.UNAVAILABLE,
