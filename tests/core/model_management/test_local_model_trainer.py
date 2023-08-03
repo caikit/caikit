@@ -30,6 +30,7 @@ import aconfig
 # Local
 from caikit.config import get_config
 from caikit.core.data_model import DataStream, TrainingStatus
+from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.core.model_management.local_model_trainer import LocalModelTrainer
 from sample_lib.modules import SampleModule
 
@@ -228,7 +229,7 @@ def test_purge_retention_time(trainer_type_cfg):
     retrieved_future = trainer.get_model_future(model_future.id)
     assert retrieved_future is model_future
     model_future._completion_time = model_future._completion_time - timedelta(days=2)
-    with pytest.raises(ValueError):
+    with pytest.raises(CaikitCoreException):
         trainer.get_model_future(model_future.id)
 
 

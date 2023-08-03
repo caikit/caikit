@@ -24,6 +24,7 @@ import pytest
 # Local
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model import DataStream, TrainingStatus
+from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.interfaces.runtime.data_model import TrainingInfoRequest
 from caikit.runtime.servicers.training_management_servicer import (
     TrainingManagementServicerImpl,
@@ -178,9 +179,8 @@ def test_training_status_incorrect_id(training_management_servicer):
 
     assert context.value.status_code == grpc.StatusCode.NOT_FOUND
     assert (
-        "some_random_id not found in the list of currently running training jobs"
-        in context.value.message
-    )
+        f"Unknown training_id: some_random_id" in context.value.message
+    )  # message set by local_model_trainer.get_model_future
 
 
 def test_training_raises_when_cancel_on_incorrect_id(training_management_servicer):
@@ -207,10 +207,8 @@ def test_training_raises_when_cancel_on_incorrect_id(training_management_service
 
     assert context.value.status_code == grpc.StatusCode.NOT_FOUND
     assert (
-        "some_random_id not found in the list of currently running training jobs."
-        in context.value.message
-        and "Could not perform cancel" in context.value.message
-    )
+        f"Unknown training_id: some_random_id" in context.value.message
+    )  # message set by local_model_trainer.get_model_future
 
 
 def test_training_fails(training_management_servicer, training_pool):

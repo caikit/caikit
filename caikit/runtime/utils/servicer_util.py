@@ -30,7 +30,10 @@ import alog
 # Local
 from caikit.core.data_model import DataStream
 from caikit.core.data_model.base import DataBase
-from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
+from caikit.core.exceptions.caikit_core_exception import (
+    CaikitCoreException,
+    CaikitCoreStatusCode,
+)
 from caikit.core.signature_parsing import CaikitMethodSignature
 from caikit.interfaces.runtime.data_model.training_management import ModelPointer
 from caikit.runtime.model_management.model_manager import ModelManager
@@ -454,63 +457,45 @@ def build_caikit_library_request_dict(
         ) from e
 
 
-def raiseCaikitRuntimeException(exception: CaikitCoreException, err_msg: str):
-    if exception.StatusCode == CaikitCoreException.StatusCode.NOT_FOUND:
-        log.debug2(
-            "Not Found Error: [%s]",
-            err_msg,
-            exception.Error,
-        )
+def raise_caikit_runtime_exception(exception: CaikitCoreException):
+    if exception.StatusCode == CaikitCoreStatusCode.NOT_FOUND:
+        log.debug2("Not Found Error: [%s]", exception.Message, exc_info=True)
         raise CaikitRuntimeException(
             grpc.StatusCode.NOT_FOUND,
-            err_msg,
-        ) from exception.Error
+            exception.Message,
+        ) from exception
 
-    if exception.StatusCode == CaikitCoreException.StatusCode.INVALID_ARGUMENT:
-        log.debug2(
-            "Invalid Argument Error: [%s]",
-            err_msg,
-            exception.Error,
-        )
+    if exception.StatusCode == CaikitCoreStatusCode.INVALID_ARGUMENT:
+        log.debug2("Invalid Argument Error: [%s]", exception.Message, exc_info=True)
         raise CaikitRuntimeException(
             grpc.StatusCode.INVALID_ARGUMENT,
-            err_msg,
-        ) from exception.Error
+            exception.Message,
+        ) from exception
 
-    if exception.StatusCode == CaikitCoreException.StatusCode.FORBIDDEN:
-        log.debug2(
-            "Forbidden Error: [%s]",
-            err_msg,
-            exception.Error,
-        )
+    if exception.StatusCode == CaikitCoreStatusCode.FORBIDDEN:
+        log.debug2("Forbidden Error: [%s]", exception.Message, exc_info=True)
         raise CaikitRuntimeException(
             grpc.StatusCode.PERMISSION_DENIED,
-            err_msg,
-        ) from exception.Error
+            exception.Message,
+        ) from exception
 
-    if exception.StatusCode == CaikitCoreException.StatusCode.CONNECTION:
-        log.debug2(
-            "Connection Error: [%s]",
-            err_msg,
-            exception.Error,
-        )
+    if exception.StatusCode == CaikitCoreStatusCode.CONNECTION:
+        log.debug2("Connection Error: [%s]", exception.Message, exc_info=True)
         raise CaikitRuntimeException(
             grpc.StatusCode.UNAVAILABLE,
-            err_msg,
-        ) from exception.Error
+            exception.Message,
+        ) from exception
 
-    if exception.StatusCode == CaikitCoreException.StatusCode.UNAUTHORIZED:
-        log.debug2(
-            "Unauthorized Error: [%s]",
-            err_msg,
-            exception.Error,
-        )
+    if exception.StatusCode == CaikitCoreStatusCode.UNAUTHORIZED:
+        log.debug2("Unauthorized Error: [%s]", exception.Message, exc_info=True)
         raise CaikitRuntimeException(
             grpc.StatusCode.UNAUTHENTICATED,
-            err_msg,
-        ) from exception.Error
+            exception.Message,
+        ) from exception
 
+    log.debug2(
+        "Unknown CaikitCoreException Error: [%s]", exception.Message, exc_info=True
+    )
     raise CaikitRuntimeException(
-        grpc.StatusCode.UNKNOWN,
-        "Unknown Exception caught",
-    ) from exception.Error
+        grpc.StatusCode.UNKNOWN, exception.Message
+    ) from exception

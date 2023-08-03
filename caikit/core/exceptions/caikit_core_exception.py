@@ -18,14 +18,19 @@ Caikit Core Exception enum used for reporting Exception status raised in caikit 
 # Standard
 from enum import Enum
 
+
+class CaikitCoreStatusCode(Enum):
+    NOT_FOUND = 1
+    INVALID_ARGUMENT = 2
+    CONNECTION = 3
+    UNAUTHORIZED = 4
+    FORBIDDEN = 5
+
+
 class CaikitCoreException(Exception):
-  StatusCode: StatusCode
-  Error: Exception
+    StatusCode: CaikitCoreStatusCode
+    Message: str
 
-class StatusCode(Enum):
-  NOT_FOUND = 1
-  INVALID_ARGUMENT = 2
-  CONNECTION = 3
-  UNAUTHORIZED = 4
-  FORBIDDEN = 5
-
+    def __init__(self, status_code: CaikitCoreStatusCode, msg: str) -> None:
+        self.StatusCode = status_code
+        self.Message = msg
