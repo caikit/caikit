@@ -50,6 +50,9 @@ def test_environment():
     test_config_path = os.path.join(FIXTURES_DIR, "config", "config.yml")
     caikit.configure(test_config_path)
     with tempfile.TemporaryDirectory() as workdir:
+        # 🌶️ All tests need to clean up after themselves! The metering and
+        # training output directories are the one thing easily creates leftover
+        # files, so we explicitly update config here to point them at a temp dir
         with temp_config(
             {
                 "runtime": {
