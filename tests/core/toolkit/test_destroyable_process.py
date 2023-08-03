@@ -73,7 +73,7 @@ def test_processes_can_be_interrupted(process_type):
 
 
 def test_processes_can_return_results(process_type):
-    proc = DestroyableProcess(process_type, succeeder)
+    proc = DestroyableProcess(process_type, succeeder, return_result=True)
     proc.start()
     proc.join()
     assert EXPECTED_SUCCESS == proc.get_or_throw()

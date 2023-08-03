@@ -60,7 +60,7 @@ class _DestroyableProcess(
         args: Optional[Tuple] = None,
         kwargs: Optional[dict] = None,
         destroy_grace_period: float = 10,
-        return_result: bool = True,
+        return_result: bool = False,
         **_kwargs,
     ):
         """Initialize with an event to use to signal completion"""
