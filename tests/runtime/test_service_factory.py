@@ -15,12 +15,15 @@
 """Unit tests for the service factory"""
 import tempfile
 from pathlib import Path
+from typing import Tuple
+
+from google.protobuf.message import Message
 
 import caikit
-from caikit.runtime.dump_services import dump_grpc_services
+from caikit.core.data_model import render_dataobject_protos
 
 # Local
-from caikit.runtime.service_factory import ServicePackageFactory
+from caikit.runtime.service_factory import ServicePackageFactory, ServicePackage
 from sample_lib.modules.sample_task import ListModule
 from tests.conftest import temp_config
 
@@ -150,6 +153,35 @@ def test_get_and_filter_modules_respects_included_task_types_and_excluded_module
         assert "ListModule" not in str(clean_modules)
 
 
+def get_packages_with_override(
+    domain_override: str, package_override: str
+) -> Tuple[ServicePackage, ServicePackage]:
+    inf_svc = ServicePackageFactory.get_service_package(
+        ServicePackageFactory.ServiceType.INFERENCE,
+    )
+    train_svc = ServicePackageFactory.get_service_package(
+        ServicePackageFactory.ServiceType.TRAINING,
+    )
+    inf_service_name = f"{domain_override}Service"
+    assert inf_svc.service.__name__ == inf_service_name
+    assert inf_svc.descriptor.full_name == f"{package_override}.{inf_service_name}"
+    for message_name in [
+        x for x in inf_svc.messages.__dict__.keys() if not x.startswith("_")
+    ]:
+        message: Message = getattr(inf_svc.messages, message_name)
+        assert message.DESCRIPTOR.full_name == f"{package_override}.{message_name}"
+
+    train_svc_name = f"{domain_override}TrainingService"
+    assert train_svc.service.__name__ == train_svc_name
+    assert train_svc.descriptor.full_name == f"{package_override}.{train_svc_name}"
+    for message_name in [
+        x for x in train_svc.messages.__dict__.keys() if not x.startswith("_")
+    ]:
+        message: Message = getattr(train_svc.messages, message_name)
+        assert message.DESCRIPTOR.full_name == f"{package_override}.{message_name}"
+    return inf_svc, train_svc
+
+
 def test_override_domain():
     """
     Test override of gRPC domain generation from config.
@@ -167,34 +199,14 @@ def test_override_domain():
             }
         }
     ) as cfg:
-        with tempfile.TemporaryDirectory() as output_dir:
-            dump_grpc_services(output_dir)
+        # Changing the domain still effects the default package name.
+        # But if you override the package, it overrides the package name completely (see next test).
+        get_packages_with_override(domain_override, f"caikit.runtime.{domain_override}")
 
-            output_dir_path = Path(output_dir)
-            for proto_file in output_dir_path.glob("*.proto"):
-                # print(proto_file)
-                with open(proto_file, "rb") as f:
-                    lines = f.readlines()
-                    for line in lines:
-                        line = line.strip().decode("utf-8")
-                        if line.startswith("service "):
-                            service_name = line.split()[1]
-                            domain_override_lower = domain_override.lower()
-                            if proto_file.name.startswith(domain_override_lower):
-                                if proto_file.stem.endswith("trainingservice"):
-                                    assert (
-                                        service_name
-                                        == f"{domain_override}TrainingService"
-                                    )
-                                else:
-                                    assert service_name == f"{domain_override}Service"
-                            print(f"{service_name}: {proto_file}", flush=True)
+        # Just double-check that basics are good.
+        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        assert "SampleModule" in str(clean_modules)
 
-            # Just double-check that basics are good.
-            clean_modules = ServicePackageFactory._get_and_filter_modules(
-                cfg, "sample_lib"
-            )
-            assert "SampleModule" in str(clean_modules)
 
 def test_override_package():
     """
@@ -213,34 +225,17 @@ def test_override_package():
             }
         }
     ) as cfg:
-        with tempfile.TemporaryDirectory() as output_dir:
-            dump_grpc_services(output_dir)
+        get_packages_with_override("SampleLib", package_override)
 
-            output_dir_path = Path(output_dir)
-            for proto_file in output_dir_path.glob("*.proto"):
-                # print(proto_file)
-                with open(proto_file, "rb") as f:
-                    lines = f.readlines()
-                    for line in lines:
-                        line = line.strip().decode("utf-8")
-                        if line.startswith("package "):
-                            package_name = line.split()[1]
-                            assert package_name[-1] == ";"
-                            package_name = package_name[0:-1]
-                            root_package_name = package_name.split(".")[0]
-                            if root_package_name not in {"caikit_data_model", "caikit"}:
-                                assert package_name == package_override
-                            print(f"{package_name}: {proto_file}", flush=True)
+        # Just double-check that basics are good.
+        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        assert "SampleModule" in str(clean_modules)
 
-            # Just double-check that basics are good.
-            clean_modules = ServicePackageFactory._get_and_filter_modules(
-                cfg, "sample_lib"
-            )
-            assert "SampleModule" in str(clean_modules)
 
-def test_override_package_and_domain():
+def test_override_package_and_domain_with_proto_gen():
     """
-    Test override of both package and domain, to make sure they work together.
+    Test override of both package and domain, to make sure they work together, and
+    additionally test the proto generation.
     The feature allows achieving backwards compatibility with earlier gRPC client.
     """
     package_override = "foo.runtime.yada.v0"
@@ -257,8 +252,19 @@ def test_override_package_and_domain():
             }
         }
     ) as cfg:
+        inf_svc, train_svc = get_packages_with_override(
+            domain_override, package_override
+        )
+
+        # Just double-check that basics are good.
+        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        assert "SampleModule" in str(clean_modules)
+
+        # Full check on proto generation
         with tempfile.TemporaryDirectory() as output_dir:
-            dump_grpc_services(output_dir)
+            render_dataobject_protos(output_dir)
+            inf_svc.service.write_proto_file(output_dir)
+            train_svc.service.write_proto_file(output_dir)
 
             output_dir_path = Path(output_dir)
             for proto_file in output_dir_path.glob("*.proto"):
@@ -274,7 +280,6 @@ def test_override_package_and_domain():
                             root_package_name = package_name.split(".")[0]
                             if root_package_name not in {"caikit_data_model", "caikit"}:
                                 assert package_name == package_override
-                            print(f"{package_name}: {proto_file}", flush=True)
                         elif line.startswith("service "):
                             service_name = line.split()[1]
                             domain_override_lower = domain_override.lower()
@@ -286,9 +291,3 @@ def test_override_package_and_domain():
                                     )
                                 else:
                                     assert service_name == f"{domain_override}Service"
-
-            # Just double-check that basics are good.
-            clean_modules = ServicePackageFactory._get_and_filter_modules(
-                cfg, "sample_lib"
-            )
-            assert "SampleModule" in str(clean_modules)
