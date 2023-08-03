@@ -32,6 +32,8 @@ JsonDictValue = Union[
 ]
 JsonDict = Dict[str, JsonDictValue]
 
+STRUCT_PROTOBUF_NAME = "google.protobuf.Struct"
+
 
 def dict_to_struct(
     dictionary: JsonDict,

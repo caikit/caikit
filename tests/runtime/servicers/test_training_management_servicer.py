@@ -13,6 +13,7 @@
 # limitations under the License.
 # Standard
 import concurrent.futures
+import datetime
 import re
 import threading
 import time
@@ -24,7 +25,10 @@ import pytest
 # Local
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model import DataStream, TrainingStatus
-from caikit.interfaces.runtime.data_model import TrainingInfoRequest
+from caikit.interfaces.runtime.data_model import (
+    TrainingInfoRequest,
+    TrainingStatusResponse,
+)
 from caikit.runtime.servicers.training_management_servicer import (
     TrainingManagementServicerImpl,
 )
@@ -43,12 +47,12 @@ def training_management_servicer():
     return TrainingManagementServicerImpl()
 
 
-def _train(raise_: bool = False, wait_event: threading.Event = None):
-    if raise_:
-        raise RuntimeError()
-    if wait_event is not None:
-        wait_event.wait()
-    return "done"
+# def _train(raise_: bool = False, wait_event: threading.Event = None):
+#     if raise_:
+#         raise RuntimeError()
+#     if wait_event is not None:
+#         wait_event.wait()
+#     return "done"
 
 
 def test_training_runs(training_management_servicer, training_pool):
@@ -73,6 +77,46 @@ def test_training_runs(training_management_servicer, training_pool):
     request = TrainingInfoRequest(training_id=model_future.id).to_proto()
     response = training_management_servicer.GetTrainingStatus(request, context=None)
     assert response.state == TrainingStatus.COMPLETED.value
+
+
+def test_training_timestamps(training_management_servicer, training_pool):
+    """Check that the submission and completion timestamps are set correctly from the model
+    future."""
+    # Create a future and set it in the training manager
+    event = threading.Event()
+    model_future = MODEL_MANAGER.train(
+        SampleModule,
+        DataStream.from_iterable([]),
+        wait_event=event,
+    )
+
+    # send a request, check that the submission timestamp was set
+    request = TrainingInfoRequest(training_id=model_future.id).to_proto()
+    response = training_management_servicer.GetTrainingStatus(request, context=None)
+    response_dm: TrainingStatusResponse = TrainingStatusResponse.from_proto(response)
+    assert response_dm.submission_timestamp is not None
+    assert (
+        datetime.datetime.now() - response_dm.submission_timestamp
+        < datetime.timedelta(milliseconds=50)
+    )
+    assert response_dm.completion_timestamp is None
+
+    event.set()
+    # Wait for training to complete, but _don't_ interact with the future.
+    # This simulates async training on the runtime
+    for i in range(1000):
+        response = training_management_servicer.GetTrainingStatus(request, context=None)
+        if response.state == TrainingStatus.COMPLETED.value:
+            break
+
+    # Ensure completion timestamp is set
+    response_dm: TrainingStatusResponse = TrainingStatusResponse.from_proto(response)
+    assert response_dm.completion_timestamp is not None
+    assert (
+        datetime.datetime.now() - response_dm.completion_timestamp
+        < datetime.timedelta(milliseconds=50)
+    )
+    assert response_dm.completion_timestamp > response_dm.submission_timestamp
 
 
 def test_training_cannot_cancel_on_completed_training(training_management_servicer):

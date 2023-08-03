@@ -15,10 +15,6 @@
 
 """Base classes and functionality for all data structures.
 """
-
-# metaclass-generated field members cannot be detected by pylint
-# pylint: disable=no-member
-
 # Standard
 from dataclasses import dataclass
 from enum import Enum
@@ -37,7 +33,11 @@ import alog
 
 # Local
 from ..exceptions import error_handler
-from . import enums, json_dict
+from . import enums, json_dict, timestamp
+
+# metaclass-generated field members cannot be detected by pylint
+# pylint: disable=no-member
+
 
 log = alog.use_channel("DATAM")
 error = error_handler.get(log)
@@ -676,8 +676,16 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
             elif field in cls._fields_message:
                 if proto.HasField(field):
-                    if proto_attr.DESCRIPTOR.full_name == "google.protobuf.Struct":
+                    if (
+                        proto_attr.DESCRIPTOR.full_name
+                        == json_dict.STRUCT_PROTOBUF_NAME
+                    ):
                         kwargs[field] = json_dict.struct_to_dict(proto_attr)
+                    elif (
+                        proto_attr.DESCRIPTOR.full_name
+                        == timestamp.TIMESTAMP_PROTO_NAME
+                    ):
+                        kwargs[field] = timestamp.proto_to_datetime(proto_attr)
                     else:
                         contained_class = cls.get_class_for_proto(proto_attr)
                         contained_obj = contained_class.from_proto(proto_attr)
@@ -687,8 +695,10 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 elements = []
                 contained_class = None
                 for item in proto_attr:
-                    if item.DESCRIPTOR.full_name == "google.protobuf.Struct":
+                    if item.DESCRIPTOR.full_name == json_dict.STRUCT_PROTOBUF_NAME:
                         elements.append(json_dict.struct_to_dict(item))
+                    elif item.DESCRIPTOR.full_name == timestamp.TIMESTAMP_PROTO_NAME:
+                        elements.append(timestamp.proto_to_datetime(item))
                     else:
                         if contained_class is None:
                             contained_class = cls.get_class_for_proto(item)
@@ -812,10 +822,13 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
             elif field in self._fields_message:
                 subproto = getattr(proto, field)
-                if subproto.DESCRIPTOR.full_name == "google.protobuf.Struct":
+                if subproto.DESCRIPTOR.full_name == json_dict.STRUCT_PROTOBUF_NAME:
                     subproto.CopyFrom(
                         json_dict.dict_to_struct(attr, subproto.__class__)
                     )
+                elif subproto.DESCRIPTOR.full_name == timestamp.TIMESTAMP_PROTO_NAME:
+                    timestamp_proto = timestamp.datetime_to_proto(attr)
+                    subproto.CopyFrom(timestamp_proto)
                 else:
                     attr.fill_proto(subproto)
 
