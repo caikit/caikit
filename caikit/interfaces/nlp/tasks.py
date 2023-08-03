@@ -20,6 +20,10 @@ from typing import Iterable
 
 # Local
 from ...core import TaskBase, task
+from .data_model.classification import (
+    ClassifiedGeneratedTextResult,
+    ClassifiedGeneratedTextStreamResult,
+)
 from .data_model.text_generation import GeneratedTextResult, GeneratedTextStreamResult
 
 
@@ -31,4 +35,16 @@ from .data_model.text_generation import GeneratedTextResult, GeneratedTextStream
 class TextGenerationTask(TaskBase):
     """The Text Generation Task is responsible for taking input prompting text
     and generating additional text from that prompt.
+    """
+
+
+@task(
+    unary_parameters={"text": str},
+    unary_output_type=ClassifiedGeneratedTextResult,
+    streaming_output_type=Iterable[ClassifiedGeneratedTextStreamResult],
+)
+class ClassificationWithTextGenerationTask(TaskBase):
+    """The Classification with Text Generation Task is responsible for taking
+    input prompting text, generating additional text from that prompt and classifying
+    the generated text based on detectors.
     """

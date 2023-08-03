@@ -18,6 +18,8 @@ from .classification import (
     Classification,
     ClassificationResult,
     ClassificationTrainRecord,
+    ClassifiedGeneratedTextResult,
+    ClassifiedGeneratedTextStreamResult,
     StreamingTokenClassificationResult,
     TokenClassification,
     TokenClassificationResult,

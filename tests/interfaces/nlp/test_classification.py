@@ -17,6 +17,7 @@ from caikit.interfaces.nlp.data_model import (
     Classification,
     ClassificationResult,
     ClassificationTrainRecord,
+    ClassifiedGeneratedTextResult,
     TokenClassification,
     TokenClassificationResult,
 )
@@ -41,6 +42,10 @@ token_classification_result = TokenClassificationResult(
 
 classification_train_record = ClassificationTrainRecord(
     text="It is 20 degrees today", labels=["temperature"]
+)
+
+classification_generated_text_result = ClassifiedGeneratedTextResult(
+    text="moose goose foo bar", results=[token_classification1, token_classification2]
 )
 
 ## Tests ########################################################################
@@ -156,7 +161,7 @@ def test_classification_result_from_json_and_back():
 ### ClassificationTrainRecord
 
 
-def test_all_fields_accessible():
+def test_classification_train_record_all_fields_accessible():
     classification_train_record = ClassificationTrainRecord(
         text="It is 20 degrees today", labels=["temperature"]
     )
@@ -164,13 +169,52 @@ def test_all_fields_accessible():
     assert classification_train_record.labels == ["temperature"]
 
 
-def test_from_proto_and_back():
+def test_classification_train_record_from_proto_and_back():
     new = ClassificationTrainRecord.from_proto(classification_train_record.to_proto())
     assert new.text == "It is 20 degrees today"
     assert new.labels == ["temperature"]
 
 
-def test_from_json_and_back():
+def test_classification_train_record_from_json_and_back():
     new = ClassificationTrainRecord.from_json(classification_train_record.to_json())
     assert new.text == "It is 20 degrees today"
     assert new.labels == ["temperature"]
+
+
+### ClassifiedGeneratedTextResult
+
+
+def test_classification_generated_text_result_all_fields_accessible():
+    classification_generated_text_result = ClassifiedGeneratedTextResult(
+        text="moose goose foo bar",
+        results=[token_classification1, token_classification2],
+    )
+    assert classification_generated_text_result.text == "moose goose foo bar"
+    assert classification_generated_text_result.results[0] == token_classification1
+    assert classification_generated_text_result.results[1] == token_classification2
+
+
+def test_classification_generated_text_result_from_proto_and_back():
+    new = ClassifiedGeneratedTextResult.from_proto(
+        classification_generated_text_result.to_proto()
+    )
+    assert new.text == "moose goose foo bar"
+    assert new.results[0].start == 0
+    assert new.results[0].word == "moose"
+    assert new.results[0].score == 0.8
+    assert new.results[1].start == 7
+    assert new.results[1].word == "goose"
+    assert new.results[1].score == 0.7
+
+
+def test_classification_generated_text_result_from_json_and_back():
+    new = ClassifiedGeneratedTextResult.from_json(
+        classification_generated_text_result.to_json()
+    )
+    assert new.text == "moose goose foo bar"
+    assert new.results[0].start == 0
+    assert new.results[0].word == "moose"
+    assert new.results[0].score == 0.8
+    assert new.results[1].start == 7
+    assert new.results[1].word == "goose"
+    assert new.results[1].score == 0.7

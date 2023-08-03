@@ -14,7 +14,7 @@
 """Data structures for classification representations"""
 
 # Standard
-from typing import List
+from typing import List, Optional
 
 # First Party
 import alog
@@ -22,6 +22,7 @@ import alog
 # Local
 from ....core import DataObjectBase, dataobject
 from .package import NLP_PACKAGE
+from .text_generation import TokenStreamDetails
 
 log = alog.use_channel("DATAM")
 
@@ -56,6 +57,7 @@ class TokenClassification(DataObjectBase):
     entity: str  # could be thought of as label
     entity_group: str  # could be thought of as aggregate label, if applicable
     score: float
+    token_count: Optional[int]
 
 
 @dataobject(package=NLP_PACKAGE)
@@ -67,4 +69,15 @@ class TokenClassificationResult(DataObjectBase):
 @dataobject(package=NLP_PACKAGE)
 class StreamingTokenClassificationResult(TokenClassificationResult):
     # Result index up to which text is processed
+    processed_index: int
+
+
+@dataobject(package=NLP_PACKAGE)
+class ClassifiedGeneratedTextResult(DataObjectBase):
+    text: str
+    results: Optional[List[TokenClassification]]
+    details: Optional[TokenStreamDetails]  # Should this be for stream
+
+
+class ClassifiedGeneratedTextStreamResult(ClassifiedGeneratedTextResult):
     processed_index: int
