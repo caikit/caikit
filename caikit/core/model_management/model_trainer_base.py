@@ -24,11 +24,11 @@ model_management:
             config:
                 <config option>: <value>
 """
-
 # Standard
 from typing import List, Optional, Type, Union
 import abc
 import dataclasses
+import datetime
 import os
 
 # Local
@@ -43,6 +43,8 @@ from ..toolkit.reversible_hasher import ReversibleHasher
 class TrainingInfo:
     status: TrainingStatus
     errors: Optional[List[Exception]] = None
+    submission_time: Optional[datetime.datetime] = None
+    completion_time: Optional[datetime.datetime] = None
 
 
 class ModelTrainerBase(FactoryConstructible):
