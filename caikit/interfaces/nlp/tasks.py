@@ -21,9 +21,13 @@ from typing import Iterable
 # Local
 from ...core import TaskBase, task
 from .data_model.classification import (
+    ClassificationResult,
     ClassifiedGeneratedTextResult,
     ClassifiedGeneratedTextStreamResult,
+    StreamingTokenClassificationResult,
+    TokenClassificationResult,
 )
+from .data_model.text import TokenizationResult
 from .data_model.text_generation import GeneratedTextResult, GeneratedTextStreamResult
 
 
@@ -36,6 +40,32 @@ class TextGenerationTask(TaskBase):
     """The Text Generation Task is responsible for taking input prompting text
     and generating additional text from that prompt.
     """
+
+
+@task(
+    required_parameters={"text": str},
+    output_type=ClassificationResult,
+)
+class TextClassificationTask(TaskBase):
+    pass
+
+
+@task(
+    unary_parameters={"text": str},
+    streaming_parameters={"text_stream": Iterable[str]},
+    unary_output_type=TokenClassificationResult,
+    streaming_output_type=Iterable[StreamingTokenClassificationResult],
+)
+class TokenClassificationTask(TaskBase):
+    pass
+
+
+@task(
+    required_parameters={"text": str},
+    output_type=TokenizationResult,
+)
+class TokenizationTask(TaskBase):
+    pass
 
 
 @task(
