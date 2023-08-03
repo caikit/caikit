@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Local
-from . import classification, package, text_generation
+from . import classification, package, text, text_generation
 from .classification import (
     Classification,
     ClassificationResult,
@@ -23,6 +23,7 @@ from .classification import (
     TokenClassificationResult,
 )
 from .package import NLP_PACKAGE
+from .text import Token, TokenizationResult
 from .text_generation import (
     FinishReason,
     GeneratedTextResult,
