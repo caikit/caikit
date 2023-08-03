@@ -38,6 +38,7 @@ model_management:
                 # Format: XdXhXmXs
                 retention_duration: 1d
                 use_subprocess: false
+                subprocess_start_method: spawn
     finders:
         default:
             type: LOCAL

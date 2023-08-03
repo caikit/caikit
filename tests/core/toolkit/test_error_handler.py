@@ -351,6 +351,9 @@ class TestErrorHandler(TestCaseBase):
         with pytest.raises(TypeError):
             self.error.subclass_check("<III>", 1, int, allow_none=True)
 
+    @pytest.mark.skipif(
+        os.environ.get("LOG_FORMATTER") == "pretty", reason="Pretty formatter"
+    )
     def test_value_check_raises(self):
         """Verify that `value_check` raises a `ValueError`."""
         bad_value = 1.1
@@ -365,6 +368,9 @@ class TestErrorHandler(TestCaseBase):
             "exception raised: ValueError('value check failed: invalid range `1.1`')",
         )
 
+    @pytest.mark.skipif(
+        os.environ.get("LOG_FORMATTER") == "pretty", reason="Pretty formatter"
+    )
     def test_value_check_no_args_raises(self):
         """Verify that `value_check` raises a `ValueError` if no args are given with empty msg."""
         bad_value = 1.1
@@ -377,6 +383,9 @@ class TestErrorHandler(TestCaseBase):
             "exception raised: ValueError('value check failed: ')",
         )
 
+    @pytest.mark.skipif(
+        os.environ.get("LOG_FORMATTER") == "pretty", reason="Pretty formatter"
+    )
     def test_value_check_empty_msg_raises(self):
         """Verify that `value_check` raises a `ValueError` if msg is empty."""
         bad_value = 1.1
@@ -389,6 +398,9 @@ class TestErrorHandler(TestCaseBase):
             "exception raised: ValueError('value check failed: 1.1')",
         )
 
+    @pytest.mark.skipif(
+        os.environ.get("LOG_FORMATTER") == "pretty", reason="Pretty formatter"
+    )
     def test_value_check_empty_args_raises(self):
         """Verify that `value_check` raises a `ValueError` if only msg is provided."""
         bad_value = 1.1

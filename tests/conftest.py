@@ -49,12 +49,29 @@ def test_environment():
     """The most important fixture: This runs caikit configuration with the base test config overrides"""
     test_config_path = os.path.join(FIXTURES_DIR, "config", "config.yml")
     caikit.configure(test_config_path)
-    # import the mock backend that is specified in the config
-    # This is required to run any test that loads a model
-    # Local
-    from tests.core.helpers import MockBackend
+    with tempfile.TemporaryDirectory() as workdir:
+        # 🌶️ All tests need to clean up after themselves! The metering and
+        # training output directories are the one thing easily creates leftover
+        # files, so we explicitly update config here to point them at a temp dir
+        with temp_config(
+            {
+                "runtime": {
+                    "metering": {
+                        "log_dir": os.path.join(workdir, "metering_logs"),
+                    },
+                    "training": {
+                        "output_dir": os.path.join(workdir, "training_output"),
+                    },
+                }
+            },
+            "merge",
+        ):
+            # import the mock backend that is specified in the config
+            # This is required to run any test that loads a model
+            # Local
+            from tests.core.helpers import MockBackend
 
-    yield
+            yield
     # No cleanup required...?
 
 
