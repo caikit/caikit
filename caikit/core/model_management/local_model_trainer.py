@@ -18,7 +18,7 @@ The LocalModelTrainer uses a local thread to launch and manage each training job
 # Standard
 from concurrent.futures.thread import _threads_queues
 from datetime import datetime, timedelta
-from typing import Optional, Type, Union
+from typing import Any, Dict, Iterable, Optional, Type, Union
 import os
 import re
 import threading
@@ -35,6 +35,7 @@ from ..modules import ModuleBase
 from ..toolkit.destroyable_process import DestroyableProcess
 from ..toolkit.destroyable_thread import DestroyableThread
 from ..toolkit.errors import error_handler
+from ..toolkit.logging import configure as configure_logging
 from .model_trainer_base import ModelTrainerBase, TrainingInfo
 import caikit
 
@@ -66,13 +67,14 @@ class LocalModelTrainer(ModelTrainerBase):
             self,
             trainer_name: str,
             module_class: Type[ModuleBase],
-            *args,
             save_path: Optional[Union[str, S3Path]],
             save_with_id: bool,
             model_name: Optional[str],
             external_training_id: Optional[str],
             use_subprocess: bool,
-            **kwargs,
+            subprocess_start_method: str,
+            args: Iterable[Any],
+            kwargs: Dict[str, Any],
         ):
             super().__init__(
                 trainer_name=trainer_name,
@@ -98,11 +100,13 @@ class LocalModelTrainer(ModelTrainerBase):
 
             # Set up the worker and start it
             self._use_subprocess = use_subprocess
+            self._subprocess_start_method = subprocess_start_method
             if self._use_subprocess:
                 log.debug2("Running training %s as a SUBPROCESS", self.id)
                 self._worker = DestroyableProcess(
+                    start_method=self._subprocess_start_method,
                     target=self._train_and_save,
-                    return_result=True,
+                    return_result=False,
                     args=args,
                     kwargs={
                         **kwargs,
@@ -205,6 +209,9 @@ class LocalModelTrainer(ModelTrainerBase):
 
         def _train_and_save(self, *args, **kwargs):
             """Function that will run in the worker thread"""
+            # If running in a spawned subprocess, reconfigure logging
+            if self._use_subprocess and self._subprocess_start_method != "fork":
+                configure_logging()
             with alog.ContextTimer(log.debug, "Training %s finished in: ", self.id):
                 trained_model = self._module_class.train(*args, **kwargs)
             if self.save_path is not None:
@@ -225,6 +232,7 @@ class LocalModelTrainer(ModelTrainerBase):
         """Initialize with a shared dict of all trainings"""
         self._instance_name = instance_name
         self._use_subprocess = config.get("use_subprocess", False)
+        self._subprocess_start_method = config.get("subprocess_start_method", "spawn")
         self._retention_duration = config.get("retention_duration")
         if self._retention_duration is not None:
             try:
@@ -268,17 +276,28 @@ class LocalModelTrainer(ModelTrainerBase):
         # Always purge old futures
         self._purge_old_futures()
 
+        # Wrap any models in the kwargs for safe spawning if needed
+        if self._use_subprocess and self._subprocess_start_method != "fork":
+            wrapped_models = {
+                key: _SpawnProcessModelWrapper(val)
+                for key, val in kwargs.items()
+                if isinstance(val, ModuleBase)
+            }
+            log.debug2("Subprocess wrapped models: %s", wrapped_models.keys())
+            kwargs.update(wrapped_models)
+
         # Create the new future
         model_future = self.LocalModelFuture(
             self._instance_name,
             module_class,
-            *args,
             save_path=save_path,
             save_with_id=save_with_id,
             external_training_id=external_training_id,
             use_subprocess=self._use_subprocess,
+            subprocess_start_method=self._subprocess_start_method,
             model_name=model_name,
-            **kwargs,
+            args=args,
+            kwargs=kwargs,
         )
 
         # Lock the global futures dict and add it to the dict
@@ -322,3 +341,49 @@ class LocalModelTrainer(ModelTrainerBase):
                 # NOTE: Concurrent purges could have already done this, so don't
                 #   error if the id is already gone
                 self._futures.pop(fid, None)
+
+
+class _SpawnProcessModelWrapper(ModuleBase):
+    """This class wraps up a model to make it safe to pass to a spawned
+    subprocess. It will not be efficient, but it will be safe!
+    """
+
+    def __init__(self, model: ModuleBase):
+        super().__init__()
+        self._model = model
+
+    def __getattr__(self, name):
+        """Forward attributes that are not found on the base class to the model
+
+        NOTE: This does _not_ forward base class attributes since those are
+            resolved before __getattr__ is called.
+        """
+        return getattr(self._model, name)
+
+    def save(self, *args, **kwargs):
+        """Directly forward save to the model so that it is not called by the
+        base class
+        """
+        return self._model.save(*args, **kwargs)
+
+    def run(self, *args, **kwargs):
+        """Directly forward run to the model so that it is not called by the
+        base class
+        """
+        return self._model.run(*args, **kwargs)
+
+    def __getstate__(self) -> bytes:
+        """When pickling, only send the serialized model body for non-fork. This
+        is not a general-purpose pickle solution for models, but makes them safe
+        for training jobs that need to move models between processes.
+        """
+        return self._model.as_bytes()
+
+    def __setstate__(self, pickled: bytes):
+        """When unpickling, deserialize the body if the model is not already
+        loaded in the model manager. This must be used in conjunction with the
+        above __getstate__ across a process boundary and should not be used as a
+        general-purpose deserialization for models.
+        """
+        retrieved_model = caikit.core.load(pickled)
+        self._model = retrieved_model

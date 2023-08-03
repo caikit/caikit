@@ -28,9 +28,9 @@ import pytest
 import aconfig
 
 # Local
+from caikit.config import get_config
 from caikit.core.data_model import DataStream, TrainingStatus
 from caikit.core.model_management.local_model_trainer import LocalModelTrainer
-from caikit.core.toolkit.destroyable_process import OOM_EXIT_CODE
 from sample_lib.modules import SampleModule
 
 ## Helpers #####################################################################
@@ -53,7 +53,12 @@ def save_path():
 
 
 def get_event(cfg: dict):
-    return cfg.get("use_subprocess") and multiprocessing.Event() or threading.Event()
+    if cfg.get("use_subprocess"):
+        start_method = (
+            get_config().model_management.trainers.default.config.subprocess_start_method
+        )
+        return multiprocessing.get_context(start_method).Event()
+    return threading.Event()
 
 
 ## Tests #######################################################################

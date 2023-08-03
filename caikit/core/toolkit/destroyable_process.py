@@ -32,18 +32,26 @@ import alog
 
 # Local
 from .destroyable import Destroyable
+from .errors import error_handler
 
 log = alog.use_channel("DESTROY-PROC")
+error = error_handler.get(log)
 
-FORK_CTX = multiprocessing.get_context("fork")
 
 OOM_EXIT_CODE = 137
 
+FORK_CTX = multiprocessing.get_context("fork")
+SPAWN_CTX = multiprocessing.get_context("spawn")
+FORKSERVER_CTX = multiprocessing.get_context("forkserver")
 
-class DestroyableProcess(
-    FORK_CTX.Process, Destroyable
+
+class _DestroyableProcess(
+    multiprocessing.process.BaseProcess,
+    Destroyable,
 ):  # pylint: disable=too-many-instance-attributes
-    __doc__ = __doc__
+    """The _DestroyableProcess base class implements a context-agnostic process
+    class that manages the subprocess and allows it to be destroyed
+    """
 
     def __init__(
         self,
@@ -52,12 +60,12 @@ class DestroyableProcess(
         args: Optional[Tuple] = None,
         kwargs: Optional[dict] = None,
         destroy_grace_period: float = 10,
-        return_result: bool = True,
+        return_result: bool = False,
         **_kwargs,
     ):
         """Initialize with an event to use to signal completion"""
-        self._parent_conn, self._child_conn = FORK_CTX.Pipe()
-        self._completion_event = completion_event or FORK_CTX.Event()
+        self._parent_conn, self._child_conn = self.__class__._MP_CTX.Pipe()
+        self._completion_event = completion_event or self.__class__._MP_CTX.Event()
         self._destroy_grace_period = destroy_grace_period
         self._return_result = return_result
 
@@ -112,9 +120,9 @@ class DestroyableProcess(
             )
 
         # Update the result and throw if it's an error
-        error = self.error
-        if error is not None:
-            raise error
+        err = self.error
+        if err is not None:
+            raise err
         return self.__result
 
     def destroy(self):
@@ -203,3 +211,37 @@ class DestroyableProcess(
         if self._return_result:
             self._child_conn.send(result)
         self._completion_event.set()
+
+
+class _ForkDestroyableProcess(FORK_CTX.Process, _DestroyableProcess):
+    _MP_CTX = FORK_CTX
+
+
+class _SpawnDestroyableProcess(SPAWN_CTX.Process, _DestroyableProcess):
+    _MP_CTX = SPAWN_CTX
+
+
+class _ForkserverDestroyableProcess(FORKSERVER_CTX.Process, _DestroyableProcess):
+    _MP_CTX = FORKSERVER_CTX
+
+
+_PROCESS_TYPES = {
+    "fork": _ForkDestroyableProcess,
+    "forkserver": _ForkserverDestroyableProcess,
+    "spawn": _SpawnDestroyableProcess,
+}
+
+
+def DestroyableProcess(start_method: str, *args, **kwargs):
+    """Class wrapper that returns the appropriate process type based on the
+    requested start method.
+
+    NOTE: Naming intentionally looks like a class!
+    """
+    error.value_check(
+        "<COR16699811E>",
+        start_method in _PROCESS_TYPES,
+        "Unsupported start_method: {}",
+        start_method,
+    )
+    return _PROCESS_TYPES[start_method](*args, **kwargs)

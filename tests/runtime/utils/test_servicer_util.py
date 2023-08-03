@@ -21,6 +21,7 @@ import pytest
 
 # Local
 from caikit.runtime.protobufs import model_runtime_pb2
+from caikit.runtime.service_generation.data_stream_source import DataStreamSourceBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import get_data_model
 from caikit.runtime.utils.servicer_util import (
@@ -306,6 +307,7 @@ def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_r
     expected_arguments = {"training_data", "union_list"}
 
     assert expected_arguments == set(caikit.core_request.keys())
+    assert isinstance(caikit.core_request["training_data"], DataStreamSourceBase)
 
 
 def test_global_train_build_caikit_library_request_dict_works_for_repeated_fields(

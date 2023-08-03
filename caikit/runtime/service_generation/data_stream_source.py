@@ -78,6 +78,9 @@ class DataStreamSourceBase(DataStream):
         """
         new_inst = self.__class__.from_binary_buffer(pickle_bytes)
         setattr(self, new_inst.which_oneof("data_stream"), new_inst.data_stream)
+        self.generator_func = self._generator
+        self.generator_args = tuple()
+        self.generator_kwargs = {}
 
     # pylint: disable=too-many-return-statements
     def to_data_stream(self) -> DataStream:
