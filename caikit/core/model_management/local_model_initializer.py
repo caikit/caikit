@@ -177,8 +177,10 @@ class LocalModelInitializer(ModelInitializerBase):
                     module_backend_impl.__name__,
                 )
                 extra_kwargs = {}
-                if self._supports_load_backend_kwarg(module_backend_impl.load):
+                if self._supports_arg(module_backend_impl.load, "load_backend"):
                     extra_kwargs["load_backend"] = load_backend
+                if self._supports_arg(module_backend_impl.load, "model_config"):
+                    extra_kwargs["model_config"] = model_config
                 loaded_model = module_backend_impl.load(
                     model_path,
                     **extra_kwargs,
@@ -200,12 +202,12 @@ class LocalModelInitializer(ModelInitializerBase):
     ## Implementation Details ##################################################
 
     @staticmethod
-    def _supports_load_backend_kwarg(load_fn: Callable) -> bool:
+    def _supports_arg(load_fn: Callable, arg_name: str) -> bool:
         """A load function supports the load_backend kwarg IFF it has an arg
         explicitly named load_backend or it has a ** kwarg capture
         """
         sig = inspect.signature(load_fn)
-        return "load_backend" in sig.parameters
+        return arg_name in sig.parameters
 
     def _get_supported_load_backends(self, backend_impl: ModuleBase):
         """Function to get a list of supported load backends
