@@ -600,6 +600,22 @@ def test_initialize_all_components(reset_globals):
         assert set(MODEL_MANAGER._initializers.keys()) == {"default", "foobar"}
 
 
+def test_find_without_on_disk_model(good_model_path, reset_globals):
+    """Make sure that ephemeral models can be found without existing on disk"""
+
+    with temp_config(
+        {
+            "model_management": {
+                "finders": {"default": {"type": TestFinder.name}},
+                "initializers": {"default": {"type": "LOCAL"}},
+            }
+        }
+    ):
+        model = caikit.core.load("some_pretend_model")
+        assert model
+        assert not os.path.exists("some_pretend_model")
+
+
 def test_train_by_module_class(reset_globals):
     """Make sure training can be accessed through the central train function
     with the class directly

@@ -32,9 +32,11 @@ class SampleModule(caikit.core.ModuleBase):
         self.stream_size = stream_size
 
     @classmethod
-    def load(cls, model_path, **kwargs):
-        loader = ModuleLoader(model_path)
-        config = loader.config
+    def load(cls, model_path, model_config=None, **kwargs):
+        config = model_config
+        if not config:
+            loader = ModuleLoader(model_path)
+            config = loader.config
         return cls(config["train"]["batch_size"], config["train"]["learning_rate"])
 
     @SampleTask.taskmethod()
