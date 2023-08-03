@@ -18,7 +18,7 @@ The LocalModelTrainer uses a local thread to launch and manage each training job
 # Standard
 from concurrent.futures.thread import _threads_queues
 from datetime import datetime, timedelta
-from typing import Optional, Type, Union
+from typing import Any, Dict, Iterable, Optional, Type, Union
 import os
 import re
 import threading
@@ -67,14 +67,14 @@ class LocalModelTrainer(ModelTrainerBase):
             self,
             trainer_name: str,
             module_class: Type[ModuleBase],
-            *args,
             save_path: Optional[Union[str, S3Path]],
             save_with_id: bool,
             model_name: Optional[str],
             external_training_id: Optional[str],
             use_subprocess: bool,
             subprocess_start_method: str,
-            **kwargs,
+            args: Iterable[Any],
+            kwargs: Dict[str, Any],
         ):
             super().__init__(
                 trainer_name=trainer_name,
@@ -290,14 +290,14 @@ class LocalModelTrainer(ModelTrainerBase):
         model_future = self.LocalModelFuture(
             self._instance_name,
             module_class,
-            *args,
             save_path=save_path,
             save_with_id=save_with_id,
             external_training_id=external_training_id,
             use_subprocess=self._use_subprocess,
             subprocess_start_method=self._subprocess_start_method,
             model_name=model_name,
-            **kwargs,
+            args=args,
+            kwargs=kwargs,
         )
 
         # Lock the global futures dict and add it to the dict
