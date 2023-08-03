@@ -16,6 +16,9 @@
 # Standard
 from typing import List, Optional
 
+# Third Party
+import numpy as np
+
 # First Party
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
 import alog
@@ -23,7 +26,7 @@ import alog
 # Local
 from ....core import DataObjectBase, dataobject
 from .package import NLP_PACKAGE
-from .text_generation import TokenStreamDetails
+from .text_generation import FinishReason
 
 log = alog.use_channel("DATAM")
 
@@ -79,10 +82,10 @@ class StreamingTokenClassificationResult(TokenClassificationResult):
 class ClassifiedGeneratedTextResult(DataObjectBase):
     text: Annotated[str, FieldNumber(1)]
     results: Annotated[Optional[List[TokenClassification]], FieldNumber(2)]
-    details: Annotated[
-        Optional[TokenStreamDetails], FieldNumber(3)
-    ]  # Should this be for stream
+    finish_reason: Annotated[Optional[FinishReason], FieldNumber(3)]
+    token_count: Annotated[Optional[int], FieldNumber(4)]
+    seed: Annotated[Optional[np.uint64], FieldNumber(5)]
 
 
 class ClassifiedGeneratedTextStreamResult(ClassifiedGeneratedTextResult):
-    processed_index: Annotated[int, FieldNumber(4)]
+    processed_index: Annotated[int, FieldNumber(6)]
