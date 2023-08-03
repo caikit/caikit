@@ -34,8 +34,8 @@ import aconfig
 import alog
 
 # Local
+from ..exceptions import error_handler
 from ..modules import ModuleConfig
-from ..toolkit.errors import error_handler
 from .model_finder_base import ModelFinderBase
 
 log = alog.use_channel("LFIND")

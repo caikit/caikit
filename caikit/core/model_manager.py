@@ -30,6 +30,7 @@ import alog
 
 # Local
 from ..interfaces.common.data_model.stream_sources import S3Path
+from .exceptions import error_handler
 from .model_management import (
     ModelFinderBase,
     ModelInitializerBase,
@@ -40,7 +41,6 @@ from .model_management import (
 )
 from .modules.base import ModuleBase
 from .registries import module_registry
-from .toolkit.errors import error_handler
 from .toolkit.factory import Factory, FactoryConstructible
 from caikit.config import get_config
 

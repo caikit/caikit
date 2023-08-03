@@ -26,7 +26,7 @@ import alog
 
 # Local
 from caikit.core import ModuleBase
-from caikit.core.toolkit.errors import error_handler
+from caikit.core.exceptions import error_handler
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("LOADED-MODEL")

@@ -13,5 +13,20 @@
 # limitations under the License.
 
 
+"""This file exists for backwards compatibility.
+It imports from the caikit.core.exceptions package where things moved"""
+
+# Standard
+import warnings as _warnings
+
 # Local
-from .validation_error import DataValidationError
+from caikit.core.exceptions import DataValidationError, error_handler
+
+# 🌶️🌶️🌶️ Warn if this package is ever imported
+# Allow DeprecationWarnings through if anything tries to import from `toolkit.errors`
+_warnings.filterwarnings("default", category=DeprecationWarning)
+# And actually warn them
+_warnings.warn(
+    "The caikit.toolkit.errors package has moved to caikit.core.exceptions",
+    DeprecationWarning,
+)

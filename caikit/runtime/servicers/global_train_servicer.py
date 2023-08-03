@@ -41,7 +41,7 @@ from caikit.runtime.utils.servicer_util import (
 import caikit.core
 
 log = alog.use_channel("GT-SERVICR-I")
-error = caikit.core.toolkit.errors.error_handler.get(log)
+error = caikit.core.exceptions.error_handler.get(log)
 
 # Protobuf non primitives
 # Ref: https://developers.google.com/protocol-buffers/docs/reference/cpp/google.protobuf.descriptor

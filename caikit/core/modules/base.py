@@ -37,8 +37,9 @@ import alog
 
 # Local
 from ..data_model import DataBase, DataStream
+from ..exceptions import error_handler
+from ..exceptions.validation_error import DataValidationError
 from ..toolkit import fileio
-from ..toolkit.errors import DataValidationError, error_handler
 from .loader import ModuleLoader
 from .meta import _ModuleBaseMeta
 from caikit import core

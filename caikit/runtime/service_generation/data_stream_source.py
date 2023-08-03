@@ -29,7 +29,7 @@ import alog
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import _make_oneof_init, make_dataobject
 from caikit.core.data_model.streams.data_stream import DataStream
-from caikit.core.toolkit.errors import error_handler
+from caikit.core.exceptions import error_handler
 from caikit.interfaces.common.data_model.stream_sources import (
     Directory,
     File,

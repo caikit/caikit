@@ -25,7 +25,7 @@ from caikit.core.data_model import (
     ProducerId,
     dataobject,
 )
-from caikit.core.toolkit.errors import error_handler
+from caikit.core.exceptions import error_handler
 
 log = alog.use_channel("DATAM")
 error = error_handler.get(log)

@@ -23,7 +23,7 @@ import os
 import alog
 
 # Local
-from ..toolkit.errors import error_handler
+from ..exceptions import error_handler
 from .config import ModuleConfig
 from caikit import core
 

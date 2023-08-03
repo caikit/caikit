@@ -36,7 +36,7 @@ from google.protobuf.message import Message as ProtoMessageType
 import alog
 
 # Local
-from ..toolkit.errors import error_handler
+from ..exceptions import error_handler
 from . import enums, json_dict
 
 log = alog.use_channel("DATAM")

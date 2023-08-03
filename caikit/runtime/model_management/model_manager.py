@@ -30,7 +30,7 @@ import alog
 # Local
 from caikit import get_config
 from caikit.core import ModuleBase
-from caikit.core.toolkit.errors import error_handler
+from caikit.core.exceptions import error_handler
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.model_management.model_sizer import ModelSizer

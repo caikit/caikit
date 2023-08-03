@@ -24,8 +24,8 @@ from alog import alog
 # Local
 from .data_model import DataStream
 from .data_model.base import DataBase
+from .exceptions import error_handler
 from .signature_parsing import CaikitMethodSignature
-from .toolkit.errors import error_handler
 
 log = alog.use_channel("TASK_BASE")
 error = error_handler.get(log)

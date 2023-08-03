@@ -19,7 +19,7 @@
 import alog
 
 # Local
-from ..toolkit.errors import error_handler
+from ..exceptions import error_handler
 from ..toolkit.wip_decorator import TempDisableWIP
 from .backend_types import register_backend_type
 from .base import BackendBase

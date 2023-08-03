@@ -22,7 +22,7 @@ from typing import Any, Iterable, Type
 import alog
 
 # Local
-from ...toolkit.errors import error_handler
+from ...exceptions import error_handler
 from ..base import DataBase
 from .base import DataModelBackendBase
 

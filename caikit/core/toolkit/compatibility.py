@@ -21,7 +21,7 @@ import sys
 import alog
 
 # Local
-from .errors import error_handler
+from ..exceptions import error_handler
 
 log = alog.use_channel("COMPATIBILITY")
 error = error_handler.get(log)

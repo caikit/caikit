@@ -28,10 +28,10 @@ import alog
 
 # Local
 from ..data_model import ProducerId
+from ..exceptions import error_handler
 from ..registries import module_backend_registry, module_backend_types, module_registry
 from ..signature_parsing import CaikitMethodSignature
 from ..task import TaskBase
-from ..toolkit.errors import error_handler
 from .base import ModuleBase
 import caikit.core
 

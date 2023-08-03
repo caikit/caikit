@@ -22,7 +22,7 @@ import random
 import alog
 
 # Local
-from ...toolkit.errors import error_handler
+from ...exceptions import error_handler
 from .. import AugmentorBase
 
 log = alog.use_channel("AUG_SCHEME_BASE")

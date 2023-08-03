@@ -47,7 +47,7 @@ import alog
 import py_to_proto
 
 # Local
-from ..toolkit.errors import error_handler
+from ..exceptions import error_handler
 from . import enums
 from .base import DataBase, _DataBaseMetaClass
 from .json_dict import JsonDict
