@@ -105,10 +105,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
     ## Interface ##
     ###############
 
-    def __init__(
-        self,
-        tls_config_override: Optional[aconfig.Config] = None,
-    ):
+    def __init__(self, tls_config_override: Optional[aconfig.Config] = None):
         super().__init__(get_config().runtime.http.port, tls_config_override)
 
         self.app = FastAPI()
@@ -205,7 +202,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
             grace_period_seconds (Union[float, int]): Grace period for service shutdown.
                 Defaults to application config
         """
-        log.info("Shutting down HTTP Server")
         self.server.should_exit = True
         if (
             self._uvicorn_server_thread is not None

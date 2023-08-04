@@ -219,7 +219,6 @@ class RuntimeGRPCServer(RuntimeServerBase):
             grace_period_seconds (Union[float, int]): Grace period for service shutdown.
                 Defaults to application config
         """
-        log.info("Shutting down grpc server")
         if grace_period_seconds is None:
             grace_period_seconds = (
                 self.config.runtime.grpc.server_shutdown_grace_period_seconds
