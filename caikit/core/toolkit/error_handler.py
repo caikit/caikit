@@ -20,7 +20,7 @@ It imports from the caikit.core.exceptions package where things moved"""
 import warnings as _warnings
 
 # Local
-from caikit.core.exceptions.error_handler import *
+from caikit.core.exceptions.error_handler import *  # pylint: disable=wildcard-import,unused-wildcard-import
 
 # 🌶️🌶️🌶️ Warn if this package is ever imported
 # Allow DeprecationWarnings through if anything tries to import from `toolkit.errors`
