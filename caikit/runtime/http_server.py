@@ -113,28 +113,33 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Start metrics server
         RuntimeServerBase._start_metrics_server()
 
-        # Set up the central predict servicer
-        self.global_predict_servicer = GlobalPredictServicer(self.inference_service)
+        # Placeholders for global servicers
+        self.global_predict_servicer = None
+        self.global_train_servicer = None
 
-        # Set up the central train servicer
-        # TODO: uncomment later on
-        # train_service = ServicePackageFactory().get_service_package(
-        #     ServicePackageFactory.ServiceType.TRAINING,
-        # )
-        # self.global_train_servicer = GlobalTrainServicer(train_service)
+        # Set up inference if enabled
+        if self.enable_inference:
+            log.info("<RUN77183426I>", "Enabling HTTP inference service")
+            self.global_predict_servicer = GlobalPredictServicer(self.inference_service)
+            self._bind_routes(self.inference_service)
 
-        self.package_name = self.inference_service.descriptor.full_name.rsplit(".", 1)[
-            0
-        ]
+        # Set up training if enabled
+        if self.enable_training:
+            log.info("<RUN77183427I>", "Enabling HTTP training service")
+            log.warning("<RUN65223936W>", "Training not yet supported for HTTP server")
+
+            # Set up the central train servicer
+            # TODO: uncomment later on
+            # train_service = ServicePackageFactory().get_service_package(
+            #     ServicePackageFactory.ServiceType.TRAINING,
+            # )
+            # self.global_train_servicer = GlobalTrainServicer(train_service)
+            # self._bind_routes(train_service)
 
         # Add the health endpoint
         self.app.get(HEALTH_ENDPOINT, response_class=PlainTextResponse)(
             self._health_check
         )
-
-        # Bind all routes to the server
-        self._bind_routes(self.inference_service)
-        # self._bind_routes(train_service)
 
         # Parse TLS configuration
         tls_kwargs = {}
@@ -181,7 +186,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
     def __del__(self):
         config = get_config()
-        if config and config.runtime.metering.enabled:
+        if config and config.runtime.metering.enabled and self.global_predict_servicer:
             self.global_predict_servicer.stop_metering()
 
     def start(self, blocking: bool = True):
@@ -210,7 +215,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             self._uvicorn_server_thread.join()
 
         # Ensure we flush out any remaining billing metrics and stop metering
-        if self.config.runtime.metering.enabled:
+        if self.config.runtime.metering.enabled and self.global_predict_servicer:
             self.global_predict_servicer.stop_metering()
 
         # Shut down the model manager's model polling if enabled

@@ -202,6 +202,40 @@ def test_mutual_tls_server_with_wrong_cert(open_port):
                 )
 
 
+@pytest.mark.parametrize(
+    "enabled_services",
+    [(True, False), (False, True), (False, False)],
+)
+def test_services_disabled(open_port, enabled_services):
+    enable_inference, enable_training = enabled_services
+    with temp_config(
+        {
+            "runtime": {
+                "service_generation": {
+                    "enable_inference": enable_inference,
+                    "enable_training": enable_training,
+                }
+            },
+        },
+        "merge",
+    ):
+        with runtime_http_test_server(open_port) as server:
+            # start a non-blocking http server with basic tls
+            resp = requests.get(
+                f"http://localhost:{open_port}{http_server.HEALTH_ENDPOINT}",
+            )
+            resp.raise_for_status()
+            assert server.enable_inference == enable_inference
+            assert (server.global_predict_servicer and enable_inference) or (
+                server.global_predict_servicer is None and not enable_inference
+            )
+            assert server.enable_training == enable_training
+            # TODO: Update once training enabled
+            # assert (server.global_train_servicer and enable_training) or (
+            #     server.global_train_servicer is None and not enable_training
+            # )
+
+
 def test_docs(runtime_http_server):
     """Simple check that pinging /docs returns 200"""
     with TestClient(runtime_http_server.app) as client:

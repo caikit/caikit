@@ -65,7 +65,7 @@ from sample_lib.data_model import (
     SampleOutputType,
     SampleTrainingType,
 )
-from tests.conftest import random_test_id
+from tests.conftest import random_test_id, temp_config
 from tests.core.helpers import *
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import (
@@ -999,6 +999,38 @@ def test_mtls(open_port):
             stub = health_pb2_grpc.HealthStub(bad_channel)
             health_check_request = health_pb2.HealthCheckRequest()
             stub.Check(health_check_request)
+
+
+@pytest.mark.parametrize(
+    "enabled_services",
+    [(True, False), (False, True), (False, False)],
+)
+def test_services_disabled(open_port, enabled_services):
+    """Boot up a server with different combinations of services disabled"""
+    enable_inference, enable_training = enabled_services
+    with temp_config(
+        {
+            "runtime": {
+                "service_generation": {
+                    "enable_inference": enable_inference,
+                    "enable_training": enable_training,
+                }
+            },
+        },
+        "merge",
+    ):
+        with runtime_grpc_test_server(
+            open_port,
+        ) as server:
+            _assert_connection(server.make_local_channel())
+            assert server.enable_inference == enable_inference
+            assert (server._global_predict_servicer and enable_inference) or (
+                server._global_predict_servicer is None and not enable_inference
+            )
+            assert server.enable_training == enable_training
+            assert (server.training_service and enable_training) or (
+                server.training_service is None and not enable_training
+            )
 
 
 def test_certs_can_be_loaded_as_files(tmp_path, open_port):

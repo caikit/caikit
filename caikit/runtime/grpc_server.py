@@ -67,13 +67,13 @@ class RuntimeGRPCServer(RuntimeServerBase):
         super().__init__(get_config().runtime.grpc.port, tls_config_override)
 
         # Initialize basic server
-        # py_grpc_prometheus.server_metrics.
         self.server = grpc.server(
             futures.ThreadPoolExecutor(
                 max_workers=self.config.runtime.grpc.server_thread_pool_size
             ),
             interceptors=(PROMETHEUS_METRICS_INTERCEPTOR,),
         )
+
         # Start metrics server
         RuntimeServerBase._start_metrics_server()
 
@@ -81,21 +81,26 @@ class RuntimeGRPCServer(RuntimeServerBase):
         service_names = [reflection.SERVICE_NAME]
 
         # Intercept an Inference Service
-        self._global_predict_servicer = GlobalPredictServicer(self.inference_service)
-        self.server = CaikitRuntimeServerWrapper(
-            server=self.server,
-            global_predict=self._global_predict_servicer.Predict,
-            intercepted_svc_package=self.inference_service,
-        )
-        service_names.append(self.inference_service.descriptor.full_name)
+        self._global_predict_servicer = None
+        if self.enable_inference:
+            log.info("<RUN20247875I>", "Enabling gRPC inference service")
+            self._global_predict_servicer = GlobalPredictServicer(
+                self.inference_service
+            )
+            self.server = CaikitRuntimeServerWrapper(
+                server=self.server,
+                global_predict=self._global_predict_servicer.Predict,
+                intercepted_svc_package=self.inference_service,
+            )
+            service_names.append(self.inference_service.descriptor.full_name)
 
-        # Register inference service
-        self.inference_service.registration_function(
-            self.inference_service.service, self.server
-        )
+            # Register inference service
+            self.inference_service.registration_function(
+                self.inference_service.service, self.server
+            )
 
         # And intercept a training service, if we have one
-        if self.training_service:
+        if self.enable_training and self.training_service:
             global_train_servicer = GlobalTrainServicer(self.training_service)
             self.server = CaikitRuntimeServerWrapper(
                 server=self.server,
@@ -225,7 +230,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
             )
         self.server.stop(grace_period_seconds)
         # Ensure we flush out any remaining billing metrics and stop metering
-        if self.config.runtime.metering.enabled:
+        if self.config.runtime.metering.enabled and self._global_predict_servicer:
             self._global_predict_servicer.stop_metering()
         # Shut down the model manager's model polling if enabled
         self._shut_down_model_manager()
