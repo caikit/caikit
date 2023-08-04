@@ -350,7 +350,7 @@ def test_class_attributes(reset_globals):
         # Normally non-local backend modules are loaded through caikit.load, so
         # we need to make sure the local loader has been properly configured to
         # enable local instance instantiation.
-        assert MODEL_MANAGER._get_initializer("default")
+        assert MODEL_MANAGER.get_initializer("default")
 
         # Make sure an instance can fetch via get_backend()
         inst = DummyBar()

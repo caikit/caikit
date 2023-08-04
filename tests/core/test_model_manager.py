@@ -489,8 +489,8 @@ def test_load_with_two_shared_initializers_of_the_same_type(
             }
         }
     ):
-        model_one_loader = MODEL_MANAGER._get_initializer("model-one")
-        model_two_loader = MODEL_MANAGER._get_initializer("model-two")
+        model_one_loader = MODEL_MANAGER.get_initializer("model-one")
+        model_two_loader = MODEL_MANAGER.get_initializer("model-two")
 
         # plain model load should use first loader
         model = caikit.core.load(good_model_path, initializer="model-one")
@@ -598,6 +598,22 @@ def test_initialize_all_components(reset_globals):
         assert set(MODEL_MANAGER._trainers.keys()) == {"default", "foobar"}
         assert set(MODEL_MANAGER._finders.keys()) == {"default", "foobar"}
         assert set(MODEL_MANAGER._initializers.keys()) == {"default", "foobar"}
+
+
+def test_find_without_on_disk_model(good_model_path, reset_globals):
+    """Make sure that ephemeral models can be found without existing on disk"""
+
+    with temp_config(
+        {
+            "model_management": {
+                "finders": {"default": {"type": TestFinder.name}},
+                "initializers": {"default": {"type": "LOCAL"}},
+            }
+        }
+    ):
+        model = caikit.core.load("some_pretend_model")
+        assert model
+        assert not os.path.exists("some_pretend_model")
 
 
 def test_train_by_module_class(reset_globals):

@@ -14,6 +14,7 @@
 
 # Standard
 from typing import Optional, Type
+import os
 import uuid
 
 # Third Party
@@ -23,9 +24,11 @@ import pytest
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model import TrainingStatus
 from caikit.core.model_management import (
+    ModelFinderBase,
     ModelInitializerBase,
     ModelTrainerBase,
     TrainingInfo,
+    model_finder_factory,
     model_initializer_factory,
     model_trainer_factory,
 )
@@ -38,6 +41,7 @@ from caikit.core.registries import (
     module_backend_types,
     module_registry,
 )
+from sample_lib.modules import SampleModule
 
 
 # Add mock backend
@@ -61,8 +65,30 @@ class MockBackend(BackendBase):
 
 backend_types.register_backend_type(MockBackend)
 
+# Add a new model finder that tests can use
+class TestFinder(ModelFinderBase):
+    name = "TestFinder"
+    __test__ = False
 
-# Add a new shared load backend that tests can use
+    def __init__(self, config, instance_name):
+        # Fill in expected fields for SampleModule
+        config.setdefault("module_id", SampleModule.MODULE_ID)
+        config.setdefault("train", {}).setdefault("batch_size", 1)
+        config.setdefault("train", {}).setdefault("learning_rate", 0.1)
+        self._config = config
+        self._local_finder = model_finder_factory.construct({"type": "LOCAL"})
+        self._instance_name = instance_name
+
+    def find_model(self, model_path, *args, **kwargs):
+        if os.path.exists(model_path):
+            return self._local_finder.find_model(model_path, *args, **kwargs)
+        return ModuleConfig(self._config)
+
+
+model_finder_factory.register(TestFinder)
+
+
+# Add a new model initializer that tests can use
 class TestInitializer(ModelInitializerBase):
     name = "TestInitializer"
     __test__ = False

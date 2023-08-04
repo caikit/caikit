@@ -83,11 +83,11 @@ class ModelManager:
         # Initialize all configured components
         mm_config = get_config().model_management
         for trainer in mm_config.trainers:
-            self._get_trainer(trainer)
+            self.get_trainer(trainer)
         for finder in mm_config.finders:
-            self._get_finder(finder)
+            self.get_finder(finder)
         for initializer in mm_config.initializers:
-            self._get_initializer(initializer)
+            self.get_initializer(initializer)
 
     ## Public ##################################################################
 
@@ -149,7 +149,7 @@ class ModelManager:
         error.subclass_check("<COR05418775E>", module, ModuleBase)
 
         # Get the trainer to use
-        trainer: ModelTrainerBase = self._get_trainer(trainer)
+        trainer: ModelTrainerBase = self.get_trainer(trainer)
 
         # Start the training
         with alog.ContextTimer(log.debug, "Started training in: "):
@@ -193,11 +193,11 @@ class ModelManager:
                 to the model which holds the status of the in-flight training.
         """
         try:
-            trainer = self._get_trainer(ModelTrainerBase.get_trainer_name(training_id))
+            trainer = self.get_trainer(ModelTrainerBase.get_trainer_name(training_id))
 
         # Fall back to the default trainer to try to find this ID
         except ValueError:
-            trainer = self._get_trainer("default")
+            trainer = self.get_trainer("default")
 
         return trainer.get_model_future(training_id)
 
@@ -383,6 +383,41 @@ class ModelManager:
         with self.__singleton_lock:
             self._singleton_module_cache.clear()
 
+    def get_trainer(self, trainer: Union[str, ModelTrainerBase]) -> ModelTrainerBase:
+        """Get the configured model trainer or the one passed by value"""
+        return self._get_component(
+            component=trainer,
+            component_dict=self._trainers,
+            component_factory=model_trainer_factory,
+            component_name="trainer",
+            component_cfg=get_config().model_management.trainers,
+            component_type=ModelTrainerBase,
+        )
+
+    def get_finder(self, finder: Union[str, ModelFinderBase]) -> ModelFinderBase:
+        """Get the configured model finder or the one passed by value"""
+        return self._get_component(
+            component=finder,
+            component_dict=self._finders,
+            component_factory=model_finder_factory,
+            component_name="finder",
+            component_cfg=get_config().model_management.finders,
+            component_type=ModelFinderBase,
+        )
+
+    def get_initializer(
+        self, initializer: Union[str, ModelInitializerBase]
+    ) -> ModelInitializerBase:
+        """Get the configured model initializer or the one passed by value"""
+        return self._get_component(
+            component=initializer,
+            component_dict=self._initializers,
+            component_factory=model_initializer_factory,
+            component_name="initializer",
+            component_cfg=get_config().model_management.initializers,
+            component_type=ModelInitializerBase,
+        )
+
     ## Implementation Details ##################################################
 
     def _load_from_dir(
@@ -418,7 +453,7 @@ class ModelManager:
             #
             # NOTE: This will lazily construct named finders if needed
             log.debug("Attempting to find [%s] with finder %s", module_path, finder)
-            finder = self._get_finder(finder)
+            finder = self.get_finder(finder)
             model_config = finder.find_model(module_path, **kwargs)
             error.value_check(
                 "<COR92173495E>",
@@ -430,7 +465,7 @@ class ModelManager:
             # Use the given initializer to try to load the model
             #
             # NOTE: This will lazily construct named initializers if needed
-            initializer = self._get_initializer(initializer)
+            initializer = self.get_initializer(initializer)
             loaded_model = initializer.init(model_config, **kwargs)
             error.value_check(
                 "<COR50207494E>",
@@ -560,38 +595,3 @@ class ModelManager:
             )
             component_dict[component] = component_factory.construct(cfg, component)
         return component_dict[component]
-
-    def _get_trainer(self, trainer: Union[str, ModelTrainerBase]) -> ModelTrainerBase:
-        """Get the configured model trainer or the one passed by value"""
-        return self._get_component(
-            component=trainer,
-            component_dict=self._trainers,
-            component_factory=model_trainer_factory,
-            component_name="trainer",
-            component_cfg=get_config().model_management.trainers,
-            component_type=ModelTrainerBase,
-        )
-
-    def _get_finder(self, finder: Union[str, ModelFinderBase]) -> ModelFinderBase:
-        """Get the configured model finder or the one passed by value"""
-        return self._get_component(
-            component=finder,
-            component_dict=self._finders,
-            component_factory=model_finder_factory,
-            component_name="finder",
-            component_cfg=get_config().model_management.finders,
-            component_type=ModelFinderBase,
-        )
-
-    def _get_initializer(
-        self, initializer: Union[str, ModelInitializerBase]
-    ) -> ModelInitializerBase:
-        """Get the configured model initializer or the one passed by value"""
-        return self._get_component(
-            component=initializer,
-            component_dict=self._initializers,
-            component_factory=model_initializer_factory,
-            component_name="initializer",
-            component_cfg=get_config().model_management.initializers,
-            component_type=ModelInitializerBase,
-        )
