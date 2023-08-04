@@ -335,7 +335,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     self.global_train_servicer.run_training_job,
                     request=request,
                     module=rpc.clz,
-                    training_output_dir="blah",
+                    training_output_dir=None,  # pass None so that GTS picks up the config one # TODO: double-check?
                     request_params=request_params,
                     # context=context,
                     wait=True,

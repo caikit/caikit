@@ -423,7 +423,6 @@ def test_http_server_shutdown_with_model_poll(open_port):
 ## Train Tests #######################################################################
 
 
-# TODO: move train to tmp dir
 def test_train_sample_task(runtime_http_server):
     model_name = "sample_task_train"
     with TestClient(runtime_http_server.app) as client:
