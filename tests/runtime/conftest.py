@@ -188,10 +188,8 @@ def runtime_http_test_server(open_port, *args, **kwargs):
                 yield server
 
 
-# This is honestly not required for fastAPI testing
-# as they have a built-in TestClient that's capable
-# of testing http routes. I've kept it here for tests that
-# need a working http server
+# For tests that need a working http server
+# For other http tests, we can use FastAPI TestClient
 @pytest.fixture(scope="session")
 def runtime_http_server(
     http_session_scoped_open_port,
