@@ -225,6 +225,9 @@ class GlobalTrainServicer:
         if request_data_model and request_data_model.output_path:
             # If we got an S3 storage link, just pass that along to the trainer
             model_path: S3Path = request_data_model.output_path
+        elif "output_path" in request_params:
+            # forward s3 storage links from REST requests
+            model_path: S3Path = request_params.get("output_path")
         else:
             # Otherwise, use either:
             # 1. The provided `training_output_dir` here, or

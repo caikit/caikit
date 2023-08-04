@@ -473,6 +473,29 @@ def test_train_sample_task(runtime_http_server):
         assert json_response["greeting"] == "Hello world"
 
 
+def test_train_sample_task_throws_s3_value_error(runtime_http_server):
+    """test that if we provide s3 path, it throws an error"""
+    model_name = "sample_task_train"
+    with TestClient(runtime_http_server.app) as client:
+        json_input = {
+            "inputs": {
+                "model_name": model_name,
+                "training_data": {"data_stream": {"file": "hello"}},
+                "output_path": {"path": "non-existent path_to_s3"},
+            },
+            "parameters": {"batch_size": 42},
+        }
+        training_response = client.post(
+            f"/api/v1/SampleTaskSampleModuleTrain",
+            json=json_input,
+        )
+        assert (
+            "S3 output path not supported by this runtime"
+            in training_response.content.decode(training_response.default_encoding)
+        )
+        assert training_response.status_code == 500
+
+
 def test_train_other_task(runtime_http_server):
     model_name = "other_task_train"
     with TestClient(runtime_http_server.app) as client:

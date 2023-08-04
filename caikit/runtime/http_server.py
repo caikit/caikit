@@ -305,6 +305,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 substituted_json
             )
             request_params["training_data"] = json_data_obj
+        if output_path := request_params.get("output_path", None):
+            request_params["output_path"] = PYDANTIC_REGISTRY.get(
+                type(output_path)
+            ).from_json(output_path.model_dump_json())
         return request_params
 
     def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
