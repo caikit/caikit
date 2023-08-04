@@ -28,7 +28,8 @@ model_management:
                       config: {}
 """
 # Standard
-from typing import Callable, Optional
+from typing import Callable, List, Optional
+import copy
 import inspect
 
 # First Party
@@ -198,6 +199,11 @@ class LocalModelInitializer(ModelInitializerBase):
 
         # Return the loaded model if it was able to load
         return loaded_model
+
+    @property
+    def backends(self) -> List[BackendBase]:
+        """Return an immutable view of the priority sequence of backends"""
+        return copy.copy(self._backends)
 
     ## Implementation Details ##################################################
 
