@@ -4,7 +4,7 @@ This sets up global test configs when pytest starts
 
 # Standard
 from contextlib import contextmanager
-from typing import Type, Union
+from typing import Dict, Type, Union
 import os
 import shlex
 import socket
@@ -15,9 +15,11 @@ import threading
 import time
 
 # Third Party
+from fastapi.testclient import TestClient
 from grpc_health.v1 import health_pb2, health_pb2_grpc
 import grpc
 import pytest
+import requests
 
 # First Party
 import alog
@@ -25,6 +27,7 @@ import alog
 # Local
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model.dataobject import render_dataobject_protos
+from caikit.runtime import http_server
 from caikit.runtime.grpc_server import RuntimeGRPCServer
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
@@ -49,6 +52,15 @@ def open_port():
 
 @pytest.fixture(scope="session")
 def session_scoped_open_port():
+    """Get an open port on localhost
+    Returns:
+        int: Available port
+    """
+    return _open_port()
+
+
+@pytest.fixture(scope="session")
+def http_session_scoped_open_port():
     """Get an open port on localhost
     Returns:
         int: Available port
@@ -138,14 +150,54 @@ def runtime_grpc_test_server(open_port, *args, **kwargs):
 
 @pytest.fixture(scope="session")
 def runtime_grpc_server(
-    session_scoped_open_port, sample_inference_service, sample_train_service
+    session_scoped_open_port,
 ) -> RuntimeGRPCServer:
     with runtime_grpc_test_server(
         session_scoped_open_port,
-        inference_service=sample_inference_service,
-        training_service=sample_train_service,
     ) as server:
         _check_server_readiness(server)
+        yield server
+
+
+@contextmanager
+def runtime_http_test_server(open_port, *args, **kwargs):
+    """Helper to wrap creation of RuntimeHTTPServer in temporary configurations"""
+    with tempfile.TemporaryDirectory() as workdir:
+        temp_log_dir = os.path.join(workdir, "metering_logs")
+        temp_save_dir = os.path.join(workdir, "training_output")
+        os.makedirs(temp_log_dir)
+        os.makedirs(temp_save_dir)
+        with temp_config(
+            {
+                "runtime": {
+                    "metering": {"log_dir": temp_log_dir},
+                    "training": {"output_dir": temp_save_dir},
+                    "http": {"port": open_port},
+                }
+            },
+            "merge",
+        ):
+            config_overrides = {}
+            if "tls_config_override" in kwargs:
+                config_overrides = kwargs["tls_config_override"]
+                kwargs["tls_config_override"] = config_overrides["runtime"]["tls"]
+            with http_server.RuntimeHTTPServer(*args, **kwargs) as server:
+                _check_http_server_readiness(server, config_overrides)
+                # Give tests access to the workdir
+                server.workdir = workdir
+                yield server
+
+
+# For tests that need a working http server
+# For other http tests, we can use FastAPI TestClient
+@pytest.fixture(scope="session")
+def runtime_http_server(
+    http_session_scoped_open_port,
+) -> http_server.RuntimeHTTPServer:
+    """yields an actual running http server"""
+    with runtime_http_test_server(
+        http_session_scoped_open_port,
+    ) as server:
         yield server
 
 
@@ -321,5 +373,39 @@ def _check_server_readiness(server):
             stub.Check(health_check_request)
             done = True
         except grpc.RpcError:
-            log.debug("[RpcError]; will try to reconnect to test server in 0.1 second.")
-            time.sleep(0.1)
+            log.debug(
+                "[RpcError]; will try to reconnect to test server in 0.01 second."
+            )
+            time.sleep(0.01)
+
+
+def _check_http_server_readiness(server, config_overrides: Dict[str, Dict]):
+    mode = "http"
+    verify = None
+    cert = None
+    # tls
+    if config_overrides:
+        mode = "https"
+        verify = config_overrides["use_in_test"]["ca_cert"]
+        # mtls
+        if "client_cert" and "client_key" in config_overrides["use_in_test"]:
+            cert = (
+                config_overrides["use_in_test"]["client_cert"],
+                config_overrides["use_in_test"]["client_key"],
+            )
+    done = False
+    while not done:
+        try:
+            response = requests.get(
+                f"{mode}://localhost:{server.port}{http_server.HEALTH_ENDPOINT}",
+                verify=verify,
+                cert=cert,
+            )
+            assert response.status_code == 200
+            assert response.text == "OK"
+            done = True
+        except AssertionError:
+            log.debug(
+                "[HTTP server not ready]; will try to reconnect to test server in 0.01 second."
+            )
+            time.sleep(0.001)

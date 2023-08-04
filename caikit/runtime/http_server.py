@@ -50,15 +50,14 @@ from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
 from caikit.runtime.server_base import RuntimeServerBase
-from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
+from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-import caikit.core.toolkit.logging
 
 ## Globals #####################################################################
 
-log = alog.use_channel("HTTP")
+log = alog.use_channel("SERVR-HTTP")
 
 # Registry of DM -> Pydantic model mapping to avoid errors when reusing messages
 # across endpoints
@@ -111,11 +110,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         self.app = FastAPI()
 
+        # Start metrics server
+        RuntimeServerBase._start_metrics_server()
+
         # Set up the central predict servicer
-        inference_service = ServicePackageFactory().get_service_package(
-            ServicePackageFactory.ServiceType.INFERENCE,
-        )
-        self.global_predict_servicer = GlobalPredictServicer(inference_service)
+        self.global_predict_servicer = GlobalPredictServicer(self.inference_service)
 
         # Set up the central train servicer
         # TODO: uncomment later on
@@ -124,7 +123,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # )
         # self.global_train_servicer = GlobalTrainServicer(train_service)
 
-        self.package_name = inference_service.descriptor.full_name.rsplit(".", 1)[0]
+        self.package_name = self.inference_service.descriptor.full_name.rsplit(".", 1)[
+            0
+        ]
 
         # Add the health endpoint
         self.app.get(HEALTH_ENDPOINT, response_class=PlainTextResponse)(
@@ -132,7 +133,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         )
 
         # Bind all routes to the server
-        self._bind_routes(inference_service)
+        self._bind_routes(self.inference_service)
         # self._bind_routes(train_service)
 
         # Parse TLS configuration
@@ -179,11 +180,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
         self._uvicorn_server_thread = None
 
     def __del__(self):
-        if get_config().runtime.metering.enabled:
+        config = get_config()
+        if config and config.runtime.metering.enabled:
             self.global_predict_servicer.stop_metering()
 
     def start(self, blocking: bool = True):
-        """Boot the gRPC server. Can be non-blocking, or block until shutdown
+        """Boot the http server. Can be non-blocking, or block until shutdown
 
         Args:
             blocking (boolean): Whether to block until shutdown
@@ -200,7 +202,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
             grace_period_seconds (Union[float, int]): Grace period for service shutdown.
                 Defaults to application config
         """
-        log.info("Shutting down HTTP Server")
         self.server.should_exit = True
         if (
             self._uvicorn_server_thread is not None
@@ -328,6 +329,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         pydantic_response = self._dataobject_to_pydantic(
             self._get_response_dataobject(rpc)
         )
+
         # pylint: disable=unused-argument
         @self.app.post(self._get_route(rpc), response_model=pydantic_response)
         async def _handler(
@@ -393,7 +395,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 route = "/" + route
             return route
         if rpc.name.endswith("Train"):
-
             route = "/".join(
                 [self.config.runtime.http.route_prefix, "{model_id}", rpc.name]
             )
@@ -550,13 +551,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
         return "OK"
 
 
-## Main ########################################################################
-
-
-def main():
-    caikit.core.toolkit.logging.configure()
+def main(blocking: bool = True):
     server = RuntimeHTTPServer()
-    server.start()
+    server._intercept_interrupt_signal()
+    server.start(blocking)
 
 
 if __name__ == "__main__":

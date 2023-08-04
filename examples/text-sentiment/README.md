@@ -15,16 +15,13 @@ Install the dependencies: `pip install -r requirements.txt`
 
 ## Running the Caikit runtime
 
-In one terminal, start the runtime grpc server:
+In one terminal, start the runtime server:
 
 ```shell
 python3 start_runtime.py
 ```
 
-You can alternatively start the REST server with
-```shell
-python3 start_runtime.py --protocol http
-```
+This should start the runtime server with both grpc and http enabled.
 
 You should see output similar to the following:
 
@@ -63,11 +60,6 @@ In another terminal, run the client code:
 ```shell
 python3 client.py
 ```
-Or, for the REST client:
-```shell
-python3 client.py --protocol http
-```
-
 The client code calls the model and queries it for sentiment analysis on 2 different pieces of text.
 
 You should see output similar to the following:
@@ -75,16 +67,36 @@ You should see output similar to the following:
 ```command
 $ python3 client.py
 
-<function register_backend_type at 0x7fe930bdbdc0> is still in the BETA phase and subject to change!
 Text: I am not feeling well today!
-RESPONSE: classes {
+RESPONSE from gRPC: classes {
   class_name: "NEGATIVE"
-  confidence: 0.99977594614028931
+  confidence: 0.9997759461402893
 }
 
 Text: Today is a nice sunny day
-RESPONSE: classes {
+RESPONSE from gRPC: classes {
   class_name: "POSITIVE"
   confidence: 0.999869704246521
+}
+
+
+Text: I am not feeling well today!
+RESPONSE from HTTP: {
+    "classes": [
+        {
+            "class_name": "NEGATIVE",
+            "confidence": 0.9997759461402893
+        }
+    ]
+}
+
+Text: Today is a nice sunny day
+RESPONSE from HTTP: {
+    "classes": [
+        {
+            "class_name": "POSITIVE",
+            "confidence": 0.999869704246521
+        }
+    ]
 }
 ```

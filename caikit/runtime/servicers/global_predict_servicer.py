@@ -95,8 +95,10 @@ class GlobalPredictServicer:
         inference_service: ServicePackage,
         use_abortable_threads: bool = get_config().runtime.use_abortable_threads,
     ):
+        self._started_metering = False
         self._model_manager = ModelManager.get_instance()
         if get_config().runtime.metering.enabled:
+            self._started_metering = True
             self.rpc_meter = RPCMeter()
             log.info(
                 "<RUN76773775I>",
@@ -267,9 +269,10 @@ class GlobalPredictServicer:
             return response
 
     def stop_metering(self):
-        if get_config().runtime.metering.enabled:
+        if get_config().runtime.metering.enabled and self._started_metering:
             self.rpc_meter.flush_metrics()
             self.rpc_meter.end_writer_thread()
+            self._started_metering = False
 
     ## Implementation Details ##################################################
 

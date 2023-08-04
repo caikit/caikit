@@ -187,9 +187,7 @@ def test_model_train(runtime_grpc_server):
     assert result.learning_rate == 0.0015
 
 
-def test_components_preinitialized(
-    reset_globals, open_port, sample_inference_service, sample_train_service
-):
+def test_components_preinitialized(reset_globals, open_port):
     """Test that all model management components get pre-initialized when the
     server is instantiated
     """
@@ -198,8 +196,6 @@ def test_components_preinitialized(
     assert not MODEL_MANAGER._initializers
     with runtime_grpc_test_server(
         open_port,
-        inference_service=sample_inference_service,
-        training_service=sample_train_service,
     ):
         assert MODEL_MANAGER._trainers
         assert MODEL_MANAGER._finders
@@ -963,7 +959,7 @@ def test_canceling_model_loads_causes_exceptions(runtime_grpc_server):
         assert request_finished.is_set()
 
 
-def test_tls(sample_inference_service, open_port):
+def test_tls(open_port):
     """Boot up a server with TLS enabled and ping it on a secure channel"""
     ca_key = tls_test_tools.generate_key()[0]
     ca_cert = tls_test_tools.generate_ca_cert(ca_key)
@@ -974,14 +970,12 @@ def test_tls(sample_inference_service, open_port):
     )
     with runtime_grpc_test_server(
         open_port,
-        inference_service=sample_inference_service,
-        training_service=None,
         tls_config_override=tls_config,
     ) as server:
         _assert_connection(_make_secure_channel(server, ca_cert))
 
 
-def test_mtls(sample_inference_service, open_port):
+def test_mtls(open_port):
     """Boot up a server with mTLS enabled and ping it on a secure channel"""
     ca_key = tls_test_tools.generate_key()[0]
     ca_cert = tls_test_tools.generate_ca_cert(ca_key)
@@ -992,8 +986,6 @@ def test_mtls(sample_inference_service, open_port):
     )
     with runtime_grpc_test_server(
         open_port,
-        inference_service=sample_inference_service,
-        training_service=None,
         tls_config_override=tls_config,
     ) as server:
         client_key, client_cert = tls_test_tools.generate_derived_key_cert_pair(ca_key)
@@ -1009,7 +1001,7 @@ def test_mtls(sample_inference_service, open_port):
             stub.Check(health_check_request)
 
 
-def test_certs_can_be_loaded_as_files(sample_inference_service, tmp_path, open_port):
+def test_certs_can_be_loaded_as_files(tmp_path, open_port):
     """mTLS test with all tls configs loaded from files"""
     ca_key = tls_test_tools.generate_key()[0]
     ca_cert = tls_test_tools.generate_ca_cert(ca_key)
@@ -1033,8 +1025,6 @@ def test_certs_can_be_loaded_as_files(sample_inference_service, tmp_path, open_p
     )
     with runtime_grpc_test_server(
         open_port,
-        inference_service=sample_inference_service,
-        training_service=None,
         tls_config_override=tls_config,
     ) as server:
         client_key, client_cert = tls_test_tools.generate_derived_key_cert_pair(ca_key)
@@ -1050,8 +1040,6 @@ def test_metrics_stored_after_server_interrupt(
 
     with runtime_grpc_test_server(
         open_port,
-        inference_service=sample_inference_service,
-        training_service=None,
     ) as server:
         stub = sample_inference_service.stub_class(server.make_local_channel())
         predict_request = sample_inference_service.messages.SampleTaskRequest(
