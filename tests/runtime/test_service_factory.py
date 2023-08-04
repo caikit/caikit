@@ -28,6 +28,58 @@ from sample_lib.modules.sample_task import ListModule
 from tests.conftest import temp_config
 import caikit
 
+## Helpers #####################################################################
+
+
+def validate_infer_train_with_override(
+    domain_override: str, package_override: str
+) -> Tuple[ServicePackage, ServicePackage]:
+    """Construct and validate train and infer service packages with domain and package path override
+
+    The config should be set up for domain and/or package override, before this function is called.
+
+    Args:
+        domain_override (str): The domain to validate (maybe overridden value, or the default)
+        package_override (str): The package path to validate (maybe overridden value, or the default)
+
+    Returns: Tuple of created train and infer service packages, for potential subsequent reuse
+    """
+
+    """Compare the string representation
+
+    Args:
+        obj: Any
+            Object to compare against the contents of the file
+        file_path: str
+            Location of the file containing the expected string value of `obj`
+    """
+
+    inf_svc = ServicePackageFactory.get_service_package(
+        ServicePackageFactory.ServiceType.INFERENCE,
+    )
+    train_svc = ServicePackageFactory.get_service_package(
+        ServicePackageFactory.ServiceType.TRAINING,
+    )
+    inf_service_name = f"{domain_override}Service"
+    assert inf_svc.service.__name__ == inf_service_name
+    assert inf_svc.descriptor.full_name == f"{package_override}.{inf_service_name}"
+    for message_name in [
+        x for x in inf_svc.messages.__dict__.keys() if not x.startswith("_")
+    ]:
+        message: Message = getattr(inf_svc.messages, message_name)
+        assert message.DESCRIPTOR.full_name == f"{package_override}.{message_name}"
+
+    train_svc_name = f"{domain_override}TrainingService"
+    assert train_svc.service.__name__ == train_svc_name
+    assert train_svc.descriptor.full_name == f"{package_override}.{train_svc_name}"
+    for message_name in [
+        x for x in train_svc.messages.__dict__.keys() if not x.startswith("_")
+    ]:
+        message: Message = getattr(train_svc.messages, message_name)
+        assert message.DESCRIPTOR.full_name == f"{package_override}.{message_name}"
+    return inf_svc, train_svc
+
+
 ### Private method tests #############################################################
 
 
@@ -152,35 +204,6 @@ def test_get_and_filter_modules_respects_included_task_types_and_excluded_module
         assert "ListModule" not in str(clean_modules)
 
 
-def get_packages_with_override(
-    domain_override: str, package_override: str
-) -> Tuple[ServicePackage, ServicePackage]:
-    inf_svc = ServicePackageFactory.get_service_package(
-        ServicePackageFactory.ServiceType.INFERENCE,
-    )
-    train_svc = ServicePackageFactory.get_service_package(
-        ServicePackageFactory.ServiceType.TRAINING,
-    )
-    inf_service_name = f"{domain_override}Service"
-    assert inf_svc.service.__name__ == inf_service_name
-    assert inf_svc.descriptor.full_name == f"{package_override}.{inf_service_name}"
-    for message_name in [
-        x for x in inf_svc.messages.__dict__.keys() if not x.startswith("_")
-    ]:
-        message: Message = getattr(inf_svc.messages, message_name)
-        assert message.DESCRIPTOR.full_name == f"{package_override}.{message_name}"
-
-    train_svc_name = f"{domain_override}TrainingService"
-    assert train_svc.service.__name__ == train_svc_name
-    assert train_svc.descriptor.full_name == f"{package_override}.{train_svc_name}"
-    for message_name in [
-        x for x in train_svc.messages.__dict__.keys() if not x.startswith("_")
-    ]:
-        message: Message = getattr(train_svc.messages, message_name)
-        assert message.DESCRIPTOR.full_name == f"{package_override}.{message_name}"
-    return inf_svc, train_svc
-
-
 def test_override_domain():
     """
     Test override of gRPC domain generation from config.
@@ -200,7 +223,9 @@ def test_override_domain():
     ) as cfg:
         # Changing the domain still effects the default package name.
         # But if you override the package, it overrides the package name completely (see next test).
-        get_packages_with_override(domain_override, f"caikit.runtime.{domain_override}")
+        validate_infer_train_with_override(
+            domain_override, f"caikit.runtime.{domain_override}"
+        )
 
         # Just double-check that basics are good.
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
@@ -224,7 +249,7 @@ def test_override_package():
             }
         }
     ) as cfg:
-        get_packages_with_override("SampleLib", package_override)
+        validate_infer_train_with_override("SampleLib", package_override)
 
         # Just double-check that basics are good.
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
@@ -251,7 +276,7 @@ def test_override_package_and_domain_with_proto_gen():
             }
         }
     ) as cfg:
-        inf_svc, train_svc = get_packages_with_override(
+        inf_svc, train_svc = validate_infer_train_with_override(
             domain_override, package_override
         )
 
