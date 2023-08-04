@@ -15,7 +15,6 @@
 """Unit tests for the service factory"""
 # Standard
 from pathlib import Path
-from typing import Tuple
 import tempfile
 
 # Third Party
@@ -31,53 +30,43 @@ import caikit
 ## Helpers #####################################################################
 
 
-def validate_infer_train_with_override(
-    domain_override: str, package_override: str
-) -> Tuple[ServicePackage, ServicePackage]:
-    """Construct and validate train and infer service packages with domain and package path override
+def validate_package_with_override(
+    service_type: ServicePackageFactory.ServiceType,
+    domain_override: str,
+    package_override: str,
+) -> ServicePackage:
+    """Construct and validate train or infer service package with domain and package path override
 
     The config should be set up for domain and/or package override, before this function is called.
 
     Args:
+        service_type (ServicePackageFactory.ServiceType) : The type of service to build,
+            only TRAINING and INFERENCE are supported
         domain_override (str): The domain to validate (maybe overridden value, or the default)
         package_override (str): The package path to validate (maybe overridden value, or the default)
 
-    Returns: Tuple of created train and infer service packages, for potential subsequent reuse
+    Returns: The service package that was created, for potential subsequent reuse
     """
-
-    """Compare the string representation
-
-    Args:
-        obj: Any
-            Object to compare against the contents of the file
-        file_path: str
-            Location of the file containing the expected string value of `obj`
-    """
-
-    inf_svc = ServicePackageFactory.get_service_package(
-        ServicePackageFactory.ServiceType.INFERENCE,
-    )
-    train_svc = ServicePackageFactory.get_service_package(
+    assert service_type in {
         ServicePackageFactory.ServiceType.TRAINING,
+        ServicePackageFactory.ServiceType.INFERENCE,
+    }
+    svc = ServicePackageFactory.get_service_package(service_type)
+
+    service_name = (
+        f"{domain_override}TrainingService"
+        if service_type == ServicePackageFactory.ServiceType.TRAINING
+        else f"{domain_override}Service"
     )
-    inf_service_name = f"{domain_override}Service"
-    assert inf_svc.service.__name__ == inf_service_name
-    assert inf_svc.descriptor.full_name == f"{package_override}.{inf_service_name}"
+    assert svc.service.__name__ == service_name
+    assert svc.descriptor.full_name == f"{package_override}.{service_name}"
     for message_name in [
-        x for x in inf_svc.messages.__dict__.keys() if not x.startswith("_")
+        x for x in svc.messages.__dict__.keys() if not x.startswith("_")
     ]:
-        message: Message = getattr(inf_svc.messages, message_name)
+        message: Message = getattr(svc.messages, message_name)
         assert message.DESCRIPTOR.full_name == f"{package_override}.{message_name}"
 
-    train_svc_name = f"{domain_override}TrainingService"
-    assert train_svc.service.__name__ == train_svc_name
-    assert train_svc.descriptor.full_name == f"{package_override}.{train_svc_name}"
-    for message_name in [
-        x for x in train_svc.messages.__dict__.keys() if not x.startswith("_")
-    ]:
-        message: Message = getattr(train_svc.messages, message_name)
-        assert message.DESCRIPTOR.full_name == f"{package_override}.{message_name}"
-    return inf_svc, train_svc
+    return svc
 
 
 ### Private method tests #############################################################
@@ -223,8 +212,15 @@ def test_override_domain():
     ) as cfg:
         # Changing the domain still effects the default package name.
         # But if you override the package, it overrides the package name completely (see next test).
-        validate_infer_train_with_override(
-            domain_override, f"caikit.runtime.{domain_override}"
+        validate_package_with_override(
+            ServicePackageFactory.ServiceType.INFERENCE,
+            domain_override,
+            f"caikit.runtime.{domain_override}",
+        )
+        validate_package_with_override(
+            ServicePackageFactory.ServiceType.TRAINING,
+            domain_override,
+            f"caikit.runtime.{domain_override}",
         )
 
         # Just double-check that basics are good.
@@ -249,7 +245,12 @@ def test_override_package():
             }
         }
     ) as cfg:
-        validate_infer_train_with_override("SampleLib", package_override)
+        validate_package_with_override(
+            ServicePackageFactory.ServiceType.INFERENCE, "SampleLib", package_override
+        )
+        validate_package_with_override(
+            ServicePackageFactory.ServiceType.TRAINING, "SampleLib", package_override
+        )
 
         # Just double-check that basics are good.
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
@@ -276,8 +277,15 @@ def test_override_package_and_domain_with_proto_gen():
             }
         }
     ) as cfg:
-        inf_svc, train_svc = validate_infer_train_with_override(
-            domain_override, package_override
+        inf_svc = validate_package_with_override(
+            ServicePackageFactory.ServiceType.INFERENCE,
+            domain_override,
+            package_override,
+        )
+        train_svc = validate_package_with_override(
+            ServicePackageFactory.ServiceType.TRAINING,
+            domain_override,
+            package_override,
         )
 
         # Just double-check that basics are good.
