@@ -489,8 +489,8 @@ def test_load_with_two_shared_initializers_of_the_same_type(
             }
         }
     ):
-        model_one_loader = MODEL_MANAGER._get_initializer("model-one")
-        model_two_loader = MODEL_MANAGER._get_initializer("model-two")
+        model_one_loader = MODEL_MANAGER.get_initializer("model-one")
+        model_two_loader = MODEL_MANAGER.get_initializer("model-two")
 
         # plain model load should use first loader
         model = caikit.core.load(good_model_path, initializer="model-one")
