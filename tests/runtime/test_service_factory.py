@@ -13,21 +13,20 @@
 # limitations under the License.
 
 """Unit tests for the service factory"""
-import tempfile
+# Standard
 from pathlib import Path
 from typing import Tuple
-
-from google.protobuf.message import Message
-
-import caikit
-from caikit.core.data_model import render_dataobject_protos
-
-# Local
-from caikit.runtime.service_factory import ServicePackageFactory, ServicePackage
-from sample_lib.modules.sample_task import ListModule
-from tests.conftest import temp_config
+import tempfile
 
 # Third Party
+from google.protobuf.message import Message
+
+# Local
+from caikit.core.data_model import render_dataobject_protos
+from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
+from sample_lib.modules.sample_task import ListModule
+from tests.conftest import temp_config
+import caikit
 
 ### Private method tests #############################################################
 
