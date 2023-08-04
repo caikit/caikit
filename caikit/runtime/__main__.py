@@ -35,23 +35,23 @@ def main():
     signal.signal(signal.SIGINT, interrupt)
     signal.signal(signal.SIGTERM, interrupt)
 
-    # #####################
-    # # Start the servers
-    # #####################
-
-    # Start serving http server
-    if get_config().runtime.http.enabled:
-        log.debug("Starting up caikit.runtime.http_server")
-
-        _http_server = RuntimeHTTPServer()
-        _http_server.start(blocking=not get_config().runtime.grpc.enabled)
+    #####################
+    # Start the servers
+    #####################
 
     # Start serving grpc server
     if get_config().runtime.grpc.enabled:
         log.debug("Starting up caikit.runtime.grpc_server")
 
         _grpc_server = RuntimeGRPCServer()
-        _grpc_server.start(blocking=True)  # make grpc always blocking
+        _grpc_server.start(blocking=not get_config().runtime.http.enabled)
+
+    # Start serving http server
+    if get_config().runtime.http.enabled:
+        log.debug("Starting up caikit.runtime.http_server")
+
+        _http_server = RuntimeHTTPServer()
+        _http_server.start(blocking=True)  # make http always blocking
 
 
 if __name__ == "__main__":
