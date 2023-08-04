@@ -410,4 +410,4 @@ def _check_http_server_readiness(server, config_overrides: Dict[str, Dict]):
             log.debug(
                 "[HTTP server not ready]; will try to reconnect to test server in 0.01 second."
             )
-            time.sleep(0.01)
+            time.sleep(0.001)

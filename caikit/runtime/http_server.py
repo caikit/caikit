@@ -183,7 +183,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
         self._uvicorn_server_thread = None
 
     def __del__(self):
-        if get_config() and get_config().runtime.metering.enabled:
+        config = get_config()
+        if config and config.runtime.metering.enabled:
             self.global_predict_servicer.stop_metering()
 
     def start(self, blocking: bool = True):
