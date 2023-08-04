@@ -17,6 +17,7 @@ Contains recursive functions for loading modules saved inside modules.
 """
 
 # Standard
+from typing import Union
 import os
 
 # First Party
@@ -34,16 +35,15 @@ error = error_handler.get(log)
 class ModuleLoader:
     MODULE_PATHS_KEY = "module_paths"
 
-    def __init__(self, model_path):
+    def __init__(self, model_path: Union[str, ModuleConfig]):
         """Construct a new module loader.
 
         Args:
-            model_path (str): The path to the directory where the model is to be
-                loaded from.
+            model_path (Union[str, ModuleConfig]): The path to the directory
+                where the model is to be loaded from, or a preloaded config.
         """
-        self.model_path = os.path.normpath(model_path)
-        error.dir_check("<COR43014802E>", model_path)
         self.config = ModuleConfig.load(model_path)
+        self.model_path = self.config.model_path
 
     def load_arg(self, arg):
         """Extract arg value from the loaded model's config"""

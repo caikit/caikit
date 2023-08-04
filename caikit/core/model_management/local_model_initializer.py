@@ -180,13 +180,27 @@ class LocalModelInitializer(ModelInitializerBase):
                 extra_kwargs = {}
                 if self._supports_arg(module_backend_impl.load, "load_backend"):
                     extra_kwargs["load_backend"] = load_backend
-                if self._supports_arg(module_backend_impl.load, "model_config"):
-                    extra_kwargs["model_config"] = model_config
-                loaded_model = module_backend_impl.load(
-                    model_path,
-                    **extra_kwargs,
-                    **kwargs,
-                )
+                # Try loading with the ModuleConfig directly and fall back to
+                # loading with the model_path for compatibility
+                try:
+                    loaded_model = module_backend_impl.load(
+                        model_config,
+                        **extra_kwargs,
+                        **kwargs,
+                    )
+                except TypeError as err:
+                    log.warning(
+                        "<COR98539580W>",
+                        "DEPRECATION: Loading %s failed with ModuleConfig. Using model_path for compatibility. %s",
+                        module_backend_impl.MODULE_ID,
+                        err,
+                    )
+                    loaded_model = module_backend_impl.load(
+                        model_path,
+                        **extra_kwargs,
+                        **kwargs,
+                    )
+
                 error.type_check("<COR40080753E>", ModuleBase, model=loaded_model)
                 if loaded_model is not None:
                     log.debug2(
