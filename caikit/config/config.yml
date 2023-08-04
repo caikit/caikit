@@ -127,6 +127,12 @@ runtime:
 
     # Configuration items for service generation
     service_generation:
+        # Toggles for the generated inference and training services
+        enable_inference: true
+        enable_training: true
+
+        # Configurations for which module implementations and tasks to include
+        # in the service generation
         module_guids:
             included: []
             excluded: []
