@@ -191,7 +191,7 @@ class LocalModelInitializer(ModelInitializerBase):
                 except TypeError as err:
                     log.warning(
                         "<COR98539580W>",
-                        "DEPRECATION: Loading %s failed with ModuleConfig. Using model_path for compatibility. %s",
+                        "DEPRECATION: Loading %s failed with ModuleConfig. Using model_path. %s",
                         module_backend_impl.MODULE_ID,
                         err,
                     )
