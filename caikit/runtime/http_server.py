@@ -118,6 +118,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         self.app = FastAPI()
 
+        # Start metrics server
+        RuntimeServerBase._start_metrics_server()
+
         # Placeholders for global servicers
         self.global_predict_servicer = None
         self.global_train_servicer = None
