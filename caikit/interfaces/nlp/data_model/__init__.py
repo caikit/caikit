@@ -20,9 +20,9 @@ from .classification import (
     ClassificationTrainRecord,
     ClassifiedGeneratedTextResult,
     ClassifiedGeneratedTextStreamResult,
-    StreamingTokenClassificationResult,
     TokenClassification,
     TokenClassificationResult,
+    TokenClassificationStreamResult,
 )
 from .package import NLP_PACKAGE
 from .text import Token, TokenizationResult

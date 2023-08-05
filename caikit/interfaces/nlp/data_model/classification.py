@@ -73,7 +73,7 @@ class TokenClassificationResult(DataObjectBase):
 
 # Streaming result that indicates up to where in stream is processed
 @dataobject(package=NLP_PACKAGE)
-class StreamingTokenClassificationResult(TokenClassificationResult):
+class TokenClassificationStreamResult(TokenClassificationResult):
     # Result index up to which text is processed
     processed_index: Annotated[int, FieldNumber(2)]
 
