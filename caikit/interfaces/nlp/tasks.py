@@ -27,7 +27,7 @@ from .data_model.classification import (
     TokenClassificationResult,
     TokenClassificationStreamResult,
 )
-from .data_model.text import TokenizationResult
+from .data_model.text import TokenizationResult, TokenizationStreamResult
 from .data_model.text_generation import GeneratedTextResult, GeneratedTextStreamResult
 
 
@@ -61,8 +61,10 @@ class TokenClassificationTask(TaskBase):
 
 
 @task(
-    required_parameters={"text": str},
-    output_type=TokenizationResult,
+    unary_parameters={"text": str},
+    streaming_parameters={"text_stream": Iterable[str]},
+    unary_output_type=TokenizationResult,
+    streaming_output_type=Iterable[TokenizationStreamResult],
 )
 class TokenizationTask(TaskBase):
     pass

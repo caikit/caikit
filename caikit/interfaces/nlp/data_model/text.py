@@ -42,3 +42,8 @@ class Token(DataObjectBase):
 @dataobject(package=NLP_PACKAGE)
 class TokenizationResult(DataObjectBase):
     results: Annotated[List[Token], FieldNumber(1)]
+
+
+@dataobject(package=NLP_PACKAGE)
+class TokenizationStreamResult(TokenizationResult):
+    processed_index: Annotated[int, FieldNumber(2)]
