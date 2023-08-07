@@ -157,6 +157,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         model_type: str,
         wait: bool = True,
         aborter: Optional[ActionAborter] = None,
+        retries: Optional[int] = None,
     ) -> int:
         """Load a model using model_path (in Cloud Object Storage) & give it a model ID
         Args:
@@ -164,6 +165,8 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             local_model_path (str): Local path to load the model from.
             model_type (str): Type of the model to load.
             wait (bool): Wait for the model to finish loading
+            aborter (Optional[ActionAborter]): The aborter to use for this load
+            retries: Optional[int]: Number of times to retry on load failure
         Returns:
             Model_size (int) : Size of the loaded model in bytes
         """
@@ -191,6 +194,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
                             model_type,
                             aborter=aborter,
                             fail_callback=partial(self.unload_model, model_id),
+                            retries=retries,
                         )
                     except Exception as ex:
                         self.__increment_load_model_exception_count_metric(model_type)
@@ -382,6 +386,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
                 local_model_path=local_model_path,
                 model_type=self._LOCAL_MODEL_TYPE,
                 wait=True,
+                retries=get_config().runtime.lazy_load_retries,
             )
             model_loaded = True
 
@@ -440,7 +445,13 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         # Load new models
         for model_id in new_models:
             model_path = os.path.join(self._local_models_dir, model_id)
-            self.load_model(model_id, model_path, self._LOCAL_MODEL_TYPE, wait=False)
+            self.load_model(
+                model_id,
+                model_path,
+                self._LOCAL_MODEL_TYPE,
+                wait=False,
+                retries=get_config().runtime.lazy_load_retries,
+            )
 
         # Unload old models
         # NOTE: No need for error handling here since unload_model will warn on

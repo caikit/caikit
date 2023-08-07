@@ -4,7 +4,7 @@ This sets up global test configs when pytest starts
 
 # Standard
 from contextlib import contextmanager
-from typing import List, Union
+from typing import Callable, List, Union
 from unittest.mock import patch
 import copy
 import json
@@ -200,6 +200,26 @@ def backend_priority(backend_cfg: Union[List[dict], dict]):
         }
     ):
         yield
+
+
+class TempFailWrapper:
+    """Helper that can wrap a callable with a sequence of failures"""
+
+    def __init__(
+        self,
+        func: Callable,
+        num_failures: int = 1,
+        exc: Exception = RuntimeError("Yikes"),
+    ):
+        self.func = func
+        self.num_failures = num_failures
+        self.exc = exc
+
+    def __call__(self, *args, **kwargs):
+        if self.num_failures:
+            self.num_failures -= 1
+            raise self.exc
+        return self.func(*args, **kwargs)
 
 
 # IMPLEMENTATION DETAILS ############################################################

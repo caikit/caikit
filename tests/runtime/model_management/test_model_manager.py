@@ -34,7 +34,7 @@ from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import get_dynamic_module
-from tests.conftest import random_test_id, temp_config
+from tests.conftest import TempFailWrapper, random_test_id, temp_config
 from tests.core.helpers import TestFinder
 from tests.fixtures import Fixtures
 import caikit.runtime.model_management.model_loader
@@ -838,3 +838,77 @@ def test_periodic_sync_handles_errors():
                 manager.sync_local_models(True)
                 mock_sync.assert_called_once()
                 assert manager._lazy_sync_timer is not None
+
+
+def test_periodic_sync_handles_temporary_errors():
+    """Test that models loaded with the periodic sync can retry if the initial
+    load operation fails
+    """
+    with TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                    "lazy_load_retries": 1,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+            flakey_loader = TempFailWrapper(
+                manager.model_loader._load_module,
+                num_failures=1,
+                exc=CaikitRuntimeException(grpc.StatusCode.INTERNAL, "Dang"),
+            )
+            with patch.object(
+                manager.model_loader,
+                "_load_module",
+                flakey_loader,
+            ):
+                assert manager._lazy_sync_timer is not None
+                model_path = Fixtures.get_good_model_path()
+                model_name = os.path.basename(model_path)
+                shutil.copytree(model_path, os.path.join(cache_dir, model_name))
+                manager.sync_local_models(True)
+                assert manager._lazy_sync_timer is not None
+                model = manager.retrieve_model(model_name)
+                assert model
+
+
+def test_lazy_load_handles_temporary_errors():
+    """Test that a lazy load without a periodic sync correctly retries failed
+    loads
+    """
+    with TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                    "lazy_load_poll_period_seconds": 0,
+                    "lazy_load_retries": 1,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+            flakey_loader = TempFailWrapper(
+                manager.model_loader._load_module,
+                num_failures=1,
+                exc=CaikitRuntimeException(grpc.StatusCode.INTERNAL, "Dang"),
+            )
+            with patch.object(
+                manager.model_loader,
+                "_load_module",
+                flakey_loader,
+            ):
+                assert manager._lazy_sync_timer is None
+                model_path = Fixtures.get_good_model_path()
+                model_name = os.path.basename(model_path)
+                shutil.copytree(model_path, os.path.join(cache_dir, model_name))
+                assert manager._lazy_sync_timer is None
+                model = manager.retrieve_model(model_name)
+                assert model

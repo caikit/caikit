@@ -14,7 +14,7 @@
 # Standard
 from concurrent.futures import Future
 from contextlib import contextmanager
-from typing import Callable, Type
+from typing import Callable
 from unittest import mock
 import copy
 import tempfile
@@ -33,7 +33,7 @@ from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model import SampleInputType, SampleOutputType
 from sample_lib.modules.sample_task import SampleModule
-from tests.conftest import random_test_id, temp_config
+from tests.conftest import TempFailWrapper, random_test_id, temp_config
 from tests.core.helpers import MockBackend
 from tests.fixtures import Fixtures
 import caikit.core
@@ -59,24 +59,6 @@ def make_model_future(model_instance):
     fake_future = Future()
     fake_future.result = lambda *_, **__: model_instance
     return fake_future
-
-
-class TempFailWrapper:
-    def __init__(
-        self,
-        func: Callable,
-        num_failures: int = 1,
-        exc: Exception = CaikitRuntimeException(grpc.StatusCode.INTERNAL, "Yikes!"),
-    ):
-        self.func = func
-        self.num_failures = num_failures
-        self.exc = exc
-
-    def __call__(self, *args, **kwargs):
-        if self.num_failures:
-            self.num_failures -= 1
-            raise self.exc
-        return self.func(*args, **kwargs)
 
 
 ## Tests #######################################################################
@@ -354,7 +336,11 @@ def test_load_model_succeed_after_retry(model_loader):
     successfully on a retry.
     """
     failures = 2
-    fail_wrapper = TempFailWrapper(model_loader._load_module, num_failures=failures)
+    fail_wrapper = TempFailWrapper(
+        model_loader._load_module,
+        num_failures=failures,
+        exc=CaikitRuntimeException(grpc.StatusCode.INTERNAL, "Yikes!"),
+    )
     with mock.patch.object(model_loader, "_load_module", fail_wrapper):
         model_id = random_test_id()
         loaded_model = model_loader.load_model(
