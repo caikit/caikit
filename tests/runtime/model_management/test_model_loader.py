@@ -14,6 +14,7 @@
 # Standard
 from concurrent.futures import Future
 from contextlib import contextmanager
+from typing import Callable, Type
 from unittest import mock
 import copy
 import tempfile
@@ -58,6 +59,24 @@ def make_model_future(model_instance):
     fake_future = Future()
     fake_future.result = lambda *_, **__: model_instance
     return fake_future
+
+
+class TempFailWrapper:
+    def __init__(
+        self,
+        func: Callable,
+        num_failures: int = 1,
+        exc: Exception = CaikitRuntimeException(grpc.StatusCode.INTERNAL, "Yikes!"),
+    ):
+        self.func = func
+        self.num_failures = num_failures
+        self.exc = exc
+
+    def __call__(self, *args, **kwargs):
+        if self.num_failures:
+            self.num_failures -= 1
+            raise self.exc
+        return self.func(*args, **kwargs)
 
 
 ## Tests #######################################################################
@@ -328,3 +347,22 @@ def test_load_model_without_waiting_deferred_error(model_loader):
         loaded_model.model()
     assert context.value.status_code == grpc.StatusCode.INTERNAL
     assert model_id in context.value.message
+
+
+def test_load_model_succeed_after_retry(model_loader):
+    """Make sure that a model which fails to load on the first try can load
+    successfully on a retry.
+    """
+    failures = 2
+    fail_wrapper = TempFailWrapper(model_loader._load_module, num_failures=failures)
+    with mock.patch.object(model_loader, "_load_module", fail_wrapper):
+        model_id = random_test_id()
+        loaded_model = model_loader.load_model(
+            model_id=model_id,
+            local_model_path=Fixtures.get_good_model_path(),
+            model_type=Fixtures.get_good_model_type(),
+            retries=failures + 1,
+        )
+        assert loaded_model.model() is not None
+        assert isinstance(loaded_model.model(), base.ModuleBase)
+        assert loaded_model._retries == 1

@@ -14,6 +14,7 @@
 # Standard
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import contextmanager
+from functools import partial
 from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch
 import os
@@ -626,9 +627,10 @@ def test_retrieve_model_returns_the_module_from_the_model_loader():
             mock_sizer.get_model_size.return_value = 1
             model_future = Future()
             model_future.result = lambda *_, **__: expected_module
+            model_future_factory = lambda: model_future
             mock_loader.load_model.return_value = (
                 LoadedModel.Builder()
-                .model_future(model_future)
+                .model_future_factory(model_future_factory)
                 .id("foo")
                 .type("bar")
                 .build()
@@ -647,7 +649,7 @@ def test_unload_partially_loaded():
     # completed successfully
     slow_loader = SlowLoader()
     pool = ThreadPoolExecutor()
-    model_future = pool.submit(slow_loader.load)
+    model_future_factory = partial(pool.submit, slow_loader.load)
 
     model_id = random_test_id()
     mock_sizer = MagicMock()
@@ -657,7 +659,7 @@ def test_unload_partially_loaded():
             mock_sizer.get_model_size.return_value = 1
             mock_loader.load_model.return_value = (
                 LoadedModel.Builder()
-                .model_future(model_future)
+                .model_future_factory(model_future_factory)
                 .id("foo")
                 .type("bar")
                 .build()
@@ -686,7 +688,7 @@ def test_unload_unexpected_error_loaded():
     # completed successfully
     slow_loader = SlowLoader(RuntimeError("yikes"))
     pool = ThreadPoolExecutor()
-    model_future = pool.submit(slow_loader.load)
+    model_future_factory = partial(pool.submit, slow_loader.load)
 
     model_id = random_test_id()
     mock_sizer = MagicMock()
@@ -696,7 +698,7 @@ def test_unload_unexpected_error_loaded():
             mock_sizer.get_model_size.return_value = 1
             mock_loader.load_model.return_value = (
                 LoadedModel.Builder()
-                .model_future(model_future)
+                .model_future_factory(model_future_factory)
                 .id("foo")
                 .type("bar")
                 .build()
@@ -727,7 +729,7 @@ def test_reload_partially_loaded():
     # completed successfully
     slow_loader = SlowLoader()
     pool = ThreadPoolExecutor()
-    model_future = pool.submit(slow_loader.load)
+    model_future_factory = partial(pool.submit, slow_loader.load)
 
     model_id = random_test_id()
     mock_sizer = MagicMock()
@@ -736,13 +738,14 @@ def test_reload_partially_loaded():
     with patch.object(MODEL_MANAGER, "model_loader", mock_loader):
         with patch.object(MODEL_MANAGER, "model_sizer", mock_sizer):
             mock_sizer.get_model_size.return_value = special_model_size
-            mock_loader.load_model.return_value = (
+            loaded_model = (
                 LoadedModel.Builder()
-                .model_future(model_future)
+                .model_future_factory(model_future_factory)
                 .id("foo")
                 .type("bar")
                 .build()
             )
+            mock_loader.load_model.return_value = loaded_model
             model_size = MODEL_MANAGER.load_model(
                 model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE, wait=False
             )
@@ -757,7 +760,7 @@ def test_reload_partially_loaded():
             # Unblock the load
             assert not slow_loader.done_loading()
             slow_loader.unblock_load()
-            model_future.result()
+            loaded_model.wait()
             assert slow_loader.done_loading()
 
 
