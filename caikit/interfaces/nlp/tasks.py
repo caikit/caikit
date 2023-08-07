@@ -47,7 +47,7 @@ class TextGenerationTask(TaskBase):
     output_type=ClassificationResult,
 )
 class TextClassificationTask(TaskBase):
-    pass
+    """The text classification task is responsible for assigning a label or class to text."""
 
 
 @task(
@@ -57,7 +57,9 @@ class TextClassificationTask(TaskBase):
     streaming_output_type=Iterable[TokenClassificationStreamResult],
 )
 class TokenClassificationTask(TaskBase):
-    pass
+    """The token classification task is responsible for assigning a label to individual
+    tokens in a document.
+    """
 
 
 @task(
@@ -67,7 +69,7 @@ class TokenClassificationTask(TaskBase):
     streaming_output_type=Iterable[TokenizationStreamResult],
 )
 class TokenizationTask(TaskBase):
-    pass
+    """The tokenization task is responsible for splitting a document into tokens."""
 
 
 @task(
@@ -76,7 +78,7 @@ class TokenizationTask(TaskBase):
     streaming_output_type=Iterable[ClassifiedGeneratedTextStreamResult],
 )
 class ClassificationWithTextGenerationTask(TaskBase):
-    """The Classification with Text Generation Task is responsible for taking
+    """The classification with text generation task is responsible for taking
     input prompting text, generating additional text from that prompt and classifying
     the generated text based on detectors.
     """

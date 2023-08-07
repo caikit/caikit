@@ -33,19 +33,31 @@ log = alog.use_channel("DATAM")
 
 @dataobject(package=NLP_PACKAGE)
 class ClassificationTrainRecord(DataObjectBase):
-    text: Annotated[str, FieldNumber(1)]
-    labels: Annotated[List[str], FieldNumber(2)]
+    """A classification training record consisting of a single train instance."""
+
+    text: Annotated[str, FieldNumber(1)]  # Text to be classified
+    labels: Annotated[
+        List[str], FieldNumber(2)
+    ]  # Class labels to be learnt for the text
 
 
 @dataobject(package=NLP_PACKAGE)
 class Classification(DataObjectBase):
-    label: Annotated[str, FieldNumber(1)]
-    score: Annotated[float, FieldNumber(2)]
+    """A single classification prediction."""
+
+    label: Annotated[str, FieldNumber(1)]  # Predicted relevant class name
+    score: Annotated[
+        float, FieldNumber(2)
+    ]  # The confidence-like score of this prediction in [0, 1]
 
 
 @dataobject(package=NLP_PACKAGE)
 class ClassificationResult(DataObjectBase):
-    results: Annotated[List[Classification], FieldNumber(1)]
+    """Classification result generated from a text and consisting multiple classes."""
+
+    results: Annotated[
+        List[Classification], FieldNumber(1)
+    ]  # List of classifications for a text
 
 
 # NOTE: Annotated[This is meant to align with the HuggingFace token classification task:
@@ -55,39 +67,69 @@ class ClassificationResult(DataObjectBase):
 # (named entity recognition) sense
 @dataobject(package=NLP_PACKAGE)
 class TokenClassification(DataObjectBase):
-    start: Annotated[int, FieldNumber(1)]
-    end: Annotated[int, FieldNumber(2)]
-    word: Annotated[str, FieldNumber(3)]  # could be thought of as text
-    entity: Annotated[str, FieldNumber(4)]  # could be thought of as label
-    entity_group: Annotated[
-        str, FieldNumber(5)
-    ]  # could be thought of as aggregate label, if applicable
-    score: Annotated[float, FieldNumber(6)]
-    token_count: Annotated[Optional[int], FieldNumber(7)]
+    """A single token classification prediction."""
+
+    start: Annotated[int, FieldNumber(1)]  # Beginning offset of the token
+    end: Annotated[int, FieldNumber(2)]  # Ending offset of the token
+    word: Annotated[str, FieldNumber(3)]  # Text referenced by this token
+    entity: Annotated[
+        str, FieldNumber(4)
+    ]  # Predicted relevant class name for the token
+    entity_group: Annotated[str, FieldNumber(5)]  # Aggregate label, if applicable
+    score: Annotated[
+        float, FieldNumber(6)
+    ]  # The confidence-like score of this classification prediction in [0, 1]
+    token_count: Annotated[
+        Optional[int], FieldNumber(7)
+    ]  # Length of tokens in the text
 
 
 @dataobject(package=NLP_PACKAGE)
 class TokenClassificationResult(DataObjectBase):
+    """Token classification result generated from a text and consisting multiple classes."""
+
     results: Annotated[List[TokenClassification], FieldNumber(1)]
 
 
-# Streaming result that indicates up to where in stream is processed
 @dataobject(package=NLP_PACKAGE)
 class TokenClassificationStreamResult(TokenClassificationResult):
-    # Result index up to which text is processed
-    processed_index: Annotated[int, FieldNumber(2)]
+    """
+    Streaming token classification result that indicates up to where in stream is processed.
+    """
+
+    processed_index: Annotated[
+        int, FieldNumber(2)
+    ]  # Result index up to which text is processed
 
 
 @dataobject(package=NLP_PACKAGE)
 class ClassifiedGeneratedTextResult(DataObjectBase):
-    text: Annotated[str, FieldNumber(1)]
+    """Classification result on text produced by a text generation model, contains
+    information from the original text generation output as well as the result of
+    classification on the generated text.
+    """
+
+    text: Annotated[str, FieldNumber(1)]  # The generated text
     token_classification_results: Annotated[
         Optional[List[TokenClassification]], FieldNumber(2)
-    ]
-    finish_reason: Annotated[Optional[FinishReason], FieldNumber(3)]
-    token_count: Annotated[Optional[int], FieldNumber(4)]
-    seed: Annotated[Optional[np.uint64], FieldNumber(5)]
+    ]  # Token classification results for this generated text
+    finish_reason: Annotated[
+        Optional[FinishReason], FieldNumber(3)
+    ]  # Reason as to why text generation stopped
+    token_count: Annotated[
+        Optional[int], FieldNumber(4)
+    ]  # Length of generated tokens sequence
+    seed: Annotated[
+        Optional[np.uint64], FieldNumber(5)
+    ]  # The random seed used for text generation
 
 
+@dataobject(package=NLP_PACKAGE)
 class ClassifiedGeneratedTextStreamResult(ClassifiedGeneratedTextResult):
-    processed_index: Annotated[int, FieldNumber(6)]
+    """
+    Streaming classification on generated text result that indicates up to where in stream is processed.
+    """
+
+    processed_index: Annotated[
+        int, FieldNumber(6)
+    ]  # Result index up to which text is processed

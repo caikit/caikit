@@ -34,16 +34,24 @@ class Token(DataObjectBase):
     tokenization chosen or the task being implemented.
     """
 
-    start: Annotated[int, FieldNumber(1)]
-    end: Annotated[int, FieldNumber(2)]
-    text: Annotated[str, FieldNumber(3)]
+    start: Annotated[int, FieldNumber(1)]  # Beginning offset of the token
+    end: Annotated[int, FieldNumber(2)]  # Ending offset of the token
+    text: Annotated[str, FieldNumber(3)]  # Text referenced by this token
 
 
 @dataobject(package=NLP_PACKAGE)
 class TokenizationResult(DataObjectBase):
+    """Tokenization result generated from a text."""
+
     results: Annotated[List[Token], FieldNumber(1)]
 
 
 @dataobject(package=NLP_PACKAGE)
 class TokenizationStreamResult(TokenizationResult):
-    processed_index: Annotated[int, FieldNumber(2)]
+    """
+    Streaming tokenization result that indicates up to where in stream is processed.
+    """
+
+    processed_index: Annotated[
+        int, FieldNumber(2)
+    ]  # Result index up to which text is processed
