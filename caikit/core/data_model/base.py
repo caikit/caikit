@@ -684,7 +684,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
                         kwargs[field] = json_dict.struct_to_dict(proto_attr)
                     elif (
                         proto_attr.DESCRIPTOR.full_name
-                        == timestamp.TIMESTAMP_PROTO_NAME
+                        == timestamp.TIMESTAMP_PROTOBUF_NAME
                     ):
                         kwargs[field] = timestamp.proto_to_datetime(proto_attr)
                     else:
@@ -698,7 +698,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 for item in proto_attr:
                     if item.DESCRIPTOR.full_name == json_dict.STRUCT_PROTOBUF_NAME:
                         elements.append(json_dict.struct_to_dict(item))
-                    elif item.DESCRIPTOR.full_name == timestamp.TIMESTAMP_PROTO_NAME:
+                    elif item.DESCRIPTOR.full_name == timestamp.TIMESTAMP_PROTOBUF_NAME:
                         elements.append(timestamp.proto_to_datetime(item))
                     else:
                         if contained_class is None:
@@ -827,7 +827,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
                     subproto.CopyFrom(
                         json_dict.dict_to_struct(attr, subproto.__class__)
                     )
-                elif subproto.DESCRIPTOR.full_name == timestamp.TIMESTAMP_PROTO_NAME:
+                elif subproto.DESCRIPTOR.full_name == timestamp.TIMESTAMP_PROTOBUF_NAME:
                     timestamp_proto = timestamp.datetime_to_proto(attr)
                     subproto.CopyFrom(timestamp_proto)
                 else:

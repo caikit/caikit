@@ -28,7 +28,7 @@ from ..exceptions import error_handler
 log = alog.use_channel("TIMESTAMPS")
 error = error_handler.get(log)
 
-TIMESTAMP_PROTO_NAME = "google.protobuf.Timestamp"
+TIMESTAMP_PROTOBUF_NAME = "google.protobuf.Timestamp"
 
 
 def datetime_to_proto(datetime_: datetime.datetime) -> timestamp_pb2.Timestamp:

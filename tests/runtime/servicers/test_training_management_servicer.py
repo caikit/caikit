@@ -47,14 +47,6 @@ def training_management_servicer():
     return TrainingManagementServicerImpl()
 
 
-# def _train(raise_: bool = False, wait_event: threading.Event = None):
-#     if raise_:
-#         raise RuntimeError()
-#     if wait_event is not None:
-#         wait_event.wait()
-#     return "done"
-
-
 def test_training_runs(training_management_servicer, training_pool):
 
     # Create a future and set it in the training manager
