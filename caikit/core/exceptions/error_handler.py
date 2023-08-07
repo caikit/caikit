@@ -462,4 +462,4 @@ class ErrorHandler:
             class_ = o.__class__
             return ".".join([class_.__module__, class_.__qualname__])
         except Exception:  # pylint: disable=broad-exception-caught
-            return str(type)
+            return str(type(o))

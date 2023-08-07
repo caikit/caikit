@@ -41,5 +41,11 @@ def datetime_to_proto(datetime_: datetime.datetime) -> timestamp_pb2.Timestamp:
 
 def proto_to_datetime(time_pb2: timestamp_pb2.Timestamp) -> datetime.datetime:
     """Builds a datetime.datetime out of the provided google.protobuf.timestamp_pb2.Timestamp"""
-    error.type_check("<COR48166462E>", timestamp_pb2.Timestamp, time_pb2=time_pb2)
+    try:
+        error.type_check("<COR48166462E>", timestamp_pb2.Timestamp, time_pb2=time_pb2)
+    except TypeError as err:
+        # Compatibility for some python 3.8 / protobuf 3.x setups
+        if "Timestamp" not in str(type(time_pb2)):
+            raise err
+
     return datetime.datetime.fromtimestamp(time_pb2.seconds + (time_pb2.nanos / 1e9))
