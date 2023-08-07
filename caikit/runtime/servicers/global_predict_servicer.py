@@ -97,7 +97,6 @@ class GlobalPredictServicer:
     ):
         self._started_metering = False
         self._model_manager = ModelManager.get_instance()
-        self._started_metering = False
         self._rpc_meter = None
         if get_config().runtime.metering.enabled:
             self._started_metering = True
