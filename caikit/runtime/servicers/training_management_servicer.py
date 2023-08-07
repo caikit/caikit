@@ -23,7 +23,11 @@ import alog
 
 # Local
 from caikit.core import MODEL_MANAGER
-from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
+from caikit.core.data_model import TrainingStatus
+from caikit.core.exceptions.caikit_core_exception import (
+    CaikitCoreException,
+    CaikitCoreStatusCode,
+)
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingStatusResponse,
@@ -69,34 +73,44 @@ class TrainingManagementServicerImpl:
 
     def CancelTraining(self, request, context):  # pylint: disable=unused-argument
         """Cancel a training future."""
-        training_info = TrainingInfoRequest.from_proto(request)
+        training_info_request = TrainingInfoRequest.from_proto(request)
         model_future = self._get_model_future(
-            training_info.training_id, operation="cancel"
+            training_info_request.training_id, operation="cancel"
         )
         try:
             model_future.cancel()
+            training_info = model_future.get_info()
 
             reasons = []
-            if model_future.get_info().errors:
-                reasons = [str(error) for error in model_future.get_info().errors]
+            if training_info.errors:
+                reasons = [str(error) for error in training_info.errors]
 
             return TrainingStatusResponse(
-                training_id=training_info.training_id,
-                state=model_future.get_info().status,
+                training_id=model_future.id,
+                state=training_info.status,
                 reasons=reasons,
             ).to_proto()
         except CaikitCoreException as err:
+            # In the case that we get a `NOT_FOUND`, we assume that the training was canceled.
+            # This is to handle stateful trainers that implement `cancel` by fully deleting
+            # the training. NB: Future `GetTrainingStatus` calls for these canceled trainings
+            # would raise a not found error to the user.
+            if err.StatusCode == CaikitCoreStatusCode.NOT_FOUND:
+                return TrainingStatusResponse(
+                    training_id=training_info_request.training_id,
+                    state=TrainingStatus.CANCELED,
+                ).to_proto()
             raise_caikit_runtime_exception(exception=err)
         except Exception as err:
             log.debug2(
                 "Unexpected error trying to cancel training id %s: [%s]",
-                training_info.training_id,
+                training_info_request.training_id,
                 err,
             )
             raise CaikitRuntimeException(
                 grpc.StatusCode.INTERNAL,
                 "Failed to cancel training id {}".format(
-                    training_info.training_id,
+                    training_info_request.training_id,
                 ),
             ) from err
 

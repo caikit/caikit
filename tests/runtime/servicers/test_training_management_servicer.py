@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
+from unittest import mock
 import concurrent.futures
 import datetime
 import re
@@ -25,6 +26,11 @@ import pytest
 # Local
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model import DataStream, TrainingStatus
+from caikit.core.exceptions.caikit_core_exception import (
+    CaikitCoreException,
+    CaikitCoreStatusCode,
+)
+from caikit.core.model_management.model_trainer_base import TrainingInfo
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingStatusResponse,
@@ -45,6 +51,24 @@ def training_pool():
 @pytest.fixture
 def training_management_servicer():
     return TrainingManagementServicerImpl()
+
+
+class MockModelFuture:
+    """Mocks up a model future that will return a 404 error after being cancelled"""
+
+    def __init__(self) -> None:
+        self._canceled = False
+
+    def get_info(self) -> TrainingInfo:
+        if not self._canceled:
+            return TrainingInfo(status=TrainingStatus.RUNNING)
+        else:
+            raise CaikitCoreException(
+                status_code=CaikitCoreStatusCode.NOT_FOUND, msg="Training not found"
+            )
+
+    def cancel(self):
+        self._canceled = True
 
 
 def test_training_runs(training_management_servicer, training_pool):
@@ -185,6 +209,25 @@ def test_training_cancel_on_correct_id(training_management_servicer):
     request_2 = TrainingInfoRequest(training_id=model_future_2.id).to_proto()
     response_2 = training_management_servicer.GetTrainingStatus(request_2, context=None)
     assert response_2.state == TrainingStatus.COMPLETED.value
+
+
+def test_training_cancel_on_mock_model_future(training_management_servicer):
+    # Patch in our mock model future
+    with mock.patch.object(MODEL_MANAGER, "get_model_future") as mock_gmf:
+        mock_gmf.return_value = MockModelFuture()
+
+        # Check that we get "running" status
+        info_request = TrainingInfoRequest(training_id="anything").to_proto()
+        info_response = training_management_servicer.GetTrainingStatus(
+            info_request, context=None
+        )
+        assert info_response.state == TrainingStatus.RUNNING.value
+
+        # Make sure a cancel returns "canceled"
+        cancel_response = training_management_servicer.CancelTraining(
+            info_request, context=None
+        )
+        assert cancel_response.state == TrainingStatus.CANCELED.value
 
 
 def test_training_complete_status(training_management_servicer, training_pool):
