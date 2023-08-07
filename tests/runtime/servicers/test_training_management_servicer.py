@@ -17,6 +17,7 @@ import datetime
 import re
 import threading
 import time
+from unittest import mock
 
 # Third Party
 import grpc
@@ -48,9 +49,9 @@ def training_pool():
 def training_management_servicer():
     return TrainingManagementServicerImpl()
 
+
 class MockModelFuture:
-    """
-        We want to mock a model future that 
+    """Mocks up a model future that will return a 404 error after being cancelled
     """
     def __init__(self) -> None:
         self._canceled = False
@@ -59,7 +60,7 @@ class MockModelFuture:
         if not self._canceled:
             return TrainingInfo(status=TrainingStatus.RUNNING)
         else:
-            raise CaikitCoreException(status_code=CaikitCoreStatusCode.NOT_FOUND)
+            raise CaikitCoreException(status_code=CaikitCoreStatusCode.NOT_FOUND, msg="Training not found")
 
     def cancel(self):
         self._canceled = True
@@ -205,52 +206,19 @@ def test_training_cancel_on_correct_id(training_management_servicer):
     assert response_2.state == TrainingStatus.COMPLETED.value
 
 
-@pytest.mark.skip(reason="WIP")
 def test_training_cancel_on_mock_model_future(training_management_servicer):
-    start_event = threading.Event()
-    model_future_1 = MODEL_MANAGER.train(
-        SampleModule,
-        DataStream.from_iterable([]),
-        sleep_time=100,
-        start_event=start_event,
-    )
+    # Patch in our mock model future
+    with mock.patch.object(MODEL_MANAGER, "get_model_future") as mock_gmf:
+        mock_gmf.return_value = MockModelFuture()
 
-    # Wait until the training has started to ensure it is interrupted in flight
-    start_event.wait()
+        # Check that we get "running" status
+        info_request = TrainingInfoRequest(training_id="anything").to_proto()
+        info_response = training_management_servicer.GetTrainingStatus(info_request, context=None)
+        assert info_response.state == TrainingStatus.RUNNING.value
 
-    request_1 = TrainingInfoRequest(training_id=model_future_1.id).to_proto()
-    response_1 = training_management_servicer.GetTrainingStatus(request_1, context=None)
-    assert response_1.state == TrainingStatus.RUNNING.value
-
-    # Model 2 has no wait event, should proceed to complete training
-    model_future_2 = MODEL_MANAGER.train(
-        SampleModule,
-        DataStream.from_iterable([1, 2, 3]),
-    )
-
-    # Cancel first training
-    request_1 = TrainingInfoRequest(training_id=model_future_1.id).to_proto()
-    training_management_servicer.CancelTraining(request_1, context=None)
-
-    response_1 = training_management_servicer.GetTrainingStatus(request_1, context=None)
-    assert response_1.state == TrainingStatus.CANCELED.value
-
-    # Make sure the model future completes without the blocking event being set
-    start_time = time.time()
-    model_future_1.wait()
-    # Sanity check that the model did not wait for anywhere close to the full
-    # 100 seconds
-    wait_time = time.time() - start_time
-    assert wait_time < 5
-    assert (
-        training_management_servicer.GetTrainingStatus(request_1, context=None).state
-        == TrainingStatus.CANCELED.value
-    )
-
-    # training number 2 should still complete
-    request_2 = TrainingInfoRequest(training_id=model_future_2.id).to_proto()
-    response_2 = training_management_servicer.GetTrainingStatus(request_2, context=None)
-    assert response_2.state == TrainingStatus.COMPLETED.value
+        # Make sure a cancel returns "canceled"
+        cancel_response = training_management_servicer.CancelTraining(info_request, context=None)
+        assert cancel_response.state == TrainingStatus.CANCELED.value
 
 
 def test_training_complete_status(training_management_servicer, training_pool):
