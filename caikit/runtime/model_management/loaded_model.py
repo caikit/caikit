@@ -133,13 +133,11 @@ class LoadedModel:  # pylint: disable=too-many-instance-attributes
                     )
                     self._caikit_model_future = self._caikit_model_future_factory()
                     # Try waiting again with a fresh load future. This may open
-                    # a recursive retry.
-                    try:
-                        self.wait()
-                    except CaikitRuntimeException:
-                        if self._fail_callback:
-                            self._fail_callback()
-                        raise
+                    # a recursive retry. Once all retries are exhausted, if the
+                    # load still fails, the deepest call will invoke the fail
+                    # callback and the exception will percolate up from there to
+                    # here where it will be raised to the external waiter.
+                    self.wait()
                 else:
                     if self._fail_callback:
                         self._fail_callback()
