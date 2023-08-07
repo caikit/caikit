@@ -1019,9 +1019,7 @@ def test_services_disabled(open_port, enabled_services):
         },
         "merge",
     ):
-        with runtime_grpc_test_server(
-            open_port,
-        ) as server:
+        with runtime_grpc_test_server(open_port) as server:
             _assert_connection(server.make_local_channel())
             assert server.enable_inference == enable_inference
             assert (server._global_predict_servicer and enable_inference) or (
@@ -1070,36 +1068,35 @@ def test_metrics_stored_after_server_interrupt(
 ):
     """This tests the gRPC server's behaviour when interrupted"""
 
-    with runtime_grpc_test_server(
-        open_port,
-    ) as server:
-        stub = sample_inference_service.stub_class(server.make_local_channel())
-        predict_request = sample_inference_service.messages.SampleTaskRequest(
-            sample_input=HAPPY_PATH_INPUT
-        )
-        _ = stub.SampleTaskPredict(
-            predict_request, metadata=[("mm-model-id", sample_task_model_id)]
-        )
+    with temp_config({"runtime": {"metering": {"enabled": True}}}, "merge"):
+        with runtime_grpc_test_server(open_port) as server:
+            stub = sample_inference_service.stub_class(server.make_local_channel())
+            predict_request = sample_inference_service.messages.SampleTaskRequest(
+                sample_input=HAPPY_PATH_INPUT
+            )
+            _ = stub.SampleTaskPredict(
+                predict_request, metadata=[("mm-model-id", sample_task_model_id)]
+            )
 
-        # Interrupt server
-        server.interrupt(None, None)
+            # Interrupt server
+            server.interrupt(None, None)
 
-        # Assertions on the created metrics file
-        with open(server._global_predict_servicer.rpc_meter.file_path) as f:
-            data = [json.loads(line) for line in f]
+            # Assertions on the created metrics file
+            with open(server._global_predict_servicer.rpc_meter.file_path) as f:
+                data = [json.loads(line) for line in f]
 
-            assert len(data) == 1
-            assert list(data[0].keys()) == [
-                "timestamp",
-                "batch_size",
-                "model_type_counters",
-                "container_id",
-            ]
-            assert data[0]["batch_size"] == 1
-            assert len(data[0]["model_type_counters"]) == 1
-            assert data[0]["model_type_counters"] == {
-                "<class 'sample_lib.modules.sample_task.sample_implementation.SampleModule'>": 1
-            }
+                assert len(data) == 1
+                assert list(data[0].keys()) == [
+                    "timestamp",
+                    "batch_size",
+                    "model_type_counters",
+                    "container_id",
+                ]
+                assert data[0]["batch_size"] == 1
+                assert len(data[0]["model_type_counters"]) == 1
+                assert data[0]["model_type_counters"] == {
+                    "<class 'sample_lib.modules.sample_task.sample_implementation.SampleModule'>": 1
+                }
 
 
 def test_reflection_enabled(runtime_grpc_server):

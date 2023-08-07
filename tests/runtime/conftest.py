@@ -102,7 +102,9 @@ def sample_predict_servicer(sample_inference_service) -> GlobalPredictServicer:
     yield servicer
     # Make sure to not leave the rpc_meter hanging
     # (It does try to clean itself up on destruction, but just to be sure)
-    servicer.rpc_meter.end_writer_thread()
+    rpc_meter = getattr(servicer, "rpc_meter", None)
+    if rpc_meter:
+        rpc_meter.end_writer_thread()
 
 
 @pytest.fixture(scope="session")
