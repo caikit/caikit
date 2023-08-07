@@ -495,6 +495,69 @@ def test_train_sample_task_throws_s3_value_error(runtime_http_server):
         assert training_response.status_code == 500
 
 
+def test_train_primitive_task(runtime_http_server):
+    model_name = "primitive_task_train"
+    with TestClient(runtime_http_server.app) as client:
+        json_input = {
+            "inputs": {
+                "model_name": model_name,
+                "sample_input": {"name": "test"},
+                "simple_list": ["hello", "world"],
+                "union_list": {"values": ["hello", "world"]},
+                "union_list2": {"values": ["hello", "world"]},
+                "union_list3": {"values": ["hello", "world"]},
+                "union_list4": 1,
+                "training_params_json_dict_list": [{"foo": {"bar": [1, 2, 3]}}],
+            },
+            "parameters": {
+                "training_params_json_dict": {"foo": {"bar": [1, 2, 3]}},
+                "training_params_dict": {"layer_sizes": 100, "window_scaling": 200},
+                "training_params_dict_int": {1: 0.1, 2: 0.01},
+            },
+        }
+
+        training_response = client.post(
+            f"/api/v1/SampleTaskSamplePrimitiveModuleTrain",
+            json=json_input,
+        )
+        # assert training response
+        assert training_response.status_code == 200
+        training_json_response = json.loads(
+            training_response.content.decode(training_response.default_encoding)
+        )
+        assert (training_id := training_json_response["training_id"])
+        assert (model_name := training_json_response["model_name"]) == model_name
+
+        # assert trained model
+        result = MODEL_MANAGER.get_model_future(training_id).load()
+        assert result.training_params_dict == {
+            "layer_sizes": 100,
+            "window_scaling": 200,
+        }
+        assert result.training_params_json_dict == {"foo": {"bar": [1, 2, 3]}}
+        assert (
+            result.MODULE_CLASS
+            == "sample_lib.modules.sample_task.primitive_party_implementation.SamplePrimitiveModule"
+        )
+
+        # register the newly trained model for inferencing
+        register_trained_model(
+            runtime_http_server.global_predict_servicer,
+            model_name,
+            training_id,
+        )
+
+        # test inferencing on new model
+        json_input_inference = {"inputs": {"name": "world"}}
+        response = client.post(
+            f"/api/v1/{model_name}/task/sample",
+            json=json_input_inference,
+        )
+        assert response.status_code == 200
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert json_response["greeting"] == "hello: primitives! [1, 2, 3] 100"
+
+
 def test_train_other_task(runtime_http_server):
     model_name = "other_task_train"
     with TestClient(runtime_http_server.app) as client:
