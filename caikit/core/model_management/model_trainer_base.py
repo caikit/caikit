@@ -24,11 +24,11 @@ model_management:
             config:
                 <config option>: <value>
 """
-
 # Standard
 from typing import List, Optional, Type, Union
 import abc
 import dataclasses
+import datetime
 import os
 
 # Local
@@ -43,6 +43,8 @@ from ..toolkit.reversible_hasher import ReversibleHasher
 class TrainingInfo:
     status: TrainingStatus
     errors: Optional[List[Exception]] = None
+    submission_time: Optional[datetime.datetime] = None
+    completion_time: Optional[datetime.datetime] = None
 
 
 class ModelTrainerBase(FactoryConstructible):
@@ -62,12 +64,17 @@ class ModelTrainerBase(FactoryConstructible):
             save_with_id: bool,
             save_path: Optional[Union[str, S3Path]],
             model_name: Optional[str] = None,
+            use_reversible_hash: bool = True,
         ):
             # Trainers should deal with an S3 ref first and not pass it along here
             if save_path and isinstance(save_path, S3Path):
                 raise ValueError("S3 output path not supported by this runtime")
-            self._id = self.__class__.ID_DELIMITER.join(
-                [ReversibleHasher.hash(trainer_name), training_id]
+            self._id = (
+                self.__class__.ID_DELIMITER.join(
+                    [ReversibleHasher.hash(trainer_name), training_id]
+                )
+                if use_reversible_hash
+                else training_id
             )
             self._save_path = self.__class__._save_path_with_id(
                 save_path,

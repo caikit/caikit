@@ -15,15 +15,12 @@
 
 """Base classes and functionality for all data structures.
 """
-
-# metaclass-generated field members cannot be detected by pylint
-# pylint: disable=no-member
-
 # Standard
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Type, Union
 import base64
+import datetime
 import json
 
 # Third Party
@@ -37,7 +34,11 @@ import alog
 
 # Local
 from ..exceptions import error_handler
-from . import enums, json_dict
+from . import enums, json_dict, timestamp
+
+# metaclass-generated field members cannot be detected by pylint
+# pylint: disable=no-member
+
 
 log = alog.use_channel("DATAM")
 error = error_handler.get(log)
@@ -676,8 +677,16 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
             elif field in cls._fields_message:
                 if proto.HasField(field):
-                    if proto_attr.DESCRIPTOR.full_name == "google.protobuf.Struct":
+                    if (
+                        proto_attr.DESCRIPTOR.full_name
+                        == json_dict.STRUCT_PROTOBUF_NAME
+                    ):
                         kwargs[field] = json_dict.struct_to_dict(proto_attr)
+                    elif (
+                        proto_attr.DESCRIPTOR.full_name
+                        == timestamp.TIMESTAMP_PROTOBUF_NAME
+                    ):
+                        kwargs[field] = timestamp.proto_to_datetime(proto_attr)
                     else:
                         contained_class = cls.get_class_for_proto(proto_attr)
                         contained_obj = contained_class.from_proto(proto_attr)
@@ -687,8 +696,10 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 elements = []
                 contained_class = None
                 for item in proto_attr:
-                    if item.DESCRIPTOR.full_name == "google.protobuf.Struct":
+                    if item.DESCRIPTOR.full_name == json_dict.STRUCT_PROTOBUF_NAME:
                         elements.append(json_dict.struct_to_dict(item))
+                    elif item.DESCRIPTOR.full_name == timestamp.TIMESTAMP_PROTOBUF_NAME:
+                        elements.append(timestamp.proto_to_datetime(item))
                     else:
                         if contained_class is None:
                             contained_class = cls.get_class_for_proto(item)
@@ -812,10 +823,13 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
             elif field in self._fields_message:
                 subproto = getattr(proto, field)
-                if subproto.DESCRIPTOR.full_name == "google.protobuf.Struct":
+                if subproto.DESCRIPTOR.full_name == json_dict.STRUCT_PROTOBUF_NAME:
                     subproto.CopyFrom(
                         json_dict.dict_to_struct(attr, subproto.__class__)
                     )
+                elif subproto.DESCRIPTOR.full_name == timestamp.TIMESTAMP_PROTOBUF_NAME:
+                    timestamp_proto = timestamp.datetime_to_proto(attr)
+                    subproto.CopyFrom(timestamp_proto)
                 else:
                     attr.fill_proto(subproto)
 
@@ -827,6 +841,8 @@ class DataBase(metaclass=_DataBaseMetaClass):
                         elem_type.CopyFrom(
                             json_dict.dict_to_struct(item, elem_type.__class__)
                         )
+                    elif isinstance(item, datetime.datetime):
+                        elem_type.CopyFrom(timestamp.datetime_to_proto(item))
                     else:
                         item.fill_proto(elem_type)
             else:
@@ -870,9 +886,15 @@ class DataBase(metaclass=_DataBaseMetaClass):
         """Convert to a json representation."""
 
         def _default_serialization_overrides(obj):
-            """Default handler for nonserializable objects; currently this only handles bytes."""
+            """Default handler for nonserializable objects; currently this only handles
+            - bytes
+            - datetime.datetime
+            """
             if isinstance(obj, bytes):
                 return base64.encodebytes(obj).decode("utf-8")
+            if isinstance(obj, datetime.datetime):
+                # Use the timestamp's proto-serialized format to get the proper json serializer
+                return timestamp.datetime_to_proto(obj).ToJsonString()
             raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
         if "default" not in kwargs:

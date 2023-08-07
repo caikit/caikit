@@ -127,7 +127,8 @@ class SampleModule(caikit.core.ModuleBase):
         #   this is definitely a non-standard usage pattern!
         wait_event = kwargs.get("wait_event")
         if wait_event is not None:
-            wait_event.wait()
+            # Set a timeout here so tests don't hang forever in failure states
+            wait_event.wait(timeout=1)
 
         # If needed, wait for a long time
         # NOTE: DestroyableThread is a "best effort" at destroying a threaded

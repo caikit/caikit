@@ -40,19 +40,22 @@ class TrainingManagementServicerImpl:
 
     def GetTrainingStatus(self, request, context):  # pylint: disable=unused-argument
         """Get the status of a training by ID"""
-        training_info = TrainingInfoRequest.from_proto(request)
+        training_info_request = TrainingInfoRequest.from_proto(request)
         model_future = self._get_model_future(
-            training_info.training_id, operation="get_status"
+            training_info_request.training_id, operation="get_status"
         )
         try:
             reasons = []
-            if model_future.get_info().errors:
-                reasons = [str(error) for error in model_future.get_info().errors]
+            training_info = model_future.get_info()
+            if training_info.errors:
+                reasons = [str(error) for error in training_info.errors]
 
             return TrainingStatusResponse(
-                training_id=training_info.training_id,
-                state=model_future.get_info().status,
+                training_id=training_info_request.training_id,
+                state=training_info.status,
                 reasons=reasons,
+                submission_timestamp=training_info.submission_time,
+                completion_timestamp=training_info.completion_time,
             ).to_proto()
         except CaikitCoreException as err:
             raise_caikit_runtime_exception(exception=err)
@@ -60,7 +63,7 @@ class TrainingManagementServicerImpl:
             raise CaikitRuntimeException(
                 grpc.StatusCode.INTERNAL,
                 "Failed to get status for training id {}".format(
-                    training_info.training_id,
+                    training_info_request.training_id,
                 ),
             ) from err
 

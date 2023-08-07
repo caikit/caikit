@@ -18,7 +18,7 @@ The LocalModelTrainer uses a local thread to launch and manage each training job
 # Standard
 from concurrent.futures.thread import _threads_queues
 from datetime import datetime, timedelta
-from typing import Any, Dict, Iterable, Optional, Type, Union
+from typing import Any, Dict, Iterable, List, Optional, Type, Union
 import os
 import re
 import threading
@@ -82,25 +82,18 @@ class LocalModelTrainer(ModelTrainerBase):
         ):
             super().__init__(
                 trainer_name=trainer_name,
-                training_id=str(uuid.uuid4()),
+                training_id=external_training_id or str(uuid.uuid4()),
                 save_with_id=save_with_id,
                 save_path=save_path,
                 model_name=model_name,
+                use_reversible_hash=external_training_id is None,
             )
-            # 🌶️🌶️🌶️ For the external training id override, we don't want to include the
-            # reversible hash bit on the id. Therefore, we have to re-do the id and save
-            # path stuff done in the super() init here instead
-            if external_training_id is not None:
-                # No extra hash bit
-                self._id = external_training_id
-                self._save_path = self._save_path_with_id(
-                    save_path, save_with_id, external_training_id, model_name
-                )
-
             self._module_class = module_class
 
             # Placeholder for the time when the future completed
             self._completion_time = None
+            # Set the submission time as right now. (Maybe this should be supplied instead?)
+            self._submission_time = datetime.now()
 
             # Set up the worker and start it
             self._use_subprocess = use_subprocess
@@ -147,24 +140,24 @@ class LocalModelTrainer(ModelTrainerBase):
             # The worker was canceled while doing work. It may still be in the
             # process of terminating and thus still alive.
             if self._worker.canceled:
-                return TrainingInfo(status=TrainingStatus.CANCELED)
+                return self._make_training_info(status=TrainingStatus.CANCELED)
 
             # If the worker is currently alive it's doing work
             if self._worker.is_alive():
-                return TrainingInfo(status=TrainingStatus.RUNNING)
+                return self._make_training_info(status=TrainingStatus.RUNNING)
 
             # The worker threw outside of a cancellation process
             if self._worker.threw:
-                return TrainingInfo(
+                return self._make_training_info(
                     status=TrainingStatus.ERRORED, errors=[self._worker.error]
                 )
 
             # The worker completed its work without being canceled or raising
             if self._worker.ran:
-                return TrainingInfo(status=TrainingStatus.COMPLETED)
+                return self._make_training_info(status=TrainingStatus.COMPLETED)
 
             # If it's not alive and not done, it hasn't started yet
-            return TrainingInfo(status=TrainingStatus.QUEUED)
+            return self._make_training_info(status=TrainingStatus.QUEUED)
 
         def cancel(self):
             """Terminate the given training"""
@@ -210,6 +203,15 @@ class LocalModelTrainer(ModelTrainerBase):
             return result
 
         ## Impl ##
+        def _make_training_info(
+            self, status: TrainingStatus, errors: Optional[List[Exception]] = None
+        ) -> TrainingInfo:
+            return TrainingInfo(
+                status=status,
+                errors=errors,
+                completion_time=self._completion_time,
+                submission_time=self._submission_time,
+            )
 
         def _train_and_save(self, *args, **kwargs):
             """Function that will run in the worker thread"""
@@ -222,6 +224,7 @@ class LocalModelTrainer(ModelTrainerBase):
                 log.debug("Saving training %s to %s", self.id, self.save_path)
                 with alog.ContextTimer(log.debug, "Training %s saved in: ", self.id):
                     trained_model.save(self.save_path)
+            self._completion_time = self._completion_time or datetime.now()
             log.debug2("Completion time for %s: %s", self.id, self._completion_time)
             return trained_model
 
