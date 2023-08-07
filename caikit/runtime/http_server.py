@@ -312,7 +312,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         # Convert all to DM object types
         for param_name, param_value in request_params.items():
-            if param_name is not "training_data" and issubclass(
+            if param_name != "training_data" and issubclass(
                 type(param_value), pydantic.BaseModel
             ):
                 request_params[param_name] = PYDANTIC_REGISTRY.get(
@@ -627,6 +627,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         model class annotations to mirror as a pydantic model
         """
         # Use dicts for jsondict values
+        # this is needed for pydantic to have a handle on JsonDicts while
+        # creating its base model
+        # pylint: disable=unused-variable
         JsonDict = dict
         JsonDictValue = dict
 
