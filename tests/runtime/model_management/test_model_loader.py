@@ -14,6 +14,7 @@
 # Standard
 from concurrent.futures import Future
 from contextlib import contextmanager
+from typing import Callable
 from unittest import mock
 import copy
 import tempfile
@@ -32,7 +33,7 @@ from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model import SampleInputType, SampleOutputType
 from sample_lib.modules.sample_task import SampleModule
-from tests.conftest import random_test_id, temp_config
+from tests.conftest import TempFailWrapper, random_test_id, temp_config
 from tests.core.helpers import MockBackend
 from tests.fixtures import Fixtures
 import caikit.core
@@ -328,3 +329,51 @@ def test_load_model_without_waiting_deferred_error(model_loader):
         loaded_model.model()
     assert context.value.status_code == grpc.StatusCode.INTERNAL
     assert model_id in context.value.message
+
+
+def test_load_model_succeed_after_retry(model_loader):
+    """Make sure that a model which fails to load on the first try can load
+    successfully on a retry.
+    """
+    failures = 2
+    fail_wrapper = TempFailWrapper(
+        model_loader._load_module,
+        num_failures=failures,
+        exc=CaikitRuntimeException(grpc.StatusCode.INTERNAL, "Yikes!"),
+    )
+    with mock.patch.object(model_loader, "_load_module", fail_wrapper):
+        model_id = random_test_id()
+        loaded_model = model_loader.load_model(
+            model_id=model_id,
+            local_model_path=Fixtures.get_good_model_path(),
+            model_type=Fixtures.get_good_model_type(),
+            retries=failures + 1,
+        )
+        assert loaded_model.model() is not None
+        assert isinstance(loaded_model.model(), base.ModuleBase)
+        assert loaded_model._retries == 1
+
+
+def test_load_model_fail_callback_once(model_loader):
+    """Make sure that a model which fails all of its retries will only call the
+    fail callback once
+    """
+    failures = 3
+    fail_wrapper = TempFailWrapper(
+        model_loader._load_module,
+        num_failures=failures,
+        exc=CaikitRuntimeException(grpc.StatusCode.INTERNAL, "Yikes!"),
+    )
+    with mock.patch.object(model_loader, "_load_module", fail_wrapper):
+        model_id = random_test_id()
+        fail_cb = mock.MagicMock()
+        loaded_model = model_loader.load_model(
+            model_id=model_id,
+            local_model_path=Fixtures.get_good_model_path(),
+            model_type=Fixtures.get_good_model_type(),
+            fail_callback=fail_cb,
+            retries=failures - 1,
+        )
+        with pytest.raises(CaikitRuntimeException):
+            loaded_model.wait()
+        fail_cb.assert_called_once()

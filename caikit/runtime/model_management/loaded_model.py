@@ -40,8 +40,10 @@ try:
 except TypeError:  # pragma: no cover
     CaikitModelFuture = Future
 
+CaikitModelFutureFactory = Callable[[], CaikitModelFuture]
 
-class LoadedModel:
+
+class LoadedModel:  # pylint: disable=too-many-instance-attributes
     __doc__ = __doc__
 
     class Builder:
@@ -52,10 +54,12 @@ class LoadedModel:
         def __init__(self):
             self._model_to_build = LoadedModel()
 
-        def model_future(
-            self, caikit_model_future: CaikitModelFuture
+        def model_future_factory(
+            self, caikit_model_future_factory: CaikitModelFutureFactory
         ) -> "LoadedModel.Builder":
-            self._model_to_build._caikit_model_future = caikit_model_future
+            self._model_to_build._caikit_model_future_factory = (
+                caikit_model_future_factory
+            )
             return self
 
         def fail_callback(self, callback: Callable) -> "LoadedModel.Builder":
@@ -74,10 +78,14 @@ class LoadedModel:
             self._model_to_build._model_id = model_id
             return self
 
+        def retries(self, retries: int) -> "LoadedModel.Builder":
+            self._model_to_build._retries = retries
+            return self
+
         def build(self) -> "LoadedModel":
             error.value_check(
                 "<RUN12786023E>",
-                self._model_to_build._caikit_model_future
+                self._model_to_build._caikit_model_future_factory
                 and self._model_to_build._model_id
                 and self._model_to_build._model_type,
                 "Cannot build LoadedModel with incomplete required fields."
@@ -86,16 +94,21 @@ class LoadedModel:
                 self._model_to_build._model_id,
                 self._model_to_build._model_type,
             )
+            self._model_to_build._caikit_model_future = (
+                self._model_to_build._caikit_model_future_factory()
+            )
             return self._model_to_build
 
     def __init__(self):
         # Use the builder ^^
+        self._caikit_model_future_factory: Optional[CaikitModelFutureFactory] = None
         self._caikit_model_future: Optional[CaikitModelFuture] = None
         self._model: Optional[ModuleBase] = None
         self._fail_callback: Optional[Callable] = None
         self._model_id: str = ""
         self._model_path: str = ""
         self._model_type: str = ""
+        self._retries: int = 0
         self._size: Optional[int] = None
 
     def id(self) -> str:
@@ -110,9 +123,25 @@ class LoadedModel:
             try:
                 self._model = self._caikit_model_future.result()
             except CaikitRuntimeException:
-                if self._fail_callback:
-                    self._fail_callback()
-                raise
+                if self._retries:
+                    self._retries -= 1
+                    log.debug(
+                        "Failed to load %s from %s. Retrying with %d retries left",
+                        self.id,
+                        self.path,
+                        self._retries,
+                    )
+                    self._caikit_model_future = self._caikit_model_future_factory()
+                    # Try waiting again with a fresh load future. This may open
+                    # a recursive retry. Once all retries are exhausted, if the
+                    # load still fails, the deepest call will invoke the fail
+                    # callback and the exception will percolate up from there to
+                    # here where it will be raised to the external waiter.
+                    self.wait()
+                else:
+                    if self._fail_callback:
+                        self._fail_callback()
+                    raise
 
     def type(self) -> str:
         return self._model_type

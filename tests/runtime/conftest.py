@@ -4,6 +4,7 @@ This sets up global test configs when pytest starts
 
 # Standard
 from contextlib import contextmanager
+from functools import partial
 from typing import Dict, Type, Union
 import os
 import shlex
@@ -303,13 +304,13 @@ def register_trained_model(
     """Helper to auto-load a model that has completed training. This replaces
     the old auto-load feature which was only needed for unit tests
     """
-    model_future = MODEL_MANAGER.get_model_future(training_id)
+    model_future_factory = partial(MODEL_MANAGER.get_model_future, training_id)
     loaded_model = (
         LoadedModel.Builder()
         .id(model_id)
         .type("trained")
         .path("")
-        .model_future(model_future)
+        .model_future_factory(model_future_factory)
         .build()
     )
     if isinstance(servicer, RuntimeGRPCServer):

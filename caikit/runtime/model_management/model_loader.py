@@ -13,6 +13,7 @@
 # limitations under the License.
 # Standard
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from typing import Callable, Optional, Union
 
 # Third Party
@@ -64,6 +65,7 @@ class ModelLoader:
         model_type: str,
         aborter: Optional[ActionAborter] = None,
         fail_callback: Optional[Callable] = None,
+        retries: int = 0,
     ) -> LoadedModel:
         """Start loading a model from disk and associate the ID/size with it
 
@@ -75,6 +77,7 @@ class ModelLoader:
                 the call's parent to abort the load
             fail_callback (Optional[Callable]): Optional no-arg callback to call
                 on load failure
+            retries (int): Number of times to retry loading
         Returns:
             model (LoadedModel) : The model that was loaded
         """
@@ -85,6 +88,7 @@ class ModelLoader:
             .type(model_type)
             .path(local_model_path)
             .fail_callback(fail_callback)
+            .retries(retries)
         )
 
         # Set up the async loading
@@ -93,10 +97,12 @@ class ModelLoader:
         if aborter is not None:
             log.debug3("Using abortable action to load %s", model_id)
             action = AbortableAction(aborter, self._load_module, *args)
-            future = self._load_thread_pool.submit(action.do)
+            future_factory = partial(self._load_thread_pool.submit, action.do)
         else:
-            future = self._load_thread_pool.submit(self._load_module, *args)
-        model_builder.model_future(future)
+            future_factory = partial(
+                self._load_thread_pool.submit, self._load_module, *args
+            )
+        model_builder.model_future_factory(future_factory)
 
         # Return the built model with the future handle
         return model_builder.build()
