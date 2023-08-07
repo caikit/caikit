@@ -53,19 +53,19 @@ def test_proto_to_timestamp_invalid_type():
 
 def test_timestamp_roundtrip_serialization(reset_global_protobuf_registry):
     @dataobject(package="test")
-    class Foo(DataObjectBase):
+    class FooTimestamps(DataObjectBase):
         time: datetime.datetime
         times: List[datetime.datetime]
 
-    time_container = Foo(
+    time_container = FooTimestamps(
         time=datetime.datetime.now(),
         times=[datetime.datetime.now(), datetime.datetime.fromtimestamp(1234567)],
     )
 
     time_proto = time_container.to_proto()
-    time_proto_roundtrip = Foo.from_proto(time_proto)
+    time_proto_roundtrip = FooTimestamps.from_proto(time_proto)
     assert time_proto_roundtrip == time_container
 
     time_json = time_container.to_json()
-    time_json_roundtrip = Foo.from_json(time_json)
+    time_json_roundtrip = FooTimestamps.from_json(time_json)
     assert time_json_roundtrip == time_container
