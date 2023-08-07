@@ -83,6 +83,10 @@ runtime:
     # unloaded.
     lazy_load_local_models: false
     lazy_load_poll_period_seconds: 10
+    # Number of times to retry on lazy load failure. This mitigates lazy loads
+    # that fail due to partially uploaded model artifacts when the load is
+    # initiated.
+    lazy_load_retries: 2
 
     # Number of threads to make available for load jobs (null => all)
     load_threads: null
