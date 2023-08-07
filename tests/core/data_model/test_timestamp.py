@@ -15,14 +15,19 @@
 Tests for conversion between python datetime and protobuf Timestamp
 """
 # Standard
+from typing import List
 import datetime
 
 # Third Party
 import pytest
 
 # Local
+from caikit.core import DataObjectBase, dataobject
 from caikit.core.data_model import timestamp
 from caikit.interfaces.common.data_model.stream_sources import S3Path
+from tests.core.data_model.test_dataobject import reset_global_protobuf_registry
+
+f = reset_global_protobuf_registry
 
 
 def test_timestamp_to_proto_to_timestamp():
@@ -44,3 +49,23 @@ def test_proto_to_timestamp_invalid_type():
     with pytest.raises(TypeError):
         non_timestamp_proto = S3Path(path="/not/a/timestamp.either")
         timestamp.proto_to_datetime(non_timestamp_proto)
+
+
+def test_timestamp_roundtrip_serialization(reset_global_protobuf_registry):
+    @dataobject(package="test")
+    class Foo(DataObjectBase):
+        time: datetime.datetime
+        times: List[datetime.datetime]
+
+    time_container = Foo(
+        time=datetime.datetime.now(),
+        times=[datetime.datetime.now(), datetime.datetime.fromtimestamp(1234567)],
+    )
+
+    time_proto = time_container.to_proto()
+    time_proto_roundtrip = Foo.from_proto(time_proto)
+    assert time_proto_roundtrip == time_container
+
+    time_json = time_container.to_json()
+    time_json_roundtrip = Foo.from_json(time_json)
+    assert time_json_roundtrip == time_container

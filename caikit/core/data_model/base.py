@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Type, Union
 import base64
+import datetime
 import json
 
 # Third Party
@@ -840,6 +841,8 @@ class DataBase(metaclass=_DataBaseMetaClass):
                         elem_type.CopyFrom(
                             json_dict.dict_to_struct(item, elem_type.__class__)
                         )
+                    elif isinstance(item, datetime.datetime):
+                        elem_type.CopyFrom(timestamp.datetime_to_proto(item))
                     else:
                         item.fill_proto(elem_type)
             else:
@@ -883,9 +886,15 @@ class DataBase(metaclass=_DataBaseMetaClass):
         """Convert to a json representation."""
 
         def _default_serialization_overrides(obj):
-            """Default handler for nonserializable objects; currently this only handles bytes."""
+            """Default handler for nonserializable objects; currently this only handles
+            - bytes
+            - datetime.datetime
+            """
             if isinstance(obj, bytes):
                 return base64.encodebytes(obj).decode("utf-8")
+            if isinstance(obj, datetime.datetime):
+                # Use the timestamp's proto-serialized format to get the proper json serializer
+                return timestamp.datetime_to_proto(obj).ToJsonString()
             raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
         if "default" not in kwargs:
