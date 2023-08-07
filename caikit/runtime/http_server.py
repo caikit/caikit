@@ -281,7 +281,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def build_request_params_dict(
         self, request_params: Dict[str, any]
     ) -> Dict[str, any]:
-        """Build request params dict"""
+        """Build request params dict, converting pydantic objects to our DM objects"""
+        # special case for training_data
         if training_data := request_params.get("training_data", None):
             # get json from pydantic model
             training_data_json = training_data.model_dump_json()
@@ -308,10 +309,15 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 substituted_json
             )
             request_params["training_data"] = json_data_obj
-        if output_path := request_params.get("output_path", None):
-            request_params["output_path"] = PYDANTIC_REGISTRY.get(
-                type(output_path)
-            ).from_json(output_path.model_dump_json())
+
+        # Convert all to DM object types
+        for param_name, param_value in request_params.items():
+            if param_name is not "training_data" and issubclass(
+                type(param_value), pydantic.BaseModel
+            ):
+                request_params[param_name] = PYDANTIC_REGISTRY.get(
+                    type(param_value)
+                ).from_json(param_value.model_dump_json())
         return request_params
 
     def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
@@ -620,6 +626,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
         """Make a pydantic model based on the given proto message by using the data
         model class annotations to mirror as a pydantic model
         """
+        # Use dicts for jsondict values
+        JsonDict = dict
+        JsonDictValue = dict
+
         if dm_class in PYDANTIC_REGISTRY:
             return PYDANTIC_REGISTRY[dm_class]
 

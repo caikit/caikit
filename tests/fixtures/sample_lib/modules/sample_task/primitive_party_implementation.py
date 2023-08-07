@@ -74,8 +74,8 @@ class SamplePrimitiveModule(caikit.core.ModuleBase):
         union_list2: Union[List[str], List[int], int],
         union_list3: Union[List[str], List[bool]],
         union_list4: Union[List[str], int],
-        # training_params_json_dict_list: List[JsonDict],
-        # training_params_json_dict: JsonDict = None,
+        training_params_json_dict_list: List[JsonDict],
+        training_params_json_dict: JsonDict = None,
         training_params_dict: Dict[str, int] = field(default_factory=dict),
         training_params_dict_int: Dict[int, float] = field(default_factory=dict),
     ) -> "SamplePrimitiveModule":
@@ -86,18 +86,18 @@ class SamplePrimitiveModule(caikit.core.ModuleBase):
         assert isinstance(union_list2.values, List)
         assert isinstance(union_list3.values, List)
         assert isinstance(union_list4, int)
-        # assert isinstance(training_params_json_dict_list, List)
-        # assert isinstance(training_params_json_dict, Dict)
+        assert isinstance(training_params_json_dict_list, List)
+        assert isinstance(training_params_json_dict, Dict)
         assert isinstance(training_params_dict, Dict)
         assert isinstance(training_params_dict_int, Dict)
-        # assert training_params_json_dict is not None
-        # assert len(training_params_json_dict_list) > 0
+        assert training_params_json_dict is not None
+        assert len(training_params_json_dict_list) > 0
         assert len(union_list.values) > 0
         assert len(union_list2.values) > 0
         assert len(union_list3.values) > 0
         assert training_params_dict is not None
         assert training_params_dict_int is not None
         return cls(
-            training_params_json_dict=None,
+            training_params_json_dict=training_params_json_dict,
             training_params_dict=training_params_dict,
         )
