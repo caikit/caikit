@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # Standard
+from typing import Union
 import os
 
 # First Party
@@ -82,20 +83,23 @@ class ModuleConfig(aconfig.Config):
         )
 
     @classmethod
-    def load(cls, model_path):
+    def load(cls, model_path: Union[str, "ModuleConfig"]) -> "ModuleConfig":
         """Load a new module configuration from a directory on disk.
 
         Args:
-            model_path (str): Path to model directory. At the top level of
-                directory is `config.yml` which holds info about the model. Note
-                that the model_path here is assumed to be operating system
-                correct as a consequence of the way this method is invoked by
-                the model manager.
+            model_path (Union[str, ModuleConfig]): Path to model directory. At
+                the top level of directory is `config.yml` which holds info
+                about the model. Note that the model_path here is assumed to be
+                operating system correct as a consequence of the way this method
+                is invoked by the model manager.
 
         Returns:
-            BlockConfig: Instantiated BlockConfig for model given model_path.
+            model_config (ModuleConfig): Instantiated ModuleConfig for model
+                given model_path.
         """
-        error.type_check("<COR71170339E>", str, model_path=model_path)
+        error.type_check("<COR71170339E>", str, cls, model_path=model_path)
+        if isinstance(model_path, cls):
+            return model_path
 
         # Validate config.yml
         config_path = os.path.join(model_path, "config.yml")

@@ -17,7 +17,7 @@ Tests for the caikit HTTP server
 # Standard
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import List
+from typing import Dict, List
 import json
 import os
 import signal
@@ -34,7 +34,7 @@ from caikit.core import DataObjectBase, dataobject
 from caikit.interfaces.nlp.data_model import GeneratedTextStreamResult, GeneratedToken
 from caikit.runtime import http_server
 from tests.conftest import temp_config
-from tests.runtime.conftest import ModuleSubproc
+from tests.runtime.conftest import ModuleSubproc, runtime_http_test_server
 
 ## Helpers #####################################################################
 
@@ -67,7 +67,7 @@ class TLSConfig:
 @contextmanager
 def generate_tls_configs(
     port: int, tls: bool = False, mtls: bool = False, **http_config_overrides
-):
+) -> Dict[str, Dict]:
     """Helper to generate tls configs"""
     with tempfile.TemporaryDirectory() as workdir:
         config_overrides = {}
@@ -123,24 +123,22 @@ def generate_tls_configs(
 ## Insecure and TLS Tests #######################################################################
 
 
-def test_insecure_server(open_port):
+def test_insecure_server(runtime_http_server, open_port):
     with generate_tls_configs(open_port):
-        insecure_http_server = http_server.RuntimeHTTPServer()
         # start a non-blocking http server
-        with insecure_http_server:
-            resp = requests.get(f"http://localhost:{insecure_http_server.port}/docs")
-            resp.raise_for_status()
+        resp = requests.get(f"http://localhost:{runtime_http_server.port}/docs")
+        resp.raise_for_status()
 
 
 def test_basic_tls_server(open_port):
     with generate_tls_configs(
         open_port, tls=True, mtls=False, http_config_overrides={}
     ) as config_overrides:
-        http_server_with_tls = http_server.RuntimeHTTPServer(
-            tls_config_override=config_overrides["runtime"]["tls"]
-        )
-        # start a non-blocking http server with basic tls
-        with http_server_with_tls:
+        with runtime_http_test_server(
+            open_port,
+            tls_config_override=config_overrides,
+        ) as http_server_with_tls:
+            # start a non-blocking http server with basic tls
             resp = requests.get(
                 f"https://localhost:{http_server_with_tls.port}/docs",
                 verify=config_overrides["use_in_test"]["ca_cert"],
@@ -152,11 +150,11 @@ def test_basic_tls_server_with_wrong_cert(open_port):
     with generate_tls_configs(
         open_port, tls=True, mtls=False, http_config_overrides={}
     ) as config_overrides:
-        http_server_with_tls = http_server.RuntimeHTTPServer(
-            tls_config_override=config_overrides["runtime"]["tls"]
-        )
-        # start a non-blocking http server with basic tls
-        with http_server_with_tls:
+        with runtime_http_test_server(
+            open_port,
+            tls_config_override=config_overrides,
+        ) as http_server_with_tls:
+            # start a non-blocking http server with basic tls
             with pytest.raises(requests.exceptions.SSLError):
                 requests.get(
                     f"https://localhost:{http_server_with_tls.port}/docs",
@@ -168,11 +166,11 @@ def test_mutual_tls_server(open_port):
     with generate_tls_configs(
         open_port, tls=True, mtls=True, http_config_overrides={}
     ) as config_overrides:
-        http_server_with_mtls = http_server.RuntimeHTTPServer(
-            tls_config_override=config_overrides["runtime"]["tls"]
-        )
-        # start a non-blocking http server with mutual tls
-        with http_server_with_mtls:
+        with runtime_http_test_server(
+            open_port,
+            tls_config_override=config_overrides,
+        ) as http_server_with_mtls:
+            # start a non-blocking http server with mutual tls
             resp = requests.get(
                 f"https://localhost:{http_server_with_mtls.port}/docs",
                 verify=config_overrides["use_in_test"]["ca_cert"],
@@ -188,11 +186,11 @@ def test_mutual_tls_server_with_wrong_cert(open_port):
     with generate_tls_configs(
         open_port, tls=True, mtls=True, http_config_overrides={}
     ) as config_overrides:
-        http_server_with_mtls = http_server.RuntimeHTTPServer(
-            tls_config_override=config_overrides["runtime"]["tls"]
-        )
-        # start a non-blocking http server with mutual tls
-        with http_server_with_mtls:
+        with runtime_http_test_server(
+            open_port,
+            tls_config_override=config_overrides,
+        ) as http_server_with_mtls:
+            # start a non-blocking http server with mutual tls
             with pytest.raises(requests.exceptions.SSLError):
                 requests.get(
                     f"https://localhost:{http_server_with_mtls.port}/docs",
@@ -204,18 +202,23 @@ def test_mutual_tls_server_with_wrong_cert(open_port):
                 )
 
 
-def test_docs():
+def test_docs(runtime_http_server):
     """Simple check that pinging /docs returns 200"""
-    server = http_server.RuntimeHTTPServer()
-    with TestClient(server.app) as client:
+    with TestClient(runtime_http_server.app) as client:
         response = client.get("/docs")
         assert response.status_code == 200
 
 
-def test_inference_sample_task(sample_task_model_id):
+def test_docs_using_running_http_server(runtime_http_server):
+    """Simple check that pinging /docs returns 200
+    but pints the actual running server"""
+    response = requests.get(f"http://localhost:{runtime_http_server.port}/docs")
+    assert response.status_code == 200
+
+
+def test_inference_sample_task(sample_task_model_id, runtime_http_server):
     """Simple check that we can ping a model"""
-    server = http_server.RuntimeHTTPServer()
-    with TestClient(server.app) as client:
+    with TestClient(runtime_http_server.app) as client:
         json_input = {"inputs": {"name": "world"}}
         response = client.post(
             f"/api/v1/{sample_task_model_id}/task/sample",
@@ -226,10 +229,11 @@ def test_inference_sample_task(sample_task_model_id):
         assert json_response["greeting"] == "Hello world"
 
 
-def test_inference_sample_task_optional_field(sample_task_model_id):
+def test_inference_sample_task_optional_field(
+    sample_task_model_id, runtime_http_server
+):
     """Simple check for optional fields"""
-    server = http_server.RuntimeHTTPServer()
-    with TestClient(server.app) as client:
+    with TestClient(runtime_http_server.app) as client:
         json_input = {
             "inputs": {"name": "world"},
             "parameters": {"throw": True},
@@ -243,10 +247,9 @@ def test_inference_sample_task_optional_field(sample_task_model_id):
         assert response.status_code == 500
 
 
-def test_inference_other_task(other_task_model_id):
+def test_inference_other_task(other_task_model_id, runtime_http_server):
     """Simple check that we can ping a model"""
-    server = http_server.RuntimeHTTPServer()
-    with TestClient(server.app) as client:
+    with TestClient(runtime_http_server.app) as client:
         json_input = {"inputs": {"name": "world"}}
         response = client.post(
             f"/api/v1/{other_task_model_id}/task/other",
@@ -257,10 +260,9 @@ def test_inference_other_task(other_task_model_id):
         assert json_response["farewell"] == "goodbye: world 42 times"
 
 
-def test_inference_streaming_sample_module(sample_task_model_id):
+def test_inference_streaming_sample_module(sample_task_model_id, runtime_http_server):
     """Simple check for testing a happy path unary-stream case"""
-    server = http_server.RuntimeHTTPServer()
-    with TestClient(server.app) as client:
+    with TestClient(runtime_http_server.app) as client:
         json_input = {"inputs": {"name": "world"}}
         stream = client.post(
             f"/api/v1/{sample_task_model_id}/task/server-streaming-sample",
@@ -276,10 +278,9 @@ def test_inference_streaming_sample_module(sample_task_model_id):
         )
 
 
-def test_model_not_found():
+def test_model_not_found(runtime_http_server):
     """Simple check that we can ping a model"""
-    server = http_server.RuntimeHTTPServer()
-    with TestClient(server.app) as client:
+    with TestClient(runtime_http_server.app) as client:
         response = client.post(
             f"/api/v1/this_is_not_a_model/task/sample",
             json={"inputs": {"name": "world"}},
@@ -287,10 +288,11 @@ def test_model_not_found():
         assert response.status_code == 404
 
 
-def test_inference_sample_task_throws_incorrect_input(sample_task_model_id):
+def test_inference_sample_task_throws_incorrect_input(
+    sample_task_model_id, runtime_http_server
+):
     """error check for a request with incorrect input"""
-    server = http_server.RuntimeHTTPServer()
-    with TestClient(server.app) as client:
+    with TestClient(runtime_http_server.app) as client:
         json_input = {"blah": {"sample_input": {"name": "world"}}}
         response = client.post(
             f"/api/v1/{sample_task_model_id}/task/sample",
@@ -299,10 +301,9 @@ def test_inference_sample_task_throws_incorrect_input(sample_task_model_id):
         assert response.status_code == 400
 
 
-def test_health_check_ok():
+def test_health_check_ok(runtime_http_server):
     """Make sure the health check returns OK"""
-    server = http_server.RuntimeHTTPServer()
-    with TestClient(server.app) as client:
+    with TestClient(runtime_http_server.app) as client:
         response = client.get(http_server.HEALTH_ENDPOINT)
         assert response.status_code == 200
         assert response.text == "OK"
@@ -324,7 +325,7 @@ def test_pydantic_wrapping_with_enums():
     assert token.text == "foo"
 
 
-def test_pydantic_wrapping_with_lists():
+def test_pydantic_wrapping_with_lists(runtime_http_server):
     """Check that pydantic wrapping works on data models with lists"""
 
     @dataobject(package="http")
@@ -338,7 +339,7 @@ def test_pydantic_wrapping_with_lists():
     foo = FooTest(bars=[BarTest(1)])
     assert foo.bars[0].baz == 1
 
-    http_server.RuntimeHTTPServer._dataobject_to_pydantic(FooTest)
+    runtime_http_server._dataobject_to_pydantic(FooTest)
 
     foo = FooTest(bars=[BarTest(1)])
     assert foo.bars[0].baz == 1

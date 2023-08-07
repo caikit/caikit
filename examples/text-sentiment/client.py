@@ -16,11 +16,11 @@
 import json
 
 # Third Party
-from start_runtime import protocol_arg
 import grpc
 import requests
 
 # Local
+from caikit.config.config import get_config
 from caikit.runtime.service_factory import ServicePackageFactory
 import caikit
 
@@ -30,6 +30,8 @@ if __name__ == "__main__":
             "merge_strategy": "merge",
             "runtime": {
                 "library": "text_sentiment",
+                "grpc": {"enabled": True},
+                "http": {"enabled": True},
             },
         }
     )
@@ -38,11 +40,9 @@ if __name__ == "__main__":
         ServicePackageFactory.ServiceType.INFERENCE,
     )
 
-    protocol = protocol_arg()
-
     model_id = "text_sentiment"
 
-    if protocol == "grpc":
+    if get_config().runtime.grpc.enabled:
         # Setup the client
         port = 8085
         channel = grpc.insecure_channel(f"localhost:{port}")
@@ -57,9 +57,9 @@ if __name__ == "__main__":
                 request, metadata=[("mm-model-id", model_id)], timeout=1
             )
             print("Text:", text)
-            print("RESPONSE:", response)
+            print("RESPONSE from gRPC:", response)
 
-    elif protocol == "http":
+    if get_config().runtime.http.enabled:
         port = 8080
         # Run inference for two sample prompts
         for text in ["I am not feeling well today!", "Today is a nice sunny day"]:
@@ -70,7 +70,4 @@ if __name__ == "__main__":
                 timeout=1,
             )
             print("\nText:", text)
-            print("RESPONSE:", json.dumps(response.json(), indent=4))
-
-    else:
-        print("--protocol must be one of [grpc, http]")
+            print("RESPONSE from HTTP:", json.dumps(response.json(), indent=4))

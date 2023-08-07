@@ -110,7 +110,7 @@ runtime:
 
     # Configuration for the http server
     http:
-        enabled: false
+        enabled: true
         port: 8080
         # String prefix for API routes
         route_prefix: api/v1

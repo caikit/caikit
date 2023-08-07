@@ -197,9 +197,16 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
                         raise ex
 
                     # Estimate the model's size and update the LoadedModel
-                    model_size = self.model_sizer.get_model_size(
-                        model_id, local_model_path, model_type
-                    )
+                    try:
+                        model_size = self.model_sizer.get_model_size(
+                            model_id, local_model_path, model_type
+                        )
+                    except CaikitRuntimeException:
+                        log.debug(
+                            "Unable to estimate model size for non-disk model: %s",
+                            model_id,
+                        )
+                        model_size = 0
                     model.set_size(model_size)
 
                     # Add model + helpful metadata to our loaded models map
@@ -367,17 +374,16 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         model_loaded = model_id in self.loaded_models
         if not model_loaded and self._lazy_load_local_models:
             local_model_path = os.path.join(self._local_models_dir, model_id)
-            if os.path.exists(local_model_path):
-                log.debug2(
-                    "Lazy loading local model %s from %s", model_id, local_model_path
-                )
-                self.load_model(
-                    model_id=model_id,
-                    local_model_path=local_model_path,
-                    model_type=self._LOCAL_MODEL_TYPE,
-                    wait=True,
-                )
-                model_loaded = True
+            log.debug2(
+                "Lazy loading local model %s from %s", model_id, local_model_path
+            )
+            self.load_model(
+                model_id=model_id,
+                local_model_path=local_model_path,
+                model_type=self._LOCAL_MODEL_TYPE,
+                wait=True,
+            )
+            model_loaded = True
 
         # If still not loaded, there's nothing to find, so raise NOT_FOUND
         if not model_loaded:

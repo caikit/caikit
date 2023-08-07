@@ -27,13 +27,16 @@ import pytest
 
 # Local
 from caikit import get_config
+from caikit.core.model_manager import ModelManager as CoreModelManager
 from caikit.core.modules import ModuleBase
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import get_dynamic_module
 from tests.conftest import random_test_id, temp_config
+from tests.core.helpers import TestFinder
 from tests.fixtures import Fixtures
+import caikit.runtime.model_management.model_loader
 
 get_dynamic_module("caikit.core")
 ANY_MODEL_TYPE = "test-any-model-type"
@@ -58,16 +61,20 @@ def temp_local_models_dir(workdir, model_manager=MODEL_MANAGER):
 @contextmanager
 def non_singleton_model_managers(num_mgrs=1, *args, **kwargs):
     with temp_config(*args, **kwargs):
-        instances = []
-        try:
-            for _ in range(num_mgrs):
-                ModelManager._ModelManager__instance = None
-                instances.append(ModelManager.get_instance())
-            yield instances
-        finally:
-            for inst in instances:
-                inst.shut_down()
-            ModelManager._ModelManager__instance = MODEL_MANAGER
+        with patch(
+            "caikit.runtime.model_management.model_loader.MODEL_MANAGER",
+            new_callable=CoreModelManager,
+        ):
+            instances = []
+            try:
+                for _ in range(num_mgrs):
+                    ModelManager._ModelManager__instance = None
+                    instances.append(ModelManager.get_instance())
+                yield instances
+            finally:
+                for inst in instances:
+                    inst.shut_down()
+                ModelManager._ModelManager__instance = MODEL_MANAGER
 
 
 class SlowLoader:
@@ -531,6 +538,27 @@ def test_load_local_model_deleted_dir():
         ) as managers:
             manager = managers[0]
             assert not manager.loaded_models
+
+
+def test_load_local_model_not_on_disk():
+    """Make sure bad models in local_models_dir at boot don't cause exceptions"""
+    with TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "model_management": {"finders": {"default": {"type": TestFinder.name}}},
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+            model_id = random_test_id()
+            manager.load_model(model_id, "some_non_disk_model", "test")
+            model = manager.retrieve_model(model_id)
+            assert model
 
 
 # ****************************** Unit Tests ****************************** #
