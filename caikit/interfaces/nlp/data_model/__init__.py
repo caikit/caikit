@@ -25,7 +25,7 @@ from .classification import (
     TokenClassificationStreamResult,
 )
 from .package import NLP_PACKAGE
-from .text import Token, TokenizationResult
+from .text import Token, TokenizationResult, TokenizationStreamResult
 from .text_generation import (
     FinishReason,
     GeneratedTextResult,

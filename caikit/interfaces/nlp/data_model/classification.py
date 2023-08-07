@@ -60,7 +60,7 @@ class ClassificationResult(DataObjectBase):
     ]  # List of classifications for a text
 
 
-# NOTE: Annotated[This is meant to align with the HuggingFace token classification task:
+# NOTE: This is meant to align with the HuggingFace token classification task:
 # https://huggingface.co/docs/transformers/tasks/token_classification#inference
 # The field `word` does not necessarily correspond to a single "word",
 # and `entity` may not always be applicable beyond "entity" in the NER
@@ -127,7 +127,8 @@ class ClassifiedGeneratedTextResult(DataObjectBase):
 @dataobject(package=NLP_PACKAGE)
 class ClassifiedGeneratedTextStreamResult(ClassifiedGeneratedTextResult):
     """
-    Streaming classification on generated text result that indicates up to where in stream is processed.
+    Streaming classification on generated text result that indicates up to where in stream
+    is processed.
     """
 
     processed_index: Annotated[
