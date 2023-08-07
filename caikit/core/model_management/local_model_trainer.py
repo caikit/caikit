@@ -37,6 +37,10 @@ from ..toolkit.destroyable_process import DestroyableProcess
 from ..toolkit.destroyable_thread import DestroyableThread
 from ..toolkit.logging import configure as configure_logging
 from .model_trainer_base import ModelTrainerBase, TrainingInfo
+from caikit.core.exceptions.caikit_core_exception import (
+    CaikitCoreException,
+    CaikitCoreStatusCode,
+)
 import caikit
 
 log = alog.use_channel("LOC-TRNR")
@@ -315,7 +319,10 @@ class LocalModelTrainer(ModelTrainerBase):
         self._purge_old_futures()
         if model_future := self._futures.get(training_id):
             return model_future
-        raise ValueError(f"Unknown training_id: {training_id}")
+        raise CaikitCoreException(
+            status_code=CaikitCoreStatusCode.NOT_FOUND,
+            msg=f"Unknown training_id: {training_id}",
+        )
 
     ## Impl ##
 
