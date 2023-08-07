@@ -65,7 +65,7 @@ from sample_lib.data_model import (
     SampleOutputType,
     SampleTrainingType,
 )
-from tests.conftest import random_test_id
+from tests.conftest import random_test_id, temp_config
 from tests.core.helpers import *
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import (
@@ -1001,6 +1001,36 @@ def test_mtls(open_port):
             stub.Check(health_check_request)
 
 
+@pytest.mark.parametrize(
+    "enabled_services",
+    [(True, False), (False, True), (False, False)],
+)
+def test_services_disabled(open_port, enabled_services):
+    """Boot up a server with different combinations of services disabled"""
+    enable_inference, enable_training = enabled_services
+    with temp_config(
+        {
+            "runtime": {
+                "service_generation": {
+                    "enable_inference": enable_inference,
+                    "enable_training": enable_training,
+                }
+            },
+        },
+        "merge",
+    ):
+        with runtime_grpc_test_server(open_port) as server:
+            _assert_connection(server.make_local_channel())
+            assert server.enable_inference == enable_inference
+            assert (server._global_predict_servicer and enable_inference) or (
+                server._global_predict_servicer is None and not enable_inference
+            )
+            assert server.enable_training == enable_training
+            assert (server.training_service and enable_training) or (
+                server.training_service is None and not enable_training
+            )
+
+
 def test_certs_can_be_loaded_as_files(tmp_path, open_port):
     """mTLS test with all tls configs loaded from files"""
     ca_key = tls_test_tools.generate_key()[0]
@@ -1038,36 +1068,35 @@ def test_metrics_stored_after_server_interrupt(
 ):
     """This tests the gRPC server's behaviour when interrupted"""
 
-    with runtime_grpc_test_server(
-        open_port,
-    ) as server:
-        stub = sample_inference_service.stub_class(server.make_local_channel())
-        predict_request = sample_inference_service.messages.SampleTaskRequest(
-            sample_input=HAPPY_PATH_INPUT
-        )
-        _ = stub.SampleTaskPredict(
-            predict_request, metadata=[("mm-model-id", sample_task_model_id)]
-        )
+    with temp_config({"runtime": {"metering": {"enabled": True}}}, "merge"):
+        with runtime_grpc_test_server(open_port) as server:
+            stub = sample_inference_service.stub_class(server.make_local_channel())
+            predict_request = sample_inference_service.messages.SampleTaskRequest(
+                sample_input=HAPPY_PATH_INPUT
+            )
+            _ = stub.SampleTaskPredict(
+                predict_request, metadata=[("mm-model-id", sample_task_model_id)]
+            )
 
-        # Interrupt server
-        server.interrupt(None, None)
+            # Interrupt server
+            server.interrupt(None, None)
 
-        # Assertions on the created metrics file
-        with open(server._global_predict_servicer.rpc_meter.file_path) as f:
-            data = [json.loads(line) for line in f]
+            # Assertions on the created metrics file
+            with open(server._global_predict_servicer.rpc_meter.file_path) as f:
+                data = [json.loads(line) for line in f]
 
-            assert len(data) == 1
-            assert list(data[0].keys()) == [
-                "timestamp",
-                "batch_size",
-                "model_type_counters",
-                "container_id",
-            ]
-            assert data[0]["batch_size"] == 1
-            assert len(data[0]["model_type_counters"]) == 1
-            assert data[0]["model_type_counters"] == {
-                "<class 'sample_lib.modules.sample_task.sample_implementation.SampleModule'>": 1
-            }
+                assert len(data) == 1
+                assert list(data[0].keys()) == [
+                    "timestamp",
+                    "batch_size",
+                    "model_type_counters",
+                    "container_id",
+                ]
+                assert data[0]["batch_size"] == 1
+                assert len(data[0]["model_type_counters"]) == 1
+                assert data[0]["model_type_counters"] == {
+                    "<class 'sample_lib.modules.sample_task.sample_implementation.SampleModule'>": 1
+                }
 
 
 def test_reflection_enabled(runtime_grpc_server):

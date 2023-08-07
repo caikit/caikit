@@ -62,13 +62,13 @@ def test_threads_canceled_when_interrupt_fails():
     end_event = threading.Event()
 
     def blocking_fn():
-        start_event.wait()
+        start_event.set()
         time.sleep(0.01)
         end_event.wait()
 
     thread = DestroyableThread(blocking_fn)
     thread.start()
-    start_event.set()
+    start_event.wait()
     thread.destroy()
     assert thread.canceled
     # NOTE: We don't assert that thread.is_alive() here since it's potentially

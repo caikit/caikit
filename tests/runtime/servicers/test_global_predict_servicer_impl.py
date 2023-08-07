@@ -39,6 +39,7 @@ from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model import SampleInputType, SampleOutputType
 from sample_lib.modules.sample_task import SampleModule
+from tests.conftest import temp_config
 from tests.fixtures import Fixtures
 
 HAPPY_PATH_INPUT_DM = SampleInputType(name="Gabe")
@@ -226,63 +227,66 @@ def test_global_predict_aborts_long_running_predicts(
 
 def test_metering_ignore_unsuccessful_calls(
     sample_inference_service,
-    sample_predict_servicer,
     sample_task_model_id,
     sample_task_unary_rpc,
 ):
-    with patch.object(
-        sample_predict_servicer.rpc_meter, "update_metrics"
-    ) as mock_update_func:
-        request = sample_inference_service.messages.SampleTaskRequest(
-            sample_input=HAPPY_PATH_INPUT, throw=True
-        )
-        with pytest.raises(CaikitRuntimeException):
-            sample_predict_servicer.Predict(
-                request,
-                Fixtures.build_context(sample_task_model_id),
-                caikit_rpc=sample_task_unary_rpc,
-            )
+    with temp_config({"runtime": {"metering": {"enabled": True}}}, "merge"):
+        gps = GlobalPredictServicer(sample_inference_service)
+        try:
+            with patch.object(gps.rpc_meter, "update_metrics") as mock_update_func:
+                request = sample_inference_service.messages.SampleTaskRequest(
+                    sample_input=HAPPY_PATH_INPUT, throw=True
+                )
+                with pytest.raises(CaikitRuntimeException):
+                    gps.Predict(
+                        request,
+                        Fixtures.build_context(sample_task_model_id),
+                        caikit_rpc=sample_task_unary_rpc,
+                    )
 
-        mock_update_func.assert_not_called()
+                mock_update_func.assert_not_called()
+        finally:
+            gps.stop_metering()
 
 
 def test_metering_predict_rpc_counter(
     sample_inference_service, sample_task_model_id, sample_task_unary_rpc
 ):
     # need a new servicer to get a fresh new RPC meter
-    sample_predict_servicer = GlobalPredictServicer(sample_inference_service)
-    try:
-        # Making 20 requests
-        for i in range(20):
-            sample_predict_servicer.Predict(
-                sample_inference_service.messages.SampleTaskRequest(
-                    sample_input=HAPPY_PATH_INPUT
-                ),
-                Fixtures.build_context(sample_task_model_id),
-                caikit_rpc=sample_task_unary_rpc,
-            )
+    with temp_config({"runtime": {"metering": {"enabled": True}}}, "merge"):
+        sample_predict_servicer = GlobalPredictServicer(sample_inference_service)
+        try:
+            # Making 20 requests
+            for i in range(20):
+                sample_predict_servicer.Predict(
+                    sample_inference_service.messages.SampleTaskRequest(
+                        sample_input=HAPPY_PATH_INPUT
+                    ),
+                    Fixtures.build_context(sample_task_model_id),
+                    caikit_rpc=sample_task_unary_rpc,
+                )
 
-        # Force meter to write
-        sample_predict_servicer.rpc_meter.flush_metrics()
+            # Force meter to write
+            sample_predict_servicer.rpc_meter.flush_metrics()
 
-        # Assertions on the created metrics file
-        with open(sample_predict_servicer.rpc_meter.file_path) as f:
-            data = [json.loads(line) for line in f]
+            # Assertions on the created metrics file
+            with open(sample_predict_servicer.rpc_meter.file_path) as f:
+                data = [json.loads(line) for line in f]
 
-        assert len(data) == 1
-        assert list(data[0].keys()) == [
-            "timestamp",
-            "batch_size",
-            "model_type_counters",
-            "container_id",
-        ]
-        assert data[0]["batch_size"] == 20
-        assert len(data[0]["model_type_counters"]) == 1
-        assert data[0]["model_type_counters"] == {
-            "<class 'sample_lib.modules.sample_task.sample_implementation.SampleModule'>": 20
-        }
-    finally:
-        sample_predict_servicer.rpc_meter.end_writer_thread()
+            assert len(data) == 1
+            assert list(data[0].keys()) == [
+                "timestamp",
+                "batch_size",
+                "model_type_counters",
+                "container_id",
+            ]
+            assert data[0]["batch_size"] == 20
+            assert len(data[0]["model_type_counters"]) == 1
+            assert data[0]["model_type_counters"] == {
+                "<class 'sample_lib.modules.sample_task.sample_implementation.SampleModule'>": 20
+            }
+        finally:
+            sample_predict_servicer.stop_metering()
 
 
 def test_metering_write_to_metrics_file_twice(
@@ -291,45 +295,46 @@ def test_metering_write_to_metrics_file_twice(
     sample_task_unary_rpc,
 ):
     """Make sure subsequent metering events append to file"""
-    # need a new servicer to get a fresh new RPC meter
-    sample_predict_servicer = GlobalPredictServicer(sample_inference_service)
-    try:
-        sample_predict_servicer.Predict(
-            sample_inference_service.messages.SampleTaskRequest(
-                sample_input=HAPPY_PATH_INPUT
-            ),
-            Fixtures.build_context(sample_task_model_id),
-            caikit_rpc=sample_task_unary_rpc,
-        )
+    with temp_config({"runtime": {"metering": {"enabled": True}}}, "merge"):
+        # need a new servicer to get a fresh new RPC meter
+        sample_predict_servicer = GlobalPredictServicer(sample_inference_service)
+        try:
+            sample_predict_servicer.Predict(
+                sample_inference_service.messages.SampleTaskRequest(
+                    sample_input=HAPPY_PATH_INPUT
+                ),
+                Fixtures.build_context(sample_task_model_id),
+                caikit_rpc=sample_task_unary_rpc,
+            )
 
-        # Force write
-        sample_predict_servicer.rpc_meter.flush_metrics()
+            # Force write
+            sample_predict_servicer.rpc_meter.flush_metrics()
 
-        sample_predict_servicer.Predict(
-            sample_inference_service.messages.SampleTaskRequest(
-                sample_input=HAPPY_PATH_INPUT
-            ),
-            Fixtures.build_context(sample_task_model_id),
-            caikit_rpc=sample_task_unary_rpc,
-        )
+            sample_predict_servicer.Predict(
+                sample_inference_service.messages.SampleTaskRequest(
+                    sample_input=HAPPY_PATH_INPUT
+                ),
+                Fixtures.build_context(sample_task_model_id),
+                caikit_rpc=sample_task_unary_rpc,
+            )
 
-        # Force write
-        sample_predict_servicer.rpc_meter.flush_metrics()
+            # Force write
+            sample_predict_servicer.rpc_meter.flush_metrics()
 
-        with open(sample_predict_servicer.rpc_meter.file_path) as f:
-            data = [json.loads(line) for line in f]
+            with open(sample_predict_servicer.rpc_meter.file_path) as f:
+                data = [json.loads(line) for line in f]
 
-        assert len(data) == 2
-        assert list(data[0].keys()) == [
-            "timestamp",
-            "batch_size",
-            "model_type_counters",
-            "container_id",
-        ]
-        assert data[0]["batch_size"] == 1
-        assert len(data[0]["model_type_counters"]) == 1
-        assert data[0]["model_type_counters"] == {
-            "<class 'sample_lib.modules.sample_task.sample_implementation.SampleModule'>": 1
-        }
-    finally:
-        sample_predict_servicer.rpc_meter.end_writer_thread()
+            assert len(data) == 2
+            assert list(data[0].keys()) == [
+                "timestamp",
+                "batch_size",
+                "model_type_counters",
+                "container_id",
+            ]
+            assert data[0]["batch_size"] == 1
+            assert len(data[0]["model_type_counters"]) == 1
+            assert data[0]["model_type_counters"] == {
+                "<class 'sample_lib.modules.sample_task.sample_implementation.SampleModule'>": 1
+            }
+        finally:
+            sample_predict_servicer.stop_metering()

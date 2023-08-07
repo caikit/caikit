@@ -45,24 +45,30 @@ class RuntimeServerBase(abc.ABC):
         self.tls_config = (
             tls_config_override if tls_config_override else self.config.runtime.tls
         )
-        log.debug4("Full caikit config: %s", get_config())
+        log.debug4("Full caikit config: %s", self.config)
 
         # Configure using the log level and formatter type specified in config.
         caikit.core.toolkit.logging.configure()
 
         # We should always be able to stand up an inference service
-        self.inference_service: ServicePackage = (
+        self.enable_inference = self.config.runtime.service_generation.enable_inference
+        self.enable_training = self.config.runtime.service_generation.enable_training
+        self.inference_service: Optional[ServicePackage] = (
             ServicePackageFactory.get_service_package(
                 ServicePackageFactory.ServiceType.INFERENCE,
             )
+            if self.enable_inference
+            else None
         )
 
         # But maybe not always a training service
         try:
-            training_service: Optional[
-                ServicePackage
-            ] = ServicePackageFactory.get_service_package(
-                ServicePackageFactory.ServiceType.TRAINING,
+            training_service: Optional[ServicePackage] = (
+                ServicePackageFactory.get_service_package(
+                    ServicePackageFactory.ServiceType.TRAINING,
+                )
+                if self.enable_training
+                else None
             )
         except CaikitRuntimeException as e:
             log.warning("Cannot stand up training service, disabling training: %s", e)

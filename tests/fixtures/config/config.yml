@@ -3,15 +3,15 @@ runtime:
     metrics:
         enabled: false
     metering:
-        # Switch on metering by default
-        enabled: true
+        # Switch off metering by default
+        enabled: false
         # Directory to save metrics files
-        log_dir: "test/metering_logs"
+        log_dir: null
         # Write to log file every N seconds
         log_interval: 5
 
     training:
-        output_dir: test/training_output
+        output_dir: null
 
 inference_plugin:
     model_mesh:

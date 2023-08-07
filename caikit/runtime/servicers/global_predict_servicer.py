@@ -97,6 +97,7 @@ class GlobalPredictServicer:
     ):
         self._started_metering = False
         self._model_manager = ModelManager.get_instance()
+        self._rpc_meter = None
         if get_config().runtime.metering.enabled:
             self._started_metering = True
             self.rpc_meter = RPCMeter()
@@ -269,7 +270,7 @@ class GlobalPredictServicer:
             return response
 
     def stop_metering(self):
-        if get_config().runtime.metering.enabled and self._started_metering:
+        if self._started_metering:
             self.rpc_meter.flush_metrics()
             self.rpc_meter.end_writer_thread()
             self._started_metering = False
