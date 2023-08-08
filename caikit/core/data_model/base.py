@@ -38,6 +38,7 @@ from . import enums, json_dict, timestamp
 
 # metaclass-generated field members cannot be detected by pylint
 # pylint: disable=no-member
+# pylint: disable=too-many-lines
 
 
 log = alog.use_channel("DATAM")
@@ -702,10 +703,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
                         == timestamp.TIMESTAMP_PROTOBUF_NAME
                     ):
                         kwargs[field] = timestamp.proto_to_datetime(proto_attr)
-                    elif any(
-                        proto_attr.DESCRIPTOR.full_name.endswith(u_type)
-                        for u_type in cls._UNION_TYPES
-                    ):
+                    elif proto_attr.DESCRIPTOR.full_name.endswith("Sequence"):
                         # "foo_bar_int_sequence" has original field name "foo_bar"
                         original_field_name = "_".join(field.split("_")[:-2])
                         contained_class = cls.get_class_for_proto(proto_attr)
@@ -877,11 +875,8 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 elif subproto.DESCRIPTOR.full_name == timestamp.TIMESTAMP_PROTOBUF_NAME:
                     timestamp_proto = timestamp.datetime_to_proto(attr)
                     subproto.CopyFrom(timestamp_proto)
-                # check that this is any of the self._UNION_TYPES
-                elif any(
-                    subproto.DESCRIPTOR.full_name.endswith(u_type)
-                    for u_type in self._UNION_TYPES
-                ):
+                # check that this is any of the Union of List types
+                elif subproto.DESCRIPTOR.full_name.endswith("Sequence"):
                     seq_dm = subproto.__class__
                     try:
                         subproto.CopyFrom(seq_dm(values=attr))

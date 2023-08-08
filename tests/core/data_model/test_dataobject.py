@@ -516,6 +516,7 @@ def test_dataobject_with_same_type_of_oneof():
     assert foo2.foo_bool1 == None
     assert foo2.foo_bool2
 
+
 @pytest.mark.skip(reason="wip")
 def test_dataobject_with_same_type_of_oneof_with_lists():
     """Make sure that using a Union of lists to create a oneof with the same types works as expected"""
@@ -931,12 +932,22 @@ def test_dataobject_to_kwargs(temp_dpool):
         type_union_list_val: Union[List[str], str]
 
     bar = Bar(bar=42)
-    foo = Foo(int_val=1, type_union_val="foo", bar_val=bar, type_union_list_val=["hello", "world"])
+    foo = Foo(
+        int_val=1,
+        type_union_val="foo",
+        bar_val=bar,
+        type_union_list_val=["hello", "world"],
+    )
 
     kwargs = foo.to_kwargs()
 
     # `type_union_val` is set here rather than the `type_union_val_str_val` internal oneof field name
-    assert kwargs == {"int_val": 1, "type_union_val": "foo", "bar_val": bar, "type_union_list_val": ["hello", "world"]}
+    assert kwargs == {
+        "int_val": 1,
+        "type_union_val": "foo",
+        "bar_val": bar,
+        "type_union_list_val": ["hello", "world"],
+    }
 
 
 def test_dataobject_inheritance(temp_dpool):
