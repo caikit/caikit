@@ -324,7 +324,7 @@ class LocalModelTrainer(ModelTrainerBase):
             return model_future
         raise CaikitCoreException(
             status_code=CaikitCoreStatusCode.NOT_FOUND,
-            msg=f"Unknown training_id: {training_id}",
+            message=f"Unknown training_id: {training_id}",
         )
 
     ## Impl ##

@@ -64,7 +64,7 @@ class MockModelFuture:
             return TrainingInfo(status=TrainingStatus.RUNNING)
         else:
             raise CaikitCoreException(
-                status_code=CaikitCoreStatusCode.NOT_FOUND, msg="Training not found"
+                status_code=CaikitCoreStatusCode.NOT_FOUND, message="Training not found"
             )
 
     def cancel(self):
