@@ -429,7 +429,8 @@ def test_train_sample_task(runtime_http_server):
         json_input = {
             "inputs": {
                 "model_name": model_name,
-                "training_data": {"data_stream": {"file": "hello"}},
+                "training_data": {"data_stream": {"data": [{"number": 1}]}},
+                # "training_data": {"data_stream": {"file": {"filename": "file1"}}},
             },
             "parameters": {"batch_size": 42},
         }
@@ -564,7 +565,7 @@ def test_train_other_task(runtime_http_server):
         json_input = {
             "inputs": {
                 "model_name": model_name,
-                "training_data": {"data_stream": {"data": [1, 2]}},
+                "training_data": {"data_stream": {"data": [{"number": 1}]}},
                 "sample_input": {"name": "test"},
             }
         }
