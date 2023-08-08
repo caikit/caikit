@@ -754,28 +754,6 @@ class DataBase(metaclass=_DataBaseMetaClass):
         # Get protobufs class required for parsing
         error.type_check("<COR91037250E>", str, dict, json_str=json_str)
 
-        # setting union of list type "foo" to "foo_str_sequence"
-        if cls._fields_oneofs_map:
-            json_as_dict = json.loads(json_str)
-            for oneof, union_list_types in cls._fields_oneofs_map.items():
-                # if one_of is in json_as_dict, this one_of is a union of lists
-                if oneof in json_as_dict:
-                    value = json_as_dict[oneof]
-                    if isinstance(value, list):
-                        union_type = (
-                            f"{oneof}_{type(value[0]).__name__}_sequence"
-                            if len(value) > 0
-                            else union_list_types[0]
-                        )
-                        json_as_dict[union_type] = {"values": value}
-                    else:
-                        union_type = f"{oneof}_{type(value).__name__}"
-                        json_as_dict[union_type] = value
-                    del json_as_dict[oneof]
-
-            # put the new json_as_dict back into json_str
-            json_str = json.dumps(json_as_dict)
-
         if isinstance(json_str, dict):
             # Convert dict object to a JSON string
             json_str = json.dumps(json_str)
@@ -960,25 +938,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
         if "default" not in kwargs:
             kwargs["default"] = _default_serialization_overrides
 
-        dict_val = self.to_dict()
-
-        # if this class has union of lists, converting the union list field into the one_of
-        # Ex: converting dict from {"foo_str_sequence": {"values": ["a","b"]}} to {"foo": ["a","b"]}
-        if self._fields_oneofs_map:
-            for one_of, fields in self._fields_oneofs_map.items():
-                # make sure that this one_of is a union of lists
-                if any(field.endswith("_sequence") for field in fields):
-                    for field in fields:
-                        if field in dict_val:
-                            field_val = dict_val[field]
-                            dict_val[one_of] = (
-                                field_val["values"]
-                                if isinstance(field_val, dict)
-                                else field_val
-                            )
-                            del dict_val[field]
-
-        return json.dumps(dict_val, **kwargs)
+        return json.dumps(self.to_dict(), **kwargs)
 
     def __repr__(self):
         """Human-friendly representation."""

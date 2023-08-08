@@ -1046,13 +1046,13 @@ def test_dataobject_union_repeated():
 
     # json round trip
     json_repr_foo = foo1.to_json()
-    assert json.loads(json_repr_foo) == {"foo": [1, 2]}
+    assert json.loads(json_repr_foo) == {"foo_int_sequence": {"values": [1, 2]}}
     foo_json_repr = Foo.from_json(json_repr_foo)
     assert foo_json_repr.to_json() == json_repr_foo
 
     # test native python list json round trip
     json_repr_foo = foo_int_native.to_json()
-    assert json.loads(json_repr_foo) == {"foo": [1, 2]}
+    assert json.loads(json_repr_foo) == {"foo_int_sequence": {"values": [1, 2]}}
     foo_json_repr = Foo.from_json(json_repr_foo)
     assert foo_json_repr.to_json() == json_repr_foo
 
@@ -1087,7 +1087,7 @@ def test_dataobject_union_repeated():
 
     # json round trip
     json_repr_bar = bar1.to_json()
-    assert json.loads(json_repr_bar) == {"bar": [1, 2]}
+    assert json.loads(json_repr_bar) == {"bar_int_sequence": {"values": [1, 2]}}
     bar_json_repr = Foo.from_json(json_repr_bar)
     assert bar_json_repr.to_json() == json_repr_bar
 
