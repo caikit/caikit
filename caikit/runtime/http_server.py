@@ -282,42 +282,38 @@ class RuntimeHTTPServer(RuntimeServerBase):
         self, request_params: Dict[str, any]
     ) -> Dict[str, any]:
         """Build request params dict, converting pydantic objects to our DM objects"""
-        # special case for training_data
-        if training_data := request_params.get("training_data", None):
-            # get json from pydantic model
-            training_data_json = training_data.model_dump_json()
-            substituted_json = ""
-            # we're asking PYDANTIC_REGISTRY to give us back a pydantic
-            # model of a JsonData, but we first want to get the DM class
-            # for the type of training_data, hence nested calls.
-            if isinstance(
-                training_data.data_stream,
-                PYDANTIC_REGISTRY.get(
-                    PYDANTIC_REGISTRY.get(type(training_data)).JsonData
-                ),
-            ):
-                # substitute data_stream in json repr with jsondata
-                substituted_json = training_data_json.replace("data_stream", "jsondata")
-            elif isinstance(
-                training_data.data_stream,
-                PYDANTIC_REGISTRY.get(PYDANTIC_REGISTRY.get(type(training_data)).File),
-            ):
-                # substitute data_stream in json repr with file
-                substituted_json = training_data_json.replace("data_stream", "file")
-
-            json_data_obj = PYDANTIC_REGISTRY.get(type(training_data)).from_json(
-                substituted_json
-            )
-            request_params["training_data"] = json_data_obj
-
-        # Convert all to DM object types
         for param_name, param_value in request_params.items():
-            if param_name != "training_data" and issubclass(
-                type(param_value), pydantic.BaseModel
-            ):
-                request_params[param_name] = PYDANTIC_REGISTRY.get(
-                    type(param_value)
-                ).from_json(param_value.model_dump_json())
+            if issubclass(type(param_value), pydantic.BaseModel):
+                pydantic_json = param_value.model_dump_json()
+                # special case for data streams
+                if "data_stream" in pydantic_json:
+                    if isinstance(
+                        param_value.data_stream,
+                        PYDANTIC_REGISTRY.get(
+                            PYDANTIC_REGISTRY.get(type(param_value)).JsonData
+                        ),
+                    ):
+                        # substitute data_stream in json repr with jsondata
+                        substituted_json = pydantic_json.replace(
+                            "data_stream", "jsondata"
+                        )
+                    elif isinstance(
+                        param_value.data_stream,
+                        PYDANTIC_REGISTRY.get(
+                            PYDANTIC_REGISTRY.get(type(param_value)).File
+                        ),
+                    ):
+                        # substitute data_stream in json repr with file
+                        substituted_json = pydantic_json.replace("data_stream", "file")
+
+                    json_data_obj = PYDANTIC_REGISTRY.get(type(param_value)).from_json(
+                        substituted_json
+                    )
+                    request_params[param_name] = json_data_obj
+                else:
+                    request_params[param_name] = PYDANTIC_REGISTRY.get(
+                        type(param_value)
+                    ).from_json(pydantic_json)
         return request_params
 
     def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
