@@ -516,6 +516,31 @@ def test_dataobject_with_same_type_of_oneof():
     assert foo2.foo_bool1 == None
     assert foo2.foo_bool2
 
+@pytest.mark.skip(reason="wip")
+def test_dataobject_with_same_type_of_oneof_with_lists():
+    """Make sure that using a Union of lists to create a oneof with the same types works as expected"""
+
+    @dataobject
+    class Foo(DataObjectBase):
+        foo: Union[
+            Annotated[List[bool], FieldNumber(10), OneofField("foo_bool1")],
+            Annotated[List[bool], FieldNumber(20), OneofField("foo_bool2")],
+        ]
+
+    # if the fields are of the same type, then by default the first one is set
+    foo1 = Foo([True])
+    assert foo1.which_oneof("foo") == "foo_bool1"
+    assert foo1.foo_bool1[0]
+    assert foo1.foo_bool2 == None
+    assert Foo.from_json(foo1.to_json) == foo1
+
+    # unless set explicitly
+    foo2 = Foo(foo_bool2=[True])
+    assert foo2.which_oneof("foo") == "foo_bool2"
+    assert foo2.foo_bool1 == None
+    assert foo2.foo_bool2[0]
+    assert Foo.from_json(foo2.to_json) == foo2
+
 
 def test_dataobject_primitive_oneof_round_trips():
     @dataobject
@@ -903,14 +928,15 @@ def test_dataobject_to_kwargs(temp_dpool):
         int_val: int
         type_union_val: Union[int, str]
         bar_val: Bar
+        type_union_list_val: Union[List[str], str]
 
     bar = Bar(bar=42)
-    foo = Foo(int_val=1, type_union_val="foo", bar_val=bar)
+    foo = Foo(int_val=1, type_union_val="foo", bar_val=bar, type_union_list_val=["hello", "world"])
 
     kwargs = foo.to_kwargs()
 
     # `type_union_val` is set here rather than the `type_union_val_str_val` internal oneof field name
-    assert kwargs == {"int_val": 1, "type_union_val": "foo", "bar_val": bar}
+    assert kwargs == {"int_val": 1, "type_union_val": "foo", "bar_val": bar, "type_union_list_val": ["hello", "world"]}
 
 
 def test_dataobject_inheritance(temp_dpool):
