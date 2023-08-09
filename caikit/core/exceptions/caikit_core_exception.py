@@ -25,12 +25,14 @@ class CaikitCoreStatusCode(Enum):
     CONNECTION_ERROR = 3
     UNAUTHORIZED = 4
     FORBIDDEN = 5
+    UNKNOWN = 6
+    FATAL = 7
 
 
 class CaikitCoreException(Exception):
-    StatusCode: CaikitCoreStatusCode
-    Message: str
+    status_code: CaikitCoreStatusCode
+    message: str
 
-    def __init__(self, status_code: CaikitCoreStatusCode, msg: str) -> None:
-        self.StatusCode = status_code
-        self.Message = msg
+    def __init__(self, status_code: CaikitCoreStatusCode, message: str) -> None:
+        self.status_code = status_code
+        self.message = message

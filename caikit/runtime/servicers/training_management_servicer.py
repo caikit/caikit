@@ -95,7 +95,7 @@ class TrainingManagementServicerImpl:
             # This is to handle stateful trainers that implement `cancel` by fully deleting
             # the training. NB: Future `GetTrainingStatus` calls for these canceled trainings
             # would raise a not found error to the user.
-            if err.StatusCode == CaikitCoreStatusCode.NOT_FOUND:
+            if err.status_code == CaikitCoreStatusCode.NOT_FOUND:
                 return TrainingStatusResponse(
                     training_id=training_info_request.training_id,
                     state=TrainingStatus.CANCELED,
