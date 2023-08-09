@@ -82,11 +82,11 @@ class ModelManager:
         """
         # Initialize all configured components
         mm_config = get_config().model_management
-        for trainer in mm_config.trainers:
+        for trainer in mm_config.get("trainers", {}):
             self.get_trainer(trainer)
-        for finder in mm_config.finders:
+        for finder in mm_config.get("finders", {}):
             self.get_finder(finder)
-        for initializer in mm_config.initializers:
+        for initializer in mm_config.get("initializers", {}):
             self.get_initializer(initializer)
 
     ## Public ##################################################################
