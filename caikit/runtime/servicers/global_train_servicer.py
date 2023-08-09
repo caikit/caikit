@@ -191,43 +191,15 @@ class GlobalTrainServicer:
             training_job (TrainingJob): The job handle for the training with the
                 job's ID and the model's name
         """
-        request_data_model = None
-        request_params = None
-        model_name = None
+        request_data_model = caikit.core.data_model.DataBase.get_class_for_proto(
+            request
+        ).from_proto(request)
 
-        if isinstance(request, ProtoMessageType):
-            request_data_model = caikit.core.data_model.DataBase.get_class_for_proto(
-                request
-            ).from_proto(request)
-            request_params = build_caikit_library_request_dict(
-                request, module.TRAIN_SIGNATURE
-            )
-        else:
-            request_params = kwargs.pop("request_params", None)
-
-        if request_params is None:
-            raise CaikitRuntimeException(
-                StatusCode.INVALID_ARGUMENT,
-                "Could not figoure out params for this request",
-            )
-        if request_data_model:
-            model_name = request_data_model.model_name
-        else:
-            # try to get it from request_params
-            model_name = request_params.pop("model_name", None)
-        if model_name is None:
-            raise CaikitRuntimeException(
-                StatusCode.INVALID_ARGUMENT,
-                "Model name not provided for this request",
-            )
         # Figure out where this model will be saved
         model_path: Union[str, S3Path]
-        if request_data_model and request_data_model.output_path:
+        if request_data_model.output_path:
             # If we got an S3 storage link, just pass that along to the trainer
             model_path: S3Path = request_data_model.output_path
-        elif "output_path" in request_params:
-            # forward s3 storage links from REST requests
-            model_path: S3Path = request_params.get("output_path")
         else:
             # Otherwise, use either:
             # 1. The provided `training_output_dir` here, or
@@ -240,8 +212,8 @@ class GlobalTrainServicer:
                 "module": module,
                 "save_path": model_path,
                 "save_with_id": self.save_with_id,
-                "model_name": model_name,
-                **request_params,
+                "model_name": request_data_model.model_name,
+                **build_caikit_library_request_dict(request, module.TRAIN_SIGNATURE),
             }
         )
 
@@ -261,7 +233,6 @@ class GlobalTrainServicer:
 
             # Register the cancellation callback if given a context
             if context is not None:
-                # TODO: check type of context to be grpc context
 
                 # Create a callback to register termination of training
                 def rpc_termination_callback():
@@ -302,7 +273,7 @@ class GlobalTrainServicer:
 
         # return TrainingJob object
         return TrainingJob(
-            model_name=model_name,
+            model_name=request.model_name,
             training_id=model_future.id,
         )
 
