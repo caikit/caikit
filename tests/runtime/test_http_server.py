@@ -565,7 +565,7 @@ def test_train_other_task(runtime_http_server):
         json_input = {
             "inputs": {
                 "model_name": model_name,
-                "training_data": {"data_stream": {"data": [{"number": 1}]}},
+                "training_data": {"data_stream": {"data": [1, 2]}},
                 "sample_input": {"name": "test"},
             }
         }
