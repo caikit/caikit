@@ -59,6 +59,7 @@ from caikit.runtime.service_generation.rpcs import (
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+import caikit
 
 ## Globals #####################################################################
 
@@ -351,16 +352,33 @@ class RuntimeHTTPServer(RuntimeServerBase):
         ) -> pydantic_response:
             log.debug("In unary handler for %s", rpc.name)
             loop = asyncio.get_running_loop()
-            request_params = self._get_request_params(rpc, request=request)
 
+            request_params = self._get_request_params(rpc, request=request)
             self.build_request_params_dict(request_params)
+
+            # build request DM object
+            http_request_dm_object = self.build_dm_object(request)
+
+            request_dm_class = caikit.core.data_model.DataBase.get_class_for_name(
+                rpc.request.name
+            )
+            request_dm_class_kwargs = {}
+            required_inputs = getattr(http_request_dm_object, REQUIRED_INPUTS_KEY, None)
+            optional_inputs = getattr(http_request_dm_object, OPTIONAL_INPUTS_KEY, None)
+            for input in (required_inputs, optional_inputs):
+                if input is not None:
+                    for field_name in input.fields:
+                        field_value = getattr(input, field_name, None)
+                        if field_value is not None:
+                            request_dm_class_kwargs[field_name] = field_value
+
+            request_dm_object = request_dm_class(**request_dm_class_kwargs)
             try:
                 call = partial(
                     self.global_train_servicer.run_training_job,
-                    request=request,
+                    request=request_dm_object.to_proto(),
                     module=rpc.clz,
                     training_output_dir=None,  # pass None so that GTS picks up the config one # TODO: double-check?
-                    request_params=request_params,
                     # context=context,
                     wait=True,
                 )
