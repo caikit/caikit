@@ -316,6 +316,25 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     ).from_json(pydantic_json)
         return request_params
 
+    def build_dm_object(self, pydantic_model: pydantic.BaseModel) -> DataBase:
+        """Convert pydantic objects to our DM objects"""
+        dm_class_to_build = PYDANTIC_REGISTRY.get(type(pydantic_model))
+        dm_kwargs = {}
+
+        for field_name, field_value in pydantic_model:
+            # field could be a DM:
+            if type(field_value) in PYDANTIC_REGISTRY:
+                dm_kwargs[field_name] = self.build_dm_object(field_value)
+            elif type(field_value) is list and len(field_value) > 0:
+                if all([type(val) in PYDANTIC_REGISTRY for val in field_value]):
+                    dm_kwargs[field_name] = [self.build_dm_object(field_value[0])]
+                else:
+                    dm_kwargs[field_name] = field_value
+            else:
+                dm_kwargs[field_name] = field_value
+
+        return dm_class_to_build(**dm_kwargs)
+
     def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = self._dataobject_to_pydantic(
