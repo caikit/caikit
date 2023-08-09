@@ -454,6 +454,7 @@ class ModelManager:
             # NOTE: This will lazily construct named finders if needed
             log.debug("Attempting to find [%s] with finder %s", module_path, finder)
             finder = self.get_finder(finder)
+            log.debug2("Finder type: %s", finder.name)
             model_config = finder.find_model(module_path, **kwargs)
             error.value_check(
                 "<COR92173495E>",
@@ -465,7 +466,13 @@ class ModelManager:
             # Use the given initializer to try to load the model
             #
             # NOTE: This will lazily construct named initializers if needed
+            log.debug(
+                "Attempting to initialize [%s] with initializer %s",
+                module_path,
+                initializer,
+            )
             initializer = self.get_initializer(initializer)
+            log.debug2("Initializer type: %s", initializer.name)
             loaded_model = initializer.init(model_config, **kwargs)
             error.value_check(
                 "<COR50207494E>",
