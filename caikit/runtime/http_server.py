@@ -381,6 +381,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             loop = asyncio.get_running_loop()
 
             request_params = self._get_request_params(rpc, request)
+            self.build_request_params_dict(request_params)
 
             log.debug4("Sending request %s to model id %s", request_params, model_id)
             try:
@@ -434,6 +435,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             log.debug("In streaming handler for %s", rpc.name)
 
             request_params = self._get_request_params(rpc, request)
+            self.build_request_params_dict(request_params)
             log.debug4("Sending request %s to model id %s", request_params, model_id)
 
             async def _generator() -> pydantic_response:
