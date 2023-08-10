@@ -298,7 +298,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 dm_kwargs[field_name] = self.build_dm_object(field_value)
             elif isinstance(field_value, list):
                 if all(type(val) in PYDANTIC_TO_DM_MAPPING for val in field_value):
-                    dm_kwargs[field_name] = [self.build_dm_object(val) for val in field_value]
+                    dm_kwargs[field_name] = [
+                        self.build_dm_object(val) for val in field_value
+                    ]
                 else:
                     dm_kwargs[field_name] = field_value
             else:
