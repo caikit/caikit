@@ -13,8 +13,19 @@
 # limitations under the License.
 
 # Local
-from . import package, text_generation
+from . import classification, package, text, text_generation
+from .classification import (
+    ClassificationResult,
+    ClassificationResults,
+    ClassificationTrainRecord,
+    ClassifiedGeneratedTextResult,
+    ClassifiedGeneratedTextStreamResult,
+    TokenClassificationResult,
+    TokenClassificationResults,
+    TokenClassificationStreamResult,
+)
 from .package import NLP_PACKAGE
+from .text import Token, TokenizationResults, TokenizationStreamResult
 from .text_generation import (
     FinishReason,
     GeneratedTextResult,

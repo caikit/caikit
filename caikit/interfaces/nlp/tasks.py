@@ -20,6 +20,14 @@ from typing import Iterable
 
 # Local
 from ...core import TaskBase, task
+from .data_model.classification import (
+    ClassificationResults,
+    ClassifiedGeneratedTextResult,
+    ClassifiedGeneratedTextStreamResult,
+    TokenClassificationResults,
+    TokenClassificationStreamResult,
+)
+from .data_model.text import TokenizationResults, TokenizationStreamResult
 from .data_model.text_generation import GeneratedTextResult, GeneratedTextStreamResult
 
 
@@ -31,4 +39,46 @@ from .data_model.text_generation import GeneratedTextResult, GeneratedTextStream
 class TextGenerationTask(TaskBase):
     """The Text Generation Task is responsible for taking input prompting text
     and generating additional text from that prompt.
+    """
+
+
+@task(
+    required_parameters={"text": str},
+    output_type=ClassificationResults,
+)
+class TextClassificationTask(TaskBase):
+    """The text classification task is responsible for assigning a label or class to text."""
+
+
+@task(
+    unary_parameters={"text": str},
+    streaming_parameters={"text_stream": Iterable[str]},
+    unary_output_type=TokenClassificationResults,
+    streaming_output_type=Iterable[TokenClassificationStreamResult],
+)
+class TokenClassificationTask(TaskBase):
+    """The token classification task is responsible for assigning a label to individual
+    tokens in a document.
+    """
+
+
+@task(
+    unary_parameters={"text": str},
+    streaming_parameters={"text_stream": Iterable[str]},
+    unary_output_type=TokenizationResults,
+    streaming_output_type=Iterable[TokenizationStreamResult],
+)
+class TokenizationTask(TaskBase):
+    """The tokenization task is responsible for splitting a document into tokens."""
+
+
+@task(
+    unary_parameters={"text": str},
+    unary_output_type=ClassifiedGeneratedTextResult,
+    streaming_output_type=Iterable[ClassifiedGeneratedTextStreamResult],
+)
+class ClassificationWithTextGenerationTask(TaskBase):
+    """The classification with text generation task is responsible for taking
+    input prompting text, generating additional text from that prompt and classifying
+    the generated text based on detectors.
     """
