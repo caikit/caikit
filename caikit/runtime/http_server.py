@@ -293,10 +293,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         for field_name, field_value in pydantic_model:
             # field could be a DM:
+            # pylint: disable=unidiomatic-typecheck
             if type(field_value) in PYDANTIC_TO_DM_MAPPING:
                 dm_kwargs[field_name] = self.build_dm_object(field_value)
-            elif type(field_value) is list and len(field_value) > 0:
-                if all([type(val) in PYDANTIC_TO_DM_MAPPING for val in field_value]):
+            elif isinstance(field_value, list) and len(field_value) > 0:
+                if all(type(val) in PYDANTIC_TO_DM_MAPPING for val in field_value):
                     dm_kwargs[field_name] = [self.build_dm_object(field_value[0])]
                 else:
                     dm_kwargs[field_name] = field_value
@@ -331,10 +332,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
             request_dm_class_kwargs = {}
             required_inputs = getattr(http_request_dm_object, REQUIRED_INPUTS_KEY, None)
             optional_inputs = getattr(http_request_dm_object, OPTIONAL_INPUTS_KEY, None)
-            for input in (required_inputs, optional_inputs):
-                if input is not None:
-                    for field_name in input.fields:
-                        field_value = getattr(input, field_name, None)
+            for input_type in (required_inputs, optional_inputs):
+                if input_type is not None:
+                    for field_name in input_type.fields:
+                        field_value = getattr(input_type, field_name, None)
                         if field_value is not None:
                             request_dm_class_kwargs[field_name] = field_value
 
