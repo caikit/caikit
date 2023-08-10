@@ -14,29 +14,31 @@
 
 # Local
 from caikit.interfaces.nlp.data_model import (
-    Classification,
     ClassificationResult,
+    ClassificationResults,
     ClassificationTrainRecord,
     ClassifiedGeneratedTextResult,
-    TokenClassification,
     TokenClassificationResult,
+    TokenClassificationResults,
 )
 
 ## Setup #########################################################################
 
-classification1 = Classification(label="temperature", score=0.71)
+classification1 = ClassificationResult(label="temperature", score=0.71)
 
-classification2 = Classification(label="conditions", score=0.98)
+classification2 = ClassificationResult(label="conditions", score=0.98)
 
-classification_result = ClassificationResult(results=[classification1, classification2])
+classification_result = ClassificationResults(
+    results=[classification1, classification2]
+)
 
-token_classification1 = TokenClassification(
+token_classification1 = TokenClassificationResult(
     start=0, end=5, word="moose", entity="animal", score=0.8
 )
-token_classification2 = TokenClassification(
+token_classification2 = TokenClassificationResult(
     start=7, end=12, word="goose", entity="animal", score=0.7
 )
-token_classification_result = TokenClassificationResult(
+token_classification_result = TokenClassificationResults(
     results=[token_classification1, token_classification2]
 )
 
@@ -51,38 +53,38 @@ classification_generated_text_result = ClassifiedGeneratedTextResult(
 
 ## Tests ########################################################################
 
-### Classification
+### ClassificationResult
 
 
 def test_classification_all_fields_accessible():
-    classification_result = Classification(label="temperature", score=0.71)
+    classification_result = ClassificationResult(label="temperature", score=0.71)
     assert classification_result.label == "temperature"
     assert classification_result.score == 0.71
 
 
 def test_classification_from_proto_and_back():
-    new = Classification.from_proto(classification1.to_proto())
+    new = ClassificationResult.from_proto(classification1.to_proto())
     assert new.label == "temperature"
     assert new.score == 0.71
 
 
 def test_classification_from_json_and_back():
-    new = Classification.from_json(classification1.to_json())
+    new = ClassificationResult.from_json(classification1.to_json())
     assert new.label == "temperature"
     assert new.score == 0.71
 
 
-### ClassificationResult
+### ClassificationResults
 
 
 def test_classification_result_all_fields_accessible():
-    classification_result = ClassificationResult(results=[classification1])
+    classification_result = ClassificationResults(results=[classification1])
     assert classification_result.results[0].label == "temperature"
     assert classification_result.results[0].score == 0.71
 
 
 def test_classification_result_from_proto_and_back():
-    new = ClassificationResult.from_proto(classification_result.to_proto())
+    new = ClassificationResults.from_proto(classification_result.to_proto())
     assert new.results[0].label == "temperature"
     assert new.results[0].score == 0.71
     assert new.results[1].label == "conditions"
@@ -90,18 +92,18 @@ def test_classification_result_from_proto_and_back():
 
 
 def test_classification_result_from_json_and_back():
-    new = ClassificationResult.from_json(classification_result.to_json())
+    new = ClassificationResults.from_json(classification_result.to_json())
     assert new.results[0].label == "temperature"
     assert new.results[0].score == 0.71
     assert new.results[1].label == "conditions"
     assert new.results[1].score == 0.98
 
 
-### TokenClassification
+### TokenClassificationResult
 
 
 def test_token_classification_all_fields_accessible():
-    token_classification = TokenClassification(
+    token_classification = TokenClassificationResult(
         start=0,
         end=28,
         word="The cow jumped over the moon",
@@ -116,24 +118,24 @@ def test_token_classification_all_fields_accessible():
 
 
 def test_classification_from_proto_and_back():
-    new = TokenClassification.from_proto(token_classification1.to_proto())
+    new = TokenClassificationResult.from_proto(token_classification1.to_proto())
     assert new.start == 0
     assert new.word == "moose"
     assert new.score == 0.8
 
 
 def test_classification_from_json_and_back():
-    new = TokenClassification.from_json(token_classification1.to_json())
+    new = TokenClassificationResult.from_json(token_classification1.to_json())
     assert new.start == 0
     assert new.word == "moose"
     assert new.score == 0.8
 
 
-### TokenClassificationResult
+### TokenClassificationResults
 
 
 def test_token_classification_result_all_fields_accessible():
-    token_classification_result = TokenClassificationResult(
+    token_classification_result = TokenClassificationResults(
         results=[token_classification1]
     )
     assert token_classification_result.results[0].start == 0
@@ -142,7 +144,7 @@ def test_token_classification_result_all_fields_accessible():
 
 
 def test_token_classification_result_from_proto_and_back():
-    new = TokenClassificationResult.from_proto(token_classification_result.to_proto())
+    new = TokenClassificationResults.from_proto(token_classification_result.to_proto())
     assert new.results[0].start == 0
     assert new.results[0].word == "moose"
     assert new.results[0].score == 0.8
@@ -151,7 +153,7 @@ def test_token_classification_result_from_proto_and_back():
 
 
 def test_classification_result_from_json_and_back():
-    new = TokenClassificationResult.from_json(token_classification_result.to_json())
+    new = TokenClassificationResults.from_json(token_classification_result.to_json())
     assert new.results[0].start == 0
     assert new.results[0].word == "moose"
     assert new.results[0].score == 0.8

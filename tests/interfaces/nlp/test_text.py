@@ -13,13 +13,13 @@
 # limitations under the License.
 
 # Local
-from caikit.interfaces.nlp.data_model import Token, TokenizationResult
+from caikit.interfaces.nlp.data_model import Token, TokenizationResults
 
 ## Setup #########################################################################
 
 dummy_token = Token(start=0, end=11, text="Hello World")
 dummy_token2 = Token(start=0, end=7, text="foo bar")
-tokenization_result = TokenizationResult([dummy_token, dummy_token2])
+tokenization_result = TokenizationResults([dummy_token, dummy_token2])
 
 ## Tests ########################################################################
 
@@ -47,22 +47,22 @@ def test_token_from_json_and_back():
     assert new.text == "Hello World"
 
 
-### TokenizationResult
+### TokenizationResults
 
 
 def test_tokenization_result_all_fields_accessible():
-    tokenization_result = TokenizationResult([dummy_token, dummy_token2])
+    tokenization_result = TokenizationResults([dummy_token, dummy_token2])
     assert tokenization_result.results[0] == dummy_token
     assert tokenization_result.results[1] == dummy_token2
 
 
 def test_tokenization_result_from_proto_and_back():
-    new = TokenizationResult.from_proto(tokenization_result.to_proto())
+    new = TokenizationResults.from_proto(tokenization_result.to_proto())
     assert new.results[0] == dummy_token
     assert new.results[1] == dummy_token2
 
 
 def test_tokenization_result_from_json_and_back():
-    new = TokenizationResult.from_json(tokenization_result.to_json())
+    new = TokenizationResults.from_json(tokenization_result.to_json())
     assert new.results[0] == dummy_token
     assert new.results[1] == dummy_token2

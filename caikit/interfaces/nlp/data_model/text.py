@@ -40,14 +40,14 @@ class Token(DataObjectBase):
 
 
 @dataobject(package=NLP_PACKAGE)
-class TokenizationResult(DataObjectBase):
+class TokenizationResults(DataObjectBase):
     """Tokenization result generated from a text."""
 
     results: Annotated[List[Token], FieldNumber(1)]
 
 
 @dataobject(package=NLP_PACKAGE)
-class TokenizationStreamResult(TokenizationResult):
+class TokenizationStreamResult(TokenizationResults):
     """
     Streaming tokenization result that indicates up to where in stream is processed.
     """

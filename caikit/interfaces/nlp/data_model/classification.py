@@ -42,7 +42,7 @@ class ClassificationTrainRecord(DataObjectBase):
 
 
 @dataobject(package=NLP_PACKAGE)
-class Classification(DataObjectBase):
+class ClassificationResult(DataObjectBase):
     """A single classification prediction."""
 
     label: Annotated[str, FieldNumber(1)]  # Predicted relevant class name
@@ -52,11 +52,11 @@ class Classification(DataObjectBase):
 
 
 @dataobject(package=NLP_PACKAGE)
-class ClassificationResult(DataObjectBase):
-    """Classification result generated from a text and consisting multiple classes."""
+class ClassificationResults(DataObjectBase):
+    """Classification results generated from a text and consisting multiple classes."""
 
     results: Annotated[
-        List[Classification], FieldNumber(1)
+        List[ClassificationResult], FieldNumber(1)
     ]  # List of classifications for a text
 
 
@@ -66,7 +66,7 @@ class ClassificationResult(DataObjectBase):
 # and `entity` may not always be applicable beyond "entity" in the NER
 # (named entity recognition) sense
 @dataobject(package=NLP_PACKAGE)
-class TokenClassification(DataObjectBase):
+class TokenClassificationResult(DataObjectBase):
     """A single token classification prediction."""
 
     start: Annotated[int, FieldNumber(1)]  # Beginning offset of the token
@@ -85,16 +85,16 @@ class TokenClassification(DataObjectBase):
 
 
 @dataobject(package=NLP_PACKAGE)
-class TokenClassificationResult(DataObjectBase):
-    """Token classification result generated from a text and consisting multiple classes."""
+class TokenClassificationResults(DataObjectBase):
+    """Token classification results generated from a text and consisting multiple classes."""
 
-    results: Annotated[List[TokenClassification], FieldNumber(1)]
+    results: Annotated[List[TokenClassificationResult], FieldNumber(1)]
 
 
 @dataobject(package=NLP_PACKAGE)
-class TokenClassificationStreamResult(TokenClassificationResult):
+class TokenClassificationStreamResult(TokenClassificationResults):
     """
-    Streaming token classification result that indicates up to where in stream is processed.
+    Streaming token classification results that indicates up to where in stream is processed.
     """
 
     processed_index: Annotated[
@@ -111,7 +111,7 @@ class ClassifiedGeneratedTextResult(DataObjectBase):
 
     text: Annotated[str, FieldNumber(1)]  # The generated text
     token_classification_results: Annotated[
-        Optional[List[TokenClassification]], FieldNumber(2)
+        Optional[List[TokenClassificationResult]], FieldNumber(2)
     ]  # Token classification results for this generated text
     finish_reason: Annotated[
         Optional[FinishReason], FieldNumber(3)

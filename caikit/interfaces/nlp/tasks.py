@@ -21,13 +21,13 @@ from typing import Iterable
 # Local
 from ...core import TaskBase, task
 from .data_model.classification import (
-    ClassificationResult,
+    ClassificationResults,
     ClassifiedGeneratedTextResult,
     ClassifiedGeneratedTextStreamResult,
-    TokenClassificationResult,
+    TokenClassificationResults,
     TokenClassificationStreamResult,
 )
-from .data_model.text import TokenizationResult, TokenizationStreamResult
+from .data_model.text import TokenizationResults, TokenizationStreamResult
 from .data_model.text_generation import GeneratedTextResult, GeneratedTextStreamResult
 
 
@@ -44,7 +44,7 @@ class TextGenerationTask(TaskBase):
 
 @task(
     required_parameters={"text": str},
-    output_type=ClassificationResult,
+    output_type=ClassificationResults,
 )
 class TextClassificationTask(TaskBase):
     """The text classification task is responsible for assigning a label or class to text."""
@@ -53,7 +53,7 @@ class TextClassificationTask(TaskBase):
 @task(
     unary_parameters={"text": str},
     streaming_parameters={"text_stream": Iterable[str]},
-    unary_output_type=TokenClassificationResult,
+    unary_output_type=TokenClassificationResults,
     streaming_output_type=Iterable[TokenClassificationStreamResult],
 )
 class TokenClassificationTask(TaskBase):
@@ -65,7 +65,7 @@ class TokenClassificationTask(TaskBase):
 @task(
     unary_parameters={"text": str},
     streaming_parameters={"text_stream": Iterable[str]},
-    unary_output_type=TokenizationResult,
+    unary_output_type=TokenizationResults,
     streaming_output_type=Iterable[TokenizationStreamResult],
 )
 class TokenizationTask(TaskBase):
