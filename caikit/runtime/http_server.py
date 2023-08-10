@@ -51,17 +51,24 @@ from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
 from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage
-from caikit.runtime.service_generation.rpcs import CaikitRPCBase
+from caikit.runtime.service_generation.rpcs import (
+    CaikitRPCBase,
+    ModuleClassTrainRPC,
+    TaskPredictRPC,
+)
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
+from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+import caikit
 
 ## Globals #####################################################################
 
 log = alog.use_channel("SERVR-HTTP")
 
-# Registry of DM -> Pydantic model mapping to avoid errors when reusing messages
-# across endpoints
-PYDANTIC_REGISTRY = {}
+# It is essentially a 2-way map of DMs <-> Pydantic models, you give it a
+# pydantic model, it gives you back a DM class, you give it a
+# DM class, you get back a pydantic model.
+PYDANTIC_TO_DM_MAPPING = {}
 
 
 # Mapping from GRPC codes to their corresponding HTTP codes
@@ -126,15 +133,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Set up training if enabled
         if self.enable_training:
             log.info("<RUN77183427I>", "Enabling HTTP training service")
-            log.warning("<RUN65223936W>", "Training not yet supported for HTTP server")
-
-            # Set up the central train servicer
-            # TODO: uncomment later on
-            # train_service = ServicePackageFactory().get_service_package(
-            #     ServicePackageFactory.ServiceType.TRAINING,
-            # )
-            # self.global_train_servicer = GlobalTrainServicer(train_service)
-            # self._bind_routes(train_service)
+            self.global_train_servicer = GlobalTrainServicer(self.training_service)
+            self._bind_routes(self.training_service)
 
         # Add the health endpoint
         self.app.get(HEALTH_ENDPOINT, response_class=PlainTextResponse)(
@@ -235,28 +235,34 @@ class RuntimeHTTPServer(RuntimeServerBase):
         """Bind all rpcs as routes to the given app"""
         for rpc in service.caikit_rpcs.values():
             rpc_info = rpc.create_rpc_json("")
-            if rpc_info["client_streaming"]:
-                # Skipping the binding of this route since we don't have support
-                log.info(
-                    "No support for input streaming on REST Server yet! Skipping this rpc %s with input type %s",
-                    rpc_info["name"],
-                    rpc_info["input_type"],
-                )
-                continue
-            if rpc_info["server_streaming"]:
-                self._add_unary_input_stream_output_handler(rpc)
-            else:
-                self._add_unary_input_unary_output_handler(rpc)
+            if isinstance(rpc, TaskPredictRPC):
+                if hasattr(rpc, "input_streaming") and rpc.input_streaming:
+                    # Skipping the binding of this route since we don't have support
+                    log.info(
+                        "No support for input streaming on REST Server yet! Skipping this rpc %s with input type %s",
+                        rpc_info["name"],
+                        rpc_info["input_type"],
+                    )
+                    continue
+                if hasattr(rpc, "output_streaming") and rpc.output_streaming:
+                    self._add_unary_input_stream_output_handler(rpc)
+                else:
+                    self._add_unary_input_unary_output_handler(rpc)
+            elif isinstance(rpc, ModuleClassTrainRPC):
+                self._train_add_unary_input_unary_output_handler(rpc)
 
     def _get_request_params(
         self, rpc: CaikitRPCBase, request: Type[pydantic.BaseModel]
     ) -> Dict[str, Any]:
-        """get the request params based on the RPC's req params"""
+        """get the request params based on the RPC's req params, also
+        convert to DM objects"""
         request_kwargs = dict(request)
-        required_params = rpc.task.get_required_parameters(rpc.input_streaming)
         input_name = None
+        required_params = None
+        if isinstance(rpc, TaskPredictRPC):
+            required_params = rpc.task.get_required_parameters(rpc.input_streaming)
         # handle required param input name
-        if len(required_params) == 1:
+        if required_params and len(required_params) == 1:
             input_name = list(required_params.keys())[0]
         # flatten inputs and params into a dict
         # would have been useful to call dataobject.to_dict()
@@ -270,12 +276,99 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     combined_dict.update(**dict(request_kwargs[field]))
         # remove non-none items
         request_params = {k: v for k, v in combined_dict.items() if v is not None}
+        # convert pydantic objects to our DM objects
+        for param_name, param_value in request_params.items():
+            if issubclass(type(param_value), pydantic.BaseModel):
+                request_params[param_name] = self.build_dm_object(param_value)
         return request_params
+
+    def build_dm_object(self, pydantic_model: pydantic.BaseModel) -> DataBase:
+        """Convert pydantic objects to our DM objects"""
+        dm_class_to_build = PYDANTIC_TO_DM_MAPPING.get(type(pydantic_model))
+        dm_kwargs = {}
+
+        for field_name, field_value in pydantic_model:
+            # field could be a DM:
+            # pylint: disable=unidiomatic-typecheck
+            if type(field_value) in PYDANTIC_TO_DM_MAPPING:
+                dm_kwargs[field_name] = self.build_dm_object(field_value)
+            elif isinstance(field_value, list):
+                if all(type(val) in PYDANTIC_TO_DM_MAPPING for val in field_value):
+                    dm_kwargs[field_name] = [
+                        self.build_dm_object(val) for val in field_value
+                    ]
+                else:
+                    dm_kwargs[field_name] = field_value
+            else:
+                dm_kwargs[field_name] = field_value
+
+        return dm_class_to_build(**dm_kwargs)
+
+    def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
+        """Add a unary:unary request handler for this RPC signature"""
+        pydantic_request = self._dataobject_to_pydantic(
+            self._get_request_dataobject(rpc)
+        )
+        pydantic_response = self._dataobject_to_pydantic(
+            self._get_response_dataobject(rpc)
+        )
+
+        @self.app.post(self._get_route(rpc))
+        # pylint: disable=unused-argument
+        async def _handler(
+            request: pydantic_request, context: Request
+        ) -> pydantic_response:
+            log.debug("In unary handler for %s", rpc.name)
+            loop = asyncio.get_running_loop()
+
+            # build request DM object
+            http_request_dm_object = self.build_dm_object(request)
+
+            request_dm_class = caikit.core.data_model.DataBase.get_class_for_name(
+                rpc.request.name
+            )
+            request_dm_class_kwargs = {}
+            required_inputs = getattr(http_request_dm_object, REQUIRED_INPUTS_KEY, None)
+            optional_inputs = getattr(http_request_dm_object, OPTIONAL_INPUTS_KEY, None)
+            for input_type in (required_inputs, optional_inputs):
+                if input_type is not None:
+                    for field_name in input_type.fields:
+                        field_value = getattr(input_type, field_name, None)
+                        if field_value is not None:
+                            request_dm_class_kwargs[field_name] = field_value
+
+            request_dm_object = request_dm_class(**request_dm_class_kwargs)
+            try:
+                call = partial(
+                    self.global_train_servicer.run_training_job,
+                    request=request_dm_object.to_proto(),
+                    module=rpc.clz,
+                    training_output_dir=None,  # pass None so that GTS picks up the config one # TODO: double-check?
+                    # context=context,
+                    wait=True,
+                )
+                return await loop.run_in_executor(None, call)
+            except CaikitRuntimeException as err:
+                error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
+                error_content = {
+                    "details": err.message,
+                    "code": error_code,
+                    "id": err.id,
+                }
+            except Exception as err:  # pylint: disable=broad-exception-caught
+                error_code = 500
+                error_content = {
+                    "details": f"Unhandled exception: {str(err)}",
+                    "code": error_code,
+                    "id": None,
+                }
+                log.error("<RUN51881106E>", err, exc_info=True)
+            return Response(content=json.dumps(error_content), status_code=error_code)
 
     def _add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = self._dataobject_to_pydantic(
-            self._get_request_dataobject(rpc, False)
+            self._get_request_dataobject(rpc)
         )
         pydantic_response = self._dataobject_to_pydantic(
             self._get_response_dataobject(rpc)
@@ -329,7 +422,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
     def _add_unary_input_stream_output_handler(self, rpc: CaikitRPCBase):
         pydantic_request = self._dataobject_to_pydantic(
-            self._get_request_dataobject(rpc, False)
+            self._get_request_dataobject(rpc)
         )
         pydantic_response = self._dataobject_to_pydantic(
             self._get_response_dataobject(rpc)
@@ -400,21 +493,17 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 route = "/" + route
             return route
         if rpc.name.endswith("Train"):
-            route = "/".join(
-                [self.config.runtime.http.route_prefix, "{model_id}", rpc.name]
-            )
+            route = "/".join([self.config.runtime.http.route_prefix, rpc.name])
             if route[0] != "/":
                 route = "/" + route
             return route
         raise NotImplementedError("No support for train rpcs yet!")
 
-    def _get_request_dataobject(
-        self, rpc: CaikitRPCBase, input_streaming: bool
-    ) -> Type[DataBase]:
+    def _get_request_dataobject(self, rpc: CaikitRPCBase) -> Type[DataBase]:
         """Get the dataobject request for the given rpc"""
         is_inference_rpc = hasattr(rpc, "task")
         if is_inference_rpc:
-            required_params = rpc.task.get_required_parameters(input_streaming)
+            required_params = rpc.task.get_required_parameters(rpc.input_streaming)
         else:  # train
             required_params = {
                 entry[1]: entry[0]
@@ -523,6 +612,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         if get_origin(field_type) is list:
             return List[cls._get_pydantic_type(get_args(field_type)[0])]
 
+        if get_origin(field_type) is dict:
+            return field_type
+
         raise TypeError(f"Cannot get pydantic type for type [{field_type}]")
 
     @classmethod
@@ -532,8 +624,15 @@ class RuntimeHTTPServer(RuntimeServerBase):
         """Make a pydantic model based on the given proto message by using the data
         model class annotations to mirror as a pydantic model
         """
-        if dm_class in PYDANTIC_REGISTRY:
-            return PYDANTIC_REGISTRY[dm_class]
+        # Use dicts for jsondict values
+        # this is needed for pydantic to have a handle on JsonDicts while
+        # creating its base model
+        # pylint: disable=unused-variable
+        JsonDict = dict
+        JsonDictValue = dict
+
+        if dm_class in PYDANTIC_TO_DM_MAPPING:
+            return PYDANTIC_TO_DM_MAPPING[dm_class]
 
         annotations = {
             field_name: cls._get_pydantic_type(field_type)
@@ -547,7 +646,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 **{name: None for name in dm_class.__annotations__},
             },
         )
-        PYDANTIC_REGISTRY[dm_class] = pydantic_model
+        PYDANTIC_TO_DM_MAPPING[dm_class] = pydantic_model
+        # also store the reverse mapping for easy retrieval
+        # should be fine since we only check for dm_class in this dict
+        PYDANTIC_TO_DM_MAPPING[pydantic_model] = dm_class
         return pydantic_model
 
     @staticmethod

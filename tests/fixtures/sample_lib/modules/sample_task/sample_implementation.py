@@ -50,6 +50,7 @@ class SampleModule(caikit.core.ModuleBase):
         """
         if throw:
             raise RuntimeError("barf!")
+        assert isinstance(sample_input, SampleInputType)
         if sample_input.name == self.POISON_PILL_NAME:
             raise ValueError(f"{self.POISON_PILL_NAME} is not allowed!")
         return SampleOutputType(f"Hello {sample_input.name}")

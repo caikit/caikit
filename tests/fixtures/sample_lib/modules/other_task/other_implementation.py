@@ -54,7 +54,9 @@ class OtherModule(caikit.core.ModuleBase):
         batch_size: int = 64,
     ) -> "OtherModule":
         """Sample training method that produces a trained model"""
-        assert type(sample_input) == SampleInputType or str
+        assert isinstance(sample_input, SampleInputType) or isinstance(
+            sample_input, str
+        )
         # Barf if we were incorrectly passed data not in datastream format
         assert isinstance(training_data, DataStream)
         assert batch_size > 0

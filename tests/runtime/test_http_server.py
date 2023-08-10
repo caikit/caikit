@@ -30,11 +30,15 @@ import requests
 import tls_test_tools
 
 # Local
-from caikit.core import DataObjectBase, dataobject
+from caikit.core import MODEL_MANAGER, DataObjectBase, dataobject
 from caikit.interfaces.nlp.data_model import GeneratedTextStreamResult, GeneratedToken
 from caikit.runtime import http_server
 from tests.conftest import temp_config
-from tests.runtime.conftest import ModuleSubproc, runtime_http_test_server
+from tests.runtime.conftest import (
+    ModuleSubproc,
+    register_trained_model,
+    runtime_http_test_server,
+)
 
 ## Helpers #####################################################################
 
@@ -236,6 +240,9 @@ def test_services_disabled(open_port, enabled_services):
             # )
 
 
+## Inference Tests #######################################################################
+
+
 def test_docs(runtime_http_server):
     """Simple check that pinging /docs returns 200"""
     with TestClient(runtime_http_server.app) as client:
@@ -413,20 +420,189 @@ def test_http_server_shutdown_with_model_poll(open_port):
         assert not server_proc.killed
 
 
-# TODO: uncomment later
-# def test_train():
-#     server = http_server.RuntimeHTTPServer()
-#     with TestClient(server.app) as client:
-#         json_input = {
-#             "inputs": {
-#                 "model_name": "sample_task_train",
-#                 "training_data": {"jsondata": {"number": 1}},
-#             }
-#         }
-#         response = client.post(
-#             f"/api/v1/asdf/SampleTaskSampleModuleTrain",
-#             json=json_input,
-#         )
-#         assert response.status_code == 200
-#         json_response = json.loads(response.content.decode(response.default_encoding))
-#         assert json_response["greeting"] == "Hello world"
+## Train Tests #######################################################################
+
+
+def test_train_sample_task(runtime_http_server):
+    model_name = "sample_task_train"
+    with TestClient(runtime_http_server.app) as client:
+        json_input = {
+            "inputs": {
+                "model_name": model_name,
+                "training_data": {"data_stream": {"data": [{"number": 1}]}},
+                # "training_data": {"data_stream": {"file": {"filename": "file1"}}},
+            },
+            "parameters": {"batch_size": 42},
+        }
+        training_response = client.post(
+            f"/api/v1/SampleTaskSampleModuleTrain",
+            json=json_input,
+        )
+
+        # assert training response
+        assert training_response.status_code == 200
+        training_json_response = json.loads(
+            training_response.content.decode(training_response.default_encoding)
+        )
+        assert (training_id := training_json_response["training_id"])
+        assert (model_name := training_json_response["model_name"]) == model_name
+
+        # assert trained model
+        result = MODEL_MANAGER.get_model_future(training_id).load()
+        assert result.batch_size == 42
+        assert (
+            result.MODULE_CLASS
+            == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
+        )
+
+        # register the newly trained model for inferencing
+        register_trained_model(
+            runtime_http_server.global_predict_servicer,
+            model_name,
+            training_id,
+        )
+
+        # test inferencing on new model
+        json_input_inference = {"inputs": {"name": "world"}}
+        response = client.post(
+            f"/api/v1/{model_name}/task/sample",
+            json=json_input_inference,
+        )
+        assert response.status_code == 200
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert json_response["greeting"] == "Hello world"
+
+
+def test_train_sample_task_throws_s3_value_error(runtime_http_server):
+    """test that if we provide s3 path, it throws an error"""
+    model_name = "sample_task_train"
+    with TestClient(runtime_http_server.app) as client:
+        json_input = {
+            "inputs": {
+                "model_name": model_name,
+                "training_data": {"data_stream": {"file": "hello"}},
+                "output_path": {"path": "non-existent path_to_s3"},
+            },
+            "parameters": {"batch_size": 42},
+        }
+        training_response = client.post(
+            f"/api/v1/SampleTaskSampleModuleTrain",
+            json=json_input,
+        )
+        assert (
+            "S3 output path not supported by this runtime"
+            in training_response.content.decode(training_response.default_encoding)
+        )
+        assert training_response.status_code == 500
+
+
+def test_train_primitive_task(runtime_http_server):
+    model_name = "primitive_task_train"
+    with TestClient(runtime_http_server.app) as client:
+        json_input = {
+            "inputs": {
+                "model_name": model_name,
+                "sample_input": {"name": "test"},
+                "simple_list": ["hello", "world"],
+                "union_list": {"values": ["hello", "world"]},
+                "union_list2": {"values": ["hello", "world"]},
+                "union_list3": {"values": ["hello", "world"]},
+                "union_list4": 1,
+                "training_params_json_dict_list": [{"foo": {"bar": [1, 2, 3]}}],
+            },
+            "parameters": {
+                "training_params_json_dict": {"foo": {"bar": [1, 2, 3]}},
+                "training_params_dict": {"layer_sizes": 100, "window_scaling": 200},
+                "training_params_dict_int": {1: 0.1, 2: 0.01},
+            },
+        }
+
+        training_response = client.post(
+            f"/api/v1/SampleTaskSamplePrimitiveModuleTrain",
+            json=json_input,
+        )
+        # assert training response
+        assert training_response.status_code == 200
+        training_json_response = json.loads(
+            training_response.content.decode(training_response.default_encoding)
+        )
+        assert (training_id := training_json_response["training_id"])
+        assert (model_name := training_json_response["model_name"]) == model_name
+
+        # assert trained model
+        result = MODEL_MANAGER.get_model_future(training_id).load()
+        assert result.training_params_dict == {
+            "layer_sizes": 100,
+            "window_scaling": 200,
+        }
+        assert result.training_params_json_dict == {"foo": {"bar": [1, 2, 3]}}
+        assert (
+            result.MODULE_CLASS
+            == "sample_lib.modules.sample_task.primitive_party_implementation.SamplePrimitiveModule"
+        )
+
+        # register the newly trained model for inferencing
+        register_trained_model(
+            runtime_http_server.global_predict_servicer,
+            model_name,
+            training_id,
+        )
+
+        # test inferencing on new model
+        json_input_inference = {"inputs": {"name": "world"}}
+        response = client.post(
+            f"/api/v1/{model_name}/task/sample",
+            json=json_input_inference,
+        )
+        assert response.status_code == 200
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert json_response["greeting"] == "hello: primitives! [1, 2, 3] 100"
+
+
+def test_train_other_task(runtime_http_server):
+    model_name = "other_task_train"
+    with TestClient(runtime_http_server.app) as client:
+        json_input = {
+            "inputs": {
+                "model_name": model_name,
+                "training_data": {"data_stream": {"data": [1, 2]}},
+                "sample_input": {"name": "test"},
+            }
+        }
+
+        training_response = client.post(
+            f"/api/v1/OtherTaskOtherModuleTrain",
+            json=json_input,
+        )
+        # assert training response
+        assert training_response.status_code == 200
+        training_json_response = json.loads(
+            training_response.content.decode(training_response.default_encoding)
+        )
+        assert (training_id := training_json_response["training_id"])
+        assert (model_name := training_json_response["model_name"]) == model_name
+
+        # assert trained model
+        result = MODEL_MANAGER.get_model_future(training_id).load()
+        assert result.batch_size == 64
+        assert (
+            result.MODULE_CLASS
+            == "sample_lib.modules.other_task.other_implementation.OtherModule"
+        )
+
+        # register the newly trained model for inferencing
+        register_trained_model(
+            runtime_http_server.global_predict_servicer,
+            model_name,
+            training_id,
+        )
+
+        # test inferencing on new model
+        json_input_inference = {"inputs": {"name": "world"}}
+        response = client.post(
+            f"/api/v1/{model_name}/task/other",
+            json=json_input_inference,
+        )
+        assert response.status_code == 200
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert json_response["farewell"] == "goodbye: world 64 times"
