@@ -254,7 +254,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def _get_request_params(
         self, rpc: CaikitRPCBase, request: Type[pydantic.BaseModel]
     ) -> Dict[str, Any]:
-        """get the request params based on the RPC's req params"""
+        """get the request params based on the RPC's req params, also
+        convert to DM objects"""
         request_kwargs = dict(request)
         input_name = None
         required_params = None
@@ -275,12 +276,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     combined_dict.update(**dict(request_kwargs[field]))
         # remove non-none items
         request_params = {k: v for k, v in combined_dict.items() if v is not None}
-        return request_params
-
-    def build_request_params_dict(
-        self, request_params: Dict[str, any]
-    ) -> Dict[str, any]:
-        """Build request params dict, converting pydantic objects to our DM objects"""
+        # convert pydantic objects to our DM objects
         for param_name, param_value in request_params.items():
             if issubclass(type(param_value), pydantic.BaseModel):
                 request_params[param_name] = self.build_dm_object(param_value)
@@ -387,7 +383,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
             loop = asyncio.get_running_loop()
 
             request_params = self._get_request_params(rpc, request)
-            self.build_request_params_dict(request_params)
 
             log.debug4("Sending request %s to model id %s", request_params, model_id)
             try:
@@ -441,7 +436,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
             log.debug("In streaming handler for %s", rpc.name)
 
             request_params = self._get_request_params(rpc, request)
-            self.build_request_params_dict(request_params)
             log.debug4("Sending request %s to model id %s", request_params, model_id)
 
             async def _generator() -> pydantic_response:
