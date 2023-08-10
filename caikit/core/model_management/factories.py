@@ -27,6 +27,7 @@ from ..toolkit.factory import Factory, FactoryConstructible
 from .local_model_finder import LocalModelFinder
 from .local_model_initializer import LocalModelInitializer
 from .local_model_trainer import LocalModelTrainer
+from .multi_model_finder import MultiModelFinder
 
 log = alog.use_channel("MMFCTRY")
 error = error_handler.get(log)
@@ -94,6 +95,7 @@ model_trainer_factory.register(LocalModelTrainer)
 # configuration for a model based on a unique path or id.
 model_finder_factory = ImportableFactory("ModelFinder")
 model_finder_factory.register(LocalModelFinder)
+model_finder_factory.register(MultiModelFinder)
 
 # Model initializer factory. An initializer is responsible for taking a model
 # configuration and preparing the model to be run in a configured runtime
