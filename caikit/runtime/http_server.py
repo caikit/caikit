@@ -65,12 +65,10 @@ import caikit
 
 log = alog.use_channel("SERVR-HTTP")
 
-# Registry of DM -> Pydantic model mapping to avoid errors when reusing messages
-# across endpoints
-# It is essentially a 2-way map, you give it a
+# It is essentially a 2-way map of DMs <-> Pydantic models, you give it a
 # pydantic model, it gives you back a DM class, you give it a
 # DM class, you get back a pydantic model.
-PYDANTIC_REGISTRY = {}
+PYDANTIC_TO_DM_MAPPING = {}
 
 
 # Mapping from GRPC codes to their corresponding HTTP codes
@@ -285,49 +283,20 @@ class RuntimeHTTPServer(RuntimeServerBase):
         """Build request params dict, converting pydantic objects to our DM objects"""
         for param_name, param_value in request_params.items():
             if issubclass(type(param_value), pydantic.BaseModel):
-                pydantic_json = param_value.model_dump_json()
-                # special case for data streams
-                if "data_stream" in pydantic_json:
-                    if isinstance(
-                        param_value.data_stream,
-                        PYDANTIC_REGISTRY.get(
-                            PYDANTIC_REGISTRY.get(type(param_value)).JsonData
-                        ),
-                    ):
-                        # substitute data_stream in json repr with jsondata
-                        substituted_json = pydantic_json.replace(
-                            "data_stream", "jsondata"
-                        )
-                    elif isinstance(
-                        param_value.data_stream,
-                        PYDANTIC_REGISTRY.get(
-                            PYDANTIC_REGISTRY.get(type(param_value)).File
-                        ),
-                    ):
-                        # substitute data_stream in json repr with file
-                        substituted_json = pydantic_json.replace("data_stream", "file")
-
-                    json_data_obj = PYDANTIC_REGISTRY.get(type(param_value)).from_json(
-                        substituted_json
-                    )
-                    request_params[param_name] = json_data_obj
-                else:
-                    request_params[param_name] = PYDANTIC_REGISTRY.get(
-                        type(param_value)
-                    ).from_json(pydantic_json)
+                request_params[param_name] = self.build_dm_object(param_value)
         return request_params
 
     def build_dm_object(self, pydantic_model: pydantic.BaseModel) -> DataBase:
         """Convert pydantic objects to our DM objects"""
-        dm_class_to_build = PYDANTIC_REGISTRY.get(type(pydantic_model))
+        dm_class_to_build = PYDANTIC_TO_DM_MAPPING.get(type(pydantic_model))
         dm_kwargs = {}
 
         for field_name, field_value in pydantic_model:
             # field could be a DM:
-            if type(field_value) in PYDANTIC_REGISTRY:
+            if type(field_value) in PYDANTIC_TO_DM_MAPPING:
                 dm_kwargs[field_name] = self.build_dm_object(field_value)
             elif type(field_value) is list and len(field_value) > 0:
-                if all([type(val) in PYDANTIC_REGISTRY for val in field_value]):
+                if all([type(val) in PYDANTIC_TO_DM_MAPPING for val in field_value]):
                     dm_kwargs[field_name] = [self.build_dm_object(field_value[0])]
                 else:
                     dm_kwargs[field_name] = field_value
@@ -352,9 +321,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
         ) -> pydantic_response:
             log.debug("In unary handler for %s", rpc.name)
             loop = asyncio.get_running_loop()
-
-            request_params = self._get_request_params(rpc, request=request)
-            self.build_request_params_dict(request_params)
 
             # build request DM object
             http_request_dm_object = self.build_dm_object(request)
@@ -668,8 +634,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
         JsonDict = dict
         JsonDictValue = dict
 
-        if dm_class in PYDANTIC_REGISTRY:
-            return PYDANTIC_REGISTRY[dm_class]
+        if dm_class in PYDANTIC_TO_DM_MAPPING:
+            return PYDANTIC_TO_DM_MAPPING[dm_class]
 
         annotations = {
             field_name: cls._get_pydantic_type(field_type)
@@ -683,10 +649,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 **{name: None for name in dm_class.__annotations__},
             },
         )
-        PYDANTIC_REGISTRY[dm_class] = pydantic_model
+        PYDANTIC_TO_DM_MAPPING[dm_class] = pydantic_model
         # also store the reverse mapping for easy retrieval
         # should be fine since we only check for dm_class in this dict
-        PYDANTIC_REGISTRY[pydantic_model] = dm_class
+        PYDANTIC_TO_DM_MAPPING[pydantic_model] = dm_class
         return pydantic_model
 
     @staticmethod
