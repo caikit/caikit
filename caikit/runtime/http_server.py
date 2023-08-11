@@ -635,15 +635,15 @@ class RuntimeHTTPServer(RuntimeServerBase):
             return PYDANTIC_TO_DM_MAPPING[dm_class]
 
         annotations = {
-            field_name: cls._get_pydantic_type(field_type)
-            for field_name, field_type in dm_class.__annotations__.items()
+            field.name: cls._get_pydantic_type(field.type)
+            for _, field in dm_class.__dataclass_fields__.items()
         }
         pydantic_model = type(pydantic.BaseModel)(
             dm_class.get_proto_class().DESCRIPTOR.full_name,
             (pydantic.BaseModel,),
             {
                 "__annotations__": annotations,
-                **{name: None for name in dm_class.__annotations__},
+                **{name: None for name in dm_class.__dataclass_fields__},
             },
         )
         PYDANTIC_TO_DM_MAPPING[dm_class] = pydantic_model

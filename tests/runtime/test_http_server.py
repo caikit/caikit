@@ -350,7 +350,7 @@ def test_health_check_ok(runtime_http_server):
         assert response.text == "OK"
 
 
-def test_pydantic_wrapping_with_enums():
+def test_pydantic_wrapping_with_enums(runtime_http_server):
     """Check that the pydantic wrapping works on our data models when they have enums"""
     # The NLP GeneratedTextStreamResult data model contains enums
 
@@ -359,11 +359,38 @@ def test_pydantic_wrapping_with_enums():
     assert token.text == "foo"
 
     # Wrap the containing data model in pydantic
-    http_server.RuntimeHTTPServer._dataobject_to_pydantic(GeneratedTextStreamResult)
+    runtime_http_server._dataobject_to_pydantic(GeneratedTextStreamResult)
 
     # Check that our data model is _still_ fine and dandy
     token = GeneratedToken(text="foo")
     assert token.text == "foo"
+
+
+def test_pydantic_wrapping_with_inheritance(runtime_http_server):
+    """Check that the pydantic wrapping works on our data models when they involve inheritance"""
+
+    @dataobject
+    class Base(DataObjectBase):
+        foo: int
+        bar: int
+
+    @dataobject
+    class Derived(Base):
+        bar: str
+        baz: str
+
+    # Check that our data model is fine and dandy
+    derived = Derived(bar="one", foo=2)
+    assert derived.bar == "one"
+    assert derived.foo == 2
+
+    # Wrap the containing data model in pydantic
+    pydantic_datamodel = runtime_http_server._dataobject_to_pydantic(Derived)
+
+    # Check that our data model is _still_ fine and dandy
+    new_derived = pydantic_datamodel(bar="one", foo=2)
+    assert new_derived.bar == "one"
+    assert new_derived.foo == 2
 
 
 def test_pydantic_wrapping_with_lists(runtime_http_server):
