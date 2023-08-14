@@ -296,6 +296,24 @@ def test_inference_other_task(other_task_model_id, runtime_http_server):
             f"/api/v1/{other_task_model_id}/task/other",
             json=json_input,
         )
+        assert response.status_code == 200
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert json_response["farewell"] == "goodbye: world 42 times"
+
+
+def test_inference_other_task_throws_missing_producer_id(
+    other_task_model_id, runtime_http_server
+):
+    """Test to check we throw an error if required fields are missing"""
+    with TestClient(runtime_http_server.app) as client:
+        json_input = {
+            "inputs": {"name": "world"},
+            "parameters": {"include_producer_id": False},
+        }
+        response = client.post(
+            f"/api/v1/{other_task_model_id}/task/other",
+            json=json_input,
+        )
         assert response.status_code == 500
         json_response = json.loads(response.content.decode(response.default_encoding))
         assert json_response["detail"][0]["loc"] == ["response", "producer_id"]

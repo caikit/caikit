@@ -43,6 +43,7 @@ import alog
 from caikit import get_config
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model.base import DataBase
+from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingJob,
@@ -471,7 +472,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
         predict_request, metadata=[("mm-model-id", actual_response.model_name)]
     )
     expected_trained_inference_response = OtherOutputType(
-        farewell="goodbye: Gabe 100 times"
+        farewell="goodbye: Gabe 100 times", producer_id=ProducerId("other_mod", "1.1.1")
     ).to_proto()
     assert trained_inference_response == expected_trained_inference_response
 
@@ -480,7 +481,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
         predict_request, metadata=[("mm-model-id", other_task_model_id)]
     )
     expected_original_inference_response = OtherOutputType(
-        farewell="goodbye: Gabe 42 times"
+        farewell="goodbye: Gabe 42 times", producer_id=ProducerId("other_mod", "1.1.1")
     ).to_proto()
     assert original_inference_response == expected_original_inference_response
 
