@@ -517,7 +517,7 @@ def test_dataobject_with_same_type_of_oneof():
     assert foo2.foo_bool2
 
 
-@pytest.mark.skip(reason="wip")
+@pytest.mark.skip(reason="Currently, we do not have a way to use static BoolSequence in caikit core. See Issue #409")
 def test_dataobject_with_same_type_of_oneof_with_lists():
     """Make sure that using a Union of lists to create a oneof with the same types works as expected"""
 
