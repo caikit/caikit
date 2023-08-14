@@ -301,13 +301,32 @@ def test_inference_other_task(other_task_model_id, runtime_http_server):
         assert json_response["farewell"] == "goodbye: world 42 times"
 
 
-def test_inference_other_task_throws_missing_producer_id(
+def test_inference_other_task_request_throws_missing_field(
     other_task_model_id, runtime_http_server
 ):
-    """Test to check we throw an error if required fields are missing"""
+    """Test to check 400 in case of missing request fields"""
+    with TestClient(runtime_http_server.app) as client:
+        json_input = {}
+        response = client.post(
+            f"/api/v1/{other_task_model_id}/task/other",
+            json=json_input,
+        )
+        assert response.status_code == 400
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert (
+            "This may be a problem with your input: run() missing 1 required positional argument"
+            in json_response["details"]
+        )
+
+
+def test_inference_other_task_response_throws_missing_producer_id(
+    other_task_model_id, runtime_http_server
+):
+    """Test to check we throw a 500 if response has fields that are missing"""
     with TestClient(runtime_http_server.app) as client:
         json_input = {
             "inputs": {"name": "world"},
+            # this intentionally skips sending back a producer-id in our module
             "parameters": {"include_producer_id": False},
         }
         response = client.post(
@@ -317,6 +336,32 @@ def test_inference_other_task_throws_missing_producer_id(
         assert response.status_code == 500
         json_response = json.loads(response.content.decode(response.default_encoding))
         assert json_response["detail"][0]["loc"] == ["response", "producer_id"]
+
+
+def test_inference_other_task_request_throws_incorrect_field(
+    other_task_model_id, runtime_http_server
+):
+    """Test to check we throw a 422 if request has an incorrect field type"""
+    with TestClient(runtime_http_server.app) as client:
+        json_input = {
+            "inputs": {"name": "world"},
+            "parameters": {"include_producer_id": "wrong_type"},
+        }
+        response = client.post(
+            f"/api/v1/{other_task_model_id}/task/other",
+            json=json_input,
+        )
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert json_response["detail"][0]["loc"] == [
+            "body",
+            "parameters",
+            "include_producer_id",
+        ]
+        assert (
+            json_response["detail"][0]["msg"]
+            == "Input should be a valid boolean, unable to interpret input"
+        )
+        assert response.status_code == 422
 
 
 def test_inference_streaming_sample_module(sample_task_model_id, runtime_http_server):
