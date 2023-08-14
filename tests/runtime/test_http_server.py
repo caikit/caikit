@@ -314,7 +314,7 @@ def test_inference_other_task_request_throws_missing_field(
         assert response.status_code == 400
         json_response = json.loads(response.content.decode(response.default_encoding))
         assert (
-            "This may be a problem with your input: run() missing 1 required positional argument"
+            "missing 1 required positional argument: 'sample_input'"
             in json_response["details"]
         )
 
