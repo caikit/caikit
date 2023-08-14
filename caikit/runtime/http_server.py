@@ -28,7 +28,7 @@ import threading
 import time
 
 # Third Party
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import ResponseValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -119,10 +119,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         self.app = FastAPI()
 
+        # Response validation
         @self.app.exception_handler(ResponseValidationError)
         async def validation_exception_handler(_, exc: ResponseValidationError):
             return JSONResponse(
-                status_code=500,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content=jsonable_encoder({"detail": exc.errors(), "body": exc.body}),
             )
 
