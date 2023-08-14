@@ -649,14 +649,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
         """Make a pydantic model based on the given proto message by using the data
         model class annotations to mirror as a pydantic model
         """
-        # Use dicts for jsondict values
-        # this is needed for pydantic to have a handle on JsonDicts while
+        # define a local namespace for type hints to get type information from.
+        # This is needed for pydantic to have a handle on JsonDict and JsonDictValue while
         # creating its base model
-        # pylint: disable=unused-variable
-        JsonDict = dict
-        JsonDictValue = dict
-        # define a local namespace for type hints to get type information from
-        localns = {"JsonDict": JsonDict, "JsonDictValue": JsonDictValue}
+        localns = {"JsonDict": dict, "JsonDictValue": dict}
 
         if dm_class in PYDANTIC_TO_DM_MAPPING:
             return PYDANTIC_TO_DM_MAPPING[dm_class]
