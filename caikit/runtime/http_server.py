@@ -625,7 +625,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
             return List[cls._get_pydantic_type(get_args(field_type)[0])]
 
         if get_origin(field_type) is dict:
-            return field_type
+            return Dict[
+                cls._get_pydantic_type(get_args(field_type)[0]),
+                cls._get_pydantic_type(get_args(field_type)[1]),
+            ]
 
         raise TypeError(f"Cannot get pydantic type for type [{field_type}]")
 
