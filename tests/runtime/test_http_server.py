@@ -17,7 +17,8 @@ Tests for the caikit HTTP server
 # Standard
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Annotated, Dict, List, Union
+import enum
 import json
 import os
 import signal
@@ -25,6 +26,8 @@ import tempfile
 
 # Third Party
 from fastapi.testclient import TestClient
+import numpy as np
+import pydantic
 import pytest
 import requests
 import tls_test_tools
@@ -285,6 +288,45 @@ def test_build_dm_object_datastream(runtime_http_server):
         datastream_dm_obj.to_json()
         == '{"jsondata": {"data": [{"number": 1}, {"number": 2}]}}'
     )
+
+
+@pytest.mark.parametrize(
+    "input, output",
+    [
+        (np.integer, int),
+        (np.floating, float),
+        (int, int),
+        (float, float),
+        (bool, bool),
+        (str, str),
+        (bytes, bytes),
+        (type(None), type(None)),
+        (enum.Enum, enum.Enum),
+        (Annotated[str, "blah"], str),
+        (Union[str, int], Union[str, int]),
+        (List[str], List[str]),
+        (List[Annotated[str, "blah"]], List[str]),
+        (Dict[str, int], Dict[str, int]),
+        (Dict[Annotated[str, "blah"], int], Dict[str, int]),
+    ],
+)
+def test_get_pydantic_type(input, output):
+    assert http_server.RuntimeHTTPServer._get_pydantic_type(input) == output
+
+    # DM case
+    str_sequence_dm_class = DataBase.get_class_for_name("StrSequence")
+    str_sequence_pydantic_model = http_server.RuntimeHTTPServer._get_pydantic_type(
+        str_sequence_dm_class
+    )
+
+    assert issubclass(str_sequence_pydantic_model, pydantic.BaseModel)
+    assert str_sequence_pydantic_model in http_server.PYDANTIC_TO_DM_MAPPING
+    assert str_sequence_pydantic_model is http_server.PYDANTIC_TO_DM_MAPPING.get(
+        str_sequence_dm_class
+    )
+    # error case
+    with pytest.raises(TypeError):
+        http_server.RuntimeHTTPServer._get_pydantic_type("some_random_type")
 
 
 def test_pydantic_wrapping_with_enums():
