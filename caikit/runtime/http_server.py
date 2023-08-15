@@ -291,30 +291,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # convert pydantic objects to our DM objects
         for param_name, param_value in request_params.items():
             if issubclass(type(param_value), pydantic.BaseModel):
-                request_params[param_name] = self.build_dm_object(param_value)
+                request_params[param_name] = self._build_dm_object(param_value)
         return request_params
-
-    def build_dm_object(self, pydantic_model: pydantic.BaseModel) -> DataBase:
-        """Convert pydantic objects to our DM objects"""
-        dm_class_to_build = PYDANTIC_TO_DM_MAPPING.get(type(pydantic_model))
-        dm_kwargs = {}
-
-        for field_name, field_value in pydantic_model:
-            # field could be a DM:
-            # pylint: disable=unidiomatic-typecheck
-            if type(field_value) in PYDANTIC_TO_DM_MAPPING:
-                dm_kwargs[field_name] = self.build_dm_object(field_value)
-            elif isinstance(field_value, list):
-                if all(type(val) in PYDANTIC_TO_DM_MAPPING for val in field_value):
-                    dm_kwargs[field_name] = [
-                        self.build_dm_object(val) for val in field_value
-                    ]
-                else:
-                    dm_kwargs[field_name] = field_value
-            else:
-                dm_kwargs[field_name] = field_value
-
-        return dm_class_to_build(**dm_kwargs)
 
     def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
@@ -334,7 +312,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             loop = asyncio.get_running_loop()
 
             # build request DM object
-            http_request_dm_object = self.build_dm_object(request)
+            http_request_dm_object = self._build_dm_object(request)
 
             request_dm_class = caikit.core.data_model.DataBase.get_class_for_name(
                 rpc.request.name
@@ -509,7 +487,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
             if route[0] != "/":
                 route = "/" + route
             return route
-        raise NotImplementedError("No support for train rpcs yet!")
 
     def _get_request_dataobject(self, rpc: CaikitRPCBase) -> Type[DataBase]:
         """Get the dataobject request for the given rpc"""
@@ -583,6 +560,29 @@ class RuntimeHTTPServer(RuntimeServerBase):
             dm_obj = rpc.return_type
         assert isinstance(dm_obj, type) and issubclass(dm_obj, DataBase)
         return dm_obj
+
+    @classmethod
+    def _build_dm_object(cls, pydantic_model: pydantic.BaseModel) -> DataBase:
+        """Convert pydantic objects to our DM objects"""
+        dm_class_to_build = PYDANTIC_TO_DM_MAPPING.get(type(pydantic_model))
+        dm_kwargs = {}
+
+        for field_name, field_value in pydantic_model:
+            # field could be a DM:
+            # pylint: disable=unidiomatic-typecheck
+            if type(field_value) in PYDANTIC_TO_DM_MAPPING:
+                dm_kwargs[field_name] = cls._build_dm_object(field_value)
+            elif isinstance(field_value, list):
+                if all(type(val) in PYDANTIC_TO_DM_MAPPING for val in field_value):
+                    dm_kwargs[field_name] = [
+                        cls._build_dm_object(val) for val in field_value
+                    ]
+                else:
+                    dm_kwargs[field_name] = field_value
+            else:
+                dm_kwargs[field_name] = field_value
+
+        return dm_class_to_build(**dm_kwargs)
 
     @classmethod
     # pylint: disable=too-many-return-statements
