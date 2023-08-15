@@ -31,6 +31,7 @@ import tls_test_tools
 
 # Local
 from caikit.core import MODEL_MANAGER, DataObjectBase, dataobject
+from caikit.core.data_model.base import DataBase
 from caikit.interfaces.nlp.data_model import GeneratedTextStreamResult, GeneratedToken
 from caikit.runtime import http_server
 from tests.conftest import temp_config
@@ -240,6 +241,88 @@ def test_services_disabled(open_port, enabled_services):
             # )
 
 
+## Functional Tests #######################################################################
+
+
+def test_build_dm_object_simple(runtime_http_server):
+    """Test building our simple DM objects through pydantic objects"""
+
+    # get our DM class
+    str_sequence_dm_class = DataBase.get_class_for_name("StrSequence")
+    # get pydantic model for our DM class
+    str_sequence_pydantic_model = http_server.PYDANTIC_TO_DM_MAPPING.get(
+        str_sequence_dm_class
+    )
+    # build our DM object using a pydantic object
+    str_sequence_dm_obj = runtime_http_server._build_dm_object(
+        str_sequence_pydantic_model(values=["one", "two"])
+    )
+
+    # assert it's our DM object, all fine and dandy
+    assert isinstance(str_sequence_dm_obj, DataBase)
+    assert str_sequence_dm_obj.to_json() == '{"values": ["one", "two"]}'
+
+
+def test_build_dm_object_datastream(runtime_http_server):
+    """Test building our datastream DM objects through pydantic objects"""
+
+    # get our DM class
+    datastream_dm_class = DataBase.get_class_for_name(
+        "DataStreamSourceSampleTrainingType"
+    )
+    # get pydantic model for our DM class
+    datastream_pydantic_model = http_server.PYDANTIC_TO_DM_MAPPING.get(
+        datastream_dm_class
+    )
+    # build our DM object using a pydantic object
+    datastream_dm_obj = runtime_http_server._build_dm_object(
+        datastream_pydantic_model(data_stream={"data": [{"number": 1}, {"number": 2}]})
+    )
+
+    # assert it's our DM object, all fine and dandy
+    assert isinstance(datastream_dm_obj, DataBase)
+    assert (
+        datastream_dm_obj.to_json()
+        == '{"jsondata": {"data": [{"number": 1}, {"number": 2}]}}'
+    )
+
+
+def test_pydantic_wrapping_with_enums():
+    """Check that the pydantic wrapping works on our data models when they have enums"""
+    # The NLP GeneratedTextStreamResult data model contains enums
+
+    # Check that our data model is fine and dandy
+    token = GeneratedToken(text="foo")
+    assert token.text == "foo"
+
+    # Wrap the containing data model in pydantic
+    http_server.RuntimeHTTPServer._dataobject_to_pydantic(GeneratedTextStreamResult)
+
+    # Check that our data model is _still_ fine and dandy
+    token = GeneratedToken(text="foo")
+    assert token.text == "foo"
+
+
+def test_pydantic_wrapping_with_lists(runtime_http_server):
+    """Check that pydantic wrapping works on data models with lists"""
+
+    @dataobject(package="http")
+    class BarTest(DataObjectBase):
+        baz: int
+
+    @dataobject(package="http")
+    class FooTest(DataObjectBase):
+        bars: List[BarTest]
+
+    foo = FooTest(bars=[BarTest(1)])
+    assert foo.bars[0].baz == 1
+
+    runtime_http_server._dataobject_to_pydantic(FooTest)
+
+    foo = FooTest(bars=[BarTest(1)])
+    assert foo.bars[0].baz == 1
+
+
 ## Inference Tests #######################################################################
 
 
@@ -348,42 +431,6 @@ def test_health_check_ok(runtime_http_server):
         response = client.get(http_server.HEALTH_ENDPOINT)
         assert response.status_code == 200
         assert response.text == "OK"
-
-
-def test_pydantic_wrapping_with_enums():
-    """Check that the pydantic wrapping works on our data models when they have enums"""
-    # The NLP GeneratedTextStreamResult data model contains enums
-
-    # Check that our data model is fine and dandy
-    token = GeneratedToken(text="foo")
-    assert token.text == "foo"
-
-    # Wrap the containing data model in pydantic
-    http_server.RuntimeHTTPServer._dataobject_to_pydantic(GeneratedTextStreamResult)
-
-    # Check that our data model is _still_ fine and dandy
-    token = GeneratedToken(text="foo")
-    assert token.text == "foo"
-
-
-def test_pydantic_wrapping_with_lists(runtime_http_server):
-    """Check that pydantic wrapping works on data models with lists"""
-
-    @dataobject(package="http")
-    class BarTest(DataObjectBase):
-        baz: int
-
-    @dataobject(package="http")
-    class FooTest(DataObjectBase):
-        bars: List[BarTest]
-
-    foo = FooTest(bars=[BarTest(1)])
-    assert foo.bars[0].baz == 1
-
-    runtime_http_server._dataobject_to_pydantic(FooTest)
-
-    foo = FooTest(bars=[BarTest(1)])
-    assert foo.bars[0].baz == 1
 
 
 def test_http_server_shutdown_with_model_poll(open_port):
