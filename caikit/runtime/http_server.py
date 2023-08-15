@@ -595,7 +595,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             return int
         if np.issubclass_(field_type, np.floating):
             return float
-        if field_type in (int, float, bool, str, bytes, type(None)):
+        if field_type in (int, float, bool, str, bytes, dict, type(None)):
             return field_type
         if isinstance(field_type, type) and issubclass(field_type, enum.Enum):
             return field_type
