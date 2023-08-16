@@ -854,7 +854,9 @@ class DataBase(metaclass=_DataBaseMetaClass):
                     timestamp_proto = timestamp.datetime_to_proto(attr)
                     subproto.CopyFrom(timestamp_proto)
                 # check that this is any of the Union of List types
-                elif subproto.DESCRIPTOR.full_name.endswith("Sequence"):
+                elif subproto.DESCRIPTOR.full_name.endswith(
+                    "Sequence"
+                ) and not issubclass(attr.__class__, DataBase):
                     seq_dm = subproto.__class__
                     try:
                         subproto.CopyFrom(seq_dm(values=attr))
