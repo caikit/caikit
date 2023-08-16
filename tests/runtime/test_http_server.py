@@ -277,7 +277,7 @@ def test_build_dm_object_datastream(runtime_http_server):
     datastream_pydantic_model = http_server.PYDANTIC_TO_DM_MAPPING.get(
         datastream_dm_class
     )
-    # build our DM object using a pydantic object
+    # build our DM Datastream JsonData object using a pydantic object
     datastream_dm_obj = runtime_http_server._build_dm_object(
         datastream_pydantic_model(data_stream={"data": [{"number": 1}, {"number": 2}]})
     )
@@ -288,6 +288,31 @@ def test_build_dm_object_datastream(runtime_http_server):
         datastream_dm_obj.to_json()
         == '{"jsondata": {"data": [{"number": 1}, {"number": 2}]}}'
     )
+    
+    file_datastream_dm_class = DataBase.get_class_for_name("File")
+    file_datastream_pydantic_model = http_server.PYDANTIC_TO_DM_MAPPING.get(
+        file_datastream_dm_class
+    )
+    file_pydantic_obj = file_datastream_pydantic_model.model_validate_json('{"filename" : "hello"}')
+    f = datastream_pydantic_model(data_stream=file_pydantic_obj)
+    f.model_dump_json()
+    # '{"data_stream":{"filename":"hello"}}'
+    # datastream_pydantic_model.model_validate_json('{"data_stream":{"filename":"hello"}}')
+    assert f == datastream_pydantic_model.model_validate_json(f.model_dump_json())
+    # why this no work???
+    # caikit_data_model.runtime.DataStreamSourceSampleTrainingType(data_stream=caikit_data_model.runtime.DataStreamSourceSampleTrainingTypeJsonData(data=None))
+
+    # # build our DM Datastream File object using a pydantic object
+    # datastream_dm_obj = runtime_http_server._build_dm_object(
+    #     datastream_pydantic_model(data_stream={"file": {"filename": "file1"}})
+    # )
+
+    # # assert it's our DM object, all fine and dandy
+    # assert isinstance(datastream_dm_obj, DataBase)
+    # assert (
+    #     datastream_dm_obj.to_json()
+    #     == '{"jsondata": {"data": [{"number": 1}, {"number": 2}]}}'
+    # )
 
 
 @pytest.mark.parametrize(
