@@ -49,6 +49,12 @@ from caikit.config import get_config
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
+from caikit.interfaces.common.data_model.primitive_sequences import (
+    BoolSequence,
+    FloatSequence,
+    IntSequence,
+    StrSequence,
+)
 from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.rpcs import (
@@ -65,10 +71,16 @@ import caikit
 
 log = alog.use_channel("SERVR-HTTP")
 
-# It is essentially a 2-way map of DMs <-> Pydantic models, you give it a
+# PYDANTIC_TO_DM_MAPPING is essentially a 2-way map of DMs <-> Pydantic models, you give it a
 # pydantic model, it gives you back a DM class, you give it a
 # DM class, you get back a pydantic model.
-PYDANTIC_TO_DM_MAPPING = {}
+PYDANTIC_TO_DM_MAPPING = {
+    # Map primitive sequences to lists
+    StrSequence: List[str],
+    IntSequence: List[int],
+    FloatSequence: List[float],
+    BoolSequence: List[bool],
+}
 
 
 # Mapping from GRPC codes to their corresponding HTTP codes
