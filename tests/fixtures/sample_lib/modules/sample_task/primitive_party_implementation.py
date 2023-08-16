@@ -82,9 +82,9 @@ class SamplePrimitiveModule(caikit.core.ModuleBase):
         """Sample training method that produces a trained model"""
         assert type(sample_input) == SampleInputType
         assert isinstance(simple_list, List)
-        assert isinstance(union_list.values, List)
-        assert isinstance(union_list2.values, List)
-        assert isinstance(union_list3.values, List)
+        assert isinstance(union_list, List)
+        assert isinstance(union_list2, List)
+        assert isinstance(union_list3, List)
         assert isinstance(union_list4, int)
         assert isinstance(training_params_json_dict_list, List)
         assert isinstance(training_params_json_dict, Dict)
@@ -92,9 +92,9 @@ class SamplePrimitiveModule(caikit.core.ModuleBase):
         assert isinstance(training_params_dict_int, Dict)
         assert training_params_json_dict is not None
         assert len(training_params_json_dict_list) > 0
-        assert len(union_list.values) > 0
-        assert len(union_list2.values) > 0
-        assert len(union_list3.values) > 0
+        assert len(union_list) > 0
+        assert len(union_list2) > 0
+        assert len(union_list3) > 0
         assert training_params_dict is not None
         assert training_params_dict_int is not None
         return cls(

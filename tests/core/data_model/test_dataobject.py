@@ -517,6 +517,34 @@ def test_dataobject_with_same_type_of_oneof():
     assert foo2.foo_bool2
 
 
+@pytest.mark.skip(
+    reason="Currently, we do not have a way to use static BoolSequence in caikit core. See Issue #409"
+)
+def test_dataobject_with_same_type_of_oneof_with_lists():
+    """Make sure that using a Union of lists to create a oneof with the same types works as expected"""
+
+    @dataobject
+    class Foo(DataObjectBase):
+        foo: Union[
+            Annotated[List[bool], FieldNumber(10), OneofField("foo_bool1")],
+            Annotated[List[bool], FieldNumber(20), OneofField("foo_bool2")],
+        ]
+
+    # if the fields are of the same type, then by default the first one is set
+    foo1 = Foo([True])
+    assert foo1.which_oneof("foo") == "foo_bool1"
+    assert foo1.foo_bool1[0]
+    assert foo1.foo_bool2 == None
+    assert Foo.from_json(foo1.to_json) == foo1
+
+    # unless set explicitly
+    foo2 = Foo(foo_bool2=[True])
+    assert foo2.which_oneof("foo") == "foo_bool2"
+    assert foo2.foo_bool1 == None
+    assert foo2.foo_bool2[0]
+    assert Foo.from_json(foo2.to_json) == foo2
+
+
 def test_dataobject_primitive_oneof_round_trips():
     @dataobject
     class Foo(DataObjectBase):
@@ -903,14 +931,25 @@ def test_dataobject_to_kwargs(temp_dpool):
         int_val: int
         type_union_val: Union[int, str]
         bar_val: Bar
+        type_union_list_val: Union[List[str], str]
 
     bar = Bar(bar=42)
-    foo = Foo(int_val=1, type_union_val="foo", bar_val=bar)
+    foo = Foo(
+        int_val=1,
+        type_union_val="foo",
+        bar_val=bar,
+        type_union_list_val=["hello", "world"],
+    )
 
     kwargs = foo.to_kwargs()
 
     # `type_union_val` is set here rather than the `type_union_val_str_val` internal oneof field name
-    assert kwargs == {"int_val": 1, "type_union_val": "foo", "bar_val": bar}
+    assert kwargs == {
+        "int_val": 1,
+        "type_union_val": "foo",
+        "bar_val": bar,
+        "type_union_list_val": ["hello", "world"],
+    }
 
 
 def test_dataobject_inheritance(temp_dpool):
@@ -997,11 +1036,24 @@ def test_dataobject_union_repeated():
     proto_repr_foo = foo1.to_proto()
     assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
+    # test native python list
+    foo_int_native = Foo([1, 2])
+    assert foo_int_native.which_oneof("foo") == "foo_int_sequence"
+    proto_repr_foo = foo_int_native.to_proto()
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+
     # dict test
     assert foo1.to_dict() == {"foo_int_sequence": {"values": [1, 2]}}
+    assert foo_int_native.to_dict() == {"foo_int_sequence": {"values": [1, 2]}}
 
     # json round trip
     json_repr_foo = foo1.to_json()
+    assert json.loads(json_repr_foo) == {"foo_int_sequence": {"values": [1, 2]}}
+    foo_json_repr = Foo.from_json(json_repr_foo)
+    assert foo_json_repr.to_json() == json_repr_foo
+
+    # test native python list json round trip
+    json_repr_foo = foo_int_native.to_json()
     assert json.loads(json_repr_foo) == {"foo_int_sequence": {"values": [1, 2]}}
     foo_json_repr = Foo.from_json(json_repr_foo)
     assert foo_json_repr.to_json() == json_repr_foo
@@ -1011,6 +1063,18 @@ def test_dataobject_union_repeated():
     assert foo2.which_oneof("foo") == "foo_str_sequence"
     proto_repr_foo2 = foo2.to_proto()
     assert Foo.from_proto(proto=proto_repr_foo2).to_proto() == proto_repr_foo2
+
+    # test native python list
+    foo_str_native = Foo(["hello", "world"])
+    assert foo_str_native.which_oneof("foo") == "foo_str_sequence"
+    proto_repr_foo2 = foo_str_native.to_proto()
+    assert Foo.from_proto(proto=proto_repr_foo2).to_proto() == proto_repr_foo2
+
+    # dict test
+    assert foo2.to_dict() == {"foo_str_sequence": {"values": ["hello", "world"]}}
+    assert foo_str_native.to_dict() == {
+        "foo_str_sequence": {"values": ["hello", "world"]}
+    }
 
     # Bar
     # proto round trip

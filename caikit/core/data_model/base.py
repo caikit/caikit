@@ -38,6 +38,7 @@ from . import enums, json_dict, timestamp
 
 # metaclass-generated field members cannot be detected by pylint
 # pylint: disable=no-member
+# pylint: disable=too-many-lines
 
 
 log = alog.use_channel("DATAM")
@@ -567,10 +568,21 @@ class DataBase(metaclass=_DataBaseMetaClass):
     @classmethod
     def _is_valid_type_for_field(cls, field_name: str, val: Any) -> bool:
         """Check whether the given value is valid for the given field"""
+        # pylint: disable=too-many-return-statements
         field_descriptor = cls._proto_class.DESCRIPTOR.fields_by_name[field_name]
 
         if val is None:
             return False
+
+        # If val is a list, this maybe a union of list field
+        # field name is foo_<type>_sequence (ex: foo_str_sequence)
+        if isinstance(val, list) and field_name.endswith("_sequence"):
+            if len(val) == 0:
+                log.info("Assuming the type is valid since list is empty")
+                return True
+
+            list_type = type(val[0]).__name__
+            return f"{list_type}_sequence" in field_name
 
         # If it's a data object or an enum and the descriptors match, it's a
         # good type
@@ -654,8 +666,12 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 )
 
             if field in cls._fields_primitive or field in cls._fields_enum:
-                # special case for oneofs
-                if field not in cls._fields_to_oneof or proto.HasField(field):
+                if field in cls._fields_to_oneof:
+                    if proto.HasField(field):
+                        # "foo_bar_int" has original field name "foo_bar"
+                        original_field_name = "_".join(field.split("_")[:-1])
+                        kwargs[original_field_name] = proto_attr
+                else:
                     kwargs[field] = proto_attr
             elif (
                 field in cls._fields_primitive_repeated
@@ -687,6 +703,12 @@ class DataBase(metaclass=_DataBaseMetaClass):
                         == timestamp.TIMESTAMP_PROTOBUF_NAME
                     ):
                         kwargs[field] = timestamp.proto_to_datetime(proto_attr)
+                    elif proto_attr.DESCRIPTOR.full_name.endswith("Sequence"):
+                        # "foo_bar_int_sequence" has original field name "foo_bar"
+                        original_field_name = "_".join(field.split("_")[:-2])
+                        contained_class = cls.get_class_for_proto(proto_attr)
+                        contained_obj = contained_class.from_proto(proto_attr)
+                        kwargs[original_field_name] = getattr(contained_obj, "values")
                     else:
                         contained_class = cls.get_class_for_proto(proto_attr)
                         contained_obj = contained_class.from_proto(proto_attr)
@@ -731,6 +753,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
         """
         # Get protobufs class required for parsing
         error.type_check("<COR91037250E>", str, dict, json_str=json_str)
+
         if isinstance(json_str, dict):
             # Convert dict object to a JSON string
             json_str = json.dumps(json_str)
@@ -778,6 +801,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
             The protobufs is filled in place, so the argument and the return
             value are the same at the end of this call.
         """
+
         for field in self.fields:
             try:
                 attr = getattr(self, field)
@@ -794,7 +818,6 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
             if attr is None:
                 continue
-
             if field in self._fields_primitive:
                 setattr(proto, field, attr)
             elif field in self._fields_enum:
@@ -830,6 +853,16 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 elif subproto.DESCRIPTOR.full_name == timestamp.TIMESTAMP_PROTOBUF_NAME:
                     timestamp_proto = timestamp.datetime_to_proto(attr)
                     subproto.CopyFrom(timestamp_proto)
+                # check that this is any of the Union of List types
+                elif subproto.DESCRIPTOR.full_name.endswith(
+                    "Sequence"
+                ) and not issubclass(attr.__class__, DataBase):
+                    seq_dm = subproto.__class__
+                    try:
+                        subproto.CopyFrom(seq_dm(values=attr))
+                        log.debug4("Successfully fill proto for", field)
+                    except TypeError:
+                        log.debug4("not the correct union list type")
                 else:
                     attr.fill_proto(subproto)
 
@@ -867,7 +900,14 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 or self.which_oneof(self._fields_to_oneof[field]) == field
             ):
                 fields_to_dict.append(field)
-        return {field: self._field_to_dict_element(field) for field in fields_to_dict}
+
+        to_dict = {}
+        for field in fields_to_dict:
+            dict_value = self._field_to_dict_element(field)
+            if field.endswith("_sequence") and "values" not in dict_value:
+                dict_value = {"values": dict_value}
+            to_dict[field] = dict_value
+        return to_dict
 
     def to_kwargs(self) -> dict:
         """Convert to flat dictionary representation. (Like .to_dict, but not recursive)
@@ -899,6 +939,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
         if "default" not in kwargs:
             kwargs["default"] = _default_serialization_overrides
+
         return json.dumps(self.to_dict(), **kwargs)
 
     def __repr__(self):
