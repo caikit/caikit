@@ -32,11 +32,15 @@ import pytest
 import requests
 import tls_test_tools
 
+# First Party
+from py_to_proto.dataclass_to_proto import Annotated
+
 # Local
 from caikit.core import MODEL_MANAGER, DataObjectBase, dataobject
 from caikit.core.data_model.base import DataBase
 from caikit.interfaces.nlp.data_model import GeneratedTextStreamResult, GeneratedToken
 from caikit.runtime import http_server
+from sample_lib.data_model import SampleInputType, SampleOutputType
 from tests.conftest import temp_config
 from tests.runtime.conftest import (
     ModuleSubproc,
@@ -251,19 +255,19 @@ def test_build_dm_object_simple(runtime_http_server):
     """Test building our simple DM objects through pydantic objects"""
 
     # get our DM class
-    str_sequence_dm_class = DataBase.get_class_for_name("StrSequence")
+    sample_input_dm_class = DataBase.get_class_for_name("SampleInputType")
     # get pydantic model for our DM class
-    str_sequence_pydantic_model = http_server.PYDANTIC_TO_DM_MAPPING.get(
-        str_sequence_dm_class
+    sample_input_pydantic_model = http_server.PYDANTIC_TO_DM_MAPPING.get(
+        sample_input_dm_class
     )
     # build our DM object using a pydantic object
-    str_sequence_dm_obj = runtime_http_server._build_dm_object(
-        str_sequence_pydantic_model(values=["one", "two"])
+    sample_input_dm_obj = runtime_http_server._build_dm_object(
+        sample_input_pydantic_model(name="Hello world")
     )
 
     # assert it's our DM object, all fine and dandy
-    assert isinstance(str_sequence_dm_obj, DataBase)
-    assert str_sequence_dm_obj.to_json() == '{"values": ["one", "two"]}'
+    assert isinstance(sample_input_dm_obj, DataBase)
+    assert sample_input_dm_obj.to_json() == '{"name": "Hello world"}'
 
 
 def test_build_dm_object_datastream(runtime_http_server):
@@ -338,17 +342,28 @@ def test_build_dm_object_datastream(runtime_http_server):
 def test_get_pydantic_type(input, output):
     assert http_server.RuntimeHTTPServer._get_pydantic_type(input) == output
 
+
+def test_get_pydantic_type_union():
+    union_type = Union[SampleInputType, SampleOutputType]
+    return_type = http_server.RuntimeHTTPServer._get_pydantic_type(union_type)
+    assert all(issubclass(ret_type, pydantic.BaseModel) for ret_type in get_args(return_type))
+
+
+def test_get_pydantic_type_DM():
     # DM case
-    str_sequence_dm_class = DataBase.get_class_for_name("StrSequence")
-    str_sequence_pydantic_model = http_server.RuntimeHTTPServer._get_pydantic_type(
-        str_sequence_dm_class
+    sample_input_dm_class = DataBase.get_class_for_name("SampleInputType")
+    sample_input_pydantic_model = http_server.RuntimeHTTPServer._get_pydantic_type(
+        sample_input_dm_class
     )
 
-    assert issubclass(str_sequence_pydantic_model, pydantic.BaseModel)
-    assert str_sequence_pydantic_model in http_server.PYDANTIC_TO_DM_MAPPING
-    assert str_sequence_pydantic_model is http_server.PYDANTIC_TO_DM_MAPPING.get(
-        str_sequence_dm_class
+    assert issubclass(sample_input_pydantic_model, pydantic.BaseModel)
+    assert sample_input_pydantic_model in http_server.PYDANTIC_TO_DM_MAPPING
+    assert sample_input_pydantic_model is http_server.PYDANTIC_TO_DM_MAPPING.get(
+        sample_input_dm_class
     )
+
+
+def test_get_pydantic_type_throws_random_type():
     # error case
     with pytest.raises(TypeError):
         http_server.RuntimeHTTPServer._get_pydantic_type("some_random_type")
