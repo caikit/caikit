@@ -17,7 +17,7 @@ Tests for the caikit HTTP server
 # Standard
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Annotated, Dict, List, Union
+from typing import Dict, List, Union
 import enum
 import json
 import os
