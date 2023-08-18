@@ -541,6 +541,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             parameters_type = make_dataobject(
                 name=f"{rpc.request.name}Parameters",
                 annotations=optional_params,
+                attrs={"optional": True},
                 package=pkg_name,
             )
 
@@ -553,6 +554,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         request_message = make_dataobject(
             name=f"{rpc.request.name}HttpRequest",
             annotations=request_annotations,
+            attrs={"optional": True},
             package=pkg_name,
         )
 
@@ -663,18 +665,26 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 dm_class, localns=localns
             ).items()
         }
+        extra_attrs = {}
+        # Need to figure this out.
+        # Marking everything as optional except Inputs means Training data doesn't work with files
+        # Marking everytiong as required except Parameters means all http requests will need both 
+        # inputs and parameters
+        # if not dm_class.get_proto_class().DESCRIPTOR.full_name.endswith("Inputs"):
+        if optional_class := getattr(dm_class, "optional", None):
+            extra_attrs = {
+                name: None
+                for name, _ in get_type_hints(
+                    dm_class,
+                    localns=localns,
+                ).items()
+            }
         pydantic_model = type(pydantic.BaseModel)(
             dm_class.get_proto_class().DESCRIPTOR.full_name,
             (pydantic.BaseModel,),
             {
                 "__annotations__": annotations,
-                **{
-                    name: None
-                    for name, _ in get_type_hints(
-                        dm_class,
-                        localns=localns,
-                    ).items()
-                },
+                **extra_attrs,
             },
         )
         PYDANTIC_TO_DM_MAPPING[dm_class] = pydantic_model
