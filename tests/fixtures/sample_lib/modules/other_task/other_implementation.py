@@ -50,13 +50,13 @@ class OtherModule(caikit.core.ModuleBase):
     def train(
         cls,
         training_data: DataStream[int],
-        sample_input: Union[SampleInputType, str],
+        # sample_input: Union[SampleInputType, str],
         batch_size: int = 64,
     ) -> "OtherModule":
         """Sample training method that produces a trained model"""
-        assert isinstance(sample_input, SampleInputType) or isinstance(
-            sample_input, str
-        )
+        # assert isinstance(sample_input, SampleInputType) or isinstance(
+        #     sample_input, str
+        # )
         # Barf if we were incorrectly passed data not in datastream format
         assert isinstance(training_data, DataStream)
         assert batch_size > 0

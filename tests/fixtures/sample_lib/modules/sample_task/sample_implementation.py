@@ -39,7 +39,7 @@ class SampleModule(caikit.core.ModuleBase):
 
     @SampleTask.taskmethod()
     def run(
-        self, sample_input: SampleInputType, throw: bool = False
+        self, sample_input: SampleInputType, throw: Optional[bool] = False
     ) -> SampleOutputType:
         """
         Args:
