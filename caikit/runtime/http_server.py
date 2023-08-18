@@ -668,7 +668,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         extra_attrs = {}
         # Need to figure this out.
         # Marking everything as optional except Inputs means Training data doesn't work with files
-        # Marking everytiong as required except Parameters means all http requests will need both 
+        # Marking everytiong as required except Parameters means all http requests will need both
         # inputs and parameters
         # if not dm_class.get_proto_class().DESCRIPTOR.full_name.endswith("Inputs"):
         if optional_class := getattr(dm_class, "optional", None):
