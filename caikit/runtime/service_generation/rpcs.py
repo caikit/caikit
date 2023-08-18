@@ -74,6 +74,7 @@ class CaikitRPCBase(abc.ABC):
             for triple in self.request.triples
             if triple[1] in self.request.default_map
         }
+        # TODO: what exactly does this do???
         attrs = copy.copy(self.request.default_map)
 
         if not properties and not optional_properties:
@@ -174,6 +175,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         # - model_name: user-provided custom ID for the model to train
         # - output_path: pointer to some storage where the model will be saved
         new_params = {"model_name": str, "output_path": S3Path}
+        new_default_parameters = {"output_path": None}
         for name, typ in signature.parameters.items():
             if type_helpers.has_data_stream(typ):
                 # Assume this is training data
@@ -195,7 +197,10 @@ class ModuleClassTrainRPC(CaikitRPCBase):
                 )
 
         return CustomSignature(
-            original_signature=signature, parameters=new_params, return_type=return_type
+            original_signature=signature,
+            parameters=new_params,
+            new_default_parameters=new_default_parameters,
+            return_type=return_type,
         )
 
 

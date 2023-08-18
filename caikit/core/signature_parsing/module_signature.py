@@ -114,6 +114,7 @@ class CustomSignature(CaikitMethodSignature):
         self,
         original_signature: CaikitMethodSignature,
         parameters: Dict[str, Type],
+        new_default_parameters: Dict[str, Type],
         return_type: Optional[Type],
     ):
         super().__init__(original_signature.module, original_signature.method_name)
@@ -123,3 +124,6 @@ class CustomSignature(CaikitMethodSignature):
 
         self._return_type = return_type
         self._parameters = parameters
+        self._default_map = dict(
+            original_signature.default_parameters, **new_default_parameters
+        )

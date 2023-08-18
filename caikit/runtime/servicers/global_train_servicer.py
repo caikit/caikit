@@ -197,9 +197,9 @@ class GlobalTrainServicer:
 
         # Figure out where this model will be saved
         model_path: Union[str, S3Path]
-        if request_data_model.output_path:
+        if output_path := getattr(request_data_model, "output_path", None):
             # If we got an S3 storage link, just pass that along to the trainer
-            model_path: S3Path = request_data_model.output_path
+            model_path: S3Path = output_path
         else:
             # Otherwise, use either:
             # 1. The provided `training_output_dir` here, or
