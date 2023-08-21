@@ -600,7 +600,7 @@ def test_initialize_all_components(reset_globals):
         assert set(MODEL_MANAGER._initializers.keys()) == {"default", "foobar"}
 
 
-def test_find_without_on_disk_model(good_model_path, reset_globals):
+def test_find_without_on_disk_model_no_load_path(good_model_path, reset_globals):
     """Make sure that ephemeral models can be found without existing on disk"""
 
     with temp_config(
@@ -614,6 +614,32 @@ def test_find_without_on_disk_model(good_model_path, reset_globals):
         model = caikit.core.load("some_pretend_model")
         assert model
         assert not os.path.exists("some_pretend_model")
+
+
+def test_find_without_on_disk_model_and_load_path(good_model_path, reset_globals):
+    """Make sure that ephemeral models can be found without existing on disk
+    when a shared load_path is configured
+    """
+    with tempfile.TemporaryDirectory() as workdir:
+        with temp_config(
+            {
+                "load_path": workdir,
+                "model_management": {
+                    "finders": {
+                        "default": {
+                            "type": TestFinder.name,
+                            "config": {
+                                "fallback_to_local": False,
+                            },
+                        },
+                    },
+                    "initializers": {"default": {"type": "LOCAL"}},
+                },
+            }
+        ):
+            model = caikit.core.load("some_pretend_model")
+            assert model
+            assert not os.path.exists("some_pretend_model")
 
 
 def test_train_by_module_class(reset_globals):
