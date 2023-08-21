@@ -203,7 +203,7 @@ class ModelManager:
 
     def load(
         self,
-        module_path: str,
+        module_path: Union[str, BytesIO, bytes],
         *,
         load_singleton: bool = False,
         finder: Union[str, ModelFinderBase] = "default",

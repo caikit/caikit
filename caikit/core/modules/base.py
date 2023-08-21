@@ -40,6 +40,7 @@ from ..data_model import DataBase, DataStream
 from ..exceptions import error_handler
 from ..exceptions.validation_error import DataValidationError
 from ..toolkit import fileio
+from .config import ModuleConfig
 from .loader import ModuleLoader
 from .meta import _ModuleBaseMeta
 from caikit import core
@@ -120,14 +121,19 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
 
     @classmethod
     @alog.logged_function(log.debug)
-    def load(cls, model_path, *args, **kwargs):
+    def load(
+        cls,
+        model_path: Union[str, ModuleConfig],
+        *args,
+        **kwargs,
+    ) -> "ModuleBase":
         """Load a new instance of workflow from a given model_path
 
         Args:
-            model_path (str): Path to workflow
+            model_path (Union[str, ModuleConfig]): Path to saved model or
+                in-memory ModuleConfig
         Returns:
-            caikit.core.workflows.base.WorkflowBase: A new instance of any given
-                implementation of WorkflowBase
+            model (ModuleBase): A new instance of this module class
         """
         return cls._load(ModuleLoader(model_path), *args, **kwargs)
 
@@ -177,7 +183,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
     ###################
 
     @alog.logged_function(log.debug)
-    def save(self, model_path, *args, **kwargs):
+    def save(self, model_path: str, *args, **kwargs):
         """Save a model.
 
         Args:
@@ -189,7 +195,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         )
 
     @alog.logged_function(log.debug)
-    def as_file_like_object(self, *args, **kwargs):
+    def as_file_like_object(self, *args, **kwargs) -> BytesIO:
         """Produces a file-like object corresponding to a zip archive affiliated with a given
         model. This method wraps is functionally similar to .save() - it saves a model into
         a temporary directory and produces a zip archive, then loads the result as a io.BytesIO
@@ -205,7 +211,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         return BytesIO(self.as_bytes(*args, **kwargs))
 
     @alog.logged_function(log.debug)
-    def as_bytes(self, *args, **kwargs):
+    def as_bytes(self, *args, **kwargs) -> bytes:
         """Produces a bytes object corresponding to a zip archive affiliated with a given
         model. This method wraps is functionally similar to .save() - it saves a model into
         a temporary directory and produces a zip archive, then loads the result as a bytes
