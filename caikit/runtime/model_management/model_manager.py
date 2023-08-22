@@ -382,8 +382,9 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
                 "Lazy loading local model %s from %s", model_id, local_model_path
             )
             # If the model is not present on disk, attempt to lazy load it
-            # anyway. This allows auto-finders that can infer the model's config
-            # to load based on the ID
+            # anyway using the model_id as the "model_path". This allows
+            # auto-finders that can infer the model's config to load based on
+            # the ID.
             if not os.path.exists(local_model_path):
                 log.debug2("Attempting to load ephemeral model %s", model_id)
                 local_model_path = model_id
