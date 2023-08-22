@@ -89,7 +89,7 @@ class SampleModule(caikit.core.ModuleBase):
         for sample_input in sample_inputs:
             yield self.run(sample_input)
 
-    def save(self, model_path):
+    def save(self, model_path, **kwargs):
         module_saver = ModuleSaver(
             self,
             model_path=model_path,
@@ -101,6 +101,8 @@ class SampleModule(caikit.core.ModuleBase):
                     "learning_rate": self.learning_rate,
                 },
             }
+            if "keyword" in kwargs:
+                config_options["test_keyword"] = True
 
             module_saver.update_config(config_options)
 
