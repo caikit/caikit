@@ -18,7 +18,7 @@ from ..data_model.toolkit.sparkconf import sparkconf_local
 from .package import TS_PACKAGE
 from caikit.core import DataObjectBase
 from caikit.core.data_model import ProducerId, dataobject
-from caikit.core.toolkit.errors import error_handler
+from caikit.core.exceptions import error_handler
 
 log = alog.use_channel("TSDM")
 error = error_handler.get(log)

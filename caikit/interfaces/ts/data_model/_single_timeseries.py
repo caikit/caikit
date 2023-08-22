@@ -34,7 +34,7 @@ from .backends.util import pd_timestamp_to_seconds
 from .package import TS_PACKAGE
 from caikit.core import DataObjectBase
 from caikit.core.data_model import dataobject
-from caikit.core.toolkit.errors import error_handler
+from caikit.core.exceptions import error_handler
 
 log = alog.use_channel("TSDM")
 error = error_handler.get(log)

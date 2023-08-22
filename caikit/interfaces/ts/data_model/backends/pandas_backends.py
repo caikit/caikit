@@ -28,7 +28,7 @@ from .base import (
 )
 from .util import iteritems_workaround, pd_timestamp_to_seconds
 from caikit.core.data_model import DataBase, ProducerId
-from caikit.core.toolkit.errors import error_handler
+from caikit.core.exceptions import error_handler
 import caikit.interfaces.ts.data_model as dm
 
 log = alog.use_channel("PDBCK")

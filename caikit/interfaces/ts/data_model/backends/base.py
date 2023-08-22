@@ -14,7 +14,7 @@ import alog
 
 # Local
 from caikit.core.data_model.data_backends import DataModelBackendBase
-from caikit.core.toolkit.errors import error_handler
+from caikit.core.exceptions import error_handler
 
 log = alog.use_channel("DMBCK")
 error = error_handler.get(log)

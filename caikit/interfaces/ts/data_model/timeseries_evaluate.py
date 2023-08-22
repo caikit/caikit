@@ -22,7 +22,7 @@ import alog
 from .package import TS_PACKAGE
 from caikit.core import DataObjectBase
 from caikit.core.data_model import ProducerId, dataobject
-from caikit.core.toolkit.errors import error_handler
+from caikit.core.exceptions import error_handler
 
 log = alog.use_channel("TSEDM")
 error = error_handler.get(log)
