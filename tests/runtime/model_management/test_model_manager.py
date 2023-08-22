@@ -541,8 +541,10 @@ def test_load_local_model_deleted_dir():
             assert not manager.loaded_models
 
 
-def test_load_local_model_not_on_disk():
-    """Make sure bad models in local_models_dir at boot don't cause exceptions"""
+def test_lazy_load_ephemeral_model():
+    """Make sure an ephemeral model (not on disk) can be lazy loaded if the
+    right finder configuration is present to load it without hitting disk.
+    """
     with TemporaryDirectory() as cache_dir:
         with non_singleton_model_managers(
             1,
@@ -557,9 +559,13 @@ def test_load_local_model_not_on_disk():
         ) as managers:
             manager = managers[0]
             model_id = random_test_id()
-            manager.load_model(model_id, "some_non_disk_model", "test")
             model = manager.retrieve_model(model_id)
             assert model
+            assert cache_dir not in manager.loaded_models[model_id].path()
+
+            # Make sure the model does not get unloaded on sync
+            manager._local_models_dir_sync(wait=True)
+            assert model_id in manager.loaded_models
 
 
 # ****************************** Unit Tests ****************************** #
