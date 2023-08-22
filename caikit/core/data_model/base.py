@@ -554,7 +554,9 @@ class DataBase(metaclass=_DataBaseMetaClass):
         """
         # NOTE: The list of field names are guaranteed to be sorted so that
         #   bool < int < float
+        log.debug4("in _infer_which_oneof, cls._fields_oneofs_map is: %s", cls._fields_oneofs_map)
         for field_name in cls._fields_oneofs_map.get(oneof_name, []):
+            log.debug4("in _infer_which_oneof, field_name is: %s", field_name)
             if cls._is_valid_type_for_field(field_name, oneof_val):
                 return field_name
 
@@ -575,7 +577,6 @@ class DataBase(metaclass=_DataBaseMetaClass):
             return False
 
         # If val is a list, this maybe a union of list field
-        # field name is foo_<type>_sequence (ex: foo_str_sequence)
         if isinstance(val, list) and field_name.endswith("_sequence"):
             if len(val) == 0:
                 log.info("Assuming the type is valid since list is empty")
@@ -665,18 +666,21 @@ class DataBase(metaclass=_DataBaseMetaClass):
                     ),
                 )
 
+            log.debug4("ANGEL DEBUG: from_proto for field %s", field)
             if field in cls._fields_primitive or field in cls._fields_enum:
-                if field in cls._fields_to_oneof:
-                    if proto.HasField(field):
-                        # "foo_bar_int" has original field name "foo_bar"
-                        original_field_name = "_".join(field.split("_")[:-1])
-                        kwargs[original_field_name] = proto_attr
-                else:
-                    kwargs[field] = proto_attr
+                # special case for oneofs
+                if field not in cls._fields_to_oneof or proto.HasField(field):                    
+                    if proto.HasField(field): # this is a union type
+                        oneof = cls._fields_to_oneof.get(field)
+                        kwargs[oneof] = proto_attr
+                    else:
+                        kwargs[field] = proto_attr
             elif (
                 field in cls._fields_primitive_repeated
                 or field in cls._fields_enum_repeated
             ):
+                log.debug4("ANGEL DEBUG, inside block _fields_primitive_repeated, and field is: %s", field)
+                log.debug4("ANGEL DEBUG, kwargs are: %s", kwargs)
                 kwargs[field] = list(proto_attr)
 
             elif field in cls._fields_map:
@@ -692,6 +696,8 @@ class DataBase(metaclass=_DataBaseMetaClass):
                         kwargs[field][key] = value
 
             elif field in cls._fields_message:
+                log.debug4("ANGEL DEBUG, inside block _fields_message, and field is: %s", field)
+                log.debug4("ANGEL DEBUG, kwargs are: %s", kwargs)
                 if proto.HasField(field):
                     if (
                         proto_attr.DESCRIPTOR.full_name
@@ -736,6 +742,8 @@ class DataBase(metaclass=_DataBaseMetaClass):
                         "repeated".format(field)
                     ),
                 )
+
+            log.debug4("ANGEL DEBUG, end of from_proto, kwargs are: %s", kwargs)
 
         return cls(**kwargs)
 
