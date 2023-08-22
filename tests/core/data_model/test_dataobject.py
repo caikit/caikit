@@ -555,32 +555,72 @@ def test_dataobject_primitive_oneof_round_trips():
 
     # proto round trip
     foo1 = Foo(2)
-    # assert foo1.which_oneof("foo") == "fooint"
+    assert foo1.which_oneof("foo") == "fooint"
     proto_repr_foo = foo1.to_proto()
     print("proto_repr_foo is: ", proto_repr_foo)
     assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
-    # foo2 = Foo(foo=2)
-    # assert foo2.which_oneof("foo") == "foo_int"
-    # proto_repr_foo = foo2.to_proto()
-    # assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+    foo2 = Foo(foo=2)
+    assert foo2.which_oneof("foo") == "fooint"
+    proto_repr_foo = foo2.to_proto()
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+
+    foo3 = Foo(1.2)
+    assert foo3.which_oneof("foo") == "foofloat"
+    proto_repr_foo = foo3.to_proto()
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
     # dict test
-    # assert foo1.to_dict() == {"foo_int": 2}
+    assert foo1.to_dict() == {"fooint": 2}
 
     # json round trip
-    # json_repr_foo = foo1.to_json()
-    # assert json.loads(json_repr_foo) == {
-    #     "foo_int": 2,
-    # }
-    # assert Foo.from_json(json_repr_foo) == foo1
+    json_repr_foo = foo1.to_json()
+    assert json.loads(json_repr_foo) == {
+        "fooint": 2,
+    }
+    assert Foo.from_json(json_repr_foo) == foo1
+
+def test_dataobject_primitive_oneof_round_trips_no_custom_name():
+    @dataobject
+    class Foo(DataObjectBase):
+        foo: Union[
+            Annotated[int, FieldNumber(10)],
+            Annotated[float, FieldNumber(20)],
+        ]
+
+    # proto round trip
+    foo1 = Foo(2)
+    assert foo1.which_oneof("foo") == "foo_int"
+    proto_repr_foo = foo1.to_proto()
+    print("proto_repr_foo is: ", proto_repr_foo)
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+
+    foo2 = Foo(foo=2)
+    assert foo2.which_oneof("foo") == "foo_int"
+    proto_repr_foo = foo2.to_proto()
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+
+    foo3 = Foo(1.2)
+    assert foo3.which_oneof("foo") == "foo_float"
+    proto_repr_foo = foo3.to_proto()
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+
+    # dict test
+    assert foo1.to_dict() == {"foo_int": 2}
+
+    # json round trip
+    json_repr_foo = foo1.to_json()
+    assert json.loads(json_repr_foo) == {
+        "foo_int": 2,
+    }
+    assert Foo.from_json(json_repr_foo) == foo1
 
 
 def test_dataobject_list_oneof_round_trips_with_specified_names():
     @dataobject
     class Foo(DataObjectBase):
         foo: Union[
-            Annotated[List[int], FieldNumber(10), OneofField("fooint")],
+            Annotated[List[int], FieldNumber(10), OneofField("foointseq")],
             Annotated[List[str], FieldNumber(20), OneofField("foostrseq")],
         ]
 
@@ -590,20 +630,50 @@ def test_dataobject_list_oneof_round_trips_with_specified_names():
     proto_repr_foo = foo1.to_proto()
     print("proto_repr_foo is: ", proto_repr_foo)
     Foo.from_proto(proto=proto_repr_foo)
-    # assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
-    # foo2 = Foo(foo=2)
-    # assert foo2.which_oneof("foo") == "foo_int"
-    # proto_repr_foo = foo2.to_proto()
-    # assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+    foo2 = Foo(foo=[2])
+    # assert foo2.which_oneof("foo") == "foointseq"
+    proto_repr_foo = foo2.to_proto()
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
     # dict test
-    # assert foo1.to_dict() == {"foo_int": 2}
+    # assert foo1.to_dict() == {"foointseq": 2}
 
     # json round trip
     # json_repr_foo = foo1.to_json()
     # assert json.loads(json_repr_foo) == {
-    #     "foo_int": 2,
+    #     "foointseq": 2,
+    # }
+    # assert Foo.from_json(json_repr_foo) == foo1
+
+def test_dataobject_list_oneof_round_trips_with_no_custom_names():
+    @dataobject
+    class Foo(DataObjectBase):
+        foo: Union[
+            Annotated[List[int], FieldNumber(10)],
+            Annotated[List[str], FieldNumber(20)],
+        ]
+
+    # proto round trip
+    foo1 = Foo([2])
+    # assert foo1.which_oneof("foo") == "foo_int_sequence"
+    proto_repr_foo = foo1.to_proto()
+    Foo.from_proto(proto=proto_repr_foo)
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+
+    foo2 = Foo(foo=[2])
+    # assert foo2.which_oneof("foo") == "foo_int_sequence"
+    proto_repr_foo = foo2.to_proto()
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+
+    # dict test
+    # assert foo1.to_dict() == {"foo_int_sequence": 2}
+
+    # json round trip
+    # json_repr_foo = foo1.to_json()
+    # assert json.loads(json_repr_foo) == {
+    #     "foo_int_sequence": 2,
     # }
     # assert Foo.from_json(json_repr_foo) == foo1
 
