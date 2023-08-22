@@ -225,7 +225,7 @@ class ModuleSaver:
         """
         self.config.update(additional_config)
 
-    def save_module(self, module, relative_path):
+    def save_module(self, module, relative_path, **kwargs):
         """Save a CaikitCore module within a workflow artifact and add a reference to the config.
 
         Args:
@@ -233,6 +233,8 @@ class ModuleSaver:
                 part of this workflow
             relative_path (str): The relative path inside of `model_path` where
                 the module will be saved
+            **kwargs:  dict
+                key-value pair of parameters to be passed to module.save
         """
 
         if not issubclass(module.__class__, ModuleBase):
@@ -247,13 +249,13 @@ class ModuleSaver:
 
         rel_path, abs_path = self.add_dir(relative_path)
         # Save this module at the specified location
-        module.save(abs_path)
+        module.save(abs_path, **kwargs)
         self.config.setdefault(ModuleLoader.MODULE_PATHS_KEY, {}).update(
             {relative_path: rel_path}
         )
         return rel_path, abs_path
 
-    def save_module_list(self, modules, config_key):
+    def save_module_list(self, modules, config_key, **kwargs):
         """Save a list of CaikitCore modules within a workflow artifact and add a reference to the
         config.
 
@@ -263,6 +265,9 @@ class ModuleSaver:
                 part of this workflow
             config_key (str): The config key inside of `model_path` where the
                 modules' relative path with be referenced
+            **kwargs:  dict
+                key-value pair of parameters to be passed to module.save
+
 
         Returns:
             list_of_rel_path: list(str)
@@ -293,7 +298,7 @@ class ModuleSaver:
             rel_path, abs_path = self.add_dir(relative_path)
 
             # Save this module at the specified location
-            module.save(abs_path)
+            module.save(abs_path, **kwargs)
 
             # append relative and absolute path to a list that will be returned
             list_of_rel_path.append(rel_path)
