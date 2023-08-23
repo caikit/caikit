@@ -27,6 +27,7 @@ import pytest
 # Local
 from caikit.config import get_config
 from caikit.core import MODEL_MANAGER
+from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.common.data_model.stream_sources import S3Path
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -194,6 +195,7 @@ def test_global_train_other_task(
         inference_response
         == OtherOutputType(
             farewell=f"goodbye: Gabe {batch_size} times",
+            producer_id=ProducerId("other_mod", "1.1.1"),
         ).to_proto()
     )
 

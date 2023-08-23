@@ -28,8 +28,10 @@ import threading
 import time
 
 # Third Party
-from fastapi import FastAPI, Request, Response
-from fastapi.responses import PlainTextResponse
+from fastapi import FastAPI, Request, Response, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import ResponseValidationError
+from fastapi.responses import JSONResponse, PlainTextResponse
 from grpc import StatusCode
 from sse_starlette import EventSourceResponse, ServerSentEvent
 import numpy as np
@@ -128,6 +130,14 @@ class RuntimeHTTPServer(RuntimeServerBase):
         super().__init__(get_config().runtime.http.port, tls_config_override)
 
         self.app = FastAPI()
+
+        # Response validation
+        @self.app.exception_handler(ResponseValidationError)
+        async def validation_exception_handler(_, exc: ResponseValidationError):
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content=jsonable_encoder({"detail": exc.errors(), "body": exc.body}),
+            )
 
         # Start metrics server
         RuntimeServerBase._start_metrics_server()
