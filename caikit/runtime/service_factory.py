@@ -36,7 +36,7 @@ from caikit.interfaces.runtime.data_model import (
     TrainingStatusResponse,
 )
 from caikit.runtime import service_generation
-from caikit.runtime.service_generation.rpcs import CaikitRPCBase, snake_to_upper_camel
+from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.utils import import_util
 import caikit.core
 

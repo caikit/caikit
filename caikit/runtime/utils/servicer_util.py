@@ -41,7 +41,6 @@ from caikit.runtime.service_generation.data_stream_source import (
     DataStreamSourceBase,
     make_data_stream_source,
 )
-from caikit.runtime.service_generation.proto_package import snake_to_upper_camel
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import get_data_model
 
