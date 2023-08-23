@@ -36,6 +36,7 @@ from caikit.interfaces.common.data_model.stream_sources import (
     ListOfFiles,
     S3Files,
 )
+from caikit.runtime.service_generation.proto_package import get_runtime_service_package
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit
 
@@ -220,7 +221,7 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
         # this class can be referenced within the Union annotation for the
         # outer class itself. This class needs to be created dynamically because
         # it encapsulates type information about the elements of the data stream.
-        package = "caikit_data_model.runtime"
+        package = get_runtime_service_package()
         JsonData = make_dataobject(
             package=package,
             proto_name=f"{cls_name}JsonData",
