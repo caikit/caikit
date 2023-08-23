@@ -350,7 +350,7 @@ def test_health_check_ok(runtime_http_server):
         assert response.text == "OK"
 
 
-def test_pydantic_wrapping_with_enums(runtime_http_server):
+def test_pydantic_wrapping_with_enums():
     """Check that the pydantic wrapping works on our data models when they have enums"""
     # The NLP GeneratedTextStreamResult data model contains enums
 
@@ -359,14 +359,14 @@ def test_pydantic_wrapping_with_enums(runtime_http_server):
     assert token.text == "foo"
 
     # Wrap the containing data model in pydantic
-    runtime_http_server._dataobject_to_pydantic(GeneratedTextStreamResult)
+    http_server.RuntimeHTTPServer._dataobject_to_pydantic(GeneratedTextStreamResult)
 
     # Check that our data model is _still_ fine and dandy
     token = GeneratedToken(text="foo")
     assert token.text == "foo"
 
 
-def test_pydantic_wrapping_with_inheritance(runtime_http_server):
+def test_pydantic_wrapping_with_inheritance():
     """Check that the pydantic wrapping works on our data models when they involve inheritance"""
 
     @dataobject
@@ -385,7 +385,7 @@ def test_pydantic_wrapping_with_inheritance(runtime_http_server):
     assert derived.foo == 2
 
     # Wrap the containing data model in pydantic
-    pydantic_datamodel = runtime_http_server._dataobject_to_pydantic(Derived)
+    pydantic_datamodel = http_server.RuntimeHTTPServer._dataobject_to_pydantic(Derived)
 
     # Check that our data model is _still_ fine and dandy
     new_derived = pydantic_datamodel(bar="one", foo=2)
@@ -393,7 +393,7 @@ def test_pydantic_wrapping_with_inheritance(runtime_http_server):
     assert new_derived.foo == 2
 
 
-def test_pydantic_wrapping_with_lists(runtime_http_server):
+def test_pydantic_wrapping_with_lists():
     """Check that pydantic wrapping works on data models with lists"""
 
     @dataobject(package="http")
@@ -407,7 +407,7 @@ def test_pydantic_wrapping_with_lists(runtime_http_server):
     foo = FooTest(bars=[BarTest(1)])
     assert foo.bars[0].baz == 1
 
-    runtime_http_server._dataobject_to_pydantic(FooTest)
+    http_server.RuntimeHTTPServer._dataobject_to_pydantic(FooTest)
 
     foo = FooTest(bars=[BarTest(1)])
     assert foo.bars[0].baz == 1
