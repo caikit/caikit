@@ -677,7 +677,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             NotImplementedError("This is not available in this module."),
         )
 
-    def _extract_pred_set(self, dataset, *args, preprocess_func=None, **kwargs):
+    def _extract_pred_set(self, dataset, preprocess_func=None, *args, **kwargs):
         """Method for extracting pred set from dataset. Implemented in subclass.
 
         Args:
