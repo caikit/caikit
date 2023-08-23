@@ -80,7 +80,6 @@ class TestFinder(ModelFinderBase):
         self._config = config
         self._local_finder = model_finder_factory.construct({"type": "LOCAL"})
         self._instance_name = instance_name
-        self._fallback_to_local = config.get("fallback_to_local", True)
 
     def find_model(self, model_path, *args, **kwargs):
         if self._raise_on_find:
@@ -88,9 +87,7 @@ class TestFinder(ModelFinderBase):
         if self._fail_to_find:
             return None
         if os.path.exists(model_path):
-            if self._fallback_to_local:
-                return self._local_finder.find_model(model_path, *args, **kwargs)
-            return None
+            return self._local_finder.find_model(model_path, *args, **kwargs)
         return ModuleConfig(self._config)
 
 

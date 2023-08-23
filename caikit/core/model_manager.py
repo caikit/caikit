@@ -270,7 +270,7 @@ class ModelManager:
                 module_path, load_singleton, finder, initializer, **kwargs
             )
         try:
-            return self._load_from_dir(
+            return self._do_load(
                 module_path, load_singleton, finder, initializer, **kwargs
             )
         except FileNotFoundError:
@@ -422,9 +422,7 @@ class ModelManager:
 
     ## Implementation Details ##################################################
 
-    def _load_from_dir(
-        self, module_path, load_singleton, finder, initializer, **kwargs
-    ):
+    def _do_load(self, module_path, load_singleton, finder, initializer, **kwargs):
         """Load a model from a directory.
 
         Args:
@@ -519,7 +517,7 @@ class ModelManager:
             # to files directly, or it may unpack to a (single) directory containing the files.
             # We expect the former, but fall back to the second if we can't find the config.
             try:
-                model = self._load_from_dir(
+                model = self._do_load(
                     extract_path, load_singleton, finder, initializer, **kwargs
                 )
             # NOTE: Error handling is a little gross here, the main reason being that we
@@ -549,7 +547,7 @@ class ModelManager:
                 # Otherwise, try again. If we fail again stop, because the zip creation should only
                 # create one potential extra layer of nesting around the model directory.
                 try:
-                    model = self._load_from_dir(
+                    model = self._do_load(
                         nested_dirs[0], load_singleton, finder, initializer, **kwargs
                     )
                 except FileNotFoundError:

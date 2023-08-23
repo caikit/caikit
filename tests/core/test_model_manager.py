@@ -627,14 +627,7 @@ def test_find_without_on_disk_model_and_load_path(good_model_path, reset_globals
             {
                 "load_path": workdir,
                 "model_management": {
-                    "finders": {
-                        "default": {
-                            "type": TestFinder.name,
-                            "config": {
-                                "fallback_to_local": False,
-                            },
-                        },
-                    },
+                    "finders": {"default": {"type": TestFinder.name}},
                     "initializers": {"default": {"type": "LOCAL"}},
                 },
             }
