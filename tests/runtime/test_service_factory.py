@@ -19,15 +19,32 @@ import tempfile
 
 # Third Party
 from google.protobuf.message import Message
+import pytest
 
 # Local
 from caikit.core.data_model import render_dataobject_protos
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from sample_lib.modules.sample_task import ListModule
 from tests.conftest import temp_config
+from tests.data_model_helpers import reset_global_protobuf_registry, temp_dpool
+from tests.runtime.conftest import sample_inference_service, sample_train_service
 import caikit
 
 ## Helpers #####################################################################
+
+
+@pytest.fixture
+def clean_data_model(sample_inference_service, sample_train_service):
+    """Set up a temporary descriptor pool that inherits all explicitly created
+    dataobjects from the global, but skips dynamically created ones from
+    datastreamsource.
+    """
+    with reset_global_protobuf_registry():
+        with temp_dpool(
+            inherit_global=True,
+            skip_inherit=[".*sampletask.*\.proto"],
+        ) as dpool:
+            yield dpool
 
 
 def validate_package_with_override(
@@ -193,7 +210,7 @@ def test_get_and_filter_modules_respects_included_task_types_and_excluded_module
         assert "ListModule" not in str(clean_modules)
 
 
-def test_override_domain():
+def test_override_domain(clean_data_model):
     """
     Test override of gRPC domain generation from config.
     The feature allows achieving backwards compatibility with earlier gRPC client.
@@ -228,7 +245,7 @@ def test_override_domain():
         assert "SampleModule" in str(clean_modules)
 
 
-def test_override_package():
+def test_override_package(clean_data_model):
     """
     Test override of gRPC package generation from config.
     The feature allows achieving backwards compatibility with earlier gRPC client.
@@ -257,7 +274,7 @@ def test_override_package():
         assert "SampleModule" in str(clean_modules)
 
 
-def test_override_package_and_domain_with_proto_gen():
+def test_override_package_and_domain_with_proto_gen(clean_data_model):
     """
     Test override of both package and domain, to make sure they work together, and
     additionally test the proto generation.
