@@ -18,11 +18,13 @@ and download and load them.
 from contextlib import contextmanager
 import os
 import tempfile
+import uuid
 
 # Local
 from caikit.core import LocalBackend
 from caikit.core.data_model import DataStream, TrainingStatus
 from caikit.core.model_management import ModelFinderBase, model_finder_factory
+from caikit.core.modules import ModuleBase, ModuleSaver, module
 
 # Unit Test Infrastructure
 from sample_lib.modules.sample_task import SampleModule
@@ -600,7 +602,7 @@ def test_initialize_all_components(reset_globals):
         assert set(MODEL_MANAGER._initializers.keys()) == {"default", "foobar"}
 
 
-def test_find_without_on_disk_model(good_model_path, reset_globals):
+def test_find_without_on_disk_model_no_load_path(good_model_path, reset_globals):
     """Make sure that ephemeral models can be found without existing on disk"""
 
     with temp_config(
@@ -614,6 +616,53 @@ def test_find_without_on_disk_model(good_model_path, reset_globals):
         model = caikit.core.load("some_pretend_model")
         assert model
         assert not os.path.exists("some_pretend_model")
+
+
+def test_find_without_on_disk_model_and_load_path(good_model_path, reset_globals):
+    """Make sure that ephemeral models can be found without existing on disk
+    when a shared load_path is configured
+    """
+    with tempfile.TemporaryDirectory() as workdir:
+        with temp_config(
+            {
+                "load_path": workdir,
+                "model_management": {
+                    "finders": {"default": {"type": TestFinder.name}},
+                    "initializers": {"default": {"type": "LOCAL"}},
+                },
+            }
+        ):
+            model = caikit.core.load("some_pretend_model")
+            assert model
+            assert not os.path.exists("some_pretend_model")
+
+
+def test_load_requires_path_str(reset_globals):
+    """Make sure that modules whose load function requires a path string
+    explicitly can be loaded
+    """
+    mod_id = str(uuid.uuid4())
+
+    class CustomException(Exception):
+        """Never been seen before!"""
+
+    @module(id=mod_id, name="Needs a path", version="1.2.3")
+    class NeedsAPath(ModuleBase):
+        def save(self, model_path: str):
+            with ModuleSaver(self, model_path=model_path) as module_saver:
+                module_saver.update_config({"foo": "bar"})
+
+        @classmethod
+        def load(cls, model_path: str, *_, **__):
+            if not isinstance(model_path, str) or not os.path.exists(model_path):
+                raise CustomException("Yikes!")
+            return cls()
+
+    with tempfile.TemporaryDirectory() as workdir:
+        model_path = os.path.join(workdir, "test_model")
+        NeedsAPath().save(model_path)
+        loaded = caikit.load(model_path)
+        assert loaded
 
 
 def test_train_by_module_class(reset_globals):

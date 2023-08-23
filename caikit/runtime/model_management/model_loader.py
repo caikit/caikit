@@ -142,7 +142,7 @@ class ModelLoader:
                 % (model_path, repr(ex)),
                 "model_id": model_id,
             }
-            log.error(log_dict)
+            log.error(log_dict, exc_info=True)
             raise CaikitRuntimeException(
                 StatusCode.INTERNAL,
                 f"Model {model_id} failed to load. Nested error: {ex}",

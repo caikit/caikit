@@ -188,7 +188,7 @@ class LocalModelInitializer(ModelInitializerBase):
                         **extra_kwargs,
                         **kwargs,
                     )
-                except TypeError as err:
+                except Exception as err:  # pylint: disable=broad-exception-caught
                     log.warning(
                         "<COR98539580W>",
                         "DEPRECATION: Loading %s failed with ModuleConfig. Using model_path. %s",
