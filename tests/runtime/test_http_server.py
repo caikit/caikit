@@ -429,7 +429,34 @@ def test_pydantic_wrapping_with_enums():
     assert token.text == "foo"
 
 
-def test_pydantic_wrapping_with_lists(runtime_http_server):
+def test_pydantic_wrapping_with_inheritance():
+    """Check that the pydantic wrapping works on our data models when they involve inheritance"""
+
+    @dataobject
+    class Base(DataObjectBase):
+        foo: int
+        bar: int
+
+    @dataobject
+    class Derived(Base):
+        bar: str
+        baz: str
+
+    # Check that our data model is fine and dandy
+    derived = Derived(bar="one", foo=2)
+    assert derived.bar == "one"
+    assert derived.foo == 2
+
+    # Wrap the containing data model in pydantic
+    pydantic_datamodel = http_server.RuntimeHTTPServer._dataobject_to_pydantic(Derived)
+
+    # Check that our data model is _still_ fine and dandy
+    new_derived = pydantic_datamodel(bar="one", foo=2)
+    assert new_derived.bar == "one"
+    assert new_derived.foo == 2
+
+
+def test_pydantic_wrapping_with_lists():
     """Check that pydantic wrapping works on data models with lists"""
 
     @dataobject(package="http")
@@ -443,7 +470,7 @@ def test_pydantic_wrapping_with_lists(runtime_http_server):
     foo = FooTest(bars=[BarTest(1)])
     assert foo.bars[0].baz == 1
 
-    runtime_http_server._dataobject_to_pydantic(FooTest)
+    http_server.RuntimeHTTPServer._dataobject_to_pydantic(FooTest)
 
     foo = FooTest(bars=[BarTest(1)])
     assert foo.bars[0].baz == 1

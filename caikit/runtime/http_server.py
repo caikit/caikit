@@ -18,7 +18,17 @@ API based on the task definitions available at boot.
 """
 # Standard
 from functools import partial
-from typing import Any, Dict, Iterable, List, Optional, Type, Union, get_args
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Type,
+    Union,
+    get_args,
+    get_type_hints,
+)
 import asyncio
 import enum
 import json
@@ -646,26 +656,32 @@ class RuntimeHTTPServer(RuntimeServerBase):
         """Make a pydantic model based on the given proto message by using the data
         model class annotations to mirror as a pydantic model
         """
-        # Use dicts for jsondict values
-        # this is needed for pydantic to have a handle on JsonDicts while
+        # define a local namespace for type hints to get type information from.
+        # This is needed for pydantic to have a handle on JsonDict and JsonDictValue while
         # creating its base model
-        # pylint: disable=unused-variable
-        JsonDict = dict
-        JsonDictValue = dict
+        localns = {"JsonDict": dict, "JsonDictValue": dict}
 
         if dm_class in PYDANTIC_TO_DM_MAPPING:
             return PYDANTIC_TO_DM_MAPPING[dm_class]
 
         annotations = {
             field_name: cls._get_pydantic_type(field_type)
-            for field_name, field_type in dm_class.__annotations__.items()
+            for field_name, field_type in get_type_hints(
+                dm_class, localns=localns
+            ).items()
         }
         pydantic_model = type(pydantic.BaseModel)(
             dm_class.get_proto_class().DESCRIPTOR.full_name,
             (pydantic.BaseModel,),
             {
                 "__annotations__": annotations,
-                **{name: None for name in dm_class.__annotations__},
+                **{
+                    name: None
+                    for name, _ in get_type_hints(
+                        dm_class,
+                        localns=localns,
+                    ).items()
+                },
             },
         )
         PYDANTIC_TO_DM_MAPPING[dm_class] = pydantic_model
