@@ -184,11 +184,6 @@ def get_metadata(context, key, required=True):
             ) from e
 
 
-def snake_to_upper_camel(string: str) -> str:
-    """Simple snake -> upper camel conversion"""
-    return "".join([part[0].upper() + part[1:] for part in string.split("_")])
-
-
 def validate_data_model(
     service_descriptor: ServiceDescriptor,
 ):

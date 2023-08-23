@@ -36,7 +36,7 @@ from caikit.interfaces.runtime.data_model import (
     TrainingStatusResponse,
 )
 from caikit.runtime import service_generation
-from caikit.runtime.service_generation.rpcs import CaikitRPCBase, snake_to_upper_camel
+from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.utils import import_util
 import caikit.core
 
@@ -123,14 +123,14 @@ class ServicePackageFactory:
         # !!!! This will use the `caikit_library` config
         _ = import_util.get_data_model()
 
-        caikit_config = get_config()
-        lib = caikit_config.runtime.library
-        ai_domain_name = snake_to_upper_camel(lib.replace("caikit_", ""))
-        package_name = f"caikit.runtime.{ai_domain_name}"
+        # Get the names for the AI domain and the proto package
+        ai_domain_name = service_generation.get_ai_domain()
+        package_name = service_generation.get_runtime_service_package()
 
         # Then do API introspection to come up with all the API definitions to support
+        caikit_config = get_config()
         clean_modules = ServicePackageFactory._get_and_filter_modules(
-            caikit_config, lib
+            caikit_config, caikit_config.runtime.library
         )
 
         if service_type == cls.ServiceType.INFERENCE:

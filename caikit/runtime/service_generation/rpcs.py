@@ -34,6 +34,7 @@ from ...interfaces.common.data_model.stream_sources import S3Path
 from . import protoable, type_helpers
 from .compatibility_checker import ApiFieldNames
 from .data_stream_source import make_data_stream_source
+from .proto_package import snake_to_upper_camel
 from caikit.core import ModuleBase, TaskBase
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
@@ -386,8 +387,3 @@ class _RequestMessage:
             self.triples.append((typ, item_name, num))
 
         self.triples.sort(key=lambda x: x[2])
-
-
-def snake_to_upper_camel(string: str) -> str:
-    """Simple snake -> upper camel conversion"""
-    return "".join([part[0].upper() + part[1:] for part in string.split("_")])

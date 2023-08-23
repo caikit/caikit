@@ -25,9 +25,7 @@ import pytest
 from caikit.core import DataObjectBase, dataobject
 from caikit.core.data_model import timestamp
 from caikit.interfaces.common.data_model.stream_sources import S3Path
-from tests.core.data_model.test_dataobject import reset_global_protobuf_registry
-
-f = reset_global_protobuf_registry
+from tests.core.data_model.test_dataobject import auto_reset_global_protobuf_registry
 
 
 def test_timestamp_to_proto_to_timestamp():
@@ -51,7 +49,7 @@ def test_proto_to_timestamp_invalid_type():
         timestamp.proto_to_datetime(non_timestamp_proto)
 
 
-def test_timestamp_roundtrip_serialization(reset_global_protobuf_registry):
+def test_timestamp_roundtrip_serialization():
     @dataobject(package="test")
     class FooTimestamps(DataObjectBase):
         time: datetime.datetime
