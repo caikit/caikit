@@ -51,20 +51,22 @@ log = alog.use_channel("TEST")
 def add_fd_to_pool(
     fd: descriptor.FileDescriptor,
     dpool: descriptor_pool.DescriptorPool,
-) -> Optional[descriptor_pb2.FileDescriptorProto]:
+) -> List[descriptor_pb2.FileDescriptorProto]:
     """Helper to add a FileDescriptor to a new pool. This assumes the name is a
     unique identifier
     """
+    added_fds = []
     try:
         dpool.FindFileByName(fd.name)
     except KeyError:
         log.debug2("Adding file %s to dpool %s", fd.name, dpool)
         for dep_fd in fd.dependencies:
-            add_fd_to_pool(dep_fd, dpool)
+            added_fds.extend(add_fd_to_pool(dep_fd, dpool))
         fd_proto = descriptor_pb2.FileDescriptorProto()
         fd.CopyToProto(fd_proto)
         dpool.Add(fd_proto)
-        return fd_proto
+        added_fds.append(fd_proto)
+    return added_fds
 
 
 @contextmanager
@@ -73,20 +75,13 @@ def temp_dpool(inherit_global: bool = False, skip_inherit: Optional[List[str]] =
     dpool = descriptor_pool.DescriptorPool()
     global_dpool = descriptor_pool._DEFAULT
     descriptor_pool._DEFAULT = dpool
-    fd_proto = add_fd_to_pool(struct_pb2.DESCRIPTOR, dpool)
-    add_fd_to_pool(timestamp_pb2.DESCRIPTOR, dpool)
+    all_fd_protos = []
+    all_fd_protos.extend(add_fd_to_pool(struct_pb2.DESCRIPTOR, dpool))
+    all_fd_protos.extend(add_fd_to_pool(timestamp_pb2.DESCRIPTOR, dpool))
 
     # If inheriting from the current global, copy everything over
     if inherit_global:
         skip_inherit = skip_inherit or []
-
-        # Get the flattened list of all file descriptors
-        fds = {
-            dm_class.get_proto_class().DESCRIPTOR.file
-            for dm_class in caikit.core.data_model.base._DataBaseMetaClass.class_registry.values()
-        }
-        fds = {dep_fd for fd in fds for dep_fd in fd.dependencies}.union(fds)
-
         for (
             dm_class
         ) in caikit.core.data_model.base._DataBaseMetaClass.class_registry.values():
@@ -96,7 +91,7 @@ def temp_dpool(inherit_global: bool = False, skip_inherit: Optional[List[str]] =
                 continue
             try:
                 global_dpool.FindFileByName(fd_name)
-                add_fd_to_pool(proto_class.DESCRIPTOR.file, dpool)
+                all_fd_protos.extend(add_fd_to_pool(proto_class.DESCRIPTOR.file, dpool))
             except KeyError:
                 pass
 
@@ -114,10 +109,10 @@ def temp_dpool(inherit_global: bool = False, skip_inherit: Optional[List[str]] =
         # Third Party
         from google.protobuf.message_factory import GetMessageClassesForFiles
 
-        msgs = GetMessageClassesForFiles([fd_proto.name], dpool)
-        _ = msgs["google.protobuf.Struct"]
-        _ = msgs["google.protobuf.Value"]
-        _ = msgs["google.protobuf.ListValue"]
+        for fd_proto in all_fd_protos:
+            msgs = GetMessageClassesForFiles([fd_proto.name], dpool)
+            for key in msgs:
+                _ = msgs[key]
 
     # Nothing to do for protobuf 3.X
     except ImportError:

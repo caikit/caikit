@@ -28,6 +28,7 @@ from caikit.core.data_model.dataobject import DataObjectBase
 from tests.data_model_helpers import (
     justify_script_string,
     make_proto_def,
+    reset_global_protobuf_registry,
     temp_data_model,
     temp_module,
 )
@@ -55,6 +56,12 @@ class AccessCounterBackend(DataModelBackendBase):
 
     def access_count(self, name):
         return self.access_counter.get(name, 0)
+
+
+@pytest.fixture(autouse=True)
+def auto_reset_global_protobuf_registry():
+    with reset_global_protobuf_registry():
+        yield
 
 
 ## Tests #######################################################################
