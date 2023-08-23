@@ -19,27 +19,109 @@ Helpers for testing out data model functionality
 # Standard
 from contextlib import contextmanager
 from types import ModuleType
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
+import copy
 import importlib
 import os
 import random
+import re
 import string
 import sys
 import tempfile
 
 # Third Party
-from google.protobuf import descriptor_pool
+from google.protobuf import (
+    descriptor,
+    descriptor_pb2,
+    descriptor_pool,
+    struct_pb2,
+    timestamp_pb2,
+)
+
+# First Party
+import alog
 
 # Local
+from caikit.core.data_model.dataobject import _AUTO_GEN_PROTO_CLASSES
 import caikit.core
+
+log = alog.use_channel("TEST")
+
+
+def add_fd_to_pool(
+    fd: descriptor.FileDescriptor,
+    dpool: descriptor_pool.DescriptorPool,
+) -> Optional[descriptor_pb2.FileDescriptorProto]:
+    """Helper to add a FileDescriptor to a new pool. This assumes the name is a
+    unique identifier
+    """
+    try:
+        dpool.FindFileByName(fd.name)
+    except KeyError:
+        log.debug2("Adding file %s to dpool %s", fd.name, dpool)
+        for dep_fd in fd.dependencies:
+            add_fd_to_pool(dep_fd, dpool)
+        fd_proto = descriptor_pb2.FileDescriptorProto()
+        fd.CopyToProto(fd_proto)
+        dpool.Add(fd_proto)
+        return fd_proto
 
 
 @contextmanager
-def temp_dpool():
-    """Fixture to isolate the descriptor pool used in each test"""
+def temp_dpool(inherit_global: bool = False, skip_inherit: Optional[List[str]] = None):
+    """Context to isolate the descriptor pool used in each test"""
     dpool = descriptor_pool.DescriptorPool()
     global_dpool = descriptor_pool._DEFAULT
     descriptor_pool._DEFAULT = dpool
+    fd_proto = add_fd_to_pool(struct_pb2.DESCRIPTOR, dpool)
+    add_fd_to_pool(timestamp_pb2.DESCRIPTOR, dpool)
+
+    # If inheriting from the current global, copy everything over
+    if inherit_global:
+        skip_inherit = skip_inherit or []
+
+        # Get the flattened list of all file descriptors
+        fds = {
+            dm_class.get_proto_class().DESCRIPTOR.file
+            for dm_class in caikit.core.data_model.base._DataBaseMetaClass.class_registry.values()
+        }
+        fds = {dep_fd for fd in fds for dep_fd in fd.dependencies}.union(fds)
+
+        for (
+            dm_class
+        ) in caikit.core.data_model.base._DataBaseMetaClass.class_registry.values():
+            proto_class = dm_class.get_proto_class()
+            fd_name = proto_class.DESCRIPTOR.file.name
+            if any(re.match(skip_expr, fd_name) for skip_expr in skip_inherit):
+                continue
+            try:
+                global_dpool.FindFileByName(fd_name)
+                add_fd_to_pool(proto_class.DESCRIPTOR.file, dpool)
+            except KeyError:
+                pass
+
+    ##
+    # HACK! Doing this _appears_ to solve the mysterious segfault cause by
+    # using Struct inside a temporary descriptor pool. The inspiration for this
+    # was:
+    #
+    # https://github.com/protocolbuffers/protobuf/issues/12047
+    #
+    # NOTE: This only works for protobuf 4.X (and as far as we know, it's not
+    #     needed for 3.X)
+    ##
+    try:
+        # Third Party
+        from google.protobuf.message_factory import GetMessageClassesForFiles
+
+        msgs = GetMessageClassesForFiles([fd_proto.name], dpool)
+        _ = msgs["google.protobuf.Struct"]
+        _ = msgs["google.protobuf.Value"]
+        _ = msgs["google.protobuf.ListValue"]
+
+    # Nothing to do for protobuf 3.X
+    except ImportError:
+        pass
     yield dpool
     descriptor_pool._DEFAULT = global_dpool
 
@@ -205,3 +287,19 @@ def make_proto_def(
 
         out += msg_str
     return out
+
+
+@contextmanager
+def reset_global_protobuf_registry():
+    """Reset the global registry of generated protos"""
+    prev_auto_gen_proto_classes = copy.copy(_AUTO_GEN_PROTO_CLASSES)
+    prev_class_registry = copy.copy(
+        caikit.core.data_model.base._DataBaseMetaClass.class_registry
+    )
+    _AUTO_GEN_PROTO_CLASSES.clear()
+    yield
+    _AUTO_GEN_PROTO_CLASSES.extend(prev_auto_gen_proto_classes)
+    caikit.core.data_model.base._DataBaseMetaClass.class_registry.clear()
+    caikit.core.data_model.base._DataBaseMetaClass.class_registry.update(
+        prev_class_registry
+    )

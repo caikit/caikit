@@ -25,7 +25,7 @@ import tempfile
 
 # Third Party
 from google.protobuf import descriptor as _descriptor
-from google.protobuf import descriptor_pb2, descriptor_pool, message, struct_pb2
+from google.protobuf import message
 import numpy as np
 import pytest
 
@@ -38,67 +38,32 @@ from caikit.core import (  # NOTE: Imported from the top to validate
     dataobject,
 )
 from caikit.core.data_model import enums
-from caikit.core.data_model.base import DataBase, _DataBaseMetaClass
+from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.data_backends.dict_backend import DictBackend
 from caikit.core.data_model.dataobject import (
-    _AUTO_GEN_PROTO_CLASSES,
     CAIKIT_DATA_MODEL,
     make_dataobject,
     render_dataobject_protos,
 )
 from caikit.core.data_model.enums import isprotobufenum
 from caikit.core.data_model.json_dict import JsonDict
+from tests.data_model_helpers import reset_global_protobuf_registry, temp_dpool
 
 ## Helpers #####################################################################
 
 
 @pytest.fixture(autouse=True)
-def temp_dpool():
+def auto_temp_dpool():
     """Fixture to isolate the descriptor pool used in each test"""
-    dpool = descriptor_pool.DescriptorPool()
-    global_dpool = descriptor_pool._DEFAULT
-    descriptor_pool._DEFAULT = dpool
-    fd = descriptor_pb2.FileDescriptorProto()
-    struct_pb2.DESCRIPTOR.CopyToProto(fd)
-    dpool.Add(fd)
-
-    ##
-    # HACK! Doing this _appears_ to solve the mysterious segfault cause by
-    # using Struct inside a temporary descriptor pool. The inspiration for this
-    # was:
-    #
-    # https://github.com/protocolbuffers/protobuf/issues/12047
-    #
-    # NOTE: This only works for protobuf 4.X (and as far as we know, it's not
-    #     needed for 3.X)
-    ##
-    try:
-        # Third Party
-        from google.protobuf.message_factory import GetMessageClassesForFiles
-
-        msgs = GetMessageClassesForFiles([fd.name], dpool)
-        _ = msgs["google.protobuf.Struct"]
-        _ = msgs["google.protobuf.Value"]
-        _ = msgs["google.protobuf.ListValue"]
-
-    # Nothing to do for protobuf 3.X
-    except ImportError:
-        pass
-    yield dpool
-    # pylint: disable=duplicate-code
-    descriptor_pool._DEFAULT = global_dpool
+    with temp_dpool() as dpool:
+        yield dpool
 
 
 @pytest.fixture(autouse=True)
-def reset_global_protobuf_registry():
+def auto_reset_global_protobuf_registry():
     """Reset the global registry of generated protos"""
-    prev_auto_gen_proto_classes = copy.copy(_AUTO_GEN_PROTO_CLASSES)
-    prev_class_registry = copy.copy(_DataBaseMetaClass.class_registry)
-    _AUTO_GEN_PROTO_CLASSES.clear()
-    yield
-    _AUTO_GEN_PROTO_CLASSES.extend(prev_auto_gen_proto_classes)
-    _DataBaseMetaClass.class_registry.clear()
-    _DataBaseMetaClass.class_registry.update(prev_class_registry)
+    with reset_global_protobuf_registry():
+        yield
 
 
 def check_field_type(proto_class, field_name, exp_type):
@@ -855,7 +820,7 @@ def test_np_dtypes():
 
 
 @pytest.mark.parametrize("run_num", range(100))
-def test_dataobject_jsondict(temp_dpool, run_num):
+def test_dataobject_jsondict(auto_temp_dpool, run_num):
     """Make sure that a JsonDict type is handled correctly in a dataobject
 
     NOTE: This test is repeated 100x due to a strange segfault in `upb` that it
@@ -868,7 +833,7 @@ def test_dataobject_jsondict(temp_dpool, run_num):
         js_dict: JsonDict
 
     # Make sure the field has the right type
-    Struct = temp_dpool.FindMessageTypeByName("google.protobuf.Struct")
+    Struct = auto_temp_dpool.FindMessageTypeByName("google.protobuf.Struct")
     assert Foo._proto_class.DESCRIPTOR.fields_by_name["js_dict"].message_type == Struct
 
     # Make sure dict is preserved on init
@@ -889,7 +854,7 @@ def test_dataobject_jsondict(temp_dpool, run_num):
     assert foo2.js_dict == foo.js_dict
 
 
-def test_dataobject_jsondict_repeated(temp_dpool):
+def test_dataobject_jsondict_repeated(auto_temp_dpool):
     """Make sure that a list of JsonDict types is handled correctly in a dataobject"""
 
     @dataobject
@@ -897,7 +862,7 @@ def test_dataobject_jsondict_repeated(temp_dpool):
         js_dict: List[JsonDict]
 
     # Make sure the field has the right type
-    Struct = temp_dpool.FindMessageTypeByName("google.protobuf.Struct")
+    Struct = auto_temp_dpool.FindMessageTypeByName("google.protobuf.Struct")
     assert Foo._proto_class.DESCRIPTOR.fields_by_name["js_dict"].message_type == Struct
 
     # Make sure dict is preserved on init
@@ -919,7 +884,7 @@ def test_dataobject_jsondict_repeated(temp_dpool):
     assert foo2.js_dict == foo.js_dict
 
 
-def test_dataobject_to_kwargs(temp_dpool):
+def test_dataobject_to_kwargs():
     """to_kwargs does a non-recursive version of to_dict"""
 
     @dataobject
@@ -952,7 +917,7 @@ def test_dataobject_to_kwargs(temp_dpool):
     }
 
 
-def test_dataobject_inheritance(temp_dpool):
+def test_dataobject_inheritance():
     """Make sure that dataobject classes can inherit from each other in the same
     way that dataclasses can
     """
@@ -1006,25 +971,25 @@ def test_dataobject_union_repeated():
     # with some naming caveats for one-of fields being
     # foo_foointsequence instead of foo_int_sequence and
     # bar_barintsequence instead of bar_int_sequence
-
+    #
     # @dataobject
     # class Foo(DataObjectBase):
     #     @dataobject
     #     class FooIntSequence(DataObjectBase):
     #         values: List[int]
-
+    #
     #     @dataobject
     #     class FooStrSequence(DataObjectBase):
     #         values: List[str]
-
+    #
     #     @dataobject
     #     class BarIntSequence(DataObjectBase):
     #         values: List[int]
-
+    #
     #     @dataobject
     #     class BarStrSequence(DataObjectBase):
     #         values: List[str]
-
+    #
     #     foo: Union[FooIntSequence, FooStrSequence]
     #     bar: Union[BarIntSequence, BarStrSequence]
 
@@ -1100,7 +1065,7 @@ def test_dataobject_union_repeated():
     assert Foo.from_proto(proto=proto_repr_bar2).to_proto() == proto_repr_bar2
 
 
-def test_dataobject_function_inheritance(temp_dpool):
+def test_dataobject_function_inheritance():
     """Make sure inheritance works to override functionality without changing
     the schema of the parent
     """
@@ -1124,7 +1089,7 @@ def test_dataobject_function_inheritance(temp_dpool):
     assert d_inst.doit() == 3
 
 
-def test_make_dataobject_no_optionals(temp_dpool):
+def test_make_dataobject_no_optionals():
     """Test that dataobject classes can be created dynamically without optional
     values given
     """
@@ -1140,7 +1105,7 @@ def test_make_dataobject_no_optionals(temp_dpool):
     assert data_object._proto_class.DESCRIPTOR.file.package == CAIKIT_DATA_MODEL
 
 
-def test_make_dataobject_with_optionals(temp_dpool):
+def test_make_dataobject_with_optionals():
     """Test that dataobject classes can be created dynamically with optional
     values given
     """
