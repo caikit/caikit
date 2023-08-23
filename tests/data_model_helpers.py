@@ -109,10 +109,17 @@ def temp_dpool(inherit_global: bool = False, skip_inherit: Optional[List[str]] =
         # Third Party
         from google.protobuf.message_factory import GetMessageClassesForFiles
 
-        for fd_proto in all_fd_protos:
-            msgs = GetMessageClassesForFiles([fd_proto.name], dpool)
-            for key in msgs:
-                _ = msgs[key]
+        # Extra HACK! It seems that the below loop which _should_ do exactly
+        # this somehow does not and by switching to it, the segfault reappears.
+        msgs = GetMessageClassesForFiles(["google/protobuf/struct.proto"], dpool)
+        _ = msgs["google.protobuf.Struct"]
+        _ = msgs["google.protobuf.Value"]
+        _ = msgs["google.protobuf.ListValue"]
+
+        # for fd_proto in all_fd_protos:
+        #     msgs = GetMessageClassesForFiles([fd_proto.name], dpool)
+        #     for key in msgs:
+        #         _ = msgs[key]
 
     # Nothing to do for protobuf 3.X
     except ImportError:
