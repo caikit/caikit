@@ -41,6 +41,7 @@ from caikit.runtime.service_generation.data_stream_source import (
     DataStreamSourceBase,
     make_data_stream_source,
 )
+from caikit.runtime.service_generation.proto_package import snake_to_upper_camel
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import get_data_model
 
@@ -182,11 +183,6 @@ def get_metadata(context, key, required=True):
                 grpc.StatusCode.INVALID_ARGUMENT,
                 "Could not read required metadata: {}".format(key),
             ) from e
-
-
-def snake_to_upper_camel(string: str) -> str:
-    """Simple snake -> upper camel conversion"""
-    return "".join([part[0].upper() + part[1:] for part in string.split("_")])
 
 
 def validate_data_model(

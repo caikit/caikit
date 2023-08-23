@@ -123,21 +123,14 @@ class ServicePackageFactory:
         # !!!! This will use the `caikit_library` config
         _ = import_util.get_data_model()
 
-        caikit_config = get_config()
-        lib = caikit_config.runtime.library
-        default_ai_domain_name = snake_to_upper_camel(lib.replace("caikit_", ""))
-        ai_domain_name = (
-            caikit_config.runtime.service_generation.domain or default_ai_domain_name
-        )
-
-        default_package_name = f"caikit.runtime.{ai_domain_name}"
-        package_name = (
-            caikit_config.runtime.service_generation.package or default_package_name
-        )
+        # Get the names for the AI domain and the proto package
+        ai_domain_name = service_generation.get_ai_domain()
+        package_name = service_generation.get_runtime_service_package()
 
         # Then do API introspection to come up with all the API definitions to support
+        caikit_config = get_config()
         clean_modules = ServicePackageFactory._get_and_filter_modules(
-            caikit_config, lib
+            caikit_config, caikit_config.runtime.library
         )
 
         if service_type == cls.ServiceType.INFERENCE:
