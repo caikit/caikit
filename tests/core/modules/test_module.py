@@ -21,7 +21,7 @@ import tempfile
 import aconfig
 
 # Local
-from caikit.core import ModuleConfig, ModuleLoader
+from caikit.core import ModuleConfig, ModuleLoader, ModuleSaver
 from caikit.core.modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
 
 # pylint: disable=import-error
@@ -132,6 +132,79 @@ def test_run_batch_keyword_only(model_path):
     dummy_model = caikit.core.load(model_path)
     dummy_model.run(sample_input=SampleInputType(name="Gabe"))
     dummy_model.run_batch(sample_input=[SampleInputType(name="Gabe")])
+
+
+## ModuleSaver ################################################################
+
+
+def test_save_module(model_path):
+    dummy_model = caikit.core.load(model_path)
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        with ModuleSaver(
+            dummy_model,
+            model_path=tempdir,
+        ) as module_saver:
+            module_saver.save_module(dummy_model, "dummy")
+
+            assert os.path.exists(os.path.join(tempdir, "dummy"))
+            assert module_saver.config.get("module_paths") is not None
+            assert module_saver.config.get("module_paths") == {"dummy": "./dummy"}
+
+
+def test_save_module_kwargs_get_piped_through(model_path):
+    """Testing additional keywords passed to save_module are processed by the module"""
+    dummy_model = caikit.core.load(model_path)
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        with ModuleSaver(
+            dummy_model,
+            model_path=tempdir,
+        ) as module_saver:
+            module_saver.save_module(dummy_model, "dummy", keyword=True)
+            saved_model = caikit.core.load(os.path.join(tempdir, "dummy"))
+            assert saved_model.metadata["test_keyword"]
+
+
+def test_save_module_list(model_path):
+    """Test valid module list save with a list of models."""
+    dummy_model = caikit.core.load(model_path)
+    dummy_models_with_rel_path = {"dummy_path": dummy_model}
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        with ModuleSaver(
+            dummy_model,
+            model_path=tempdir,
+        ) as module_saver:
+            list_of_rel_path, _ = module_saver.save_module_list(
+                dummy_models_with_rel_path, "dummy"
+            )
+            # Ensure that we only get one relative path back
+            assert len(list_of_rel_path) == 1
+            # And that if we split our path components up, get 2 parts...
+            saved_subpath = os.path.split(list_of_rel_path[0])
+            assert len(saved_subpath) == 2
+            # ...Where the first resolves to the relative path [no hierarchy expected here]
+            assert not saved_subpath[0].strip(".")
+            # ...And the second is the dummy_path we specified
+            assert saved_subpath[1] == "dummy_path"
+
+
+def test_save_module_list_kwargs_get_piped_through(model_path):
+    """Check that additional keywords passed to save_module_list are processed by the module"""
+    dummy_model = caikit.core.load(model_path)
+    dummy_models_with_rel_path = {"dummy_path": dummy_model}
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        with ModuleSaver(
+            dummy_model,
+            model_path=tempdir,
+        ) as module_saver:
+            module_saver.save_module_list(
+                dummy_models_with_rel_path, "dummy", keyword=True
+            )
+            saved_model = caikit.core.load(os.path.join(tempdir, "dummy_path"))
+            assert saved_model.metadata["test_keyword"]
 
 
 ## ModuleConfig ################################################################
