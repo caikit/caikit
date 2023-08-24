@@ -295,7 +295,6 @@ def test_build_dm_object_datastream_jsondata(runtime_http_server):
     )
 
 
-@pytest.mark.skip("skipping pending pydantic investigation")
 def test_build_dm_object_datastream_file(runtime_http_server):
     # get our DM class
     datastream_dm_class = DataBase.get_class_for_name(
@@ -405,6 +404,10 @@ def test_pydantic_wrapping_with_lists(runtime_http_server):
     assert foo.bars[0].baz == 1
 
 
+def test_dataobject_to_pydantic(runtime_http_server):
+    pass
+
+
 ## Inference Tests #######################################################################
 
 
@@ -430,8 +433,8 @@ def test_inference_sample_task(sample_task_model_id, runtime_http_server):
             f"/api/v1/{sample_task_model_id}/task/sample",
             json=json_input,
         )
-        assert response.status_code == 200
         json_response = json.loads(response.content.decode(response.default_encoding))
+        assert response.status_code == 200, json_response
         assert json_response["greeting"] == "Hello world"
 
 
@@ -461,8 +464,8 @@ def test_inference_other_task(other_task_model_id, runtime_http_server):
             f"/api/v1/{other_task_model_id}/task/other",
             json=json_input,
         )
-        assert response.status_code == 200
         json_response = json.loads(response.content.decode(response.default_encoding))
+        assert response.status_code == 200, json_response
         assert json_response["farewell"] == "goodbye: world 42 times"
 
 
@@ -504,12 +507,16 @@ def test_inference_sample_task_throws_incorrect_input(
 ):
     """error check for a request with incorrect input"""
     with TestClient(runtime_http_server.app) as client:
-        json_input = {"blah": {"sample_input": {"name": "world"}}}
+        json_input = {
+            "inputs": {"blah": "world"},
+        }
         response = client.post(
             f"/api/v1/{sample_task_model_id}/task/sample",
             json=json_input,
         )
-        assert response.status_code == 400
+        assert response.status_code == 422, response.content.decode(
+            response.default_encoding
+        )
 
 
 def test_health_check_ok(runtime_http_server):
@@ -574,10 +581,10 @@ def test_train_sample_task(runtime_http_server):
         )
 
         # assert training response
-        assert training_response.status_code == 200
         training_json_response = json.loads(
             training_response.content.decode(training_response.default_encoding)
         )
+        assert training_response.status_code == 200, training_json_response
         assert (training_id := training_json_response["training_id"])
         assert training_json_response["model_name"] == model_name
 
@@ -602,8 +609,8 @@ def test_train_sample_task(runtime_http_server):
             f"/api/v1/{model_name}/task/sample",
             json=json_input_inference,
         )
-        assert response.status_code == 200
         json_response = json.loads(response.content.decode(response.default_encoding))
+        assert response.status_code == 200, json_response
         assert json_response["greeting"] == "Hello world"
 
 
@@ -627,7 +634,9 @@ def test_train_sample_task_throws_s3_value_error(runtime_http_server):
             "S3 output path not supported by this runtime"
             in training_response.content.decode(training_response.default_encoding)
         )
-        assert training_response.status_code == 500
+        assert training_response.status_code == 500, training_response.content.decode(
+            training_response.default_encoding
+        )
 
 
 def test_train_primitive_task(runtime_http_server):
@@ -654,10 +663,10 @@ def test_train_primitive_task(runtime_http_server):
             json=json_input,
         )
         # assert training response
-        assert training_response.status_code == 200
         training_json_response = json.loads(
             training_response.content.decode(training_response.default_encoding)
         )
+        assert training_response.status_code == 200, training_json_response
         assert (training_id := training_json_response["training_id"])
         assert training_json_response["model_name"] == model_name
 
@@ -686,8 +695,8 @@ def test_train_primitive_task(runtime_http_server):
             f"/api/v1/{model_name}/task/sample",
             json=json_input_inference,
         )
-        assert response.status_code == 200
         json_response = json.loads(response.content.decode(response.default_encoding))
+        assert response.status_code == 200, json_response
         assert json_response["greeting"] == "hello: primitives! [1, 2, 3] 100"
 
 
@@ -707,10 +716,10 @@ def test_train_other_task(runtime_http_server):
             json=json_input,
         )
         # assert training response
-        assert training_response.status_code == 200
         training_json_response = json.loads(
             training_response.content.decode(training_response.default_encoding)
         )
+        assert training_response.status_code == 200, training_json_response
         assert (training_id := training_json_response["training_id"])
         assert training_json_response["model_name"] == model_name
 
@@ -735,6 +744,6 @@ def test_train_other_task(runtime_http_server):
             f"/api/v1/{model_name}/task/other",
             json=json_input_inference,
         )
-        assert response.status_code == 200
         json_response = json.loads(response.content.decode(response.default_encoding))
+        assert response.status_code == 200, json_response
         assert json_response["farewell"] == "goodbye: world 64 times"

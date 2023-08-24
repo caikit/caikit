@@ -129,6 +129,15 @@ HEALTH_ENDPOINT = "/health"
 ## RuntimeHTTPServer ###########################################################
 
 
+# Base class for pydantic models
+# We want to set the config to forbid extra attributes
+# while instantiating any pydantic models
+# This is done to make sure any oneofs can be
+# correctly infered by pydantic
+class ParentPydanticBaseModel(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(extra="forbid")
+
+
 class RuntimeHTTPServer(RuntimeServerBase):
     """An implementation of a FastAPI server that serves caikit runtimes"""
 
@@ -660,9 +669,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 dm_class, localns=localns
             ).items()
         }
-        pydantic_model = type(pydantic.BaseModel)(
+        pydantic_model = type(ParentPydanticBaseModel)(
             dm_class.get_proto_class().DESCRIPTOR.full_name,
-            (pydantic.BaseModel,),
+            (ParentPydanticBaseModel,),
             {
                 "__annotations__": annotations,
                 **{
