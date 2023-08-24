@@ -200,7 +200,7 @@ def dataobject(*args, **kwargs) -> Callable[[_DataObjectBaseT], _DataObjectBaseT
             if _has_dataclass_init(cls):
                 log.debug3("Resetting default dataclass init")
                 delattr(cls, "__init__")
-            cls = dataclasses.dataclass(cls)
+            cls = dataclasses.dataclass(repr=False)(cls)
             setattr(cls, _USER_DEFINED_DEFAULTS, user_defined_defaults)
 
         descriptor = _dataobject_to_proto(dataclass_=cls, **kwargs)
