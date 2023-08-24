@@ -683,7 +683,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             NotImplementedError("This is not available in this module."),
         )
 
-    def _extract_pred_set(self, dataset, *args, preprocess_func=None, **kwargs):
+    def _extract_pred_set(self, dataset, preprocess_func=None, **kwargs):
         """Method for extracting pred set from dataset. Implemented in subclass.
 
         Args:
@@ -693,7 +693,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
                 steps that need to be taken to run the model on the input text.
                 This helper function ultimately leads to the input to this
                 module and may involve executing other modules.
-            *args, **kwargs (dict): Optional keyword arguments for prediction set extraction.
+            **kwargs (dict): Optional keyword arguments for prediction set extraction.
         Returns:
             list: List of labels in the format of the module_type that is being
                 called.
