@@ -339,7 +339,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = self._dataobject_to_pydantic(
-            self._get_request_dataobject(rpc)
+            DataBase.get_class_for_name(rpc.request.name)
         )
         pydantic_response = self._dataobject_to_pydantic(
             self._get_response_dataobject(rpc)
@@ -356,24 +356,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
             # build request DM object
             http_request_dm_object = self.build_dm_object(request)
 
-            request_dm_class = caikit.core.data_model.DataBase.get_class_for_name(
-                rpc.request.name
-            )
-            request_dm_class_kwargs = {}
-            required_inputs = getattr(http_request_dm_object, REQUIRED_INPUTS_KEY, None)
-            optional_inputs = getattr(http_request_dm_object, OPTIONAL_INPUTS_KEY, None)
-            for input_type in (required_inputs, optional_inputs):
-                if input_type is not None:
-                    for field_name in input_type.fields:
-                        field_value = getattr(input_type, field_name, None)
-                        if field_value is not None:
-                            request_dm_class_kwargs[field_name] = field_value
-
-            request_dm_object = request_dm_class(**request_dm_class_kwargs)
             try:
                 call = partial(
                     self.global_train_servicer.run_training_job,
-                    request=request_dm_object.to_proto(),
+                    request=http_request_dm_object.to_proto(),
                     module=rpc.clz,
                     training_output_dir=None,  # pass None so that GTS picks up the config one # TODO: double-check?
                     # context=context,
