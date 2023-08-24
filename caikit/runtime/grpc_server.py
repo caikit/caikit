@@ -211,7 +211,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
             "<RUN10001001I>",
             "Caikit Runtime is serving on port: %s with thread pool size: %s",
             self.port,
-            self.config.runtime.server_thread_pool_size,
+            self.config.runtime.grpc.server_thread_pool_size,
         )
 
         if blocking:
