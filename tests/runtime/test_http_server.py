@@ -306,7 +306,7 @@ def test_build_dm_object_datastream_file(runtime_http_server):
         datastream_dm_class
     )
 
-    # build our DM Datastream JsonData object using a pydantic object
+    # build our DM Datastream File object using a pydantic object
     datastream_dm_obj = runtime_http_server._build_dm_object(
         datastream_pydantic_model(data_stream={"filename": "hello"})
     )
@@ -315,21 +315,6 @@ def test_build_dm_object_datastream_file(runtime_http_server):
     assert isinstance(datastream_dm_obj, DataBase)
     assert isinstance(datastream_dm_obj.data_stream, File)
     assert datastream_dm_obj.to_json() == '{"file": {"filename": "hello"}}'
-
-    # file_datastream_dm_class = DataBase.get_class_for_name("File")
-    # file_datastream_pydantic_model = http_server.PYDANTIC_TO_DM_MAPPING.get(
-    #     file_datastream_dm_class
-    # )
-    # file_pydantic_obj = file_datastream_pydantic_model.model_validate_json(
-    #     '{"filename" : "hello"}'
-    # )
-    # f = datastream_pydantic_model(data_stream=file_pydantic_obj)
-    # f.model_dump_json()
-    # # '{"data_stream":{"filename":"hello"}}'
-    # # datastream_pydantic_model.model_validate_json('{"data_stream":{"filename":"hello"}}')
-    # assert f == datastream_pydantic_model.model_validate_json(f.model_dump_json())
-    # why this no work???
-    # caikit_data_model.runtime.DataStreamSourceSampleTrainingType(data_stream=caikit_data_model.runtime.DataStreamSourceSampleTrainingTypeJsonData(data=None))
 
 
 @pytest.mark.parametrize(
@@ -535,7 +520,6 @@ def test_health_check_ok(runtime_http_server):
         assert response.text == "OK"
 
 
-@pytest.mark.skip()
 def test_http_server_shutdown_with_model_poll(open_port):
     """Test that a SIGINT successfully shuts down the running server"""
     with tempfile.TemporaryDirectory() as workdir:
