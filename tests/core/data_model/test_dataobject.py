@@ -1129,3 +1129,29 @@ def test_make_dataobject_with_optionals():
     assert data_object.prop == "val"
     assert data_object._proto_class.DESCRIPTOR.name == "SomeOtherFooBar"
     assert data_object._proto_class.DESCRIPTOR.file.package == "foo.bar.baz"
+
+
+def test_dataobject_repr_data_base():
+    """Make sure that the __repr__ on a dataobject uses DataBase.__repr__"""
+
+    @dataobject
+    class Foo(DataObjectBase):
+        foo: int
+
+    inst = Foo(1)
+    assert repr(inst) == DataBase.__repr__(inst)
+
+
+def test_dataobject_custom_repr():
+    """Make sure that a dataobject with a custom __repr__ retains it"""
+    custom_repr = "so custom!"
+
+    @dataobject
+    class Foo(DataObjectBase):
+        foo: int
+
+        def __repr__(self):
+            return custom_repr
+
+    inst = Foo(1)
+    assert repr(inst) == custom_repr
