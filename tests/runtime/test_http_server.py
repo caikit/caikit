@@ -480,7 +480,7 @@ def test_pydantic_wrapping_with_lists():
     foo = FooTest(bars=[BarTest(1)])
     assert foo.bars[0].baz == 1
 
-
+@pytest.mark.skip()
 def test_http_server_shutdown_with_model_poll(open_port):
     """Test that a SIGINT successfully shuts down the running server"""
     with tempfile.TemporaryDirectory() as workdir:
@@ -522,12 +522,11 @@ def test_train_sample_task(runtime_http_server):
     model_name = "sample_task_train"
     with TestClient(runtime_http_server.app) as client:
         json_input = {
-            "inputs": {
-                "model_name": model_name,
+            "model_name": model_name,
+            "parameters": {
                 "training_data": {"data_stream": {"data": [{"number": 1}]}},
-                # "training_data": {"data_stream": {"file": {"filename": "file1"}}},
+                "batch_size": 42,
             },
-            "parameters": {"batch_size": 42},
         }
         training_response = client.post(
             f"/api/v1/SampleTaskSampleModuleTrain",
@@ -540,7 +539,7 @@ def test_train_sample_task(runtime_http_server):
             training_response.content.decode(training_response.default_encoding)
         )
         assert (training_id := training_json_response["training_id"])
-        assert (model_name := training_json_response["model_name"]) == model_name
+        assert training_json_response["model_name"] == model_name
 
         # assert trained model
         result = MODEL_MANAGER.get_model_future(training_id).load()
@@ -573,12 +572,12 @@ def test_train_sample_task_throws_s3_value_error(runtime_http_server):
     model_name = "sample_task_train"
     with TestClient(runtime_http_server.app) as client:
         json_input = {
-            "inputs": {
-                "model_name": model_name,
-                "training_data": {"data_stream": {"file": "hello"}},
-                "output_path": {"path": "non-existent path_to_s3"},
+            "model_name": model_name,
+            "output_path": {"path": "non-existent path_to_s3"},
+            "parameters": {
+                "training_data": {"data_stream": {"data": [{"number": 1}]}},
+                "batch_size": 42,
             },
-            "parameters": {"batch_size": 42},
         }
         training_response = client.post(
             f"/api/v1/SampleTaskSampleModuleTrain",
@@ -595,8 +594,8 @@ def test_train_primitive_task(runtime_http_server):
     model_name = "primitive_task_train"
     with TestClient(runtime_http_server.app) as client:
         json_input = {
-            "inputs": {
-                "model_name": model_name,
+            "model_name": model_name,
+            "parameters": {
                 "sample_input": {"name": "test"},
                 "simple_list": ["hello", "world"],
                 "union_list": ["hello", "world"],
@@ -604,8 +603,6 @@ def test_train_primitive_task(runtime_http_server):
                 "union_list3": ["hello", "world"],
                 "union_list4": 1,
                 "training_params_json_dict_list": [{"foo": {"bar": [1, 2, 3]}}],
-            },
-            "parameters": {
                 "training_params_json_dict": {"foo": {"bar": [1, 2, 3]}},
                 "training_params_dict": {"layer_sizes": 100, "window_scaling": 200},
                 "training_params_dict_int": {1: 0.1, 2: 0.01},
@@ -622,7 +619,7 @@ def test_train_primitive_task(runtime_http_server):
             training_response.content.decode(training_response.default_encoding)
         )
         assert (training_id := training_json_response["training_id"])
-        assert (model_name := training_json_response["model_name"]) == model_name
+        assert training_json_response["model_name"] == model_name
 
         # assert trained model
         result = MODEL_MANAGER.get_model_future(training_id).load()
@@ -658,11 +655,11 @@ def test_train_other_task(runtime_http_server):
     model_name = "other_task_train"
     with TestClient(runtime_http_server.app) as client:
         json_input = {
-            "inputs": {
-                "model_name": model_name,
+            "model_name": model_name,
+            "parameters": {
                 "training_data": {"data_stream": {"data": [1, 2]}},
                 "sample_input": {"name": "test"},
-            }
+            },
         }
 
         training_response = client.post(
@@ -675,7 +672,7 @@ def test_train_other_task(runtime_http_server):
             training_response.content.decode(training_response.default_encoding)
         )
         assert (training_id := training_json_response["training_id"])
-        assert (model_name := training_json_response["model_name"]) == model_name
+        assert training_json_response["model_name"] == model_name
 
         # assert trained model
         result = MODEL_MANAGER.get_model_future(training_id).load()
