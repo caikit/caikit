@@ -373,12 +373,17 @@ def test_inference_streaming_sample_module(sample_task_model_id, runtime_http_se
             json=json_input,
         )
         assert stream.status_code == 200
-        assert (
-            stream.content.decode(stream.default_encoding).count("SampleOutputType")
-            == 10
+        stream_content = stream.content.decode(stream.default_encoding)
+        stream_responses = json.loads(
+            "[{}]".format(
+                stream_content.replace("data: ", "")
+                .replace("\r\n", "")
+                .replace("}{", "}, {")
+            )
         )
-        assert (
-            b"SampleOutputType(greeting='Hello world stream')\r\n\r\n" in stream.content
+        assert len(stream_responses) == 10
+        assert all(
+            resp.get("greeting") == "Hello world stream" for resp in stream_responses
         )
 
 
