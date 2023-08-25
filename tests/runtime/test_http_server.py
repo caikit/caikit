@@ -404,8 +404,55 @@ def test_pydantic_wrapping_with_lists(runtime_http_server):
     assert foo.bars[0].baz == 1
 
 
-def test_dataobject_to_pydantic(runtime_http_server):
-    pass
+def test_dataobject_to_pydantic_simple_DM():
+    """Test that we can create a pydantic model from a simple DM"""
+    sample_input_dm_class = DataBase.get_class_for_name("SampleInputType")
+    sample_input_pydantic_model = http_server.RuntimeHTTPServer._dataobject_to_pydantic(
+        sample_input_dm_class
+    )
+    sample_input_pydantic_model.model_validate_json('{"name": "world"}')
+    assert {"name": str} == sample_input_pydantic_model.__annotations__
+    assert issubclass(sample_input_pydantic_model, pydantic.BaseModel)
+    assert sample_input_pydantic_model in http_server.PYDANTIC_TO_DM_MAPPING
+
+
+def test_dataobject_to_pydantic_oneof(runtime_http_server):
+    """Test that we can create a pydantic model from a DM with a Union"""
+    sample_input_dm_class = DataBase.get_class_for_name(
+        "DataStreamSourceSampleTrainingType"
+    )
+    data_stream_source_pydantic_model = (
+        http_server.RuntimeHTTPServer._dataobject_to_pydantic(sample_input_dm_class)
+    )
+
+    assert issubclass(data_stream_source_pydantic_model, pydantic.BaseModel)
+    assert {
+        "data_stream": Union[
+            http_server.PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.JsonData),
+            http_server.PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.File),
+            http_server.PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.ListOfFiles),
+            http_server.PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.Directory),
+            http_server.PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.S3Files),
+        ]
+    } == data_stream_source_pydantic_model.__annotations__
+    assert data_stream_source_pydantic_model in http_server.PYDANTIC_TO_DM_MAPPING
+
+    assert issubclass(
+        http_server.PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.JsonData),
+        type(
+            data_stream_source_pydantic_model.model_validate_json(
+                '{"data_stream": {"data": [{"number": 1}]}}'
+            ).data_stream
+        ),
+    )
+    assert issubclass(
+        http_server.PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.File),
+        type(
+            data_stream_source_pydantic_model.model_validate_json(
+                '{"data_stream": {"filename": "file1"}}'
+            ).data_stream
+        ),
+    )
 
 
 ## Inference Tests #######################################################################
@@ -571,7 +618,6 @@ def test_train_sample_task(runtime_http_server):
             "model_name": model_name,
             "parameters": {
                 "training_data": {"data_stream": {"data": [{"number": 1}]}},
-                # "training_data": {"data_stream": {"file": {"filename": "file1"}}},
                 "batch_size": 42,
             },
         }
