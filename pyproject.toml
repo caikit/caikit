@@ -9,7 +9,7 @@ version = "0.0.1"
 description = "AI toolkit that enables AI users to consume stable task-specific model APIs and enables AI developers build algorithms and models in a modular/composable framework"
 license = {text = "Apache-2.0"}
 readme = "README.md"
-requires-python = "~=3.8"
+requires-python = ">=3.8"
 classifiers=[
     "License :: OSI Approved :: Apache Software License"
 ]
