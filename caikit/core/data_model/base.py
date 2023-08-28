@@ -580,8 +580,12 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 log.info("Assuming the type is valid since list is empty")
                 return True
 
-            val_list_type = type(val[0]).__name__ 
-            return field_descriptor.message_type and f"{val_list_type}" in field_descriptor.message_type.full_name.lower()
+            val_list_type = type(val[0]).__name__
+            return (
+                field_descriptor.message_type
+                and f"{val_list_type}"
+                in field_descriptor.message_type.full_name.lower()
+            )
 
         # If it's a data object or an enum and the descriptors match, it's a
         # good type
@@ -699,11 +703,10 @@ class DataBase(metaclass=_DataBaseMetaClass):
                     ):
                         kwargs[field] = timestamp.proto_to_datetime(proto_attr)
                     elif proto_attr.DESCRIPTOR.full_name.endswith("Sequence"):
-                        # "foo_bar_int_sequence" has original field name "foo_bar"
-                        original_field_name = "_".join(field.split("_")[:-2])
+                        oneof = cls._fields_to_oneof[field]
                         contained_class = cls.get_class_for_proto(proto_attr)
                         contained_obj = contained_class.from_proto(proto_attr)
-                        kwargs[original_field_name] = getattr(contained_obj, "values")
+                        kwargs[oneof] = getattr(contained_obj, "values")
                     else:
                         contained_class = cls.get_class_for_proto(proto_attr)
                         contained_obj = contained_class.from_proto(proto_attr)
