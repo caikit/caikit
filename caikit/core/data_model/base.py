@@ -902,7 +902,11 @@ class DataBase(metaclass=_DataBaseMetaClass):
         to_dict = {}
         for field in fields_to_dict:
             dict_value = self._field_to_dict_element(field)
-            if field.endswith("_sequence") and "values" not in dict_value:
+            if (
+                field in self._fields_to_oneof
+                and not hasattr(dict_value, "values")
+                and isinstance(dict_value, list)
+            ):
                 dict_value = {"values": dict_value}
             to_dict[field] = dict_value
         return to_dict

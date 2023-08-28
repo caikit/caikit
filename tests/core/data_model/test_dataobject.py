@@ -667,18 +667,18 @@ def test_dataobject_list_oneof_round_trips_with_specified_names():
     assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
     # dict test
-    # assert foo1.to_dict() == {"myfoointseq": {"values": [2]}}
-    # assert foo2.to_dict() == {"myfoointseq": {"values": [2]}}
-    # assert foo3.to_dict() == {"myfoostrseq": {"values": ["hello"]}}
-    # assert foo4.to_dict() == {"myfoointseq": {"values": [2]}}
+    assert foo1.to_dict() == {"myfoointseq": {"values": [2]}}
+    assert foo2.to_dict() == {"myfoointseq": {"values": [2]}}
+    assert foo3.to_dict() == {"myfoostrseq": {"values": ["hello"]}}
+    assert foo4.to_dict() == {"myfoostrseq": {"values": ["hello"]}}
 
     # json round trip
     json_repr_foo = foo1.to_json()
-    # assert json.loads(json_repr_foo) == {
-    #     "myfoointseq": {"values": [2]},
-    # }
+    assert json.loads(json_repr_foo) == {
+        "myfoointseq": {"values": [2]},
+    }
 
-    # assert Foo.from_json(json_repr_foo) == foo1
+    assert Foo.from_json(json_repr_foo) == foo1
 
 
 def test_dataobject_list_oneof_round_trips_with_no_custom_names():
