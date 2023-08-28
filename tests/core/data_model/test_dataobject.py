@@ -549,33 +549,41 @@ def test_dataobject_primitive_oneof_round_trips():
     @dataobject
     class Foo(DataObjectBase):
         foo: Union[
-            Annotated[int, FieldNumber(10), OneofField("fooint")],
-            Annotated[float, FieldNumber(20), OneofField("foofloat")],
+            Annotated[int, FieldNumber(10), OneofField("myfooint")],
+            Annotated[float, FieldNumber(20), OneofField("myfoofloat")],
         ]
 
     # proto round trip
     foo1 = Foo(2)
-    assert foo1.which_oneof("foo") == "fooint"
+    assert foo1.which_oneof("foo") == "myfooint"
     proto_repr_foo = foo1.to_proto()
     assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
     foo2 = Foo(foo=2)
-    assert foo2.which_oneof("foo") == "fooint"
+    assert foo2.which_oneof("foo") == "myfooint"
     proto_repr_foo = foo2.to_proto()
     assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
     foo3 = Foo(1.2)
-    assert foo3.which_oneof("foo") == "foofloat"
+    assert foo3.which_oneof("foo") == "myfoofloat"
     proto_repr_foo = foo3.to_proto()
     assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
+    foo4 = Foo(myfooint=4)
+    assert foo4.which_oneof("foo") == "myfooint"
+    proto_repr_foo = foo4.to_proto()
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+
     # dict test
-    assert foo1.to_dict() == {"fooint": 2}
+    assert foo1.to_dict() == {"myfooint": 2}
+    assert foo2.to_dict() == {"myfooint": 2}
+    assert foo3.to_dict() == {"myfoofloat": 1.2}
+    assert foo4.to_dict() == {"myfooint": 4}
 
     # json round trip
     json_repr_foo = foo1.to_json()
     assert json.loads(json_repr_foo) == {
-        "fooint": 2,
+        "myfooint": 2,
     }
     assert Foo.from_json(json_repr_foo) == foo1
 
@@ -588,24 +596,35 @@ def test_dataobject_primitive_oneof_round_trips_no_custom_name():
             Annotated[float, FieldNumber(20)],
         ]
 
-    # proto round trip
+    # proto round trip for Foo with no param name
     foo1 = Foo(2)
     assert foo1.which_oneof("foo") == "foo_int"
     proto_repr_foo = foo1.to_proto()
     assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
-
+    
+    # proto round trip for Foo with oneof name
     foo2 = Foo(foo=2)
     assert foo2.which_oneof("foo") == "foo_int"
     proto_repr_foo = foo2.to_proto()
     assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
+    # proto round trip for Foo with no param name
     foo3 = Foo(1.2)
     assert foo3.which_oneof("foo") == "foo_float"
     proto_repr_foo = foo3.to_proto()
     assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
 
+    # proto round trip for Foo with field name
+    foo4 = Foo(foo_int=4)
+    assert foo4.which_oneof("foo") == "foo_int"
+    proto_repr_foo = foo4.to_proto()
+    assert Foo.from_proto(proto=proto_repr_foo).to_proto() == proto_repr_foo
+
     # dict test
     assert foo1.to_dict() == {"foo_int": 2}
+    assert foo2.to_dict() == {"foo_int": 2}
+    assert foo3.to_dict() == {"foo_float": 1.2}
+    assert foo4.to_dict() == {"foo_int": 4}
 
     # json round trip
     json_repr_foo = foo1.to_json()
