@@ -575,13 +575,13 @@ class DataBase(metaclass=_DataBaseMetaClass):
             return False
 
         # If val is a list, this maybe a union of list field
-        if isinstance(val, list) and field_name.endswith("_sequence"):
+        if isinstance(val, list) and field_name in cls._fields_to_oneof:
             if len(val) == 0:
                 log.info("Assuming the type is valid since list is empty")
                 return True
 
-            list_type = type(val[0]).__name__
-            return f"{list_type}_sequence" in field_name
+            val_list_type = type(val[0]).__name__ 
+            return field_descriptor.message_type and f"{val_list_type}" in field_descriptor.message_type.full_name.lower()
 
         # If it's a data object or an enum and the descriptors match, it's a
         # good type
