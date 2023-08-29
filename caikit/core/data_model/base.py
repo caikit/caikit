@@ -575,14 +575,17 @@ class DataBase(metaclass=_DataBaseMetaClass):
             return False
 
         # If val is a list, this maybe a union of list field
-        # field name is foo_<type>_sequence (ex: foo_str_sequence)
-        if isinstance(val, list) and field_name.endswith("_sequence"):
+        if isinstance(val, list) and field_name in cls._fields_to_oneof:
             if len(val) == 0:
                 log.info("Assuming the type is valid since list is empty")
                 return True
 
-            list_type = type(val[0]).__name__
-            return f"{list_type}_sequence" in field_name
+            val_list_type = type(val[0]).__name__
+            return (
+                field_descriptor.message_type
+                and f"{val_list_type}"
+                in field_descriptor.message_type.full_name.lower()
+            )
 
         # If it's a data object or an enum and the descriptors match, it's a
         # good type
@@ -666,12 +669,8 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 )
 
             if field in cls._fields_primitive or field in cls._fields_enum:
-                if field in cls._fields_to_oneof:
-                    if proto.HasField(field):
-                        # "foo_bar_int" has original field name "foo_bar"
-                        original_field_name = "_".join(field.split("_")[:-1])
-                        kwargs[original_field_name] = proto_attr
-                else:
+                # special case for oneofs
+                if field not in cls._fields_to_oneof or proto.HasField(field):
                     kwargs[field] = proto_attr
             elif (
                 field in cls._fields_primitive_repeated
@@ -704,11 +703,10 @@ class DataBase(metaclass=_DataBaseMetaClass):
                     ):
                         kwargs[field] = timestamp.proto_to_datetime(proto_attr)
                     elif proto_attr.DESCRIPTOR.full_name.endswith("Sequence"):
-                        # "foo_bar_int_sequence" has original field name "foo_bar"
-                        original_field_name = "_".join(field.split("_")[:-2])
+                        oneof = cls._fields_to_oneof[field]
                         contained_class = cls.get_class_for_proto(proto_attr)
                         contained_obj = contained_class.from_proto(proto_attr)
-                        kwargs[original_field_name] = getattr(contained_obj, "values")
+                        kwargs[oneof] = getattr(contained_obj, "values")
                     else:
                         contained_class = cls.get_class_for_proto(proto_attr)
                         contained_obj = contained_class.from_proto(proto_attr)
@@ -860,7 +858,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
                     seq_dm = subproto.__class__
                     try:
                         subproto.CopyFrom(seq_dm(values=attr))
-                        log.debug4("Successfully fill proto for", field)
+                        log.debug4("Successfully fill proto for %s", field)
                     except TypeError:
                         log.debug4("not the correct union list type")
                 else:
@@ -904,7 +902,11 @@ class DataBase(metaclass=_DataBaseMetaClass):
         to_dict = {}
         for field in fields_to_dict:
             dict_value = self._field_to_dict_element(field)
-            if field.endswith("_sequence") and "values" not in dict_value:
+            if (
+                field in self._fields_to_oneof
+                and not hasattr(dict_value, "values")
+                and isinstance(dict_value, list)
+            ):
                 dict_value = {"values": dict_value}
             to_dict[field] = dict_value
         return to_dict
