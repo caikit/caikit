@@ -41,7 +41,9 @@ from caikit.core.data_model.base import DataBase
 from caikit.interfaces.common.data_model.stream_sources import File
 from caikit.interfaces.nlp.data_model import GeneratedTextStreamResult, GeneratedToken
 from caikit.runtime import http_server
+from caikit.runtime.service_generation.data_stream_source import make_data_stream_source
 from sample_lib.data_model import SampleInputType, SampleOutputType
+from sample_lib.data_model.sample import SampleTrainingType
 from tests.conftest import temp_config
 from tests.runtime.conftest import (
     ModuleSubproc,
@@ -410,14 +412,72 @@ def test_dataobject_to_pydantic_simple_DM():
     sample_input_pydantic_model = http_server.RuntimeHTTPServer._dataobject_to_pydantic(
         sample_input_dm_class
     )
-    sample_input_pydantic_model.model_validate_json('{"name": "world"}')
+    model_instance = sample_input_pydantic_model.model_validate_json(
+        '{"name": "world"}'
+    )
     assert {"name": str} == sample_input_pydantic_model.__annotations__
     assert issubclass(sample_input_pydantic_model, pydantic.BaseModel)
     assert sample_input_pydantic_model in http_server.PYDANTIC_TO_DM_MAPPING
+    assert model_instance.name == "world"
 
 
-def test_dataobject_to_pydantic_oneof(runtime_http_server):
+def test_dataobject_to_pydantic_simple_DM_extra_forbidden_throws():
+    """Test that if we forbid extra values, then we raise if we pass in extra values"""
+    sample_input_dm_class = DataBase.get_class_for_name("SampleInputType")
+
+    # remove the existing entry for the dm_class the PYDANTIC_TO_DM_MAPPING
+    http_server.PYDANTIC_TO_DM_MAPPING.pop(sample_input_dm_class)
+
+    sample_input_pydantic_model_extra_forbidden = (
+        http_server.RuntimeHTTPServer._dataobject_to_pydantic(
+            sample_input_dm_class, is_extra_forbid=True
+        )
+    )
+    # sample_input_pydantic_model_extra_forbidden doesn't allow anything extra
+    with pytest.raises(pydantic.ValidationError) as e1:
+        sample_input_pydantic_model_extra_forbidden.model_validate_json(
+            '{"blah": "world"}'
+        )
+    assert "Extra inputs are not permitted" in e1.value.errors()[0]["msg"]
+
+    with pytest.raises(pydantic.ValidationError) as e2:
+        sample_input_pydantic_model_extra_forbidden.model_validate_json(
+            '{"name": "world", "blah": "world"}'
+        )
+    assert "Extra inputs are not permitted" in e2.value.errors()[0]["msg"]
+
+    # remove the existing entry for the dm_class the PYDANTIC_TO_DM_MAPPING
+    http_server.PYDANTIC_TO_DM_MAPPING.pop(sample_input_dm_class)
+
+
+def test_dataobject_to_pydantic_simple_DM_extra_allowed():
+    """Test that if we allow extra values, then we can pass anything we want"""
+    sample_input_dm_class = DataBase.get_class_for_name("SampleInputType")
+
+    sample_input_pydantic_model_extra_allowed = (
+        http_server.RuntimeHTTPServer._dataobject_to_pydantic(
+            sample_input_dm_class, is_extra_forbid=False
+        )
+    )
+    # sample_input_pydantic_model_extra_allowed allows arbitrary values
+    assert (
+        sample_input_pydantic_model_extra_allowed.model_validate_json(
+            '{"blah": "world"}'
+        ).name
+        is None
+    )
+
+    assert (
+        sample_input_pydantic_model_extra_allowed.model_validate_json(
+            '{"name": "world", "blah": "blah"}'
+        ).name
+        == "world"
+    )
+
+
+def test_dataobject_to_pydantic_oneof():
     """Test that we can create a pydantic model from a DM with a Union"""
+    make_data_stream_source(SampleTrainingType)
     sample_input_dm_class = DataBase.get_class_for_name(
         "DataStreamSourceSampleTrainingType"
     )
@@ -549,10 +609,11 @@ def test_model_not_found(runtime_http_server):
         assert response.status_code == 404
 
 
-def test_inference_sample_task_throws_incorrect_input(
+def test_inference_sample_task_incorrect_input(
     sample_task_model_id, runtime_http_server
 ):
-    """error check for a request with incorrect input"""
+    """Test that with an incorrect input, the test doesn't throw but
+    instead returns None"""
     with TestClient(runtime_http_server.app) as client:
         json_input = {
             "inputs": {"blah": "world"},
@@ -561,9 +622,27 @@ def test_inference_sample_task_throws_incorrect_input(
             f"/api/v1/{sample_task_model_id}/task/sample",
             json=json_input,
         )
-        assert response.status_code == 422, response.content.decode(
-            response.default_encoding
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert response.status_code == 200, json_response
+        assert json_response["greeting"] == "Hello None"
+
+
+def test_inference_sample_task_forward_compatibility(
+    sample_task_model_id, runtime_http_server
+):
+    """Test that clients can send in params that don't exist on server
+    without any error"""
+    with TestClient(runtime_http_server.app) as client:
+        json_input = {
+            "inputs": {"name": "world", "blah": "blah"},
+        }
+        response = client.post(
+            f"/api/v1/{sample_task_model_id}/task/sample",
+            json=json_input,
         )
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert response.status_code == 200, json_response
+        assert json_response["greeting"] == "Hello world"
 
 
 def test_health_check_ok(runtime_http_server):
