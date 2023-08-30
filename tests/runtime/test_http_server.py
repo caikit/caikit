@@ -425,54 +425,19 @@ def test_dataobject_to_pydantic_simple_DM_extra_forbidden_throws():
     """Test that if we forbid extra values, then we raise if we pass in extra values"""
     sample_input_dm_class = DataBase.get_class_for_name("SampleInputType")
 
-    # remove the existing entry for the dm_class the PYDANTIC_TO_DM_MAPPING
-    http_server.PYDANTIC_TO_DM_MAPPING.pop(sample_input_dm_class)
-
-    sample_input_pydantic_model_extra_forbidden = (
-        http_server.RuntimeHTTPServer._dataobject_to_pydantic(
-            sample_input_dm_class, is_extra_forbid=True
-        )
+    sample_input_pydantic_model = http_server.RuntimeHTTPServer._dataobject_to_pydantic(
+        sample_input_dm_class
     )
     # sample_input_pydantic_model_extra_forbidden doesn't allow anything extra
     with pytest.raises(pydantic.ValidationError) as e1:
-        sample_input_pydantic_model_extra_forbidden.model_validate_json(
-            '{"blah": "world"}'
-        )
+        sample_input_pydantic_model.model_validate_json('{"blah": "world"}')
     assert "Extra inputs are not permitted" in e1.value.errors()[0]["msg"]
 
     with pytest.raises(pydantic.ValidationError) as e2:
-        sample_input_pydantic_model_extra_forbidden.model_validate_json(
+        sample_input_pydantic_model.model_validate_json(
             '{"name": "world", "blah": "world"}'
         )
     assert "Extra inputs are not permitted" in e2.value.errors()[0]["msg"]
-
-    # remove the existing entry for the dm_class the PYDANTIC_TO_DM_MAPPING
-    http_server.PYDANTIC_TO_DM_MAPPING.pop(sample_input_dm_class)
-
-
-def test_dataobject_to_pydantic_simple_DM_extra_allowed():
-    """Test that if we allow extra values, then we can pass anything we want"""
-    sample_input_dm_class = DataBase.get_class_for_name("SampleInputType")
-
-    sample_input_pydantic_model_extra_allowed = (
-        http_server.RuntimeHTTPServer._dataobject_to_pydantic(
-            sample_input_dm_class, is_extra_forbid=False
-        )
-    )
-    # sample_input_pydantic_model_extra_allowed allows arbitrary values
-    assert (
-        sample_input_pydantic_model_extra_allowed.model_validate_json(
-            '{"blah": "world"}'
-        ).name
-        is None
-    )
-
-    assert (
-        sample_input_pydantic_model_extra_allowed.model_validate_json(
-            '{"name": "world", "blah": "blah"}'
-        ).name
-        == "world"
-    )
 
 
 def test_dataobject_to_pydantic_oneof():
@@ -622,11 +587,12 @@ def test_inference_sample_task_incorrect_input(
             f"/api/v1/{sample_task_model_id}/task/sample",
             json=json_input,
         )
-        json_response = json.loads(response.content.decode(response.default_encoding))
-        assert response.status_code == 200, json_response
-        assert json_response["greeting"] == "Hello None"
+        assert response.status_code == 422, response.content.decode(
+            response.default_encoding
+        )
 
 
+@pytest.mark.skip("Skipping since we're not tacking forward compatibility atm")
 def test_inference_sample_task_forward_compatibility(
     sample_task_model_id, runtime_http_server
 ):
