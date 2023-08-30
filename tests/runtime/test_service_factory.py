@@ -24,8 +24,11 @@ import pytest
 # Local
 from caikit.core.data_model import render_dataobject_protos
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
+from sample_lib import SampleModule
+from sample_lib.data_model import SampleInputType, SampleOutputType
 from sample_lib.modules.sample_task import ListModule
 from tests.conftest import temp_config
+from tests.core.helpers import MockBackend
 from tests.data_model_helpers import reset_global_protobuf_registry, temp_dpool
 from tests.runtime.conftest import sample_inference_service, sample_train_service
 import caikit
@@ -340,3 +343,21 @@ def test_override_package_and_domain_with_proto_gen(clean_data_model):
                                     )
                                 else:
                                     assert service_name == f"{domain_override}Service"
+
+
+def test_backend_modules_included_in_service_generation(clean_data_model, reset_module_registry):
+    # Add a new backend module for the good ol' `SampleModule`
+    @caikit.module(backend_type=MockBackend.backend_type, base_module=SampleModule)
+    class NewBackendModule(caikit.core.ModuleBase):
+        def run(
+            self, sample_input: SampleInputType, backend_param: str
+        ) -> SampleOutputType:
+            pass
+
+    inference_service = ServicePackageFactory.get_service_package(
+        ServicePackageFactory.ServiceType.INFERENCE
+    )
+    sample_task_request = inference_service.messages.SampleTaskRequest
+
+    # Check that the new parameter defined in this backend module exists in the service
+    assert "backend_param" in sample_task_request.DESCRIPTOR.fields_by_name.keys()

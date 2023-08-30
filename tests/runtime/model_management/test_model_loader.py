@@ -231,7 +231,7 @@ def test_with_batching_collect_delay(model_loader):
         )
 
 
-def test_load_distributed_impl():
+def test_load_distributed_impl(reset_module_registry):
     """Make sure that when configured, an alternate distributed
     implementation of a module can be loaded
     """
