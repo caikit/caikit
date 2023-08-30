@@ -345,7 +345,9 @@ def test_override_package_and_domain_with_proto_gen(clean_data_model):
                                     assert service_name == f"{domain_override}Service"
 
 
-def test_backend_modules_included_in_service_generation(clean_data_model, reset_module_registry):
+def test_backend_modules_included_in_service_generation(
+    clean_data_model, reset_globals
+):
     # Add a new backend module for the good ol' `SampleModule`
     @caikit.module(backend_type=MockBackend.backend_type, base_module=SampleModule)
     class NewBackendModule(caikit.core.ModuleBase):

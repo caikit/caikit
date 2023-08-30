@@ -24,7 +24,8 @@ import pytest
 # Local
 from caikit.core import backend_types
 from caikit.core.module_backends.base import BackendBase
-from tests.core.helpers import MockBackend, reset_backend_types
+from tests.conftest import reset_backend_types
+from tests.core.helpers import MockBackend
 
 ## Tests #######################################################################
 

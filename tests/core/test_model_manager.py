@@ -20,6 +20,9 @@ import os
 import tempfile
 import uuid
 
+# Third Party
+import pytest
+
 # Local
 from caikit.core import LocalBackend
 from caikit.core.data_model import DataStream, TrainingStatus

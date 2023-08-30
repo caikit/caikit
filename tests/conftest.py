@@ -21,6 +21,13 @@ import alog
 
 # Local
 from caikit import get_config
+from caikit.core import MODEL_MANAGER
+from caikit.core.registries import (
+    module_backend_classes,
+    module_backend_registry,
+    module_backend_types,
+    module_registry,
+)
 from caikit.core.toolkit import logging
 import caikit
 
@@ -225,3 +232,58 @@ class TempFailWrapper:
 # IMPLEMENTATION DETAILS ############################################################
 def _random_id():
     return str(uuid.uuid4())
+
+
+@pytest.fixture
+def reset_backend_types():
+    """Fixture that will reset the backend types if a test modifies them"""
+    base_backend_types = {key: val for key, val in module_backend_types().items()}
+    base_backend_classes = {key: val for key, val in module_backend_classes().items()}
+    yield
+    module_backend_types().clear()
+    module_backend_types().update(base_backend_types)
+    module_backend_classes().clear()
+    module_backend_classes().update(base_backend_classes)
+
+
+@pytest.fixture
+def reset_module_backend_registry():
+    """Fixture that will reset the module distribution registry if a test modifies them"""
+    # NB: Deepcopy here because the values are nested dicts that will be persisted by reference
+    orig_module_backend_registry = copy.deepcopy(module_backend_registry())
+    yield
+    module_backend_registry().clear()
+    module_backend_registry().update(orig_module_backend_registry)
+
+
+@pytest.fixture
+def reset_module_registry():
+    """Fixture that will reset caikit.core module registry if a test modifies it"""
+    orig_module_registry = {key: val for key, val in module_registry().items()}
+    yield
+    module_registry().clear()
+    module_registry().update(orig_module_registry)
+
+
+@pytest.fixture
+def reset_model_manager():
+    prev_finders = MODEL_MANAGER._finders
+    prev_initializers = MODEL_MANAGER._initializers
+    prev_trainers = MODEL_MANAGER._trainers
+    MODEL_MANAGER._finders = {}
+    MODEL_MANAGER._initializers = {}
+    MODEL_MANAGER._trainers = {}
+    yield
+    MODEL_MANAGER._finders = prev_finders
+    MODEL_MANAGER._initializers = prev_initializers
+    MODEL_MANAGER._trainers = prev_trainers
+
+
+@pytest.fixture
+def reset_globals(
+    reset_backend_types,
+    reset_model_manager,
+    reset_module_backend_registry,
+    reset_module_registry,
+):
+    """Fixture that will reset the backend types and module registries if a test modifies them"""

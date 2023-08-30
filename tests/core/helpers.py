@@ -17,9 +17,6 @@ from typing import Optional, Type
 import os
 import uuid
 
-# Third Party
-import pytest
-
 # Local
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model import TrainingStatus
@@ -35,12 +32,6 @@ from caikit.core.model_management import (
 from caikit.core.model_management.local_model_initializer import LocalModelInitializer
 from caikit.core.module_backends import BackendBase, backend_types
 from caikit.core.modules import ModuleBase, ModuleConfig
-from caikit.core.registries import (
-    module_backend_classes,
-    module_backend_registry,
-    module_backend_types,
-    module_registry,
-)
 from sample_lib.modules import SampleModule
 
 
@@ -192,59 +183,3 @@ def configured_backends():
         if isinstance(loader, LocalModelInitializer)
     ]
     return [backend for loader in local_initializers for backend in loader._backends]
-
-
-@pytest.fixture
-def reset_backend_types():
-    """Fixture that will reset the backend types if a test modifies them"""
-    base_backend_types = {key: val for key, val in module_backend_types().items()}
-    base_backend_classes = {key: val for key, val in module_backend_classes().items()}
-    yield
-    module_backend_types().clear()
-    module_backend_types().update(base_backend_types)
-    module_backend_classes().clear()
-    module_backend_classes().update(base_backend_classes)
-
-
-@pytest.fixture
-def reset_module_backend_registry():
-    """Fixture that will reset the module distribution registry if a test modifies them"""
-    orig_module_backend_registry = {
-        key: val for key, val in module_backend_registry().items()
-    }
-    yield
-    module_backend_registry().clear()
-    module_backend_registry().update(orig_module_backend_registry)
-
-
-@pytest.fixture
-def reset_module_registry():
-    """Fixture that will reset caikit.core module registry if a test modifies it"""
-    orig_module_registry = {key: val for key, val in module_registry().items()}
-    yield
-    module_registry().clear()
-    module_registry().update(orig_module_registry)
-
-
-@pytest.fixture
-def reset_model_manager():
-    prev_finders = MODEL_MANAGER._finders
-    prev_initializers = MODEL_MANAGER._initializers
-    prev_trainers = MODEL_MANAGER._trainers
-    MODEL_MANAGER._finders = {}
-    MODEL_MANAGER._initializers = {}
-    MODEL_MANAGER._trainers = {}
-    yield
-    MODEL_MANAGER._finders = prev_finders
-    MODEL_MANAGER._initializers = prev_initializers
-    MODEL_MANAGER._trainers = prev_trainers
-
-
-@pytest.fixture
-def reset_globals(
-    reset_backend_types,
-    reset_model_manager,
-    reset_module_backend_registry,
-    reset_module_registry,
-):
-    """Fixture that will reset the backend types and module registries if a test modifies them"""
