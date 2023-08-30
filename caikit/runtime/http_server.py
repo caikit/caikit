@@ -602,7 +602,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
     @classmethod
     # pylint: disable=too-many-return-statements
-    def _get_pydantic_type(cls, field_type: type) -> type:
+    def _get_pydantic_type(
+        cls, field_type: type, is_extra_forbid: bool = False
+    ) -> type:
         """Recursive helper to get a valid pydantic type for every field type"""
         # pylint: disable=too-many-return-statements
 
@@ -623,34 +625,36 @@ class RuntimeHTTPServer(RuntimeServerBase):
             and not issubclass(field_type, pydantic.BaseModel)
         ):
             # NB: for data models we're calling the data model conversion fn
-            return cls._dataobject_to_pydantic(field_type)
+            return cls._dataobject_to_pydantic(field_type, is_extra_forbid)
 
         # And then all of these types can be nested in other type annotations
         if get_origin(field_type) is Annotated:
-            return cls._get_pydantic_type(get_args(field_type)[0])
+            return cls._get_pydantic_type(get_args(field_type)[0], is_extra_forbid)
         if get_origin(field_type) is Union:
             return Union[  # type: ignore
                 tuple(
                     (
-                        cls._get_pydantic_type(arg_type)
+                        cls._get_pydantic_type(arg_type, is_extra_forbid)
                         for arg_type in get_args(field_type)
                     )
                 )
             ]
         if get_origin(field_type) is list:
-            return List[cls._get_pydantic_type(get_args(field_type)[0])]
+            return List[
+                cls._get_pydantic_type(get_args(field_type)[0], is_extra_forbid)
+            ]
 
         if get_origin(field_type) is dict:
             return Dict[
-                cls._get_pydantic_type(get_args(field_type)[0]),
-                cls._get_pydantic_type(get_args(field_type)[1]),
+                cls._get_pydantic_type(get_args(field_type)[0], is_extra_forbid),
+                cls._get_pydantic_type(get_args(field_type)[1], is_extra_forbid),
             ]
 
         raise TypeError(f"Cannot get pydantic type for type [{field_type}]")
 
     @classmethod
     def _dataobject_to_pydantic(
-        cls, dm_class: Type[DataBase]
+        cls, dm_class: Type[DataBase], is_extra_forbid: bool = False
     ) -> Type[pydantic.BaseModel]:
         """Make a pydantic model based on the given proto message by using the data
         model class annotations to mirror as a pydantic model
@@ -663,15 +667,24 @@ class RuntimeHTTPServer(RuntimeServerBase):
         if dm_class in PYDANTIC_TO_DM_MAPPING:
             return PYDANTIC_TO_DM_MAPPING[dm_class]
 
-        annotations = {
-            field_name: cls._get_pydantic_type(field_type)
-            for field_name, field_type in get_type_hints(
-                dm_class, localns=localns
-            ).items()
-        }
-        pydantic_model = type(ParentPydanticBaseModel)(
+        annotations = {}
+        for field_name, field_type in get_type_hints(dm_class, localns=localns).items():
+            # if a field is a Union, then all sub-fields within it should also be
+            # using the ParentPydanticBaseModel
+            # This is because of the fact that using ParentPydanticBaseModel is the
+            # only way we've figured out to determine the right instance of the
+            # oneof value in pydantic.
+            # see https://github.com/pydantic/pydantic/discussions/7239
+            if get_origin(field_type) is Union:
+                is_extra_forbid = True
+            annotations[field_name] = cls._get_pydantic_type(
+                field_type=field_type, is_extra_forbid=is_extra_forbid
+            )
+        base_class = ParentPydanticBaseModel if is_extra_forbid else pydantic.BaseModel
+
+        pydantic_model = type(base_class)(
             dm_class.get_proto_class().DESCRIPTOR.full_name,
-            (ParentPydanticBaseModel,),
+            (base_class,),
             {
                 "__annotations__": annotations,
                 **{
