@@ -31,6 +31,7 @@ import alog
 # Local
 from caikit import get_config
 from caikit.core import LocalBackend, ModuleBase, registries
+from caikit.core.data_model.dataobject import _AUTO_GEN_PROTO_CLASSES
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingStatusResponse,
@@ -150,9 +151,9 @@ class ServicePackageFactory:
             "Package with service message class implementations",
         )
 
-        for dm_class in request_data_models:
-            # We need the message class that data model serializes to
-            setattr(client_module, dm_class.__name__, type(dm_class().to_proto()))
+        for proto_class in _AUTO_GEN_PROTO_CLASSES:
+            # We need all the DM objects in the client_module for ease of use
+            setattr(client_module, proto_class.DESCRIPTOR.name, proto_class)
 
         rpc_jsons = [rpc.create_rpc_json(package_name) for rpc in rpc_list]
         service_json = {"service": {"rpcs": rpc_jsons}}
