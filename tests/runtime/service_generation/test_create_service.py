@@ -16,6 +16,7 @@ from typing import Iterable
 import uuid
 
 # Local
+from caikit.core import LocalBackend
 from caikit.runtime.service_generation.create_service import (
     create_inference_rpcs,
     create_training_rpcs,
@@ -38,6 +39,9 @@ widget_class = sample_lib.modules.sample_task.SampleModule
 
 ### create_inference_rpcs tests #################################################
 
+# Local
+from tests.core.helpers import MockBackend
+
 
 def test_create_inference_rpcs_uses_task_from_module_decorator():
     # make a new module with SampleTask
@@ -53,6 +57,30 @@ def test_create_inference_rpcs_uses_task_from_module_decorator():
     assert len(rpcs) == 3  # SampleModule has 3 streaming flavors
     assert NewModule in rpcs[0].module_list
     assert SampleModule in rpcs[0].module_list
+
+
+def test_create_inference_rpcs_includes_backend_modules():
+    @caikit.module(
+        id=str(uuid.uuid4()), name="something", version="0.0.0", task=SampleTask
+    )
+    class NewModule(caikit.core.ModuleBase):
+        def run(self, sample_input: SampleInputType) -> SampleOutputType:
+            pass
+
+    @caikit.module(backend_type=MockBackend.backend_type, base_module=NewModule)
+    class NewBackendModule(caikit.core.ModuleBase):
+        def run(
+            self, sample_input: SampleInputType, backend_param: str
+        ) -> SampleOutputType:
+            pass
+
+    rpcs = create_inference_rpcs([NewModule, NewBackendModule])
+    assert len(rpcs) == 1
+    assert NewModule in rpcs[0].module_list
+    # Make sure the backend module and its parameters are added as well
+    assert NewBackendModule in rpcs[0].module_list
+    assert len(rpcs[0].request.triples) == 2
+    assert rpcs[0].request.triples[1][1] == "backend_param"
 
 
 def test_create_inference_rpcs_uses_task_from_module_decorator_with_streaming():

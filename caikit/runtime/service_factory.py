@@ -30,7 +30,7 @@ import alog
 
 # Local
 from caikit import get_config
-from caikit.core import ModuleBase
+from caikit.core import LocalBackend, ModuleBase, registries
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingStatusResponse,
@@ -38,7 +38,6 @@ from caikit.interfaces.runtime.data_model import (
 from caikit.runtime import service_generation
 from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.utils import import_util
-import caikit.core
 
 log = alog.use_channel("SVC-FACTORY")
 
@@ -178,9 +177,18 @@ class ServicePackageFactory:
         clean_modules = set()
         modules = [
             module_class
-            for module_class in caikit.core.registries.module_registry().values()
+            for module_class in registries.module_registry().values()
             if module_class.__module__.partition(".")[0] == lib
         ]
+        # NB: The `module_registry` only includes the `LOCAL` backend modules.
+        # Implementations of the same module for different backends need to be fetched from the
+        # backend registry
+        backend_modules = []
+        for backend_dict in registries.module_backend_registry().values():
+            for backend, config in backend_dict.items():
+                if backend != LocalBackend.backend_type:
+                    backend_modules.append(config.impl_class)
+        modules.extend(backend_modules)
         log.debug("Found all modules %s for library %s.", modules, lib)
 
         # Check config for any explicit inclusions

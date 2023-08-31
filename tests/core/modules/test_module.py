@@ -17,12 +17,16 @@ import io
 import os
 import tempfile
 
+# Third Party
+import pytest
+
 # First Party
 import aconfig
 
 # Local
 from caikit.core import ModuleConfig, ModuleLoader, ModuleSaver
 from caikit.core.modules.decorator import SUPPORTED_LOAD_BACKENDS_VAR_NAME
+from caikit.core.registries import module_backend_registry, module_registry
 
 # pylint: disable=import-error
 from sample_lib.data_model.sample import SampleInputType

@@ -14,9 +14,7 @@
 # Standard
 from concurrent.futures import Future
 from contextlib import contextmanager
-from typing import Callable
 from unittest import mock
-import copy
 import tempfile
 
 # Third Party
@@ -231,67 +229,50 @@ def test_with_batching_collect_delay(model_loader):
         )
 
 
-def test_load_distributed_impl():
+def test_load_distributed_impl(reset_globals):
     """Make sure that when configured, an alternate distributed
     implementation of a module can be loaded
     """
 
-    reg_copy = copy.deepcopy(caikit.core.registries.module_registry())
-    backend_registry_copy = copy.deepcopy(
-        caikit.core.registries.module_backend_registry()
+    @module(
+        base_module=SampleModule,
+        backend_type=backend_types.MOCK,
+        backend_config_override={"bar1": 1},
     )
-    # 🌶️🌶️🌶️: the MODULE_BACKEND_REGISTRY can't be easily patched since two separate modules hold
-    # an imported reference to it and one edits it (decorator.py) while the other reads it
-    # (model_manager.py)
+    class DistributedGadget(caikit.core.ModuleBase):
+        """An alternate implementation of a Gadget"""
 
-    with mock.patch.object(caikit.core.registries, "MODULE_REGISTRY", reg_copy):
-        with mock.patch.object(
-            caikit.core.registries,
-            "MODULE_BACKEND_REGISTRY",
-            backend_registry_copy,
-        ):
+        SUPPORTED_LOAD_BACKENDS = [
+            MockBackend.backend_type,
+            backend_types.LOCAL,
+        ]
 
-            @module(
-                base_module=SampleModule,
-                backend_type=backend_types.MOCK,
-                backend_config_override={"bar1": 1},
-            )
-            class DistributedGadget(caikit.core.ModuleBase):
-                """An alternate implementation of a Gadget"""
+        def __init__(self, bar):
+            self.bar = bar
 
-                SUPPORTED_LOAD_BACKENDS = [
-                    MockBackend.backend_type,
-                    backend_types.LOCAL,
-                ]
+        def run(self, sample_input: SampleInputType) -> SampleOutputType:
+            return SampleOutputType(greeting=f"hello distributed {sample_input.name}")
 
-                def __init__(self, bar):
-                    self.bar = bar
+        @classmethod
+        def load(cls, model_load_path, **kwargs) -> "DistributedGadget":
+            # NOTE: kwargs needed here for load_backend
+            config = ModuleConfig.load(model_load_path)
+            return cls(bar=config.bar)
 
-                def run(self, sample_input: SampleInputType) -> SampleOutputType:
-                    return SampleOutputType(
-                        greeting=f"hello distributed {sample_input.name}"
-                    )
+    with tempfile.TemporaryDirectory() as model_path:
+        # Create and save the model directly with the local impl
+        SampleModule().save(model_path)
 
-                @classmethod
-                def load(cls, model_load_path, **kwargs) -> "DistributedGadget":
-                    # NOTE: kwargs needed here for load_backend
-                    config = ModuleConfig.load(model_load_path)
-                    return cls(bar=config.bar)
+        model_type = "gadget"
 
-            with tempfile.TemporaryDirectory() as model_path:
-                # Create and save the model directly with the local impl
-                SampleModule().save(model_path)
-
-                model_type = "gadget"
-
-                with temp_model_loader() as model_loader:
-                    # Load the distributed version
-                    model = model_loader.load_model(
-                        random_test_id(),
-                        model_path,
-                        model_type=model_type,
-                    ).model()
-                    assert isinstance(model, DistributedGadget)
+        with temp_model_loader() as model_loader:
+            # Load the distributed version
+            model = model_loader.load_model(
+                random_test_id(),
+                model_path,
+                model_type=model_type,
+            ).model()
+            assert isinstance(model, DistributedGadget)
 
 
 def test_load_model_without_waiting_success(model_loader):
