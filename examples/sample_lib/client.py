@@ -33,6 +33,7 @@ from caikit.runtime.service_factory import ServicePackageFactory
 import caikit
 
 if __name__ == "__main__":
+    # pylint: disable=duplicate-code
     caikit.config.configure(
         config_dict={
             "merge_strategy": "merge",
