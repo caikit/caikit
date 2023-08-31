@@ -91,7 +91,7 @@ def test_model_train_no_train_module_raises(sample_model_train_servicer, output_
         trainingID=training_id,
         customTrainingID=str(uuid.uuid4()),
         request_dict={
-            "training_params": '{"model_name": "abc", "training_data": [1]}',
+            "training_params": '{"model_name": "abc", "parameters": {"training_data": [1]}}',
         },
         training_input_dir="training_input_dir",
         training_output_dir=os.path.join(output_dir, training_id),
@@ -110,7 +110,7 @@ def test_model_train_incorrect_train_params_raises(
         customTrainingID=str(uuid.uuid4()),
         request_dict={
             "train_module": "00110203-0405-0607-0809-0a0b02dd0e0f",
-            "training_params": '{"model_name": "abc", "training_data": "blah"}',
+            "training_params": '{"model_name": "abc", "parameters": {"training_data": "blah"}}',
         },
         training_input_dir="training_input_dir",
         training_output_dir=os.path.join(output_dir, training_id),
@@ -150,7 +150,7 @@ def test_model_train_incorrect_train_request_raises(
         customTrainingID=str(uuid.uuid4()),
         request_dict={
             "train_module": "00110203-0405-0607-0809-0a0b02dd0e0f",
-            "training_params": '{"model_name": "abc", "training_data": [1]}',
+            "training_params": '{"model_name": "abc", "parameters": {"training_data": [1]}}',
         },
         training_input_dir="training_input_dir",
         training_output_dir=os.path.join(output_dir, training_id),
@@ -173,7 +173,7 @@ def test_model_train_validation_error_raises(sample_model_train_servicer, output
         customTrainingID=str(uuid.uuid4()),
         request_dict={
             "train_module": "00110203-0405-0607-0809-0a0b02dd0e0f",
-            "training_params": '{"model_name": "abc", "training_data": [1], "batch_size": 999}',
+            "training_params": '{"model_name": "abc", "parameters": {"training_data": [1], "batch_size": 999}}',
         },
         training_input_dir="training_input_dir",
         training_output_dir=os.path.join(output_dir, training_id),
@@ -197,13 +197,15 @@ def test_model_train_sample_widget(sample_model_train_servicer, output_dir):
             "training_params": json.dumps(
                 {
                     "model_name": "abc",
-                    "training_data": {
-                        "jsondata": {
-                            "data": [
-                                sample_lib.data_model.SampleTrainingType(
-                                    number=1
-                                ).to_dict()
-                            ]
+                    "parameters": {
+                        "training_data": {
+                            "jsondata": {
+                                "data": [
+                                    sample_lib.data_model.SampleTrainingType(
+                                        number=1
+                                    ).to_dict()
+                                ]
+                            },
                         },
                     },
                 }
@@ -253,9 +255,11 @@ def test_files_from_training_input_dir_are_used(
             "training_params": json.dumps(
                 {
                     "model_name": "abc",
-                    "training_data": {
-                        "file": {
-                            "filename": input_file_name  # This is relative to training_input_dir
+                    "parameters": {
+                        "training_data": {
+                            "file": {
+                                "filename": input_file_name  # This is relative to training_input_dir
+                            },
                         },
                     },
                 }
