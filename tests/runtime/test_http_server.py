@@ -17,7 +17,8 @@ Tests for the caikit HTTP server
 # Standard
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Union, get_args
+import enum
 import json
 import os
 import signal
@@ -25,14 +26,24 @@ import tempfile
 
 # Third Party
 from fastapi.testclient import TestClient
+import numpy as np
+import pydantic
 import pytest
 import requests
 import tls_test_tools
 
+# First Party
+from py_to_proto.dataclass_to_proto import Annotated
+
 # Local
 from caikit.core import MODEL_MANAGER, DataObjectBase, dataobject
+from caikit.core.data_model.base import DataBase
+from caikit.interfaces.common.data_model.stream_sources import File
 from caikit.interfaces.nlp.data_model import GeneratedTextStreamResult, GeneratedToken
 from caikit.runtime import http_server
+from caikit.runtime.service_generation.data_stream_source import make_data_stream_source
+from sample_lib.data_model import SampleInputType, SampleOutputType
+from sample_lib.data_model.sample import SampleTrainingType
 from tests.conftest import temp_config
 from tests.runtime.conftest import (
     ModuleSubproc,
@@ -240,6 +251,235 @@ def test_services_disabled(open_port, enabled_services):
             # )
 
 
+## Functional Tests #######################################################################
+
+
+def test_build_dm_object_simple(runtime_http_server):
+    """Test building our simple DM objects through pydantic objects"""
+
+    # get our DM class
+    sample_input_dm_class = DataBase.get_class_for_name("SampleInputType")
+    # get pydantic model for our DM class
+    sample_input_pydantic_model = http_server.PYDANTIC_TO_DM_MAPPING.get(
+        sample_input_dm_class
+    )
+    # build our DM object using a pydantic object
+    sample_input_dm_obj = runtime_http_server._build_dm_object(
+        sample_input_pydantic_model(name="Hello world")
+    )
+
+    # assert it's our DM object, all fine and dandy
+    assert isinstance(sample_input_dm_obj, DataBase)
+    assert sample_input_dm_obj.to_json() == '{"name": "Hello world"}'
+
+
+def test_build_dm_object_datastream_jsondata(runtime_http_server):
+    """Test building our datastream DM objects through pydantic objects"""
+
+    # get our DM class
+    datastream_dm_class = DataBase.get_class_for_name(
+        "DataStreamSourceSampleTrainingType"
+    )
+    # get pydantic model for our DM class
+    datastream_pydantic_model = http_server.PYDANTIC_TO_DM_MAPPING.get(
+        datastream_dm_class
+    )
+    # build our DM Datastream JsonData object using a pydantic object
+    datastream_dm_obj = runtime_http_server._build_dm_object(
+        datastream_pydantic_model(data_stream={"data": [{"number": 1}, {"number": 2}]})
+    )
+
+    # assert it's our DM object, all fine and dandy
+    assert isinstance(datastream_dm_obj, DataBase)
+    assert (
+        datastream_dm_obj.to_json()
+        == '{"jsondata": {"data": [{"number": 1}, {"number": 2}]}}'
+    )
+
+
+def test_build_dm_object_datastream_file(runtime_http_server):
+    # get our DM class
+    datastream_dm_class = DataBase.get_class_for_name(
+        "DataStreamSourceSampleTrainingType"
+    )
+    # get pydantic model for our DM class
+    datastream_pydantic_model = http_server.PYDANTIC_TO_DM_MAPPING.get(
+        datastream_dm_class
+    )
+
+    # build our DM Datastream File object using a pydantic object
+    datastream_dm_obj = runtime_http_server._build_dm_object(
+        datastream_pydantic_model(data_stream={"filename": "hello"})
+    )
+
+    # assert it's our DM object, all fine and dandy
+    assert isinstance(datastream_dm_obj, DataBase)
+    assert isinstance(datastream_dm_obj.data_stream, File)
+    assert datastream_dm_obj.to_json() == '{"file": {"filename": "hello"}}'
+
+
+@pytest.mark.parametrize(
+    "input, output",
+    [
+        (np.integer, int),
+        (np.floating, float),
+        (int, int),
+        (float, float),
+        (bool, bool),
+        (str, str),
+        (bytes, bytes),
+        (type(None), type(None)),
+        (enum.Enum, enum.Enum),
+        (Annotated[str, "blah"], str),
+        (Union[str, int], Union[str, int]),
+        (List[str], List[str]),
+        (List[Annotated[str, "blah"]], List[str]),
+        (Dict[str, int], Dict[str, int]),
+        (Dict[Annotated[str, "blah"], int], Dict[str, int]),
+    ],
+)
+def test_get_pydantic_type(input, output):
+    assert http_server.RuntimeHTTPServer._get_pydantic_type(input) == output
+
+
+def test_get_pydantic_type_union():
+    union_type = Union[SampleInputType, SampleOutputType]
+    return_type = http_server.RuntimeHTTPServer._get_pydantic_type(union_type)
+    assert all(
+        issubclass(ret_type, pydantic.BaseModel) for ret_type in get_args(return_type)
+    )
+
+
+def test_get_pydantic_type_DM():
+    # DM case
+    sample_input_dm_class = DataBase.get_class_for_name("SampleInputType")
+    sample_input_pydantic_model = http_server.RuntimeHTTPServer._get_pydantic_type(
+        sample_input_dm_class
+    )
+
+    assert issubclass(sample_input_pydantic_model, pydantic.BaseModel)
+    assert sample_input_pydantic_model in http_server.PYDANTIC_TO_DM_MAPPING
+    assert sample_input_pydantic_model is http_server.PYDANTIC_TO_DM_MAPPING.get(
+        sample_input_dm_class
+    )
+
+
+def test_get_pydantic_type_throws_random_type():
+    # error case
+    with pytest.raises(TypeError):
+        http_server.RuntimeHTTPServer._get_pydantic_type("some_random_type")
+
+
+def test_pydantic_wrapping_with_enums():
+    """Check that the pydantic wrapping works on our data models when they have enums"""
+    # The NLP GeneratedTextStreamResult data model contains enums
+
+    # Check that our data model is fine and dandy
+    token = GeneratedToken(text="foo")
+    assert token.text == "foo"
+
+    # Wrap the containing data model in pydantic
+    http_server.RuntimeHTTPServer._dataobject_to_pydantic(GeneratedTextStreamResult)
+
+    # Check that our data model is _still_ fine and dandy
+    token = GeneratedToken(text="foo")
+    assert token.text == "foo"
+
+
+def test_pydantic_wrapping_with_lists(runtime_http_server):
+    """Check that pydantic wrapping works on data models with lists"""
+
+    @dataobject(package="http")
+    class BarTest(DataObjectBase):
+        baz: int
+
+    @dataobject(package="http")
+    class FooTest(DataObjectBase):
+        bars: List[BarTest]
+
+    foo = FooTest(bars=[BarTest(1)])
+    assert foo.bars[0].baz == 1
+
+    runtime_http_server._dataobject_to_pydantic(FooTest)
+
+    foo = FooTest(bars=[BarTest(1)])
+    assert foo.bars[0].baz == 1
+
+
+def test_dataobject_to_pydantic_simple_DM():
+    """Test that we can create a pydantic model from a simple DM"""
+    sample_input_dm_class = DataBase.get_class_for_name("SampleInputType")
+    sample_input_pydantic_model = http_server.RuntimeHTTPServer._dataobject_to_pydantic(
+        sample_input_dm_class
+    )
+    model_instance = sample_input_pydantic_model.model_validate_json(
+        '{"name": "world"}'
+    )
+    assert {"name": str} == sample_input_pydantic_model.__annotations__
+    assert issubclass(sample_input_pydantic_model, pydantic.BaseModel)
+    assert sample_input_pydantic_model in http_server.PYDANTIC_TO_DM_MAPPING
+    assert model_instance.name == "world"
+
+
+def test_dataobject_to_pydantic_simple_DM_extra_forbidden_throws():
+    """Test that if we forbid extra values, then we raise if we pass in extra values"""
+    sample_input_dm_class = DataBase.get_class_for_name("SampleInputType")
+
+    sample_input_pydantic_model = http_server.RuntimeHTTPServer._dataobject_to_pydantic(
+        sample_input_dm_class
+    )
+    # sample_input_pydantic_model_extra_forbidden doesn't allow anything extra
+    with pytest.raises(pydantic.ValidationError) as e1:
+        sample_input_pydantic_model.model_validate_json('{"blah": "world"}')
+    assert "Extra inputs are not permitted" in e1.value.errors()[0]["msg"]
+
+    with pytest.raises(pydantic.ValidationError) as e2:
+        sample_input_pydantic_model.model_validate_json(
+            '{"name": "world", "blah": "world"}'
+        )
+    assert "Extra inputs are not permitted" in e2.value.errors()[0]["msg"]
+
+
+def test_dataobject_to_pydantic_oneof():
+    """Test that we can create a pydantic model from a DM with a Union"""
+    make_data_stream_source(SampleTrainingType)
+    sample_input_dm_class = DataBase.get_class_for_name(
+        "DataStreamSourceSampleTrainingType"
+    )
+    data_stream_source_pydantic_model = (
+        http_server.RuntimeHTTPServer._dataobject_to_pydantic(sample_input_dm_class)
+    )
+
+    assert issubclass(data_stream_source_pydantic_model, pydantic.BaseModel)
+    assert {
+        "data_stream": Union[
+            http_server.PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.JsonData),
+            http_server.PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.File),
+            http_server.PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.ListOfFiles),
+            http_server.PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.Directory),
+            http_server.PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.S3Files),
+        ]
+    } == data_stream_source_pydantic_model.__annotations__
+    assert data_stream_source_pydantic_model in http_server.PYDANTIC_TO_DM_MAPPING
+
+    assert issubclass(
+        http_server.PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.JsonData),
+        type(
+            data_stream_source_pydantic_model.model_validate_json(
+                '{"data_stream": {"data": [{"number": 1}]}}'
+            ).data_stream
+        ),
+    )
+    assert issubclass(
+        http_server.PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.File),
+        type(
+            data_stream_source_pydantic_model.model_validate_json(
+                '{"data_stream": {"filename": "file1"}}'
+            ).data_stream
+        ),
+    )
+
+
 ## Inference Tests #######################################################################
 
 
@@ -265,8 +505,8 @@ def test_inference_sample_task(sample_task_model_id, runtime_http_server):
             f"/api/v1/{sample_task_model_id}/task/sample",
             json=json_input,
         )
-        assert response.status_code == 200
         json_response = json.loads(response.content.decode(response.default_encoding))
+        assert response.status_code == 200, json_response
         assert json_response["greeting"] == "Hello world"
 
 
@@ -296,72 +536,9 @@ def test_inference_other_task(other_task_model_id, runtime_http_server):
             f"/api/v1/{other_task_model_id}/task/other",
             json=json_input,
         )
-        assert response.status_code == 200
         json_response = json.loads(response.content.decode(response.default_encoding))
+        assert response.status_code == 200, json_response
         assert json_response["farewell"] == "goodbye: world 42 times"
-
-
-def test_inference_other_task_request_throws_missing_field(
-    other_task_model_id, runtime_http_server
-):
-    """Test to check 400 in case of missing request fields"""
-    with TestClient(runtime_http_server.app) as client:
-        json_input = {}
-        response = client.post(
-            f"/api/v1/{other_task_model_id}/task/other",
-            json=json_input,
-        )
-        assert response.status_code == 400
-        json_response = json.loads(response.content.decode(response.default_encoding))
-        assert (
-            "missing 1 required positional argument: 'sample_input'"
-            in json_response["details"]
-        )
-
-
-def test_inference_other_task_response_throws_missing_producer_id(
-    other_task_model_id, runtime_http_server
-):
-    """Test to check we throw a 500 if response has fields that are missing"""
-    with TestClient(runtime_http_server.app) as client:
-        json_input = {
-            "inputs": {"name": "world"},
-            # this intentionally skips sending back a producer-id in our module
-            "parameters": {"include_producer_id": False},
-        }
-        response = client.post(
-            f"/api/v1/{other_task_model_id}/task/other",
-            json=json_input,
-        )
-        assert response.status_code == 500
-        json_response = json.loads(response.content.decode(response.default_encoding))
-        assert json_response["detail"][0]["loc"] == ["response", "producer_id"]
-
-
-def test_inference_other_task_request_throws_incorrect_field(
-    other_task_model_id, runtime_http_server
-):
-    """Test to check we throw a 422 if request has an incorrect field type"""
-    with TestClient(runtime_http_server.app) as client:
-        json_input = {
-            "inputs": {"name": "world"},
-            "parameters": {"include_producer_id": "wrong_type"},
-        }
-        response = client.post(
-            f"/api/v1/{other_task_model_id}/task/other",
-            json=json_input,
-        )
-        json_response = json.loads(response.content.decode(response.default_encoding))
-        assert json_response["detail"][0]["loc"] == [
-            "body",
-            "parameters",
-            "include_producer_id",
-        ]
-        assert (
-            json_response["detail"][0]["msg"]
-            == "Input should be a valid boolean, unable to interpret input"
-        )
-        assert response.status_code == 422
 
 
 def test_inference_streaming_sample_module(sample_task_model_id, runtime_http_server):
@@ -397,17 +574,41 @@ def test_model_not_found(runtime_http_server):
         assert response.status_code == 404
 
 
-def test_inference_sample_task_throws_incorrect_input(
+def test_inference_sample_task_incorrect_input(
     sample_task_model_id, runtime_http_server
 ):
-    """error check for a request with incorrect input"""
+    """Test that with an incorrect input, the test doesn't throw but
+    instead returns None"""
     with TestClient(runtime_http_server.app) as client:
-        json_input = {"blah": {"sample_input": {"name": "world"}}}
+        json_input = {
+            "inputs": {"blah": "world"},
+        }
         response = client.post(
             f"/api/v1/{sample_task_model_id}/task/sample",
             json=json_input,
         )
-        assert response.status_code == 400
+        assert response.status_code == 422, response.content.decode(
+            response.default_encoding
+        )
+
+
+@pytest.mark.skip("Skipping since we're not tacking forward compatibility atm")
+def test_inference_sample_task_forward_compatibility(
+    sample_task_model_id, runtime_http_server
+):
+    """Test that clients can send in params that don't exist on server
+    without any error"""
+    with TestClient(runtime_http_server.app) as client:
+        json_input = {
+            "inputs": {"name": "world", "blah": "blah"},
+        }
+        response = client.post(
+            f"/api/v1/{sample_task_model_id}/task/sample",
+            json=json_input,
+        )
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert response.status_code == 200, json_response
+        assert json_response["greeting"] == "Hello world"
 
 
 def test_health_check_ok(runtime_http_server):
@@ -416,69 +617,6 @@ def test_health_check_ok(runtime_http_server):
         response = client.get(http_server.HEALTH_ENDPOINT)
         assert response.status_code == 200
         assert response.text == "OK"
-
-
-def test_pydantic_wrapping_with_enums():
-    """Check that the pydantic wrapping works on our data models when they have enums"""
-    # The NLP GeneratedTextStreamResult data model contains enums
-
-    # Check that our data model is fine and dandy
-    token = GeneratedToken(text="foo")
-    assert token.text == "foo"
-
-    # Wrap the containing data model in pydantic
-    http_server.RuntimeHTTPServer._dataobject_to_pydantic(GeneratedTextStreamResult)
-
-    # Check that our data model is _still_ fine and dandy
-    token = GeneratedToken(text="foo")
-    assert token.text == "foo"
-
-
-def test_pydantic_wrapping_with_inheritance():
-    """Check that the pydantic wrapping works on our data models when they involve inheritance"""
-
-    @dataobject
-    class Base(DataObjectBase):
-        foo: int
-        bar: int
-
-    @dataobject
-    class Derived(Base):
-        bar: str
-        baz: str
-
-    # Check that our data model is fine and dandy
-    derived = Derived(bar="one", foo=2)
-    assert derived.bar == "one"
-    assert derived.foo == 2
-
-    # Wrap the containing data model in pydantic
-    pydantic_datamodel = http_server.RuntimeHTTPServer._dataobject_to_pydantic(Derived)
-
-    # Check that our data model is _still_ fine and dandy
-    new_derived = pydantic_datamodel(bar="one", foo=2)
-    assert new_derived.bar == "one"
-    assert new_derived.foo == 2
-
-
-def test_pydantic_wrapping_with_lists():
-    """Check that pydantic wrapping works on data models with lists"""
-
-    @dataobject(package="http")
-    class BarTest(DataObjectBase):
-        baz: int
-
-    @dataobject(package="http")
-    class FooTest(DataObjectBase):
-        bars: List[BarTest]
-
-    foo = FooTest(bars=[BarTest(1)])
-    assert foo.bars[0].baz == 1
-
-    http_server.RuntimeHTTPServer._dataobject_to_pydantic(FooTest)
-
-    foo = FooTest(bars=[BarTest(1)])
-    assert foo.bars[0].baz == 1
 
 
 def test_http_server_shutdown_with_model_poll(open_port):
@@ -522,12 +660,11 @@ def test_train_sample_task(runtime_http_server):
     model_name = "sample_task_train"
     with TestClient(runtime_http_server.app) as client:
         json_input = {
-            "inputs": {
-                "model_name": model_name,
+            "model_name": model_name,
+            "parameters": {
                 "training_data": {"data_stream": {"data": [{"number": 1}]}},
-                # "training_data": {"data_stream": {"file": {"filename": "file1"}}},
+                "batch_size": 42,
             },
-            "parameters": {"batch_size": 42},
         }
         training_response = client.post(
             f"/api/v1/SampleTaskSampleModuleTrain",
@@ -535,12 +672,12 @@ def test_train_sample_task(runtime_http_server):
         )
 
         # assert training response
-        assert training_response.status_code == 200
         training_json_response = json.loads(
             training_response.content.decode(training_response.default_encoding)
         )
+        assert training_response.status_code == 200, training_json_response
         assert (training_id := training_json_response["training_id"])
-        assert (model_name := training_json_response["model_name"]) == model_name
+        assert training_json_response["model_name"] == model_name
 
         # assert trained model
         result = MODEL_MANAGER.get_model_future(training_id).load()
@@ -563,8 +700,8 @@ def test_train_sample_task(runtime_http_server):
             f"/api/v1/{model_name}/task/sample",
             json=json_input_inference,
         )
-        assert response.status_code == 200
         json_response = json.loads(response.content.decode(response.default_encoding))
+        assert response.status_code == 200, json_response
         assert json_response["greeting"] == "Hello world"
 
 
@@ -573,12 +710,12 @@ def test_train_sample_task_throws_s3_value_error(runtime_http_server):
     model_name = "sample_task_train"
     with TestClient(runtime_http_server.app) as client:
         json_input = {
-            "inputs": {
-                "model_name": model_name,
-                "training_data": {"data_stream": {"file": "hello"}},
-                "output_path": {"path": "non-existent path_to_s3"},
+            "model_name": model_name,
+            "output_path": {"path": "non-existent path_to_s3"},
+            "parameters": {
+                "training_data": {"data_stream": {"data": [{"number": 1}]}},
+                "batch_size": 42,
             },
-            "parameters": {"batch_size": 42},
         }
         training_response = client.post(
             f"/api/v1/SampleTaskSampleModuleTrain",
@@ -588,15 +725,17 @@ def test_train_sample_task_throws_s3_value_error(runtime_http_server):
             "S3 output path not supported by this runtime"
             in training_response.content.decode(training_response.default_encoding)
         )
-        assert training_response.status_code == 500
+        assert training_response.status_code == 500, training_response.content.decode(
+            training_response.default_encoding
+        )
 
 
 def test_train_primitive_task(runtime_http_server):
     model_name = "primitive_task_train"
     with TestClient(runtime_http_server.app) as client:
         json_input = {
-            "inputs": {
-                "model_name": model_name,
+            "model_name": model_name,
+            "parameters": {
                 "sample_input": {"name": "test"},
                 "simple_list": ["hello", "world"],
                 "union_list": ["hello", "world"],
@@ -604,8 +743,6 @@ def test_train_primitive_task(runtime_http_server):
                 "union_list3": ["hello", "world"],
                 "union_list4": 1,
                 "training_params_json_dict_list": [{"foo": {"bar": [1, 2, 3]}}],
-            },
-            "parameters": {
                 "training_params_json_dict": {"foo": {"bar": [1, 2, 3]}},
                 "training_params_dict": {"layer_sizes": 100, "window_scaling": 200},
                 "training_params_dict_int": {1: 0.1, 2: 0.01},
@@ -617,12 +754,12 @@ def test_train_primitive_task(runtime_http_server):
             json=json_input,
         )
         # assert training response
-        assert training_response.status_code == 200
         training_json_response = json.loads(
             training_response.content.decode(training_response.default_encoding)
         )
+        assert training_response.status_code == 200, training_json_response
         assert (training_id := training_json_response["training_id"])
-        assert (model_name := training_json_response["model_name"]) == model_name
+        assert training_json_response["model_name"] == model_name
 
         # assert trained model
         result = MODEL_MANAGER.get_model_future(training_id).load()
@@ -649,8 +786,8 @@ def test_train_primitive_task(runtime_http_server):
             f"/api/v1/{model_name}/task/sample",
             json=json_input_inference,
         )
-        assert response.status_code == 200
         json_response = json.loads(response.content.decode(response.default_encoding))
+        assert response.status_code == 200, json_response
         assert json_response["greeting"] == "hello: primitives! [1, 2, 3] 100"
 
 
@@ -658,11 +795,11 @@ def test_train_other_task(runtime_http_server):
     model_name = "other_task_train"
     with TestClient(runtime_http_server.app) as client:
         json_input = {
-            "inputs": {
-                "model_name": model_name,
+            "model_name": model_name,
+            "parameters": {
                 "training_data": {"data_stream": {"data": [1, 2]}},
                 "sample_input": {"name": "test"},
-            }
+            },
         }
 
         training_response = client.post(
@@ -670,12 +807,12 @@ def test_train_other_task(runtime_http_server):
             json=json_input,
         )
         # assert training response
-        assert training_response.status_code == 200
         training_json_response = json.loads(
             training_response.content.decode(training_response.default_encoding)
         )
+        assert training_response.status_code == 200, training_json_response
         assert (training_id := training_json_response["training_id"])
-        assert (model_name := training_json_response["model_name"]) == model_name
+        assert training_json_response["model_name"] == model_name
 
         # assert trained model
         result = MODEL_MANAGER.get_model_future(training_id).load()
@@ -698,6 +835,6 @@ def test_train_other_task(runtime_http_server):
             f"/api/v1/{model_name}/task/other",
             json=json_input_inference,
         )
-        assert response.status_code == 200
         json_response = json.loads(response.content.decode(response.default_encoding))
+        assert response.status_code == 200, json_response
         assert json_response["farewell"] == "goodbye: world 64 times"

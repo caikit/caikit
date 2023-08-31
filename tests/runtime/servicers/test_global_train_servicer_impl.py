@@ -98,8 +98,10 @@ def test_global_train_sample_task(
     model_name = random_test_id()
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
         model_name=model_name,
-        batch_size=42,
-        training_data=training_data,
+        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+            batch_size=42,
+            training_data=training_data,
+        ),
     )
 
     training_response = sample_train_servicer.Train(
@@ -159,9 +161,11 @@ def test_global_train_other_task(
     training_data = stream_type(jsondata=stream_type.JsonData(data=[1])).to_proto()
     train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
         model_name="Other module Training",
-        training_data=training_data,
-        sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
-        batch_size=batch_size,
+        parameters=sample_train_service.messages.OtherTaskOtherModuleTrainParameters(
+            training_data=training_data,
+            sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
+            batch_size=batch_size,
+        ),
     )
 
     training_response = sample_train_servicer.Train(
@@ -212,11 +216,11 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
         model_id=sample_task_model_id
     ).to_proto()
 
-    training_request = (
-        sample_train_service.messages.SampleTaskCompositeModuleTrainRequest(
-            model_name="AnotherWidget_Training",
+    training_request = sample_train_service.messages.SampleTaskCompositeModuleTrainRequest(
+        model_name="AnotherWidget_Training",
+        parameters=sample_train_service.messages.SampleTaskCompositeModuleTrainParameters(
             sample_block=sample_model,
-        )
+        ),
     )
 
     training_response = sample_train_servicer.Train(
@@ -268,8 +272,10 @@ def test_run_train_job_works_with_wait(
     ).to_proto()
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
         model_name=random_test_id(),
-        batch_size=42,
-        training_data=training_data,
+        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+            batch_size=42,
+            training_data=training_data,
+        ),
     )
     servicer = GlobalTrainServicer(training_service=sample_train_service)
     with TemporaryDirectory() as tmp_dir:
@@ -317,7 +323,9 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_but_not_loaded_s
     ).to_proto()
     request = sample_train_service.messages.SampleTaskCompositeModuleTrainRequest(
         model_name="AnotherWidget_Training",
-        sample_block=sample_model,
+        parameters=sample_train_service.messages.SampleTaskCompositeModuleTrainParameters(
+            sample_block=sample_model,
+        ),
     )
 
     with pytest.raises(CaikitRuntimeException) as context:
@@ -337,8 +345,10 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_mod
 
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
         model_name=random_test_id(),
-        batch_size=999,
-        training_data=training_data,
+        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+            batch_size=999,
+            training_data=training_data,
+        ),
     )
 
     training_response = sample_train_servicer.Train(
@@ -362,9 +372,11 @@ def test_global_train_returns_exit_code_with_oom(
     ).to_proto()
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
         model_name=random_test_id(),
-        batch_size=42,
-        training_data=training_data,
-        oom_exit=True,
+        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+            batch_size=42,
+            training_data=training_data,
+            oom_exit=True,
+        ),
     )
 
     # Enable sub-processing for test
@@ -391,9 +403,11 @@ def test_local_trainer_rejects_s3_output_paths(
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
         model_name=random_test_id(),
         output_path=S3Path(path="foo").to_proto(),
-        batch_size=42,
-        training_data=training_data,
-        oom_exit=True,
+        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+            batch_size=42,
+            training_data=training_data,
+            oom_exit=True,
+        ),
     )
 
     with pytest.raises(
@@ -420,9 +434,11 @@ def test_global_train_aborts_long_running_trains(
 
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
         model_name=training_id,
-        batch_size=42,
-        training_data=training_data,
-        oom_exit=False,
+        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+            batch_size=42,
+            training_data=training_data,
+            oom_exit=False,
+        ),
     )
 
     if sample_train_servicer.use_subprocess:
@@ -468,7 +484,6 @@ def test_global_train_aborts_long_running_trains(
         f"{SampleModule.__module__}.{SampleModule.train.__qualname__}",
         never_respond,
     ):
-
         train_thread.start()
         # NB: assert is here to make sure we called the patched train
         assert test_event.wait(test_event_timeout)

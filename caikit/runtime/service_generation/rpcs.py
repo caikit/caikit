@@ -63,33 +63,7 @@ class CaikitRPCBase(abc.ABC):
 
     def create_request_data_model(self, package_name: str) -> Type[DataBase]:
         """Dynamically create data model for this RPC's request message"""
-        properties = {
-            # triple e.g. ('caikit.interfaces.common.ProducerPriority', 'producer_id', 1)
-            # This does not take care of nested descriptors
-            triple[1]: Annotated[triple[0], FieldNumber(triple[2])]
-            for triple in self.request.triples
-            if triple[1] not in self.request.default_map
-        }
-        optional_properties = {
-            triple[1]: Annotated[Optional[triple[0]], FieldNumber(triple[2])]
-            for triple in self.request.triples
-            if triple[1] in self.request.default_map
-        }
-        attrs = copy.copy(self.request.default_map)
-
-        if not properties and not optional_properties:
-            log.warning(
-                "No arguments found for request %s. Cannot generate rpc",
-                self.request.name,
-            )
-            return None
-
-        return make_dataobject(
-            package=package_name,
-            name=self.request.name,
-            attrs=attrs,
-            annotations={**properties, **optional_properties},
-        )
+        return self.request.create_data_model(package_name)
 
     def create_rpc_json(self, package_name: str) -> Dict:
         """Return json snippet for the service definition of this RPC"""
@@ -128,10 +102,40 @@ class ModuleClassTrainRPC(CaikitRPCBase):
 
         # Store the input and output protobuf message types for this RPC
         self.return_type = self._method.return_type
-        self._req = _RequestMessage(
-            ModuleClassTrainRPC.module_class_to_req_name(self.clz),
+
+        # Inner / outer requests
+        # The actual training parameters from the method signature are nested under `parameters`
+        self._inner_request = _RequestMessage(
+            ModuleClassTrainRPC.module_class_to_inner_request_name(self.clz),
             self._method.parameters,
             self._method.default_parameters,
+        )
+
+        params = {"model_name": str, "output_path": S3Path, "parameters": "PLACEHOLDER"}
+
+        self._req = _RequestMessage(
+            ModuleClassTrainRPC.module_class_to_req_name(self.clz),
+            params,
+            {},
+        )
+
+    def create_request_data_model(self, package_name: str):
+        """Partial override of CaikitRPCBase.create_request_data_model to take care of the inner
+        request data model"""
+        # Build the inner request data model
+        inner_request_data_model = self._inner_request.create_data_model(package_name)
+        # Insert the new type into the outer request
+        for triple_index, _ in enumerate(self._req.triples):
+            if self._req.triples[triple_index][1] == "parameters":
+                triple = self._req.triples[triple_index]
+                self._req.triples[triple_index] = (
+                    inner_request_data_model,
+                    triple[1],
+                    triple[2],
+                )
+        # Call the base class' method
+        return CaikitRPCBase.create_request_data_model(
+            self=self, package_name=package_name
         )
 
     @property
@@ -165,16 +169,25 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         return f"{ModuleClassTrainRPC.module_class_to_rpc_name(module_class)}Request"
 
     @staticmethod
+    def module_class_to_inner_request_name(module_class: Type[ModuleBase]) -> str:
+        """Helper function to convert from a module to the name of the inner message
+        containing all the training parameters
+
+        Example: self.clz._module__ = sample_lib.modules.sample_task.sample_implementation
+
+        return: SampleTaskSampleModuleTrainParameters
+        """
+        return f"{ModuleClassTrainRPC.module_class_to_rpc_name(module_class)}Parameters"
+
+    @staticmethod
     def _mutate_method_signature_for_training(
         signature: CaikitMethodSignature,
     ) -> Optional[CaikitMethodSignature]:
         # Change return type for async training interface
         return_type = TrainingJob
 
-        # Start with extra metaparameters
-        # - model_name: user-provided custom ID for the model to train
-        # - output_path: pointer to some storage where the model will be saved
-        new_params = {"model_name": str, "output_path": S3Path}
+        # Loop through params and edit as needed
+        new_params = {}
         for name, typ in signature.parameters.items():
             if type_helpers.has_data_stream(typ):
                 # Assume this is training data
@@ -387,3 +400,33 @@ class _RequestMessage:
             self.triples.append((typ, item_name, num))
 
         self.triples.sort(key=lambda x: x[2])
+
+    def create_data_model(self, package_name: str) -> Type[DataBase]:
+        """Dynamically create a data model for this request message"""
+        properties = {
+            # triple e.g. ('caikit.interfaces.common.ProducerPriority', 'producer_id', 1)
+            # This does not take care of nested descriptors
+            triple[1]: Annotated[triple[0], FieldNumber(triple[2])]
+            for triple in self.triples
+            if triple[1] not in self.default_map
+        }
+        optional_properties = {
+            triple[1]: Annotated[Optional[triple[0]], FieldNumber(triple[2])]
+            for triple in self.triples
+            if triple[1] in self.default_map
+        }
+        attrs = copy.copy(self.default_map)
+
+        if not properties and not optional_properties:
+            log.warning(
+                "No arguments found for request %s. Cannot generate rpc",
+                self.name,
+            )
+            return None
+
+        return make_dataobject(
+            package=package_name,
+            name=self.name,
+            attrs=attrs,
+            annotations={**properties, **optional_properties},
+        )

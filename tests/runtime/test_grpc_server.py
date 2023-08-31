@@ -126,13 +126,15 @@ def test_model_train(runtime_grpc_server):
             "training_params": json.dumps(
                 {
                     "model_name": model_name,
-                    "training_data": {
-                        "jsondata": {
-                            "data": [
-                                sample_lib.data_model.SampleTrainingType(
-                                    number=1
-                                ).to_dict()
-                            ]
+                    "parameters": {
+                        "training_data": {
+                            "jsondata": {
+                                "data": [
+                                    sample_lib.data_model.SampleTrainingType(
+                                        number=1
+                                    ).to_dict()
+                                ]
+                            },
                         },
                     },
                 }
@@ -364,10 +366,15 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
     train_request_class = DataBase.get_class_for_name(
         "SampleTaskSampleModuleTrainRequest"
     )
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskSampleModuleTrainParameters"
+    )
     train_request = train_request_class(
         model_name=model_name,
-        training_data=training_data,
-        union_list=["str", "sequence"],
+        parameters=train_request_params_class(
+            training_data=training_data,
+            union_list=["str", "sequence"],
+        ),
     ).to_proto()
 
     actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
@@ -404,7 +411,10 @@ def test_train_fake_module_ok_response_with_loaded_model_can_predict_with_traine
     ).to_proto()
     model_name = random_test_id()
     train_request = sample_train_service.messages.SampleTaskCompositeModuleTrainRequest(
-        model_name=model_name, sample_block=sample_model
+        model_name=model_name,
+        parameters=sample_train_service.messages.SampleTaskCompositeModuleTrainParameters(
+            sample_block=sample_model
+        ),
     )
     actual_response = train_stub.SampleTaskCompositeModuleTrain(train_request)
     assert_training_successful(
@@ -447,9 +457,11 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
 
     train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
         model_name="Bar Training",
-        sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
-        batch_size=100,
-        training_data=training_data,
+        parameters=sample_train_service.messages.OtherTaskOtherModuleTrainParameters(
+            sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
+            batch_size=100,
+            training_data=training_data,
+        ),
     )
     actual_response = train_stub.OtherTaskOtherModuleTrain(train_request)
     assert_training_successful(
@@ -498,19 +510,24 @@ def test_train_primitive_model(
     train_request_class = DataBase.get_class_for_name(
         "SampleTaskSamplePrimitiveModuleTrainRequest"
     )
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskSamplePrimitiveModuleTrainParameters"
+    )
 
     train_request = train_request_class(
         model_name=model_name,
-        sample_input=SampleInputType(name="Gabe"),
-        simple_list=["hello", "world"],
-        union_list=["str", "sequence"],
-        union_list2=[1, 2],
-        union_list3=[True, False],
-        union_list4=123,
-        training_params_json_dict={"foo": {"bar": [1, 2, 3]}},
-        training_params_json_dict_list=[{"foo": {"bar": [1, 2, 3]}}],
-        training_params_dict={"layer_sizes": 100, "window_scaling": 200},
-        training_params_dict_int={1: 0.1, 2: 0.01},
+        parameters=train_request_params_class(
+            sample_input=SampleInputType(name="Gabe"),
+            simple_list=["hello", "world"],
+            union_list=["str", "sequence"],
+            union_list2=[1, 2],
+            union_list3=[True, False],
+            union_list4=123,
+            training_params_json_dict={"foo": {"bar": [1, 2, 3]}},
+            training_params_json_dict_list=[{"foo": {"bar": [1, 2, 3]}}],
+            training_params_dict={"layer_sizes": 100, "window_scaling": 200},
+            training_params_dict_int={1: 0.1, 2: 0.01},
+        ),
     ).to_proto()
 
     training_response = train_stub.SampleTaskSamplePrimitiveModuleTrain(train_request)
@@ -557,8 +574,10 @@ def test_train_fake_module_ok_response_with_datastream_jsondata(
     model_name = random_test_id()
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
         model_name=model_name,
-        batch_size=42,
-        training_data=training_data,
+        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+            batch_size=42,
+            training_data=training_data,
+        ),
     )
 
     actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
@@ -596,7 +615,9 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
     model_name = random_test_id()
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
         model_name=model_name,
-        training_data=training_data,
+        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+            training_data=training_data,
+        ),
     )
 
     actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
@@ -630,7 +651,10 @@ def test_train_and_successfully_cancel_training(
     model_name = random_test_id()
     # start a training that sleeps for a long time, so I can cancel
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=model_name, training_data=training_data.to_proto(), sleep_time=10
+        model_name=model_name,
+        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+            training_data=training_data.to_proto(), sleep_time=10
+        ),
     )
     train_response = train_stub.SampleTaskSampleModuleTrain(train_request)
 
@@ -664,7 +688,10 @@ def test_cancel_does_not_affect_other_models(
     model_name = random_test_id()
     # start a training that sleeps for a long time, so I can cancel
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=model_name, training_data=training_data.to_proto(), sleep_time=10
+        model_name=model_name,
+        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+            training_data=training_data.to_proto(), sleep_time=10
+        ),
     )
     train_response = train_stub.SampleTaskSampleModuleTrain(train_request)
 
@@ -684,7 +711,10 @@ def test_cancel_does_not_affect_other_models(
     # train another model
     model_name2 = random_test_id()
     train_request2 = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=model_name2, training_data=training_data.to_proto()
+        model_name=model_name2,
+        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+            training_data=training_data.to_proto()
+        ),
     )
     train_response2 = train_stub.SampleTaskSampleModuleTrain(train_request2)
 
@@ -716,10 +746,11 @@ def test_train_fake_module_error_response_with_unloaded_model(
             model_id=random_test_id()
         ).to_proto()
 
-        train_request = (
-            sample_train_service.messages.SampleTaskCompositeModuleTrainRequest(
-                model_name=random_test_id(), sample_block=sample_model
-            )
+        train_request = sample_train_service.messages.SampleTaskCompositeModuleTrainRequest(
+            model_name=random_test_id(),
+            parameters=sample_train_service.messages.SampleTaskCompositeModuleTrainParameters(
+                sample_block=sample_model
+            ),
         )
         train_stub.SampleTaskCompositeModuleTrain(train_request)
     assert context.value.code() == grpc.StatusCode.NOT_FOUND
@@ -1171,7 +1202,6 @@ def test_grpc_sever_shutdown_with_model_poll(open_port):
             RUNTIME_METRICS_ENABLED="false",
         )
         with server_proc as proc:
-
             # Wait for the server to be up
             _assert_connection(
                 grpc.insecure_channel(f"localhost:{open_port}"), max_failures=500

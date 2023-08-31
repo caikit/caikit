@@ -257,3 +257,15 @@ def test_module_train_rpc():
     assert data_model is not None
 
     assert rpc.name == "TestTaskTestModuleTrain"
+
+    # Training RPCs nest the actual training params from the `.train` signature
+    assert hasattr(data_model, "model_name")
+    assert hasattr(data_model, "output_path")
+    assert hasattr(data_model, "parameters")
+
+    training_message = data_model.from_json(
+        {"model_name": "any_model_name", "parameters": {"int_val": 1, "str_val": "foo"}}
+    )
+
+    assert training_message.parameters.int_val == 1
+    assert training_message.parameters.str_val == "foo"

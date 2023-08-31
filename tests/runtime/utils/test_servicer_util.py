@@ -295,11 +295,14 @@ def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_r
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(jsondata=stream_type.JsonData(data=[])).to_proto()
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=random_test_id(), training_data=training_data
+        model_name=random_test_id(),
+        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+            training_data=training_data
+        ),
     )
 
     caikit.core_request = build_caikit_library_request_dict(
-        train_request,
+        train_request.parameters,
         sample_lib.modules.sample_task.SampleModule.TRAIN_SIGNATURE,
     )
 
@@ -319,12 +322,15 @@ def test_global_train_build_caikit_library_request_dict_works_for_repeated_field
     training_data = stream_type(jsondata=stream_type.JsonData(data=[])).to_proto()
     train_request = sample_train_service.messages.SampleTaskListModuleTrainRequest(
         model_name=random_test_id(),
-        training_data=training_data,
-        poison_pills=["Bob Marley", "Bunny Livingston"],
+        parameters=sample_train_service.messages.SampleTaskListModuleTrainParameters(
+            training_data=training_data,
+            poison_pills=["Bob Marley", "Bunny Livingston"],
+        ),
     )
 
     caikit.core_request = build_caikit_library_request_dict(
-        train_request, sample_lib.modules.sample_task.ListModule.TRAIN_SIGNATURE
+        train_request.parameters,
+        sample_lib.modules.sample_task.ListModule.TRAIN_SIGNATURE,
     )
 
     # model_name is not expected to be passed through
@@ -346,12 +352,14 @@ def test_global_train_build_caikit_library_request_dict_ok_with_DataStreamSource
 
     train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
         model_name="Bar Training",
-        sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
-        batch_size=100,
-        training_data=training_data,
+        parameters=sample_train_service.messages.OtherTaskOtherModuleTrainParameters(
+            sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
+            batch_size=100,
+            training_data=training_data,
+        ),
     )
     caikit.core_request = build_caikit_library_request_dict(
-        train_request,
+        train_request.parameters,
         sample_lib.modules.other_task.OtherModule.TRAIN_SIGNATURE,
     )
 
@@ -371,11 +379,13 @@ def test_global_train_build_caikit_library_request_dict_ok_with_data_stream_file
     ).to_proto()
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
         model_name=random_test_id(),
-        training_data=training_data,
+        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+            training_data=training_data,
+        ),
     )
 
     caikit.core_request = build_caikit_library_request_dict(
-        train_request,
+        train_request.parameters,
         sample_lib.modules.sample_task.SampleModule.TRAIN_SIGNATURE,
     )
 
@@ -395,12 +405,14 @@ def test_global_train_build_caikit_library_request_dict_ok_with_training_data_as
     ).to_proto()
     train_request = sample_train_service.messages.SampleTaskListModuleTrainRequest(
         model_name=random_test_id(),
-        training_data=training_data,
-        poison_pills=["Bob Marley", "Bunny Livingston"],
+        parameters=sample_train_service.messages.SampleTaskListModuleTrainParameters(
+            training_data=training_data,
+            poison_pills=["Bob Marley", "Bunny Livingston"],
+        ),
     )
 
     caikit.core_request = build_caikit_library_request_dict(
-        train_request,
+        train_request.parameters,
         sample_lib.modules.sample_task.ListModule.TRAIN_SIGNATURE,
     )
 
@@ -431,15 +443,15 @@ def test_build_caikit_library_request_dict_works_when_data_stream_directory_incl
         training_data = stream_type(
             directory=stream_type.Directory(dirname=tempdir, extension="json")
         ).to_proto()
-        train_request = (
-            sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-                model_name=random_test_id(),
+        train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+            model_name=random_test_id(),
+            parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
                 training_data=training_data,
-            )
+            ),
         )
 
         # no error because at least 1 json file exists within the provided dir
         caikit.core_request = build_caikit_library_request_dict(
-            train_request,
+            train_request.parameters,
             sample_lib.modules.sample_task.SampleModule.TRAIN_SIGNATURE,
         )

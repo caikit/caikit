@@ -77,7 +77,6 @@ from caikit.runtime.service_generation.rpcs import (
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-import caikit
 
 ## Globals #####################################################################
 
@@ -127,6 +126,15 @@ OPTIONAL_INPUTS_KEY = "parameters"
 HEALTH_ENDPOINT = "/health"
 
 ## RuntimeHTTPServer ###########################################################
+
+
+# Base class for pydantic models
+# We want to set the config to forbid extra attributes
+# while instantiating any pydantic models
+# This is done to make sure any oneofs can be
+# correctly infered by pydantic
+class ParentPydanticBaseModel(pydantic.BaseModel):
+    model_config = pydantic.ConfigDict(extra="forbid")
 
 
 class RuntimeHTTPServer(RuntimeServerBase):
@@ -311,35 +319,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # convert pydantic objects to our DM objects
         for param_name, param_value in request_params.items():
             if issubclass(type(param_value), pydantic.BaseModel):
-                request_params[param_name] = self.build_dm_object(param_value)
+                request_params[param_name] = self._build_dm_object(param_value)
         return request_params
-
-    def build_dm_object(self, pydantic_model: pydantic.BaseModel) -> DataBase:
-        """Convert pydantic objects to our DM objects"""
-        dm_class_to_build = PYDANTIC_TO_DM_MAPPING.get(type(pydantic_model))
-        dm_kwargs = {}
-
-        for field_name, field_value in pydantic_model:
-            # field could be a DM:
-            # pylint: disable=unidiomatic-typecheck
-            if type(field_value) in PYDANTIC_TO_DM_MAPPING:
-                dm_kwargs[field_name] = self.build_dm_object(field_value)
-            elif isinstance(field_value, list):
-                if all(type(val) in PYDANTIC_TO_DM_MAPPING for val in field_value):
-                    dm_kwargs[field_name] = [
-                        self.build_dm_object(val) for val in field_value
-                    ]
-                else:
-                    dm_kwargs[field_name] = field_value
-            else:
-                dm_kwargs[field_name] = field_value
-
-        return dm_class_to_build(**dm_kwargs)
 
     def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = self._dataobject_to_pydantic(
-            self._get_request_dataobject(rpc)
+            DataBase.get_class_for_name(rpc.request.name)
         )
         pydantic_response = self._dataobject_to_pydantic(
             self._get_response_dataobject(rpc)
@@ -354,26 +340,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
             loop = asyncio.get_running_loop()
 
             # build request DM object
-            http_request_dm_object = self.build_dm_object(request)
+            http_request_dm_object = self._build_dm_object(request)
 
-            request_dm_class = caikit.core.data_model.DataBase.get_class_for_name(
-                rpc.request.name
-            )
-            request_dm_class_kwargs = {}
-            required_inputs = getattr(http_request_dm_object, REQUIRED_INPUTS_KEY, None)
-            optional_inputs = getattr(http_request_dm_object, OPTIONAL_INPUTS_KEY, None)
-            for input_type in (required_inputs, optional_inputs):
-                if input_type is not None:
-                    for field_name in input_type.fields:
-                        field_value = getattr(input_type, field_name, None)
-                        if field_value is not None:
-                            request_dm_class_kwargs[field_name] = field_value
-
-            request_dm_object = request_dm_class(**request_dm_class_kwargs)
             try:
                 call = partial(
                     self.global_train_servicer.run_training_job,
-                    request=request_dm_object.to_proto(),
+                    request=http_request_dm_object.to_proto(),
                     module=rpc.clz,
                     training_output_dir=None,  # pass None so that GTS picks up the config one # TODO: double-check?
                     # context=context,
@@ -605,6 +577,29 @@ class RuntimeHTTPServer(RuntimeServerBase):
         return dm_obj
 
     @classmethod
+    def _build_dm_object(cls, pydantic_model: pydantic.BaseModel) -> DataBase:
+        """Convert pydantic objects to our DM objects"""
+        dm_class_to_build = PYDANTIC_TO_DM_MAPPING.get(type(pydantic_model))
+        dm_kwargs = {}
+
+        for field_name, field_value in pydantic_model:
+            # field could be a DM:
+            # pylint: disable=unidiomatic-typecheck
+            if type(field_value) in PYDANTIC_TO_DM_MAPPING:
+                dm_kwargs[field_name] = cls._build_dm_object(field_value)
+            elif isinstance(field_value, list):
+                if all(type(val) in PYDANTIC_TO_DM_MAPPING for val in field_value):
+                    dm_kwargs[field_name] = [
+                        cls._build_dm_object(val) for val in field_value
+                    ]
+                else:
+                    dm_kwargs[field_name] = field_value
+            else:
+                dm_kwargs[field_name] = field_value
+
+        return dm_class_to_build(**dm_kwargs)
+
+    @classmethod
     # pylint: disable=too-many-return-statements
     def _get_pydantic_type(cls, field_type: type) -> type:
         """Recursive helper to get a valid pydantic type for every field type"""
@@ -615,7 +610,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             return int
         if np.issubclass_(field_type, np.floating):
             return float
-        if field_type in (int, float, bool, str, bytes, type(None)):
+        if field_type in (int, float, bool, str, bytes, dict, type(None)):
             return field_type
         if isinstance(field_type, type) and issubclass(field_type, enum.Enum):
             return field_type
@@ -645,7 +640,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
             return List[cls._get_pydantic_type(get_args(field_type)[0])]
 
         if get_origin(field_type) is dict:
-            return field_type
+            return Dict[
+                cls._get_pydantic_type(get_args(field_type)[0]),
+                cls._get_pydantic_type(get_args(field_type)[1]),
+            ]
 
         raise TypeError(f"Cannot get pydantic type for type [{field_type}]")
 
@@ -670,9 +668,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 dm_class, localns=localns
             ).items()
         }
-        pydantic_model = type(pydantic.BaseModel)(
+        pydantic_model = type(ParentPydanticBaseModel)(
             dm_class.get_proto_class().DESCRIPTOR.full_name,
-            (pydantic.BaseModel,),
+            (ParentPydanticBaseModel,),
             {
                 "__annotations__": annotations,
                 **{
