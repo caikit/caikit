@@ -95,7 +95,7 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
             )
             # update any file references relative to the training input dir
             self._update_file_references(
-                train_message_request, request.training_input_dir
+                train_message_request.parameters, request.training_input_dir
             )
 
             # make the train call

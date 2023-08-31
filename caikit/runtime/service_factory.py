@@ -142,9 +142,8 @@ class ServicePackageFactory:
 
         rpc_list = [rpc for rpc in rpc_list if rpc.return_type is not None]
 
-        request_data_models = [
-            rpc.create_request_data_model(package_name) for rpc in rpc_list
-        ]
+        for rpc in rpc_list:
+            rpc.create_request_data_model(package_name)
 
         client_module = ModuleType(
             "ClientMessages",

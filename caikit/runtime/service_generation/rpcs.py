@@ -125,7 +125,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         # Build the inner request data model
         inner_request_data_model = self._inner_request.create_data_model(package_name)
         # Insert the new type into the outer request
-        for triple_index in range(len(self._req.triples)):
+        for triple_index, _ in enumerate(self._req.triples):
             if self._req.triples[triple_index][1] == "parameters":
                 triple = self._req.triples[triple_index]
                 self._req.triples[triple_index] = (
