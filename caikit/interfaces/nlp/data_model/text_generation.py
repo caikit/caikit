@@ -57,7 +57,6 @@ class GeneratedTextResult(DataObjectBase):
 @dataobject(package=NLP_PACKAGE)
 class GeneratedToken(DataObjectBase):
     text: Annotated[str, FieldNumber(1)]
-    id: Annotated[Optional[np.uint32], FieldNumber(2)]
     logprob: Annotated[Optional[float], FieldNumber(3)]
 
 
