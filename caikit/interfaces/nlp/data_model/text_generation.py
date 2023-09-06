@@ -51,7 +51,7 @@ class GeneratedTextResult(DataObjectBase):
     finish_reason: Annotated[FinishReason, FieldNumber(3)]
     producer_id: Annotated[ProducerId, FieldNumber(4)]
     input_token_count: Annotated[int, FieldNumber(5)]
-    seed: Annotated[np.uint64, FieldNumber(6)]
+    seed: Annotated[Optional[np.uint64], FieldNumber(6)]
 
 
 @dataobject(package=NLP_PACKAGE)
@@ -66,7 +66,7 @@ class GeneratedToken(DataObjectBase):
 class TokenStreamDetails(DataObjectBase):
     finish_reason: Annotated[FinishReason, FieldNumber(1)]
     generated_tokens: Annotated[np.uint32, FieldNumber(2)]
-    seed: Annotated[np.uint64, FieldNumber(3)]
+    seed: Annotated[Optional[np.uint64], FieldNumber(3)]
     input_token_count: Annotated[int, FieldNumber(4)]
 
 
