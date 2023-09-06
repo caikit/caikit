@@ -18,19 +18,8 @@ API based on the task definitions available at boot.
 """
 # Standard
 from functools import partial
-from typing import (
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Type,
-    Union,
-    get_args,
-    get_type_hints,
-)
+from typing import Any, Dict, Iterable, Optional, Type, Union, get_args
 import asyncio
-import enum
 import json
 import re
 import ssl
@@ -44,15 +33,11 @@ from fastapi.exceptions import ResponseValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
 from grpc import StatusCode
 from sse_starlette import EventSourceResponse, ServerSentEvent
-import numpy as np
 import pydantic
 import uvicorn
 
 # First Party
-from py_to_proto.dataclass_to_proto import (  # Imported here for 3.8 compat
-    Annotated,
-    get_origin,
-)
+from py_to_proto.dataclass_to_proto import get_origin  # Imported here for 3.8 compat
 import aconfig
 import alog
 
@@ -60,13 +45,11 @@ import alog
 from caikit.config import get_config
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
-from caikit.core.toolkit.sync_to_async import async_wrap_iter
-from caikit.interfaces.common.data_model.primitive_sequences import (
-    BoolSequence,
-    FloatSequence,
-    IntSequence,
-    StrSequence,
+from caikit.core.data_model.pydantic_wrapper import (
+    dataobject_to_pydantic,
+    pydantic_to_dataobject,
 )
+from caikit.core.toolkit.sync_to_async import async_wrap_iter
 from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.rpcs import (
@@ -81,17 +64,6 @@ from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 ## Globals #####################################################################
 
 log = alog.use_channel("SERVR-HTTP")
-
-# PYDANTIC_TO_DM_MAPPING is essentially a 2-way map of DMs <-> Pydantic models, you give it a
-# pydantic model, it gives you back a DM class, you give it a
-# DM class, you get back a pydantic model.
-PYDANTIC_TO_DM_MAPPING = {
-    # Map primitive sequences to lists
-    StrSequence: List[str],
-    IntSequence: List[int],
-    FloatSequence: List[float],
-    BoolSequence: List[bool],
-}
 
 
 # Mapping from GRPC codes to their corresponding HTTP codes
@@ -126,15 +98,6 @@ OPTIONAL_INPUTS_KEY = "parameters"
 HEALTH_ENDPOINT = "/health"
 
 ## RuntimeHTTPServer ###########################################################
-
-
-# Base class for pydantic models
-# We want to set the config to forbid extra attributes
-# while instantiating any pydantic models
-# This is done to make sure any oneofs can be
-# correctly infered by pydantic
-class ParentPydanticBaseModel(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(extra="forbid")
 
 
 class RuntimeHTTPServer(RuntimeServerBase):
@@ -319,17 +282,15 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # convert pydantic objects to our DM objects
         for param_name, param_value in request_params.items():
             if issubclass(type(param_value), pydantic.BaseModel):
-                request_params[param_name] = self._build_dm_object(param_value)
+                request_params[param_name] = pydantic_to_dataobject(param_value)
         return request_params
 
     def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
-        pydantic_request = self._dataobject_to_pydantic(
+        pydantic_request = dataobject_to_pydantic(
             DataBase.get_class_for_name(rpc.request.name)
         )
-        pydantic_response = self._dataobject_to_pydantic(
-            self._get_response_dataobject(rpc)
-        )
+        pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
 
         @self.app.post(self._get_route(rpc))
         # pylint: disable=unused-argument
@@ -340,7 +301,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             loop = asyncio.get_running_loop()
 
             # build request DM object
-            http_request_dm_object = self._build_dm_object(request)
+            http_request_dm_object = pydantic_to_dataobject(request)
 
             try:
                 call = partial(
@@ -371,12 +332,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
     def _add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
-        pydantic_request = self._dataobject_to_pydantic(
-            self._get_request_dataobject(rpc)
-        )
-        pydantic_response = self._dataobject_to_pydantic(
-            self._get_response_dataobject(rpc)
-        )
+        pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
+        pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
 
         @self.app.post(self._get_route(rpc), response_model=pydantic_response)
         # pylint: disable=unused-argument
@@ -425,12 +382,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
             return Response(content=json.dumps(error_content), status_code=error_code)
 
     def _add_unary_input_stream_output_handler(self, rpc: CaikitRPCBase):
-        pydantic_request = self._dataobject_to_pydantic(
-            self._get_request_dataobject(rpc)
-        )
-        pydantic_response = self._dataobject_to_pydantic(
-            self._get_response_dataobject(rpc)
-        )
+        pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
+        pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
 
         # pylint: disable=unused-argument
         @self.app.post(self._get_route(rpc), response_model=pydantic_response)
@@ -575,118 +528,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
             dm_obj = rpc.return_type
         assert isinstance(dm_obj, type) and issubclass(dm_obj, DataBase)
         return dm_obj
-
-    @classmethod
-    def _build_dm_object(cls, pydantic_model: pydantic.BaseModel) -> DataBase:
-        """Convert pydantic objects to our DM objects"""
-        dm_class_to_build = PYDANTIC_TO_DM_MAPPING.get(type(pydantic_model))
-        dm_kwargs = {}
-
-        for field_name, field_value in pydantic_model:
-            # field could be a DM:
-            # pylint: disable=unidiomatic-typecheck
-            if type(field_value) in PYDANTIC_TO_DM_MAPPING:
-                dm_kwargs[field_name] = cls._build_dm_object(field_value)
-            elif isinstance(field_value, list):
-                if all(type(val) in PYDANTIC_TO_DM_MAPPING for val in field_value):
-                    dm_kwargs[field_name] = [
-                        cls._build_dm_object(val) for val in field_value
-                    ]
-                else:
-                    dm_kwargs[field_name] = field_value
-            else:
-                dm_kwargs[field_name] = field_value
-
-        return dm_class_to_build(**dm_kwargs)
-
-    @classmethod
-    # pylint: disable=too-many-return-statements
-    def _get_pydantic_type(cls, field_type: type) -> type:
-        """Recursive helper to get a valid pydantic type for every field type"""
-        # pylint: disable=too-many-return-statements
-
-        # Leaves: we should have primitive types and enums
-        if np.issubclass_(field_type, np.integer):
-            return int
-        if np.issubclass_(field_type, np.floating):
-            return float
-        if field_type in (int, float, bool, str, bytes, dict, type(None)):
-            return field_type
-        if isinstance(field_type, type) and issubclass(field_type, enum.Enum):
-            return field_type
-
-        # These can be nested within other data models
-        if (
-            isinstance(field_type, type)
-            and issubclass(field_type, DataBase)
-            and not issubclass(field_type, pydantic.BaseModel)
-        ):
-            # NB: for data models we're calling the data model conversion fn
-            return cls._dataobject_to_pydantic(field_type)
-
-        # And then all of these types can be nested in other type annotations
-        if get_origin(field_type) is Annotated:
-            return cls._get_pydantic_type(get_args(field_type)[0])
-        if get_origin(field_type) is Union:
-            return Union[  # type: ignore
-                tuple(
-                    (
-                        cls._get_pydantic_type(arg_type)
-                        for arg_type in get_args(field_type)
-                    )
-                )
-            ]
-        if get_origin(field_type) is list:
-            return List[cls._get_pydantic_type(get_args(field_type)[0])]
-
-        if get_origin(field_type) is dict:
-            return Dict[
-                cls._get_pydantic_type(get_args(field_type)[0]),
-                cls._get_pydantic_type(get_args(field_type)[1]),
-            ]
-
-        raise TypeError(f"Cannot get pydantic type for type [{field_type}]")
-
-    @classmethod
-    def _dataobject_to_pydantic(
-        cls, dm_class: Type[DataBase]
-    ) -> Type[pydantic.BaseModel]:
-        """Make a pydantic model based on the given proto message by using the data
-        model class annotations to mirror as a pydantic model
-        """
-        # define a local namespace for type hints to get type information from.
-        # This is needed for pydantic to have a handle on JsonDict and JsonDictValue while
-        # creating its base model
-        localns = {"JsonDict": dict, "JsonDictValue": dict}
-
-        if dm_class in PYDANTIC_TO_DM_MAPPING:
-            return PYDANTIC_TO_DM_MAPPING[dm_class]
-
-        annotations = {
-            field_name: cls._get_pydantic_type(field_type)
-            for field_name, field_type in get_type_hints(
-                dm_class, localns=localns
-            ).items()
-        }
-        pydantic_model = type(ParentPydanticBaseModel)(
-            dm_class.get_proto_class().DESCRIPTOR.full_name,
-            (ParentPydanticBaseModel,),
-            {
-                "__annotations__": annotations,
-                **{
-                    name: None
-                    for name, _ in get_type_hints(
-                        dm_class,
-                        localns=localns,
-                    ).items()
-                },
-            },
-        )
-        PYDANTIC_TO_DM_MAPPING[dm_class] = pydantic_model
-        # also store the reverse mapping for easy retrieval
-        # should be fine since we only check for dm_class in this dict
-        PYDANTIC_TO_DM_MAPPING[pydantic_model] = dm_class
-        return pydantic_model
 
     @staticmethod
     def _health_check() -> str:
