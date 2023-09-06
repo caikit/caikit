@@ -29,18 +29,18 @@ from py_to_proto.dataclass_to_proto import Annotated
 # Local
 from caikit.core import DataObjectBase, dataobject
 from caikit.core.data_model.base import DataBase
-from caikit.core.data_model.pydantic_wrapper import (
-    PYDANTIC_TO_DM_MAPPING,
-    _get_pydantic_type,
-    dataobject_to_pydantic,
-    pydantic_to_dataobject,
-)
 from caikit.interfaces.common.data_model.stream_sources import File
 from caikit.interfaces.nlp.data_model.text_generation import (
     GeneratedTextStreamResult,
     GeneratedToken,
 )
 from caikit.runtime.service_generation.data_stream_source import make_data_stream_source
+from caikit.runtime.wrappers.pydantic_wrapper import (
+    PYDANTIC_TO_DM_MAPPING,
+    _get_pydantic_type,
+    dataobject_to_pydantic,
+    pydantic_to_dataobject,
+)
 from sample_lib.data_model.sample import (
     SampleInputType,
     SampleOutputType,
