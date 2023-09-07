@@ -39,10 +39,20 @@ def main():
 
     # Start serving grpc server
     if get_config().runtime.grpc.enabled:
-        # Local
-        from caikit.runtime.grpc_server import (  # pylint: disable=import-outside-toplevel
-            RuntimeGRPCServer,
-        )
+        # Import the gRPC components inside the function to avoid requiring
+        # them when starting runtime without the `runtime-grpc` optional
+        # dependencies installed.
+
+        try:
+            # Local
+            from caikit.runtime.grpc_server import (  # pylint: disable=import-outside-toplevel
+                RuntimeGRPCServer,
+            )
+        except ModuleNotFoundError as e:
+            log.error(
+                f"{e} - unable to start gRPC server. Perhaps you missed installing the gRPC optional dependencies?"
+            )
+            exit(1)
 
         log.debug("Starting up caikit.runtime.grpc_server")
 
@@ -51,10 +61,20 @@ def main():
 
     # Start serving http server
     if get_config().runtime.http.enabled:
-        # Local
-        from caikit.runtime.http_server import (  # pylint: disable=import-outside-toplevel
-            RuntimeHTTPServer,
-        )
+        # Import the HTTP components inside the function to avoid requiring
+        # them when starting runtime without the `runtime-http` optional
+        # dependencies installed.
+
+        try:
+            # Local
+            from caikit.runtime.http_server import (  # pylint: disable=import-outside-toplevel
+                RuntimeHTTPServer,
+            )
+        except ModuleNotFoundError as e:
+            log.error(
+                f"{e} - unable to start REST server. Perhaps you missed installing the http optional dependencies?"
+            )
+            exit(1)
 
         log.debug("Starting up caikit.runtime.http_server")
 
