@@ -34,13 +34,13 @@ from caikit.interfaces.nlp.data_model.text_generation import (
     GeneratedTextStreamResult,
     GeneratedToken,
 )
-from caikit.runtime.service_generation.data_stream_source import make_data_stream_source
-from caikit.runtime.wrappers.pydantic_wrapper import (
+from caikit.runtime.http_server.pydantic_wrapper import (
     PYDANTIC_TO_DM_MAPPING,
     _get_pydantic_type,
     dataobject_to_pydantic,
     pydantic_to_dataobject,
 )
+from caikit.runtime.service_generation.data_stream_source import make_data_stream_source
 from sample_lib.data_model.sample import (
     SampleInputType,
     SampleOutputType,

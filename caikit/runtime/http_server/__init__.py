@@ -13,4 +13,4 @@
 # limitations under the License.
 
 # Local
-from .http_server import RuntimeHTTPServer
+from .http_server import HEALTH_ENDPOINT, RuntimeHTTPServer
