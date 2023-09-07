@@ -10,6 +10,7 @@ import tempfile
 import alog
 
 # Local
+from caikit.config.config import get_config
 from caikit.runtime.__main__ import main
 from caikit.runtime.dump_services import dump_grpc_services, dump_http_services
 import caikit
@@ -36,8 +37,10 @@ if __name__ == "__main__":
 
         # dump protos
         shutil.rmtree("protos", ignore_errors=True)
-        dump_grpc_services("protos")
-        dump_http_services("protos")
+        if get_config().runtime.grpc.enabled:
+            dump_grpc_services("protos")
+        if get_config().runtime.http.enabled:
+            dump_http_services("protos")
 
         # create a sample.json file for training
         with open(

@@ -6,8 +6,6 @@ import alog
 
 # Local
 from caikit.config.config import get_config
-from caikit.runtime.grpc_server import RuntimeGRPCServer
-from caikit.runtime.http_server import RuntimeHTTPServer
 
 log = alog.use_channel("RUNTIME-MAIN")
 
@@ -41,6 +39,11 @@ def main():
 
     # Start serving grpc server
     if get_config().runtime.grpc.enabled:
+        # Local
+        from caikit.runtime.grpc_server import (  # pylint: disable=import-outside-toplevel
+            RuntimeGRPCServer,
+        )
+
         log.debug("Starting up caikit.runtime.grpc_server")
 
         _grpc_server = RuntimeGRPCServer()
@@ -48,6 +51,11 @@ def main():
 
     # Start serving http server
     if get_config().runtime.http.enabled:
+        # Local
+        from caikit.runtime.http_server import (  # pylint: disable=import-outside-toplevel
+            RuntimeHTTPServer,
+        )
+
         log.debug("Starting up caikit.runtime.http_server")
 
         _http_server = RuntimeHTTPServer()
