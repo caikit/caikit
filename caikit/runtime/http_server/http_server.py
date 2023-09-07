@@ -289,11 +289,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         )
         pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
 
-        @self.app.post(self._get_route(rpc))
+        @self.app.post(self._get_route(rpc), response_model=pydantic_response)
         # pylint: disable=unused-argument
-        async def _handler(
-            request: pydantic_request, context: Request
-        ) -> pydantic_response:
+        async def _handler(request: pydantic_request, context: Request) -> Response:
             log.debug("In unary handler for %s", rpc.name)
             loop = asyncio.get_running_loop()
 
@@ -309,7 +307,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     # context=context,
                     wait=True,
                 )
-                return await loop.run_in_executor(None, call)
+                result = await loop.run_in_executor(None, call)
+                return Response(content=result.to_json(), media_type="application/json")
+
             except CaikitRuntimeException as err:
                 error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
                 error_content = {
@@ -336,7 +336,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # pylint: disable=unused-argument
         async def _handler(
             model_id: str, request: pydantic_request, context: Request
-        ) -> Union[pydantic_response, Response]:
+        ) -> Response:
             log.debug("In unary handler for %s for model %s", rpc.name, model_id)
             loop = asyncio.get_running_loop()
 
@@ -360,7 +360,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 )
                 result = await loop.run_in_executor(None, call)
                 log.debug4("Response from model %s is %s", model_id, result)
-                return result
+                return Response(content=result.to_json(), media_type="application/json")
+
             except CaikitRuntimeException as err:
                 error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
                 error_content = {
