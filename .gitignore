@@ -14,6 +14,9 @@ test
 .vscode/
 .idea/
 
+# Env files
+.env
+
 # Virtual Env
 venv/
 # Mac personalization files
