@@ -18,7 +18,7 @@
 # Standard
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Type, Union, get_type_hints
+from typing import Any, Dict, List, Optional, Type, Union
 import base64
 import datetime
 import json
@@ -477,7 +477,14 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
         # If attempting to set one of the named fields or a oneof, instead set
         # the private version of the attribute.
-        if name in cls.fields or name in cls._fields_oneofs_map:
+        if name in cls.fields:
+            field_descriptor = cls._proto_class.DESCRIPTOR.fields_by_name[name]
+            # for bytes, convert to bytes if not already
+            if field_descriptor.type == field_descriptor.TYPE_BYTES:
+                if not isinstance(val, bytes):
+                    val = val.encode("utf-8")
+            super().__setattr__(f"_{name}", val)
+        elif name in cls._fields_oneofs_map:
             super().__setattr__(f"_{name}", val)
         else:
             super().__setattr__(name, val)
@@ -759,17 +766,6 @@ class DataBase(metaclass=_DataBaseMetaClass):
         if isinstance(json_str, dict):
             # Convert dict object to a JSON string
             json_str = json.dumps(json_str)
-
-        # check if the field is of type bytes
-        json_dict = json.loads(json_str)
-        for field_name, field_type in get_type_hints(cls).items():
-            if field_type == bytes:
-                str_val = json_dict[field_name]
-                json_dict[field_name] = str(
-                    base64.b64encode(str_val.encode("utf-8")), encoding="utf-8"
-                )
-
-        json_str = json.dumps(json_dict)
 
         try:
             # Parse given JSON into google.protobufs.pyext.cpp_message.GeneratedProtocolMessageType
