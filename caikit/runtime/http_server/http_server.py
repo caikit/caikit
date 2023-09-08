@@ -18,7 +18,7 @@ API based on the task definitions available at boot.
 """
 # Standard
 from functools import partial
-from typing import Any, Dict, Iterable, Optional, Type, Union, get_args
+from typing import Any, Dict, Iterable, Optional, Type, get_args
 import asyncio
 import json
 import re
