@@ -2,8 +2,9 @@
 Dummy data model object for testing
 """
 # Standard
-from typing import Iterable
+from typing import Iterable, Union
 import typing
+import base64
 
 # Local
 from caikit.core import DataObjectBase, TaskBase, dataobject, task
@@ -34,6 +35,13 @@ class OtherOutputType(DataObjectBase):
 
 
 @dataobject(package="caikit_data_model.sample_lib")
+class FileDataType(DataObjectBase):
+    """A simple type for tasks that deal with file data"""
+
+    filename: str
+    data: bytes
+
+@dataobject(package="caikit_data_model.sample_lib")
 class SampleTrainingType(DataObjectBase):
     """A sample `training data` type for the `sample_task` task."""
 
@@ -56,6 +64,14 @@ class SampleTask(TaskBase):
 )
 class OtherTask(TaskBase):
     """Another sample `task` for our test models"""
+
+
+@task(
+    unary_parameters={"unprocessed": FileDataType},
+    unary_output_type=FileDataType,
+)
+class FileTask(TaskBase):
+    """A sample task for processing files"""
 
 
 @task(
