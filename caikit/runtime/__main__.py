@@ -1,6 +1,5 @@
 # Standard
 import signal
-import sys
 
 # First Party
 import alog
@@ -52,10 +51,11 @@ def main():
         except ModuleNotFoundError as e:
             message = (
                 "Error: {} - unable to start gRPC server. Perhaps you missed"
-                " installing the gRPC optional dependencies?".format(e)
+                " installing the gRPC optional dependencies with"
+                "`pip install caikit[runtime-grpc]`?".format(e)
             )
             log.error("<RUN72169927E>", message)
-            sys.exit(1)
+            raise
 
         log.debug("Starting up caikit.runtime.grpc_server")
 
@@ -76,10 +76,11 @@ def main():
         except ModuleNotFoundError as e:
             message = (
                 "Error: {} - unable to start REST server. Perhaps you missed"
-                " installing the http optional dependencies?".format(e)
+                " installing the http optional dependencies with"
+                " `pip install caikit[runtime-http]`?".format(e)
             )
             log.error("<RUN76169927E>", message)
-            sys.exit(1)
+            raise
 
         log.debug("Starting up caikit.runtime.http_server")
 
