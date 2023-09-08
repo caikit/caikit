@@ -89,6 +89,25 @@ def check_field_enum_type(proto_class, field_name, exp_enum_descriptor):
 ## Tests #######################################################################
 
 
+def test_dataobject_bytes():
+    @dataobject
+    class Foo(DataObjectBase):
+        foo: bytes
+
+    # f1 = Foo(b"asdf")
+    # assert f1.foo == b"asdf"
+    # assert f1.to_json() == '{"foo": "YXNkZg=="}'
+    # initialize without explicit bytes
+    f2 = Foo("asdf")
+    assert f2.foo == b"asdf"
+    assert f2.to_json() == '{"foo": "YXNkZg=="}'
+    # f2 = Foo.from_json(f.to_json())
+    # print(f2.foo)
+    # print(f2.to_json())
+    # # This fails!
+    # assert f.foo == f2.foo
+
+
 def test_dataobject_native_types():
     """Make sure that a simple usage of dataobject for a flat object works with
     fields declared using  native python types works

@@ -18,7 +18,7 @@
 # Standard
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union, get_type_hints
 import base64
 import datetime
 import json
@@ -759,6 +759,17 @@ class DataBase(metaclass=_DataBaseMetaClass):
         if isinstance(json_str, dict):
             # Convert dict object to a JSON string
             json_str = json.dumps(json_str)
+
+        # check if the field is of type bytes
+        json_dict = json.loads(json_str)
+        for field_name, field_type in get_type_hints(cls).items():
+            if field_type == bytes:
+                str_val = json_dict[field_name]
+                json_dict[field_name] = str(
+                    base64.b64encode(str_val.encode("utf-8")), encoding="utf-8"
+                )
+
+        json_str = json.dumps(json_dict)
 
         try:
             # Parse given JSON into google.protobufs.pyext.cpp_message.GeneratedProtocolMessageType
