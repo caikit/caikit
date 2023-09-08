@@ -36,6 +36,7 @@ from caikit.interfaces.nlp.data_model.text_generation import (
 )
 from caikit.runtime.http_server.pydantic_wrapper import (
     PYDANTIC_TO_DM_MAPPING,
+    _from_base64,
     _get_pydantic_type,
     dataobject_to_pydantic,
     pydantic_to_dataobject,
@@ -116,7 +117,12 @@ def test_pydantic_to_dataobject_datastream_file():
         (float, float),
         (bool, bool),
         (str, str),
-        (bytes, bytes),
+        (
+            bytes,
+            Annotated[
+                bytes, pydantic.functional_validators.BeforeValidator(_from_base64)
+            ],
+        ),
         (type(None), type(None)),
         (enum.Enum, enum.Enum),
         (Annotated[str, "blah"], str),

@@ -88,6 +88,11 @@ def good_model_path() -> str:
 
 
 @pytest.fixture
+def box_model_path() -> str:
+    return os.path.join(FIXTURES_DIR, "models", "box")
+
+
+@pytest.fixture
 def streaming_model_path() -> str:
     return os.path.join(FIXTURES_DIR, "dummy_streaming_module")
 

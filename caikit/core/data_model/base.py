@@ -611,6 +611,10 @@ class DataBase(metaclass=_DataBaseMetaClass):
         if field_descriptor.type == field_descriptor.TYPE_BOOL:
             return isinstance(val, bool)
 
+        # Proto doesn't allow non utf-8 bytes fields; however, python does.
+        if field_descriptor.type == field_descriptor.TYPE_BYTES:
+            return isinstance(val, bytes)
+
         # If it's a primitive, use protobuf type checkers
         checker = proto_type_checkers.GetTypeChecker(field_descriptor)
         try:
@@ -933,7 +937,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
             - datetime.datetime
             """
             if isinstance(obj, bytes):
-                return base64.encodebytes(obj).decode("utf-8")
+                return base64.b64encode(obj).decode("utf-8")
             if isinstance(obj, datetime.datetime):
                 # Use the timestamp's proto-serialized format to get the proper json serializer
                 return timestamp.datetime_to_proto(obj).ToJsonString()

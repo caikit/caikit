@@ -301,6 +301,23 @@ def test_inference_other_task(other_task_model_id, runtime_http_server):
         assert json_response["farewell"] == "goodbye: world 42 times"
 
 
+def test_json_file_task(file_task_model_id, runtime_http_server):
+    """Simple check that we can ping a model"""
+    with TestClient(runtime_http_server.app) as client:
+        # cGRmZGF0Yf//AA== is b"pdfdata\xff\xff\x00" base64 encoded
+        json_input = {"inputs": {"filename": "example.pdf", "data": "cGRmZGF0Yf//AA=="}}
+
+        response = client.post(
+            f"/api/v1/{file_task_model_id}/task/file",
+            json=json_input,
+        )
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert response.status_code == 200, json_response
+        assert json_response["filename"] == "processed_example.pdf"
+        # Ym91bmRpbmd8cGRmZGF0Yf//AHxib3g= is b"bounding|pdfdata\xff\xff\x00|box" base64 encoded
+        assert json_response["data"] == "Ym91bmRpbmd8cGRmZGF0Yf//AHxib3g="
+
+
 def test_inference_streaming_sample_module(sample_task_model_id, runtime_http_server):
     """Simple check for testing a happy path unary-stream case"""
     with TestClient(runtime_http_server.app) as client:
