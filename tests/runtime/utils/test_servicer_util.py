@@ -20,6 +20,7 @@ import tempfile
 import pytest
 
 # Local
+from caikit.core.data_model.base import DataBase
 from caikit.runtime.protobufs import model_runtime_pb2
 from caikit.runtime.service_generation.data_stream_source import DataStreamSourceBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -205,7 +206,12 @@ def test_global_predict_build_caikit_library_request_dict_creates_caikit_core_ru
     sample_inference_service,
 ):
     """Test that build_caikit_library_request_dict creates module run kwargs from RPC msg"""
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+    # TODO: this change caused error: where output != expected_arguments -- {'sample_input', 'throw'}
     request_dict = build_caikit_library_request_dict(
+        # predict_class(
+        #     sample_input=HAPPY_PATH_INPUT_DM
+        # ).to_proto(),
         sample_inference_service.messages.SampleTaskRequest(
             sample_input=HAPPY_PATH_INPUT
         ),
@@ -224,7 +230,10 @@ def test_global_predict_build_caikit_library_request_dict_strips_invalid_run_kwa
 ):
     """Global predict build_caikit_library_request_dict strips invalid run kwargs from request"""
     # Sample module doesn't take the `int_type` or `bool_type` params
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
     request_dict = build_caikit_library_request_dict(
+        # predict_class(
+        #     sample_input=HAPPY_PATH_INPUT_DM,
         sample_inference_service.messages.SampleTaskRequest(
             sample_input=HAPPY_PATH_INPUT,
             int_type=5,
@@ -242,8 +251,10 @@ def test_global_predict_build_caikit_library_request_dict_strips_empty_list_from
     sample_inference_service,
 ):
     """Global predict build_caikit_library_request_dict strips empty list from request"""
+    # TODO: are these ones worth replacing...?
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
     request_dict = build_caikit_library_request_dict(
-        sample_inference_service.messages.SampleTaskRequest(int_type=5, list_type=[]),
+        predict_class(int_type=5, list_type=[]).to_proto(),
         sample_lib.modules.sample_task.SamplePrimitiveModule.RUN_SIGNATURE,
     )
 
@@ -293,13 +304,26 @@ def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_r
     # NOTE: not sure this test is relevant anymore, since nothing effectively gets removed?
     # the datastream is empty but it's not removed from request, which is expected
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    training_data = stream_type(jsondata=stream_type.JsonData(data=[])).to_proto()
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=random_test_id(),
-        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
-            training_data=training_data
-        ),
+    training_data = stream_type(jsondata=stream_type.JsonData(data=[]))
+    # TODO: fails with diffs....
+    # AssertionError: assert {'training_da... 'union_list'} == {'batch_size'... 'union_list'}
+    # E         Extra items in the left set:
+    # E         'training_data'
+    # E         Extra items in the right set:
+    # E         'sleep_time'
+    # E         'oom_exit'
+    # E         'sleep_increment'
+    # E         'batch_size'...
+    train_class = DataBase.get_class_for_name("SampleTaskSampleModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskSampleModuleTrainParameters"
     )
+    train_request = train_class(
+        model_name=random_test_id(),
+        parameters=train_request_params_class(
+            training_data=training_data
+        )
+    ).to_proto()
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request.parameters,
