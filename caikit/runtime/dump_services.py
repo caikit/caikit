@@ -17,11 +17,16 @@ import json
 import os
 import sys
 
+# First Party
+import alog
+
 # Local
 from ..core.data_model import render_dataobject_protos
 from .service_factory import ServicePackageFactory
 from caikit.config.config import get_config
 import caikit
+
+log = alog.use_channel("RUNTIME-DUMP-SVC")
 
 
 def dump_grpc_services(output_dir: str):
@@ -48,13 +53,23 @@ def dump_http_services(output_dir: str):
     # them when dumping grpc interfaces without the `runtime-http` optional
     # dependencies installed.
 
-    # Third Party
-    from fastapi.testclient import TestClient  # pylint: disable=import-outside-toplevel
+    try:
+        # Third Party
+        from fastapi.testclient import (  # pylint: disable=import-outside-toplevel
+            TestClient,
+        )
 
-    # Local
-    from .http_server import (  # pylint: disable=import-outside-toplevel
-        RuntimeHTTPServer,
-    )
+        # Local
+        from .http_server import (  # pylint: disable=import-outside-toplevel
+            RuntimeHTTPServer,
+        )
+    except ModuleNotFoundError as e:
+        message = (
+            "Error: {} - unable to dump http services. Perhaps you missed"
+            " installing the http optional dependencies?".format(e)
+        )
+        log.error("<DMP76165827E>", message)
+        sys.exit(1)
 
     server = RuntimeHTTPServer()
     with TestClient(server.app) as client:
