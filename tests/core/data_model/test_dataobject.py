@@ -94,18 +94,36 @@ def test_dataobject_bytes():
     class Foo(DataObjectBase):
         foo: bytes
 
-    # f1 = Foo(b"asdf")
-    # assert f1.foo == b"asdf"
-    # assert f1.to_json() == '{"foo": "YXNkZg=="}'
-    # initialize without explicit bytes
+    f1 = Foo(b"asdf")
+    assert f1.foo == b"asdf"
+    assert f1.to_json() == '{"foo": "YXNkZg=="}'
+    # initialize without explicit bytes declaration
     f2 = Foo("asdf")
     assert f2.foo == b"asdf"
     assert f2.to_json() == '{"foo": "YXNkZg=="}'
-    # f2 = Foo.from_json(f.to_json())
-    # print(f2.foo)
-    # print(f2.to_json())
-    # # This fails!
-    # assert f.foo == f2.foo
+    # test round-trip json
+    f3 = Foo.from_json(f1.to_json())
+    assert f3.foo == b"asdf"
+    assert f3.to_json() == '{"foo": "YXNkZg=="}'
+    assert f3.foo == f2.foo == f1.foo
+
+
+def test_dataobject_bytes_union():
+    @dataobject
+    class Foo(DataObjectBase):
+        foo: Union[bytes, int]
+
+    f1 = Foo(b"asdf")
+    assert f1.foo == b"asdf"
+    assert f1.to_json() == '{"foo_bytes": "YXNkZg=="}'
+    f2 = Foo(1)
+    assert f2.foo == 1
+    assert f2.to_json() == '{"foo_int": 1}'
+    # # test round-trip json
+    f3 = Foo.from_json(f1.to_json())
+    assert f3.foo == b"asdf"
+    assert f3.to_json() == '{"foo_bytes": "YXNkZg=="}'
+    assert f3.foo == f1.foo
 
 
 def test_dataobject_native_types():
