@@ -64,10 +64,12 @@ def dump_http_services(output_dir: str):
             RuntimeHTTPServer,
         )
     except ModuleNotFoundError as e:
-        log.error(
-            f"{e} - unable to dump http services. Perhaps you missed installing the http optional dependencies?"
+        message = (
+            "Error: {} - unable to dump http services. Perhaps you missed"
+            " installing the http optional dependencies?".format(e)
         )
-        exit(1)
+        log.error("<DMP76165827E>", message)
+        sys.exit(1)
 
     server = RuntimeHTTPServer()
     with TestClient(server.app) as client:

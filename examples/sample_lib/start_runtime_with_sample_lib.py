@@ -16,47 +16,48 @@ from caikit.runtime.dump_services import dump_grpc_services, dump_http_services
 import caikit
 
 if __name__ == "__main__":
-    with tempfile.TemporaryDirectory() as workdir:
-        caikit.config.configure(
-            config_dict={
-                "merge_strategy": "merge",
-                "runtime": {
-                    "library": "sample_lib",
-                    "local_models_dir": workdir,
-                    "lazy_load_local_models": True,
-                    "grpc": {"enabled": True},
-                    "http": {"enabled": True},
-                    "training": {"save_with_id": False, "output_dir": workdir},
-                },
-            }
-        )
-        # Make sample_lib available for import
-        sys.path.append(
-            os.path.join(Path(__file__).parent.parent.parent, "tests/fixtures"),
-        )
-
-        # dump protos
-        shutil.rmtree("protos", ignore_errors=True)
-        if get_config().runtime.grpc.enabled:
-            dump_grpc_services("protos")
-        if get_config().runtime.http.enabled:
-            dump_http_services("protos")
-
-        # create a sample.json file for training
-        with open(
-            os.path.join("protos", "sample.json"), "w", encoding="utf-8"
-        ) as handle:
-            handle.write(
-                json.dumps(
-                    [
-                        {"number": 1},
-                        {"number": 2},
-                    ]
-                )
+    try:
+        with tempfile.TemporaryDirectory() as workdir:
+            caikit.config.configure(
+                config_dict={
+                    "merge_strategy": "merge",
+                    "runtime": {
+                        "library": "sample_lib",
+                        "local_models_dir": workdir,
+                        "lazy_load_local_models": True,
+                        "grpc": {"enabled": True},
+                        "http": {"enabled": True},
+                        "training": {"save_with_id": False, "output_dir": workdir},
+                    },
+                }
+            )
+            # Make sample_lib available for import
+            sys.path.append(
+                os.path.join(Path(__file__).parent.parent.parent, "tests/fixtures"),
             )
 
-        alog.configure(default_level="debug")
-        main()
+            # dump protos
+            shutil.rmtree("protos", ignore_errors=True)
+            if get_config().runtime.grpc.enabled:
+                dump_grpc_services("protos")
+            if get_config().runtime.http.enabled:
+                dump_http_services("protos")
 
+            # create a sample.json file for training
+            with open(
+                os.path.join("protos", "sample.json"), "w", encoding="utf-8"
+            ) as handle:
+                handle.write(
+                    json.dumps(
+                        [
+                            {"number": 1},
+                            {"number": 2},
+                        ]
+                    )
+                )
+
+            alog.configure(default_level="debug")
+            main()
+    finally:
         # remove generated protos
         shutil.rmtree("protos", ignore_errors=True)
