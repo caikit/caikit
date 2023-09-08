@@ -3,8 +3,8 @@ Dummy data model object for testing
 """
 # Standard
 from typing import Iterable, Union
-import typing
 import base64
+import typing
 
 # Local
 from caikit.core import DataObjectBase, TaskBase, dataobject, task
@@ -40,6 +40,7 @@ class FileDataType(DataObjectBase):
 
     filename: str
     data: bytes
+
 
 @dataobject(package="caikit_data_model.sample_lib")
 class SampleTrainingType(DataObjectBase):

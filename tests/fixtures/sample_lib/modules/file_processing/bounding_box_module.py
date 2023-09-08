@@ -4,7 +4,7 @@ A sample module for sample things!
 # Standard
 
 # Local
-from ...data_model.sample import FileTask, FileDataType
+from ...data_model.sample import FileDataType, FileTask
 from caikit.core.modules import ModuleLoader
 import caikit.core
 
@@ -13,7 +13,6 @@ import caikit.core
     "750cad4d-c3b8-4327-b52e-e772f0d6f311", "BoundingBoxModule", "0.0.1", FileTask
 )
 class BoundingBoxModule(caikit.core.ModuleBase):
-
     def run(
         self,
         unprocessed: FileDataType,

@@ -1,4 +1,5 @@
 # Local
+from .file_processing import BoundingBoxModule
 from .geospatial import GeoStreamingModule
 from .other_task import OtherModule
 from .sample_task import (
@@ -7,4 +8,3 @@ from .sample_task import (
     SampleModule,
     SamplePrimitiveModule,
 )
-from .file_processing import BoundingBoxModule

@@ -17,13 +17,13 @@ capable of converting to and from Pydantic models to our DataObjects.
 """
 # Standard
 from typing import Dict, List, Type, Union, get_args, get_type_hints
-import enum
 import base64
+import enum
 
 # Third Party
+from pydantic.functional_validators import BeforeValidator
 import numpy as np
 import pydantic
-from pydantic.functional_validators import BeforeValidator
 
 # First Party
 from py_to_proto.dataclass_to_proto import (  # Imported here for 3.8 compat
@@ -166,7 +166,7 @@ def _get_pydantic_type(field_type: type) -> type:
     raise TypeError(f"Cannot get pydantic type for type [{field_type}]")
 
 
-def _from_base64(data: Union[bytes, str])->bytes:
+def _from_base64(data: Union[bytes, str]) -> bytes:
     if isinstance(data, str):
         return base64.b64decode(data.encode("utf-8"))
     return data
