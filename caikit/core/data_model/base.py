@@ -481,7 +481,13 @@ class DataBase(metaclass=_DataBaseMetaClass):
             field_descriptor = cls._proto_class.DESCRIPTOR.fields_by_name[name]
             # for bytes, convert to bytes if not already
             if field_descriptor.type == field_descriptor.TYPE_BYTES:
-                if not isinstance(val, bytes):
+                error.value_check(
+                    "<COR13072712E>",
+                    isinstance(val, (bytes, str)),
+                    "{} must be string or bytes",
+                    val,
+                )
+                if isinstance(val, str):
                     val = val.encode("utf-8")
             super().__setattr__(f"_{name}", val)
         elif name in cls._fields_oneofs_map:
