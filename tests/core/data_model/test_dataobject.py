@@ -108,6 +108,15 @@ def test_dataobject_bytes():
     assert f3.foo == f2.foo == f1.foo
 
 
+def test_dataobject_bytes_throws_incorrect_val():
+    @dataobject
+    class Foo(DataObjectBase):
+        foo: bytes
+
+    with pytest.raises(ValueError) as e:
+        Foo(1)
+
+
 def test_dataobject_bytes_union():
     @dataobject
     class Foo(DataObjectBase):
