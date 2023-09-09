@@ -320,9 +320,7 @@ def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_r
     )
     train_request = train_class(
         model_name=random_test_id(),
-        parameters=train_request_params_class(
-            training_data=training_data
-        )
+        parameters=train_request_params_class(training_data=training_data),
     ).to_proto()
 
     caikit.core_request = build_caikit_library_request_dict(

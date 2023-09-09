@@ -27,8 +27,8 @@ import pytest
 # Local
 from caikit.config import get_config
 from caikit.core import MODEL_MANAGER
-from caikit.core.data_model.producer import ProducerId
 from caikit.core.data_model.base import DataBase
+from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.common.data_model.stream_sources import S3Path
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -47,6 +47,7 @@ import caikit.core
 ## Helpers #####################################################################
 
 HAPPY_PATH_INPUT_DM = SampleInputType(name="Gabe")
+
 
 @contextmanager
 def set_use_subprocess(use_subprocess: bool):
@@ -107,7 +108,7 @@ def test_global_train_sample_task(
         parameters=train_request_params_class(
             batch_size=42,
             training_data=training_data,
-        )
+        ),
     ).to_proto()
 
     training_response = sample_train_servicer.Train(
@@ -139,9 +140,7 @@ def test_global_train_sample_task(
 
     predict_class = DataBase.get_class_for_name("SampleTaskRequest")
     inference_response = sample_predict_servicer.Predict(
-        predict_class(
-            sample_input=HAPPY_PATH_INPUT_DM
-        ).to_proto(),
+        predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
         Fixtures.build_context(training_response.model_name),
         caikit_rpc=sample_task_unary_rpc,
     )
@@ -176,7 +175,7 @@ def test_global_train_other_task(
             training_data=training_data,
             sample_input_sampleinputtype=HAPPY_PATH_INPUT_DM,
             batch_size=batch_size,
-        )
+        ),
     ).to_proto()
 
     training_response = sample_train_servicer.Train(
@@ -200,9 +199,7 @@ def test_global_train_other_task(
 
     predict_class = DataBase.get_class_for_name("OtherTaskRequest")
     inference_response = sample_predict_servicer.Predict(
-        predict_class(
-            sample_input=HAPPY_PATH_INPUT_DM
-        ).to_proto(),
+        predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
         Fixtures.build_context(training_response.model_name),
         caikit_rpc=sample_inference_service.caikit_rpcs["OtherTaskPredict"],
     )
@@ -234,9 +231,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
     )
     training_request = train_class(
         model_name="AnotherWidget_Training",
-        parameters=train_request_params_class(
-            sample_block=sample_model
-        )
+        parameters=train_request_params_class(sample_block=sample_model),
     ).to_proto()
 
     training_response = sample_train_servicer.Train(
@@ -262,9 +257,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
     # make sure the trained model can run inference
     predict_class = DataBase.get_class_for_name("SampleTaskRequest")
     inference_response = sample_predict_servicer.Predict(
-        predict_class(
-            sample_input=HAPPY_PATH_INPUT_DM
-        ).to_proto(),
+        predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
         Fixtures.build_context(training_response.model_name),
         caikit_rpc=sample_task_unary_rpc,
     )
@@ -296,7 +289,7 @@ def test_run_train_job_works_with_wait(
         parameters=train_request_params_class(
             batch_size=42,
             training_data=training_data,
-        )
+        ),
     ).to_proto()
     servicer = GlobalTrainServicer(training_service=sample_train_service)
     with TemporaryDirectory() as tmp_dir:
@@ -315,9 +308,7 @@ def test_run_train_job_works_with_wait(
 
         predict_class = DataBase.get_class_for_name("SampleTaskRequest")
         inference_response = sample_predict_servicer.Predict(
-            predict_class(
-                sample_input=SampleInputType(name="Test")
-            ).to_proto(),
+            predict_class(sample_input=SampleInputType(name="Test")).to_proto(),
             Fixtures.build_context(training_response.model_name),
             caikit_rpc=sample_task_unary_rpc,
         )
@@ -340,18 +331,14 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_but_not_loaded_s
     """Global train of TrainRequest raises when calling a train function that requires another loaded model, but model is not loaded"""
     model_id = random_test_id()
 
-    sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
-        model_id=model_id
-    )
+    sample_model = caikit.interfaces.runtime.data_model.ModelPointer(model_id=model_id)
     train_class = DataBase.get_class_for_name("SampleTaskCompositeModuleTrainRequest")
     train_request_params_class = DataBase.get_class_for_name(
         "SampleTaskCompositeModuleTrainParameters"
     )
     request = train_class(
         model_name="AnotherWidget_Training",
-        parameters=train_request_params_class(
-            sample_block=sample_model
-        )
+        parameters=train_request_params_class(sample_block=sample_model),
     ).to_proto()
 
     with pytest.raises(CaikitRuntimeException) as context:
@@ -378,7 +365,7 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_mod
         parameters=train_request_params_class(
             batch_size=999,
             training_data=training_data,
-        )
+        ),
     ).to_proto()
 
     training_response = sample_train_servicer.Train(
@@ -410,7 +397,7 @@ def test_global_train_returns_exit_code_with_oom(
             batch_size=42,
             training_data=training_data,
             oom_exit=True,
-        )
+        ),
     ).to_proto()
 
     # Enable sub-processing for test
@@ -445,7 +432,7 @@ def test_local_trainer_rejects_s3_output_paths(
             batch_size=42,
             training_data=training_data,
             oom_exit=True,
-        )
+        ),
     ).to_proto()
 
     with pytest.raises(
@@ -480,7 +467,7 @@ def test_global_train_aborts_long_running_trains(
             batch_size=42,
             training_data=training_data,
             oom_exit=False,
-        )
+        ),
     ).to_proto()
 
     if sample_train_servicer.use_subprocess:

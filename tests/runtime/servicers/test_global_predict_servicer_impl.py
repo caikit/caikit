@@ -58,9 +58,7 @@ def test_calling_predict_should_raise_if_module_raises(
     with pytest.raises(CaikitRuntimeException) as context:
         # SampleModules will raise a RuntimeError if the throw flag is set
         predict_class = DataBase.get_class_for_name("SampleTaskRequest")
-        request = predict_class(
-            sample_input=HAPPY_PATH_INPUT_DM, throw=True
-        ).to_proto()
+        request = predict_class(sample_input=HAPPY_PATH_INPUT_DM, throw=True).to_proto()
         sample_predict_servicer.Predict(
             request,
             Fixtures.build_context(sample_task_model_id),
@@ -101,9 +99,7 @@ def test_global_predict_works_for_unary_rpcs(
     """Global predict of SampleTaskRequest returns a prediction"""
     predict_class = DataBase.get_class_for_name("SampleTaskRequest")
     response = sample_predict_servicer.Predict(
-        predict_class(
-            sample_input=HAPPY_PATH_INPUT_DM
-        ).to_proto(),
+        predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
         Fixtures.build_context(sample_task_model_id),
         caikit_rpc=sample_task_unary_rpc,
     )
@@ -212,9 +208,7 @@ def test_global_predict_aborts_long_running_predicts(
     predict_thread = threading.Thread(
         target=sample_predict_servicer.Predict,
         args=(
-            predict_class(
-                sample_input=HAPPY_PATH_INPUT_DM
-            ).to_proto(),
+            predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
             context,
         ),
         kwargs={"caikit_rpc": sample_task_unary_rpc},
@@ -272,9 +266,7 @@ def test_metering_predict_rpc_counter(
             predict_class = DataBase.get_class_for_name("SampleTaskRequest")
             for i in range(20):
                 sample_predict_servicer.Predict(
-                    predict_class(
-                        sample_input=HAPPY_PATH_INPUT_DM
-                    ).to_proto(),
+                    predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
                     Fixtures.build_context(sample_task_model_id),
                     caikit_rpc=sample_task_unary_rpc,
                 )
@@ -314,9 +306,7 @@ def test_metering_write_to_metrics_file_twice(
         try:
             predict_class = DataBase.get_class_for_name("SampleTaskRequest")
             sample_predict_servicer.Predict(
-                predict_class(
-                    sample_input=HAPPY_PATH_INPUT_DM
-                ).to_proto(),
+                predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
                 Fixtures.build_context(sample_task_model_id),
                 caikit_rpc=sample_task_unary_rpc,
             )
@@ -325,9 +315,7 @@ def test_metering_write_to_metrics_file_twice(
             sample_predict_servicer.rpc_meter.flush_metrics()
 
             sample_predict_servicer.Predict(
-                predict_class(
-                    sample_input=HAPPY_PATH_INPUT_DM
-                ).to_proto(),
+                predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
                 Fixtures.build_context(sample_task_model_id),
                 caikit_rpc=sample_task_unary_rpc,
             )
