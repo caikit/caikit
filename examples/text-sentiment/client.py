@@ -21,6 +21,7 @@ import requests
 
 # Local
 from caikit.config.config import get_config
+from caikit.core.data_model.base import DataBase
 from caikit.runtime.service_factory import ServicePackageFactory
 import caikit
 
@@ -50,9 +51,14 @@ if __name__ == "__main__":
 
         # Run inference for two sample prompts
         for text in ["I am not feeling well today!", "Today is a nice sunny day"]:
-            request = inference_service.messages.HuggingFaceSentimentTaskRequest(
+            # TODO: is this the recommended approach for setting up client and request?
+            predict_class = DataBase.get_class_for_name("HuggingFaceSentimentTaskRequest")
+            request = predict_class(
                 text_input=text
-            )
+            ).to_proto()
+            # request = inference_service.messages.HuggingFaceSentimentTaskRequest(
+            #     text_input=text
+            # )
             response = client_stub.HuggingFaceSentimentTaskPredict(
                 request, metadata=[("mm-model-id", model_id)], timeout=1
             )
