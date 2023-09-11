@@ -13,11 +13,18 @@
 # limitations under the License.
 # Standard
 from typing import Iterable
+import json
+import os
+import tempfile
 import uuid
+
+# Third Party
+import pytest
 
 # Local
 from caikit.core import LocalBackend
 from caikit.runtime.service_generation.create_service import (
+    assert_compatible,
     create_inference_rpcs,
     create_training_rpcs,
 )
@@ -28,6 +35,7 @@ from sample_lib.data_model import (
     SampleTask,
 )
 from sample_lib.modules import SampleModule
+from tests.conftest import temp_config
 import caikit
 import sample_lib
 
@@ -303,3 +311,113 @@ def test_create_training_rpcs():
     rpcs = create_training_rpcs([widget_class])
     assert len(rpcs) == 1
     assert widget_class in rpcs[0].module_list
+
+
+### assert_compatible tests #################################################
+def test_assert_compatible_does_not_raise_if_not_enabled():
+    # make a new module with SampleTask
+    @caikit.module(
+        id=str(uuid.uuid4()), name="something", version="0.0.0", task=SampleTask
+    )
+    class NewModule(caikit.core.ModuleBase):
+        def run(self, sample_input: SampleInputType) -> SampleOutputType:
+            pass
+
+    with temp_config(
+        {
+            "runtime": {
+                "service_generation": {
+                    "backwards_compatibility": {
+                        "enabled": False,
+                    }
+                },
+            }
+        },
+        "merge",
+    ):
+        # SampleModule also implements `SampleTask`
+        rpcs = create_inference_rpcs([NewModule, SampleModule])
+        assert len(rpcs) == 3  # SampleModule has 3 streaming flavors
+        assert NewModule in rpcs[0].module_list
+        assert SampleModule in rpcs[0].module_list
+
+
+def test_assert_compatible_raises_if_a_module_becomes_unsupported():
+    # make a new module with SampleTask
+    @caikit.module(
+        id=str(uuid.uuid4()), name="something", version="0.0.0", task=SampleTask
+    )
+    class NewModule(caikit.core.ModuleBase):
+        def run(self, sample_input: SampleInputType) -> SampleOutputType:
+            pass
+
+    with tempfile.TemporaryDirectory() as workdir:
+        prev_module_file = os.path.join(workdir, "prev_modules.json")
+        random_uuid = str(uuid.uuid4())
+        with open(prev_module_file, "w", encoding="utf-8") as file:
+            json_content = {
+                "excluded_modules": {},
+                "included_modules": {
+                    "SampleTask": {
+                        random_uuid: "<class 'sample_lib.modules.sample_task.sample_implementation.PrevSampleModule'>",
+                    }
+                },
+            }
+            file.write(json.dumps(json_content, indent=4))
+        with temp_config(
+            {
+                "runtime": {
+                    "service_generation": {
+                        "backwards_compatibility": {
+                            "enabled": True,
+                            "prev_modules_path": prev_module_file,
+                        }
+                    },
+                }
+            },
+            "merge",
+        ):
+            with pytest.raises(AssertionError):
+                assert_compatible(
+                    [NewModule, SampleModule]
+                )  # missing PrevSampleModule in this list
+
+
+def test_assert_compatible_does_not_raise_if_supported_modules_continue_to_be_supported():
+    # make a new module with SampleTask
+    @caikit.module(
+        id=str(uuid.uuid4()), name="something", version="0.0.0", task=SampleTask
+    )
+    class NewModule(caikit.core.ModuleBase):
+        def run(self, sample_input: SampleInputType) -> SampleOutputType:
+            pass
+
+    with tempfile.TemporaryDirectory() as workdir:
+        prev_module_file = os.path.join(workdir, "prev_modules.json")
+
+        with open(prev_module_file, "w", encoding="utf-8") as file:
+            json_content = {
+                "excluded_modules": {},
+                "included_modules": {
+                    "SampleTask": {
+                        "00110203-0405-0607-0809-0a0b02dd0e0f": "<class 'sample_lib.modules.sample_task.sample_implementation.SampleModule'>",
+                    }
+                },
+            }
+            file.write(json.dumps(json_content, indent=4))
+        with temp_config(
+            {
+                "runtime": {
+                    "service_generation": {
+                        "backwards_compatibility": {
+                            "enabled": True,
+                            "prev_modules_path": prev_module_file,
+                        }
+                    },
+                }
+            },
+            "merge",
+        ):
+            assert_compatible(
+                [NewModule, SampleModule]
+            )  # as long as SampleModule from previous list is included

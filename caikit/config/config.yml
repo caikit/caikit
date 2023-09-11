@@ -146,6 +146,10 @@ runtime:
         task_types:
             included: []
             excluded: []
+        backwards_compatibility:
+            enabled: false
+            current_modules_path: /modules.json
+            prev_modules_path: /prev_modules.json
 
     # Configuration for batch inference. This dict contains entries for individual
     # model types and can be extended using additional overlay config files to add

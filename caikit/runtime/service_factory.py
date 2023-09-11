@@ -137,6 +137,10 @@ class ServicePackageFactory:
             caikit_config, caikit_config.runtime.library
         )
 
+        # Assert for backwards compatibility, if enabled
+        if caikit_config.runtime.service_generation.backwards_compatibility and caikit_config.runtime.service_generation.backwards_compatibility.enabled:
+            service_generation.assert_compatible(clean_modules)
+
         if service_type == cls.ServiceType.INFERENCE:
             rpc_list = service_generation.create_inference_rpcs(clean_modules)
             service_name = f"{ai_domain_name}Service"

@@ -36,6 +36,18 @@ TRAIN_FUNCTION_NAME = "train"
 ## Utilities ###################################################################
 
 
+def assert_compatible(modules: List[Type[ModuleBase]]):
+    """Logic about whether it's okay to include this set of modules in service generation
+
+    Args:
+        modules: list of modules that we are considering in service generation
+
+    Raises:
+        If a new service should not be built with this set of modules
+    """
+    pass
+
+
 def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
     """Handles the logic to create all the RPCs for inference"""
     rpcs = []
