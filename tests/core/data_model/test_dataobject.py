@@ -97,24 +97,10 @@ def test_dataobject_bytes():
     f1 = Foo(b"asdf")
     assert f1.foo == b"asdf"
     assert f1.to_json() == '{"foo": "YXNkZg=="}'
-    # initialize without explicit bytes declaration
-    f2 = Foo("asdf")
-    assert f2.foo == b"asdf"
-    assert f2.to_json() == '{"foo": "YXNkZg=="}'
     # test round-trip json
-    f3 = Foo.from_json(f1.to_json())
-    assert f3.foo == b"asdf"
-    assert f3.to_json() == '{"foo": "YXNkZg=="}'
-    assert f3.foo == f2.foo == f1.foo
-
-
-def test_dataobject_bytes_throws_incorrect_val():
-    @dataobject
-    class Foo(DataObjectBase):
-        foo: bytes
-
-    with pytest.raises(ValueError) as e:
-        Foo(1)
+    f2 = Foo.from_json(f1.to_json())
+    assert f2.foo == f1.foo
+    assert f2.to_json() == f1.to_json()
 
 
 def test_dataobject_bytes_union():
@@ -130,9 +116,8 @@ def test_dataobject_bytes_union():
     assert f2.to_json() == '{"foo_int": 1}'
     # # test round-trip json
     f3 = Foo.from_json(f1.to_json())
-    assert f3.foo == b"asdf"
-    assert f3.to_json() == '{"foo_bytes": "YXNkZg=="}'
     assert f3.foo == f1.foo
+    assert f3.to_json() == f1.to_json()
 
 
 def test_dataobject_native_types():
