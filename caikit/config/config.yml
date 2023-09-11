@@ -111,6 +111,9 @@ runtime:
         server_shutdown_grace_period_seconds: 45
         # Listen on a unix socket (model mesh feature)
         unix_socket_path: /tmp/mmesh/grpc.sock
+        # Additional server options as key/value pairs
+        # CITE: https://github.com/grpc/grpc/blob/master/include/grpc/impl/channel_arg_names.h#L22
+        options: {}
 
     # Configuration for the http server
     http:
