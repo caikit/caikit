@@ -25,31 +25,26 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version:
-          - setup: '3.8'
-            tox: 'py38'
-          - setup: '3.9'
-            tox: 'py39'
-          - setup: '3.10'
-            tox: 'py310'
-          - setup: '3.11'
-            tox: 'py311'
-          # Special matrix entry to ensure protobuf 3 compatibility
-          - setup: '3.8'
-            tox: 'proto3'
-          # Special matrix entry to ensure core tests pass without optional deps
-          - setup: '3.8'
-            tox: 'core'
+        python-version: ['3.8', '3.9', '3.10', '3.11']
 
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Python ${{ matrix.python-version.setup }}
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version.setup }}
+          python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r setup_requirements.txt
+
       - name: Build and test with tox
-        run: tox -e ${{ matrix.python-version.tox }} -- tests
+        run: tox -e ${{ matrix.python-version }} -- tests
+      - name: Test core for 3.8
+        if: ${{ matrix.python-version == 3.8 }}
+        run: |
+          tox -e core -- tests
+      - name: Test protobuf 3 compatibility for 3.8
+        if: ${{ matrix.python-version == 3.8 }}
+        run: |
+          tox -e proto3 -- tests
