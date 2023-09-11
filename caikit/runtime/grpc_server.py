@@ -72,6 +72,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
                 max_workers=self.config.runtime.grpc.server_thread_pool_size
             ),
             interceptors=(PROMETHEUS_METRICS_INTERCEPTOR,),
+            options=(self.config.runtime.grpc.options or {}).items(),
         )
 
         # Start metrics server

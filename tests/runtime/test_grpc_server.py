@@ -1214,6 +1214,45 @@ def test_grpc_sever_shutdown_with_model_poll(open_port):
         assert not server_proc.killed
 
 
+def test_construct_with_options(open_port, sample_train_service, sample_int_file):
+    """Make sure that the server can be booted with config options"""
+    with temp_config(
+        {
+            "runtime": {
+                "grpc": {
+                    "port": open_port,
+                    "options": {
+                        "grpc.max_receive_message_length": 1,
+                    },
+                }
+            }
+        },
+        "merge",
+    ):
+        server = RuntimeGRPCServer()
+        with server:
+            # Send a request with a payload that's too big and make sure it gets
+            # rejected
+            stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
+            training_data = stream_type(
+                file=stream_type.File(filename=sample_int_file)
+            ).to_proto()
+            train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
+                model_name="Bar Training",
+                parameters=sample_train_service.messages.OtherTaskOtherModuleTrainParameters(
+                    sample_input_sampleinputtype=SampleInputType(
+                        name="Gabe"
+                    ).to_proto(),
+                    batch_size=100,
+                    training_data=training_data,
+                ),
+            )
+            train_stub = sample_train_service.stub_class(server.make_local_channel())
+            with pytest.raises(grpc.RpcError) as context:
+                train_stub.OtherTaskOtherModuleTrain(train_request)
+            assert context.value.code() == grpc.StatusCode.RESOURCE_EXHAUSTED
+
+
 # Test implementation details #########################
 @dataclass
 class KeyPair:
