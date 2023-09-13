@@ -23,6 +23,7 @@ import pytest
 
 # Local
 from caikit.core.data_model import render_dataobject_protos
+from caikit.core.data_model.base import DataBase
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from sample_lib import SampleModule
 from sample_lib.data_model import SampleInputType, SampleOutputType
@@ -359,7 +360,8 @@ def test_backend_modules_included_in_service_generation(
     inference_service = ServicePackageFactory.get_service_package(
         ServicePackageFactory.ServiceType.INFERENCE
     )
-    sample_task_request = inference_service.messages.SampleTaskRequest
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+    sample_task_request = predict_class().to_proto()
 
     # Check that the new parameter defined in this backend module exists in the service
     assert "backend_param" in sample_task_request.DESCRIPTOR.fields_by_name.keys()

@@ -59,6 +59,7 @@ from caikit.runtime.protobufs import (
     process_pb2_grpc,
 )
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
+from caikit.runtime.utils.servicer_util import build_caikit_library_request_dict
 from sample_lib import InnerModule, SamplePrimitiveModule
 from sample_lib.data_model import (
     OtherOutputType,
@@ -206,27 +207,12 @@ def test_components_preinitialized(reset_globals, open_port):
         assert MODEL_MANAGER._initializers
 
 
-def test_predict_sample_module_proto_ok_response(
-    sample_task_model_id, runtime_grpc_server, sample_inference_service
-):
-    """Test RPC CaikitRuntime.SampleTaskPredict successful response"""
-    stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
-    predict_request = sample_inference_service.messages.SampleTaskRequest(
-        sample_input=HAPPY_PATH_INPUT
-    )
-    actual_response = stub.SampleTaskPredict(
-        predict_request, metadata=[("mm-model-id", sample_task_model_id)]
-    )
-    assert actual_response == HAPPY_PATH_RESPONSE
-
-
 def test_predict_sample_module_ok_response(
     sample_task_model_id, runtime_grpc_server, sample_inference_service
 ):
     """Test RPC CaikitRuntime.SampleTaskPredict successful response"""
     stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
     predict_class = DataBase.get_class_for_name("SampleTaskRequest")
-    # TODO: is this getting predict_class = SampleModule() ??
     predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
 
     actual_response = stub.SampleTaskPredict(
@@ -234,6 +220,39 @@ def test_predict_sample_module_ok_response(
     )
 
     assert actual_response == HAPPY_PATH_RESPONSE
+
+
+def test_global_predict_build_caikit_library_request_dict_creates_caikit_core_run_kwargs(
+    sample_inference_service,
+):
+    """Test using proto versus pythonic data model for inference requests to compare diffs"""
+    # Protobuf input
+    proto_request = sample_inference_service.messages.SampleTaskRequest(
+        sample_input=HAPPY_PATH_INPUT_DM.to_proto(),
+    )
+    proto_request_dict = build_caikit_library_request_dict(
+        proto_request,
+        sample_lib.modules.sample_task.SampleModule.RUN_SIGNATURE,
+    )
+
+    # unset fields not included
+    proto_expected_arguments = {"sample_input"}
+    assert proto_request.HasField("throw") is False
+    assert proto_expected_arguments == set(proto_request_dict.keys())
+
+    # Pythonic data model
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+    python_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
+
+    python_sample_module_request_dict = build_caikit_library_request_dict(
+        python_request,
+        sample_lib.modules.sample_task.SampleModule.RUN_SIGNATURE,
+    )
+
+    # unset fields are included if they have defaults set
+    python_expected_arguments = {"sample_input", "throw"}
+    assert python_request.HasField("throw") is True
+    assert python_expected_arguments == set(python_sample_module_request_dict.keys())
 
 
 def test_predict_streaming_module(

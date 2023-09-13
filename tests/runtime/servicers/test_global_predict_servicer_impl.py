@@ -111,19 +111,11 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs(
 ):
     """Simple test that our SampleModule's bidirectional stream inference fn is supported"""
 
-    def req_iterator() -> Iterator[
-        sample_inference_service.messages.BidiStreamingSampleTaskRequest
-    ]:
-        # TODO: can this be replaced?
-        # Guessing not since got error: caikit.runtime.types.caikit_runtime_exception.CaikitRuntimeException: Exception raised during inference. This may be a problem with your input: BidiStreamingSampleTaskRequest.__init__() got an unexpected keyword argument 'sample_input'
-        # predict_class = DataBase.get_class_for_name("BidiStreamingSampleTaskRequest")
-        # predict_class(
-        #         sample_input=HAPPY_PATH_INPUT_DM
-        #     ).to_proto()
+    predict_class = DataBase.get_class_for_name("BidiStreamingSampleTaskRequest")
+
+    def req_iterator() -> Iterator[predict_class]:
         for i in range(100):
-            yield sample_inference_service.messages.BidiStreamingSampleTaskRequest(
-                sample_inputs=HAPPY_PATH_INPUT
-            )
+            yield predict_class(sample_inputs=HAPPY_PATH_INPUT_DM).to_proto()
 
     response_stream = sample_predict_servicer.Predict(
         req_iterator(),
@@ -147,13 +139,11 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs_with_multiple_stre
     mock_manager = MagicMock()
     mock_manager.retrieve_model.return_value = GeoStreamingModule()
 
-    def req_iterator() -> Iterator[
-        sample_inference_service.messages.BidiStreamingGeoSpatialTaskRequest
-    ]:
+    predict_class = DataBase.get_class_for_name("BidiStreamingGeoSpatialTaskRequest")
+
+    def req_iterator() -> Iterator[predict_class]:
         for i in range(100):
-            yield sample_inference_service.messages.BidiStreamingGeoSpatialTaskRequest(
-                lats=i, lons=100 - i, name="Gabe"
-            )
+            yield predict_class(lats=i, lons=100 - i, name="Gabe").to_proto()
 
     with patch.object(sample_predict_servicer, "_model_manager", mock_manager):
         response_stream = sample_predict_servicer.Predict(
