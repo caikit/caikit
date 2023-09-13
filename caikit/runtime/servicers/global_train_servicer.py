@@ -142,7 +142,7 @@ class GlobalTrainServicer:
         # pylint: disable=duplicate-code
         except (TypeError, ValueError) as e:
             log_dict = {
-                "log_code": "<RUN490439039W>",
+                "log_code": "<RUN72924264W>",
                 "message": repr(e),
                 "stack_trace": traceback.format_exc(),
             }
