@@ -17,6 +17,7 @@ from enum import Enum
 from types import ModuleType
 from typing import Callable, Dict, Set, Type, Union
 import dataclasses
+import json
 
 # Third Party
 import google.protobuf.descriptor
@@ -138,8 +139,23 @@ class ServicePackageFactory:
         )
 
         # Assert for backwards compatibility, if enabled
-        if caikit_config.runtime.service_generation.backwards_compatibility and caikit_config.runtime.service_generation.backwards_compatibility.enabled:
-            service_generation.assert_compatible(clean_modules)
+        if (
+            caikit_config.runtime.service_generation.backwards_compatibility
+            and caikit_config.runtime.service_generation.backwards_compatibility.enabled
+        ):
+            previous_included_modules = set()
+            prev_modules_path = (
+                caikit_config.runtime.service_generation.backwards_compatibility.prev_modules_path
+            )
+            if prev_modules_path:
+                with open(prev_modules_path, "r", encoding="utf-8") as f:
+                    previous_modules = json.load(f)
+                    previous_included_task_map = previous_modules["included_modules"]
+                    for task_module in previous_included_task_map.values():
+                        previous_included_modules.update(task_module.values())
+            service_generation.assert_compatible(
+                [".".join([x.__module__, x.__name__]) for x in clean_modules], previous_included_modules
+            )
 
         if service_type == cls.ServiceType.INFERENCE:
             rpc_list = service_generation.create_inference_rpcs(clean_modules)

@@ -15,7 +15,10 @@
 """Unit tests for the service factory"""
 # Standard
 from pathlib import Path
+import json
+import os
 import tempfile
+import uuid
 
 # Third Party
 from google.protobuf.message import Message
@@ -217,6 +220,91 @@ def test_get_and_filter_modules_respects_included_task_types_and_excluded_module
         clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
         assert "SampleModule" in str(clean_modules)
         assert "ListModule" not in str(clean_modules)
+
+
+def test_assert_compatible_does_not_raise_if_not_enabled():
+    with temp_config(
+        {
+            "runtime": {
+                "service_generation": {
+                    "backwards_compatibility": {
+                        "enabled": False,
+                    }
+                },
+            }
+        },
+        "merge",
+    ):
+        ServicePackageFactory.get_service_package(
+            ServicePackageFactory.ServiceType.INFERENCE
+        )
+
+
+def test_assert_compatible_raises_if_a_module_becomes_unsupported():
+    with tempfile.TemporaryDirectory() as workdir:
+        prev_module_file = os.path.join(workdir, "prev_modules.json")
+        random_uuid = str(uuid.uuid4())
+        with open(prev_module_file, "w", encoding="utf-8") as file:
+            json_content = {
+                "excluded_modules": {},
+                "included_modules": {
+                    "SampleTask": {
+                        random_uuid: "sample_lib.modules.sample_task.sample_implementation.PrevSampleModule",
+                    }
+                },
+            }
+            file.write(json.dumps(json_content, indent=4))
+        with temp_config(
+            {
+                "runtime": {
+                    "service_generation": {
+                        "backwards_compatibility": {
+                            "enabled": True,
+                            "prev_modules_path": prev_module_file,
+                        }
+                    },
+                }
+            },
+            "merge",
+        ):
+            with pytest.raises(AssertionError):
+                # this raises because PrevSampleModule will not be included in this service generation
+                ServicePackageFactory.get_service_package(
+                    ServicePackageFactory.ServiceType.INFERENCE
+                )
+
+
+def test_assert_compatible_does_not_raise_if_supported_modules_continue_to_be_supported():
+    with tempfile.TemporaryDirectory() as workdir:
+        prev_module_file = os.path.join(workdir, "prev_modules.json")
+
+        with open(prev_module_file, "w", encoding="utf-8") as file:
+            json_content = {
+                "excluded_modules": {},
+                "included_modules": {
+                    "SampleTask": {
+                        "00110203-0405-0607-0809-0a0b02dd0e0f": "sample_lib.modules.sample_task.sample_implementation.SampleModule",
+                    }
+                },
+            }
+            file.write(json.dumps(json_content, indent=4))
+        with temp_config(
+            {
+                "runtime": {
+                    "service_generation": {
+                        "backwards_compatibility": {
+                            "enabled": True,
+                            "prev_modules_path": prev_module_file,
+                        }
+                    },
+                }
+            },
+            "merge",
+        ):
+            # this does not raise because SampleModule will be included in this service generation
+            ServicePackageFactory.get_service_package(
+                ServicePackageFactory.ServiceType.INFERENCE
+            )
 
 
 def test_override_domain(clean_data_model):

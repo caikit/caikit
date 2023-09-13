@@ -36,16 +36,29 @@ TRAIN_FUNCTION_NAME = "train"
 ## Utilities ###################################################################
 
 
-def assert_compatible(modules: List[Type[ModuleBase]]):
+def assert_compatible(modules: List[str], previous_modules: List[str]):
     """Logic about whether it's okay to include this set of modules in service generation
 
     Args:
-        modules: list of modules that we are considering in service generation
+        modules: list of module names that we are considering in service generation
+        previous_modules: list of module names that were supported in the previous service version
 
     Raises:
         If a new service should not be built with this set of modules
     """
-    pass
+    regressed_modules = set(previous_modules) - set(modules)
+    if len(regressed_modules) > 0:
+        log.error(
+            "BREAKING CHANGE FOUND! These modules became unsupported. These models were "
+            "on the supported list in previous version, but now are no longer supported."
+        )
+        for mod in regressed_modules:
+            log.error("Regressed module: %s", mod)
+
+    assert (
+        len(regressed_modules) == 0
+    ), f"BREAKING CHANGE! Found unsupported module(s) that were previously supported: \
+        {regressed_modules.pop()}"
 
 
 def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
