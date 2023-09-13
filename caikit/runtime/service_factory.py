@@ -95,7 +95,9 @@ class ServicePackageFactory:
         TRAINING_MANAGEMENT = 3
 
     @classmethod
-    def get_service_package(cls, service_type: ServiceType) -> ServicePackage:
+    def get_service_package(
+        cls, service_type: ServiceType, write_modules_file: bool = False
+    ) -> ServicePackage:
         """Public factory API. Returns a service package of the requested type, from the
         configured source.
 
@@ -103,6 +105,9 @@ class ServicePackageFactory:
             service_type (ServicePackageFactory.ServiceType): The type of service to build,
                 to match the servicer implementation that will handle it. e.g. the
                 GlobalPredictServicer expects an "INFERENCE" service
+            write_modules_file (bool): if set, write out a modules.json file to list the
+                included modules in this service generation. See config to customize file name at
+                runtime.service_generation.backwards_compatibility.current_modules_path
 
         Returns:
             ServicePackage: A container with properties referencing everything you need to bind a
@@ -135,18 +140,16 @@ class ServicePackageFactory:
         # Then do API introspection to come up with all the API definitions to support
         caikit_config = get_config()
         clean_modules = ServicePackageFactory._get_and_filter_modules(
-            caikit_config, caikit_config.runtime.library
+            caikit_config, caikit_config.runtime.library, write_modules_file
         )
 
         # Assert for backwards compatibility, if enabled
-        if (
+        backwards_compat_conf = (
             caikit_config.runtime.service_generation.backwards_compatibility
-            and caikit_config.runtime.service_generation.backwards_compatibility.enabled
-        ):
+        )
+        if backwards_compat_conf and backwards_compat_conf.enabled:
             previous_included_modules = set()
-            prev_modules_path = (
-                caikit_config.runtime.service_generation.backwards_compatibility.prev_modules_path
-            )
+            prev_modules_path = backwards_compat_conf.prev_modules_path
             if prev_modules_path:
                 with open(prev_modules_path, "r", encoding="utf-8") as f:
                     previous_modules = json.load(f)
@@ -154,7 +157,8 @@ class ServicePackageFactory:
                     for task_module in previous_included_task_map.values():
                         previous_included_modules.update(task_module.values())
             service_generation.assert_compatible(
-                [".".join([x.__module__, x.__name__]) for x in clean_modules], previous_included_modules
+                [str(mod) for mod in clean_modules],
+                previous_included_modules,
             )
 
         if service_type == cls.ServiceType.INFERENCE:
@@ -196,7 +200,7 @@ class ServicePackageFactory:
     # Implementation details for pure python service packages #
     @staticmethod
     def _get_and_filter_modules(
-        caikit_config: aconfig.Config, lib: str
+        caikit_config: aconfig.Config, lib: str, write_modules_file: bool = False
     ) -> Set[Type[ModuleBase]]:
         clean_modules = set()
         modules = [
@@ -289,6 +293,24 @@ class ServicePackageFactory:
             excluded_task_types,
             excluded_modules,
         )
+
+        # if enabled, write out the inclusions to modules.json
+        backwards_compat_conf = (
+            caikit_config.runtime.service_generation.backwards_compatibility
+        )
+        if write_modules_file:
+            modules_json_path = (
+                backwards_compat_conf and backwards_compat_conf.current_modules_path
+            ) or "modules.json"
+            included_dict = {}
+            for module in clean_modules:
+                task_type = module.TASK_CLASS.__name__
+                included_dict.setdefault(task_type, {})[module.MODULE_ID] = str(module)
+            modules_dict = {
+                "included_modules": included_dict,
+            }
+            with open(modules_json_path, "w", encoding="utf-8") as f:
+                json.dump(modules_dict, f, indent=4, sort_keys=True)
         return clean_modules
 
 

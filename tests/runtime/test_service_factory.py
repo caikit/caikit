@@ -249,7 +249,7 @@ def test_assert_compatible_raises_if_a_module_becomes_unsupported():
                 "excluded_modules": {},
                 "included_modules": {
                     "SampleTask": {
-                        random_uuid: "sample_lib.modules.sample_task.sample_implementation.PrevSampleModule",
+                        random_uuid: "<class 'sample_lib.modules.sample_task.sample_implementation.PrevSampleModule'>",
                     }
                 },
             }
@@ -283,7 +283,7 @@ def test_assert_compatible_does_not_raise_if_supported_modules_continue_to_be_su
                 "excluded_modules": {},
                 "included_modules": {
                     "SampleTask": {
-                        "00110203-0405-0607-0809-0a0b02dd0e0f": "sample_lib.modules.sample_task.sample_implementation.SampleModule",
+                        "00110203-0405-0607-0809-0a0b02dd0e0f": "<class 'sample_lib.modules.sample_task.sample_implementation.SampleModule'>",
                     }
                 },
             }

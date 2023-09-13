@@ -330,18 +330,19 @@ def test_assert_compatible_does_not_raise_if_modules_continue_to_be_supported():
 
 def test_assert_compatible_raises_if_modules_are_no_longer_supported():
     previous_module_list = [
-        sample_lib.modules.sample_task.SampleModule.__name__,
-        sample_lib.modules.sample_task.InnerModule.__name__,
+        str(sample_lib.modules.sample_task.SampleModule),
+        str(sample_lib.modules.sample_task.InnerModule),
     ]
 
     current_module_list = [
-        sample_lib.modules.sample_task.SampleModule.__name__,
-        sample_lib.modules.other_task.OtherModule.__name__,
+        str(sample_lib.modules.sample_task.SampleModule),
+        str(sample_lib.modules.other_task.OtherModule),
     ]  # missing InnerModule from prev
 
     with pytest.raises(AssertionError) as context:
         assert_compatible(current_module_list, previous_module_list)
     assert (
         "BREAKING CHANGE! Found unsupported module(s) that were previously supported: \
-        InnerModule" in str(context.value)
+        {\"<class 'sample_lib.modules.sample_task.inner_module.InnerModule'>\"}"
+        in str(context.value)
     )

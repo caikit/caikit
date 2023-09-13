@@ -58,7 +58,7 @@ def assert_compatible(modules: List[str], previous_modules: List[str]):
     assert (
         len(regressed_modules) == 0
     ), f"BREAKING CHANGE! Found unsupported module(s) that were previously supported: \
-        {regressed_modules.pop()}"
+        {regressed_modules}"
 
 
 def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:

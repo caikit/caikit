@@ -32,7 +32,7 @@ log = alog.use_channel("RUNTIME-DUMP-SVC")
 def dump_grpc_services(output_dir: str):
     """Utility for rendering the all generated interfaces to proto files"""
     inf_svc = ServicePackageFactory.get_service_package(
-        ServicePackageFactory.ServiceType.INFERENCE,
+        ServicePackageFactory.ServiceType.INFERENCE, write_modules_file=True
     )
     train_svc = ServicePackageFactory.get_service_package(
         ServicePackageFactory.ServiceType.TRAINING,
