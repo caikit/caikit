@@ -226,7 +226,7 @@ def test_global_predict_build_caikit_library_request_dict_creates_caikit_core_ru
     sample_inference_service,
 ):
     """Test using proto versus pythonic data model for inference requests to compare diffs"""
-    # Protobuf input
+    # protobuf request
     proto_request = sample_inference_service.messages.SampleTaskRequest(
         sample_input=HAPPY_PATH_INPUT_DM.to_proto(),
     )
@@ -240,7 +240,7 @@ def test_global_predict_build_caikit_library_request_dict_creates_caikit_core_ru
     assert proto_request.HasField("throw") is False
     assert proto_expected_arguments == set(proto_request_dict.keys())
 
-    # Pythonic data model
+    # pythonic data model request
     predict_class = DataBase.get_class_for_name("SampleTaskRequest")
     python_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
 

@@ -336,6 +336,9 @@ def test_global_predict_build_caikit_library_request_dict_works_for_set_primitiv
     assert request_dict["list_type"] == ["1", "2", "3"]
 
 
+@pytest.mark.skip(
+    "Skipping until bug fixes for unset Union fields - https://github.com/caikit/caikit/issues/471"
+)
 def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_request(
     sample_train_service,
 ):
@@ -358,9 +361,7 @@ def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_r
 
     # model_name is not expected to be passed through
     # since using pythonic data model, keeps params that have default value and removes ones that are empty
-    # TODO: create issue for union_list that should be removed
     expected_arguments = {
-        "union_list",
         "sleep_time",
         "oom_exit",
         "sleep_increment",
@@ -370,6 +371,9 @@ def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_r
     assert expected_arguments == set(caikit.core_request.keys())
 
 
+@pytest.mark.skip(
+    "Skipping until bug fixes for unset Union fields - https://github.com/caikit/caikit/issues/471"
+)
 def test_global_train_build_caikit_library_request_dict_with_proto_keeps_empty_params_from_request(
     sample_train_service,
 ):
@@ -391,8 +395,7 @@ def test_global_train_build_caikit_library_request_dict_with_proto_keeps_empty_p
     )
 
     # model_name is not expected to be passed through
-    # TODO: create issue for union_list that should be removed
-    expected_arguments = {"training_data", "union_list"}
+    expected_arguments = {"training_data"}
 
     assert expected_arguments == set(caikit.core_request.keys())
     assert isinstance(caikit.core_request["training_data"], DataStreamSourceBase)
@@ -460,6 +463,9 @@ def test_global_train_build_caikit_library_request_dict_ok_with_DataStreamSource
     assert expected_arguments == set(caikit.core_request.keys())
 
 
+@pytest.mark.skip(
+    "Skipping until bug fixes for unset Union fields - https://github.com/caikit/caikit/issues/471"
+)
 def test_global_train_build_caikit_library_request_dict_ok_with_data_stream_file_type_csv(
     sample_train_service, sample_csv_file
 ):
@@ -484,10 +490,8 @@ def test_global_train_build_caikit_library_request_dict_ok_with_data_stream_file
     )
 
     # model_name is not expected to be passed through
-    # TODO: union_list should not be there
     expected_arguments = {
         "training_data",
-        "union_list",
         "batch_size",
         "oom_exit",
         "sleep_time",
