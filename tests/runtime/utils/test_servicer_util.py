@@ -111,9 +111,7 @@ def test_service_util_validate_caikit_library_class_method_exists_does_raise():
 
 
 # ---------------- Tests for build_proto_response  --------------------------
-def test_servicer_util_build_proto_response_raises_on_garbage_response_type(
-    sample_inference_service,
-):
+def test_servicer_util_build_proto_response_raises_on_garbage_response_type():
     class FooResponse:
         def __init__(self, foo) -> None:
             self.foo = foo
@@ -133,7 +131,9 @@ def test_servicer_util_is_protobuf_primitive_returns_true_for_primitive_types(
     )
 
 
-def test_servicer_util_is_protobuf_primitive_returns_false_for_custom_types():
+def test_servicer_util_is_protobuf_primitive_returns_false_for_custom_types(
+    sample_inference_service,
+):
     """Test that is_protobuf_primitive_field is False when considering message and
     enum types. This is essential for handling Caikit library CDM objects, which are
     generally defined in terms of messages"""
