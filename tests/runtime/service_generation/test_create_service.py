@@ -13,9 +13,6 @@
 # limitations under the License.
 # Standard
 from typing import Iterable
-import json
-import os
-import tempfile
 import uuid
 
 # Third Party
@@ -35,7 +32,6 @@ from sample_lib.data_model import (
     SampleTask,
 )
 from sample_lib.modules import SampleModule
-from tests.conftest import temp_config
 import caikit
 import sample_lib
 
@@ -316,14 +312,14 @@ def test_create_training_rpcs():
 ### assert_compatible tests #################################################
 def test_assert_compatible_does_not_raise_if_modules_continue_to_be_supported():
     previous_module_list = [
-        sample_lib.modules.sample_task.SampleModule.__name__,
-        sample_lib.modules.sample_task.InnerModule.__name__,
+        str(sample_lib.modules.sample_task.SampleModule),
+        str(sample_lib.modules.sample_task.InnerModule),
     ]
 
     current_module_list = [
-        sample_lib.modules.sample_task.SampleModule.__name__,
-        sample_lib.modules.sample_task.InnerModule.__name__,
-        sample_lib.modules.other_task.OtherModule.__name__,
+        str(sample_lib.modules.sample_task.SampleModule),
+        str(sample_lib.modules.sample_task.InnerModule),
+        str(sample_lib.modules.other_task.OtherModule),
     ]
     assert_compatible(current_module_list, previous_module_list)
 
