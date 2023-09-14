@@ -59,7 +59,7 @@ Note: `http` does not currently support `training management` APIs.
 In order to train a model via gRPC, we will use `grpcurl` and point the import-path to `protos` dir, then call one of the Train rpc's available in the `SampleLibTrainingService` (see `protos/samplelibtrainingservice.proto` file generated above for all Train rpcs):
 
 ```shell
-grpcurl -plaintext -import-path protos/ -proto samplelibtrainingservice.proto -d '{"model_name": "my_model", "training_data": {"file": {"filename": "protos/sample.json"}}}' localhost:8085 caikit.runtime.SampleLib.SampleLibTrainingService/SampleTaskSampleModuleTrain
+grpcurl -plaintext -import-path protos/ -proto samplelibtrainingservice.proto -d '{"model_name": "my_model", "parameters": {"training_data": {"file": {"filename": "protos/sample.json"}}}}' localhost:8085 caikit.runtime.SampleLib.SampleLibTrainingService/SampleTaskSampleModuleTrain
 ```
 
 You should receive a response similar to the below:
@@ -111,13 +111,13 @@ You are now ready to call inference via either gRPC or REST.
 
 You can also use the gRPC Server to call inference on this model by running:
 ```shell
-grpcurl -plaintext -import-path protos/ -proto samplelibservice.proto -d '{"sample_input": {"name": "IBM"}}' -H 'mm-model-id: my_model' localhost:8085 caikit.runtime.SampleLib.SampleLibService/SampleTaskPredict
+grpcurl -plaintext -import-path protos/ -proto samplelibservice.proto -d '{"sample_input": {"name": "world"}}' -H 'mm-model-id: my_model' localhost:8085 caikit.runtime.SampleLib.SampleLibService/SampleTaskPredict
 ```
 
 You should receive a successful response back with a response body:
 ```shell
 {
-  "greeting": "Hello IBM"
+  "greeting": "Hello world"
 }
 ```
 
