@@ -12,6 +12,7 @@
     - [To call inference on a model with modelId](#to-call-inference-on-a-model-with-modelid)
       - [To use the gRPC Server for inference](#to-use-the-grpc-server-for-inference)
       - [To use the REST Server for inference](#to-use-the-rest-server-for-inference)
+  - [Interact using a combination of pb2s and DataModels](#interact-using-a-combination-of-pb2s-and-datamodels)
 
 
 # Interacting with the Sample lib
@@ -42,7 +43,7 @@ You can now leave the server running and open a new terminal to proceed with nex
 You can run the python client using:
 
 ```shell
-python3 -m -m examples.sample_lib.client
+python3 -m examples.sample_lib.client
 ```
 
 The python client sends in requests to all 3 services that were mentioned above, printing the result from each request.
@@ -146,3 +147,20 @@ You should receive a 200 response back with a response body:
 }
 ```
 
+## Interact using a combination of pb2s and DataModels
+
+```shell
+pip3 install grpcio-tools
+``````
+
+then
+
+```shell
+python3 -m grpc_tools.protoc -I protos --python_out=examples/sample_lib/generated --grpc_python_out=examples/sample_lib/generated protos/*.proto
+```
+
+then
+
+```shell
+python3 -m examples.sample_lib.client
+```
