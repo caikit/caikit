@@ -59,6 +59,7 @@ from caikit.runtime.protobufs import (
     process_pb2_grpc,
 )
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
+from caikit.runtime.utils.servicer_util import build_caikit_library_request_dict
 from sample_lib import InnerModule, SamplePrimitiveModule
 from sample_lib.data_model import (
     OtherOutputType,
@@ -81,7 +82,8 @@ import sample_lib
 
 log = alog.use_channel("TEST-SERVE-I")
 
-HAPPY_PATH_INPUT = SampleInputType(name="Gabe").to_proto()
+HAPPY_PATH_INPUT_DM = SampleInputType(name="Gabe")
+HAPPY_PATH_INPUT = HAPPY_PATH_INPUT_DM.to_proto()
 HAPPY_PATH_RESPONSE = SampleOutputType(greeting="Hello Gabe").to_proto()
 HAPPY_PATH_TRAIN_RESPONSE = TrainingJob(
     model_name="dummy name", training_id="dummy id"
@@ -210,13 +212,47 @@ def test_predict_sample_module_ok_response(
 ):
     """Test RPC CaikitRuntime.SampleTaskPredict successful response"""
     stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
-    predict_request = sample_inference_service.messages.SampleTaskRequest(
-        sample_input=HAPPY_PATH_INPUT
-    )
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+    predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
+
     actual_response = stub.SampleTaskPredict(
         predict_request, metadata=[("mm-model-id", sample_task_model_id)]
     )
+
     assert actual_response == HAPPY_PATH_RESPONSE
+
+
+def test_global_predict_build_caikit_library_request_dict_creates_caikit_core_run_kwargs(
+    sample_inference_service,
+):
+    """Test using proto versus pythonic data model for inference requests to compare diffs"""
+    # protobuf request
+    proto_request = sample_inference_service.messages.SampleTaskRequest(
+        sample_input=HAPPY_PATH_INPUT_DM.to_proto(),
+    )
+    proto_request_dict = build_caikit_library_request_dict(
+        proto_request,
+        sample_lib.modules.sample_task.SampleModule.RUN_SIGNATURE,
+    )
+
+    # unset fields not included
+    proto_expected_arguments = {"sample_input"}
+    assert proto_request.HasField("throw") is False
+    assert proto_expected_arguments == set(proto_request_dict.keys())
+
+    # pythonic data model request
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+    python_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
+
+    python_sample_module_request_dict = build_caikit_library_request_dict(
+        python_request,
+        sample_lib.modules.sample_task.SampleModule.RUN_SIGNATURE,
+    )
+
+    # unset fields are included if they have defaults set
+    python_expected_arguments = {"sample_input", "throw"}
+    assert python_request.HasField("throw") is True
+    assert python_expected_arguments == set(python_sample_module_request_dict.keys())
 
 
 def test_predict_streaming_module(
@@ -224,11 +260,9 @@ def test_predict_streaming_module(
 ):
     """Test RPC CaikitRuntime.StreamingTaskPredict successful response"""
     stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
-    predict_request = (
-        sample_inference_service.messages.ServerStreamingStreamingTaskRequest(
-            sample_input=HAPPY_PATH_INPUT
-        )
-    )
+    predict_class = DataBase.get_class_for_name("ServerStreamingStreamingTaskRequest")
+    predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
+
     stream = stub.ServerStreamingStreamingTaskPredict(
         predict_request, metadata=[("mm-model-id", streaming_task_model_id)]
     )
@@ -248,9 +282,9 @@ def test_predict_sample_module_error_response(
         stub = sample_inference_service.stub_class(
             runtime_grpc_server.make_local_channel()
         )
-        predict_request = sample_inference_service.messages.SampleTaskRequest(
-            sample_input=HAPPY_PATH_INPUT
-        )
+        predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+        predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
+
         stub.SampleTaskPredict(
             predict_request, metadata=[("mm-model-id", "random_model_id")]
         )
@@ -263,9 +297,11 @@ def test_rpc_validation_on_predict(
 ):
     """Check that the server catches models sent to the wrong task RPCs"""
     stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
-    predict_request = sample_inference_service.messages.OtherTaskRequest(
-        sample_input_sampleinputtype=HAPPY_PATH_INPUT
-    )
+    predict_class = DataBase.get_class_for_name("OtherTaskRequest")
+    predict_request = predict_class(
+        sample_input_sampleinputtype=HAPPY_PATH_INPUT_DM
+    ).to_proto()
+
     with pytest.raises(
         grpc.RpcError,
         match="Wrong inference RPC invoked for model class .* Use SampleTaskPredict instead of OtherTaskPredict",
@@ -292,9 +328,8 @@ def test_rpc_validation_on_predict_for_unsupported_model(
         stub = sample_inference_service.stub_class(
             runtime_grpc_server.make_local_channel()
         )
-        predict_request = sample_inference_service.messages.SampleTaskRequest(
-            sample_input=HAPPY_PATH_INPUT
-        )
+        predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+        predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
         with pytest.raises(grpc.RpcError) as context:
             stub.SampleTaskPredict(
                 predict_request, metadata=[("mm-model-id", model_id)]
@@ -325,9 +360,8 @@ def test_rpc_validation_on_predict_for_wrong_streaming_flavor(
         stub = sample_inference_service.stub_class(
             runtime_grpc_server.make_local_channel()
         )
-        predict_request = sample_inference_service.messages.SampleTaskRequest(
-            sample_input=HAPPY_PATH_INPUT
-        )
+        predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+        predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
         with pytest.raises(grpc.RpcError) as context:
             response = stub.ServerStreamingSampleTaskPredict(
                 predict_request, metadata=[("mm-model-id", model_id)]
@@ -387,9 +421,8 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
     )
 
     # make sure the trained model can run inference
-    predict_request = sample_inference_service.messages.SampleTaskRequest(
-        sample_input=HAPPY_PATH_INPUT
-    )
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+    predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
     inference_response = inference_stub.SampleTaskPredict(
         predict_request, metadata=[("mm-model-id", actual_response.model_name)]
     )
@@ -408,14 +441,17 @@ def test_train_fake_module_ok_response_with_loaded_model_can_predict_with_traine
     """Test RPC CaikitRuntime.WorkflowsSampleTaskSampleWorkflowTrain successful response with a loaded model"""
     sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
         model_id=sample_task_model_id
-    ).to_proto()
-    model_name = random_test_id()
-    train_request = sample_train_service.messages.SampleTaskCompositeModuleTrainRequest(
-        model_name=model_name,
-        parameters=sample_train_service.messages.SampleTaskCompositeModuleTrainParameters(
-            sample_block=sample_model
-        ),
     )
+    model_name = random_test_id()
+    train_class = DataBase.get_class_for_name("SampleTaskCompositeModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskCompositeModuleTrainParameters"
+    )
+    train_request = train_class(
+        model_name=model_name,
+        parameters=train_request_params_class(sample_block=sample_model),
+    ).to_proto()
+
     actual_response = train_stub.SampleTaskCompositeModuleTrain(train_request)
     assert_training_successful(
         actual_response, HAPPY_PATH_TRAIN_RESPONSE, model_name, training_management_stub
@@ -425,9 +461,8 @@ def test_train_fake_module_ok_response_with_loaded_model_can_predict_with_traine
     )
 
     # make sure the trained model can run inference
-    predict_request = sample_inference_service.messages.SampleTaskRequest(
-        sample_input=HAPPY_PATH_INPUT
-    )
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+    predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
     inference_response = inference_stub.SampleTaskPredict(
         predict_request, metadata=[("mm-model-id", actual_response.model_name)]
     )
@@ -451,18 +486,20 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
 
     # Train an OtherModule with batch size 100
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
-    training_data = stream_type(
-        file=stream_type.File(filename=sample_int_file)
-    ).to_proto()
+    training_data = stream_type(file=stream_type.File(filename=sample_int_file))
 
-    train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
+    train_class = DataBase.get_class_for_name("OtherTaskOtherModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "OtherTaskOtherModuleTrainParameters"
+    )
+    train_request = train_class(
         model_name="Bar Training",
-        parameters=sample_train_service.messages.OtherTaskOtherModuleTrainParameters(
-            sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
+        parameters=train_request_params_class(
+            sample_input_sampleinputtype=HAPPY_PATH_INPUT_DM,
             batch_size=100,
             training_data=training_data,
         ),
-    )
+    ).to_proto()
     actual_response = train_stub.OtherTaskOtherModuleTrain(train_request)
     assert_training_successful(
         actual_response,
@@ -475,9 +512,8 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
     )
 
     # make sure the trained model can run inference, and the batch size 100 was used
-    predict_request = sample_inference_service.messages.OtherTaskRequest(
-        sample_input=HAPPY_PATH_INPUT
-    )
+    predict_class = DataBase.get_class_for_name("OtherTaskRequest")
+    predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
     trained_inference_response = inference_stub.OtherTaskPredict(
         predict_request, metadata=[("mm-model-id", actual_response.model_name)]
     )
@@ -517,7 +553,7 @@ def test_train_primitive_model(
     train_request = train_request_class(
         model_name=model_name,
         parameters=train_request_params_class(
-            sample_input=SampleInputType(name="Gabe"),
+            sample_input=HAPPY_PATH_INPUT_DM,
             simple_list=["hello", "world"],
             union_list=["str", "sequence"],
             union_list2=[1, 2],
@@ -542,9 +578,8 @@ def test_train_primitive_model(
     )
 
     # make sure the trained model can run inference
-    predict_request = sample_inference_service.messages.SampleTaskRequest(
-        sample_input=HAPPY_PATH_INPUT
-    )
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+    predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
 
     inference_response = inference_stub.SampleTaskPredict(
         predict_request, metadata=[("mm-model-id", training_response.model_name)]
@@ -570,15 +605,19 @@ def test_train_fake_module_ok_response_with_datastream_jsondata(
         jsondata=stream_type.JsonData(
             data=[SampleTrainingType(1), SampleTrainingType(2)]
         )
-    ).to_proto()
+    )
     model_name = random_test_id()
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+    train_class = DataBase.get_class_for_name("SampleTaskSampleModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskSampleModuleTrainParameters"
+    )
+    train_request = train_class(
         model_name=model_name,
-        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+        parameters=train_request_params_class(
             batch_size=42,
             training_data=training_data,
         ),
-    )
+    ).to_proto()
 
     actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
     assert_training_successful(
@@ -589,9 +628,8 @@ def test_train_fake_module_ok_response_with_datastream_jsondata(
     )
 
     # make sure the trained model can run inference
-    predict_request = sample_inference_service.messages.SampleTaskRequest(
-        sample_input=HAPPY_PATH_INPUT
-    )
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+    predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
     inference_response = inference_stub.SampleTaskPredict(
         predict_request, metadata=[("mm-model-id", actual_response.model_name)]
     )
@@ -609,16 +647,18 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
 ):
     """Test RPC CaikitRuntime.SampleTaskSampleModuleTrainRequest successful response with training data file type"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    training_data = stream_type(
-        file=stream_type.File(filename=sample_csv_file)
-    ).to_proto()
+    training_data = stream_type(file=stream_type.File(filename=sample_csv_file))
     model_name = random_test_id()
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+    train_class = DataBase.get_class_for_name("SampleTaskSampleModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskSampleModuleTrainParameters"
+    )
+    train_request = train_class(
         model_name=model_name,
-        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+        parameters=train_request_params_class(
             training_data=training_data,
         ),
-    )
+    ).to_proto()
 
     actual_response = train_stub.SampleTaskSampleModuleTrain(train_request)
     assert_training_successful(
@@ -629,9 +669,8 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
     )
 
     # make sure the trained model can run inference
-    predict_request = sample_inference_service.messages.SampleTaskRequest(
-        sample_input=HAPPY_PATH_INPUT
-    )
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+    predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
     inference_response = inference_stub.SampleTaskPredict(
         predict_request, metadata=[("mm-model-id", actual_response.model_name)]
     )
@@ -650,12 +689,16 @@ def test_train_and_successfully_cancel_training(
     )
     model_name = random_test_id()
     # start a training that sleeps for a long time, so I can cancel
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=model_name,
-        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
-            training_data=training_data.to_proto(), sleep_time=10
-        ),
+    train_class = DataBase.get_class_for_name("SampleTaskSampleModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskSampleModuleTrainParameters"
     )
+    train_request = train_class(
+        model_name=model_name,
+        parameters=train_request_params_class(
+            training_data=training_data, sleep_time=10
+        ),
+    ).to_proto()
     train_response = train_stub.SampleTaskSampleModuleTrain(train_request)
 
     training_id = train_response.training_id
@@ -687,12 +730,16 @@ def test_cancel_does_not_affect_other_models(
     )
     model_name = random_test_id()
     # start a training that sleeps for a long time, so I can cancel
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
-        model_name=model_name,
-        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
-            training_data=training_data.to_proto(), sleep_time=10
-        ),
+    train_class = DataBase.get_class_for_name("SampleTaskSampleModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskSampleModuleTrainParameters"
     )
+    train_request = train_class(
+        model_name=model_name,
+        parameters=train_request_params_class(
+            training_data=training_data, sleep_time=10
+        ),
+    ).to_proto()
     train_response = train_stub.SampleTaskSampleModuleTrain(train_request)
 
     assert dir(train_response) == dir(HAPPY_PATH_TRAIN_RESPONSE)
@@ -710,12 +757,10 @@ def test_cancel_does_not_affect_other_models(
 
     # train another model
     model_name2 = random_test_id()
-    train_request2 = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+    train_request2 = train_class(
         model_name=model_name2,
-        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
-            training_data=training_data.to_proto()
-        ),
-    )
+        parameters=train_request_params_class(training_data=training_data),
+    ).to_proto()
     train_response2 = train_stub.SampleTaskSampleModuleTrain(train_request2)
 
     # cancel the first training
@@ -744,14 +789,18 @@ def test_train_fake_module_error_response_with_unloaded_model(
     with pytest.raises(grpc.RpcError) as context:
         sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
             model_id=random_test_id()
+        )
+        train_class = DataBase.get_class_for_name(
+            "SampleTaskCompositeModuleTrainRequest"
+        )
+        train_request_params_class = DataBase.get_class_for_name(
+            "SampleTaskCompositeModuleTrainParameters"
+        )
+        train_request = train_class(
+            model_name=random_test_id(),
+            parameters=train_request_params_class(sample_block=sample_model),
         ).to_proto()
 
-        train_request = sample_train_service.messages.SampleTaskCompositeModuleTrainRequest(
-            model_name=random_test_id(),
-            parameters=sample_train_service.messages.SampleTaskCompositeModuleTrainParameters(
-                sample_block=sample_model
-            ),
-        )
         train_stub.SampleTaskCompositeModuleTrain(train_request)
     assert context.value.code() == grpc.StatusCode.NOT_FOUND
 
@@ -1098,9 +1147,8 @@ def test_metrics_stored_after_server_interrupt(
     with temp_config({"runtime": {"metering": {"enabled": True}}}, "merge"):
         with runtime_grpc_test_server(open_port) as server:
             stub = sample_inference_service.stub_class(server.make_local_channel())
-            predict_request = sample_inference_service.messages.SampleTaskRequest(
-                sample_input=HAPPY_PATH_INPUT
-            )
+            predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+            predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
             _ = stub.SampleTaskPredict(
                 predict_request, metadata=[("mm-model-id", sample_task_model_id)]
             )

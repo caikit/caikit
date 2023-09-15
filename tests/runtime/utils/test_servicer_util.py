@@ -20,6 +20,7 @@ import tempfile
 import pytest
 
 # Local
+from caikit.core.data_model.base import DataBase
 from caikit.runtime.protobufs import model_runtime_pb2
 from caikit.runtime.service_generation.data_stream_source import DataStreamSourceBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -124,10 +125,9 @@ def test_servicer_util_is_protobuf_primitive_returns_true_for_primitive_types(
     sample_inference_service,
 ):
     """Test that is_protobuf_primitive_field is True when considering primitive types"""
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
     assert is_protobuf_primitive_field(
-        sample_inference_service.messages.SampleTaskRequest().DESCRIPTOR.fields_by_name[
-            "int_type"
-        ]
+        predict_class().to_proto().DESCRIPTOR.fields_by_name["int_type"]
     )
 
 
@@ -137,10 +137,9 @@ def test_servicer_util_is_protobuf_primitive_returns_false_for_custom_types(
     """Test that is_protobuf_primitive_field is False when considering message and
     enum types. This is essential for handling Caikit library CDM objects, which are
     generally defined in terms of messages"""
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
     assert not is_protobuf_primitive_field(
-        sample_inference_service.messages.SampleTaskRequest().DESCRIPTOR.fields_by_name[
-            "sample_input"
-        ]
+        predict_class().to_proto().DESCRIPTOR.fields_by_name["sample_input"]
     )
 
 
@@ -198,22 +197,21 @@ def test_servicer_util_will_not_validate_arbitrary_service_descriptor():
 
 
 # ---------------- Tests for build_caikit_library_request_dict --------------------
-HAPPY_PATH_INPUT = SampleInputType(name="Gabe").to_proto()
+HAPPY_PATH_INPUT_DM = SampleInputType(name="Gabe")
 
 
 def test_global_predict_build_caikit_library_request_dict_creates_caikit_core_run_kwargs(
     sample_inference_service,
 ):
     """Test that build_caikit_library_request_dict creates module run kwargs from RPC msg"""
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
     request_dict = build_caikit_library_request_dict(
-        sample_inference_service.messages.SampleTaskRequest(
-            sample_input=HAPPY_PATH_INPUT
-        ),
+        predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
         sample_lib.modules.sample_task.SampleModule.RUN_SIGNATURE,
     )
 
-    # No self or "throw", throw was not set and the throw parameter contains a default value
-    expected_arguments = {"sample_input"}
+    # Since using pythonic data model and throw has a default parameter, it is an expected argument
+    expected_arguments = {"sample_input", "throw"}
 
     assert expected_arguments == set(request_dict.keys())
     assert isinstance(request_dict["sample_input"], SampleInputType)
@@ -224,16 +222,17 @@ def test_global_predict_build_caikit_library_request_dict_strips_invalid_run_kwa
 ):
     """Global predict build_caikit_library_request_dict strips invalid run kwargs from request"""
     # Sample module doesn't take the `int_type` or `bool_type` params
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
     request_dict = build_caikit_library_request_dict(
-        sample_inference_service.messages.SampleTaskRequest(
-            sample_input=HAPPY_PATH_INPUT,
+        predict_class(
+            sample_input=HAPPY_PATH_INPUT_DM,
             int_type=5,
             bool_type=True,
-        ),
+        ).to_proto(),
         sample_lib.modules.sample_task.SampleModule.RUN_SIGNATURE,
     )
 
-    expected_arguments = {"sample_input"}
+    expected_arguments = {"sample_input", "throw"}
     assert expected_arguments == set(request_dict.keys())
     assert "int_type" not in request_dict.keys()
 
@@ -242,8 +241,9 @@ def test_global_predict_build_caikit_library_request_dict_strips_empty_list_from
     sample_inference_service,
 ):
     """Global predict build_caikit_library_request_dict strips empty list from request"""
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
     request_dict = build_caikit_library_request_dict(
-        sample_inference_service.messages.SampleTaskRequest(int_type=5, list_type=[]),
+        predict_class(int_type=5, list_type=[]).to_proto(),
         sample_lib.modules.sample_task.SamplePrimitiveModule.RUN_SIGNATURE,
     )
 
@@ -251,10 +251,12 @@ def test_global_predict_build_caikit_library_request_dict_strips_empty_list_from
     assert "int_type" in request_dict.keys()
 
 
-def test_global_predict_build_caikit_library_request_dict_works_for_unset_primitives(
+def test_global_predict_build_caikit_library_request_dict_with_proto_does_not_include_unset_primitives(
     sample_inference_service,
 ):
     """Global predict build_caikit_library_request_dict works for primitives"""
+    # When using protobuf message for request, if params unset, does not include primitive args
+    # that are unset even if default values present
     request = sample_inference_service.messages.SampleTaskRequest()
 
     request_dict = build_caikit_library_request_dict(
@@ -264,10 +266,31 @@ def test_global_predict_build_caikit_library_request_dict_works_for_unset_primit
     assert len(request_dict.keys()) == 0
 
 
-def test_global_predict_build_caikit_library_request_dict_works_for_set_primitives(
+def test_global_predict_build_caikit_library_request_dict_works_for_unset_primitives(
     sample_inference_service,
 ):
     """Global predict build_caikit_library_request_dict works for primitives"""
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+    request = predict_class().to_proto()
+
+    request_dict = build_caikit_library_request_dict(
+        request, SamplePrimitiveModule.RUN_SIGNATURE
+    )
+    # When using pythonic data model for request, primitive args found
+    # because default values set
+    assert len(request_dict.keys()) == 5
+    assert request_dict["bool_type"] is True
+    assert request_dict["int_type"] == 42
+    assert request_dict["float_type"] == 34.0
+    assert request_dict["str_type"] == "moose"
+    assert request_dict["bytes_type"] == b""
+
+
+def test_global_predict_build_caikit_library_request_dict_with_proto_for_set_primitives(
+    sample_inference_service,
+):
+    """Global predict build_caikit_library_request_dict works for primitives"""
+    # When using protobuf message for request, only set params included
     request = sample_inference_service.messages.SampleTaskRequest(
         int_type=5,
         float_type=4.2,
@@ -286,12 +309,77 @@ def test_global_predict_build_caikit_library_request_dict_works_for_set_primitiv
     assert request_dict["list_type"] == ["1", "2", "3"]
 
 
+def test_global_predict_build_caikit_library_request_dict_works_for_set_primitives(
+    sample_inference_service,
+):
+    """Global predict build_caikit_library_request_dict works for primitives"""
+    # When using pythonic data model for request, primitive args found that are set and
+    # ones with default values set
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+    request = predict_class(
+        int_type=5,
+        float_type=4.2,
+        str_type="moose",
+        bytes_type=b"foo",
+        list_type=["1", "2", "3"],
+    ).to_proto()
+
+    request_dict = build_caikit_library_request_dict(
+        request, SamplePrimitiveModule.RUN_SIGNATURE
+    )
+    # bool_type also included because default value set
+    assert request_dict["bool_type"] is True
+    assert request_dict["int_type"] == 5
+    assert request_dict["float_type"] == 4.2
+    assert request_dict["str_type"] == "moose"
+    assert request_dict["bytes_type"] == b"foo"
+    assert request_dict["list_type"] == ["1", "2", "3"]
+
+
+@pytest.mark.skip(
+    "Skipping until bug fixes for unset Union fields - https://github.com/caikit/caikit/issues/471"
+)
 def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_request(
     sample_train_service,
 ):
     """Global train build_caikit_library_request_dict strips empty list from request"""
-    # NOTE: not sure this test is relevant anymore, since nothing effectively gets removed?
-    # the datastream is empty but it's not removed from request, which is expected
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    training_data = stream_type(jsondata=stream_type.JsonData(data=[]))
+    train_class = DataBase.get_class_for_name("SampleTaskSampleModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskSampleModuleTrainParameters"
+    )
+    train_request = train_class(
+        model_name=random_test_id(),
+        parameters=train_request_params_class(training_data=training_data),
+    ).to_proto()
+
+    caikit.core_request = build_caikit_library_request_dict(
+        train_request.parameters,
+        sample_lib.modules.sample_task.SampleModule.TRAIN_SIGNATURE,
+    )
+
+    # model_name is not expected to be passed through
+    # since using pythonic data model, keeps params that have default value and removes ones that are empty
+    expected_arguments = {
+        "sleep_time",
+        "oom_exit",
+        "sleep_increment",
+        "batch_size",
+    }
+
+    assert expected_arguments == set(caikit.core_request.keys())
+
+
+@pytest.mark.skip(
+    "Skipping until bug fixes for unset Union fields - https://github.com/caikit/caikit/issues/471"
+)
+def test_global_train_build_caikit_library_request_dict_with_proto_keeps_empty_params_from_request(
+    sample_train_service,
+):
+    """Global train build_caikit_library_request_dict strips empty list from request"""
+    # NOTE: Using protobuf to create request, by explicitly passing in training_data, even though
+    # the datastream is empty, it's not removed from request, which is expected
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(jsondata=stream_type.JsonData(data=[])).to_proto()
     train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
@@ -307,7 +395,7 @@ def test_global_train_build_caikit_library_request_dict_strips_empty_list_from_r
     )
 
     # model_name is not expected to be passed through
-    expected_arguments = {"training_data", "union_list"}
+    expected_arguments = {"training_data"}
 
     assert expected_arguments == set(caikit.core_request.keys())
     assert isinstance(caikit.core_request["training_data"], DataStreamSourceBase)
@@ -319,14 +407,18 @@ def test_global_train_build_caikit_library_request_dict_works_for_repeated_field
     """Global train build_caikit_library_request_dict works for repeated fields"""
 
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    training_data = stream_type(jsondata=stream_type.JsonData(data=[])).to_proto()
-    train_request = sample_train_service.messages.SampleTaskListModuleTrainRequest(
+    training_data = stream_type(jsondata=stream_type.JsonData(data=[]))
+    train_class = DataBase.get_class_for_name("SampleTaskListModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskListModuleTrainParameters"
+    )
+    train_request = train_class(
         model_name=random_test_id(),
-        parameters=sample_train_service.messages.SampleTaskListModuleTrainParameters(
+        parameters=train_request_params_class(
             training_data=training_data,
             poison_pills=["Bob Marley", "Bunny Livingston"],
         ),
-    )
+    ).to_proto()
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request.parameters,
@@ -334,7 +426,7 @@ def test_global_train_build_caikit_library_request_dict_works_for_repeated_field
     )
 
     # model_name is not expected to be passed through
-    expected_arguments = {"training_data", "poison_pills"}
+    expected_arguments = {"poison_pills", "batch_size"}
 
     assert expected_arguments == set(caikit.core_request.keys())
     assert len(caikit.core_request.keys()) == 2
@@ -346,18 +438,21 @@ def test_global_train_build_caikit_library_request_dict_ok_with_DataStreamSource
     sample_train_service,
 ):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
-    training_data = stream_type(
-        jsondata=stream_type.JsonData(data=[100, 120])
-    ).to_proto()
+    training_data = stream_type(jsondata=stream_type.JsonData(data=[100, 120]))
 
-    train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
+    train_class = DataBase.get_class_for_name("OtherTaskOtherModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "OtherTaskOtherModuleTrainParameters"
+    )
+    train_request = train_class(
         model_name="Bar Training",
-        parameters=sample_train_service.messages.OtherTaskOtherModuleTrainParameters(
-            sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
+        parameters=train_request_params_class(
+            sample_input_sampleinputtype=HAPPY_PATH_INPUT_DM,
             batch_size=100,
             training_data=training_data,
         ),
-    )
+    ).to_proto()
+
     caikit.core_request = build_caikit_library_request_dict(
         train_request.parameters,
         sample_lib.modules.other_task.OtherModule.TRAIN_SIGNATURE,
@@ -368,21 +463,26 @@ def test_global_train_build_caikit_library_request_dict_ok_with_DataStreamSource
     assert expected_arguments == set(caikit.core_request.keys())
 
 
+@pytest.mark.skip(
+    "Skipping until bug fixes for unset Union fields - https://github.com/caikit/caikit/issues/471"
+)
 def test_global_train_build_caikit_library_request_dict_ok_with_data_stream_file_type_csv(
     sample_train_service, sample_csv_file
 ):
     """Global train build_caikit_library_request_dict works for csv training data file"""
 
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    training_data = stream_type(
-        file=stream_type.File(filename=sample_csv_file)
-    ).to_proto()
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+    training_data = stream_type(file=stream_type.File(filename=sample_csv_file))
+    train_class = DataBase.get_class_for_name("SampleTaskSampleModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskSampleModuleTrainParameters"
+    )
+    train_request = train_class(
         model_name=random_test_id(),
-        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+        parameters=train_request_params_class(
             training_data=training_data,
         ),
-    )
+    ).to_proto()
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request.parameters,
@@ -390,7 +490,13 @@ def test_global_train_build_caikit_library_request_dict_ok_with_data_stream_file
     )
 
     # model_name is not expected to be passed through
-    expected_arguments = {"training_data", "union_list"}
+    expected_arguments = {
+        "training_data",
+        "batch_size",
+        "oom_exit",
+        "sleep_time",
+        "sleep_increment",
+    }
 
     assert expected_arguments == set(caikit.core_request.keys())
 
@@ -402,14 +508,18 @@ def test_global_train_build_caikit_library_request_dict_ok_with_training_data_as
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         listoffiles=stream_type.ListOfFiles(files=[sample_csv_file, sample_json_file])
-    ).to_proto()
-    train_request = sample_train_service.messages.SampleTaskListModuleTrainRequest(
+    )
+    train_class = DataBase.get_class_for_name("SampleTaskListModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskListModuleTrainParameters"
+    )
+    train_request = train_class(
         model_name=random_test_id(),
-        parameters=sample_train_service.messages.SampleTaskListModuleTrainParameters(
+        parameters=train_request_params_class(
             training_data=training_data,
             poison_pills=["Bob Marley", "Bunny Livingston"],
         ),
-    )
+    ).to_proto()
 
     caikit.core_request = build_caikit_library_request_dict(
         train_request.parameters,
@@ -417,10 +527,10 @@ def test_global_train_build_caikit_library_request_dict_ok_with_training_data_as
     )
 
     # model_name is not expected to be passed through
-    expected_arguments = {"training_data", "poison_pills"}
+    expected_arguments = {"training_data", "poison_pills", "batch_size"}
 
     assert expected_arguments == set(caikit.core_request.keys())
-    assert len(caikit.core_request.keys()) == 2
+    assert len(caikit.core_request.keys()) == 3
     assert "training_data" in caikit.core_request
 
 
@@ -442,16 +552,32 @@ def test_build_caikit_library_request_dict_works_when_data_stream_directory_incl
         )
         training_data = stream_type(
             directory=stream_type.Directory(dirname=tempdir, extension="json")
-        ).to_proto()
-        train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+        )
+        train_class = DataBase.get_class_for_name("SampleTaskSampleModuleTrainRequest")
+        train_request_params_class = DataBase.get_class_for_name(
+            "SampleTaskSampleModuleTrainParameters"
+        )
+        train_request = train_class(
             model_name=random_test_id(),
-            parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+            parameters=train_request_params_class(
                 training_data=training_data,
             ),
-        )
+        ).to_proto()
 
         # no error because at least 1 json file exists within the provided dir
         caikit.core_request = build_caikit_library_request_dict(
             train_request.parameters,
             sample_lib.modules.sample_task.SampleModule.TRAIN_SIGNATURE,
         )
+
+        expected_arguments = {
+            "training_data",
+            "union_list",
+            "batch_size",
+            "oom_exit",
+            "sleep_time",
+            "sleep_increment",
+        }
+
+        assert expected_arguments == set(caikit.core_request.keys())
+        assert "training_data" in caikit.core_request

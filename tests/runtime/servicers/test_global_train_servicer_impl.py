@@ -27,6 +27,7 @@ import pytest
 # Local
 from caikit.config import get_config
 from caikit.core import MODEL_MANAGER
+from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.common.data_model.stream_sources import S3Path
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
@@ -44,6 +45,8 @@ from tests.runtime.conftest import register_trained_model
 import caikit.core
 
 ## Helpers #####################################################################
+
+HAPPY_PATH_INPUT_DM = SampleInputType(name="Gabe")
 
 
 @contextmanager
@@ -94,15 +97,19 @@ def test_global_train_sample_task(
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
-    ).to_proto()
+    )
     model_name = random_test_id()
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+    train_class = DataBase.get_class_for_name("SampleTaskSampleModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskSampleModuleTrainParameters"
+    )
+    train_request = train_class(
         model_name=model_name,
-        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+        parameters=train_request_params_class(
             batch_size=42,
             training_data=training_data,
         ),
-    )
+    ).to_proto()
 
     training_response = sample_train_servicer.Train(
         train_request, Fixtures.build_context("foo")
@@ -131,10 +138,9 @@ def test_global_train_sample_task(
         == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
     )
 
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
     inference_response = sample_predict_servicer.Predict(
-        sample_inference_service.messages.SampleTaskRequest(
-            sample_input=SampleInputType(name="Gabe").to_proto()
-        ),
+        predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
         Fixtures.build_context(training_response.model_name),
         caikit_rpc=sample_task_unary_rpc,
     )
@@ -158,15 +164,19 @@ def test_global_train_other_task(
     """
     batch_size = 42
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
-    training_data = stream_type(jsondata=stream_type.JsonData(data=[1])).to_proto()
-    train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
+    training_data = stream_type(jsondata=stream_type.JsonData(data=[1]))
+    train_class = DataBase.get_class_for_name("OtherTaskOtherModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "OtherTaskOtherModuleTrainParameters"
+    )
+    train_request = train_class(
         model_name="Other module Training",
-        parameters=sample_train_service.messages.OtherTaskOtherModuleTrainParameters(
+        parameters=train_request_params_class(
             training_data=training_data,
-            sample_input_sampleinputtype=SampleInputType(name="Gabe").to_proto(),
+            sample_input_sampleinputtype=HAPPY_PATH_INPUT_DM,
             batch_size=batch_size,
         ),
-    )
+    ).to_proto()
 
     training_response = sample_train_servicer.Train(
         train_request, Fixtures.build_context("foo")
@@ -187,10 +197,9 @@ def test_global_train_other_task(
         == "sample_lib.modules.other_task.other_implementation.OtherModule"
     )
 
+    predict_class = DataBase.get_class_for_name("OtherTaskRequest")
     inference_response = sample_predict_servicer.Predict(
-        sample_inference_service.messages.OtherTaskRequest(
-            sample_input=SampleInputType(name="Gabe").to_proto()
-        ),
+        predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
         Fixtures.build_context(training_response.model_name),
         caikit_rpc=sample_inference_service.caikit_rpcs["OtherTaskPredict"],
     )
@@ -214,14 +223,16 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
     """Global train of TrainRequest returns a training job with the correct model name, and some training id for a train function that requires another loaded model"""
     sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
         model_id=sample_task_model_id
-    ).to_proto()
-
-    training_request = sample_train_service.messages.SampleTaskCompositeModuleTrainRequest(
-        model_name="AnotherWidget_Training",
-        parameters=sample_train_service.messages.SampleTaskCompositeModuleTrainParameters(
-            sample_block=sample_model,
-        ),
     )
+
+    train_class = DataBase.get_class_for_name("SampleTaskCompositeModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskCompositeModuleTrainParameters"
+    )
+    training_request = train_class(
+        model_name="AnotherWidget_Training",
+        parameters=train_request_params_class(sample_block=sample_model),
+    ).to_proto()
 
     training_response = sample_train_servicer.Train(
         training_request, Fixtures.build_context("foo")
@@ -244,10 +255,9 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
     )
 
     # make sure the trained model can run inference
+    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
     inference_response = sample_predict_servicer.Predict(
-        sample_inference_service.messages.SampleTaskRequest(
-            sample_input=SampleInputType(name="Gabe").to_proto()
-        ),
+        predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
         Fixtures.build_context(training_response.model_name),
         caikit_rpc=sample_task_unary_rpc,
     )
@@ -269,14 +279,18 @@ def test_run_train_job_works_with_wait(
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
-    ).to_proto()
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+    )
+    train_class = DataBase.get_class_for_name("SampleTaskSampleModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskSampleModuleTrainParameters"
+    )
+    train_request = train_class(
         model_name=random_test_id(),
-        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+        parameters=train_request_params_class(
             batch_size=42,
             training_data=training_data,
         ),
-    )
+    ).to_proto()
     servicer = GlobalTrainServicer(training_service=sample_train_service)
     with TemporaryDirectory() as tmp_dir:
         training_response = servicer.run_training_job(
@@ -292,10 +306,9 @@ def test_run_train_job_works_with_wait(
             training_response.training_id,
         )
 
+        predict_class = DataBase.get_class_for_name("SampleTaskRequest")
         inference_response = sample_predict_servicer.Predict(
-            sample_inference_service.messages.SampleTaskRequest(
-                sample_input=SampleInputType(name="Test").to_proto()
-            ),
+            predict_class(sample_input=SampleInputType(name="Test")).to_proto(),
             Fixtures.build_context(training_response.model_name),
             caikit_rpc=sample_task_unary_rpc,
         )
@@ -318,15 +331,15 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_but_not_loaded_s
     """Global train of TrainRequest raises when calling a train function that requires another loaded model, but model is not loaded"""
     model_id = random_test_id()
 
-    sample_model = caikit.interfaces.runtime.data_model.ModelPointer(
-        model_id=model_id
-    ).to_proto()
-    request = sample_train_service.messages.SampleTaskCompositeModuleTrainRequest(
-        model_name="AnotherWidget_Training",
-        parameters=sample_train_service.messages.SampleTaskCompositeModuleTrainParameters(
-            sample_block=sample_model,
-        ),
+    sample_model = caikit.interfaces.runtime.data_model.ModelPointer(model_id=model_id)
+    train_class = DataBase.get_class_for_name("SampleTaskCompositeModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskCompositeModuleTrainParameters"
     )
+    request = train_class(
+        model_name="AnotherWidget_Training",
+        parameters=train_request_params_class(sample_block=sample_model),
+    ).to_proto()
 
     with pytest.raises(CaikitRuntimeException) as context:
         sample_train_servicer.Train(request, Fixtures.build_context("foo"))
@@ -341,15 +354,19 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_mod
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
-    ).to_proto()
+    )
 
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+    train_class = DataBase.get_class_for_name("SampleTaskSampleModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskSampleModuleTrainParameters"
+    )
+    train_request = train_class(
         model_name=random_test_id(),
-        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+        parameters=train_request_params_class(
             batch_size=999,
             training_data=training_data,
         ),
-    )
+    ).to_proto()
 
     training_response = sample_train_servicer.Train(
         train_request, Fixtures.build_context("foo")
@@ -369,15 +386,19 @@ def test_global_train_returns_exit_code_with_oom(
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
-    ).to_proto()
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+    )
+    train_class = DataBase.get_class_for_name("SampleTaskSampleModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskSampleModuleTrainParameters"
+    )
+    train_request = train_class(
         model_name=random_test_id(),
-        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+        parameters=train_request_params_class(
             batch_size=42,
             training_data=training_data,
             oom_exit=True,
         ),
-    )
+    ).to_proto()
 
     # Enable sub-processing for test
     with set_use_subprocess(True):
@@ -399,16 +420,20 @@ def test_local_trainer_rejects_s3_output_paths(
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
-    ).to_proto()
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+    )
+    train_class = DataBase.get_class_for_name("SampleTaskSampleModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskSampleModuleTrainParameters"
+    )
+    train_request = train_class(
         model_name=random_test_id(),
-        output_path=S3Path(path="foo").to_proto(),
-        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+        output_path=S3Path(path="foo"),
+        parameters=train_request_params_class(
             batch_size=42,
             training_data=training_data,
             oom_exit=True,
         ),
-    )
+    ).to_proto()
 
     with pytest.raises(
         CaikitRuntimeException, match=".*S3 output path not supported by this runtime"
@@ -429,17 +454,21 @@ def test_global_train_aborts_long_running_trains(
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
         jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
-    ).to_proto()
+    )
     training_id = random_test_id()
 
-    train_request = sample_train_service.messages.SampleTaskSampleModuleTrainRequest(
+    train_class = DataBase.get_class_for_name("SampleTaskSampleModuleTrainRequest")
+    train_request_params_class = DataBase.get_class_for_name(
+        "SampleTaskSampleModuleTrainParameters"
+    )
+    train_request = train_class(
         model_name=training_id,
-        parameters=sample_train_service.messages.SampleTaskSampleModuleTrainParameters(
+        parameters=train_request_params_class(
             batch_size=42,
             training_data=training_data,
             oom_exit=False,
         ),
-    )
+    ).to_proto()
 
     if sample_train_servicer.use_subprocess:
         start_method = (

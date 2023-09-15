@@ -18,6 +18,7 @@ from concurrent import futures
 import grpc
 
 # Local
+from caikit.core.data_model.base import DataBase
 from caikit.runtime.interceptors.caikit_runtime_server_wrapper import (
     CaikitRuntimeServerWrapper,
 )
@@ -47,9 +48,8 @@ def test_rpc_is_passed_to_predict_handlers(sample_inference_service, open_port):
         client = sample_inference_service.stub_class(
             grpc.insecure_channel(f"localhost:{open_port}")
         )
-        _ = client.SampleTaskPredict(
-            sample_inference_service.messages.SampleTaskRequest(), timeout=3
-        )
+        predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+        _ = client.SampleTaskPredict(predict_class().to_proto(), timeout=3)
         assert len(calls) == 1
         assert isinstance(calls[0], TaskPredictRPC)
         assert calls[0].name == "SampleTaskPredict"
