@@ -25,6 +25,7 @@ import requests
 
 # Local
 from caikit.config.config import get_config
+from caikit.core.data_model.base import DataBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingStatusResponse,
@@ -48,6 +49,11 @@ if __name__ == "__main__":
     sys.path.append(
         os.path.join(Path(__file__).parent.parent.parent, "tests/fixtures"),
     )
+    # Local
+    # pylint: disable=import-error
+    from sample_lib.data_model import (
+        SampleInputType,  # pylint: disable=import-outside-toplevel
+    )
 
     model_id = "my_model"
 
@@ -69,13 +75,21 @@ if __name__ == "__main__":
         inference_stub = inference_service.stub_class(channel)
 
         # send train request
-        request = train_service.messages.SampleTaskSampleModuleTrainRequest(
-            model_name=model_id,
-            parameters=train_service.messages.SampleTaskSampleModuleTrainParameters(
-                training_data={"file": {"filename": "protos/sample.json"}}
-            ),
+        stream_type = (
+            caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
         )
-        response = training_stub.SampleTaskSampleModuleTrain(request)
+        training_data = stream_type(
+            file=stream_type.File(filename="protos/sample.json")
+        )
+        train_class = DataBase.get_class_for_name("SampleTaskSampleModuleTrainRequest")
+        train_request_params_class = DataBase.get_class_for_name(
+            "SampleTaskSampleModuleTrainParameters"
+        )
+        request = train_class(
+            model_name=model_id,
+            parameters=train_request_params_class(training_data=training_data),
+        )
+        response = training_stub.SampleTaskSampleModuleTrain(request.to_proto())
         print("*" * 30)
         print("RESPONSE from TRAIN gRPC\n")
         print(response)
@@ -98,11 +112,12 @@ if __name__ == "__main__":
         sleep(1)
 
         # send inference request on trained model
-        request = inference_service.messages.SampleTaskRequest(
-            sample_input={"name": "blah"}
-        )
+        predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+        sample_input = SampleInputType(name="world")
+
+        request = predict_class(sample_input=sample_input)
         response = inference_stub.SampleTaskPredict(
-            request, metadata=[("mm-model-id", model_id)], timeout=1
+            request.to_proto(), metadata=[("mm-model-id", model_id)], timeout=1
         )
         print("*" * 30)
         print("RESPONSE from INFERENCE gRPC\n")
@@ -115,7 +130,7 @@ if __name__ == "__main__":
         # For now this assumes you have the model trained using the gRPC steps above
         port = 8080
         # Run inference for sample text
-        payload = {"inputs": {"name": "blah"}}
+        payload = {"inputs": {"name": "world"}}
         response = requests.post(
             f"http://localhost:{port}/api/v1/{model_id}/task/sample",
             json=payload,
