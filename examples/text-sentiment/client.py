@@ -21,8 +21,8 @@ import requests
 
 # Local
 from caikit.config.config import get_config
-from caikit.core.data_model.base import DataBase
 from caikit.runtime.service_factory import ServicePackageFactory
+from text_sentiment.runtime_model import HuggingFaceSentimentModule
 import caikit
 
 if __name__ == "__main__":
@@ -51,10 +51,9 @@ if __name__ == "__main__":
 
         # Run inference for two sample prompts
         for text in ["I am not feeling well today!", "Today is a nice sunny day"]:
-            predict_class = DataBase.get_class_for_name(
-                "HuggingFaceSentimentTaskRequest"
-            )
-            request = predict_class(text_input=text).to_proto()
+            request = HuggingFaceSentimentModule.TASK_CLASS.UNARY_REQUEST_DATA_MODEL(
+                text_input=text
+            ).to_proto()
             response = client_stub.HuggingFaceSentimentTaskPredict(
                 request, metadata=[("mm-model-id", model_id)], timeout=1
             )

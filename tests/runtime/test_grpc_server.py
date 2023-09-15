@@ -212,8 +212,11 @@ def test_predict_sample_module_ok_response(
 ):
     """Test RPC CaikitRuntime.SampleTaskPredict successful response"""
     stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
-    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
-    predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
+    predict_request = (
+        sample_lib.modules.SampleModule.TASK_CLASS.UNARY_REQUEST_DATA_MODEL(
+            sample_input=HAPPY_PATH_INPUT_DM
+        ).to_proto()
+    )
 
     actual_response = stub.SampleTaskPredict(
         predict_request, metadata=[("mm-model-id", sample_task_model_id)]
@@ -397,15 +400,9 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
         )
     )
     model_name = random_test_id()
-    train_request_class = DataBase.get_class_for_name(
-        "SampleTaskSampleModuleTrainRequest"
-    )
-    train_request_params_class = DataBase.get_class_for_name(
-        "SampleTaskSampleModuleTrainParameters"
-    )
-    train_request = train_request_class(
+    train_request = sample_lib.modules.SampleModule.TRAIN_REQUEST_DATA_MODEL(
         model_name=model_name,
-        parameters=train_request_params_class(
+        parameters=sample_lib.modules.SampleModule.TRAINING_PARAMETERS_DATA_MODEL(
             training_data=training_data,
             union_list=["str", "sequence"],
         ),

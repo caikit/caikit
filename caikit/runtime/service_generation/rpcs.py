@@ -63,7 +63,21 @@ class CaikitRPCBase(abc.ABC):
 
     def create_request_data_model(self, package_name: str) -> Type[DataBase]:
         """Dynamically create data model for this RPC's request message"""
-        return self.request.create_data_model(package_name)
+        request_data_model = self.request.create_data_model(package_name)
+        if isinstance(self, TaskPredictRPC):
+            # add the DM to the task class for inference rpcs
+            if self._input_streaming and self._output_streaming:
+                setattr(self.task, "BIDI_REQUEST_DATA_MODEL", request_data_model)
+            elif self._output_streaming:
+                setattr(self.task, "SERVER_REQUEST_DATA_MODEL", request_data_model)
+            elif self._input_streaming:
+                setattr(self.task, "CLIENT_REQUEST_DATA_MODEL", request_data_model)
+            else:
+                setattr(self.task, "UNARY_REQUEST_DATA_MODEL", request_data_model)
+        if isinstance(self, ModuleClassTrainRPC):
+            # add the DM to the module class directly for train rpcs
+            setattr(self.clz, "TRAIN_REQUEST_DATA_MODEL", request_data_model)
+        return request_data_model
 
     def create_rpc_json(self, package_name: str) -> Dict:
         """Return json snippet for the service definition of this RPC"""
@@ -124,6 +138,8 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         request data model"""
         # Build the inner request data model
         inner_request_data_model = self._inner_request.create_data_model(package_name)
+
+        setattr(self.clz, "TRAINING_PARAMETERS_DATA_MODEL", inner_request_data_model)
         # Insert the new type into the outer request
         for triple_index, _ in enumerate(self._req.triples):
             if self._req.triples[triple_index][1] == "parameters":
