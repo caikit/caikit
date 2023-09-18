@@ -7,4 +7,5 @@ from .sample_task import (
     InnerModule,
     SampleModule,
     SamplePrimitiveModule,
+    StreamingModule,
 )

@@ -31,6 +31,7 @@ import alog
 # Local
 from caikit import get_config
 from caikit.core import LocalBackend, ModuleBase, registries
+from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import _AUTO_GEN_PROTO_CLASSES
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
@@ -266,3 +267,38 @@ class ServicePackageFactory:
             excluded_modules,
         )
         return clean_modules
+
+
+def get_request(
+    module_class: Type[ModuleBase],
+    input_streaming: bool = False,
+    output_streaming: bool = False,
+) -> Type[DataBase]:
+    """Helper function to return the request DataModel for the Module Class"""
+    if input_streaming and output_streaming:
+        request_class_name = f"BidiStreaming{module_class.TASK_CLASS.__name__}Request"
+    elif input_streaming:
+        request_class_name = f"ClientStreaming{module_class.TASK_CLASS.__name__}Request"
+    elif output_streaming:
+        request_class_name = f"ServerStreaming{module_class.TASK_CLASS.__name__}Request"
+    else:
+        request_class_name = f"{module_class.TASK_CLASS.__name__}Request"
+    return DataBase.get_class_for_name(request_class_name)
+
+
+def get_train_request(module_class: Type[ModuleBase]) -> Type[DataBase]:
+    """Helper function to return the train request DataModel for the Module Class"""
+    request_class_name = (
+        f"{module_class.TASK_CLASS.__name__}{module_class.__name__}TrainRequest"
+    )
+    print(request_class_name)
+    return DataBase.get_class_for_name(request_class_name)
+
+
+def get_train_params(module_class: Type[ModuleBase]) -> Type[DataBase]:
+    """Helper function to return the train parameters DataModel for the Module Class"""
+    request_class_name = (
+        f"{module_class.TASK_CLASS.__name__}{module_class.__name__}TrainParameters"
+    )
+    print(request_class_name)
+    return DataBase.get_class_for_name(request_class_name)

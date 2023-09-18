@@ -3,7 +3,14 @@ import os
 
 # Local
 from . import data_model, modules
-from .modules import InnerModule, OtherModule, SampleModule, SamplePrimitiveModule
+from .modules import (
+    CompositeModule,
+    InnerModule,
+    OtherModule,
+    SampleModule,
+    SamplePrimitiveModule,
+    StreamingModule,
+)
 from caikit.config import configure
 
 # Run configure for sample_lib configuration
