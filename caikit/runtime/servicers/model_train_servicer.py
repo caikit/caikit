@@ -25,6 +25,7 @@ import grpc
 import alog
 
 # Local
+from caikit import get_config
 from caikit.interfaces.common.data_model.stream_sources import (
     Directory,
     File,
@@ -98,13 +99,25 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
                 train_message_request.parameters, request.training_input_dir
             )
 
-            # make the train call
-            log.debug("Training output dir: %s", request.training_output_dir)
+            # Figure out the right training output dir to use for this request.
+            # Model Train does not allow this value in the request to be set by
+            # the inbound request to the frontend of MT, so the
+            # request.training_output_dir value will always point to a private
+            # emptyDir mount. In the case where the user wants to save to some
+            # other path (e.g. a mounted PVC), the user must set that in the
+            # global config as runtime.training.output_dir. This will cause all
+            # requests to be saved there and therefore S3 uploads will not be
+            # done.
+            output_dir = (
+                get_config().runtime.training.output_dir or request.training_output_dir
+            )
 
+            # make the train call
+            log.debug("Training output dir: %s", output_dir)
             training_response = self._gts.run_training_job(
                 request=train_message_request,
                 module=train_module,
-                training_output_dir=request.training_output_dir,
+                training_output_dir=output_dir,
                 context=context,
                 wait=True,
                 # TODO: This usage of the server will sit behind Model Train and
