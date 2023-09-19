@@ -54,9 +54,6 @@ class GlobalTrainServicer:
     def __init__(self, training_service: ServicePackage):
         self._training_service = training_service
         self._model_manager = ModelManager.get_instance()
-        caikit_config = get_config()
-        self.training_output_dir = caikit_config.runtime.training.output_dir
-        self.save_with_id = caikit_config.runtime.training.save_with_id
 
         # TODO: think about if we really want to do this here:
         self.cdm = get_data_model()
@@ -69,7 +66,7 @@ class GlobalTrainServicer:
         # Or grab the `libraries` off of the `training_service` instead of config here?
         # Duplicate code in global_train_servicer
         # pylint: disable=duplicate-code
-        self.library = clean_lib_names(caikit_config.runtime.library)[0]
+        self.library = clean_lib_names(get_config().runtime.library)[0]
         try:
             lib_version = version(self.library)
         except Exception:  # pylint: disable=broad-exception-caught
@@ -82,6 +79,14 @@ class GlobalTrainServicer:
             lib_version,
         )
         super()
+
+    @property
+    def training_output_dir(self) -> str:
+        return get_config().runtime.training.output_dir
+
+    @property
+    def save_with_id(self) -> str:
+        return get_config().runtime.training.save_with_id
 
     def Train(
         self,

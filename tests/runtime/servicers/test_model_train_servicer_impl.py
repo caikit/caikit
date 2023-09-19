@@ -186,10 +186,14 @@ def test_model_train_validation_error_raises(sample_model_train_servicer, output
 #####################################################################
 # Normal tests
 @pytest.mark.parametrize("output_in_config", (True, False))
+@pytest.mark.parametrize("save_with_id", (True, False))
+@pytest.mark.parametrize("use_custom_id", (True, False))
 def test_model_train_sample_widget(
     sample_model_train_servicer,
     output_dir,
     output_in_config,
+    save_with_id,
+    use_custom_id,
 ):
     """This test tests end-to-end training. It includes verifying that the model
     is saved in the right place. The place where the model is saved comes from:
@@ -200,6 +204,8 @@ def test_model_train_sample_widget(
     IN THAT ORDER!
     """
     training_id = str(uuid.uuid4())
+    custom_id = f"custom-{uuid.uuid4()}" if use_custom_id else None
+    model_name = "abc"
 
     # If getting the output path from config, use a bogus dir in the request to
     # ensure that the config is preferred
@@ -212,17 +218,24 @@ def test_model_train_sample_widget(
         req_output_dir = output_dir
 
     with temp_config(
-        {"runtime": {"training": {"output_dir": config_output_dir}}}, "merge"
+        {
+            "runtime": {
+                "training": {
+                    "output_dir": config_output_dir,
+                    "save_with_id": save_with_id,
+                },
+            },
+        },
+        "merge",
     ):
-        training_output_dir = os.path.join(output_dir, training_id)
         model_train_request = process_pb2.ProcessRequest(
             trainingID=training_id,
-            customTrainingID=str(uuid.uuid4()),
+            customTrainingID=custom_id,
             request_dict={
                 "train_module": "00110203-0405-0607-0809-0a0b02dd0e0f",
                 "training_params": json.dumps(
                     {
-                        "model_name": "abc",
+                        "model_name": model_name,
                         "parameters": {
                             "training_data": {
                                 "jsondata": {
@@ -244,16 +257,23 @@ def test_model_train_sample_widget(
         training_response = sample_model_train_servicer.Run(
             model_train_request, context
         )
-        assert os.path.isdir(training_output_dir)
+        if save_with_id:
+            if use_custom_id:
+                model_save_path = os.path.join(output_dir, custom_id, model_name)
+            else:
+                model_save_path = os.path.join(output_dir, training_id, model_name)
+        else:
+            model_save_path = os.path.join(output_dir, model_name)
+        assert os.path.isdir(model_save_path)
 
     # Make sure that the request completed synchronously
-    model_future = MODEL_MANAGER.get_model_future(training_response.trainingID)
+    model_future = MODEL_MANAGER.get_model_future(custom_id or training_id)
     assert model_future.get_info().status == TrainingStatus.COMPLETED
 
     # Make sure that the return object looks right
     assert isinstance(training_response, process_pb2.ProcessResponse)
     assert training_response == process_pb2.ProcessResponse(
-        trainingID=model_train_request.trainingID,
+        trainingID=training_id,
         customTrainingID=model_train_request.customTrainingID,
     )
 
@@ -277,7 +297,6 @@ def test_files_from_training_input_dir_are_used(
 
     model_train_request = process_pb2.ProcessRequest(
         trainingID=training_id,
-        customTrainingID=str(uuid.uuid4()),
         request_dict={
             "train_module": "00110203-0405-0607-0809-0a0b02dd0e0f",
             "training_params": json.dumps(

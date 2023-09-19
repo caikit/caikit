@@ -125,12 +125,12 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
                 #   external_training_id override. If that is ever not the case
                 #   this will be brokenly passing that kwarg through to the
                 #   module's train function.
-                external_training_id=request.trainingID,
+                external_training_id=request.customTrainingID or request.trainingID,
             )
             log.debug("<RUN00837184D>", "training_response: %s", training_response)
             # return response
             process_response = process_pb2.ProcessResponse(
-                trainingID=training_response.training_id,
+                trainingID=request.trainingID,
                 customTrainingID=request.customTrainingID,
             )
             return process_response

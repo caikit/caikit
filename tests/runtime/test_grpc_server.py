@@ -122,7 +122,6 @@ def test_model_train(runtime_grpc_server):
     model_name = "abc"
     model_train_request = process_pb2.ProcessRequest(
         trainingID=training_id,
-        customTrainingID=str(uuid.uuid4()),
         request_dict={
             "train_module": "00110203-0405-0607-0809-0a0b02dd0e0f",
             "training_params": json.dumps(
