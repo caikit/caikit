@@ -4,6 +4,7 @@ from typing import List
 import json
 import os
 import pickle
+import shutil
 import tempfile
 
 # Third Party
@@ -334,6 +335,23 @@ def test_make_data_stream_source_jsonlfile(sample_train_service, sample_jsonl_fi
     assert isinstance(data_stream, DataStream)
 
     validate_data_stream(data_stream, 2, SampleTrainingType)
+
+
+def test_make_data_stream_source_from_file_with_no_extension(
+    sample_train_service, sample_json_file, sample_jsonl_file, sample_csv_file, tmp_path
+):
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    for file in [sample_json_file, sample_jsonl_file, sample_csv_file]:
+        no_extension_filename, _ = os.path.splitext(os.path.join(str(tmp_path), file))
+        shutil.copyfile(file, no_extension_filename)
+
+        ds = stream_type(file=stream_type.File(filename=no_extension_filename))
+        assert isinstance(ds, DataStreamSourceBase)
+
+        data_stream = ds.to_data_stream()
+        assert isinstance(data_stream, DataStream)
+
+        validate_data_stream(data_stream, 2, SampleTrainingType)
 
 
 #################

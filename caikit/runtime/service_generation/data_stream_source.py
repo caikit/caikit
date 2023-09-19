@@ -167,8 +167,11 @@ class DataStreamSourceBase(DataStream):
         """Create a data stream object by deducing file extension
         and reading the file accordingly"""
 
-        full_fname = cls._get_resolved_source_path(fname)
         _, extension = os.path.splitext(fname)
+        if not extension:
+            return cls._load_from_file_without_extension(fname)
+
+        full_fname = cls._get_resolved_source_path(fname)
         log.debug3("Pulling data stream from %s file [%s]", extension, full_fname)
 
         if not fname or not os.path.isfile(full_fname):
@@ -185,6 +188,34 @@ class DataStreamSourceBase(DataStream):
         raise CaikitRuntimeException(
             grpc.StatusCode.INVALID_ARGUMENT,
             f"Extension not supported! {extension}",
+        )
+
+    @classmethod
+    def _load_from_file_without_extension(cls, fname) -> DataStream:
+        """Similar to _create_data_stream_from_file, but we don't have a file extension to work
+        with. Attempt to create a data stream using one of a few well-known formats"""
+        full_fname = cls._get_resolved_source_path(fname)
+        log.debug3("Attempting to guess file type for file: %s", full_fname)
+        for factory_method in (
+            DataStream.from_json_array,
+            DataStream.from_jsonl,
+            DataStream.from_header_csv,
+        ):
+            try:
+                factory_method(full_fname).map(cls._to_element_type).peek()
+                return factory_method(full_fname).map(cls._to_element_type)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                # Catch any exception: it's hard to know which all could be thrown by any of the
+                # formatters
+                log.debug3(
+                    "Failed to load file %s using data stream factory method %s: %s",
+                    full_fname,
+                    factory_method,
+                    e
+                )
+        raise CaikitRuntimeException(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            f"Could not load input file with no extension: {full_fname}",
         )
 
     @classmethod
