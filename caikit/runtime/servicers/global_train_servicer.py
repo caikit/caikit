@@ -167,7 +167,7 @@ class GlobalTrainServicer:
         self,
         request: ProtoMessageType,
         module: Type[ModuleBase],
-        training_output_dir: str,
+        training_output_dir: Optional[str] = None,
         *,
         context: Optional[ServicerContext] = None,
         wait: bool = False,
@@ -179,8 +179,9 @@ class GlobalTrainServicer:
         Args:
             request (ProtoMessageType): The message that stimulated this request
             module (Type[ModuleBase]): The module class to train
-            training_output_dir (str): The base directory where trained models
-                should be saved
+            training_output_dir (Optional[str]): The base directory where
+                the trained model should be saved, falling back to the
+                configured output dir if not given.
 
         Kwargs:
             context (Optional[ServicerContext]): The grpc context for the

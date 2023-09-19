@@ -185,38 +185,66 @@ def test_model_train_validation_error_raises(sample_model_train_servicer, output
 
 #####################################################################
 # Normal tests
-def test_model_train_sample_widget(sample_model_train_servicer, output_dir):
+@pytest.mark.parametrize("output_in_config", (True, False))
+def test_model_train_sample_widget(
+    sample_model_train_servicer,
+    output_dir,
+    output_in_config,
+):
+    """This test tests end-to-end training. It includes verifying that the model
+    is saved in the right place. The place where the model is saved comes from:
+
+    1. get_config().runtime.training.output_dir
+    2. request.training_output_dir
+
+    IN THAT ORDER!
+    """
     training_id = str(uuid.uuid4())
 
-    training_output_dir = os.path.join(output_dir, training_id)
-    model_train_request = process_pb2.ProcessRequest(
-        trainingID=training_id,
-        customTrainingID=str(uuid.uuid4()),
-        request_dict={
-            "train_module": "00110203-0405-0607-0809-0a0b02dd0e0f",
-            "training_params": json.dumps(
-                {
-                    "model_name": "abc",
-                    "parameters": {
-                        "training_data": {
-                            "jsondata": {
-                                "data": [
-                                    sample_lib.data_model.SampleTrainingType(
-                                        number=1
-                                    ).to_dict()
-                                ]
+    # If getting the output path from config, use a bogus dir in the request to
+    # ensure that the config is preferred
+    if output_in_config:
+        config_output_dir = output_dir
+        req_output_dir = "/some/bad/path"
+    # Otherwise the config must be set to an empty string so the request is used
+    else:
+        config_output_dir = ""
+        req_output_dir = output_dir
+
+    with temp_config(
+        {"runtime": {"training": {"output_dir": config_output_dir}}}, "merge"
+    ):
+        training_output_dir = os.path.join(output_dir, training_id)
+        model_train_request = process_pb2.ProcessRequest(
+            trainingID=training_id,
+            customTrainingID=str(uuid.uuid4()),
+            request_dict={
+                "train_module": "00110203-0405-0607-0809-0a0b02dd0e0f",
+                "training_params": json.dumps(
+                    {
+                        "model_name": "abc",
+                        "parameters": {
+                            "training_data": {
+                                "jsondata": {
+                                    "data": [
+                                        sample_lib.data_model.SampleTrainingType(
+                                            number=1
+                                        ).to_dict()
+                                    ]
+                                },
                             },
                         },
-                    },
-                }
-            ),
-        },
-        training_input_dir="training_input_dir",
-        training_output_dir=training_output_dir,
-    )
-    context = Fixtures.build_context("test-any-unresponsive-model")
-    training_response = sample_model_train_servicer.Run(model_train_request, context)
-    assert os.path.isdir(training_output_dir)
+                    }
+                ),
+            },
+            training_input_dir="training_input_dir",
+            training_output_dir=req_output_dir,
+        )
+        context = Fixtures.build_context("test-any-unresponsive-model")
+        training_response = sample_model_train_servicer.Run(
+            model_train_request, context
+        )
+        assert os.path.isdir(training_output_dir)
 
     # Make sure that the request completed synchronously
     model_future = MODEL_MANAGER.get_model_future(training_response.trainingID)
