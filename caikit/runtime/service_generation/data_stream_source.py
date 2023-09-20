@@ -214,6 +214,7 @@ class DataStreamSourceBase(DataStream):
                     full_fname,
                     factory_method,
                     e,
+                    exc_info=True,
                 )
         raise CaikitRuntimeException(
             grpc.StatusCode.INVALID_ARGUMENT,
