@@ -202,8 +202,10 @@ class DataStreamSourceBase(DataStream):
             DataStream.from_header_csv,
         ):
             try:
-                factory_method(full_fname).map(cls._to_element_type).peek()
-                return factory_method(full_fname).map(cls._to_element_type)
+                stream = factory_method(full_fname).map(cls._to_element_type)
+                # Iterate once and assume we have the correct file type if this works
+                stream.peek()
+                return stream
             except Exception as e:  # pylint: disable=broad-exception-caught
                 # Catch any exception: it's hard to know which all could be thrown by any of the
                 # formatters
@@ -211,7 +213,7 @@ class DataStreamSourceBase(DataStream):
                     "Failed to load file %s using data stream factory method %s: %s",
                     full_fname,
                     factory_method,
-                    e
+                    e,
                 )
         raise CaikitRuntimeException(
             grpc.StatusCode.INVALID_ARGUMENT,
