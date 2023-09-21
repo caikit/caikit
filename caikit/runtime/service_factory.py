@@ -283,6 +283,7 @@ def get_request(
         request_class_name = f"ServerStreaming{module_class.TASK_CLASS.__name__}Request"
     else:
         request_class_name = f"{module_class.TASK_CLASS.__name__}Request"
+    log.debug("Request class name %s for module %s.", request_class_name, module_class)
     return DataBase.get_class_for_name(request_class_name)
 
 
@@ -291,7 +292,7 @@ def get_train_request(module_class: Type[ModuleBase]) -> Type[DataBase]:
     request_class_name = (
         f"{module_class.TASK_CLASS.__name__}{module_class.__name__}TrainRequest"
     )
-    print(request_class_name)
+    log.debug("Request class name %s for module %s.", request_class_name, module_class)
     return DataBase.get_class_for_name(request_class_name)
 
 
@@ -300,5 +301,5 @@ def get_train_params(module_class: Type[ModuleBase]) -> Type[DataBase]:
     request_class_name = (
         f"{module_class.TASK_CLASS.__name__}{module_class.__name__}TrainParameters"
     )
-    print(request_class_name)
+    log.debug("Request class name %s for module %s.", request_class_name, module_class)
     return DataBase.get_class_for_name(request_class_name)
