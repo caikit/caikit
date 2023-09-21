@@ -302,6 +302,11 @@ def get_inference_request(
 
 def get_train_request(module_class: Type[ModuleBase]) -> Type[DataBase]:
     """Helper function to return the train request DataModel for the Module Class"""
+    error.subclass_check(
+        "<SVC32285724E>",
+        module_class,
+        ModuleBase,
+    )
     request_class_name = (
         f"{module_class.TASK_CLASS.__name__}{module_class.__name__}TrainRequest"
     )
@@ -311,6 +316,11 @@ def get_train_request(module_class: Type[ModuleBase]) -> Type[DataBase]:
 
 def get_train_params(module_class: Type[ModuleBase]) -> Type[DataBase]:
     """Helper function to return the train parameters DataModel for the Module Class"""
+    error.subclass_check(
+        "<SVC98435724E>",
+        module_class,
+        ModuleBase,
+    )
     request_class_name = (
         f"{module_class.TASK_CLASS.__name__}{module_class.__name__}TrainParameters"
     )

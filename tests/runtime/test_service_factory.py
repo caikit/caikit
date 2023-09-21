@@ -407,11 +407,23 @@ def test_get_inference_request(runtime_grpc_server):
     )
 
 
+def test_get_train_request_throws_wrong_type(runtime_grpc_server):
+    with pytest.raises(TypeError) as e:
+        get_train_request("not_a_module")
+    assert "subclass check failed" in e.value.args[0]
+
+
 def test_get_train_request(runtime_grpc_server):
     assert (
         get_train_request(SampleModule).__name__ == "SampleTaskSampleModuleTrainRequest"
     )
     assert get_train_request(OtherModule).__name__ == "OtherTaskOtherModuleTrainRequest"
+
+
+def test_get_train_params_throws_wrong_type(runtime_grpc_server):
+    with pytest.raises(TypeError) as e:
+        get_train_params("not_a_module")
+    assert "subclass check failed" in e.value.args[0]
 
 
 def test_get_train_params(runtime_grpc_server):
