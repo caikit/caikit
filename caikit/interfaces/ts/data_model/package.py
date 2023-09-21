@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Local
-from ....core.data_model import CAIKIT_DATA_MODEL
+from caikit.core.data_model import CAIKIT_DATA_MODEL
 
 # Shared package name constant for all TS data model objects
 TS_PACKAGE = f"{CAIKIT_DATA_MODEL}.timeseries"

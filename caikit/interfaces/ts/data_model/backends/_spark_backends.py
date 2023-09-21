@@ -34,13 +34,13 @@ import pyspark
 import alog
 
 # Local
+from .....core.data_model import ProducerId
+from .....core.exceptions import error_handler
+from .._single_timeseries import SingleTimeSeries
 from .base import MultiTimeSeriesBackendBase, TimeSeriesBackendBase
 from .dfcache import EnsureCached
 from .pandas_backends import PandasMultiTimeSeriesBackend, PandasTimeSeriesBackend
 from .util import mock_pd_groupby
-from caikit.core.data_model import ProducerId
-from caikit.core.exceptions import error_handler
-from caikit.interfaces.ts.data_model._single_timeseries import SingleTimeSeries
 import caikit.interfaces.ts.data_model as dm
 
 log = alog.use_channel("SPBCK")

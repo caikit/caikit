@@ -25,12 +25,13 @@ import json
 from pandas import RangeIndex
 import numpy as np
 import pandas as pd
-import setuptools
 
 # First Party
 import alog
 
 # Local
+from .....core.data_model import DataBase, ProducerId
+from .....core.exceptions import error_handler
 from .. import time_types
 from ..toolkit.optional_dependencies import HAVE_PYSPARK
 from .base import (
@@ -40,8 +41,6 @@ from .base import (
     UncachedBackendMixin,
 )
 from .util import iteritems_workaround, pd_timestamp_to_seconds
-from caikit.core.data_model import DataBase, ProducerId
-from caikit.core.exceptions import error_handler
 import caikit.interfaces.ts.data_model as dm
 
 log = alog.use_channel("PDBCK")

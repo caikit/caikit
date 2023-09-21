@@ -36,9 +36,9 @@ from py_to_proto.dataclass_to_proto import FieldNumber, OneofField
 import alog
 
 # Local
+from ....core import DataObjectBase
+from ....core.data_model import dataobject
 from .package import TS_PACKAGE
-from caikit.core import DataObjectBase
-from caikit.core.data_model import dataobject
 
 log = alog.use_channel("TSDM")
 

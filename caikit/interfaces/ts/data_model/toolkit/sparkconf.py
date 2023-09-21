@@ -15,8 +15,6 @@
 
 # Standard
 from typing import Union
-import os
-import pathlib
 import socket
 
 # Local

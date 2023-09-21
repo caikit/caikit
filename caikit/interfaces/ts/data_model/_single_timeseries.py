@@ -37,17 +37,16 @@ from py_to_proto.dataclass_to_proto import FieldNumber, OneofField
 import alog
 
 # Local
-from ..data_model.time_types import PeriodicTimeSequence, PointTimeSequence, ValueSequence
-from ..data_model.toolkit.optional_dependencies import HAVE_PYSPARK, pyspark
-from ..data_model.toolkit.sparkconf import sparkconf_local
-from . import time_types
+from ....core import DataObjectBase
+from ....core.data_model import dataobject
+from ....core.exceptions import error_handler
 from .backends.base import TimeSeriesBackendBase
 from .backends.pandas_backends import PandasTimeSeriesBackend
 from .backends.util import pd_timestamp_to_seconds
 from .package import TS_PACKAGE
-from caikit.core import DataObjectBase
-from caikit.core.data_model import dataobject
-from caikit.core.exceptions import error_handler
+from .time_types import PeriodicTimeSequence, PointTimeSequence, Seconds, ValueSequence
+from .toolkit.optional_dependencies import HAVE_PYSPARK, pyspark
+from .toolkit.sparkconf import sparkconf_local
 
 log = alog.use_channel("TSDM")
 error = error_handler.get(log)
@@ -254,7 +253,7 @@ class SingleTimeSeries(DataObjectBase):
                 )
 
                 # If the type needs conversion to datetimes, do so
-                if time_point_type == time_types.Seconds:
+                if time_point_type == Seconds:
                     time_point_values = [val.as_datetime() for val in time_point_values]
 
                 df_kwargs["index"] = time_point_values

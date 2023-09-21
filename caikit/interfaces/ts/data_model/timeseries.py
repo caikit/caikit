@@ -23,16 +23,16 @@ import pandas as pd
 import alog
 
 # Local
-from ..data_model._single_timeseries import SingleTimeSeries
-from ..data_model.backends.base import MultiTimeSeriesBackendBase
-from ..data_model.backends.pandas_backends import PandasMultiTimeSeriesBackend
-from ..data_model.backends.util import strip_periodic
-from ..data_model.toolkit.optional_dependencies import HAVE_PYSPARK, pyspark
-from ..data_model.toolkit.sparkconf import sparkconf_local
+from ....core import DataObjectBase
+from ....core.data_model import ProducerId, dataobject
+from ....core.exceptions import error_handler
+from ._single_timeseries import SingleTimeSeries
+from .backends.base import MultiTimeSeriesBackendBase
+from .backends.pandas_backends import PandasMultiTimeSeriesBackend
+from .backends.util import strip_periodic
 from .package import TS_PACKAGE
-from caikit.core import DataObjectBase
-from caikit.core.data_model import ProducerId, dataobject
-from caikit.core.exceptions import error_handler
+from .toolkit.optional_dependencies import HAVE_PYSPARK, pyspark
+from .toolkit.sparkconf import sparkconf_local
 
 log = alog.use_channel("TSDM")
 error = error_handler.get(log)

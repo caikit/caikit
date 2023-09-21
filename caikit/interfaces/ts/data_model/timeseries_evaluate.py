@@ -32,10 +32,10 @@ from py_to_proto.dataclass_to_proto import FieldNumber, OneofField
 import alog
 
 # Local
+from ....core import DataObjectBase
+from ....core.data_model import ProducerId, dataobject
+from ....core.exceptions import error_handler
 from .package import TS_PACKAGE
-from caikit.core import DataObjectBase
-from caikit.core.data_model import ProducerId, dataobject
-from caikit.core.exceptions import error_handler
 
 log = alog.use_channel("TSEDM")
 error = error_handler.get(log)

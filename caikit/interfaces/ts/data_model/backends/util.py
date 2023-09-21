@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 # Local
-from ...data_model.toolkit.optional_dependencies import HAVE_PYSPARK, pyspark
+from ..toolkit.optional_dependencies import HAVE_PYSPARK, pyspark
 
 
 def mock_pd_groupby(a_df_like, by: List[str], return_pandas_api=False):
