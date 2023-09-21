@@ -15,7 +15,7 @@
 # Standard
 from enum import Enum
 from types import ModuleType
-from typing import Callable, Dict, Set, Type
+from typing import Callable, Dict, Set, Type, Union
 import dataclasses
 
 # Third Party
@@ -33,6 +33,7 @@ from caikit import get_config
 from caikit.core import LocalBackend, ModuleBase, registries
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import _AUTO_GEN_PROTO_CLASSES
+from caikit.core.task import TaskBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingStatusResponse,
@@ -270,20 +271,24 @@ class ServicePackageFactory:
 
 
 def get_inference_request(
-    module_class: Type[ModuleBase],
+    class_name: Type[Union[ModuleBase, TaskBase]],
     input_streaming: bool = False,
     output_streaming: bool = False,
 ) -> Type[DataBase]:
-    """Helper function to return the request DataModel for the Module Class"""
+    """Helper function to return the inference request DataModel for the Module or Task Class"""
+    task_class = (
+        class_name.TASK_CLASS if hasattr(class_name, "TASK_CLASS") else class_name
+    )
+
     if input_streaming and output_streaming:
-        request_class_name = f"BidiStreaming{module_class.TASK_CLASS.__name__}Request"
+        request_class_name = f"BidiStreaming{task_class.__name__}Request"
     elif input_streaming:
-        request_class_name = f"ClientStreaming{module_class.TASK_CLASS.__name__}Request"
+        request_class_name = f"ClientStreaming{task_class.__name__}Request"
     elif output_streaming:
-        request_class_name = f"ServerStreaming{module_class.TASK_CLASS.__name__}Request"
+        request_class_name = f"ServerStreaming{task_class.__name__}Request"
     else:
-        request_class_name = f"{module_class.TASK_CLASS.__name__}Request"
-    log.debug("Request class name %s for module %s.", request_class_name, module_class)
+        request_class_name = f"{task_class.__name__}Request"
+    log.debug("Request class name %s for class %s.", request_class_name, class_name)
     return DataBase.get_class_for_name(request_class_name)
 
 
