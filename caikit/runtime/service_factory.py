@@ -285,7 +285,7 @@ def get_inference_request(
         TaskBase,
     )
     task_class = (
-        class_name.TASK_CLASS if hasattr(class_name, "TASK_CLASS") else class_name
+        class_name.TASK_CLASS if issubclass(class_name, ModuleBase) else class_name
     )
 
     if input_streaming and output_streaming:
