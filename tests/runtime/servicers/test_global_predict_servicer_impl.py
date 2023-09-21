@@ -113,7 +113,7 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs(
     """Simple test that our SampleModule's bidirectional stream inference fn is supported"""
 
     predict_class = get_inference_request(
-        SampleModule, input_streaming=True, output_streaming=True
+        SampleModule.TASK_CLASS, input_streaming=True, output_streaming=True
     )
 
     def req_iterator() -> Iterator[predict_class]:
@@ -143,7 +143,7 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs_with_multiple_stre
     mock_manager.retrieve_model.return_value = GeoStreamingModule()
 
     predict_class = get_inference_request(
-        GeoStreamingModule, input_streaming=True, output_streaming=True
+        GeoStreamingModule.TASK_CLASS, input_streaming=True, output_streaming=True
     )
 
     def req_iterator() -> Iterator[predict_class]:
