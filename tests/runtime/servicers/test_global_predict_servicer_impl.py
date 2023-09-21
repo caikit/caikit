@@ -16,6 +16,7 @@ from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 # Local
+from caikit.runtime.service_factory import get_inference_request
 from sample_lib.modules.geospatial import GeoStreamingModule
 
 try:
@@ -57,7 +58,7 @@ def test_calling_predict_should_raise_if_module_raises(
 ):
     with pytest.raises(CaikitRuntimeException) as context:
         # SampleModules will raise a RuntimeError if the throw flag is set
-        predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+        predict_class = get_inference_request(SampleModule.TASK_CLASS)
         request = predict_class(sample_input=HAPPY_PATH_INPUT_DM, throw=True).to_proto()
         sample_predict_servicer.Predict(
             request,
@@ -77,7 +78,7 @@ def test_invalid_input_to_a_valid_caikit_core_class_method_raises(
     """Test that a caikit.core module that gets an unexpected input value errors in an expected way"""
     with pytest.raises(CaikitRuntimeException) as context:
         # SampleModules will raise a ValueError if the poison pill name is given
-        predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+        predict_class = get_inference_request(SampleModule.TASK_CLASS)
         request = predict_class(
             sample_input=SampleInputType(name=SampleModule.POISON_PILL_NAME)
         ).to_proto()
@@ -97,7 +98,7 @@ def test_global_predict_works_for_unary_rpcs(
     sample_task_unary_rpc,
 ):
     """Global predict of SampleTaskRequest returns a prediction"""
-    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+    predict_class = get_inference_request(SampleModule.TASK_CLASS)
     response = sample_predict_servicer.Predict(
         predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
         Fixtures.build_context(sample_task_model_id),
@@ -111,7 +112,9 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs(
 ):
     """Simple test that our SampleModule's bidirectional stream inference fn is supported"""
 
-    predict_class = DataBase.get_class_for_name("BidiStreamingSampleTaskRequest")
+    predict_class = get_inference_request(
+        SampleModule, input_streaming=True, output_streaming=True
+    )
 
     def req_iterator() -> Iterator[predict_class]:
         for i in range(100):
@@ -139,7 +142,9 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs_with_multiple_stre
     mock_manager = MagicMock()
     mock_manager.retrieve_model.return_value = GeoStreamingModule()
 
-    predict_class = DataBase.get_class_for_name("BidiStreamingGeoSpatialTaskRequest")
+    predict_class = get_inference_request(
+        GeoStreamingModule, input_streaming=True, output_streaming=True
+    )
 
     def req_iterator() -> Iterator[predict_class]:
         for i in range(100):
@@ -194,7 +199,7 @@ def test_global_predict_aborts_long_running_predicts(
     mock_manager.retrieve_model.return_value = dummy_model
 
     context = Fixtures.build_context("test-any-unresponsive-model")
-    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+    predict_class = get_inference_request(SampleModule.TASK_CLASS)
     predict_thread = threading.Thread(
         target=sample_predict_servicer.Predict,
         args=(
@@ -229,7 +234,7 @@ def test_metering_ignore_unsuccessful_calls(
         gps = GlobalPredictServicer(sample_inference_service)
         try:
             with patch.object(gps.rpc_meter, "update_metrics") as mock_update_func:
-                predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+                predict_class = get_inference_request(SampleModule.TASK_CLASS)
                 request = predict_class(
                     sample_input=HAPPY_PATH_INPUT_DM, throw=True
                 ).to_proto()
@@ -253,7 +258,7 @@ def test_metering_predict_rpc_counter(
         sample_predict_servicer = GlobalPredictServicer(sample_inference_service)
         try:
             # Making 20 requests
-            predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+            predict_class = get_inference_request(SampleModule.TASK_CLASS)
             for i in range(20):
                 sample_predict_servicer.Predict(
                     predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
@@ -294,7 +299,7 @@ def test_metering_write_to_metrics_file_twice(
         # need a new servicer to get a fresh new RPC meter
         sample_predict_servicer = GlobalPredictServicer(sample_inference_service)
         try:
-            predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+            predict_class = get_inference_request(SampleModule.TASK_CLASS)
             sample_predict_servicer.Predict(
                 predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
                 Fixtures.build_context(sample_task_model_id),
