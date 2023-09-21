@@ -35,7 +35,6 @@ import grpc
 import pytest
 
 # Local
-from caikit.core.data_model.base import DataBase
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException

@@ -27,7 +27,6 @@ import pytest
 # Local
 from caikit.config import get_config
 from caikit.core import MODEL_MANAGER
-from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.common.data_model.stream_sources import S3Path
 from caikit.runtime.service_factory import (
