@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
         # Run inference for two sample prompts
         for text in ["I am not feeling well today!", "Today is a nice sunny day"]:
-            request = get_inference_request(HuggingFaceSentimentModule)(
+            request = get_inference_request(HuggingFaceSentimentModule.TASK_CLASS)(
                 text_input=text
             ).to_proto()
             response = client_stub.HuggingFaceSentimentTaskPredict(
