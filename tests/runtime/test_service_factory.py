@@ -33,8 +33,7 @@ from caikit.runtime.service_factory import (
 )
 from sample_lib import SampleModule
 from sample_lib.data_model import SampleInputType, SampleOutputType
-from sample_lib.modules.other_task.other_implementation import OtherModule
-from sample_lib.modules.sample_task import ListModule
+from sample_lib.modules import ListModule, OtherModule
 from tests.conftest import temp_config
 from tests.core.helpers import MockBackend
 from tests.data_model_helpers import reset_global_protobuf_registry, temp_dpool
