@@ -269,7 +269,7 @@ class ServicePackageFactory:
         return clean_modules
 
 
-def get_request(
+def get_inference_request(
     module_class: Type[ModuleBase],
     input_streaming: bool = False,
     output_streaming: bool = False,

@@ -13,4 +13,4 @@
 # limitations under the License.
 
 # Local
-from .service_factory import get_request, get_train_params, get_train_request
+from .service_factory import get_inference_request, get_train_params, get_train_request
