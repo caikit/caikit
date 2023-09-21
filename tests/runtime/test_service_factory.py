@@ -373,6 +373,12 @@ def test_backend_modules_included_in_service_generation(
     assert "backend_param" in sample_task_request.DESCRIPTOR.fields_by_name.keys()
 
 
+def test_get_inference_request_throws_wrong_type(runtime_grpc_server):
+    with pytest.raises(TypeError) as e:
+        get_inference_request(class_name="something random")
+    assert "subclass check failed" in e.value.args[0]
+
+
 def test_get_inference_request(runtime_grpc_server):
     """Test that we are able to get inference request DM with either module or task class"""
     assert get_inference_request(SampleModule).__name__ == "SampleTaskRequest"
