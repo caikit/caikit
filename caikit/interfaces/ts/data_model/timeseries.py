@@ -71,7 +71,7 @@ class TimeSeries(DataObjectBase):
                 self.id_labels = []
         else:
             error.value_check(
-                "<WTS81128386I>",
+                "<COR81128386I>",
                 len(args) != 0,
                 "must have at least the data argument",
                 args,
@@ -110,7 +110,7 @@ class TimeSeries(DataObjectBase):
             return backend._pyspark_df.count()
         else:
             error.log_raise(
-                "<WTS75394521E>",
+                "<COR75394521E>",
                 f"Unknown backend {type(backend)}",
             )  # pragma: no cover
 
@@ -124,13 +124,13 @@ class TimeSeries(DataObjectBase):
             return backend.as_pandas()
 
         error.value_check(
-            "<WTS98388946E>",
+            "<COR98388946E>",
             self.timeseries is not None,
             "Cannot create pandas data frame without any timeseries present",
         )
 
         error.value_check(
-            "<WTS59303952E>",
+            "<COR59303952E>",
             self.id_labels is not None,
             "Cannot create pandas data frame without any key labels present",
         )

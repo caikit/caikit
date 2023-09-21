@@ -50,7 +50,7 @@ class StrictFieldBackendMixin(DataModelBackendBase):
         """
         if name not in data_model_class.fields:
             error(
-                "<WTS81128387E>",
+                "<COR81128387E>",
                 AttributeError(
                     f"No such attribute [{name}] on [{data_model_class.__name__}]"
                 ),

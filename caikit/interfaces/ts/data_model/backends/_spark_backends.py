@@ -57,7 +57,7 @@ class SparkMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
         ids: Optional[Union[Iterable[int], Iterable[str]]] = None,
         producer_id: Optional[Union[Tuple[str, str], ProducerId]] = None,
     ):
-        error.type_check("<WTS77829913F>", pyspark.sql.DataFrame, data_frame=data_frame)
+        error.type_check("<COR77829913F>", pyspark.sql.DataFrame, data_frame=data_frame)
 
         # for param validation
         _ = PandasMultiTimeSeriesBackend(
@@ -168,7 +168,7 @@ class SparkTimeSeriesBackend(TimeSeriesBackendBase):
         """
 
         # Validators special to this class
-        error.type_check("<WTS11947329E>", pyspark.sql.DataFrame, data_frame=data_frame)
+        error.type_check("<COR11947329E>", pyspark.sql.DataFrame, data_frame=data_frame)
 
         self._pyspark_df: pyspark.sql.DataFrame = data_frame
 

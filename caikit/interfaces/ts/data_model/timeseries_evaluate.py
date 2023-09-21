@@ -82,10 +82,10 @@ class EvaluationRecord(DataObjectBase):
         """
 
         error.type_check_all(
-            "<WTS26895394E>", str, int, Id, allow_none=True, id_values=id_values
+            "<COR26895394E>", str, int, Id, allow_none=True, id_values=id_values
         )
-        error.type_check_all("<WTS25875394E>", float, metric_values=metric_values)
-        error.type_check("<WTS25873484E>", str, int, Id, allow_none=True, offset=offset)
+        error.type_check_all("<COR25875394E>", float, metric_values=metric_values)
+        error.type_check("<COR25873484E>", str, int, Id, allow_none=True, offset=offset)
 
         super().__init__()
 
@@ -149,11 +149,11 @@ class EvaluationResult(DataObjectBase):
                 The module that produced this evaluation result.
         """
 
-        error.type_check_all("<WTS25782594E>", str, allow_none=True, id_cols=id_cols)
-        error.type_check_all("<WTS28634484E>", str, metric_cols=metric_cols)
-        error.type_check("<WTS28485384E>", str, allow_none=True, offset_col=offset_col)
+        error.type_check_all("<COR25782594E>", str, allow_none=True, id_cols=id_cols)
+        error.type_check_all("<COR28634484E>", str, metric_cols=metric_cols)
+        error.type_check("<COR28485384E>", str, allow_none=True, offset_col=offset_col)
         error.type_check(
-            "<WTS28485385E>",
+            "<COR28485385E>",
             tuple,
             ProducerId,
             allow_none=True,
@@ -170,7 +170,7 @@ class EvaluationResult(DataObjectBase):
         if df is not None:
             if self.offset_col is not None:
                 error.value_check(
-                    "<WTS28484474E>",
+                    "<COR28484474E>",
                     self.offset_col in df.columns,
                     f"Specified '{self.offset_col}' offset column not in dataframe",
                 )
@@ -190,7 +190,7 @@ class EvaluationResult(DataObjectBase):
                 for i in range(len(df))
             ]
         else:
-            error.type_check_all("<WTS32696407E>", EvaluationRecord, records=records)
+            error.type_check_all("<COR32696407E>", EvaluationRecord, records=records)
             self.records = records
 
     def as_pandas(self) -> "pd.DataFrame":

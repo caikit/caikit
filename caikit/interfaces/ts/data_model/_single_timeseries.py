@@ -53,9 +53,6 @@ error = error_handler.get(log)
 
 ## TimeSeries ##################################################################
 
-# Shared constant for seconds -> milliseconds
-S_TO_MS = 1000
-
 
 @dataobject(package=TS_PACKAGE)
 class SingleTimeSeries(DataObjectBase):
@@ -119,7 +116,7 @@ class SingleTimeSeries(DataObjectBase):
 
         else:
             error.value_check(
-                "<WTS81128386E>",
+                "<COR81128386E>",
                 len(args) != 0,
                 "must have at least the data argument",
                 args,
@@ -151,12 +148,12 @@ class SingleTimeSeries(DataObjectBase):
         # Since all fields are optional, we need to ensure that the
         # time_sequence oneof has been set and that there are values
         error.value_check(
-            "<WTS07953363E>",
+            "<COR07953363E>",
             self.time_sequence is not None,
             "Cannot create pandas data frame without a time sequence",
         )
         error.value_check(
-            "<WTS98388947E>",
+            "<COR98388947E>",
             self.values is not None,
             "Cannot create pandas data frame without values",
         )
@@ -164,7 +161,7 @@ class SingleTimeSeries(DataObjectBase):
         # Determine the number of rows we'll expect
         col_lens = {len(col.sequence.values) for col in self.values}
         error.value_check(
-            "<WTS24439736E>",
+            "<COR24439736E>",
             len(col_lens) == 1,
             "Not all columns have matching lengths",
         )
@@ -173,7 +170,7 @@ class SingleTimeSeries(DataObjectBase):
 
         # todo not sure if this is needed here, is it even possible without making changes to the json?
         # error.value_check(
-        #     "<WTS24439736F>",
+        #     "<COR24439736F>",
         #     self.time_period is not None and (self.timestamp_label is not None and self.timestamp_label != ""),
         #     "a timestamp_label is required if a time_period is specified",
         # )
@@ -193,12 +190,12 @@ class SingleTimeSeries(DataObjectBase):
             start_time = self.time_period.start_time
             period_length = self.time_period.period_length
             error.value_check(
-                "<WTS36718278E>",
+                "<COR36718278E>",
                 start_time.time is not None,
                 "start_time must be set in time_period",
             )
             error.value_check(
-                "<WTS36718279E>",
+                "<COR36718279E>",
                 period_length.time is not None,
                 "period_length must be set in time_period",
             )
@@ -208,7 +205,7 @@ class SingleTimeSeries(DataObjectBase):
                 period_length.dt_int is not None or period_length.dt_float is not None
             )
             error.value_check(
-                "<WTS36962854E>",
+                "<COR36962854E>",
                 not (numeric_start_time and not numeric_period),
                 "Time period cannot have a numeric start_time with a timedelta period_length",
             )
@@ -236,7 +233,7 @@ class SingleTimeSeries(DataObjectBase):
         else:
             time_points = self.time_points.points
             error.value_check(
-                "<WTS11757382E>",
+                "<COR11757382E>",
                 time_points is not None and len(time_points) == num_rows,
                 "Number of time points {} doesn't match number of rows {}",
                 -1 if time_points is None else len(time_points),
@@ -247,7 +244,7 @@ class SingleTimeSeries(DataObjectBase):
                 time_point_values = [tp.time for tp in time_points]
                 time_point_type = type(time_point_values[0])
                 error.type_check_all(
-                    "<WTS79828262E>",
+                    "<COR79828262E>",
                     time_point_type,
                     time_point_values=time_point_values,
                 )
@@ -261,7 +258,7 @@ class SingleTimeSeries(DataObjectBase):
         # Make the columns dict
         value_labels = self.value_labels or range(len(self.values))
         error.value_check(
-            "<WTS60320473E>",
+            "<COR60320473E>",
             len(value_labels) == len(self.values),
             "Wrong number of value labels {} for {} value columns",
             len(value_labels),

@@ -60,31 +60,31 @@ class PandasMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
         ids: Optional[Union[Iterable[int], Iterable[str]]] = None,
         producer_id: Optional[Union[Tuple[str, str], ProducerId]] = None,
     ):
-        error.type_check("<WTS81128380F>", pd.DataFrame, data_frame=data_frame)
+        error.type_check("<COR81128380F>", pd.DataFrame, data_frame=data_frame)
         error.type_check(
-            "<WTS81128381F>",
+            "<COR81128381F>",
             list,
             str,
             key_column=key_column,
         )
         error.type_check(
-            "<WTS81128382F>", str, int, type(None), timestamp_column=timestamp_column
+            "<COR81128382F>", str, int, type(None), timestamp_column=timestamp_column
         )
         error.type_check_all(
-            "<WTS81128383F>",
+            "<COR81128383F>",
             str,
             int,
             allow_none=True,
             value_columns=value_columns,
         )
         error.type_check_all(
-            "<WTS81128384F>",
+            "<COR81128384F>",
             str,
             allow_none=True,
             ids=ids,
         )
         error.type_check(
-            "<WTS81128385F>",
+            "<COR81128385F>",
             tuple,
             ProducerId,
             allow_none=True,
@@ -93,7 +93,7 @@ class PandasMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
 
         # Validate the column names
         error.value_check(
-            "<WTS04942286F>",
+            "<COR04942286F>",
             (timestamp_column is None or (timestamp_column in data_frame.columns)),
             "Invalid timestamp column/index: {}",
             timestamp_column,
@@ -185,18 +185,18 @@ class PandasTimeSeriesBackend(TimeSeriesBackendBase):
                 A sequence of numeric IDs associated with this TimeSeries
         """
         # Validate the types and column names
-        error.type_check("<WTS81128380E>", pd.DataFrame, data_frame=data_frame)
+        error.type_check("<COR81128380E>", pd.DataFrame, data_frame=data_frame)
         error.type_check(
-            "<WTS81128381E>", str, type(None), timestamp_column=timestamp_column
+            "<COR81128381E>", str, type(None), timestamp_column=timestamp_column
         )
         error.type_check_all(
-            "<WTS81128382E>",
+            "<COR81128382E>",
             str,
             allow_none=True,
             value_columns=value_columns,
         )
         error.type_check_all(
-            "<WTS81128383E>",
+            "<COR81128383E>",
             str,
             np.int_,
             int,
@@ -207,7 +207,7 @@ class PandasTimeSeriesBackend(TimeSeriesBackendBase):
         # Validate the column names
 
         error.value_check(
-            "<WTS81128385E>",
+            "<COR81128385E>",
             (timestamp_column is None or (timestamp_column in data_frame.columns)),
             "Invalid timestamp column/index: {}",
             timestamp_column,
@@ -216,7 +216,7 @@ class PandasTimeSeriesBackend(TimeSeriesBackendBase):
             col for col in data_frame.columns if col != timestamp_column
         ]
         error.value_check(
-            "<WTS89526927E>",
+            "<COR89526927E>",
             # TODO: Support lambdas!
             all(value_col in data_frame.columns for value_col in value_columns),
             "Invalid value columns: {}",
