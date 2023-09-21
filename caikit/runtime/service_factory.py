@@ -33,6 +33,7 @@ from caikit import get_config
 from caikit.core import LocalBackend, ModuleBase, registries
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import _AUTO_GEN_PROTO_CLASSES
+from caikit.core.exceptions import error_handler
 from caikit.core.task import TaskBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
@@ -43,6 +44,7 @@ from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.utils import import_util
 
 log = alog.use_channel("SVC-FACTORY")
+error = error_handler.get(log)
 
 TRAINING_MANAGEMENT_SERVICE_NAME = "TrainingManagement"
 TRAINING_MANAGEMENT_SERVICE_SPEC = {
@@ -276,6 +278,12 @@ def get_inference_request(
     output_streaming: bool = False,
 ) -> Type[DataBase]:
     """Helper function to return the inference request DataModel for the Module or Task Class"""
+    error.subclass_check(
+        "<SVC98285724E>",
+        class_name,
+        ModuleBase,
+        TaskBase,
+    )
     task_class = (
         class_name.TASK_CLASS if hasattr(class_name, "TASK_CLASS") else class_name
     )
