@@ -36,7 +36,6 @@ from .toolkit.sparkconf import sparkconf_local
 
 log = alog.use_channel("TSDM")
 error = error_handler.get(log)
-S_TO_MS = 1000
 
 
 @dataobject(package=TS_PACKAGE)
