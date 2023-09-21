@@ -37,10 +37,10 @@ from py_to_proto.dataclass_to_proto import FieldNumber, OneofField
 import alog
 
 # Local
-from ..data_model.time_types import PeriodicTimeSequence, PointTimeSequence
+from ..data_model.time_types import PeriodicTimeSequence, PointTimeSequence, ValueSequence
 from ..data_model.toolkit.optional_dependencies import HAVE_PYSPARK, pyspark
 from ..data_model.toolkit.sparkconf import sparkconf_local
-from . import ValueSequence, time_types
+from . import time_types
 from .backends.base import TimeSeriesBackendBase
 from .backends.pandas_backends import PandasTimeSeriesBackend
 from .backends.util import pd_timestamp_to_seconds
