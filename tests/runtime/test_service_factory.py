@@ -24,9 +24,16 @@ import pytest
 # Local
 from caikit.core.data_model import render_dataobject_protos
 from caikit.core.data_model.base import DataBase
-from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
+from caikit.runtime.service_factory import (
+    ServicePackage,
+    ServicePackageFactory,
+    get_inference_request,
+    get_train_params,
+    get_train_request,
+)
 from sample_lib import SampleModule
 from sample_lib.data_model import SampleInputType, SampleOutputType
+from sample_lib.modules.other_task.other_implementation import OtherModule
 from sample_lib.modules.sample_task import ListModule
 from tests.conftest import temp_config
 from tests.core.helpers import MockBackend
@@ -365,3 +372,48 @@ def test_backend_modules_included_in_service_generation(
 
     # Check that the new parameter defined in this backend module exists in the service
     assert "backend_param" in sample_task_request.DESCRIPTOR.fields_by_name.keys()
+
+
+def test_get_inference_request(runtime_grpc_server):
+    """Test that we are able to get inference request DM with either module or task class"""
+    assert get_inference_request(SampleModule).__name__ == "SampleTaskRequest"
+    assert (
+        get_inference_request(SampleModule.TASK_CLASS).__name__ == "SampleTaskRequest"
+    )
+    assert (
+        get_inference_request(SampleModule, output_streaming=True).__name__
+        == "ServerStreamingSampleTaskRequest"
+    )
+    assert (
+        get_inference_request(SampleModule.TASK_CLASS, output_streaming=True).__name__
+        == "ServerStreamingSampleTaskRequest"
+    )
+    assert (
+        get_inference_request(
+            SampleModule, input_streaming=True, output_streaming=True
+        ).__name__
+        == "BidiStreamingSampleTaskRequest"
+    )
+    assert (
+        get_inference_request(
+            SampleModule.TASK_CLASS, input_streaming=True, output_streaming=True
+        ).__name__
+        == "BidiStreamingSampleTaskRequest"
+    )
+
+
+def test_get_train_request(runtime_grpc_server):
+    assert (
+        get_train_request(SampleModule).__name__ == "SampleTaskSampleModuleTrainRequest"
+    )
+    assert get_train_request(OtherModule).__name__ == "OtherTaskOtherModuleTrainRequest"
+
+
+def test_get_train_params(runtime_grpc_server):
+    assert (
+        get_train_params(SampleModule).__name__
+        == "SampleTaskSampleModuleTrainParameters"
+    )
+    assert (
+        get_train_params(OtherModule).__name__ == "OtherTaskOtherModuleTrainParameters"
+    )
