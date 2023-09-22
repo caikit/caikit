@@ -17,18 +17,15 @@ The core data model object for a TimeSeries Evaluator.
 # Standard
 from typing import List, Union
 
-try:
-    # Standard
-    from typing import Annotated
-except ImportError:  # pragma: no cover
-    # Third Party
-    from typing_extensions import Annotated
-
 # Third Party
 import pandas as pd
 
 # First Party
-from py_to_proto.dataclass_to_proto import FieldNumber, OneofField
+from py_to_proto.dataclass_to_proto import (  # Annotated imported from here for compatibility
+    Annotated,
+    FieldNumber,
+    OneofField,
+)
 import alog
 
 # Local

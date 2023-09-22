@@ -41,7 +41,6 @@ from .base import MultiTimeSeriesBackendBase, TimeSeriesBackendBase
 from .dfcache import EnsureCached
 from .pandas_backends import PandasMultiTimeSeriesBackend, PandasTimeSeriesBackend
 from .util import mock_pd_groupby
-import caikit.interfaces.ts.data_model as dm
 
 log = alog.use_channel("SPBCK")
 error = error_handler.get(log)
@@ -104,7 +103,7 @@ class SparkMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
                         timestamp_column=self._timestamp_column,
                         value_columns=self._value_columns,
                     )
-                    result.append(dm.SingleTimeSeries(_backend=backend))
+                    result.append(SingleTimeSeries(_backend=backend))
             else:
                 with EnsureCached(self._pyspark_df) as _:
                     for ids, spark_df in mock_pd_groupby(
@@ -119,7 +118,7 @@ class SparkMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
                             value_columns=self._value_columns,
                             ids=k,
                         )
-                        result.append(dm.SingleTimeSeries(_backend=backend))
+                        result.append(SingleTimeSeries(_backend=backend))
             return result
 
         if name == "id_labels":

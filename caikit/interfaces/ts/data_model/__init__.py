@@ -40,7 +40,7 @@ from .time_types import (
 )
 
 # Import producer and data streams from the core
-from caikit.core.data_model import *
+# from caikit.core.data_model import *
 
 from ._single_timeseries import SingleTimeSeries  # isort:skip
 from .timeseries import TimeSeries  # isort:skip

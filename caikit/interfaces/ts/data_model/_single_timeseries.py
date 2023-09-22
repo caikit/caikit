@@ -19,13 +19,6 @@ from datetime import timedelta
 from typing import Iterable, List, Tuple, Union
 import json
 
-try:
-    # Standard
-    from typing import Annotated
-except ImportError:  # pragma: no cover
-    # Third Party
-    from typing_extensions import Annotated
-
 # Third Party
 from pandas import RangeIndex
 import dateutil.parser
@@ -33,7 +26,11 @@ import numpy as np
 import pandas as pd
 
 # First Party
-from py_to_proto.dataclass_to_proto import Annotated, FieldNumber, OneofField
+from py_to_proto.dataclass_to_proto import (  # Annotated imported from here for compatibility
+    Annotated,
+    FieldNumber,
+    OneofField,
+)
 import alog
 
 # Local
