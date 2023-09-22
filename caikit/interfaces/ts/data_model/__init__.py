@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Common data model containing all data structures that are passed in and out of
-blocks.
+Data model definitions for structures in the time series domain
 """
 
 # ordering is important here to permit protobuf loading and dynamic
