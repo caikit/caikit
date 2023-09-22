@@ -17,12 +17,16 @@ The server is responsible for binding caikit workloads to a consistent REST/SSE
 API based on the task definitions available at boot.
 """
 # Standard
+from contextlib import contextmanager
+from dataclasses import dataclass
 from functools import partial
 from typing import Any, Dict, Iterable, Optional, Type, get_args
 import asyncio
 import json
+import os
 import re
 import ssl
+import tempfile
 import threading
 import time
 
@@ -94,6 +98,14 @@ OPTIONAL_INPUTS_KEY = "parameters"
 # Endpoint to use for health checks
 HEALTH_ENDPOINT = "/health"
 
+# Small dataclass for consolidating TLS files
+@dataclass
+class _TlsFiles:
+    server_cert: Optional[str] = None
+    server_key: Optional[str] = None
+    client_cert: Optional[str] = None
+
+
 ## RuntimeHTTPServer ###########################################################
 
 
@@ -142,34 +154,41 @@ class RuntimeHTTPServer(RuntimeServerBase):
         )
 
         # Parse TLS configuration
-        tls_kwargs = {}
-        if (
-            self.tls_config
-            and self.tls_config.server.key
-            and self.tls_config.server.cert
-        ):
-            log.info("<RUN10001905I>", "Running with TLS")
-            tls_kwargs["ssl_keyfile"] = self.tls_config.server.key
-            tls_kwargs["ssl_certfile"] = self.tls_config.server.cert
-            if self.tls_config.client.cert:
-                log.info("<RUN10001809I>", "Running with mutual TLS")
-                tls_kwargs["ssl_ca_certs"] = self.tls_config.client.cert
-                tls_kwargs["ssl_cert_reqs"] = ssl.CERT_REQUIRED
+        # If any of the TLS values are not files, we assume that they're inline
+        # content. The python SslContext only takes files to load, so we use a
+        # temporary directory just long enough to load the config files.
+        with self._tls_files() as tls_files:
+            tls_kwargs = {}
+            if tls_files.server_key and tls_files.server_cert:
+                log.info("<RUN10001905I>", "Running with TLS")
+                tls_kwargs["ssl_keyfile"] = tls_files.server_key
+                tls_kwargs["ssl_certfile"] = tls_files.server_cert
+                if tls_files.client_cert:
+                    log.info("<RUN10001809I>", "Running with mutual TLS")
+                    tls_kwargs["ssl_ca_certs"] = tls_files.client_cert
+                    tls_kwargs["ssl_cert_reqs"] = ssl.CERT_REQUIRED
+            else:
+                log.info("<RUN10539515I>", "Running INSECURE")
 
-        # Start the server with a timeout_graceful_shutdown
-        # if not set in config, this is None and unvicorn accepts None or number of seconds
-        unvicorn_timeout_graceful_shutdown = (
-            get_config().runtime.http.server_shutdown_grace_period_seconds
-        )
-        config = uvicorn.Config(
-            self.app,
-            host="0.0.0.0",
-            port=self.port,
-            log_level=None,
-            log_config=None,
-            timeout_graceful_shutdown=unvicorn_timeout_graceful_shutdown,
-            **tls_kwargs,
-        )
+            # Start the server with a timeout_graceful_shutdown
+            # if not set in config, this is None and unvicorn accepts None or number of seconds
+            unvicorn_timeout_graceful_shutdown = (
+                get_config().runtime.http.server_shutdown_grace_period_seconds
+            )
+            config = uvicorn.Config(
+                self.app,
+                host="0.0.0.0",
+                port=self.port,
+                log_level=None,
+                log_config=None,
+                timeout_graceful_shutdown=unvicorn_timeout_graceful_shutdown,
+                **tls_kwargs,
+            )
+            # Make sure the config loads TLS files here so they can safely be
+            # deleted if they're ephemeral
+            config.load()
+
+        # Start the server with the loaded config
         self.server = uvicorn.Server(config=config)
 
         # Patch the exit handler to call this server's stop
@@ -531,6 +550,50 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def _health_check() -> str:
         log.debug4("Server healthy")
         return "OK"
+
+    @contextmanager
+    def _tls_files(self) -> _TlsFiles:
+        """This contextmanager ensures that the tls config values are files on
+        disk since SslContext requires files
+
+        Returns:
+            tls_files (_TlsFiles): The set of configured TLS files
+        """
+        tls_cfg = self.tls_config or {}
+        tls_opts = {
+            "server_key": tls_cfg.get("server", {}).get("key", ""),
+            "server_cert": tls_cfg.get("server", {}).get("cert", ""),
+            "client_cert": tls_cfg.get("client", {}).get("cert", ""),
+        }
+        non_file_opts = {
+            key: val for key, val in tls_opts.items() if val and not os.path.isfile(val)
+        }
+        if not non_file_opts:
+            log.debug3("No TLS inline files configured")
+            yield _TlsFiles(**tls_opts)
+            return
+        # If any of the values are set and are not pointing to files, save them
+        # to a temporary directory
+        try:
+            with tempfile.TemporaryDirectory() as tls_dir:
+                updated_files = {
+                    key: val
+                    for key, val in tls_opts.items()
+                    if key not in non_file_opts and val
+                }
+                for fname, content in non_file_opts.items():
+                    temp_fname = os.path.join(tls_dir, fname)
+                    updated_files[fname] = temp_fname
+                    with open(temp_fname, "w", encoding="utf-8") as handle:
+                        handle.write(content)
+                yield _TlsFiles(**updated_files)
+        except OSError as err:
+            log.error(
+                "<RUN80977064E>",
+                "Cannot create temporary TLS files. Either pass config as file paths or run with write permissions.",
+                exc_info=True,
+            )
+            raise ValueError() from err
 
 
 def main(blocking: bool = True):

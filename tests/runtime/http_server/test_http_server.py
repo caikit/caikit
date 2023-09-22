@@ -31,7 +31,7 @@ import requests
 import tls_test_tools
 
 # Local
-from caikit.core import MODEL_MANAGER
+from caikit.core import MODEL_MANAGER, DataObjectBase, dataobject
 from caikit.runtime import http_server
 from tests.conftest import temp_config
 from tests.runtime.conftest import (
@@ -56,40 +56,52 @@ def save_key_cert_pair(prefix, workdir, key=None, cert=None):
     return crtfile, keyfile
 
 
-@dataclass
-class KeyPair:
+@dataobject
+class KeyPair(DataObjectBase):
     cert: str
     key: str
 
 
-@dataclass
-class TLSConfig:
+@dataobject
+class TLSConfig(DataObjectBase):
     server: KeyPair
     client: KeyPair
 
 
 @contextmanager
 def generate_tls_configs(
-    port: int, tls: bool = False, mtls: bool = False, **http_config_overrides
+    port: int,
+    tls: bool = False,
+    mtls: bool = False,
+    inline: bool = False,
+    **http_config_overrides,
 ) -> Dict[str, Dict]:
     """Helper to generate tls configs"""
     with tempfile.TemporaryDirectory() as workdir:
         config_overrides = {}
         client_keyfile, client_certfile, ca_certfile = None, None, None
+        ca_cert, server_cert, server_key = None, None, None
         if mtls or tls:
             ca_key = tls_test_tools.generate_key()[0]
             ca_cert = tls_test_tools.generate_ca_cert(ca_key)
             ca_certfile, _ = save_key_cert_pair("ca", workdir, cert=ca_cert)
+            server_key, server_cert = tls_test_tools.generate_derived_key_cert_pair(
+                ca_key=ca_key
+            )
             server_certfile, server_keyfile = save_key_cert_pair(
-                "server",
-                workdir,
-                *tls_test_tools.generate_derived_key_cert_pair(ca_key=ca_key),
+                "server", workdir, server_key, server_cert
             )
 
-            tls_config = TLSConfig(
-                server=KeyPair(cert=server_certfile, key=server_keyfile),
-                client=KeyPair(cert="", key=""),
-            )
+            if inline:
+                tls_config = TLSConfig(
+                    server=KeyPair(cert=server_cert, key=server_key),
+                    client=KeyPair(cert=ca_cert if mtls else "", key=""),
+                )
+            else:
+                tls_config = TLSConfig(
+                    server=KeyPair(cert=server_certfile, key=server_keyfile),
+                    client=KeyPair(cert=ca_certfile if mtls else "", key=""),
+                )
             # need to save this ca_certfile in config_overrides so the tls tests below can access it from client side
             config_overrides["use_in_test"] = {"ca_cert": ca_certfile}
 
@@ -108,12 +120,11 @@ def generate_tls_configs(
                     workdir,
                     *tls_test_tools.generate_derived_key_cert_pair(ca_key=ca_key),
                 )
-                tls_config.client = KeyPair(cert=ca_certfile, key="")
                 # need to save the client cert and key in config_overrides so the mtls test below can access it
                 config_overrides["use_in_test"]["client_cert"] = client_certfile
                 config_overrides["use_in_test"]["client_key"] = client_keyfile
 
-            config_overrides["runtime"] = {"tls": tls_config}
+            config_overrides["runtime"] = {"tls": tls_config.to_dict()}
         config_overrides.setdefault("runtime", {})["http"] = {
             "server_shutdown_grace_period_seconds": 0.01,  # this is so the server is killed after 0.1 if no test is running
             "port": port,
@@ -169,6 +180,29 @@ def test_basic_tls_server_with_wrong_cert(open_port):
 def test_mutual_tls_server(open_port):
     with generate_tls_configs(
         open_port, tls=True, mtls=True, http_config_overrides={}
+    ) as config_overrides:
+        with runtime_http_test_server(
+            open_port,
+            tls_config_override=config_overrides,
+        ) as http_server_with_mtls:
+            # start a non-blocking http server with mutual tls
+            resp = requests.get(
+                f"https://localhost:{http_server_with_mtls.port}/docs",
+                verify=config_overrides["use_in_test"]["ca_cert"],
+                cert=(
+                    config_overrides["use_in_test"]["client_cert"],
+                    config_overrides["use_in_test"]["client_key"],
+                ),
+            )
+            resp.raise_for_status()
+
+
+def test_mutual_tls_server_inline(open_port):
+    """Test that mutual TLS works when the TLS content is passed by value rather
+    than with files
+    """
+    with generate_tls_configs(
+        open_port, tls=True, mtls=True, inline=True, http_config_overrides={}
     ) as config_overrides:
         with runtime_http_test_server(
             open_port,
