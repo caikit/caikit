@@ -102,6 +102,31 @@ def other_good_model_path() -> str:
     return os.path.join(FIXTURES_DIR, "models", "bar")
 
 
+@pytest.fixture
+def data_stream_inputs() -> str:
+    return os.path.join(FIXTURES_DIR, "data_stream_inputs")
+
+
+@pytest.fixture
+def sample_json_file(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample.json")
+
+
+@pytest.fixture
+def sample_csv_file(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample_w_header.csv")
+
+
+@pytest.fixture
+def sample_multipart_file(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "multi_part_json.txt")
+
+
+@pytest.fixture
+def sample_jsonl_file(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample.jsonl")
+
+
 @contextmanager
 def temp_config(config_overrides: dict, merge_strategy="override"):
     """Temporarily edit the caikit config in a mock context"""

@@ -1,0 +1,19 @@
+
+
+----------------------------855490206437000809074191
+Content-Disposition: form-data; name=""; filename="my_training_data.json"
+Content-Type: application/json
+
+[
+    {
+        "input": "this is an example.",
+        "output": "1"
+    },
+    {
+        "input": "this is another example.",
+        "output": "2"
+    }
+]
+
+----------------------------855490206437000809074191--
+
