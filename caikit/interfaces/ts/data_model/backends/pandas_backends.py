@@ -32,7 +32,7 @@ import alog
 # Local
 from .....core.data_model import DataBase, ProducerId
 from .....core.exceptions import error_handler
-from .. import SingleTimeSeries, time_types
+from .. import time_types
 from ..toolkit.optional_dependencies import HAVE_PYSPARK
 from .base import (
     MultiTimeSeriesBackendBase,
@@ -41,6 +41,7 @@ from .base import (
     UncachedBackendMixin,
 )
 from .util import iteritems_workaround, pd_timestamp_to_seconds
+import caikit.interfaces.ts.data_model as dm
 
 log = alog.use_channel("PDBCK")
 error = error_handler.get(log)
@@ -131,7 +132,7 @@ class PandasMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
                     timestamp_column=self._timestamp_column,
                     value_columns=self._value_columns,
                 )
-                result.append(SingleTimeSeries(_backend=backend))
+                result.append(dm.SingleTimeSeries(_backend=backend))
             else:
                 for k, k_df in self._df.groupby(key_columns):
                     # if it is a single key string, we want to just wrap it in a list
@@ -143,7 +144,7 @@ class PandasMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
                         value_columns=self._value_columns,
                         ids=k,
                     )
-                    result.append(SingleTimeSeries(_backend=backend))
+                    result.append(dm.SingleTimeSeries(_backend=backend))
 
             return result
 

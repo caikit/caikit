@@ -27,7 +27,7 @@ import pandas as pd
 import pytest
 
 # Local
-from caikit.interfaces.ts.data_model._single_timeseries import S_TO_MS, SingleTimeSeries
+from caikit.interfaces.ts.data_model._single_timeseries import SingleTimeSeries
 from caikit.interfaces.ts.data_model.backends import pandas_backends
 from caikit.interfaces.ts.data_model.backends._spark_backends import (
     SparkTimeSeriesBackend,

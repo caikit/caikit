@@ -16,7 +16,7 @@ Base classes to share between data model backends
 """
 
 # Standard
-from typing import Any, Iterable, Tuple, Type, Union
+from typing import Any, Iterable, Tuple, Type
 import abc
 
 # Third Party

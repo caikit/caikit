@@ -20,7 +20,6 @@ from typing import Iterable, List, Tuple, Union
 import json
 
 # Third Party
-from pandas import RangeIndex
 import dateutil.parser
 import numpy as np
 import pandas as pd
@@ -39,7 +38,6 @@ from ....core.data_model import dataobject
 from ....core.exceptions import error_handler
 from .backends.base import TimeSeriesBackendBase
 from .backends.pandas_backends import PandasTimeSeriesBackend
-from .backends.util import pd_timestamp_to_seconds
 from .package import TS_PACKAGE
 from .time_types import PeriodicTimeSequence, PointTimeSequence, Seconds, ValueSequence
 from .toolkit.optional_dependencies import HAVE_PYSPARK, pyspark
