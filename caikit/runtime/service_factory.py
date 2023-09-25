@@ -273,19 +273,21 @@ class ServicePackageFactory:
 
 
 def get_inference_request(
-    class_name: Type[Union[ModuleBase, TaskBase]],
+    task_or_module_class: Type[Union[ModuleBase, TaskBase]],
     input_streaming: bool = False,
     output_streaming: bool = False,
 ) -> Type[DataBase]:
     """Helper function to return the inference request DataModel for the Module or Task Class"""
     error.subclass_check(
         "<SVC98285724E>",
-        class_name,
+        task_or_module_class,
         ModuleBase,
         TaskBase,
     )
     task_class = (
-        class_name.TASK_CLASS if issubclass(class_name, ModuleBase) else class_name
+        task_or_module_class.TASK_CLASS
+        if issubclass(task_or_module_class, ModuleBase)
+        else task_or_module_class
     )
 
     if input_streaming and output_streaming:
@@ -296,7 +298,9 @@ def get_inference_request(
         request_class_name = f"ServerStreaming{task_class.__name__}Request"
     else:
         request_class_name = f"{task_class.__name__}Request"
-    log.debug("Request class name %s for class %s.", request_class_name, class_name)
+    log.debug(
+        "Request class name %s for class %s.", request_class_name, task_or_module_class
+    )
     return DataBase.get_class_for_name(request_class_name)
 
 

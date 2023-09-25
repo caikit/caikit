@@ -374,7 +374,7 @@ def test_backend_modules_included_in_service_generation(
 
 def test_get_inference_request_throws_wrong_type(runtime_grpc_server):
     with pytest.raises(TypeError) as e:
-        get_inference_request(class_name="something random")
+        get_inference_request(task_or_module_class="something random")
     assert "subclass check failed" in e.value.args[0]
 
 
