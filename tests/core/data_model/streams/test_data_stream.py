@@ -190,6 +190,12 @@ def test_from_file_can_handle_a_json_file(sample_json_file):
         assert isinstance(data_item, dict)
 
 
+def test_from_multipart_file(sample_multipart_file):
+    multipart_stream = DataStream.from_multipart_file(sample_multipart_file)
+    for data_item in multipart_stream:
+        assert isinstance(data_item, dict)
+
+
 ###########################
 # General data stream tests
 ###########################

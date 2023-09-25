@@ -38,6 +38,8 @@ import alog
 from ...augmentors import AugmentorBase
 from ...exceptions import error_handler
 from ...toolkit import fileio
+from ..json_dict import JsonDictValue
+from .multipart_decoder import is_multipart_file, stream_multipart_file
 
 log = alog.use_channel("DATSTRM")
 error = error_handler.get(log)
@@ -227,25 +229,27 @@ class DataStream(Generic[T]):
         """
         error.file_check("<COR39609575E>", filename)
 
-        return cls(cls._from_json_array_generator, filename)
+        return cls(cls._from_json_array_file_generator, filename)
 
     @classmethod
-    def _from_json_array_generator(cls, filename):
+    def _from_json_array_file_generator(cls, filename):
         # open the file
         with open(filename, mode="rb") as json_fh:
             log.debug2("Loading JSON array file: %s", filename)
+            return cls._from_json_array_buffer_generator(json_fh, filename)
 
-            # for each {} object of the array
-            try:
-                for item_idx, obj in enumerate(ijson.items(json_fh, "item")):
-                    log.debug2("Loading object index %d", item_idx)
-                    yield obj
-
-            except ijson.JSONError:
-                error(
-                    "<COR85596551E>",
-                    ValueError("Invalid JSON object in `{}`".format(filename)),
-                )
+    @classmethod
+    def _from_json_array_buffer_generator(cls, json_fh: typing.IO, filename: str = ""):
+        # for each {} object of the array
+        try:
+            for item_idx, obj in enumerate(ijson.items(json_fh, "item")):
+                log.debug2("Loading object index %d", item_idx)
+                yield obj
+        except ijson.JSONError:
+            error(
+                "<COR85596551E>",
+                ValueError("Invalid JSON object in `{}`".format(filename)),
+            )
 
     @classmethod
     def from_csv(cls, filename: str, *args, skip=0, **kwargs) -> "DataStream[List]":
@@ -396,7 +400,7 @@ class DataStream(Generic[T]):
     @classmethod
     def from_file(cls, filename: str) -> "DataStream[Union[Dict, Tuple, str]]":
         """Loads up a DataStream from a file.
-            Will call the correct DataStream.from_caikit static constructor based on the
+            Will call the correct DataStream.from_* static constructor based on the
             file extension
 
             The data items returned in the data stream are:
@@ -404,11 +408,12 @@ class DataStream(Generic[T]):
                 dictionaries
             For all other files (besides CSV for now)
                 strings (1 per line)
+
         Args:
-            filename (str): name of file
+            filename (str): Name of file
 
         Returns:
-            DataStream: resulting datastream from file
+            DataStream: Resulting datastream from file
         """
         # file detection
         _, file_ext = os.path.splitext(filename)
@@ -566,6 +571,39 @@ class DataStream(Generic[T]):
         # yield the combined data item once flattened
         for data_item in DataStream.chain(data_stream_list).flatten():
             yield data_item
+
+    @classmethod
+    def from_multipart_file(cls, filename: str) -> "DataStream[JsonDictValue]":
+        """Loads up a DataStream from a multipart file
+
+            The data items returned in the data stream are determined by the
+            content type for each part in the multipart file by calling
+            the correct DataStream.from_*
+
+        Args:
+            filename (str): Name of file
+
+        Returns:
+            DataStream: Resulting datastream from file
+        """
+        error.value_check(
+            "<COR04987251E>", is_multipart_file(filename), "file is not multipart"
+        )
+        stream_list = []
+        for part in stream_multipart_file(filename):
+            content_type = part.content_type
+            if "json" in content_type:
+                stream_list.append(
+                    cls(cls._from_json_array_buffer_generator, part.fp, part.filename)
+                )
+            elif "csv" in content_type:
+                stream_list.append(cls.from_csv())  # TODO: FIXME
+            else:
+                error(
+                    "<COR91833046E>",
+                    "unsupported content type: {}".format(content_type),
+                )
+        return DataStream.chain(*stream_list)
 
     def train_test_split(
         self, test_split=0.25, seed=None

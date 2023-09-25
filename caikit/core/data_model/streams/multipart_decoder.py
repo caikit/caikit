@@ -89,8 +89,6 @@ def stream_multipart_file(file) -> Iterator[Part]:
 
     boundary = _get_multipart_boundary(file)
 
-    print(boundary)
-
     parser = formparser.MultiPartParser()
     with open(file, "rb") as fp:
         _, files = parser.parse(fp, boundary.encode(), None)
