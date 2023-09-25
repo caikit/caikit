@@ -58,8 +58,7 @@ PYDANTIC_TO_DM_MAPPING = {
 # This is done to make sure any one-offs can be
 # correctly inferred by pydantic
 class ParentPydanticBaseModel(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(extra="forbid")
-    model_config["protected_namespaces"] = ()
+    model_config = pydantic.ConfigDict(extra="forbid", protected_namespaces=())
 
 
 def pydantic_to_dataobject(pydantic_model: pydantic.BaseModel) -> DataBase:
