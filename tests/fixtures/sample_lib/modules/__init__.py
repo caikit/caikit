@@ -5,6 +5,8 @@ from .other_task import OtherModule
 from .sample_task import (
     CompositeModule,
     InnerModule,
+    ListModule,
     SampleModule,
     SamplePrimitiveModule,
+    StreamingModule,
 )

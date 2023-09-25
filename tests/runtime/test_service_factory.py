@@ -23,11 +23,16 @@ import pytest
 
 # Local
 from caikit.core.data_model import render_dataobject_protos
-from caikit.core.data_model.base import DataBase
-from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
+from caikit.runtime.service_factory import (
+    ServicePackage,
+    ServicePackageFactory,
+    get_inference_request,
+    get_train_params,
+    get_train_request,
+)
 from sample_lib import SampleModule
 from sample_lib.data_model import SampleInputType, SampleOutputType
-from sample_lib.modules.sample_task import ListModule
+from sample_lib.modules import ListModule, OtherModule
 from tests.conftest import temp_config
 from tests.core.helpers import MockBackend
 from tests.data_model_helpers import reset_global_protobuf_registry, temp_dpool
@@ -360,8 +365,71 @@ def test_backend_modules_included_in_service_generation(
     inference_service = ServicePackageFactory.get_service_package(
         ServicePackageFactory.ServiceType.INFERENCE
     )
-    predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+    predict_class = get_inference_request(SampleModule.TASK_CLASS)
     sample_task_request = predict_class().to_proto()
 
     # Check that the new parameter defined in this backend module exists in the service
     assert "backend_param" in sample_task_request.DESCRIPTOR.fields_by_name.keys()
+
+
+def test_get_inference_request_throws_wrong_type(runtime_grpc_server):
+    with pytest.raises(TypeError) as e:
+        get_inference_request(task_or_module_class="something random")
+    assert "subclass check failed" in e.value.args[0]
+
+
+def test_get_inference_request(runtime_grpc_server):
+    """Test that we are able to get inference request DM with either module or task class"""
+    assert get_inference_request(SampleModule).__name__ == "SampleTaskRequest"
+    assert (
+        get_inference_request(SampleModule.TASK_CLASS).__name__ == "SampleTaskRequest"
+    )
+    assert (
+        get_inference_request(SampleModule, output_streaming=True).__name__
+        == "ServerStreamingSampleTaskRequest"
+    )
+    assert (
+        get_inference_request(SampleModule.TASK_CLASS, output_streaming=True).__name__
+        == "ServerStreamingSampleTaskRequest"
+    )
+    assert (
+        get_inference_request(
+            SampleModule, input_streaming=True, output_streaming=True
+        ).__name__
+        == "BidiStreamingSampleTaskRequest"
+    )
+    assert (
+        get_inference_request(
+            SampleModule.TASK_CLASS, input_streaming=True, output_streaming=True
+        ).__name__
+        == "BidiStreamingSampleTaskRequest"
+    )
+
+
+def test_get_train_request_throws_wrong_type(runtime_grpc_server):
+    with pytest.raises(TypeError) as e:
+        get_train_request("not_a_module")
+    assert "subclass check failed" in e.value.args[0]
+
+
+def test_get_train_request(runtime_grpc_server):
+    assert (
+        get_train_request(SampleModule).__name__ == "SampleTaskSampleModuleTrainRequest"
+    )
+    assert get_train_request(OtherModule).__name__ == "OtherTaskOtherModuleTrainRequest"
+
+
+def test_get_train_params_throws_wrong_type(runtime_grpc_server):
+    with pytest.raises(TypeError) as e:
+        get_train_params("not_a_module")
+    assert "subclass check failed" in e.value.args[0]
+
+
+def test_get_train_params(runtime_grpc_server):
+    assert (
+        get_train_params(SampleModule).__name__
+        == "SampleTaskSampleModuleTrainParameters"
+    )
+    assert (
+        get_train_params(OtherModule).__name__ == "OtherTaskOtherModuleTrainParameters"
+    )

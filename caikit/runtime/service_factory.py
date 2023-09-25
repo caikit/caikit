@@ -15,7 +15,7 @@
 # Standard
 from enum import Enum
 from types import ModuleType
-from typing import Callable, Dict, Set, Type
+from typing import Callable, Dict, Set, Type, Union
 import dataclasses
 
 # Third Party
@@ -31,7 +31,10 @@ import alog
 # Local
 from caikit import get_config
 from caikit.core import LocalBackend, ModuleBase, registries
+from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import _AUTO_GEN_PROTO_CLASSES
+from caikit.core.exceptions import error_handler
+from caikit.core.task import TaskBase
 from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingStatusResponse,
@@ -41,6 +44,7 @@ from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.utils import import_util
 
 log = alog.use_channel("SVC-FACTORY")
+error = error_handler.get(log)
 
 TRAINING_MANAGEMENT_SERVICE_NAME = "TrainingManagement"
 TRAINING_MANAGEMENT_SERVICE_SPEC = {
@@ -266,3 +270,63 @@ class ServicePackageFactory:
             excluded_modules,
         )
         return clean_modules
+
+
+def get_inference_request(
+    task_or_module_class: Type[Union[ModuleBase, TaskBase]],
+    input_streaming: bool = False,
+    output_streaming: bool = False,
+) -> Type[DataBase]:
+    """Helper function to return the inference request DataModel for the Module or Task Class"""
+    error.subclass_check(
+        "<SVC98285724E>",
+        task_or_module_class,
+        ModuleBase,
+        TaskBase,
+    )
+    task_class = (
+        task_or_module_class.TASK_CLASS
+        if issubclass(task_or_module_class, ModuleBase)
+        else task_or_module_class
+    )
+
+    if input_streaming and output_streaming:
+        request_class_name = f"BidiStreaming{task_class.__name__}Request"
+    elif input_streaming:
+        request_class_name = f"ClientStreaming{task_class.__name__}Request"
+    elif output_streaming:
+        request_class_name = f"ServerStreaming{task_class.__name__}Request"
+    else:
+        request_class_name = f"{task_class.__name__}Request"
+    log.debug(
+        "Request class name %s for class %s.", request_class_name, task_or_module_class
+    )
+    return DataBase.get_class_for_name(request_class_name)
+
+
+def get_train_request(module_class: Type[ModuleBase]) -> Type[DataBase]:
+    """Helper function to return the train request DataModel for the Module Class"""
+    error.subclass_check(
+        "<SVC32285724E>",
+        module_class,
+        ModuleBase,
+    )
+    request_class_name = (
+        f"{module_class.TASK_CLASS.__name__}{module_class.__name__}TrainRequest"
+    )
+    log.debug("Request class name %s for module %s.", request_class_name, module_class)
+    return DataBase.get_class_for_name(request_class_name)
+
+
+def get_train_params(module_class: Type[ModuleBase]) -> Type[DataBase]:
+    """Helper function to return the train parameters DataModel for the Module Class"""
+    error.subclass_check(
+        "<SVC98435724E>",
+        module_class,
+        ModuleBase,
+    )
+    request_class_name = (
+        f"{module_class.TASK_CLASS.__name__}{module_class.__name__}TrainParameters"
+    )
+    log.debug("Request class name %s for module %s.", request_class_name, module_class)
+    return DataBase.get_class_for_name(request_class_name)
