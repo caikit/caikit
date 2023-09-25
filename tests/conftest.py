@@ -102,6 +102,7 @@ def other_good_model_path() -> str:
     return os.path.join(FIXTURES_DIR, "models", "bar")
 
 
+# Sample data files for testing ###########################
 @pytest.fixture
 def data_stream_inputs() -> str:
     return os.path.join(FIXTURES_DIR, "data_stream_inputs")
@@ -113,8 +114,23 @@ def sample_json_file(data_stream_inputs) -> str:
 
 
 @pytest.fixture
+def sample_json_collection(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample_json_collection")
+
+
+@pytest.fixture
 def sample_csv_file(data_stream_inputs) -> str:
     return os.path.join(data_stream_inputs, "sample_w_header.csv")
+
+
+@pytest.fixture
+def sample_csv_file_no_headers(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample.csv")
+
+
+@pytest.fixture
+def sample_csv_collection(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample_csv_collection")
 
 
 @pytest.fixture
@@ -125,6 +141,25 @@ def sample_multipart_file(data_stream_inputs) -> str:
 @pytest.fixture
 def sample_jsonl_file(data_stream_inputs) -> str:
     return os.path.join(data_stream_inputs, "sample.jsonl")
+
+
+@pytest.fixture
+def sample_jsonl_collection(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample_jsonl_collection")
+
+@pytest.fixture
+def jsonl_with_control_chars(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "control_chars.jsonl")
+
+
+@pytest.fixture
+def sample_text_file(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample.txt")
+
+
+@pytest.fixture
+def sample_text_collection(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample_txt_collection")
 
 
 @contextmanager
@@ -164,36 +199,36 @@ def pytest_addoption(parser):
 def render_protos(request):
     return request.config.getoption("--render-protos")
 
+# TODO: OH NOOOO DUPLICATES!
+# @pytest.fixture
+# def sample_json_file() -> str:
+#     json_content = json.dumps(
+#         [
+#             {"number": 1},
+#             {"number": 2},
+#         ]
+#     )
+#     with tempfile.NamedTemporaryFile(mode="w", suffix=".json") as handle:
+#         handle.write(json_content)
+#         handle.flush()
+#         yield handle.name
 
-@pytest.fixture
-def sample_json_file() -> str:
-    json_content = json.dumps(
-        [
-            {"number": 1},
-            {"number": 2},
-        ]
-    )
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json") as handle:
-        handle.write(json_content)
-        handle.flush()
-        yield handle.name
 
-
-@pytest.fixture
-def sample_csv_file() -> str:
-    csv_header = "number"
-    csv_content = []
-    csv_content.append("1")
-    csv_content.append("2")
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as handle:
-        handle.write(csv_header)
-        handle.write("\n")
-        for row in csv_content:
-            handle.write(row)
-            handle.write("\n")
-        handle.flush()
-        yield handle.name
-
+# @pytest.fixture
+# def sample_csv_file() -> str:
+#     csv_header = "number"
+#     csv_content = []
+#     csv_content.append("1")
+#     csv_content.append("2")
+#     with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as handle:
+#         handle.write(csv_header)
+#         handle.write("\n")
+#         for row in csv_content:
+#             handle.write(row)
+#             handle.write("\n")
+#         handle.flush()
+#         yield handle.name
+#
 
 @pytest.fixture
 def sample_int_file() -> str:

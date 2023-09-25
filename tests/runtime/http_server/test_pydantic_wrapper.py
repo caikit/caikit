@@ -77,14 +77,18 @@ def test_pydantic_to_dataobject_datastream_jsondata():
     datastream_pydantic_model = dataobject_to_pydantic(datastream_dm_class)
     # build our DM Datastream JsonData object using a pydantic object
     datastream_dm_obj = pydantic_to_dataobject(
-        datastream_pydantic_model(data_stream={"data": [{"number": 1}, {"number": 2}]})
+        datastream_pydantic_model(
+            data_stream={
+                "data": [{"number": 1, "label": "foo"}, {"number": 2, "label": "bar"}]
+            }
+        )
     )
 
     # assert it's our DM object, all fine and dandy
     assert isinstance(datastream_dm_obj, DataBase)
     assert (
         datastream_dm_obj.to_json()
-        == '{"jsondata": {"data": [{"number": 1}, {"number": 2}]}}'
+        == '{"jsondata": {"data": [{"number": 1, "label": "foo"}, {"number": 2, "label": "bar"}]}}'
     )
 
 
