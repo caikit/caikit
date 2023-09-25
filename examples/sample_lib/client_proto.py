@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This file demonstrates how to use compiled pb2s along with the DataModel for a
-# library
+# This file demonstrates how to use compiled pb2s along with the DataModel for a library
 # Standard
 from pathlib import Path
 from time import sleep

@@ -149,18 +149,20 @@ You should receive a 200 response back with a response body:
 
 ## Interact using a combination of pb2s and DataModels
 
+Install `protoc`, 
+
 ```shell
 pip3 install grpcio-tools
 ``````
 
-then
+then generate the compiled `pb2` files,
 
 ```shell
 python3 -m grpc_tools.protoc -I protos --python_out=examples/sample_lib/generated --grpc_python_out=examples/sample_lib/generated protos/*.proto
 ```
 
-then
+then start the client using the `pb2` files along with the `sample_lib` DataModel:
 
 ```shell
-python3 -m examples.sample_lib.client
+python3 -m examples.sample_lib.client_proto
 ```
