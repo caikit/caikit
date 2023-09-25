@@ -21,14 +21,16 @@ import os
 import sys
 
 # Third Party
-from generated import (
+import grpc
+
+# Local
+from .generated import (
     samplelibservice_pb2_grpc,
     samplelibtrainingservice_pb2_grpc,
     sampletaskrequest_pb2,
     sampletasksamplemoduletrainparameters_pb2,
     sampletasksamplemoduletrainrequest_pb2,
 )
-import grpc
 
 # Make sample_lib available for import
 sys.path.append(

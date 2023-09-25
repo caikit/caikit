@@ -30,6 +30,7 @@ from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingStatusResponse,
 )
+from caikit.runtime import get_inference_request, get_train_params, get_train_request
 from caikit.runtime.service_factory import ServicePackageFactory
 import caikit
 
@@ -53,6 +54,11 @@ if __name__ == "__main__":
     # pylint: disable=import-error
     from sample_lib.data_model import (
         SampleInputType,  # pylint: disable=import-outside-toplevel
+    )
+
+    # pylint: disable=import-error
+    from sample_lib.modules import (
+        SampleModule,  # pylint: disable=import-outside-toplevel
     )
 
     model_id = "my_model"
@@ -85,9 +91,9 @@ if __name__ == "__main__":
         train_request_params_class = DataBase.get_class_for_name(
             "SampleTaskSampleModuleTrainParameters"
         )
-        request = train_class(
+        request = get_train_request(SampleModule)(
             model_name=model_id,
-            parameters=train_request_params_class(training_data=training_data),
+            parameters=get_train_params(SampleModule)(training_data=training_data),
         )
         response = training_stub.SampleTaskSampleModuleTrain(request.to_proto())
         print("*" * 30)
@@ -112,7 +118,7 @@ if __name__ == "__main__":
         sleep(1)
 
         # send inference request on trained model
-        predict_class = DataBase.get_class_for_name("SampleTaskRequest")
+        predict_class = get_inference_request(SampleModule.TASK_CLASS)
         sample_input = SampleInputType(name="world")
 
         request = predict_class(sample_input=sample_input)
