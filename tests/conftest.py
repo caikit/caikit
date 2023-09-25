@@ -147,6 +147,7 @@ def sample_jsonl_file(data_stream_inputs) -> str:
 def sample_jsonl_collection(data_stream_inputs) -> str:
     return os.path.join(data_stream_inputs, "sample_jsonl_collection")
 
+
 @pytest.fixture
 def jsonl_with_control_chars(data_stream_inputs) -> str:
     return os.path.join(data_stream_inputs, "control_chars.jsonl")
@@ -199,6 +200,7 @@ def pytest_addoption(parser):
 def render_protos(request):
     return request.config.getoption("--render-protos")
 
+
 # TODO: OH NOOOO DUPLICATES!
 # @pytest.fixture
 # def sample_json_file() -> str:
@@ -229,6 +231,7 @@ def render_protos(request):
 #         handle.flush()
 #         yield handle.name
 #
+
 
 @pytest.fixture
 def sample_int_file() -> str:

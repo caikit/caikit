@@ -16,7 +16,6 @@ import threading
 import time
 
 # Third Party
-from fastapi.testclient import TestClient
 from grpc_health.v1 import health_pb2, health_pb2_grpc
 import grpc
 import pytest

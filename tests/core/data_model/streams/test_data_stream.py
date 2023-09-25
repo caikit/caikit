@@ -26,6 +26,22 @@ from caikit.core.data_model import DataStream
 from sample_lib.data_model.sample import SampleInputType, SampleOutputType
 import caikit.core
 
+###############################
+# Helper functions and fixtures
+###############################
+
+
+def validate_data_stream(data_stream, length, data_item_type, data_item_length=None):
+    # Verify lengths and types
+    assert isinstance(data_stream, DataStream)
+    assert len(data_stream) == length
+    assert sum(1 for _ in data_stream) == length
+
+    for data_item in data_stream:
+        assert isinstance(data_item, data_item_type)
+        if data_item_length is not None:
+            assert len(data_item) == data_item_length
+
 
 def build_test_augmentor(produces_none):
     class TestStreamAugmentor(AugmentorBase):
@@ -54,43 +70,15 @@ def build_test_augmentor(produces_none):
     return TestStreamAugmentor()
 
 
-def test_data_stream_from_jsonl_is_pickleable(tmp_path):
-    tmpdir = str(tmp_path)
-
-    data = [1, 2, 3, 4, 5, 6]
-    filepath = os.path.join(tmpdir, "foo.jsonl")
-    with open(filepath, "w") as f:
-        json.dump(data, f)
-
-    stream = DataStream.from_jsonl(filepath)
-
-    pre_pickle_vals = list(stream)
-    pickled_stream = pickle.loads(pickle.dumps(stream))
-    post_pickle_vals = list(pickled_stream)
-
-    assert pre_pickle_vals == post_pickle_vals
-
-
-## helper functions ###
-
-
-def validate_data_stream(data_stream, length, data_item_type, data_item_length=None):
-    assert isinstance(data_stream, DataStream)
-    assert len(data_stream) == length
-    assert sum(1 for _ in data_stream) == length
-
-    for data_item in data_stream:
-        assert isinstance(data_item, data_item_type)
-        if data_item_length is not None:
-            assert len(data_item) == data_item_length
-
-
 ## Local fixtures ###
 @pytest.fixture
 def list_data_stream():
     yield DataStream.from_iterable(["hello", "world", "!"])
 
-## verify the lengths and types of our fixture data streams
+
+###############################
+# Tests on various data formats
+###############################
 
 
 def test_list_data_stream(list_data_stream):
@@ -164,6 +152,23 @@ def test_jsonl_control_chars_array_data_stream(jsonl_with_control_chars):
             assert isinstance(element, str)
 
 
+def test_data_stream_from_jsonl_is_pickleable(tmp_path):
+    tmpdir = str(tmp_path)
+
+    data = [1, 2, 3, 4, 5, 6]
+    filepath = os.path.join(tmpdir, "foo.jsonl")
+    with open(filepath, "w") as f:
+        json.dump(data, f)
+
+    stream = DataStream.from_jsonl(filepath)
+
+    pre_pickle_vals = list(stream)
+    pickled_stream = pickle.loads(pickle.dumps(stream))
+    post_pickle_vals = list(pickled_stream)
+
+    assert pre_pickle_vals == post_pickle_vals
+
+
 def test_bad_json_stream(tmp_path):
     file_path = os.path.join(str(tmp_path), "bad.json")
     with open(file_path, "w") as fp:
@@ -179,7 +184,15 @@ def test_bad_json_stream(tmp_path):
         DataStream.from_json_array(file_path).peek()
 
 
-### general data stream tests ###
+def test_from_file_can_handle_a_json_file(sample_json_file):
+    json_stream = DataStream.from_file(sample_json_file)
+    for data_item in json_stream:
+        assert isinstance(data_item, dict)
+
+
+###########################
+# General data stream tests
+###########################
 
 
 def test_iteration_is_lazy():
@@ -263,7 +276,7 @@ def test_zip_is_lazy():
 
     data_stream2 = DataStream(generator_func2)
 
-    for count, data_item in enumerate(data_stream1.zip(data_stream2)):
+    for count, _ in enumerate(data_stream1.zip(data_stream2)):
         assert generator_func1.it == count
         assert generator_func2.it == count
 
@@ -319,7 +332,7 @@ def test_slice_is_lazy():
 
     data_stream = DataStream(generator_func)
 
-    for count, data_item in enumerate(data_stream[0:2]):
+    for count, _ in enumerate(data_stream[0:2]):
         assert generator_func.it == count
 
 
@@ -363,7 +376,7 @@ def test_train_test_split():
 def test_shuffle():
     """Verify that a source stream can be shuffled"""
 
-    # shuffle the stream using a predefined seed
+    # Shuffle the stream using a predefined seed
     src_stream = DataStream.from_iterable(range(0, 1000))
     shuffled_stream = src_stream.shuffle(buffer_size=200, seed=42)
     validate_data_stream(shuffled_stream, len(src_stream), int)
@@ -392,7 +405,12 @@ def test_shuffle():
     assert list(shuffled_stream) != list(src_stream)
 
 
-def test_chain(sample_csv_file_no_headers, sample_text_file, sample_text_collection, list_data_stream):
+def test_chain(
+    sample_csv_file_no_headers,
+    sample_text_file,
+    sample_text_collection,
+    list_data_stream,
+):
     csv_data_stream = DataStream.from_csv(sample_csv_file_no_headers)
     """Verify that data streams can be chained together."""
     cat_csv_pipline = DataStream.chain(
@@ -428,7 +446,7 @@ def test_chain_is_lazy():
     chained_data_stream = data_stream1.chain(data_stream2)
     validate_data_stream(chained_data_stream, 20, tuple, 2)
 
-    for count, data_item in enumerate(chained_data_stream):
+    for count, _ in enumerate(chained_data_stream):
         assert generator_func1.it == count
 
 
@@ -452,7 +470,7 @@ def test_eager_is_not_lazy():
 
     data_stream = DataStream(generator_func)
 
-    for data_item in data_stream.eager():
+    for _ in data_stream.eager():
         assert generator_func.it == 9
 
 
@@ -520,9 +538,11 @@ def test_dummy_stream(good_model_path, sample_csv_file):
     validate_data_stream(dummy_stream, stream_len, SampleOutputType)
 
 
-def test_only_one_stream_allowed(sample_csv_file_no_headers, good_model_path):  # , mock_run):
+def test_only_one_stream_allowed(
+    sample_csv_file_no_headers, good_model_path
+):  # , mock_run):
     """Verify that we can't call module.stream() with multiple DataStream args."""
-    stream = DataStream.from_iterable([1,2,3,4,5])
+    stream = DataStream.from_iterable([1, 2, 3, 4, 5])
 
     dummy_model = caikit.core.load(good_model_path)
     with pytest.raises(ValueError):
@@ -544,16 +564,9 @@ def test_pipe_stream(good_model_path):
     validate_data_stream(dummy_stream, stream_len, SampleOutputType)
 
 
-### generic file loader tests
-
-
-def test_from_file_can_handle_a_json_file(sample_json_file):
-    json_stream = DataStream.from_file(sample_json_file)
-    for data_item in json_stream:
-        assert isinstance(data_item, dict)
-
-
-### Augmentor tests
+##################
+# Augmentor tests
+##################
 
 
 def test_augment_enforces_augmentor_type_checking():
