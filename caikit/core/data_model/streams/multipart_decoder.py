@@ -48,6 +48,10 @@ import dataclasses
 import os
 import typing
 
+# Third Party
+from werkzeug import formparser
+from werkzeug.datastructures import FileStorage
+
 # First Party
 from alog import alog
 
@@ -56,11 +60,6 @@ from caikit.core.exceptions import error_handler
 
 log = alog.use_channel("MULTIPART_DECODER")
 error = error_handler.get(log)
-
-
-# Third Party
-from werkzeug import formparser
-from werkzeug.datastructures import FileStorage
 
 
 @dataclasses.dataclass
@@ -72,7 +71,7 @@ class Part:
 
 def is_multipart_file(file) -> bool:
     """Returns true if the file appears to contain a multi-part form data request"""
-    with open(file, "r") as fp:
+    with open(file, "r", encoding="utf-8") as fp:
         # Read a small bit of the file
         head: str = fp.read(50)
 
@@ -109,7 +108,7 @@ def stream_multipart_file(file) -> Iterator[Part]:
 def _get_multipart_boundary(file) -> str:
     """Returns the multipart boundary string by looking for it in the first line of the file with
     content"""
-    with open(file, "r") as fp:
+    with open(file, "r", encoding="utf-8") as fp:
         line = ""
         while not line:
             line = fp.readline().lstrip()

@@ -15,20 +15,18 @@
 
 """Data streams for lazily loading, munging and passing data through multiple modules.
 """
-
 # Standard
 from collections.abc import Iterable
 from glob import glob
 from io import UnsupportedOperation
-from multiprocessing import Value
 from typing import Dict, Generic, List, Tuple, TypeVar, Union
 import collections
 import csv
+import io
 import itertools
 import json
 import os
 import random
-import tempfile
 import typing
 
 # Third Party
@@ -48,8 +46,6 @@ log = alog.use_channel("DATSTRM")
 error = error_handler.get(log)
 
 T = TypeVar("T")
-BUFFER_SIZE = 100
-
 
 # ghart: These public methods are all needed. This class is essentially its own factory, so these
 # are all the different ways of coercing different data sources into a common stream class
@@ -626,16 +622,29 @@ class DataStream(Generic[T]):
                     cls(cls._from_json_array_buffer_generator, part.fp, part.filename)
                 )
             elif "csv" in content_type:
-                # Warning: could be slow for large buffers
-                string_buffer = tempfile.SpooledTemporaryFile(mode="rw")
-                bytes_read = BUFFER_SIZE
-                while bytes_read == BUFFER_SIZE:
-                    bytes_read = string_buffer.write(
-                        part.fp.read(BUFFER_SIZE).decode("utf8")
-                    )
-                string_buffer.seek(0)
+
+                class UtfEncodeIOWrapper(io.IOBase):
+                    """Lil' inline wrapper class to convert this bytes buffer to a string buffer"""
+
+                    def __init__(self, bytes_stream: typing.IO[bytes]):
+                        self.bytes_stream = bytes_stream
+
+                    def read(self, *args, **kwargs):
+                        res = self.bytes_stream.read(*args, **kwargs)
+                        return res.decode("utf-8")
+
+                    def readline(self, *args, **kwargs):
+                        res = self.bytes_stream.readline(*args, **kwargs)
+                        return res.decode("utf-8")
+
+                    def seek(self, *args, **kwargs):
+                        return self.bytes_stream.seek(*args, **kwargs)
+
                 stream_list.append(
-                    cls(cls._from_header_csv_buffer_generator, string_buffer)
+                    cls(
+                        cls._from_header_csv_buffer_generator,
+                        UtfEncodeIOWrapper(part.fp),
+                    )
                 )
             else:
                 error(
