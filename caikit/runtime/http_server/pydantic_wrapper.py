@@ -55,7 +55,7 @@ PYDANTIC_TO_DM_MAPPING = {
 # Base class for pydantic models
 # We want to set the config to forbid extra attributes
 # while instantiating any pydantic models
-# This is done to make sure any one-offs can be
+# This is done to make sure any oneofs can be
 # correctly inferred by pydantic
 class ParentPydanticBaseModel(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(extra="forbid", protected_namespaces=())
