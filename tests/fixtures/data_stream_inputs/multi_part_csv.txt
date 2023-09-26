@@ -1,0 +1,12 @@
+
+
+----------------------------855490206437000809074191
+Content-Disposition: form-data; name=""; filename="my_training_data.csv"
+Content-Type: text/csv
+
+number,label
+1,small
+1000,large
+
+----------------------------855490206437000809074191--
+

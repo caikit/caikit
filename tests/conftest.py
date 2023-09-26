@@ -134,8 +134,13 @@ def sample_csv_collection(data_stream_inputs) -> str:
 
 
 @pytest.fixture
-def sample_multipart_file(data_stream_inputs) -> str:
+def sample_multipart_json(data_stream_inputs) -> str:
     return os.path.join(data_stream_inputs, "multi_part_json.txt")
+
+
+@pytest.fixture
+def sample_multipart_csv(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "multi_part_csv.txt")
 
 
 @pytest.fixture
@@ -199,38 +204,6 @@ def pytest_addoption(parser):
 @pytest.fixture(scope="session")
 def render_protos(request):
     return request.config.getoption("--render-protos")
-
-
-# TODO: OH NOOOO DUPLICATES!
-# @pytest.fixture
-# def sample_json_file() -> str:
-#     json_content = json.dumps(
-#         [
-#             {"number": 1},
-#             {"number": 2},
-#         ]
-#     )
-#     with tempfile.NamedTemporaryFile(mode="w", suffix=".json") as handle:
-#         handle.write(json_content)
-#         handle.flush()
-#         yield handle.name
-
-
-# @pytest.fixture
-# def sample_csv_file() -> str:
-#     csv_header = "number"
-#     csv_content = []
-#     csv_content.append("1")
-#     csv_content.append("2")
-#     with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as handle:
-#         handle.write(csv_header)
-#         handle.write("\n")
-#         for row in csv_content:
-#             handle.write(row)
-#             handle.write("\n")
-#         handle.flush()
-#         yield handle.name
-#
 
 
 @pytest.fixture

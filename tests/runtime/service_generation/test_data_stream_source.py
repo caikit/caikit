@@ -24,7 +24,6 @@ from sample_lib.data_model.sample import SampleTrainingType
 from tests.conftest import temp_config
 import caikit
 
-
 ################################################
 ## Helper functions
 
@@ -331,7 +330,8 @@ def test_make_data_stream_source_list_of_csv_files(
 ):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     sample_files = [
-        os.path.join(sample_csv_collection, file) for file in os.listdir(sample_csv_collection)
+        os.path.join(sample_csv_collection, file)
+        for file in os.listdir(sample_csv_collection)
     ]
     ds = stream_type(listoffiles=stream_type.ListOfFiles(files=sample_files))
     assert isinstance(ds, DataStreamSourceBase)
@@ -347,7 +347,8 @@ def test_make_data_stream_source_list_of_jsonl_files(
 ):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     sample_files = [
-        os.path.join(sample_jsonl_collection, file) for file in os.listdir(sample_jsonl_collection)
+        os.path.join(sample_jsonl_collection, file)
+        for file in os.listdir(sample_jsonl_collection)
     ]
     ds = stream_type(listoffiles=stream_type.ListOfFiles(files=sample_files))
     assert isinstance(ds, DataStreamSourceBase)
@@ -387,10 +388,14 @@ def test_make_data_stream_source_csvdir(sample_train_service, sample_csv_collect
     validate_data_stream(data_stream, 6, SampleTrainingType)
 
 
-def test_make_data_stream_source_jsonldir(sample_train_service, sample_jsonl_collection):
+def test_make_data_stream_source_jsonldir(
+    sample_train_service, sample_jsonl_collection
+):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     ds = stream_type(
-        directory=stream_type.Directory(dirname=sample_jsonl_collection, extension="jsonl")
+        directory=stream_type.Directory(
+            dirname=sample_jsonl_collection, extension="jsonl"
+        )
     )
     assert isinstance(ds, DataStreamSourceBase)
 
@@ -470,7 +475,9 @@ def test_make_data_stream_source_no_files_w_ext_dir(
 ):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     ds = stream_type(
-        directory=stream_type.Directory(dirname=sample_jsonl_collection, extension="csv")
+        directory=stream_type.Directory(
+            dirname=sample_jsonl_collection, extension="csv"
+        )
     )
     with pytest.raises(CaikitRuntimeException) as e:
         ds.to_data_stream()

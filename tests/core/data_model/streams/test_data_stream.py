@@ -107,7 +107,7 @@ def test_jsonl_collection_data_stream(sample_jsonl_collection):
 
 def test_csv_collection_data_stream(sample_csv_collection):
     csv_collection_data_stream = DataStream.from_csv_collection(sample_csv_collection)
-    validate_data_stream(csv_collection_data_stream, 6, dict, 1)
+    validate_data_stream(csv_collection_data_stream, 6, dict, 2)
     for data_item in csv_collection_data_stream:
         for key, element in data_item.items():
             assert isinstance(key, str)
@@ -186,14 +186,17 @@ def test_bad_json_stream(tmp_path):
 
 def test_from_file_can_handle_a_json_file(sample_json_file):
     json_stream = DataStream.from_file(sample_json_file)
-    for data_item in json_stream:
-        assert isinstance(data_item, dict)
+    validate_data_stream(json_stream, 2, dict)
 
 
-def test_from_multipart_file(sample_multipart_file):
-    multipart_stream = DataStream.from_multipart_file(sample_multipart_file)
-    for data_item in multipart_stream:
-        assert isinstance(data_item, dict)
+def test_from_multipart_json_file(sample_multipart_json):
+    multipart_stream = DataStream.from_multipart_file(sample_multipart_json)
+    validate_data_stream(multipart_stream, 2, dict)
+
+
+def test_from_multipart_csv_file(sample_multipart_csv):
+    multipart_stream = DataStream.from_multipart_file(sample_multipart_csv)
+    validate_data_stream(multipart_stream, 2, dict)
 
 
 ###########################

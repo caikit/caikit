@@ -1,3 +1,17 @@
+# Copyright The Caikit Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Standard
 import os
 
@@ -5,15 +19,15 @@ import os
 from caikit.core.data_model.streams import multipart_decoder
 
 
-def test_simple_multipart_file(sample_multipart_file):
-    parts = multipart_decoder.stream_multipart_file(sample_multipart_file)
+def test_simple_multipart_file(sample_multipart_json):
+    parts = multipart_decoder.stream_multipart_file(sample_multipart_json)
 
     parts = list(parts)
     assert len(parts) == 1
 
     byte_content = parts[0].fp.read()
 
-    with open(sample_multipart_file, "rb") as fp:
+    with open(sample_multipart_json, "rb") as fp:
         full_multipart_byte_content = fp.read()
 
     assert byte_content in full_multipart_byte_content
@@ -54,7 +68,7 @@ def test_many_files_in_multipart_content(
     assert len(parts) == len(files)
 
     for actual, expected in zip(parts, files):
-        actual_content = actual.fp.bytes_read()
+        actual_content = actual.fp.read()
         with open(expected, "rb") as f:
             expected_content = f.read()
         assert actual_content == expected_content

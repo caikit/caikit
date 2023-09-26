@@ -6,12 +6,12 @@ Content-Type: application/json
 
 [
     {
-        "input": "this is an example.",
-        "output": "1"
+        "number": 1,
+        "label": "small"
     },
     {
-        "input": "this is another example.",
-        "output": "2"
+        "number": 1000,
+        "label": "large"
     }
 ]
 

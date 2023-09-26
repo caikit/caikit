@@ -19,6 +19,8 @@
 # Standard
 from collections.abc import Iterable
 from glob import glob
+from io import UnsupportedOperation
+from multiprocessing import Value
 from typing import Dict, Generic, List, Tuple, TypeVar, Union
 import collections
 import csv
@@ -26,6 +28,7 @@ import itertools
 import json
 import os
 import random
+import tempfile
 import typing
 
 # Third Party
@@ -45,6 +48,7 @@ log = alog.use_channel("DATSTRM")
 error = error_handler.get(log)
 
 T = TypeVar("T")
+BUFFER_SIZE = 100
 
 
 # ghart: These public methods are all needed. This class is essentially its own factory, so these
@@ -240,7 +244,19 @@ class DataStream(Generic[T]):
 
     @classmethod
     def _from_json_array_buffer_generator(cls, json_fh: typing.IO, filename: str = ""):
-        # for each {} object of the array
+        try:
+            # For re-entrance
+            json_fh.seek(0)
+        except UnsupportedOperation:
+            error(
+                "<COR59442457E>",
+                RuntimeError(
+                    "File handler for json array in filename {} not seekable".format(
+                        filename
+                    )
+                ),
+            )
+        # For each {} object of the array
         try:
             for item_idx, obj in enumerate(ijson.items(json_fh, "item")):
                 log.debug2("Loading object index %d", item_idx)
@@ -348,10 +364,23 @@ class DataStream(Generic[T]):
     def _from_header_csv_generator(cls, filename, *csv_args, **csv_kwargs):
         # open the csv file (closure around `filename`)
         with open(filename, mode="r", encoding="utf8") as fh:
+            yield from cls._from_header_csv_buffer_generator(
+                fh, *csv_args, **csv_kwargs
+            )
 
-            # for each line of the csv file, yield a dict
-            for line in csv.DictReader(fh, *csv_args, **csv_kwargs):
-                yield line
+    @classmethod
+    def _from_header_csv_buffer_generator(cls, fh: typing.IO, *csv_args, **csv_kwargs):
+        try:
+            # For re-entrance
+            fh.seek(0)
+        except UnsupportedOperation:
+            error(
+                "<COR55834083E>",
+                RuntimeError("File handler for csv with header not seekable"),
+            )
+        # for each line of the csv file, yield a dict
+        for line in csv.DictReader(fh, *csv_args, **csv_kwargs):
+            yield line
 
     @classmethod
     def from_txt(cls, filename: str) -> "DataStream[str]":
@@ -597,11 +626,22 @@ class DataStream(Generic[T]):
                     cls(cls._from_json_array_buffer_generator, part.fp, part.filename)
                 )
             elif "csv" in content_type:
-                stream_list.append(cls.from_csv())  # TODO: FIXME
+                # Warning: could be slow for large buffers
+                string_buffer = tempfile.SpooledTemporaryFile(mode="rw")
+                bytes_read = 1
+                bytes_read = BUFFER_SIZE
+                while bytes_read == BUFFER_SIZE:
+                    bytes_read = string_buffer.write(
+                        part.fp.read(BUFFER_SIZE).decode("utf8")
+                    )
+                string_buffer.seek(0)
+                stream_list.append(
+                    cls(cls._from_header_csv_buffer_generator, string_buffer)
+                )
             else:
                 error(
                     "<COR91833046E>",
-                    "unsupported content type: {}".format(content_type),
+                    ValueError("Unsupported content type: {}".format(content_type)),
                 )
         return DataStream.chain(*stream_list)
 
