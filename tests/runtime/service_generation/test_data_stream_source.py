@@ -13,7 +13,7 @@ import pytest
 # Local
 from caikit.core.data_model import DataObjectBase, dataobject
 from caikit.core.data_model.streams.data_stream import DataStream
-from caikit.interfaces.common.data_model.stream_sources import S3Files, File, Directory
+from caikit.interfaces.common.data_model.stream_sources import Directory, File, S3Files
 from caikit.runtime.service_generation.data_stream_source import (
     DataStreamSourceBase,
     _make_data_stream_source_type_name,
@@ -287,22 +287,23 @@ def test_make_data_stream_source_from_file_with_no_extension(
 
 
 def test_make_data_stream_source_from_multipart_formdata_file(
-    sample_train_service, sample_multipart_file, tmp_path
+    sample_train_service, sample_multipart_json, sample_multipart_csv, tmp_path
 ):
     """Test multipart streams. NB: We expect that multipart files will not have an extension"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
 
-    # prepare file with no extension
-    no_extension_filename = os.path.join(str(tmp_path), "no_extension")
-    shutil.copyfile(sample_multipart_file, no_extension_filename)
+    for file in (sample_multipart_csv, sample_multipart_json):
+        # prepare file with no extension
+        no_extension_filename = os.path.join(str(tmp_path), "no_extension")
+        shutil.copyfile(file, no_extension_filename)
 
-    ds = stream_type(file=File(filename=no_extension_filename))
-    assert isinstance(ds, DataStreamSourceBase)
+        ds = stream_type(file=File(filename=no_extension_filename))
+        assert isinstance(ds, DataStreamSourceBase)
 
-    data_stream = ds.to_data_stream()
-    assert isinstance(data_stream, DataStream)
+        data_stream = ds.to_data_stream()
+        assert isinstance(data_stream, DataStream)
 
-    validate_data_stream(data_stream, 2, SampleTrainingType)
+        validate_data_stream(data_stream, 2, SampleTrainingType)
 
 
 #################
@@ -461,9 +462,7 @@ def test_make_data_stream_source_invalid_ext_dir(sample_train_service):
         stream_type = (
             caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
         )
-        ds = stream_type(
-            directory=Directory(dirname=tempdir, extension="txt")
-        )
+        ds = stream_type(directory=Directory(dirname=tempdir, extension="txt"))
         with pytest.raises(CaikitRuntimeException) as e:
             ds.to_data_stream()
         assert "Extension not supported!" in e.value.message
