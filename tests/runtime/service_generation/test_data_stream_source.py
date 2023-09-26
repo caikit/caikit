@@ -323,7 +323,7 @@ def test_make_data_stream_source_csvfile(sample_train_service, sample_csv_file):
     data_stream = ds.to_data_stream()
     assert isinstance(data_stream, DataStream)
 
-    validate_data_stream(data_stream, 2, SampleTrainingType)
+    validate_data_stream(data_stream, 3, SampleTrainingType)
 
 
 def test_make_data_stream_source_jsonlfile(sample_train_service, sample_jsonl_file):

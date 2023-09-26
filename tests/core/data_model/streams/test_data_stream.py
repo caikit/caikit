@@ -116,7 +116,7 @@ def test_csv_collection_data_stream(sample_csv_collection):
 
 def test_csv_data_stream(sample_csv_file_no_headers):
     csv_data_stream = DataStream.from_csv(sample_csv_file_no_headers)
-    validate_data_stream(csv_data_stream, 3, list, 3)
+    validate_data_stream(csv_data_stream, 3, list, 2)
     for data_item in csv_data_stream:
         for element in data_item:
             assert isinstance(element, str)
@@ -124,7 +124,7 @@ def test_csv_data_stream(sample_csv_file_no_headers):
 
 def test_csv_header_data_stream(sample_csv_file):
     csv_header_data_stream = DataStream.from_header_csv(sample_csv_file)
-    validate_data_stream(csv_header_data_stream, 3, dict, 3)
+    validate_data_stream(csv_header_data_stream, 3, dict, 2)
     for data_item in csv_header_data_stream:
         for element in data_item:
             assert isinstance(element, str)
@@ -255,7 +255,7 @@ def test_zip(sample_csv_file_no_headers):
         assert isinstance(data_item[0], int)
         assert isinstance(data_item[1], int)
         assert isinstance(data_item[2], list)
-        assert len(data_item[2]) == 3
+        assert len(data_item[2]) == 2
 
 
 def test_zip_different_lengths(sample_text_file, list_data_stream):
@@ -422,7 +422,7 @@ def test_chain(
     cat_csv_pipline = DataStream.chain(
         csv_data_stream, csv_data_stream, csv_data_stream
     )
-    validate_data_stream(cat_csv_pipline, 9, list, 3)
+    validate_data_stream(cat_csv_pipline, 9, list, 2)
 
     cat_txt_data_stream = DataStream.chain(
         list_data_stream,
