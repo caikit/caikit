@@ -628,7 +628,6 @@ class DataStream(Generic[T]):
             elif "csv" in content_type:
                 # Warning: could be slow for large buffers
                 string_buffer = tempfile.SpooledTemporaryFile(mode="rw")
-                bytes_read = 1
                 bytes_read = BUFFER_SIZE
                 while bytes_read == BUFFER_SIZE:
                     bytes_read = string_buffer.write(

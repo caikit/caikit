@@ -189,14 +189,39 @@ def test_from_file_can_handle_a_json_file(sample_json_file):
     validate_data_stream(json_stream, 2, dict)
 
 
-def test_from_multipart_json_file(sample_multipart_json):
+def test_from_multipart_file_json(sample_multipart_json):
     multipart_stream = DataStream.from_multipart_file(sample_multipart_json)
     validate_data_stream(multipart_stream, 2, dict)
 
 
-def test_from_multipart_csv_file(sample_multipart_csv):
+def test_from_multipart_file_csv(sample_multipart_csv):
     multipart_stream = DataStream.from_multipart_file(sample_multipart_csv)
     validate_data_stream(multipart_stream, 2, dict)
+
+
+def test_from_multipart_file_unsupported_content_type(tmp_path):
+    tmpdir = str(tmp_path)
+    multipart_file = os.path.join(tmpdir, "multipart")
+
+    # Still need to create valid multipart file
+    with open(multipart_file, "w") as fp:
+        fp.write("--")
+        fp.write("arbitrary")
+        fp.writelines(
+            [
+                "\n",
+                f'Content-Disposition: form-data; name=""; filename="file"\n',
+                "Content-Type: text/plain\n",
+                "\n",
+            ]
+        )
+        fp.write("content")
+        fp.write("\n")
+        fp.write("--")
+        fp.write("arbitrary")
+        fp.write("--")
+    with pytest.raises(ValueError, match="Unsupported content type: text/plain"):
+        DataStream.from_multipart_file(multipart_file)
 
 
 ###########################
