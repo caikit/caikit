@@ -54,7 +54,7 @@ def test_many_files_in_multipart_content(
     assert len(parts) == len(files)
 
     for actual, expected in zip(parts, files):
-        actual_content = actual.fp.read()
+        actual_content = actual.fp.bytes_read()
         with open(expected, "rb") as f:
             expected_content = f.read()
         assert actual_content == expected_content
