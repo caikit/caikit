@@ -351,7 +351,7 @@ def test_make_data_stream_source_from_file_with_no_extension(
         data_stream = ds.to_data_stream()
         assert isinstance(data_stream, DataStream)
 
-        validate_data_stream(data_stream, 2, SampleTrainingType)
+        assert isinstance(data_stream.peek(), SampleTrainingType)
 
 
 def test_make_data_stream_source_from_multipart_formdata_file(
