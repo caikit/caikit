@@ -236,7 +236,7 @@ class DataStream(Generic[T]):
         # open the file
         with open(filename, mode="rb") as json_fh:
             log.debug2("Loading JSON array file: %s", filename)
-            return cls._from_json_array_buffer_generator(json_fh, filename)
+            yield from cls._from_json_array_buffer_generator(json_fh, filename)
 
     @classmethod
     def _from_json_array_buffer_generator(cls, json_fh: typing.IO, filename: str = ""):
