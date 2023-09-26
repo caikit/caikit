@@ -75,6 +75,11 @@ def dump_http_services(output_dir: str):
     with TestClient(server.app) as client:
         response = client.get("/openapi.json")
         response.raise_for_status()
+
+        # create output dir if doesn't exist
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
+
         with open(
             os.path.join(output_dir, "openapi.json"), "w", encoding="utf-8"
         ) as handle:
