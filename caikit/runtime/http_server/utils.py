@@ -1,0 +1,165 @@
+# Copyright The Caikit Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+This module holds utility functions and classes used only by the  REST server,
+this includes things like parameter handles and openapi spec generation
+"""
+# Standard
+from typing import Any
+
+
+def convert_json_schema_to_multipart(json_schema):
+    """Helper function to"""
+    light_schema, extracted_files = _extract_bytes_from_schema(json_schema)
+    light_schema["properties"] = {**light_schema["properties"], **extracted_files}
+    return light_schema
+
+
+def _extract_bytes_from_schema(json_schema: Any, current_path=None) -> (dict, dict):
+    """Helper function to extract all "bytes" fields from a json schema and return the cleaned
+    schema dict and a dict of extracted schemas where the key is the original schema path"""
+    if isinstance(json_schema, dict):
+        # If this json_schema is a binary string than extract it
+        if (
+            json_schema.get("type") == "string"
+            and json_schema.get("format") == "binary"
+        ):
+            return None, {_clean_schema_path(current_path): json_schema}
+        # If this json_schema is a list of binary objects then extract the entire list
+        elif (
+            json_schema.get("type") == "array"
+            and json_schema.get("items", {}).get("type") == "string"
+            and json_schema.get("items", {}).get("format") == "binary"
+        ):
+            return None, {_clean_schema_path(current_path): json_schema}
+
+        # If this is a generic schema then recurse on it
+        else:
+            output_schema = {}
+            extracted_schemas = {}
+            for key in json_schema:
+                # format sub path
+                key_path = key
+                if current_path:
+                    key_path = current_path + "." + key
+
+                # Recurse on schemas
+                updated_schema, extracted_bytes = _extract_bytes_from_schema(
+                    json_schema[key], key_path
+                )
+                if updated_schema:
+                    output_schema[key] = updated_schema
+
+                extracted_schemas = {**extracted_schemas, **extracted_bytes}
+
+            return output_schema, extracted_schemas
+
+    # If schema is a list then recurse on each sub item
+    elif isinstance(json_schema, list):
+        output_schema = []
+        extracted_schemas = {}
+        for i, schema in enumerate(json_schema):
+            # Recurse on sub schema with the same path
+            updated_schema, extracted_bytes = _extract_bytes_from_schema(
+                schema, current_path
+            )
+            if updated_schema:
+                output_schema.append(updated_schema)
+
+            extracted_schemas = {**extracted_schemas, **extracted_bytes}
+        return output_schema, extracted_schemas
+    # If schema is a raw type then just return it
+    else:
+        return json_schema, {}
+
+
+def _clean_schema_path(path):
+    """Clean a schema path of all reserved openapi fields. For example this turns
+    inputs.properties.anyOf.file.properties.filename  to inputs.file.filename"""
+    cleared_path = (
+        path.replace("allOf", "")
+        .replace("anyOf", "")
+        .replace("oneOf", "")
+        .replace("additionalProperties", "")
+        .replace("properties", "")
+        .replace("items", "")
+    )
+    cleared_path_split = cleared_path.split(".")
+    cleared_path_removed = [x for x in cleared_path_split if x]
+    return ".".join(cleared_path_removed)
+
+
+def flatten_json_schema(json_schema: dict) -> dict:
+    """Function to flatten a json schema. It replaces all references to $def
+    with the requested object or {} if it's not found"""
+    # Remove left over $defs field
+    refs_map = {"$defs": json_schema.pop("$defs", None)}
+
+    return _replace_json_refs(json_schema, refs_map)
+
+
+def _replace_json_refs(current_json: Any, refs_map: dict):
+    """Helper function to replace all items of {'$ref':'#/<refs>'} with the raw
+    objects. This is used for generating flattened openapi specs"""
+
+    # If object is dict than check for ref keys
+    if isinstance(current_json, dict):
+        if "$ref" in current_json:
+            ref_key_list = current_json["$ref"].split("/")
+
+            # find ref object, ignoring the first object as it's always
+            # '#'/
+            current_place = refs_map
+            for key in ref_key_list[1:]:
+                current_place = current_place.get(key, {})
+
+            return _replace_json_refs(current_place, refs_map)
+
+        else:
+            return {
+                key: _replace_json_refs(value, refs_map)
+                for key, value in current_json.items()
+            }
+
+    # If object is list than recurse on each item
+    elif isinstance(current_json, list):
+        return [_replace_json_refs(item, refs_map) for item in current_json]
+
+    # If object is other type than return raw object
+    else:
+        return current_json
+
+
+def update_dict_at_dot_path(dict_obj: dict, key: str, updated_value: Any) -> bool:
+    """Helper to set values in a dict using 'foo.bar' key notation
+
+    Args:
+        dct:  dict
+            The dict into which the key will be set
+        key:  str
+            Key that may contain '.' notation indicating dict nesting
+        val:  Any
+            The value to place at the nested key
+
+    Returns:
+        bool:
+            Wheather the dict was successfully updated
+    """
+    parts = key.split(".")
+    for i, part in enumerate(parts[:-1]):
+        dict_obj = dict_obj.setdefault(part, {})
+        if not isinstance(dict_obj, dict):
+            return False
+    dict_obj[parts[-1]] = updated_value
+    return True

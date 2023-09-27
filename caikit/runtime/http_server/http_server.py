@@ -20,7 +20,7 @@ API based on the task definitions available at boot.
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Dict, Iterable, Optional, Type, get_args
+from typing import Any, Dict, Iterable, Optional, Type, Union, get_args, get_type_hints
 import asyncio
 import json
 import os
@@ -46,7 +46,12 @@ import aconfig
 import alog
 
 # Local
-from .pydantic_wrapper import dataobject_to_pydantic, pydantic_to_dataobject
+from .pydantic_wrapper import (
+    dataobject_to_pydantic,
+    pydantic_from_request,
+    pydantic_to_dataobject,
+)
+from .utils import convert_json_schema_to_multipart, flatten_json_schema
 from caikit.config import get_config
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
@@ -322,13 +327,18 @@ class RuntimeHTTPServer(RuntimeServerBase):
         )
         pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
 
-        @self.app.post(self._get_route(rpc), response_model=pydantic_response)
+        @self.app.post(
+            self._get_route(rpc),
+            response_model=pydantic_response,
+            openapi_extra=self._get_request_openapi(pydantic_request),
+        )
         # pylint: disable=unused-argument
-        async def _handler(request: pydantic_request, context: Request) -> Response:
+        async def _handler(context: Request) -> Response:
             log.debug("In unary handler for %s", rpc.name)
             loop = asyncio.get_running_loop()
 
             # build request DM object
+            request = await pydantic_from_request(pydantic_request, context)
             http_request_dm_object = pydantic_to_dataobject(request)
 
             try:
@@ -365,9 +375,20 @@ class RuntimeHTTPServer(RuntimeServerBase):
         pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
         pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
 
-        @self.app.post(self._get_route(rpc), response_model=pydantic_response)
+        @self.app.post(
+            self._get_route(rpc),
+            response_model=pydantic_response,
+            openapi_extra=self._get_request_openapi(pydantic_request),
+        )
         # pylint: disable=unused-argument
-        async def _handler(request: pydantic_request, context: Request) -> Response:
+        async def _handler(model_id: str, context: Request) -> Response:
+            log.debug("In unary handler for %s for model %s", rpc.name, model_id)
+            loop = asyncio.get_running_loop()
+
+            request = await pydantic_from_request(pydantic_request, context)
+            request_params = self._get_request_params(rpc, request)
+
+            log.debug4("Sending request %s to model id %s", request_params, model_id)
             try:
                 model_id = self._get_model_id(request)
                 log.debug("In unary handler for %s for model %s", rpc.name, model_id)
@@ -418,11 +439,15 @@ class RuntimeHTTPServer(RuntimeServerBase):
         pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
 
         # pylint: disable=unused-argument
-        @self.app.post(self._get_route(rpc), response_model=pydantic_response)
-        async def _handler(
-            request: pydantic_request, context: Request
-        ) -> EventSourceResponse:
+        @self.app.post(
+            self._get_route(rpc),
+            response_model=pydantic_response,
+            openapi_extra=self._get_request_openapi(pydantic_request),
+        )
+        async def _handler(model_id: str, context: Request) -> EventSourceResponse:
             log.debug("In streaming handler for %s", rpc.name)
+
+            request = await pydantic_from_request(pydantic_request, context)
             request_params = self._get_request_params(rpc, request)
 
             async def _generator() -> pydantic_response:
@@ -561,6 +586,25 @@ class RuntimeHTTPServer(RuntimeServerBase):
             dm_obj = rpc.return_type
         assert isinstance(dm_obj, type) and issubclass(dm_obj, DataBase)
         return dm_obj
+
+    @staticmethod
+    def _get_request_openapi(
+        dm_class: Union[pydantic.BaseModel, Type[pydantic.BaseModel]]
+    ):
+        raw_schema = dm_class.model_json_schema()
+        parsed_schema = flatten_json_schema(raw_schema)
+
+        multipart_schema = convert_json_schema_to_multipart(parsed_schema)
+
+        return {
+            "requestBody": {
+                "content": {
+                    "application/json": {"schema": parsed_schema},
+                    "multipart/form-data": {"schema": multipart_schema},
+                },
+                "required": True,
+            }
+        }
 
     @staticmethod
     def _health_check() -> str:
