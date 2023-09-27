@@ -277,6 +277,7 @@ class DataStream(Generic[T]):
                 file.  This is often useful for skipping a header line.
             args, kwargs: Additional arguments passed to the `csv.reader` function.
                 These can be used to specify the delimiter or other csv settings.
+
         Returns:
             DataStream: A data stream that produces a data item for each line of
                 the csv file and where each element of the data item corresponds
@@ -329,6 +330,7 @@ class DataStream(Generic[T]):
                 data item.
             args, kwargs: Additional arguments passed to the `csv.reader` function.
                 These can be used to specify the delimiter or other csv settings.
+
         Returns:
             DataStream: A data stream that produces a data item for each line of
                 the csv file and where each element of the stream is a dict
@@ -424,15 +426,14 @@ class DataStream(Generic[T]):
 
     @classmethod
     def from_file(cls, filename: str) -> "DataStream[Union[Dict, Tuple, str]]":
-        """Loads up a DataStream from a file.
-            Will call the correct DataStream.from_* static constructor based on the
-            file extension
+        """Loads up a DataStream from a file. Will call the correct DataStream.from_*
+        static constructor based on the file extension
 
-            The data items returned in the data stream are:
-            For JSON:
-                dictionaries
-            For all other files (besides CSV for now)
-                strings (1 per line)
+        The data items returned in the data stream are:
+        For JSON:
+            dictionaries
+        For all other files (besides CSV for now)
+            strings (1 per line)
 
         Args:
             filename (str): Name of file
@@ -601,9 +602,9 @@ class DataStream(Generic[T]):
     def from_multipart_file(cls, filename: str) -> "DataStream[JsonDictValue]":
         """Loads up a DataStream from a multipart file
 
-            The data items returned in the data stream are determined by the
-            content type for each part in the multipart file by calling
-            the correct DataStream.from_*
+        The data items returned in the data stream are determined by the
+        content type for each part in the multipart file by calling
+        the correct DataStream.from_*
 
         Args:
             filename (str): Name of file

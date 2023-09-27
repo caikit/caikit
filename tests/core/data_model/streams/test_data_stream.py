@@ -200,8 +200,7 @@ def test_from_multipart_file_csv(sample_multipart_csv):
 
 
 def test_from_multipart_file_unsupported_content_type(tmp_path):
-    tmpdir = str(tmp_path)
-    multipart_file = os.path.join(tmpdir, "multipart")
+    multipart_file = os.path.join(str(tmp_path), "multipart")
 
     # Still need to create valid multipart file
     with open(multipart_file, "w") as fp:
@@ -221,6 +220,17 @@ def test_from_multipart_file_unsupported_content_type(tmp_path):
         fp.write("arbitrary")
         fp.write("--")
     with pytest.raises(ValueError, match="Unsupported content type: text/plain"):
+        DataStream.from_multipart_file(multipart_file)
+
+
+def test_bad_multipart_file(tmp_path):
+    multipart_file = os.path.join(str(tmp_path), "bad_multipart")
+    with open(multipart_file, "w") as fp:
+        fp.write("content")
+        fp.write("\n")
+        fp.write("--")
+        fp.write("arbitrary")
+    with pytest.raises(ValueError, match="file is not multipart"):
         DataStream.from_multipart_file(multipart_file)
 
 
