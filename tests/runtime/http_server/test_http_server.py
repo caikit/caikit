@@ -375,6 +375,20 @@ def test_inference_streaming_sample_module(sample_task_model_id, runtime_http_se
         )
 
 
+def test_inference_multi_task_module(multi_task_model_id, runtime_http_server):
+    """Simple check that we can ping a model"""
+    with TestClient(runtime_http_server.app) as client:
+        # cGRmZGF0Yf//AA== is b"pdfdata\xff\xff\x00" base64 encoded
+        json_input = {"inputs": {"filename": "example.pdf", "data": "cGRmZGF0Yf//AA=="}}
+        response = client.post(
+            f"/api/v1/{multi_task_model_id}/task/second",
+            json=json_input,
+        )
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert response.status_code == 200, json_response
+        assert json_response["farewell"] == "Goodbye from SecondTask"
+
+
 def test_model_not_found(runtime_http_server):
     """Simple check that we can ping a model"""
     with TestClient(runtime_http_server.app) as client:

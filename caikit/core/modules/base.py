@@ -24,7 +24,7 @@
 
 # Standard
 from io import BytesIO
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Type, Union
 import collections
 import os
 import shutil
@@ -86,12 +86,20 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
 
     @classmethod
     def get_inference_signature(
-        cls, input_streaming: bool, output_streaming: bool
+        cls, input_streaming: bool, output_streaming: bool, task: Type = None
     ) -> Optional["caikit.core.signature_parsing.CaikitMethodSignature"]:
         """Returns the inference method signature that is capable of running the module's task
         for the given flavors of input and output streaming
         """
-        for in_streaming, out_streaming, signature in cls._INFERENCE_SIGNATURES:
+
+        if task is not None and task in cls._TASK_INFERENCE_SIGNATURES:
+            signatures = cls._TASK_INFERENCE_SIGNATURES[task]
+        elif cls._TASK_INFERENCE_SIGNATURES:
+            signatures = next(iter(cls._TASK_INFERENCE_SIGNATURES.values()))
+        else:
+            signatures = []
+
+        for in_streaming, out_streaming, signature in signatures:
             if in_streaming == input_streaming and out_streaming == output_streaming:
                 return signature
         return None

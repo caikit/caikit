@@ -115,15 +115,15 @@ def _group_modules_by_task(
 ) -> Dict[Type[TaskBase], List[CaikitMethodSignature]]:
     task_groups = {}
     for ck_module in modules:
-        if ck_module.TASK_CLASS:
-            ck_module_task_name = ck_module.TASK_CLASS.__name__
+        for task_class in ck_module.TASK_CLASSES:
+            ck_module_task_name = task_class.__name__
             if ck_module_task_name is not None:
                 for (
                     input_streaming,
                     output_streaming,
                     signature,
-                ) in ck_module._INFERENCE_SIGNATURES:
-                    task_groups.setdefault(ck_module.TASK_CLASS, {}).setdefault(
+                ) in ck_module._TASK_INFERENCE_SIGNATURES[task_class]:
+                    task_groups.setdefault(task_class, {}).setdefault(
                         (input_streaming, output_streaming), []
                     ).append(signature)
     return task_groups

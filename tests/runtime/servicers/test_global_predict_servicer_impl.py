@@ -16,7 +16,9 @@ from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 # Local
+from caikit.core.data_model import ProducerId
 from caikit.runtime.service_factory import get_inference_request
+from sample_lib.modules import MultiTaskModule, SecondTask
 from sample_lib.modules.geospatial import GeoStreamingModule
 
 try:
@@ -39,6 +41,7 @@ from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServic
 from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model import SampleInputType, SampleOutputType
+from sample_lib.data_model.sample import FileDataType, OtherOutputType
 from sample_lib.modules.sample_task import SampleModule
 from tests.conftest import temp_config
 from tests.fixtures import Fixtures
@@ -185,6 +188,34 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs_with_multiple_stre
             assert response.greeting == f"Hello from Gabe at {i}.0°, {100-i}.0°"
             count += 1
         assert count == 100
+
+
+def test_global_predict_works_for_multitask_model(
+    sample_inference_service,
+    sample_predict_servicer,
+    sample_task_model_id,
+):
+    mock_manager = MagicMock()
+    mock_manager.retrieve_model.return_value = MultiTaskModule()
+
+    predict_class = get_inference_request(
+        SecondTask, input_streaming=False, output_streaming=False
+    )
+    with patch.object(sample_predict_servicer, "_model_manager", mock_manager):
+        response = sample_predict_servicer.Predict(
+            predict_class(
+                file_input=FileDataType(filename="foo", data=bytes("bar", "utf-8"))
+            ).to_proto(),
+            Fixtures.build_context(sample_task_model_id),
+            caikit_rpc=sample_inference_service.caikit_rpcs["SecondTaskPredict"],
+        )
+
+    assert (
+        response
+        == OtherOutputType(
+            "Goodbye from SecondTask", ProducerId("MultiTaskModule", "0.0.1")
+        ).to_proto()
+    )
 
 
 def test_global_predict_predict_model_direct(

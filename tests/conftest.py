@@ -102,6 +102,11 @@ def other_good_model_path() -> str:
     return os.path.join(FIXTURES_DIR, "models", "bar")
 
 
+@pytest.fixture
+def multi_task_model_path() -> str:
+    return os.path.join(FIXTURES_DIR, "models", "multi")
+
+
 # Sample data files for testing ###########################
 @pytest.fixture
 def data_stream_inputs() -> str:

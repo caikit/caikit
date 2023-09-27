@@ -178,6 +178,7 @@ class GlobalPredictServicer:
                     inference_signature = model_class.get_inference_signature(
                         input_streaming=caikit_rpc.input_streaming,
                         output_streaming=caikit_rpc.output_streaming,
+                        task=caikit_rpc.task,
                     )
                     if not inference_signature:
                         raise CaikitRuntimeException(

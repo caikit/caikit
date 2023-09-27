@@ -74,6 +74,7 @@ from sample_lib.data_model import (
     SampleOutputType,
     SampleTrainingType,
 )
+from sample_lib.modules import FirstTask
 from tests.conftest import random_test_id, temp_config
 from tests.core.helpers import *
 from tests.fixtures import Fixtures
@@ -222,6 +223,21 @@ def test_predict_sample_module_ok_response(
     )
 
     assert actual_response == HAPPY_PATH_RESPONSE
+
+
+def test_predict_sample_module_multi_task_response(
+    multi_task_model_id, runtime_grpc_server, sample_inference_service
+):
+    """Test RPC CaikitRuntime.SampleTaskPredict successful response"""
+    stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
+    predict_class = get_inference_request(FirstTask)
+    predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
+
+    actual_response = stub.FirstTaskPredict(
+        predict_request, metadata=[("mm-model-id", multi_task_model_id)]
+    )
+
+    assert actual_response == SampleOutputType("Hello from FirstTask").to_proto()
 
 
 def test_global_predict_build_caikit_library_request_dict_creates_caikit_core_run_kwargs(

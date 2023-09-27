@@ -9,7 +9,14 @@ import pytest
 # Local
 from caikit.core import TaskBase, task
 from sample_lib import SampleModule
-from sample_lib.data_model.sample import SampleInputType, SampleOutputType, SampleTask
+from sample_lib.data_model.sample import (
+    FileDataType,
+    OtherOutputType,
+    SampleInputType,
+    SampleOutputType,
+    SampleTask,
+)
+from sample_lib.modules.multi_task import FirstTask, MultiTaskModule, SecondTask
 import caikit.core
 
 
@@ -119,6 +126,11 @@ def test_task_is_set_on_module_classes():
     assert SampleModule.TASK_CLASS == SampleTask
 
 
+def test_multiple_tasks_are_set_on_module_class():
+    assert hasattr(MultiTaskModule, "TASK_CLASSES")
+    assert FirstTask, SecondTask in MultiTaskModule.TASK_CLASSES
+
+
 def test_task_can_be_inferred_from_parent_module():
     @caikit.core.modules.module(id="foobar", name="Stuff", version="0.0.1")
     class Stuff(SampleModule):
@@ -127,18 +139,31 @@ def test_task_can_be_inferred_from_parent_module():
     assert Stuff.TASK_CLASS == SampleModule.TASK_CLASS
 
 
-def test_task_cannot_conflict_with_parent_module():
-    @task(unary_parameters={"foo": SampleInputType}, unary_output_type=SampleOutputType)
-    class SomeTask(TaskBase):
+def test_multiple_tasks_inherited_from_parent_module():
+    @caikit.core.modules.module(
+        id="multichild", name="MultiTaskChildModule", version="0.0.1"
+    )
+    class MultiTaskChildModule(MultiTaskModule):
         pass
 
-    with pytest.raises(TypeError, match="but superclass has"):
+    assert FirstTask, SecondTask in MultiTaskChildModule.TASK_CLASSES
 
-        @caikit.core.modules.module(
-            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
-        )
-        class Stuff(SampleModule):
+
+def test_tasks_added_from_parent_and_child_module():
+    @task(unary_parameters={"foo": int}, unary_output_type=SampleOutputType)
+    class ThirdTask(TaskBase):
+        pass
+
+    @caikit.core.modules.module(
+        id="taskfamily", name="MultiTaskChildModule", version="0.0.1", tasks=[ThirdTask]
+    )
+    class MultiTaskChildModule(MultiTaskModule):
+        @ThirdTask.taskmethod()
+        def run_third_task(self, foo: int) -> SampleOutputType:
             pass
+
+    for t in [FirstTask, SecondTask, ThirdTask]:
+        assert t in MultiTaskChildModule.TASK_CLASSES
 
 
 def test_task_is_not_required_for_modules():
@@ -147,6 +172,23 @@ def test_task_is_not_required_for_modules():
         pass
 
     assert Stuff.TASK_CLASS is None
+
+
+def test_task_and_tasks_are_mutually_exclusive():
+    with pytest.raises(
+        ValueError,
+        match=".*Specify either task or tasks parameter, not both",
+    ):
+
+        @caikit.core.modules.module(
+            id=str(uuid.uuid4()),
+            name="Stuff",
+            version="0.0.1",
+            task=SampleTask,
+            tasks=[FirstTask, SecondTask],
+        )
+        class Stuff(caikit.core.ModuleBase):
+            pass
 
 
 def test_task_validation_throws_on_no_params():
