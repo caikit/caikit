@@ -21,8 +21,6 @@ import alog
 
 # Local
 from caikit.runtime.dump_services import dump_grpc_services, dump_http_services
-import caikit.interfaces.common
-import sample_lib
 
 ## Helpers #####################################################################
 
@@ -44,7 +42,6 @@ def test_dump_grpc_services_dir_does_not_exist():
     assert os.path.exists(fake_dir)
 
     for file in os.listdir(fake_dir):
-        print(file)
         assert file.endswith(".proto")
 
     shutil.rmtree(fake_dir)
