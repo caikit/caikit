@@ -16,33 +16,23 @@ This module holds utility functions and classes used only by the  REST server,
 this includes things like parameter handles and openapi spec generation
 """
 # Standard
-from typing import Any
+from typing import Any, Optional
 
 
 def convert_json_schema_to_multipart(json_schema):
     """Helper function to"""
-    light_schema, extracted_files = _extract_bytes_from_schema(json_schema)
-    light_schema["properties"] = {**light_schema["properties"], **extracted_files}
-    return light_schema
+    sparse_schema, extracted_files = _extract_raw_from_schema(json_schema)
+    sparse_schema["properties"] = {**sparse_schema["properties"], **extracted_files}
+    return sparse_schema
 
 
-def _extract_bytes_from_schema(json_schema: Any, current_path=None) -> (dict, dict):
-    """Helper function to extract all "bytes" fields from a json schema and return the cleaned
-    schema dict and a dict of extracted schemas where the key is the original schema path"""
+def _extract_raw_from_schema(json_schema: Any, current_path=None) -> (dict, dict):
+    """Helper function to extract all "bytes" or File fields from a json schema and return the cleaned
+    schema dict and a dict of extracted schemas where the key is the original raw's path"""
     if isinstance(json_schema, dict):
-        # If this json_schema is a binary string than extract it
-        if (
-            json_schema.get("type") == "string"
-            and json_schema.get("format") == "binary"
-        ):
-            return None, {_clean_schema_path(current_path): json_schema}
-        # If this json_schema is a list of binary objects then extract the entire list
-        elif (
-            json_schema.get("type") == "array"
-            and json_schema.get("items", {}).get("type") == "string"
-            and json_schema.get("items", {}).get("format") == "binary"
-        ):
-            return None, {_clean_schema_path(current_path): json_schema}
+        # If this json_schema represents a raw field extract it
+        if raw_json_schema := _parse_raw_json_schema(json_schema):
+            return None, {_clean_schema_path(current_path): raw_json_schema}
 
         # If this is a generic schema then recurse on it
         else:
@@ -55,7 +45,7 @@ def _extract_bytes_from_schema(json_schema: Any, current_path=None) -> (dict, di
                     key_path = current_path + "." + key
 
                 # Recurse on schemas
-                updated_schema, extracted_bytes = _extract_bytes_from_schema(
+                updated_schema, extracted_bytes = _extract_raw_from_schema(
                     json_schema[key], key_path
                 )
                 if updated_schema:
@@ -71,7 +61,7 @@ def _extract_bytes_from_schema(json_schema: Any, current_path=None) -> (dict, di
         extracted_schemas = {}
         for i, schema in enumerate(json_schema):
             # Recurse on sub schema with the same path
-            updated_schema, extracted_bytes = _extract_bytes_from_schema(
+            updated_schema, extracted_bytes = _extract_raw_from_schema(
                 schema, current_path
             )
             if updated_schema:
@@ -98,6 +88,42 @@ def _clean_schema_path(path):
     cleared_path_split = cleared_path.split(".")
     cleared_path_removed = [x for x in cleared_path_split if x]
     return ".".join(cleared_path_removed)
+
+
+def _parse_raw_json_schema(json_schema: dict) -> Optional[dict]:
+    """Helper to check if a json schema matches a raw objects schema. If it does return the generic
+    binary openapi schema"""
+    generic_binary_schema = {"type": "string", "format": "binary"}
+
+    # If schema matches raw bytes
+    if json_schema.get("type") == generic_binary_schema.get("type") and json_schema.get(
+        "format"
+    ) == generic_binary_schema.get("format"):
+        return json_schema
+
+    # If schema matches list of bytes
+    elif (
+        json_schema.get("type") == "array"
+        and json_schema.get("items", {}).get("type")
+        == generic_binary_schema.get("type")
+        and json_schema.get("items", {}).get("format")
+        == generic_binary_schema.get("format")
+    ):
+        return json_schema
+
+    # If schema matches a file reference then return the generic bytes schema
+    elif json_schema.get("title") in ["caikit_data_model.common.File"]:
+        json_schema = {**json_schema, **generic_binary_schema}
+        json_schema.pop("properties", None)
+        return json_schema
+    # If schema is a list of file references
+    elif json_schema.get("type") == "array" and json_schema.get("items", {}).get(
+        "title"
+    ) in ["caikit_data_model.common.File"]:
+        json_schema["items"] = generic_binary_schema
+        return json_schema
+
+    return None
 
 
 def flatten_json_schema(json_schema: dict) -> dict:
@@ -145,16 +171,16 @@ def update_dict_at_dot_path(dict_obj: dict, key: str, updated_value: Any) -> boo
     """Helper to set values in a dict using 'foo.bar' key notation
 
     Args:
-        dct:  dict
+        dict_obj:  dict
             The dict into which the key will be set
         key:  str
             Key that may contain '.' notation indicating dict nesting
-        val:  Any
+        updated_value:  Any
             The value to place at the nested key
 
     Returns:
         bool:
-            Wheather the dict was successfully updated
+            Weather the dict was successfully updated
     """
     parts = key.split(".")
     for i, part in enumerate(parts[:-1]):

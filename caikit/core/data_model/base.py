@@ -18,6 +18,7 @@
 # Standard
 from dataclasses import dataclass
 from enum import Enum
+from io import IOBase
 from typing import Any, Dict, List, Optional, Type, Union
 import base64
 import datetime
@@ -301,6 +302,13 @@ class _DataBaseMetaClass(type):
         if current_init is None or current_init is DataBase.__init__:
             setattr(cls, "__init__", mcs._make_init(cls.fields))
 
+        # Check DataBase for file handlers
+        setattr(
+            cls,
+            "_supports_file_operations",
+            cls.to_file is not DataBase.to_file and cls.from_file is not DataBase.from_file,
+        )
+
     @classmethod
     def _make_property_getter(mcs, field, oneof_name=None):
         """This helper creates an @property attribute getter for the given field
@@ -519,6 +527,11 @@ class DataBase(metaclass=_DataBaseMetaClass):
     @property
     def backend(self) -> Optional["DataModelBackendBase"]:
         return getattr(self, _DataBaseMetaClass._BACKEND_ATTR, None)
+
+    @classmethod
+    @property
+    def supports_file_operations(cls)->bool:
+        return getattr(cls, "_supports_file_operations", False)
 
     def which_oneof(self, oneof_name: str) -> Optional[str]:
         """Get the name of the oneof field set for the given oneof or None if no
@@ -785,6 +798,10 @@ class DataBase(metaclass=_DataBaseMetaClass):
         except json_format.ParseError as ex:
             error("<COR90619980E>", ValueError(ex))
 
+    @classmethod
+    def from_file(cls, file_obj: IOBase):
+        raise NotImplementedError(f"from_file not implemented for {cls}")
+
     def to_proto(self):
         """Return a new protobufs populated with the information in this data structure."""
         # get the name of the protobufs class
@@ -960,6 +977,9 @@ class DataBase(metaclass=_DataBaseMetaClass):
             kwargs["default"] = _default_serialization_overrides
 
         return json.dumps(self.to_dict(), **kwargs)
+
+    def to_file(self, file_obj: IOBase) -> Optional["File"]:
+        raise NotImplementedError(f"to_file not implemented for {self.__class__}")
 
     def __repr__(self):
         """Human-friendly representation."""

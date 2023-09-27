@@ -28,3 +28,4 @@ Domain agnostic data model objects
 from . import primitive_sequences, producer
 from .primitive_sequences import BoolSequence, FloatSequence, IntSequence, StrSequence
 from .producer import ProducerId
+from .stream_sources import File, ListOfFiles

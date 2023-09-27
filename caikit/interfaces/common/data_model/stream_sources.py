@@ -16,7 +16,7 @@ This file contains interfaces required to generate DataStreamSource[T] classes
 """
 
 # Standard
-from typing import List
+from typing import List, Optional
 
 # First Party
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
@@ -28,6 +28,8 @@ from caikit.core.data_model import PACKAGE_COMMON, DataObjectBase, dataobject
 @dataobject(PACKAGE_COMMON)
 class File(DataObjectBase):
     filename: Annotated[str, FieldNumber(1)]
+    data: Annotated[Optional[bytes], FieldNumber(2)]
+    type: Annotated[Optional[str], FieldNumber(3)]
 
 
 @dataobject(PACKAGE_COMMON)

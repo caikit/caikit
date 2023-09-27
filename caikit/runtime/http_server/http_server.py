@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Any, Dict, Iterable, Optional, Type, Union, get_args, get_type_hints
 import asyncio
+import io
 import json
 import os
 import re
@@ -325,12 +326,16 @@ class RuntimeHTTPServer(RuntimeServerBase):
         pydantic_request = dataobject_to_pydantic(
             DataBase.get_class_for_name(rpc.request.name)
         )
-        pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
+        response_data_object = self._get_response_dataobject(rpc)
+        pydantic_response = dataobject_to_pydantic(response_data_object)
 
         @self.app.post(
             self._get_route(rpc),
-            response_model=pydantic_response,
+            responses=self._get_response_openapi(
+                response_data_object, pydantic_response
+            ),
             openapi_extra=self._get_request_openapi(pydantic_request),
+            response_class=Response,
         )
         # pylint: disable=unused-argument
         async def _handler(context: Request) -> Response:
@@ -351,7 +356,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     wait=True,
                 )
                 result = await loop.run_in_executor(None, call)
-                return Response(content=result.to_json(), media_type="application/json")
+                if response_data_object.supports_file_operations:
+                    return self._format_file_response(result)
+                else:
+                    return Response(
+                        content=result.to_json(), media_type="application/json"
+                    )
 
             except CaikitRuntimeException as err:
                 error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
@@ -373,12 +383,16 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def _add_unary_input_unary_output_handler(self, rpc: TaskPredictRPC):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
-        pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
+        response_data_object = self._get_response_dataobject(rpc)
+        pydantic_response = dataobject_to_pydantic(response_data_object)
 
         @self.app.post(
             self._get_route(rpc),
-            response_model=pydantic_response,
+            responses=self._get_response_openapi(
+                response_data_object, pydantic_response
+            ),
             openapi_extra=self._get_request_openapi(pydantic_request),
+            response_class=Response,
         )
         # pylint: disable=unused-argument
         async def _handler(model_id: str, context: Request) -> Response:
@@ -415,7 +429,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 )
                 result = await loop.run_in_executor(None, call)
                 log.debug4("Response from model %s is %s", model_id, result)
-                return Response(content=result.to_json(), media_type="application/json")
+
+                if response_data_object.supports_file_operations:
+                    return self._format_file_response(result)
+                else:
+                    return Response(
+                        content=result.to_json(), media_type="application/json"
+                    )
 
             except CaikitRuntimeException as err:
                 error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
@@ -588,10 +608,29 @@ class RuntimeHTTPServer(RuntimeServerBase):
         return dm_obj
 
     @staticmethod
+    def _format_file_response(dm_class: Type[DataBase])->Response:
+        file_obj = io.BytesIO()
+        file_info = dm_class.to_file(file_obj)
+
+        file_type = "application/octet-stream"
+        content_disposition = "attachment"
+        if file_info:
+            file_type = file_info.type if file_info.type else file_type
+            content_disposition = (
+                f'attachment; filename="{file_info.filename}"'
+            )
+
+        return Response(
+            content=file_obj.getvalue(),
+            headers={"Content-Disposition": content_disposition},
+            media_type=file_type,
+        )
+
+    @staticmethod
     def _get_request_openapi(
-        dm_class: Union[pydantic.BaseModel, Type[pydantic.BaseModel]]
+        pydantic_model: Union[pydantic.BaseModel, Type[pydantic.BaseModel]]
     ):
-        raw_schema = dm_class.model_json_schema()
+        raw_schema = pydantic_model.model_json_schema()
         parsed_schema = flatten_json_schema(raw_schema)
 
         multipart_schema = convert_json_schema_to_multipart(parsed_schema)
@@ -605,6 +644,22 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 "required": True,
             }
         }
+
+    @staticmethod
+    def _get_response_openapi(
+        dm_class: Type[DataBase], pydantic_model: Type[pydantic.BaseModel]
+    ):
+        if dm_class.supports_file_operations:
+            response_schema = {
+                "application/octet-stream": {"type": "string", "format": "binary"}
+            }
+        else:
+            response_schema = {
+                "application/json": flatten_json_schema(pydantic_model.model_json_schema())
+            }
+
+        output = {200: {"content": response_schema}}
+        return output
 
     @staticmethod
     def _health_check() -> str:

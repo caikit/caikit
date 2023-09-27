@@ -31,6 +31,7 @@ from pydantic.functional_validators import BeforeValidator
 from starlette.datastructures import UploadFile
 import numpy as np
 import pydantic
+import alog
 
 # First Party
 from py_to_proto.dataclass_to_proto import (  # Imported here for 3.8 compat
@@ -46,7 +47,10 @@ from caikit.interfaces.common.data_model.primitive_sequences import (
     IntSequence,
     StrSequence,
 )
+from caikit.interfaces.common.data_model.stream_sources import File
 from caikit.runtime.http_server.utils import update_dict_at_dot_path
+
+log = alog.use_channel("SERVR-HTTP-PYDNTC")
 
 # PYDANTIC_TO_DM_MAPPING is essentially a 2-way map of DMs <-> Pydantic models, you give it a
 # pydantic model, it gives you back a DM class, you give it a
@@ -184,6 +188,7 @@ async def pydantic_from_request(
     pydantic_model: Type[pydantic.BaseModel], request: Request
 ):
     content_type = request.headers.get("Content-Type")
+    log.debug4("Detected request using %s type", content_type)
 
     # If content type is json use pydantic to parse
     if content_type == "application/json":
@@ -209,19 +214,27 @@ def _parse_form_data_to_pydantic(
 ) -> pydantic.BaseModel:
     """Helper function to parse a fastapi form data into a pydantic model"""
 
+    # Gather the file pydantic model. This is computed here to avoid recomputing it every loop
+    pydantic_file = dataobject_to_pydantic(File)
+
+    # Parse each form_data key into a python dict which is then
+    # converted to a pydantic model via .model_validate()
     raw_model_obj = {}
     for key in form_data.keys():
+
         # Get the list of objects that has the key
         # field name
         raw_objects = form_data.getlist(key)
 
         # Make sure form field actually has values
         if not raw_objects or (len(raw_objects) > 0 and not raw_objects[0]):
+            log.debug4("Detected empty form key '%s'", key)
             continue
 
         # Get the type hint for the requested model
         sub_key_list = key.split(".")
         model_type_hints = _get_pydantic_subtypes(pydantic_model, sub_key_list)
+        log.debug4("Gathered hints '%s' for model key '%s'", model_type_hints, key)
         if not model_type_hints:
             raise HTTPException(
                 status_code=422,
@@ -243,8 +256,26 @@ def _parse_form_data_to_pydantic(
         # pydantic will handle formatting
         parsed = False
         for type_hint in model_type_hints:
+            # If type_hint is bytes than parse the file information
+            if type_hint in [bytes, pydantic_file]:
+                for n, sub_obj in enumerate(raw_objects):
+                    # This should always be true but check just in case
+                    if isinstance(sub_obj, UploadFile):
+                        # If we're looking for a pydantic file type then parse the
+                        # structure of UploadFile. Otherwise, just return the content bytes
+                        if type_hint == pydantic_file:
+                            raw_objects[n] = {
+                                "filename": sub_obj.filename,
+                                "data": sub_obj.file.read(),
+                                "type": sub_obj.content_type,
+                            }
+                        else:
+                            raw_objects[n] = sub_obj.file.read()
+
             # If type_hint is a pydantic model then parse the json
-            if inspect.isclass(type_hint) and issubclass(type_hint, pydantic.BaseModel):
+            elif inspect.isclass(type_hint) and issubclass(
+                type_hint, pydantic.BaseModel
+            ):
                 failed_to_parse_json = False
                 for n, sub_obj in enumerate(raw_objects):
                     try:
@@ -255,14 +286,8 @@ def _parse_form_data_to_pydantic(
 
                 # If the json couldn't be parsed then skip this type
                 if failed_to_parse_json:
+                    log.debug3("Failed to parse json for key '%s'", key)
                     continue
-
-            # If type_hint is bytes than parse the file information
-            # TODO This should be a custom caikit type
-            elif type_hint == bytes:
-                for n, sub_obj in enumerate(raw_objects):
-                    if isinstance(sub_obj, UploadFile):
-                        raw_objects[n] = sub_obj.file.read()
 
             # If object is not supposed to be a list then just grab the first element
             if not is_list:
@@ -285,11 +310,11 @@ def _parse_form_data_to_pydantic(
                 detail=f"Failed to parse key '{key}' with types {model_type_hints}",
             )
 
-    # Process the model into a pydantic type
+    # Process the dict into a pydantic model before returning
     try:
         return pydantic_model.model_validate(raw_model_obj)
     except pydantic.ValidationError as err:
-        raise RequestValidationError(errors=err.raw_errors)  # This is the key piece
+        raise RequestValidationError(errors=err.errors())  # This is the key piece
 
 
 def _get_pydantic_subtypes(
@@ -300,19 +325,25 @@ def _get_pydantic_subtypes(
         return [pydantic_model]
 
     # Get the type hints for the current key
-    current_key = keys[0]
+    current_key = keys.pop(0)
     current_type = get_type_hints(pydantic_model).get(current_key)
     if not current_type:
         return []
 
     if get_origin(current_type) is Union:
         # If we're trying to capture a union then return the entire union result
-        if len(keys) == 1:
+        if len(keys) == 0:
             return get_args(current_type)
 
         # Get the arg which matches
         for arg in get_args(current_type):
-            if result := _get_pydantic_subtypes(arg, keys[1:]):
+            if result := _get_pydantic_subtypes(arg, keys):
                 return result
+    # If object is a list then recurse on its type
+    elif get_origin(current_type) is list:
+        if len(keys) == 0:
+            return current_type
+
+        return _get_pydantic_subtypes(get_args(current_type)[0], keys)
     else:
-        return _get_pydantic_subtypes(current_type, keys[1:])
+        return _get_pydantic_subtypes(current_type, keys)
