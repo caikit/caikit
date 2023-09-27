@@ -67,6 +67,7 @@ dev-test = [
     "tls_test_tools>=0.1.1",
     "wheel>=0.38.4",
     "caikit[interfaces-vision]",
+    "pytest-xdist>=3.3.1,<4"
 ]
 
 dev-docs = [
