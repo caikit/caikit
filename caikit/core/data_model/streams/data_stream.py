@@ -623,28 +623,10 @@ class DataStream(Generic[T]):
                     cls(cls._from_json_array_buffer_generator, part.fp, part.filename)
                 )
             elif "csv" in content_type:
-
-                class UtfEncodeIOWrapper(io.IOBase):
-                    """Lil' inline wrapper class to convert this bytes buffer to a string buffer"""
-
-                    def __init__(self, bytes_stream: typing.IO[bytes]):
-                        self.bytes_stream = bytes_stream
-
-                    def read(self, *args, **kwargs):
-                        res = self.bytes_stream.read(*args, **kwargs)
-                        return res.decode("utf-8")
-
-                    def readline(self, *args, **kwargs):
-                        res = self.bytes_stream.readline(*args, **kwargs)
-                        return res.decode("utf-8")
-
-                    def seek(self, *args, **kwargs):
-                        return self.bytes_stream.seek(*args, **kwargs)
-
                 stream_list.append(
                     cls(
                         cls._from_header_csv_buffer_generator,
-                        UtfEncodeIOWrapper(part.fp),
+                        _UtfEncodeIOWrapper(part.fp),
                     )
                 )
             else:
@@ -1043,3 +1025,21 @@ class DataStream(Generic[T]):
                     "collection path `{}` is not a directory".format(dirname)
                 ),
             )
+
+
+class _UtfEncodeIOWrapper(io.IOBase):
+    """Lil' wrapper class to convert a bytes buffer to a string buffer"""
+
+    def __init__(self, bytes_stream: typing.IO[bytes]):
+        self.bytes_stream = bytes_stream
+
+    def read(self, *args, **kwargs):
+        res = self.bytes_stream.read(*args, **kwargs)
+        return res.decode("utf-8")
+
+    def readline(self, *args, **kwargs):
+        res = self.bytes_stream.readline(*args, **kwargs)
+        return res.decode("utf-8")
+
+    def seek(self, *args, **kwargs):
+        return self.bytes_stream.seek(*args, **kwargs)
