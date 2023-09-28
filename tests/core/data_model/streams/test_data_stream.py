@@ -184,6 +184,50 @@ def test_bad_json_stream(tmp_path):
         DataStream.from_json_array(file_path).peek()
 
 
+def test_bad_multipart_stream(tmp_path):
+    file_path = os.path.join(str(tmp_path), "bad.multipart")
+    with open(file_path, "w") as fp:
+        fp.write(
+            """
+            not
+            a
+            { "multipart" : 1}
+            "file"
+        """
+        )
+    with pytest.raises(ValueError, match="file is not multipart"):
+        DataStream.from_multipart_file(file_path).peek()
+
+
+def test_invalid_multipart_boundary(tmp_path):
+    file_path = os.path.join(str(tmp_path), "bad.multipart")
+    with open(file_path, "w") as fp:
+        fp.write(
+            """
+Content-Type: multipart/form-data; boundary=foo
+
+--foo
+Content-Disposition: form-data; name=""; filename="my_training_data.json"
+Content-Type: application/json
+
+[
+    {
+        "number": 1,
+        "label": "small"
+    },
+    {
+        "number": 1000,
+        "label": "large"
+    }
+]
+
+--bar--
+            """
+        )
+    with pytest.raises(ValueError, match="Invalid form-data"):
+        DataStream.from_multipart_file(file_path).peek()
+
+
 def test_from_file_can_handle_a_json_file(sample_json_file):
     json_stream = DataStream.from_file(sample_json_file)
     validate_data_stream(json_stream, 2, dict)
