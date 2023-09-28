@@ -200,6 +200,7 @@ class DataStreamSourceBase(DataStream):
             DataStream.from_json_array,
             DataStream.from_jsonl,
             DataStream.from_header_csv,
+            DataStream.from_multipart_file,
         ):
             try:
                 stream = factory_method(full_fname).map(cls._to_element_type)

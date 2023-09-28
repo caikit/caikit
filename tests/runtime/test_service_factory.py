@@ -326,7 +326,6 @@ def test_override_package_and_domain_with_proto_gen(clean_data_model):
 
             output_dir_path = Path(output_dir)
             for proto_file in output_dir_path.glob("*.proto"):
-                # print(proto_file)
                 with open(proto_file, "rb") as f:
                     lines = f.readlines()
                     for line in lines:

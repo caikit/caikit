@@ -47,6 +47,7 @@ class SampleTrainingType(DataObjectBase):
     """A sample `training data` type for the `sample_task` task."""
 
     number: int
+    label: str
 
 
 @task(

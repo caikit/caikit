@@ -15,13 +15,14 @@
 
 """Data streams for lazily loading, munging and passing data through multiple modules.
 """
-
 # Standard
 from collections.abc import Iterable
 from glob import glob
+from io import UnsupportedOperation
 from typing import Dict, Generic, List, Tuple, TypeVar, Union
 import collections
 import csv
+import io
 import itertools
 import json
 import os
@@ -38,12 +39,13 @@ import alog
 from ...augmentors import AugmentorBase
 from ...exceptions import error_handler
 from ...toolkit import fileio
+from ..json_dict import JsonDictValue
+from .multipart_decoder import is_multipart_file, stream_multipart_file
 
 log = alog.use_channel("DATSTRM")
 error = error_handler.get(log)
 
 T = TypeVar("T")
-
 
 # ghart: These public methods are all needed. This class is essentially its own factory, so these
 # are all the different ways of coercing different data sources into a common stream class
@@ -227,25 +229,39 @@ class DataStream(Generic[T]):
         """
         error.file_check("<COR39609575E>", filename)
 
-        return cls(cls._from_json_array_generator, filename)
+        return cls(cls._from_json_array_file_generator, filename)
 
     @classmethod
-    def _from_json_array_generator(cls, filename):
+    def _from_json_array_file_generator(cls, filename):
         # open the file
         with open(filename, mode="rb") as json_fh:
             log.debug2("Loading JSON array file: %s", filename)
+            yield from cls._from_json_array_buffer_generator(json_fh, filename)
 
-            # for each {} object of the array
-            try:
-                for item_idx, obj in enumerate(ijson.items(json_fh, "item")):
-                    log.debug2("Loading object index %d", item_idx)
-                    yield obj
-
-            except ijson.JSONError:
-                error(
-                    "<COR85596551E>",
-                    ValueError("Invalid JSON object in `{}`".format(filename)),
-                )
+    @classmethod
+    def _from_json_array_buffer_generator(cls, json_fh: typing.IO, filename: str = ""):
+        try:
+            # For re-entrance
+            json_fh.seek(0)
+        except UnsupportedOperation:
+            error(
+                "<COR59442457E>",
+                RuntimeError(
+                    "File handler for json array in filename {} not seekable".format(
+                        filename
+                    )
+                ),
+            )
+        # For each {} object of the array
+        try:
+            for item_idx, obj in enumerate(ijson.items(json_fh, "item")):
+                log.debug2("Loading object index %d", item_idx)
+                yield obj
+        except ijson.JSONError:
+            error(
+                "<COR85596551E>",
+                ValueError("Invalid JSON object in `{}`".format(filename)),
+            )
 
     @classmethod
     def from_csv(cls, filename: str, *args, skip=0, **kwargs) -> "DataStream[List]":
@@ -261,6 +277,7 @@ class DataStream(Generic[T]):
                 file.  This is often useful for skipping a header line.
             args, kwargs: Additional arguments passed to the `csv.reader` function.
                 These can be used to specify the delimiter or other csv settings.
+
         Returns:
             DataStream: A data stream that produces a data item for each line of
                 the csv file and where each element of the data item corresponds
@@ -313,6 +330,7 @@ class DataStream(Generic[T]):
                 data item.
             args, kwargs: Additional arguments passed to the `csv.reader` function.
                 These can be used to specify the delimiter or other csv settings.
+
         Returns:
             DataStream: A data stream that produces a data item for each line of
                 the csv file and where each element of the stream is a dict
@@ -344,10 +362,23 @@ class DataStream(Generic[T]):
     def _from_header_csv_generator(cls, filename, *csv_args, **csv_kwargs):
         # open the csv file (closure around `filename`)
         with open(filename, mode="r", encoding="utf8") as fh:
+            yield from cls._from_header_csv_buffer_generator(
+                fh, *csv_args, **csv_kwargs
+            )
 
-            # for each line of the csv file, yield a dict
-            for line in csv.DictReader(fh, *csv_args, **csv_kwargs):
-                yield line
+    @classmethod
+    def _from_header_csv_buffer_generator(cls, fh: typing.IO, *csv_args, **csv_kwargs):
+        try:
+            # For re-entrance
+            fh.seek(0)
+        except UnsupportedOperation:
+            error(
+                "<COR55834083E>",
+                RuntimeError("File handler for csv with header not seekable"),
+            )
+        # for each line of the csv file, yield a dict
+        for line in csv.DictReader(fh, *csv_args, **csv_kwargs):
+            yield line
 
     @classmethod
     def from_txt(cls, filename: str) -> "DataStream[str]":
@@ -395,20 +426,20 @@ class DataStream(Generic[T]):
 
     @classmethod
     def from_file(cls, filename: str) -> "DataStream[Union[Dict, Tuple, str]]":
-        """Loads up a DataStream from a file.
-            Will call the correct DataStream.from_caikit static constructor based on the
-            file extension
+        """Loads up a DataStream from a file. Will call the correct DataStream.from_*
+        static constructor based on the file extension
 
-            The data items returned in the data stream are:
-            For JSON:
-                dictionaries
-            For all other files (besides CSV for now)
-                strings (1 per line)
+        The data items returned in the data stream are:
+        For JSON:
+            dictionaries
+        For all other files (besides CSV for now)
+            strings (1 per line)
+
         Args:
-            filename (str): name of file
+            filename (str): Name of file
 
         Returns:
-            DataStream: resulting datastream from file
+            DataStream: Resulting datastream from file
         """
         # file detection
         _, file_ext = os.path.splitext(filename)
@@ -566,6 +597,44 @@ class DataStream(Generic[T]):
         # yield the combined data item once flattened
         for data_item in DataStream.chain(data_stream_list).flatten():
             yield data_item
+
+    @classmethod
+    def from_multipart_file(cls, filename: str) -> "DataStream[JsonDictValue]":
+        """Loads up a DataStream from a multipart file
+
+        The data items returned in the data stream are determined by the
+        content type for each part in the multipart file by calling
+        the correct DataStream.from_*
+
+        Args:
+            filename (str): Name of file
+
+        Returns:
+            DataStream: Resulting datastream from file
+        """
+        error.value_check(
+            "<COR04987251E>", is_multipart_file(filename), "file is not multipart"
+        )
+        stream_list = []
+        for part in stream_multipart_file(filename):
+            content_type = part.content_type
+            if "json" in content_type:
+                stream_list.append(
+                    cls(cls._from_json_array_buffer_generator, part.fp, part.filename)
+                )
+            elif "csv" in content_type:
+                stream_list.append(
+                    cls(
+                        cls._from_header_csv_buffer_generator,
+                        _UtfEncodeIOWrapper(part.fp),
+                    )
+                )
+            else:
+                error(
+                    "<COR91833046E>",
+                    ValueError("Unsupported content type: {}".format(content_type)),
+                )
+        return DataStream.chain(*stream_list)
 
     def train_test_split(
         self, test_split=0.25, seed=None
@@ -956,3 +1025,21 @@ class DataStream(Generic[T]):
                     "collection path `{}` is not a directory".format(dirname)
                 ),
             )
+
+
+class _UtfEncodeIOWrapper(io.IOBase):
+    """Lil' wrapper class to convert a bytes buffer to a string buffer"""
+
+    def __init__(self, bytes_stream: typing.IO[bytes]):
+        self.bytes_stream = bytes_stream
+
+    def read(self, *args, **kwargs):
+        res = self.bytes_stream.read(*args, **kwargs)
+        return res.decode("utf-8")
+
+    def readline(self, *args, **kwargs):
+        res = self.bytes_stream.readline(*args, **kwargs)
+        return res.decode("utf-8")
+
+    def seek(self, *args, **kwargs):
+        return self.bytes_stream.seek(*args, **kwargs)

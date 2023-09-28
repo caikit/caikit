@@ -102,6 +102,77 @@ def other_good_model_path() -> str:
     return os.path.join(FIXTURES_DIR, "models", "bar")
 
 
+# Sample data files for testing ###########################
+@pytest.fixture
+def data_stream_inputs() -> str:
+    return os.path.join(FIXTURES_DIR, "data_stream_inputs")
+
+
+@pytest.fixture
+def sample_json_file(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample.json")
+
+
+@pytest.fixture
+def sample_json_collection(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample_json_collection")
+
+
+@pytest.fixture
+def sample_csv_file(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample_w_header.csv")
+
+
+@pytest.fixture
+def sample_csv_file_no_headers(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample.csv")
+
+
+@pytest.fixture
+def sample_csv_collection(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample_csv_collection")
+
+
+@pytest.fixture
+def sample_multipart_json(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "multi_part_json.txt")
+
+
+@pytest.fixture
+def sample_multipart_json_with_content_header(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "multi_part_json_with_content_header.txt")
+
+
+@pytest.fixture
+def sample_multipart_csv(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "multi_part_csv.txt")
+
+
+@pytest.fixture
+def sample_jsonl_file(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample.jsonl")
+
+
+@pytest.fixture
+def sample_jsonl_collection(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample_jsonl_collection")
+
+
+@pytest.fixture
+def jsonl_with_control_chars(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "control_chars.jsonl")
+
+
+@pytest.fixture
+def sample_text_file(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample.txt")
+
+
+@pytest.fixture
+def sample_text_collection(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "sample_txt_collection")
+
+
 @contextmanager
 def temp_config(config_overrides: dict, merge_strategy="override"):
     """Temporarily edit the caikit config in a mock context"""
@@ -138,36 +209,6 @@ def pytest_addoption(parser):
 @pytest.fixture(scope="session")
 def render_protos(request):
     return request.config.getoption("--render-protos")
-
-
-@pytest.fixture
-def sample_json_file() -> str:
-    json_content = json.dumps(
-        [
-            {"number": 1},
-            {"number": 2},
-        ]
-    )
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json") as handle:
-        handle.write(json_content)
-        handle.flush()
-        yield handle.name
-
-
-@pytest.fixture
-def sample_csv_file() -> str:
-    csv_header = "number"
-    csv_content = []
-    csv_content.append("1")
-    csv_content.append("2")
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as handle:
-        handle.write(csv_header)
-        handle.write("\n")
-        for row in csv_content:
-            handle.write(row)
-            handle.write("\n")
-        handle.flush()
-        yield handle.name
 
 
 @pytest.fixture

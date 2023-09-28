@@ -1,4 +1,4 @@
-name, company, age
-Juergen Schmidhuber, IDSIA, 96
-Herbert Jaeger, Rijksuniversiteit Groningen, 29
-Ilya Sutskever, OpenAI, 54
+number,label
+96, Juergen Schmidhuber
+29, Herbert Jaeger
+54, Ilya Sutskever
