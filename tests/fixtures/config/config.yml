@@ -1,5 +1,6 @@
 # Config for tests
 runtime:
+    library: sample_lib
     metrics:
         enabled: false
     metering:
