@@ -447,7 +447,6 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
     def evaluate_quality(
         self,
         dataset_path,
-        *args,
         preprocess_func=None,
         detailed_metrics=False,
         labels=None,
@@ -502,7 +501,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         # 4) obtain pred set predictions
         # pylint: disable=assignment-from-no-return
         pred_set = self._extract_pred_set(
-            dataset, preprocess_func=preprocess_func, *args, **kwargs
+            dataset, preprocess_func=preprocess_func, **kwargs
         )
         pred_annos = self._extract_pred_annotations(pred_set)
 
