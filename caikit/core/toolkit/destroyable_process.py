@@ -38,7 +38,7 @@ log = alog.use_channel("DESTROY-PROC")
 error = error_handler.get(log)
 
 
-OOM_EXIT_CODE = 137
+OOM_EXIT_CODES = [137, 9]
 
 FORK_CTX = multiprocessing.get_context("fork")
 SPAWN_CTX = multiprocessing.get_context("spawn")
@@ -191,7 +191,7 @@ class _DestroyableProcess(
             return self.__result
 
         if self.exitcode and self.exitcode != os.EX_OK:
-            if self.exitcode == OOM_EXIT_CODE:
+            if self.exitcode in OOM_EXIT_CODES:
                 return MemoryError("Training process died with OOM error!")
             if not self.canceled:
                 return RuntimeError(
