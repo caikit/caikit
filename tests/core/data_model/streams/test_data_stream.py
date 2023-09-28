@@ -184,19 +184,15 @@ def test_bad_json_stream(tmp_path):
         DataStream.from_json_array(file_path).peek()
 
 
-def test_bad_multipart_stream(tmp_path):
-    file_path = os.path.join(str(tmp_path), "bad.multipart")
-    with open(file_path, "w") as fp:
-        fp.write(
-            """
-            not
-            a
-            { "multipart" : 1}
-            "file"
-        """
-        )
+def test_bad_multipart_file(tmp_path):
+    multipart_file = os.path.join(str(tmp_path), "bad_multipart")
+    with open(multipart_file, "w") as fp:
+        fp.write("content")
+        fp.write("\n")
+        fp.write("--")
+        fp.write("arbitrary")
     with pytest.raises(ValueError, match="file is not multipart"):
-        DataStream.from_multipart_file(file_path).peek()
+        DataStream.from_multipart_file(multipart_file)
 
 
 def test_invalid_multipart_boundary(tmp_path):
@@ -264,17 +260,6 @@ def test_from_multipart_file_unsupported_content_type(tmp_path):
         fp.write("arbitrary")
         fp.write("--")
     with pytest.raises(ValueError, match="Unsupported content type: text/plain"):
-        DataStream.from_multipart_file(multipart_file)
-
-
-def test_bad_multipart_file(tmp_path):
-    multipart_file = os.path.join(str(tmp_path), "bad_multipart")
-    with open(multipart_file, "w") as fp:
-        fp.write("content")
-        fp.write("\n")
-        fp.write("--")
-        fp.write("arbitrary")
-    with pytest.raises(ValueError, match="file is not multipart"):
         DataStream.from_multipart_file(multipart_file)
 
 
