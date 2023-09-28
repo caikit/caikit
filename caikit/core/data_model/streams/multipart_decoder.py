@@ -79,11 +79,7 @@ class Part:
 def is_multipart_file(file) -> bool:
     """Returns true if the file appears to contain a multi-part form data request"""
     log.debug3("Determining if %s is a multipart file", file)
-    first_line = ""
-    with open(file, "r", encoding="utf-8") as fp:
-        # Find the first non-empty line of the file
-        while not first_line:
-            first_line = fp.readline().strip()
+    first_line = _get_first_nonempty_line(file)
 
     # Either: The beginning of the file starts with a boundary string (must start with --)
     if first_line.startswith("--"):
@@ -141,13 +137,20 @@ def stream_multipart_file(file) -> Iterator[Part]:
 def _get_multipart_boundary(file) -> str:
     """Returns the multipart boundary string by looking for it in the first line of the file with
     content. Should only be called if is_multipart_file(file) returns True"""
-    first_line = ""
-    with open(file, "r", encoding="utf-8") as fp:
-        # Find the first non-empty line of the file
-        while not first_line:
-            first_line = fp.readline().strip()
+    first_line = _get_first_nonempty_line(file)
     if first_line.startswith("--"):
         return first_line[2:].rstrip(os.linesep)
 
     _, options = werkzeug.http.parse_options_header(first_line)
     return options["boundary"]
+
+
+def _get_first_nonempty_line(file) -> str:
+    """Return the first line of the file with content.
+    Returns empty string if none exists."""
+    with open(file, "r", encoding="utf-8") as fp:
+        for line in fp:
+            stripped_line = line.strip()
+            if stripped_line != "":
+                return stripped_line
+    return ""
