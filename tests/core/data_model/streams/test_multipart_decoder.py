@@ -20,6 +20,7 @@ from caikit.core.data_model.streams import multipart_decoder
 
 
 def test_simple_multipart_file(sample_multipart_json):
+    assert multipart_decoder.is_multipart_file(sample_multipart_json)
     parts = multipart_decoder.stream_multipart_file(sample_multipart_json)
 
     parts = list(parts)
@@ -28,6 +29,25 @@ def test_simple_multipart_file(sample_multipart_json):
     byte_content = parts[0].fp.read()
 
     with open(sample_multipart_json, "rb") as fp:
+        full_multipart_byte_content = fp.read()
+
+    assert byte_content in full_multipart_byte_content
+
+
+def test_multipart_file_with_content_header(sample_multipart_json_with_content_header):
+    assert multipart_decoder.is_multipart_file(
+        sample_multipart_json_with_content_header
+    )
+    parts = multipart_decoder.stream_multipart_file(
+        sample_multipart_json_with_content_header
+    )
+
+    parts = list(parts)
+    assert len(parts) == 1
+
+    byte_content = parts[0].fp.read()
+
+    with open(sample_multipart_json_with_content_header, "rb") as fp:
         full_multipart_byte_content = fp.read()
 
     assert byte_content in full_multipart_byte_content

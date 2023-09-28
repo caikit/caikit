@@ -139,6 +139,11 @@ def sample_multipart_json(data_stream_inputs) -> str:
 
 
 @pytest.fixture
+def sample_multipart_json_with_content_header(data_stream_inputs) -> str:
+    return os.path.join(data_stream_inputs, "multi_part_json_with_content_header.txt")
+
+
+@pytest.fixture
 def sample_multipart_csv(data_stream_inputs) -> str:
     return os.path.join(data_stream_inputs, "multi_part_csv.txt")
 

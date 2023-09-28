@@ -1,0 +1,19 @@
+Content-Type: multipart/form-data; boundary=--------------------------855490206437000809074191
+
+----------------------------855490206437000809074191
+Content-Disposition: form-data; name=""; filename="my_training_data.json"
+Content-Type: application/json
+
+[
+    {
+        "number": 1,
+        "label": "small"
+    },
+    {
+        "number": 1000,
+        "label": "large"
+    }
+]
+
+----------------------------855490206437000809074191--
+

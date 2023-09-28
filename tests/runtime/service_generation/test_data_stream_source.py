@@ -287,12 +287,20 @@ def test_make_data_stream_source_from_file_with_no_extension(
 
 
 def test_make_data_stream_source_from_multipart_formdata_file(
-    sample_train_service, sample_multipart_json, sample_multipart_csv, tmp_path
+    sample_train_service,
+    sample_multipart_json,
+    sample_multipart_csv,
+    sample_multipart_json_with_content_header,
+    tmp_path,
 ):
     """Test multipart streams. NB: We expect that multipart files will not have an extension"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
 
-    for file in (sample_multipart_csv, sample_multipart_json):
+    for file in (
+        sample_multipart_csv,
+        sample_multipart_json,
+        sample_multipart_json_with_content_header,
+    ):
         # prepare file with no extension
         no_extension_filename = os.path.join(str(tmp_path), "no_extension")
         shutil.copyfile(file, no_extension_filename)

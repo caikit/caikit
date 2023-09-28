@@ -14,9 +14,12 @@
 
 
 """A decoder for files that contain multi-part form data of files.
+See the w3 spec here: https://www.w3.org/TR/html401/interact/forms.html#h-17.13.4.2
 
 e.g. files of the form
 ```
+Content-Type: multipart/form-data; boundary=my_boundary
+
 --my_boundary
 Content-Disposition: form-data; name=""; filename="foo.json"
 Content-Type: application/json
@@ -29,6 +32,9 @@ Content-Type: application/json
 
 --my_boundary--
 ```
+
+NB: This will also handle files which do not start with a Content-Type header.
+If the file starts with a different string, we will assume that is the first boundary string.
 
 This is not meant to be an implementation detail of an HTTP handler, this is only meant to be a
 general-purpose file decoder for cases where:
@@ -51,6 +57,7 @@ import typing
 # Third Party
 from werkzeug import formparser
 from werkzeug.datastructures import FileStorage
+import werkzeug.http
 
 # First Party
 from alog import alog
@@ -71,12 +78,38 @@ class Part:
 
 def is_multipart_file(file) -> bool:
     """Returns true if the file appears to contain a multi-part form data request"""
+    log.debug3("Determining if %s is a multipart file", file)
+    first_line = ""
     with open(file, "r", encoding="utf-8") as fp:
-        # Read a small bit of the file
-        head: str = fp.read(50)
+        # Find the first non-empty line of the file
+        while not first_line:
+            first_line = fp.readline().strip()
 
-    # The beginning of the file content should start with "--"
-    return head.lstrip().startswith("--")
+    # Either: The beginning of the file starts with a boundary string (must start with --)
+    if first_line.startswith("--"):
+        log.debug3(
+            "Assuming file %s is a multipart file because it begins with --", file
+        )
+        return True
+    # Or: it's parseable as a content-type header with a boundary
+    header, options = werkzeug.http.parse_options_header(first_line)
+    if "multipart" not in header.lower():
+        log.debug(
+            "No multipart content header detected in [%s: %s], not a multipart file",
+            header,
+            options,
+        )
+        return False
+    if "boundary" not in options:
+        log.debug(
+            "No boundary option provided in content type header [%s: %s], not a multipart file",
+            header,
+            options,
+        )
+        return False
+
+    # Cool, should be a multipart file
+    return True
 
 
 def stream_multipart_file(file) -> Iterator[Part]:
@@ -107,14 +140,14 @@ def stream_multipart_file(file) -> Iterator[Part]:
 
 def _get_multipart_boundary(file) -> str:
     """Returns the multipart boundary string by looking for it in the first line of the file with
-    content"""
+    content. Should only be called if is_multipart_file(file) returns True"""
+    first_line = ""
     with open(file, "r", encoding="utf-8") as fp:
-        line = ""
-        while not line:
-            line = fp.readline().lstrip()
-    error.value_check(
-        "",
-        line.startswith("--"),
-        "File does not start with multipart boundary string '--'",
-    )
-    return line[2:].rstrip(os.linesep)
+        # Find the first non-empty line of the file
+        while not first_line:
+            first_line = fp.readline().strip()
+    if first_line.startswith("--"):
+        return first_line[2:].rstrip(os.linesep)
+
+    _, options = werkzeug.http.parse_options_header(first_line)
+    return options["boundary"]
