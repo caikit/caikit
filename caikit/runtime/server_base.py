@@ -19,6 +19,23 @@ import abc
 import signal
 
 # Third Party
+from opentelemetry import (
+    metrics,
+    trace
+)
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import (
+    ConsoleMetricExporter,
+    PeriodicExportingMetricReader
+)
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import (
+    ConsoleSpanExporter,
+    SimpleSpanProcessor,
+)
 from prometheus_client import start_http_server
 
 # First Party
@@ -38,6 +55,8 @@ log = alog.use_channel("SERVR-BASE")
 class RuntimeServerBase(abc.ABC):
     __doc__ = __doc__
     _metrics_server_started = False
+    _meter_provider = False
+    _trace_provider = False
 
     def __init__(self, base_port: int, tls_config_override: Optional[aconfig.Config]):
         self.config = get_config()
@@ -88,6 +107,47 @@ class RuntimeServerBase(abc.ABC):
                 start_http_server(get_config().runtime.metrics.port)
             cls._metrics_server_started = True
 
+    @classmethod
+    def _create_meter_provider(cls) -> None:
+        """Create a single instance of the OpenTelemetry meter provider based on configuration"""
+        if not cls._meter_provider:
+            log.info(
+                "Serving OpenTelemetry metrics on port %s",
+                get_config().runtime.metrics.port,
+            )
+            console_metric_exporter = PeriodicExportingMetricReader(ConsoleMetricExporter(),
+                                                export_interval_millis=5000)
+            otlp_metric_exporter = PeriodicExportingMetricReader(OTLPMetricExporter(), export_interval_millis=5000)
+            cls.meter_provider = MeterProvider(metric_readers=[console_metric_exporter, otlp_metric_exporter],
+                                    resource=Resource.create({
+                        "service.name": "caikit-runtime",
+                    }),)
+
+            # Sets the global default meter provider
+            metrics.set_meter_provider(cls.meter_provider)
+            cls._meter_provider = True
+
+    @classmethod
+    def _create_trace_provider(cls) -> None:
+        """Create a single instance of the OpenTelemetry trace provider based on configuration"""
+        if not cls._trace_provider:
+            log.info(
+                "Serving OpenTelemetry trace on port %s",
+                get_config().runtime.metrics.port,
+            )
+            cls.trace_provider = TracerProvider(resource=Resource.create({
+                        "service.name": "caikit-runtime",
+                    }),)
+            # Sets the global default trace provider
+            trace.set_tracer_provider(cls.trace_provider)
+            cls.trace_provider.add_span_processor(
+                SimpleSpanProcessor(ConsoleSpanExporter())
+            )
+            cls.trace_provider.add_span_processor(
+                SimpleSpanProcessor(OTLPSpanExporter())
+            )
+            cls._trace_provider = True
+
     def _intercept_interrupt_signal(self) -> None:
         """intercept signal handler"""
         signal.signal(signal.SIGINT, self.interrupt)
@@ -104,6 +164,20 @@ class RuntimeServerBase(abc.ABC):
     def _shut_down_model_manager(self):
         """Shared utility for shutting down the model manager"""
         ModelManager.get_instance().shut_down()
+
+    @classmethod
+    def _shutdown_meter_provider(cls) -> None:
+        """Shutdown the meter provider and flush the metrics"""
+        if cls._meter_provider:
+            cls.meter_provider.force_flush()
+            cls.meter_provider.shutdown()
+
+    @classmethod
+    def _shutdown_trace_provider(cls) -> None:
+        """Shutdown the meter provider and flush the metrics"""
+        if cls._trace_provider:
+            cls.trace_provider.force_flush()
+            cls.trace_provider.shutdown()
 
     @abc.abstractmethod
     def start(self, blocking: bool = True):

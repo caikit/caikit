@@ -16,13 +16,16 @@
 
 # Standard
 from types import ModuleType
-from typing import Any, List
+from typing import Any, Iterable, List, Optional
 import importlib
 import re
 import sys
+import time
 
 # Third Party
 from grpc import StatusCode
+from opentelemetry import metrics
+from opentelemetry.util.types import Attributes
 
 # First Party
 import aconfig
@@ -198,3 +201,48 @@ def clean_lib_names(caikit_library: str) -> List[str]:
 
     lib_names = caikit_library.split()
     return [clean(lib) for lib in lib_names]
+
+class DurationHistogram:
+    """Context manager implementation for OpenTelemetry Histogram.
+    This class enables the Histogram to meter by time duration.
+    """
+    def __init__(self, histogram: metrics.Histogram, attributes: Optional[Attributes] = None):
+        self.histogram = histogram
+        self.attributes = attributes
+
+    def __enter__(self):
+        self.start = time.time()
+
+    def __exit__(self, type_, value, traceback):
+        self.took = (time.time() - self.start)
+        self.histogram.record(time.time() - self.start, self.attributes)
+
+class MetricsGauge:
+    """This class wraps the asynchronous OpenTelemetry gauge so that a value
+    can be set at a point in time. This is to enable a gauge to be used synchronously.
+    This class is copied from:
+    https://github.com/open-telemetry/opentelemetry-specification/issues/2318#issuecomment-1450929833
+    TODO: This can be deprecated when synchronous gauge is implemented in Python SDK. Ref:
+    https://github.com/open-telemetry/opentelemetry-python/issues/3363
+    """
+    def __init__(self, name: str, description: str, unit: str, meter: metrics.Meter):
+        self._name = name
+        self._description = description
+        self._unit = unit
+        self._meter = meter
+        self._internal_gauge = None
+        self._observations = []
+
+    def set_observations(self, observations: Iterable[metrics.Observation]):
+        self._observations = observations
+        # The async gauge starts reporting as soon as it is created. Create
+        # the async gauge once a real value has been set to avoid creating noise
+        # prior to values getting set.
+        if self._internal_gauge is None:
+            self._internal_gauge = self._meter.create_observable_gauge(
+                name=self._name, unit=self._unit, description=self._description,
+                callbacks=[self._gauge_callback]
+            )
+
+    def _gauge_callback(self, _options):
+        return self._observations

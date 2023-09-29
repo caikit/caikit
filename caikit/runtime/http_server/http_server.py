@@ -132,6 +132,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Start metrics server
         RuntimeServerBase._start_metrics_server()
 
+        # Create meter provider
+        RuntimeServerBase._create_meter_provider()
+
         # Placeholders for global servicers
         self.global_predict_servicer = None
         self.global_train_servicer = None
@@ -239,6 +242,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         # Shut down the model manager's model polling if enabled
         self._shut_down_model_manager()
+
+        # Shut down the meter provider and flush metrics
+        self._shutdown_meter_provider
 
     def run_in_thread(self):
         self._uvicorn_server_thread = threading.Thread(target=self.server.run)

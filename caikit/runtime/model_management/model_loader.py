@@ -18,6 +18,7 @@ from typing import Callable, Optional, Union
 
 # Third Party
 from grpc import StatusCode
+from opentelemetry import metrics
 from prometheus_client import Summary
 
 # First Party
@@ -28,6 +29,7 @@ from caikit.config import get_config
 from caikit.core import MODEL_MANAGER, ModuleBase
 from caikit.runtime.model_management.batcher import Batcher
 from caikit.runtime.model_management.loaded_model import LoadedModel
+from caikit.runtime.utils.import_util import DurationHistogram
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.work_management.abortable_action import (
     AbortableAction,
@@ -36,12 +38,18 @@ from caikit.runtime.work_management.abortable_action import (
 
 log = alog.use_channel("MODEL-LOADER")
 
+# Creates a meter from the global meter provider
+meter = metrics.get_meter("caikit-runtime")
+
 CAIKIT_CORE_LOAD_DURATION_SUMMARY = Summary(
     "caikit_core_load_model_duration_seconds",
     "Summary of the duration (in seconds) of caikit.core.load(model)",
     ["model_type"],
 )
-
+CAIKIT_CORE_LOAD_DURATION_HISTOGRAM = meter.create_histogram(
+    "caikit_core_load_model_duration_seconds",
+    "second",
+    "Histogram of the duration (in seconds) of caikit.core.load(model)")
 
 class ModelLoader:
     """Model Loader class. The singleton class contains the core implementation details
@@ -114,7 +122,11 @@ class ModelLoader:
             log.info("<RUN89711114I>", "Loading model '%s'", model_id)
 
             # Load using the caikit.core
-            with CAIKIT_CORE_LOAD_DURATION_SUMMARY.labels(model_type=model_type).time():
+            #with CAIKIT_CORE_LOAD_DURATION_SUMMARY.labels(model_type=model_type).time():
+            with DurationHistogram(
+                histogram=CAIKIT_CORE_LOAD_DURATION_HISTOGRAM,
+                attributes={"model_type": model_type}
+            ):
                 model = MODEL_MANAGER.load(model_path)
 
             # If this model needs batching, configure a Batcher to wrap it

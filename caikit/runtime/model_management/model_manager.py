@@ -22,6 +22,7 @@ import threading
 
 # Third Party
 from grpc import StatusCode
+from opentelemetry import metrics
 from prometheus_client import Counter, Gauge, Summary
 
 # First Party
@@ -35,28 +36,52 @@ from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.model_management.model_sizer import ModelSizer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from caikit.runtime.utils.import_util import DurationHistogram, MetricsGauge
 from caikit.runtime.work_management.abortable_action import ActionAborter
 
 log = alog.use_channel("MODEL-MANAGR")
 error = error_handler.get(log)
+# Creates an OpenTelemetry meter from the global meter provider
+meter = metrics.get_meter("caikit-runtime")
 
 MODEL_SIZE_GAUGE = Gauge(
     "total_loaded_models_size",
     "Total size of loaded models reported to model-mesh",
     ["model_type"],
 )
+OTEL_MODEL_SIZE_GAUGE = MetricsGauge(
+    name="total_loaded_models_size",
+    unit="size", 
+    description="Total size of loaded models reported to model-mesh",
+    meter=meter
+)
 MODEL_COUNT_GAUGE = Gauge(
     "total_loaded_models", "Total number of loaded models", ["model_type", "model_id"]
+)
+MODEL_COUNT_COUNTER = meter.create_up_down_counter(
+    name="total_loaded_models",
+    unit="count",
+    description="Total number of loaded models"
 )
 LOAD_MODEL_EXCEPTION_COUNTER = Counter(
     "load_model_exception_count",
     "Count of exceptions raised during loadModel RPCs",
     ["model_type"],
 )
+OTEL_LOAD_MODEL_EXCEPTION_COUNTER = meter.create_counter(
+    name="load_model_exception_count",
+    unit="count",
+    description="Count of exceptions raised during loadModel RPC"
+)
 LOAD_MODEL_DURATION_SUMMARY = Summary(
     "load_model_duration_seconds",
     "Summary of the duration (in seconds) of loadModel RPCs",
     ["model_type"],
+)
+LOAD_MODEL_DURATION_HISTOGRAM = meter.create_histogram(
+    "load_model_duration_seconds",
+    "second",
+    "Histogram of the duration (in seconds) of loadModel RPCs"
 )
 LOCAL_MODEL_TYPE = "LOCAL"
 
@@ -170,7 +195,11 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         Returns:
             Model_size (int) : Size of the loaded model in bytes
         """
-        with LOAD_MODEL_DURATION_SUMMARY.labels(model_type=model_type).time():
+        #with LOAD_MODEL_DURATION_SUMMARY.labels(model_type=model_type).time():
+        with DurationHistogram(
+                    histogram=LOAD_MODEL_DURATION_HISTOGRAM,
+                    attributes={"model_type": model_type}
+        ):
 
             # If already loaded, just return the size
             # NOTE: We make the dict access atomic here to avoid the race where
@@ -500,15 +529,24 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
 
             for model_type, total_size in cnt.items():
                 MODEL_SIZE_GAUGE.labels(model_type=model_type).set(total_size)
+                OTEL_MODEL_SIZE_GAUGE.set_observations(
+                    [metrics.Observation(total_size, {"model_type": model_type})]
+                )
 
     @staticmethod
     def __increment_model_count_metric(model_type, model_id):
         MODEL_COUNT_GAUGE.labels(model_type=model_type, model_id=model_id).inc()
+        MODEL_COUNT_COUNTER.add(
+            1, {"model_type": model_type, "model_id": model_id})
 
     @staticmethod
     def __decrement_model_count_metric(model_type, model_id):
         MODEL_COUNT_GAUGE.labels(model_type=model_type, model_id=model_id).dec()
+        MODEL_COUNT_COUNTER.add(
+            -1, {"model_type": model_type, "model_id": model_id})
 
     @staticmethod
     def __increment_load_model_exception_count_metric(model_type):
         LOAD_MODEL_EXCEPTION_COUNTER.labels(model_type=model_type).inc()
+        OTEL_LOAD_MODEL_EXCEPTION_COUNTER.add(
+            1, {"model_type": model_type})

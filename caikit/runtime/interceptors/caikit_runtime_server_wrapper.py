@@ -18,6 +18,7 @@ import traceback
 
 # Third Party
 from grpc._utilities import RpcMethodHandler
+from opentelemetry import metrics
 from prometheus_client import Gauge
 import grpc
 
@@ -30,6 +31,14 @@ from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("SERVER-WRAPR")
+
+# Creates an OpenTelemetry meter from the global meter provider
+meter = metrics.get_meter("caikit-runtime")
+
+IN_PROGRESS_COUNTER = meter.create_up_down_counter(
+    name="rpc_in_progress_gauge",
+    unit="count",
+    description="Total number of in-flight requests to caikit-runtime")
 
 IN_PROGRESS_GAUGE = Gauge(
     "rpc_in_progress_gauge",
@@ -143,6 +152,7 @@ class CaikitRuntimeServerWrapper(grpc.Server):
             with alog.ContextLog(log.debug, "[Safe RPC]: %s", rpc.__name__):
                 try:
                     IN_PROGRESS_GAUGE.labels(rpc_name=rpc.__name__).inc()
+                    IN_PROGRESS_COUNTER.add(1, {"rpc_name": rpc.__name__})
                     if caikit_rpc:
                         # Pass through the CaikitRPCBase rpc description to the global handlers
                         return rpc(request, context, caikit_rpc=caikit_rpc)
@@ -160,6 +170,7 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                     context.abort(grpc.StatusCode.UNKNOWN, message)
                 finally:
                     IN_PROGRESS_GAUGE.labels(rpc_name=rpc.__name__).dec()
+                    IN_PROGRESS_COUNTER.add(-1, {"rpc_name": rpc.__name__})
 
         return safe_rpc_call
 

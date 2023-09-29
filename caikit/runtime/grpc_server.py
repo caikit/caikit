@@ -20,6 +20,7 @@ import os
 # Third Party
 from grpc_health.v1 import health, health_pb2_grpc
 from grpc_reflection.v1alpha import reflection
+from opentelemetry.instrumentation.grpc import GrpcInstrumentorServer
 from py_grpc_prometheus.prometheus_server_interceptor import PromServerInterceptor
 import grpc
 
@@ -55,6 +56,7 @@ import caikit.core.data_model
 
 log = alog.use_channel("SERVR-GRPC")
 PROMETHEUS_METRICS_INTERCEPTOR = PromServerInterceptor()
+OTEL_GRPC_SERVER_INSTRUMENTOR = GrpcInstrumentorServer()
 
 
 class RuntimeGRPCServer(RuntimeServerBase):
@@ -77,6 +79,15 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
         # Start metrics server
         RuntimeServerBase._start_metrics_server()
+
+        # Create meter provider
+        RuntimeServerBase._create_meter_provider()
+
+        # Create trace provider
+        RuntimeServerBase._create_trace_provider()
+
+        # Instrument the trace server requests
+        OTEL_GRPC_SERVER_INSTRUMENTOR.instrument()
 
         # Start tracking service names for reflection
         service_names = [reflection.SERVICE_NAME]
@@ -233,8 +244,14 @@ class RuntimeGRPCServer(RuntimeServerBase):
         # Ensure we flush out any remaining billing metrics and stop metering
         if self.config.runtime.metering.enabled and self._global_predict_servicer:
             self._global_predict_servicer.stop_metering()
+        # Stop instrumenting server requests
+        OTEL_GRPC_SERVER_INSTRUMENTOR.uninstrument()
         # Shut down the model manager's model polling if enabled
         self._shut_down_model_manager()
+        # Shut down the meter provider and flush metrics
+        self._shutdown_meter_provider
+        # Shut down the trace provider and flush the trace
+        self._shutdown_trace_provider
 
     def render_protos(self, proto_out_dir: str) -> None:
         """Renders all the necessary protos for this service into a directory
