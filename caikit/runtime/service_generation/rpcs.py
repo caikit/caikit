@@ -39,6 +39,7 @@ from caikit.core import ModuleBase, TaskBase
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.signature_parsing import CaikitMethodSignature, CustomSignature
+from caikit.core.toolkit.serializers import _DocstringSerializer
 from caikit.interfaces.runtime.data_model import ModelPointer, TrainingJob
 
 log = alog.use_channel("RPC-SERIALIZERS")
@@ -56,6 +57,11 @@ class CaikitRPCBase(abc.ABC):
     @abc.abstractmethod
     def request(self) -> "_RequestMessage":
         """Return the internal representation of the request message type for this RPC"""
+
+    # @property
+    # @abc.abstractmethod
+    # def to_dot_proto_lines(self) -> List[str]:
+    #     """Generate the list of lines to render this RPC"""
 
     @property
     def name(self) -> str:
@@ -362,6 +368,35 @@ class TaskPredictRPC(CaikitRPCBase):
         if self._input_streaming:
             return snake_to_upper_camel(f"ClientStreaming{self.task.__name__}_Predict")
         return snake_to_upper_camel(f"{self.task.__name__}_Predict")
+
+    def to_dot_proto_lines(self) -> List[str]:
+        """Generate the list of lines to render this RPC"""
+        docs = [
+            f"This rpc supports {len(self.module_list)} Modules: {[m.__name__ for m in self.module_list]}",
+        ]
+        line_separator = "----------------------------"
+        for method in self._method_signatures:
+            docs += ["", f"{method.module.__name__} docstring:", line_separator]
+            docs += _DocstringSerializer(method).to_dot_proto_lines(extra_indent="    ")
+            docs += [line_separator]
+
+        return _to_block_comment(docs) + [
+            "rpc {} ({}) returns ({}) {{}}".format(
+                self.name, self._req.name, self.return_type
+            )
+        ]
+
+
+def _to_block_comment(string_lines: List[str]) -> List[str]:
+    """ "Create block comments with nice formatting from list of strings"""
+    block_header = "/**"
+    block_footer = " **/"
+    line_prefix = " * "
+    return (
+        [block_header]
+        + [f"{line_prefix}{line}" for line in string_lines]
+        + [block_footer]
+    )
 
 
 class _RequestMessage:

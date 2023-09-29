@@ -351,7 +351,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
         pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
         pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
 
-        @self.app.post(self._get_route(rpc), response_model=pydantic_response)
+        @self.app.post(
+            self._get_route(rpc),
+            response_model=pydantic_response,
+            description="".join(rpc.to_dot_proto_lines()),
+        )
         # pylint: disable=unused-argument
         async def _handler(
             model_id: str, request: pydantic_request, context: Request
