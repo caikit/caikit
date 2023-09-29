@@ -113,6 +113,7 @@ class SampleModule(caikit.core.ModuleBase):
         union_list: Optional[Union[List[str], List[int]]] = None,
         batch_size: int = 64,
         oom_exit: bool = False,
+        oom_exit_code: Optional[int] = None,
         sleep_time: float = 0,
         sleep_increment: float = 0.001,
         **kwargs,
@@ -147,7 +148,10 @@ class SampleModule(caikit.core.ModuleBase):
             # exit with OOM code. Note _exit method is used to exit the
             # process with specified status without calling cleanup handlers
             # to replicate OOM scenario
-            os._exit(137)
+            if oom_exit_code:
+                os._exit(oom_exit_code)
+            else:
+                os._exit(137)
 
         if batch_size == cls.POISON_PILL_BATCH_SIZE:
             raise ValueError(
