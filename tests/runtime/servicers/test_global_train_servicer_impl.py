@@ -403,6 +403,39 @@ def test_global_train_returns_exit_code_with_oom(
         assert f"Training process died with OOM error!" in str(future_info.errors[0])
 
 
+def test_global_train_returns_exit_code_with_different_oom_exit_code(
+    sample_train_service, sample_train_servicer
+):
+    """Test that if module goes into OOM with different exit codes we are able to surface error code"""
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    training_data = stream_type(
+        jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
+    )
+    train_class = get_train_request(SampleModule)
+    train_request_params_class = get_train_params(SampleModule)
+    train_request = train_class(
+        model_name=random_test_id(),
+        parameters=train_request_params_class(
+            batch_size=42,
+            training_data=training_data,
+            oom_exit=True,
+            oom_exit_code=9,
+        ),
+    ).to_proto()
+
+    # Enable sub-processing for test
+    with set_use_subprocess(True):
+        training_response = sample_train_servicer.Train(
+            train_request, Fixtures.build_context("foo")
+        )
+        MODEL_MANAGER.get_model_future(training_response.training_id).wait()
+
+        future_info = MODEL_MANAGER.get_model_future(
+            training_response.training_id
+        ).get_info()
+        assert f"Training process died with OOM error!" in str(future_info.errors[0])
+
+
 def test_local_trainer_rejects_s3_output_paths(
     sample_train_service, sample_train_servicer
 ):

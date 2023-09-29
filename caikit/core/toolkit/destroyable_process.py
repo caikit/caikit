@@ -38,7 +38,7 @@ log = alog.use_channel("DESTROY-PROC")
 error = error_handler.get(log)
 
 
-OOM_EXIT_CODES = [137, 9]
+OOM_EXIT_CODES = [137, 9, -9]
 
 FORK_CTX = multiprocessing.get_context("fork")
 SPAWN_CTX = multiprocessing.get_context("spawn")
