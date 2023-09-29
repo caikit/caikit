@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""General global train servicer tests - run for both subprocess and local"""
 # Standard
-from contextlib import contextmanager
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 import multiprocessing
@@ -43,7 +43,7 @@ from sample_lib.data_model.sample import (
     SampleTrainingType,
 )
 from sample_lib.modules import CompositeModule, OtherModule, SampleModule
-from tests.conftest import random_test_id, reset_model_manager, temp_config
+from tests.conftest import random_test_id, set_use_subprocess
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import register_trained_model
 import caikit.core
@@ -51,25 +51,6 @@ import caikit.core
 ## Helpers #####################################################################
 
 HAPPY_PATH_INPUT_DM = SampleInputType(name="Gabe")
-
-
-@contextmanager
-def set_use_subprocess(use_subprocess: bool):
-    with temp_config(
-        {
-            "model_management": {
-                "trainers": {
-                    "default": {
-                        "config": {
-                            "use_subprocess": use_subprocess,
-                        }
-                    }
-                }
-            }
-        },
-        "merge",
-    ):
-        yield
 
 
 @pytest.fixture(autouse=True, params=[True, False])
@@ -369,71 +350,6 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_mod
         training_response.training_id
     ).get_info()
     assert f"Batch size of 999 is not allowed!" in str(future_info.errors[0])
-
-
-def test_global_train_returns_exit_code_with_oom(
-    sample_train_service, sample_train_servicer
-):
-    """Test that if module goes into OOM we are able to surface error code"""
-    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    training_data = stream_type(
-        jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
-    )
-    train_class = get_train_request(SampleModule)
-    train_request_params_class = get_train_params(SampleModule)
-    train_request = train_class(
-        model_name=random_test_id(),
-        parameters=train_request_params_class(
-            batch_size=42,
-            training_data=training_data,
-            oom_exit=True,
-        ),
-    ).to_proto()
-
-    # Enable sub-processing for test
-    with set_use_subprocess(True):
-        training_response = sample_train_servicer.Train(
-            train_request, Fixtures.build_context("foo")
-        )
-        MODEL_MANAGER.get_model_future(training_response.training_id).wait()
-
-        future_info = MODEL_MANAGER.get_model_future(
-            training_response.training_id
-        ).get_info()
-        assert f"Training process died with OOM error!" in str(future_info.errors[0])
-
-
-def test_global_train_returns_exit_code_with_different_oom_exit_code(
-    sample_train_service, sample_train_servicer
-):
-    """Test that if module goes into OOM with different exit codes we are able to surface error code"""
-    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    training_data = stream_type(
-        jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
-    )
-    train_class = get_train_request(SampleModule)
-    train_request_params_class = get_train_params(SampleModule)
-    train_request = train_class(
-        model_name=random_test_id(),
-        parameters=train_request_params_class(
-            batch_size=42,
-            training_data=training_data,
-            oom_exit=True,
-            oom_exit_code=9,
-        ),
-    ).to_proto()
-
-    # Enable sub-processing for test
-    with set_use_subprocess(True):
-        training_response = sample_train_servicer.Train(
-            train_request, Fixtures.build_context("foo")
-        )
-        MODEL_MANAGER.get_model_future(training_response.training_id).wait()
-
-        future_info = MODEL_MANAGER.get_model_future(
-            training_response.training_id
-        ).get_info()
-        assert f"Training process died with OOM error!" in str(future_info.errors[0])
 
 
 def test_local_trainer_rejects_s3_output_paths(

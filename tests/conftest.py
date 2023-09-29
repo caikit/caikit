@@ -193,6 +193,25 @@ def temp_config(config_overrides: dict, merge_strategy="override"):
             yield get_config()
 
 
+@contextmanager
+def set_use_subprocess(use_subprocess: bool):
+    with temp_config(
+        {
+            "model_management": {
+                "trainers": {
+                    "default": {
+                        "config": {
+                            "use_subprocess": use_subprocess,
+                        }
+                    }
+                }
+            }
+        },
+        "merge",
+    ):
+        yield
+
+
 # fixtures to optionally generate the protos for easier debugging
 def pytest_addoption(parser):
     try:
