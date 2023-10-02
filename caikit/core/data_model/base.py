@@ -306,7 +306,8 @@ class _DataBaseMetaClass(type):
         setattr(
             cls,
             "_supports_file_operations",
-            cls.to_file is not DataBase.to_file and cls.from_file is not DataBase.from_file,
+            cls.to_file is not DataBase.to_file
+            and cls.from_file is not DataBase.from_file,
         )
 
     @classmethod
@@ -530,7 +531,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
     @classmethod
     @property
-    def supports_file_operations(cls)->bool:
+    def supports_file_operations(cls) -> bool:
         return getattr(cls, "_supports_file_operations", False)
 
     def which_oneof(self, oneof_name: str) -> Optional[str]:
@@ -800,6 +801,15 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
     @classmethod
     def from_file(cls, file_obj: IOBase):
+        """Build a DataBase from a given file-like object.
+
+        Args:
+            file_obj IOBase: A file object that contains some representation
+            of the dataobject
+
+        Returns:
+            caikit.core.data_model.DataBase: A DataBase object.
+        """
         raise NotImplementedError(f"from_file not implemented for {cls}")
 
     def to_proto(self):
@@ -979,6 +989,16 @@ class DataBase(metaclass=_DataBaseMetaClass):
         return json.dumps(self.to_dict(), **kwargs)
 
     def to_file(self, file_obj: IOBase) -> Optional["File"]:
+        """Export a DataBaseObject into a file-like object `file_obj`. If the DataBase object
+        has requirements around file name or file type it can return them via
+        the optional "File" return object
+
+        Args:
+            file_obj IOBase: a file object to be filled
+
+        Returns:
+            caikit.interfaces.common.data_mode.stream_sources: File.
+        """
         raise NotImplementedError(f"to_file not implemented for {self.__class__}")
 
     def __repr__(self):

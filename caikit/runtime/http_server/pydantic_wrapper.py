@@ -31,13 +31,13 @@ from pydantic.functional_validators import BeforeValidator
 from starlette.datastructures import UploadFile
 import numpy as np
 import pydantic
-import alog
 
 # First Party
 from py_to_proto.dataclass_to_proto import (  # Imported here for 3.8 compat
     Annotated,
     get_origin,
 )
+import alog
 
 # Local
 from caikit.core.data_model.base import DataBase
@@ -187,6 +187,10 @@ def _from_base64(data: Union[bytes, str]) -> bytes:
 async def pydantic_from_request(
     pydantic_model: Type[pydantic.BaseModel], request: Request
 ):
+    """Function to convert a fastapi request into a given pydantic model. This
+    function parses the requests Content-Type and then correctly decodes the data.
+    The currently supported Content-Types are `application/json`
+    and `multipart/form-data`"""
     content_type = request.headers.get("Content-Type")
     log.debug4("Detected request using %s type", content_type)
 
@@ -243,12 +247,12 @@ def _parse_form_data_to_pydantic(
 
         # Determine the root type hint if the request is a list
         is_list = False
-        if get_origin(model_type_hints) is list:
+        if get_origin(model_type_hints[0]) is list:
             is_list = True
-            model_type_hints = get_args(model_type_hints)[0]
+            model_type_hints = get_args(model_type_hints[0])
 
         # Recheck for union incase list was a list of unions
-        if get_origin(model_type_hints) is Union:
+        if get_origin(model_type_hints[0]) is Union:
             model_type_hints = get_args(model_type_hints)
 
         # Loop through and check for each type hint. This is required to
@@ -256,30 +260,35 @@ def _parse_form_data_to_pydantic(
         # pydantic will handle formatting
         parsed = False
         for type_hint in model_type_hints:
-            # If type_hint is bytes than parse the file information
-            if type_hint in [bytes, pydantic_file]:
-                for n, sub_obj in enumerate(raw_objects):
-                    # This should always be true but check just in case
-                    if isinstance(sub_obj, UploadFile):
-                        # If we're looking for a pydantic file type then parse the
-                        # structure of UploadFile. Otherwise, just return the content bytes
-                        if type_hint == pydantic_file:
-                            raw_objects[n] = {
-                                "filename": sub_obj.filename,
-                                "data": sub_obj.file.read(),
-                                "type": sub_obj.content_type,
-                            }
-                        else:
-                            raw_objects[n] = sub_obj.file.read()
+            # Parse any UploadFile types into the raw bytes or File information
+            for n, sub_obj in enumerate(raw_objects):
+                if isinstance(sub_obj, UploadFile):
+                    # If we're looking for a pydantic file type then parse the
+                    # structure of UploadFile. Otherwise, just return the content bytes
+                    if type_hint == pydantic_file:
+                        raw_objects[n] = {
+                            "filename": sub_obj.filename,
+                            "data": sub_obj.file.read(),
+                            "type": sub_obj.content_type,
+                        }
+                    else:
+                        raw_objects[n] = sub_obj.file.read()
 
             # If type_hint is a pydantic model then parse the json
-            elif inspect.isclass(type_hint) and issubclass(
-                type_hint, pydantic.BaseModel
+            if (
+                type_hint != pydantic_file
+                and inspect.isclass(type_hint)
+                and issubclass(type_hint, pydantic.BaseModel)
             ):
                 failed_to_parse_json = False
                 for n, sub_obj in enumerate(raw_objects):
                     try:
                         raw_objects[n] = json.loads(sub_obj)
+                    except TypeError:
+                        raise HTTPException(
+                            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            detail=f"Unable to update object at key '{key}'; expected value to be string",
+                        )
                     except json.JSONDecodeError:
                         failed_to_parse_json = True
                         break
@@ -314,7 +323,7 @@ def _parse_form_data_to_pydantic(
     try:
         return pydantic_model.model_validate(raw_model_obj)
     except pydantic.ValidationError as err:
-        raise RequestValidationError(errors=err.errors())  # This is the key piece
+        raise RequestValidationError(errors=err.errors())
 
 
 def _get_pydantic_subtypes(
@@ -342,7 +351,7 @@ def _get_pydantic_subtypes(
     # If object is a list then recurse on its type
     elif get_origin(current_type) is list:
         if len(keys) == 0:
-            return current_type
+            return [current_type]
 
         return _get_pydantic_subtypes(get_args(current_type)[0], keys)
     else:

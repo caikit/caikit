@@ -32,7 +32,7 @@ import threading
 import time
 
 # Third Party
-from fastapi import FastAPI, Request, Response, status
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import ResponseValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -362,7 +362,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     return Response(
                         content=result.to_json(), media_type="application/json"
                     )
-
+            except HTTPException as err:
+                raise err
             except CaikitRuntimeException as err:
                 error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
                 error_content = {
@@ -395,7 +396,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
             response_class=Response,
         )
         # pylint: disable=unused-argument
-        async def _handler(model_id: str, context: Request) -> Response:
+        async def _handler(
+            model_id: str,
+            context: Request,
+        ) -> Response:
             log.debug("In unary handler for %s for model %s", rpc.name, model_id)
             loop = asyncio.get_running_loop()
 
@@ -437,6 +441,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         content=result.to_json(), media_type="application/json"
                     )
 
+            except HTTPException as err:
+                raise err
             except CaikitRuntimeException as err:
                 error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
                 error_content = {
@@ -493,6 +499,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     ):
                         yield result
                     return
+                except HTTPException as err:
+                    raise err
                 except CaikitRuntimeException as err:
                     error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
                     error_content = {
@@ -608,7 +616,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
         return dm_obj
 
     @staticmethod
-    def _format_file_response(dm_class: Type[DataBase])->Response:
+    def _format_file_response(dm_class: Type[DataBase]) -> Response:
+        """Convert a dm_class into a fastapi file Response"""
         file_obj = io.BytesIO()
         file_info = dm_class.to_file(file_obj)
 
@@ -616,9 +625,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         content_disposition = "attachment"
         if file_info:
             file_type = file_info.type if file_info.type else file_type
-            content_disposition = (
-                f'attachment; filename="{file_info.filename}"'
-            )
+            content_disposition = f'attachment; filename="{file_info.filename}"'
 
         return Response(
             content=file_obj.getvalue(),
@@ -630,6 +637,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def _get_request_openapi(
         pydantic_model: Union[pydantic.BaseModel, Type[pydantic.BaseModel]]
     ):
+        """Helper to generate the openapi schema for a given request"""
         raw_schema = pydantic_model.model_json_schema()
         parsed_schema = flatten_json_schema(raw_schema)
 
@@ -649,13 +657,17 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def _get_response_openapi(
         dm_class: Type[DataBase], pydantic_model: Type[pydantic.BaseModel]
     ):
+        """Helper to generate the openapi schema for a given response"""
+
         if dm_class.supports_file_operations:
             response_schema = {
                 "application/octet-stream": {"type": "string", "format": "binary"}
             }
         else:
             response_schema = {
-                "application/json": flatten_json_schema(pydantic_model.model_json_schema())
+                "application/json": flatten_json_schema(
+                    pydantic_model.model_json_schema()
+                )
             }
 
         output = {200: {"content": response_schema}}

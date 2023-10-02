@@ -20,7 +20,8 @@ from typing import Any, Optional
 
 
 def convert_json_schema_to_multipart(json_schema):
-    """Helper function to"""
+    """Helper function to convert a json schema from applicaiton/json into one
+    that can be used for multipart requests"""
     sparse_schema, extracted_files = _extract_raw_from_schema(json_schema)
     sparse_schema["properties"] = {**sparse_schema["properties"], **extracted_files}
     return sparse_schema
