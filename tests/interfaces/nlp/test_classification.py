@@ -47,7 +47,7 @@ classification_train_record = ClassificationTrainRecord(
 )
 
 classification_generated_text_result = ClassifiedGeneratedTextResult(
-    text="moose goose foo bar",
+    generated_text="moose goose foo bar",
     token_classification_results=[token_classification1, token_classification2],
 )
 
@@ -189,10 +189,10 @@ def test_classification_train_record_from_json_and_back():
 
 def test_classification_generated_text_result_all_fields_accessible():
     classification_generated_text_result = ClassifiedGeneratedTextResult(
-        text="moose goose foo bar",
+        generated_text="moose goose foo bar",
         token_classification_results=[token_classification1, token_classification2],
     )
-    assert classification_generated_text_result.text == "moose goose foo bar"
+    assert classification_generated_text_result.generated_text == "moose goose foo bar"
     assert (
         classification_generated_text_result.token_classification_results[0]
         == token_classification1
@@ -207,7 +207,7 @@ def test_classification_generated_text_result_from_proto_and_back():
     new = ClassifiedGeneratedTextResult.from_proto(
         classification_generated_text_result.to_proto()
     )
-    assert new.text == "moose goose foo bar"
+    assert new.generated_text == "moose goose foo bar"
     assert new.token_classification_results[0].start == 0
     assert new.token_classification_results[0].word == "moose"
     assert new.token_classification_results[0].score == 0.8
@@ -220,7 +220,7 @@ def test_classification_generated_text_result_from_json_and_back():
     new = ClassifiedGeneratedTextResult.from_json(
         classification_generated_text_result.to_json()
     )
-    assert new.text == "moose goose foo bar"
+    assert new.generated_text == "moose goose foo bar"
     assert new.token_classification_results[0].start == 0
     assert new.token_classification_results[0].word == "moose"
     assert new.token_classification_results[0].score == 0.8
