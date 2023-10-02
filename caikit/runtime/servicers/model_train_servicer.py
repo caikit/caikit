@@ -135,6 +135,11 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
             )
             return process_response
 
+        except MemoryError as e:
+            raise CaikitRuntimeException(
+                grpc.StatusCode.INTERNAL, "OOM error during training"
+            ) from e
+
         except CaikitRuntimeException as e:
             # pylint: disable=R0801
             log.warning(

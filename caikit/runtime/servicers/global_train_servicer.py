@@ -95,11 +95,13 @@ class GlobalTrainServicer:
         *_,
         **__,
     ) -> TrainingJob:
-        """Global predict RPC -- Mocks the invocation of a Caikit Library module.train()
+        """Global train RPC -- Mocks the invocation of a Caikit Library module.train()
         method for a loaded Caikit Library model
+
         Args:
             request (object): A deserialized RPC request message
             context (ServicerContext): Context object (contains request metadata, etc)
+
         Returns:
             caikit.interfaces.runtime.data_model.TrainingJob:
                 A TrainingJob data model response object
