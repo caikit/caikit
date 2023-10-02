@@ -51,9 +51,9 @@ MODEL_SIZE_GAUGE = Gauge(
 )
 OTEL_MODEL_SIZE_GAUGE = MetricsGauge(
     name="total_loaded_models_size",
-    unit="size", 
+    unit="size",
     description="Total size of loaded models reported to model-mesh",
-    meter=meter
+    meter=meter,
 )
 MODEL_COUNT_GAUGE = Gauge(
     "total_loaded_models", "Total number of loaded models", ["model_type", "model_id"]
@@ -61,7 +61,7 @@ MODEL_COUNT_GAUGE = Gauge(
 MODEL_COUNT_COUNTER = meter.create_up_down_counter(
     name="total_loaded_models",
     unit="count",
-    description="Total number of loaded models"
+    description="Total number of loaded models",
 )
 LOAD_MODEL_EXCEPTION_COUNTER = Counter(
     "load_model_exception_count",
@@ -71,7 +71,7 @@ LOAD_MODEL_EXCEPTION_COUNTER = Counter(
 OTEL_LOAD_MODEL_EXCEPTION_COUNTER = meter.create_counter(
     name="load_model_exception_count",
     unit="count",
-    description="Count of exceptions raised during loadModel RPC"
+    description="Count of exceptions raised during loadModel RPC",
 )
 LOAD_MODEL_DURATION_SUMMARY = Summary(
     "load_model_duration_seconds",
@@ -81,7 +81,7 @@ LOAD_MODEL_DURATION_SUMMARY = Summary(
 LOAD_MODEL_DURATION_HISTOGRAM = meter.create_histogram(
     "load_model_duration_seconds",
     "second",
-    "Histogram of the duration (in seconds) of loadModel RPCs"
+    "Histogram of the duration (in seconds) of loadModel RPCs",
 )
 LOCAL_MODEL_TYPE = "LOCAL"
 
@@ -195,10 +195,10 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         Returns:
             Model_size (int) : Size of the loaded model in bytes
         """
-        #with LOAD_MODEL_DURATION_SUMMARY.labels(model_type=model_type).time():
+        # with LOAD_MODEL_DURATION_SUMMARY.labels(model_type=model_type).time():
         with DurationHistogram(
-                    histogram=LOAD_MODEL_DURATION_HISTOGRAM,
-                    attributes={"model_type": model_type}
+            histogram=LOAD_MODEL_DURATION_HISTOGRAM,
+            attributes={"model_type": model_type},
         ):
 
             # If already loaded, just return the size
@@ -536,17 +536,14 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
     @staticmethod
     def __increment_model_count_metric(model_type, model_id):
         MODEL_COUNT_GAUGE.labels(model_type=model_type, model_id=model_id).inc()
-        MODEL_COUNT_COUNTER.add(
-            1, {"model_type": model_type, "model_id": model_id})
+        MODEL_COUNT_COUNTER.add(1, {"model_type": model_type, "model_id": model_id})
 
     @staticmethod
     def __decrement_model_count_metric(model_type, model_id):
         MODEL_COUNT_GAUGE.labels(model_type=model_type, model_id=model_id).dec()
-        MODEL_COUNT_COUNTER.add(
-            -1, {"model_type": model_type, "model_id": model_id})
+        MODEL_COUNT_COUNTER.add(-1, {"model_type": model_type, "model_id": model_id})
 
     @staticmethod
     def __increment_load_model_exception_count_metric(model_type):
         LOAD_MODEL_EXCEPTION_COUNTER.labels(model_type=model_type).inc()
-        OTEL_LOAD_MODEL_EXCEPTION_COUNTER.add(
-            1, {"model_type": model_type})
+        OTEL_LOAD_MODEL_EXCEPTION_COUNTER.add(1, {"model_type": model_type})

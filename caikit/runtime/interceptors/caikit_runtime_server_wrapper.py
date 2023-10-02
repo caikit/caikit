@@ -38,7 +38,8 @@ meter = metrics.get_meter("caikit-runtime")
 IN_PROGRESS_COUNTER = meter.create_up_down_counter(
     name="rpc_in_progress_gauge",
     unit="count",
-    description="Total number of in-flight requests to caikit-runtime")
+    description="Total number of in-flight requests to caikit-runtime",
+)
 
 IN_PROGRESS_GAUGE = Gauge(
     "rpc_in_progress_gauge",

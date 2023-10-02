@@ -124,10 +124,11 @@ runtime:
         # Maximum number of seconds to wait for graceful shutdown
         server_shutdown_grace_period_seconds: 5
 
-    # Configuration for the metrics server
+    # Configuration for metrics instrumentation
     metrics:
-        enabled: true
+        enabled: false
         port: 8086
+        endpoint: "http://localhost:4317"
 
     # Whether or not to abort work on client cancellation
     use_abortable_threads: true

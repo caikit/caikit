@@ -38,10 +38,7 @@ from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.utils.import_util import (
-    clean_lib_names,
-    DurationHistogram
-)
+from caikit.runtime.utils.import_util import DurationHistogram, clean_lib_names
 from caikit.runtime.utils.servicer_util import (
     build_caikit_library_request_dict,
     build_proto_response,
@@ -63,7 +60,8 @@ PREDICT_RPC_COUNTER = Counter(
 OTEL_PREDICT_RPC_COUNTER = meter.create_counter(
     name="predict_rpc_count",
     unit="count",
-    description="Count of global predict-managed RPC calls")
+    description="Count of global predict-managed RPC calls",
+)
 PREDICT_FROM_PROTO_SUMMARY = Summary(
     "predict_from_proto_duration_seconds",
     "Histogram of predict request unmarshalling duration (in seconds)",
@@ -72,7 +70,8 @@ PREDICT_FROM_PROTO_SUMMARY = Summary(
 PREDICT_FROM_PROTO_HISTOGRAM = meter.create_histogram(
     "predict_from_proto_duration_seconds",
     "second",
-    "Histogram of predict request unmarshalling duration (in seconds)")
+    "Histogram of predict request unmarshalling duration (in seconds)",
+)
 PREDICT_CAIKIT_LIBRARY_SUMMARY = Summary(
     "predict_caikit_library_duration_seconds",
     "Histogram of predict Caikit Library run duration (in seconds)",
@@ -81,7 +80,8 @@ PREDICT_CAIKIT_LIBRARY_SUMMARY = Summary(
 PREDICT_CAIKIT_LIBRARY_HISTOGRAM = meter.create_histogram(
     "predict_caikit_library_duration_seconds",
     "second",
-    "Histogram of predict Caikit Library run duration (in seconds)")
+    "Histogram of predict Caikit Library run duration (in seconds)",
+)
 PREDICT_TO_PROTO_SUMMARY = Summary(
     "predict_to_proto_duration_seconds",
     "Histogram of predict response marshalling duration (in seconds)",
@@ -90,7 +90,8 @@ PREDICT_TO_PROTO_SUMMARY = Summary(
 PREDICT_TO_PROTO_HISTOGRAM = meter.create_histogram(
     "predict_to_proto_duration_seconds",
     "second",
-    "Histogram of predict response marshalling duration (in seconds)")
+    "Histogram of predict response marshalling duration (in seconds)",
+)
 
 log = alog.use_channel("GP-SERVICR-I")
 
@@ -200,7 +201,7 @@ class GlobalPredictServicer:
                 # ).time():
                 with DurationHistogram(
                     histogram=PREDICT_FROM_PROTO_HISTOGRAM,
-                    attributes={"grpc_request": request_name, "model_id": model_id}
+                    attributes={"grpc_request": request_name, "model_id": model_id},
                 ):
                     inference_signature = model_class.get_inference_signature(
                         input_streaming=caikit_rpc.input_streaming,
@@ -231,12 +232,12 @@ class GlobalPredictServicer:
                 )
 
                 # Marshall the response to the necessary return type
-                #with PREDICT_TO_PROTO_SUMMARY.labels(
+                # with PREDICT_TO_PROTO_SUMMARY.labels(
                 #    grpc_request=request_name, model_id=model_id
-                #).time():
+                # ).time():
                 with DurationHistogram(
                     histogram=PREDICT_TO_PROTO_HISTOGRAM,
-                    attributes={"grpc_request": request_name, "model_id": model_id}
+                    attributes={"grpc_request": request_name, "model_id": model_id},
                 ):
                     if caikit_rpc.output_streaming:
                         response_proto = build_proto_stream(response)
@@ -283,12 +284,12 @@ class GlobalPredictServicer:
                 request_name,
             ):
                 model_run_fn = getattr(model, inference_func_name)
-                #with PREDICT_CAIKIT_LIBRARY_SUMMARY.labels(
+                # with PREDICT_CAIKIT_LIBRARY_SUMMARY.labels(
                 #    grpc_request=request_name, model_id=model_id
-                #).time():
+                # ).time():
                 with DurationHistogram(
                     histogram=PREDICT_CAIKIT_LIBRARY_HISTOGRAM,
-                    attributes={"grpc_request": request_name, "model_id": model_id}
+                    attributes={"grpc_request": request_name, "model_id": model_id},
                 ):
                     if aborter is not None:
                         work = AbortableAction(aborter, model_run_fn, **kwargs)
@@ -332,7 +333,7 @@ class GlobalPredictServicer:
                 grpc_request=request_name, code=e.status_code.name, model_id=model_id
             ).inc()
             OTEL_PREDICT_RPC_COUNTER.add(
-                1, {"code": e.status_code.name, "model_id" :model_id}
+                1, {"code": e.status_code.name, "model_id": model_id}
             )
             raise e
 
@@ -352,9 +353,12 @@ class GlobalPredictServicer:
                 model_id=model_id,
             ).inc()
             OTEL_PREDICT_RPC_COUNTER.add(
-                1, {"grpc_request": request_name,
+                1,
+                {
+                    "grpc_request": request_name,
                     "code": StatusCode.INVALID_ARGUMENT.name,
-                    "model_id": model_id}
+                    "model_id": model_id,
+                },
             )
             raise CaikitRuntimeException(
                 StatusCode.INVALID_ARGUMENT,
@@ -375,9 +379,12 @@ class GlobalPredictServicer:
                 model_id=model_id,
             ).inc()
             OTEL_PREDICT_RPC_COUNTER.add(
-                1, {"grpc_request": request_name,
+                1,
+                {
+                    "grpc_request": request_name,
                     "code": StatusCode.INTERNAL.name,
-                    "model_id": model_id}
+                    "model_id": model_id,
+                },
             )
             raise CaikitRuntimeException(
                 StatusCode.INTERNAL, "Unhandled exception during prediction"

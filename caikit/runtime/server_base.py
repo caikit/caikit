@@ -19,23 +19,17 @@ import abc
 import signal
 
 # Third Party
-from opentelemetry import (
-    metrics,
-    trace
-)
+from opentelemetry import metrics, trace
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import (
     ConsoleMetricExporter,
-    PeriodicExportingMetricReader
+    PeriodicExportingMetricReader,
 )
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import (
-    ConsoleSpanExporter,
-    SimpleSpanProcessor,
-)
+from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
 from prometheus_client import start_http_server
 
 # First Party
@@ -110,18 +104,26 @@ class RuntimeServerBase(abc.ABC):
     @classmethod
     def _create_meter_provider(cls) -> None:
         """Create a single instance of the OpenTelemetry meter provider based on configuration"""
-        if not cls._meter_provider:
+        if not cls._meter_provider and get_config().runtime.metrics.enabled:
             log.info(
-                "Serving OpenTelemetry metrics on port %s",
-                get_config().runtime.metrics.port,
+                "Exporting OpenTelemetry metrics on endpoint %s",
+                get_config().runtime.metrics.endpoint,
             )
-            console_metric_exporter = PeriodicExportingMetricReader(ConsoleMetricExporter(),
-                                                export_interval_millis=5000)
-            otlp_metric_exporter = PeriodicExportingMetricReader(OTLPMetricExporter(), export_interval_millis=5000)
-            cls.meter_provider = MeterProvider(metric_readers=[console_metric_exporter, otlp_metric_exporter],
-                                    resource=Resource.create({
+            console_metric_exporter = PeriodicExportingMetricReader(
+                ConsoleMetricExporter(), export_interval_millis=5000
+            )
+            otlp_metric_exporter = PeriodicExportingMetricReader(
+                OTLPMetricExporter(endpoint=get_config().runtime.metrics.endpoint),
+                export_interval_millis=5000,
+            )
+            cls.meter_provider = MeterProvider(
+                metric_readers=[console_metric_exporter, otlp_metric_exporter],
+                resource=Resource.create(
+                    {
                         "service.name": "caikit-runtime",
-                    }),)
+                    }
+                ),
+            )
 
             # Sets the global default meter provider
             metrics.set_meter_provider(cls.meter_provider)
@@ -130,21 +132,27 @@ class RuntimeServerBase(abc.ABC):
     @classmethod
     def _create_trace_provider(cls) -> None:
         """Create a single instance of the OpenTelemetry trace provider based on configuration"""
-        if not cls._trace_provider:
+        if not cls._trace_provider and get_config().runtime.metrics.enabled:
             log.info(
-                "Serving OpenTelemetry trace on port %s",
-                get_config().runtime.metrics.port,
+                "Exporting OpenTelemetry trace on endpoint %s",
+                get_config().runtime.metrics.endpoint,
             )
-            cls.trace_provider = TracerProvider(resource=Resource.create({
+            cls.trace_provider = TracerProvider(
+                resource=Resource.create(
+                    {
                         "service.name": "caikit-runtime",
-                    }),)
+                    }
+                ),
+            )
             # Sets the global default trace provider
             trace.set_tracer_provider(cls.trace_provider)
             cls.trace_provider.add_span_processor(
                 SimpleSpanProcessor(ConsoleSpanExporter())
             )
             cls.trace_provider.add_span_processor(
-                SimpleSpanProcessor(OTLPSpanExporter())
+                SimpleSpanProcessor(
+                    OTLPSpanExporter(endpoint=get_config().runtime.metrics.endpoint)
+                )
             )
             cls._trace_provider = True
 

@@ -202,11 +202,15 @@ def clean_lib_names(caikit_library: str) -> List[str]:
     lib_names = caikit_library.split()
     return [clean(lib) for lib in lib_names]
 
+
 class DurationHistogram:
     """Context manager implementation for OpenTelemetry Histogram.
     This class enables the Histogram to meter by time duration.
     """
-    def __init__(self, histogram: metrics.Histogram, attributes: Optional[Attributes] = None):
+
+    def __init__(
+        self, histogram: metrics.Histogram, attributes: Optional[Attributes] = None
+    ):
         self.histogram = histogram
         self.attributes = attributes
 
@@ -214,8 +218,9 @@ class DurationHistogram:
         self.start = time.time()
 
     def __exit__(self, type_, value, traceback):
-        self.took = (time.time() - self.start)
+        self.took = time.time() - self.start
         self.histogram.record(time.time() - self.start, self.attributes)
+
 
 class MetricsGauge:
     """This class wraps the asynchronous OpenTelemetry gauge so that a value
@@ -225,6 +230,7 @@ class MetricsGauge:
     TODO: This can be deprecated when synchronous gauge is implemented in Python SDK. Ref:
     https://github.com/open-telemetry/opentelemetry-python/issues/3363
     """
+
     def __init__(self, name: str, description: str, unit: str, meter: metrics.Meter):
         self._name = name
         self._description = description
@@ -240,8 +246,10 @@ class MetricsGauge:
         # prior to values getting set.
         if self._internal_gauge is None:
             self._internal_gauge = self._meter.create_observable_gauge(
-                name=self._name, unit=self._unit, description=self._description,
-                callbacks=[self._gauge_callback]
+                name=self._name,
+                unit=self._unit,
+                description=self._description,
+                callbacks=[self._gauge_callback],
             )
 
     def _gauge_callback(self, _options):
