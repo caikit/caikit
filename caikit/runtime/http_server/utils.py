@@ -28,39 +28,38 @@ def convert_json_schema_to_multipart(json_schema):
 
 
 def _extract_raw_from_schema(json_schema: Any, current_path=None) -> (dict, dict):
-    """Helper function to extract all "bytes" or File fields from a json schema and return the cleaned
-    schema dict and a dict of extracted schemas where the key is the original raw's path"""
+    """Helper function to extract all "bytes" or File fields from a json schema and return the
+    cleaned schema dict and a dict of extracted schemas where the key is the original raw's path"""
     if isinstance(json_schema, dict):
         # If this json_schema represents a raw field extract it
         if raw_json_schema := _parse_raw_json_schema(json_schema):
             return None, {_clean_schema_path(current_path): raw_json_schema}
 
         # If this is a generic schema then recurse on it
-        else:
-            output_schema = {}
-            extracted_schemas = {}
-            for key in json_schema:
-                # format sub path
-                key_path = key
-                if current_path:
-                    key_path = current_path + "." + key
+        output_schema = {}
+        extracted_schemas = {}
+        for key in json_schema:
+            # format sub path
+            key_path = key
+            if current_path:
+                key_path = current_path + "." + key
 
-                # Recurse on schemas
-                updated_schema, extracted_bytes = _extract_raw_from_schema(
-                    json_schema[key], key_path
-                )
-                if updated_schema:
-                    output_schema[key] = updated_schema
+            # Recurse on schemas
+            updated_schema, extracted_bytes = _extract_raw_from_schema(
+                json_schema[key], key_path
+            )
+            if updated_schema:
+                output_schema[key] = updated_schema
 
-                extracted_schemas = {**extracted_schemas, **extracted_bytes}
+            extracted_schemas = {**extracted_schemas, **extracted_bytes}
 
-            return output_schema, extracted_schemas
+        return output_schema, extracted_schemas
 
     # If schema is a list then recurse on each sub item
-    elif isinstance(json_schema, list):
+    if isinstance(json_schema, list):
         output_schema = []
         extracted_schemas = {}
-        for i, schema in enumerate(json_schema):
+        for schema in json_schema:
             # Recurse on sub schema with the same path
             updated_schema, extracted_bytes = _extract_raw_from_schema(
                 schema, current_path
@@ -70,9 +69,9 @@ def _extract_raw_from_schema(json_schema: Any, current_path=None) -> (dict, dict
 
             extracted_schemas = {**extracted_schemas, **extracted_bytes}
         return output_schema, extracted_schemas
+
     # If schema is a raw type then just return it
-    else:
-        return json_schema, {}
+    return json_schema, {}
 
 
 def _clean_schema_path(path):
@@ -103,7 +102,7 @@ def _parse_raw_json_schema(json_schema: dict) -> Optional[dict]:
         return json_schema
 
     # If schema matches list of bytes
-    elif (
+    if (
         json_schema.get("type") == "array"
         and json_schema.get("items", {}).get("type")
         == generic_binary_schema.get("type")
@@ -113,12 +112,12 @@ def _parse_raw_json_schema(json_schema: dict) -> Optional[dict]:
         return json_schema
 
     # If schema matches a file reference then return the generic bytes schema
-    elif json_schema.get("title") in ["caikit_data_model.common.File"]:
+    if json_schema.get("title") in ["caikit_data_model.common.File"]:
         json_schema = {**json_schema, **generic_binary_schema}
         json_schema.pop("properties", None)
         return json_schema
     # If schema is a list of file references
-    elif json_schema.get("type") == "array" and json_schema.get("items", {}).get(
+    if json_schema.get("type") == "array" and json_schema.get("items", {}).get(
         "title"
     ) in ["caikit_data_model.common.File"]:
         json_schema["items"] = generic_binary_schema
@@ -153,19 +152,18 @@ def _replace_json_refs(current_json: Any, refs_map: dict):
 
             return _replace_json_refs(current_place, refs_map)
 
-        else:
-            return {
-                key: _replace_json_refs(value, refs_map)
-                for key, value in current_json.items()
-            }
+        # If not $ref then recurse
+        return {
+            key: _replace_json_refs(value, refs_map)
+            for key, value in current_json.items()
+        }
 
     # If object is list than recurse on each item
-    elif isinstance(current_json, list):
+    if isinstance(current_json, list):
         return [_replace_json_refs(item, refs_map) for item in current_json]
 
     # If object is other type than return raw object
-    else:
-        return current_json
+    return current_json
 
 
 def update_dict_at_dot_path(dict_obj: dict, key: str, updated_value: Any) -> bool:
@@ -184,7 +182,7 @@ def update_dict_at_dot_path(dict_obj: dict, key: str, updated_value: Any) -> boo
             Weather the dict was successfully updated
     """
     parts = key.split(".")
-    for i, part in enumerate(parts[:-1]):
+    for part in parts[:-1]:
         dict_obj = dict_obj.setdefault(part, {})
         if not isinstance(dict_obj, dict):
             return False

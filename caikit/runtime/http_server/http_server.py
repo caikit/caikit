@@ -20,7 +20,7 @@ API based on the task definitions available at boot.
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Dict, Iterable, Optional, Type, Union, get_args, get_type_hints
+from typing import Any, Dict, Iterable, Optional, Type, Union, get_args
 import asyncio
 import io
 import json
@@ -358,10 +358,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 result = await loop.run_in_executor(None, call)
                 if response_data_object.supports_file_operations:
                     return self._format_file_response(result)
-                else:
-                    return Response(
-                        content=result.to_json(), media_type="application/json"
-                    )
+
+                return Response(content=result.to_json(), media_type="application/json")
             except HTTPException as err:
                 raise err
             except CaikitRuntimeException as err:
@@ -379,7 +377,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     "id": None,
                 }
                 log.error("<RUN51881106E>", err, exc_info=True)
-            return Response(content=json.dumps(error_content), status_code=error_code)
+            return Response(
+                content=json.dumps(error_content), status_code=error_code
+            )  # pylint: disable=used-before-assignment
 
     def _add_unary_input_unary_output_handler(self, rpc: TaskPredictRPC):
         """Add a unary:unary request handler for this RPC signature"""
@@ -436,10 +436,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
                 if response_data_object.supports_file_operations:
                     return self._format_file_response(result)
-                else:
-                    return Response(
-                        content=result.to_json(), media_type="application/json"
-                    )
+
+                return Response(content=result.to_json(), media_type="application/json")
 
             except HTTPException as err:
                 raise err
@@ -458,7 +456,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     "id": None,
                 }
                 log.error("<RUN51881106E>", err, exc_info=True)
-            return Response(content=json.dumps(error_content), status_code=error_code)
+            return Response(
+                content=json.dumps(error_content), status_code=error_code
+            )  # pylint: disable=used-before-assignment
 
     def _add_unary_input_stream_output_handler(self, rpc: CaikitRPCBase):
         pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))

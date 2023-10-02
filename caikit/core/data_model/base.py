@@ -306,8 +306,7 @@ class _DataBaseMetaClass(type):
         setattr(
             cls,
             "_supports_file_operations",
-            cls.to_file is not DataBase.to_file
-            and cls.from_file is not DataBase.from_file,
+            cls.to_file != DataBase.to_file and cls.from_file != DataBase.from_file,
         )
 
     @classmethod

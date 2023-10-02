@@ -16,8 +16,14 @@
 A sample module for sample things!
 """
 # Local
-from ...data_model.sample import FileDataType, FileTask
+from ...data_model.sample import (
+    FileInputType,
+    FileOutputType,
+    FileTask,
+    SampleOutputType,
+)
 from caikit.core.modules import ModuleLoader
+from caikit.interfaces.common.data_model.stream_sources import File
 import caikit.core
 
 
@@ -27,11 +33,16 @@ import caikit.core
 class BoundingBoxModule(caikit.core.ModuleBase):
     def run(
         self,
-        unprocessed: FileDataType,
-    ) -> FileDataType:
-        filename = f"processed_{unprocessed.filename}"
-        data = b"bounding|" + unprocessed.data + b"|box"
-        return FileDataType(filename, data)
+        input: FileInputType,
+    ) -> FileOutputType:
+        filename = f"processed_{input.file.filename}"
+        data = b"bounding|" + input.file.data + b"|box"
+        return FileOutputType(
+            File(filename=filename, data=data),
+            SampleOutputType(
+                greeting=f"Hello {input.metadata.name} and {input.file.filename}"
+            ),
+        )
 
     @classmethod
     def load(cls, model_path, **kwargs):

@@ -2,13 +2,16 @@
 Dummy data model object for testing
 """
 # Standard
-from typing import Iterable, Union
-import base64
+from io import IOBase
+from typing import Iterable, List, Optional
+import json
 import typing
+import zipfile
 
 # Local
 from caikit.core import DataObjectBase, TaskBase, dataobject, task
 from caikit.core.data_model import ProducerId
+from caikit.interfaces.common.data_model import File
 
 
 @dataobject(package="caikit_data_model.sample_lib")
@@ -17,6 +20,22 @@ class SampleInputType(DataObjectBase):
     The analog to a `Raw Document` for the `Natural Language Processing` domain."""
 
     name: str
+
+
+@dataobject(package="caikit_data_model.sample_lib")
+class SampleListInputType(DataObjectBase):
+    """A sample `domain primitive` input type for this library.
+    The analog to a `Raw Document` for the `Natural Language Processing` domain."""
+
+    inputs: List[SampleInputType]
+
+
+@dataobject(package="caikit_data_model.sample_lib")
+class FileInputType(DataObjectBase):
+    """A simple type for tasks that deal with file data"""
+
+    file: File
+    metadata: SampleInputType
 
 
 @dataobject(package="caikit_data_model.sample_lib")
@@ -35,11 +54,20 @@ class OtherOutputType(DataObjectBase):
 
 
 @dataobject(package="caikit_data_model.sample_lib")
-class FileDataType(DataObjectBase):
+class FileOutputType(DataObjectBase):
     """A simple type for tasks that deal with file data"""
 
-    filename: str
-    data: bytes
+    file: File
+    metadata: SampleOutputType
+
+    def to_file(self, file_obj: IOBase) -> Optional[File]:
+        with zipfile.ZipFile(
+            file_obj, compression=zipfile.ZIP_DEFLATED, mode="w"
+        ) as zip_export:
+            zip_export.writestr("metadata.json", json.dumps(self.metadata.to_dict()))
+            zip_export.writestr(self.file.filename, self.file.data)
+
+        return File(filename="result.zip", type="application/zip")
 
 
 @dataobject(package="caikit_data_model.sample_lib")
@@ -69,8 +97,8 @@ class OtherTask(TaskBase):
 
 
 @task(
-    unary_parameters={"unprocessed": FileDataType},
-    unary_output_type=FileDataType,
+    unary_parameters={"input": FileInputType},
+    unary_output_type=FileOutputType,
 )
 class FileTask(TaskBase):
     """A sample task for processing files"""

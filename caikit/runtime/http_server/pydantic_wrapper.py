@@ -16,7 +16,7 @@ This module holds the Pydantic wrapping required by the REST server,
 capable of converting to and from Pydantic models to our DataObjects.
 """
 # Standard
-from typing import Dict, List, Type, Union, get_args, get_type_hints, reveal_type
+from typing import Dict, List, Type, Union, get_args, get_type_hints
 import base64
 import enum
 import inspect
@@ -25,7 +25,6 @@ import json
 # Third Party
 from fastapi import Request, status
 from fastapi.datastructures import FormData
-from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import HTTPException, RequestValidationError
 from pydantic.functional_validators import BeforeValidator
 from starlette.datastructures import UploadFile
@@ -200,7 +199,9 @@ async def pydantic_from_request(
         try:
             return pydantic_model.model_validate_json(raw_content)
         except pydantic.ValidationError as err:
-            raise RequestValidationError(errors=err.errors())
+            raise RequestValidationError(  # pylint: disable=raise-missing-from
+                errors=err.errors()
+            )
     # Elif content is form-data then parse the form
     elif "multipart/form-data" in content_type:
         # Get the raw form data
@@ -285,9 +286,10 @@ def _parse_form_data_to_pydantic(
                     try:
                         raw_objects[n] = json.loads(sub_obj)
                     except TypeError:
-                        raise HTTPException(
+                        raise HTTPException(  # pylint: disable=raise-missing-from
                             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                            detail=f"Unable to update object at key '{key}'; expected value to be string",
+                            detail=f"Unable to update object at key '{key};"
+                            "; expected value to be string",
                         )
                     except json.JSONDecodeError:
                         failed_to_parse_json = True
@@ -323,12 +325,14 @@ def _parse_form_data_to_pydantic(
     try:
         return pydantic_model.model_validate(raw_model_obj)
     except pydantic.ValidationError as err:
-        raise RequestValidationError(errors=err.errors())
+        raise RequestValidationError(  # pylint: disable=raise-missing-from
+            errors=err.errors()
+        )
 
 
 def _get_pydantic_subtypes(
-    pydantic_model: Type[pydantic.BaseModel], keys: list[str]
-) -> list[type]:
+    pydantic_model: Type[pydantic.BaseModel], keys: List[str]
+) -> List[type]:
     """Recursive helper to get the type_hint for a field"""
     if len(keys) == 0:
         return [pydantic_model]
