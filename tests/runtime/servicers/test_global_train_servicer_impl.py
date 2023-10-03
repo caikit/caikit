@@ -379,6 +379,33 @@ def test_local_trainer_rejects_s3_output_paths(
     assert ctx.value.status_code == grpc.StatusCode.INVALID_ARGUMENT
 
 
+def test_global_train_surfaces_caikit_errors(sample_train_servicer, sample_text_file):
+    """Test whether global trainer surfaces errors from Caikit using both sub-process and thread"""
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    # we don't support .txt files yet, hence this should throw an error
+    training_data = stream_type(file=stream_type.File(filename=sample_text_file))
+
+    train_class = get_train_request(SampleModule)
+    train_request_params_class = get_train_params(SampleModule)
+    train_request = train_class(
+        model_name=random_test_id(),
+        parameters=train_request_params_class(
+            batch_size=42,
+            training_data=training_data,
+        ),
+    ).to_proto()
+
+    training_response = sample_train_servicer.Train(
+        train_request, Fixtures.build_context("foo")
+    )
+    MODEL_MANAGER.get_model_future(training_response.training_id).wait()
+
+    future_info = MODEL_MANAGER.get_model_future(
+        training_response.training_id
+    ).get_info()
+    assert "Extension not supported" in str(future_info.errors[0])
+
+
 #####################################################################
 
 

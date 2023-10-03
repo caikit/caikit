@@ -184,6 +184,46 @@ def test_model_train_validation_error_raises(sample_model_train_servicer, output
         sample_model_train_servicer.Run(model_train_request, context)
 
 
+def test_model_train_surfaces_caikit_errors(sample_model_train_servicer, output_dir):
+    """Test whether model train surfaces errors from Caikit using both sub-process and thread"""
+    training_id = str(uuid.uuid4())
+
+    training_output_dir = os.path.join(output_dir, training_id)
+    training_input_dir = os.path.join(output_dir, training_id, "inputs")
+    # we don't support .txt files yet, hence this should throw an error
+    input_file_name = "data.txt"
+
+    os.makedirs(training_input_dir, exist_ok=True)
+    with open(os.path.join(training_input_dir, input_file_name), "w") as f:
+        json.dump([sample_lib.data_model.SampleTrainingType(number=1).to_dict()], f)
+
+    model_train_request = process_pb2.ProcessRequest(
+        trainingID=training_id,
+        request_dict={
+            "train_module": "00110203-0405-0607-0809-0a0b02dd0e0f",
+            "training_params": json.dumps(
+                {
+                    "model_name": "abc",
+                    "parameters": {
+                        "training_data": {
+                            "file": {
+                                "filename": input_file_name  # This is relative to training_input_dir
+                            },
+                        },
+                    },
+                }
+            ),
+        },
+        training_input_dir=training_input_dir,
+        training_output_dir=training_output_dir,
+    )
+    context = Fixtures.build_context("test-any-unresponsive-model")
+    with pytest.raises(CaikitRuntimeException) as e:
+        sample_model_train_servicer.Run(model_train_request, context)
+    assert isinstance(e.value, CaikitRuntimeException)
+    assert "Extension not supported" in e.value.message
+
+
 #####################################################################
 # Normal tests
 @pytest.mark.parametrize("output_in_config", (True, False))
