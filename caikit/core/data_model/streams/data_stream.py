@@ -254,9 +254,16 @@ class DataStream(Generic[T]):
             )
         # For each {} object of the array
         try:
+            item_idx = None
             for item_idx, obj in enumerate(ijson.items(json_fh, "item")):
                 log.debug2("Loading object index %d", item_idx)
                 yield obj
+            if item_idx is None:
+                # Not an array
+                error(
+                    "<COR79428339E>",
+                    ValueError("Non-array JSON object in `{}`".format(filename)),
+                )
         except ijson.JSONError:
             error(
                 "<COR85596551E>",
