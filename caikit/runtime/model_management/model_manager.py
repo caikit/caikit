@@ -273,6 +273,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             self._lazy_sync_timer = threading.Timer(
                 self._lazy_load_poll_period_seconds, self.sync_local_models
             )
+            self._lazy_sync_timer.daemon = True
             self._lazy_sync_timer.start()
 
     def unload_model(self, model_id) -> int:
