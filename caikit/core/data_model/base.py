@@ -80,6 +80,10 @@ class _DataBaseMetaClass(type):
         if name.startswith("TYPE_") and "INT" in name
     ]
 
+    # Add property to track if a class supports exporting and importing via a
+    # file operation
+    supports_file_operations = False
+
     def __new__(mcs, name, bases, attrs):
         """When constructing a new data model class, we set the 'fields' class variable from the
         protobufs descriptor and then set the '__slots__' magic class attribute to fields.  This
@@ -305,7 +309,7 @@ class _DataBaseMetaClass(type):
         # Check DataBase for file handlers
         setattr(
             cls,
-            "_supports_file_operations",
+            "supports_file_operations",
             cls.to_file != DataBase.to_file and cls.from_file != DataBase.from_file,
         )
 
@@ -527,11 +531,6 @@ class DataBase(metaclass=_DataBaseMetaClass):
     @property
     def backend(self) -> Optional["DataModelBackendBase"]:
         return getattr(self, _DataBaseMetaClass._BACKEND_ATTR, None)
-
-    @classmethod
-    @property
-    def supports_file_operations(cls) -> bool:
-        return getattr(cls, "_supports_file_operations", False)
 
     def which_oneof(self, oneof_name: str) -> Optional[str]:
         """Get the name of the oneof field set for the given oneof or None if no
