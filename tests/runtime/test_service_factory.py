@@ -266,7 +266,6 @@ def test_assert_compatible_raises_if_a_module_becomes_unsupported():
         random_uuid = str(uuid.uuid4())
         with open(prev_module_file, "w", encoding="utf-8") as file:
             json_content = {
-                "excluded_modules": {},
                 "included_modules": {
                     "SampleTask": {
                         random_uuid: "<class 'sample_lib.modules.sample_task.sample_implementation.PrevSampleModule'>",
@@ -300,7 +299,6 @@ def test_assert_compatible_does_not_raise_if_supported_modules_continue_to_be_su
 
         with open(prev_module_file, "w", encoding="utf-8") as file:
             json_content = {
-                "excluded_modules": {},
                 "included_modules": {
                     "SampleTask": {
                         "00110203-0405-0607-0809-0a0b02dd0e0f": "<class 'sample_lib.modules.sample_task.sample_implementation.SampleModule'>",
