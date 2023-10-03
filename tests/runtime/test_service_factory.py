@@ -222,6 +222,26 @@ def test_get_and_filter_modules_respects_included_task_types_and_excluded_module
         assert "ListModule" not in str(clean_modules)
 
 
+def test_assert_compatible_raises_if_prev_modules_path_is_not_valid():
+    with temp_config(
+        {
+            "runtime": {
+                "service_generation": {
+                    "backwards_compatibility": {
+                        "enabled": True,
+                        "prev_modules_path": "foobar.json",  # a file that's not valid
+                    }
+                },
+            }
+        },
+        "merge",
+    ):
+        with pytest.raises(ValueError) as e:
+            ServicePackageFactory.get_service_package(
+                ServicePackageFactory.ServiceType.INFERENCE
+            )
+
+
 def test_assert_compatible_does_not_raise_if_not_enabled():
     with temp_config(
         {

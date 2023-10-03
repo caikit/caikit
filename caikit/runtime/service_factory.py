@@ -18,6 +18,7 @@ from types import ModuleType
 from typing import Callable, Dict, Set, Type, Union
 import dataclasses
 import json
+import os
 
 # Third Party
 import google.protobuf.descriptor
@@ -144,22 +145,9 @@ class ServicePackageFactory:
         )
 
         # Assert for backwards compatibility, if enabled
-        backwards_compat_conf = (
-            caikit_config.runtime.service_generation.backwards_compatibility
+        ServicePackageFactory._check_backwards_compatibility(
+            caikit_config, clean_modules
         )
-        if backwards_compat_conf and backwards_compat_conf.enabled:
-            previous_included_modules = set()
-            prev_modules_path = backwards_compat_conf.prev_modules_path
-            if prev_modules_path:
-                with open(prev_modules_path, "r", encoding="utf-8") as f:
-                    previous_modules = json.load(f)
-                    previous_included_task_map = previous_modules["included_modules"]
-                    for task_module in previous_included_task_map.values():
-                        previous_included_modules.update(task_module.values())
-            service_generation.assert_compatible(
-                [str(mod) for mod in clean_modules],
-                previous_included_modules,
-            )
 
         if service_type == cls.ServiceType.INFERENCE:
             rpc_list = service_generation.create_inference_rpcs(clean_modules)
@@ -198,6 +186,33 @@ class ServicePackageFactory:
         )
 
     # Implementation details for pure python service packages #
+    @staticmethod
+    def _check_backwards_compatibility(
+        caikit_config: aconfig.Config, clean_modules: Set[Type[ModuleBase]]
+    ):
+        backwards_compat_conf = (
+            caikit_config.runtime.service_generation.backwards_compatibility
+        )
+        if backwards_compat_conf and backwards_compat_conf.enabled:
+            previous_included_modules = set()
+            prev_modules_path = backwards_compat_conf.prev_modules_path
+            error.value_check(
+                "<SVC98335764E>",
+                os.path.exists(prev_modules_path) and os.path.isfile(prev_modules_path),
+                "prev_modules_path {} is not a valid file path or is missing permissions",
+                prev_modules_path,
+            )
+            with open(prev_modules_path, "r", encoding="utf-8") as f:
+                previous_modules = json.load(f)
+                previous_included_task_map = previous_modules["included_modules"]
+                for task_module in previous_included_task_map.values():
+                    previous_included_modules.update(task_module.values())
+
+            service_generation.assert_compatible(
+                [str(mod) for mod in clean_modules],
+                previous_included_modules,
+            )
+
     @staticmethod
     def _get_and_filter_modules(
         caikit_config: aconfig.Config, lib: str, write_modules_file: bool = False
