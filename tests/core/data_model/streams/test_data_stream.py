@@ -184,6 +184,21 @@ def test_bad_json_stream(tmp_path):
         DataStream.from_json_array(file_path).peek()
 
 
+def test_non_json_array_stream(tmp_path):
+    file_path = os.path.join(str(tmp_path), "non_array.json")
+    with open(file_path, "w") as fp:
+        fp.write(
+            """
+        {
+            "number": 1,
+            "label": "foo"
+        }
+        """
+        )
+    with pytest.raises(ValueError, match="Non-array JSON object"):
+        DataStream.from_json_array(file_path).peek()
+
+
 def test_bad_multipart_file(tmp_path):
     multipart_file = os.path.join(str(tmp_path), "bad_multipart")
     with open(multipart_file, "w") as fp:

@@ -488,6 +488,25 @@ def test_make_data_stream_source_no_files_w_ext_dir(
     assert "contains no source files with extension" in e.value.message
 
 
+def test_make_data_stream_source_non_json_array_errors(tmp_path):
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    file_path = os.path.join(str(tmp_path), "non_array.json")
+    with open(file_path, "w") as fp:
+        fp.write(
+            """
+        {
+            "number": 1,
+            "label": "foo"
+        }
+        """
+        )
+    ds = stream_type(file=File(filename=file_path))
+    assert isinstance(ds, DataStreamSourceBase)
+
+    with pytest.raises(ValueError, match="Non-array JSON object"):
+        ds.to_data_stream()
+
+
 def test_s3_not_implemented(sample_train_service):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     ds = stream_type(s3files=S3Files())
