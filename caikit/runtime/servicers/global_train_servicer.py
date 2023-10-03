@@ -161,7 +161,7 @@ class GlobalTrainServicer:
 
         except Exception as e:
             log_dict = {
-                "log_code": "<RUN49049070W>",
+                "log_code": "<RUN24215150W>",
                 "message": repr(e),
                 "stack_trace": traceback.format_exc(),
             }
