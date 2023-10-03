@@ -25,9 +25,11 @@ import alog
 # Local
 from .rpcs import CaikitRPCBase, ModuleClassTrainRPC, TaskPredictRPC
 from caikit.core import ModuleBase, TaskBase
+from caikit.core.exceptions import error_handler
 from caikit.core.signature_parsing.module_signature import CaikitMethodSignature
 
 log = alog.use_channel("CREATE-RPCS")
+error = error_handler.get(log)
 
 ## Globals #####################################################################
 
@@ -55,10 +57,12 @@ def assert_compatible(modules: List[str], previous_modules: List[str]):
         for mod in regressed_modules:
             log.error("Regressed module: %s", mod)
 
-    assert (
-        len(regressed_modules) == 0
-    ), f"BREAKING CHANGE! Found unsupported module(s) that were previously supported: \
-        {regressed_modules}"
+    error.value_check(
+        "<SVC68235724E>",
+        len(regressed_modules) == 0,
+        "BREAKING CHANGE! Found unsupported module(s) that were previously supported: {}",
+        regressed_modules,
+    )
 
 
 def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:

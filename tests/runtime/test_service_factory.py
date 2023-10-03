@@ -286,7 +286,7 @@ def test_assert_compatible_raises_if_a_module_becomes_unsupported():
             },
             "merge",
         ):
-            with pytest.raises(AssertionError):
+            with pytest.raises(ValueError):
                 # this raises because PrevSampleModule will not be included in this service generation
                 ServicePackageFactory.get_service_package(
                     ServicePackageFactory.ServiceType.INFERENCE
