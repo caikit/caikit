@@ -144,12 +144,12 @@ class ServicePackageFactory:
             caikit_config, caikit_config.runtime.library, write_modules_file
         )
 
-        # Assert for backwards compatibility, if enabled
-        ServicePackageFactory._check_backwards_compatibility(
-            caikit_config, clean_modules
-        )
-
         if service_type == cls.ServiceType.INFERENCE:
+            # Assert for backwards compatibility, if enabled, when service type is INFERENCE
+            ServicePackageFactory._check_backwards_compatibility(
+                caikit_config, clean_modules
+            )
+
             rpc_list = service_generation.create_inference_rpcs(clean_modules)
             service_name = f"{ai_domain_name}Service"
         else:  # service_type == cls.ServiceType.TRAINING
