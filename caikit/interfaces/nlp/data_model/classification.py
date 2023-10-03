@@ -109,19 +109,20 @@ class ClassifiedGeneratedTextResult(DataObjectBase):
     classification on the generated text.
     """
 
-    text: Annotated[str, FieldNumber(1)]  # The generated text
+    generated_text: Annotated[Optional[str], FieldNumber(1)]  # The generated text
     token_classification_results: Annotated[
         Optional[List[TokenClassificationResult]], FieldNumber(2)
     ]  # Token classification results for this generated text
     finish_reason: Annotated[
         Optional[FinishReason], FieldNumber(3)
     ]  # Reason as to why text generation stopped
-    token_count: Annotated[
+    generated_token_count: Annotated[
         Optional[int], FieldNumber(4)
     ]  # Length of generated tokens sequence
     seed: Annotated[
         Optional[np.uint64], FieldNumber(5)
     ]  # The random seed used for text generation
+    input_token_count: Annotated[int, FieldNumber(6)]
 
 
 @dataobject(package=NLP_PACKAGE)
@@ -132,5 +133,5 @@ class ClassifiedGeneratedTextStreamResult(ClassifiedGeneratedTextResult):
     """
 
     processed_index: Annotated[
-        int, FieldNumber(6)
+        Optional[int], FieldNumber(7)
     ]  # Result index up to which text is processed
