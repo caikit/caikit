@@ -40,3 +40,12 @@ class CaikitRuntimeException(Exception):
         else:
             # metadata is of None type
             self.metadata = {"error_id": self.id}
+
+    # This is to make the CaikitRuntimeException pickleable
+    # this is needed to ensure we can pass it through sub-processes' pipe
+    # which requires objects to be pickleable
+    def __reduce__(self):
+        return (
+            CaikitRuntimeException,
+            (self.status_code, self.message, self.metadata),
+        )
