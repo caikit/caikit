@@ -117,7 +117,9 @@ def test_get_and_filter_modules_respects_excluded_task_type():
             }
         }
     ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        clean_modules = ServicePackageFactory._get_and_filter_modules(
+            cfg, "sample_lib", False
+        )
         assert "SampleModule" not in str(clean_modules)
 
 
@@ -132,7 +134,9 @@ def test_get_and_filter_modules_respects_excluded_modules():
             }
         }
     ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        clean_modules = ServicePackageFactory._get_and_filter_modules(
+            cfg, "sample_lib", False
+        )
         assert "ListModule" not in str(clean_modules)
         assert "SampleModule" in str(clean_modules)
         assert "OtherModule" in str(clean_modules)
@@ -150,7 +154,9 @@ def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type
             }
         }
     ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        clean_modules = ServicePackageFactory._get_and_filter_modules(
+            cfg, "sample_lib", False
+        )
         assert "ListModule" not in str(clean_modules)
         assert "OtherModule" not in str(clean_modules)
         assert "SampleModule" in str(clean_modules)
@@ -167,7 +173,9 @@ def test_get_and_filter_modules_respects_included_modules_and_included_task_type
             }
         }
     ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        clean_modules = ServicePackageFactory._get_and_filter_modules(
+            cfg, "sample_lib", False
+        )
         assert len(clean_modules) == 2
         assert "OtherModule" in str(clean_modules)
         assert "ListModule" in str(clean_modules)
@@ -183,7 +191,9 @@ def test_get_and_filter_modules_respects_included_modules():
             }
         }
     ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        clean_modules = ServicePackageFactory._get_and_filter_modules(
+            cfg, "sample_lib", False
+        )
         assert len(clean_modules) == 1
         assert "ListModule" in str(clean_modules)
         assert "SampleModule" not in str(clean_modules)
@@ -199,7 +209,9 @@ def test_get_and_filter_modules_respects_included_task_types():
             }
         }
     ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        clean_modules = ServicePackageFactory._get_and_filter_modules(
+            cfg, "sample_lib", False
+        )
         assert "SampleModule" in str(clean_modules)
         assert "OtherModule" not in str(clean_modules)
         # InnerModule has no task
@@ -217,7 +229,9 @@ def test_get_and_filter_modules_respects_included_task_types_and_excluded_module
             }
         }
     ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        clean_modules = ServicePackageFactory._get_and_filter_modules(
+            cfg, "sample_lib", False
+        )
         assert "SampleModule" in str(clean_modules)
         assert "ListModule" not in str(clean_modules)
 
@@ -356,7 +370,9 @@ def test_override_domain(clean_data_model):
         )
 
         # Just double-check that basics are good.
-        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        clean_modules = ServicePackageFactory._get_and_filter_modules(
+            cfg, "sample_lib", False
+        )
         assert "SampleModule" in str(clean_modules)
 
 
@@ -385,7 +401,9 @@ def test_override_package(clean_data_model):
         )
 
         # Just double-check that basics are good.
-        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        clean_modules = ServicePackageFactory._get_and_filter_modules(
+            cfg, "sample_lib", False
+        )
         assert "SampleModule" in str(clean_modules)
 
 
@@ -421,7 +439,9 @@ def test_override_package_and_domain_with_proto_gen(clean_data_model):
         )
 
         # Just double-check that basics are good.
-        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
+        clean_modules = ServicePackageFactory._get_and_filter_modules(
+            cfg, "sample_lib", False
+        )
         assert "SampleModule" in str(clean_modules)
 
         # Full check on proto generation

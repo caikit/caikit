@@ -215,7 +215,7 @@ class ServicePackageFactory:
 
     @staticmethod
     def _get_and_filter_modules(
-        caikit_config: aconfig.Config, lib: str, write_modules_file: bool = False
+        caikit_config: aconfig.Config, lib: str, write_modules_file: bool
     ) -> Set[Type[ModuleBase]]:
         clean_modules = set()
         modules = [
