@@ -206,10 +206,10 @@ class ServicePackageFactory:
                 previous_modules = json.load(f)
                 previous_included_task_map = previous_modules["included_modules"]
                 for task_module in previous_included_task_map.values():
-                    previous_included_modules.update(task_module.values())
+                    previous_included_modules.update(task_module.keys())
 
             service_generation.assert_compatible(
-                [str(mod) for mod in clean_modules],
+                [mod.MODULE_ID for mod in clean_modules],
                 previous_included_modules,
             )
 

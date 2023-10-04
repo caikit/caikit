@@ -42,8 +42,8 @@ def assert_compatible(modules: List[str], previous_modules: List[str]):
     """Logic about whether it's okay to include this set of modules in service generation
 
     Args:
-        modules: list of module names that we are considering in service generation
-        previous_modules: list of module names that were supported in the previous service version
+        modules: list of module IDs that we are considering in service generation
+        previous_modules: list of module IDs that were supported in the previous service version
 
     Raises:
         If a new service should not be built with this set of modules
