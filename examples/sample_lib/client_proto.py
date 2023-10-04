@@ -23,6 +23,7 @@ import sys
 import grpc
 
 # Local
+# pylint: disable=no-name-in-module
 from .generated import (
     samplelibservice_pb2_grpc,
     samplelibtrainingservice_pb2_grpc,

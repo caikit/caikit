@@ -68,6 +68,7 @@ def test_example_text_sentiment():
             server.terminate()
 
 
+@pytest.mark.skip("Skipping until we figure out how to parallelize tests")
 @pytest.mark.examples
 def test_example_sample_lib():
     # Example specific grpc port
