@@ -180,7 +180,10 @@ class DataStreamSourceBase(DataStream):
                 f"Invalid {extension} data source file: {fname}",
             )
         if extension == ".json":
-            return DataStream.from_json_array(full_fname).map(cls._to_element_type)
+            stream = DataStream.from_json_array(full_fname).map(cls._to_element_type)
+            # Iterate once to make sure this is a json array
+            stream.peek()
+            return stream
         if extension == ".csv":
             return DataStream.from_header_csv(full_fname).map(cls._to_element_type)
         if extension == ".jsonl":
