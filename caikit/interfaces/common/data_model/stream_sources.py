@@ -27,7 +27,7 @@ from caikit.core.data_model import PACKAGE_COMMON, DataObjectBase, dataobject
 
 @dataobject(PACKAGE_COMMON)
 class File(DataObjectBase):
-    filename: Annotated[str, FieldNumber(1)]
+    filename: Annotated[Optional[str], FieldNumber(1)]
     data: Annotated[Optional[bytes], FieldNumber(2)]
     type: Annotated[Optional[str], FieldNumber(3)]
 
