@@ -109,23 +109,25 @@ class ClassifiedGeneratedTextResult(DataObjectBase):
     classification on the generated text.
     """
 
+    @dataobject(package=NLP_PACKAGE)
+    class TextGenTokenClassificationResults(DataObjectBase):
+        input: Annotated[Optional[List[TokenClassificationResult]], FieldNumber(10)]
+        output: Annotated[Optional[List[TokenClassificationResult]], FieldNumber(20)]
+
     generated_text: Annotated[Optional[str], FieldNumber(1)]  # The generated text
-    input_token_classification_results: Annotated[
-        Optional[List[TokenClassificationResult]], FieldNumber(2)
-    ]  # Token classification results for input text
-    output_token_classification_results: Annotated[
-        Optional[List[TokenClassificationResult]], FieldNumber(3)
-    ]  # Token classification results for this generated text
-    input_token_count: Annotated[Optional[int], FieldNumber(4)]
-    generated_token_count: Annotated[
-        Optional[int], FieldNumber(5)
-    ]  # Length of generated tokens sequence
+    token_classification_results: Annotated[
+        Optional[TextGenTokenClassificationResults], FieldNumber(2)
+    ]  # Token classification results for input and generated text
     finish_reason: Annotated[
-        Optional[FinishReason], FieldNumber(6)
+        Optional[FinishReason], FieldNumber(3)
     ]  # Reason as to why text generation stopped
+    generated_token_count: Annotated[
+        Optional[int], FieldNumber(4)
+    ]  # Length of generated tokens sequence
     seed: Annotated[
-        Optional[np.uint64], FieldNumber(7)
+        Optional[np.uint64], FieldNumber(5)
     ]  # The random seed used for text generation
+    input_token_count: Annotated[Optional[int], FieldNumber(6)]
 
 
 @dataobject(package=NLP_PACKAGE)
@@ -136,5 +138,5 @@ class ClassifiedGeneratedTextStreamResult(ClassifiedGeneratedTextResult):
     """
 
     processed_index: Annotated[
-        Optional[int], FieldNumber(8)
+        Optional[int], FieldNumber(7)
     ]  # Result index up to which text is processed

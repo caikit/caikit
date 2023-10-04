@@ -52,8 +52,10 @@ classification_train_record = ClassificationTrainRecord(
 
 classification_generated_text_result = ClassifiedGeneratedTextResult(
     generated_text="moose goose foo bar",
-    input_token_classification_results=[token_classification3],
-    output_token_classification_results=[token_classification1, token_classification2],
+    token_classification_results=ClassifiedGeneratedTextResult.TextGenTokenClassificationResults(
+        input=[token_classification3],
+        output=[token_classification1, token_classification2],
+    ),
     input_token_count=4,
     generated_token_count=7,
     finish_reason=FinishReason.STOP_SEQUENCE,
@@ -199,18 +201,20 @@ def test_classification_train_record_from_json_and_back():
 def test_classification_generated_text_result_all_fields_accessible():
     classification_generated_text_result = ClassifiedGeneratedTextResult(
         generated_text="moose goose foo bar",
-        output_token_classification_results=[
-            token_classification1,
-            token_classification2,
-        ],
+        token_classification_results=ClassifiedGeneratedTextResult.TextGenTokenClassificationResults(
+            output=[
+                token_classification1,
+                token_classification2,
+            ]
+        ),
     )
     assert classification_generated_text_result.generated_text == "moose goose foo bar"
     assert (
-        classification_generated_text_result.output_token_classification_results[0]
+        classification_generated_text_result.token_classification_results.output[0]
         == token_classification1
     )
     assert (
-        classification_generated_text_result.output_token_classification_results[1]
+        classification_generated_text_result.token_classification_results.output[1]
         == token_classification2
     )
 
@@ -232,25 +236,25 @@ def test_classification_generated_text_result_from_json_and_back():
 def _validate_classification_generated_text_result(obj):
     assert obj.generated_text == "moose goose foo bar"
 
-    assert len(obj.input_token_classification_results) == 1
-    assert obj.input_token_classification_results[0].start == 0
-    assert obj.input_token_classification_results[0].end == 5
-    assert obj.input_token_classification_results[0].word == "llama"
-    assert obj.input_token_classification_results[0].entity == "animal"
-    assert obj.input_token_classification_results[0].score == 0.2
+    assert len(obj.token_classification_results.input) == 1
+    assert obj.token_classification_results.input[0].start == 0
+    assert obj.token_classification_results.input[0].end == 5
+    assert obj.token_classification_results.input[0].word == "llama"
+    assert obj.token_classification_results.input[0].entity == "animal"
+    assert obj.token_classification_results.input[0].score == 0.2
 
-    assert len(obj.output_token_classification_results) == 2
-    assert obj.output_token_classification_results[0].start == 0
-    assert obj.output_token_classification_results[0].end == 5
-    assert obj.output_token_classification_results[0].word == "moose"
-    assert obj.output_token_classification_results[0].entity == "animal"
-    assert obj.output_token_classification_results[0].score == 0.8
+    assert len(obj.token_classification_results.output) == 2
+    assert obj.token_classification_results.output[0].start == 0
+    assert obj.token_classification_results.output[0].end == 5
+    assert obj.token_classification_results.output[0].word == "moose"
+    assert obj.token_classification_results.output[0].entity == "animal"
+    assert obj.token_classification_results.output[0].score == 0.8
 
-    assert obj.output_token_classification_results[1].start == 7
-    assert obj.output_token_classification_results[1].end == 12
-    assert obj.output_token_classification_results[1].word == "goose"
-    assert obj.output_token_classification_results[1].entity == "animal"
-    assert obj.output_token_classification_results[1].score == 0.7
+    assert obj.token_classification_results.output[1].start == 7
+    assert obj.token_classification_results.output[1].end == 12
+    assert obj.token_classification_results.output[1].word == "goose"
+    assert obj.token_classification_results.output[1].entity == "animal"
+    assert obj.token_classification_results.output[1].score == 0.7
 
     assert obj.input_token_count == 4
     assert obj.generated_token_count == 7
