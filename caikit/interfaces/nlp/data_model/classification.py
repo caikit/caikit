@@ -116,7 +116,7 @@ class ClassifiedGeneratedTextResult(DataObjectBase):
     output_token_classification_results: Annotated[
         Optional[List[TokenClassificationResult]], FieldNumber(3)
     ]  # Token classification results for this generated text
-    input_token_count: Annotated[int, FieldNumber(4)]
+    input_token_count: Annotated[Optional[int], FieldNumber(4)]
     generated_token_count: Annotated[
         Optional[int], FieldNumber(5)
     ]  # Length of generated tokens sequence
