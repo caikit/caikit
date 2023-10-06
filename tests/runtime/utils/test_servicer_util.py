@@ -507,7 +507,9 @@ def test_global_train_build_caikit_library_request_dict_ok_with_training_data_as
     """Global train build_caikit_library_request_dict works for list of data files"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
-        listoffiles=stream_type.ListOfFiles(files=[sample_csv_file, sample_json_file])
+        listoffilestreams=stream_type.ListOfFileStreams(
+            files=[sample_csv_file, sample_json_file]
+        )
     )
     train_class = DataBase.get_class_for_name("SampleTaskListModuleTrainRequest")
     train_request_params_class = DataBase.get_class_for_name(

@@ -37,8 +37,8 @@ from caikit.core.exceptions import error_handler
 from caikit.core.toolkit.factory import FactoryConstructible, ImportableFactory
 from caikit.interfaces.common.data_model.stream_sources import (
     Directory,
-    File,
-    ListOfFiles,
+    FileReference,
+    ListOfFileReferences,
     S3Files,
 )
 from caikit.runtime.service_generation.proto_package import get_runtime_service_package
@@ -213,9 +213,9 @@ class FileDataStreamSourcePlugin(FilePluginBase):
     name = "FileData"
 
     def get_stream_message_type(self, *_, **__) -> Type[DataBase]:
-        return File
+        return FileReference
 
-    def to_data_stream(self, source_message: File, element_type: type) -> DataStream:
+    def to_data_stream(self, source_message: FileReference, element_type: type) -> DataStream:
         return self._create_data_stream_from_file(
             fname=source_message.filename, element_type=element_type
         )
@@ -230,10 +230,10 @@ class ListOfFilesDataStreamSourcePlugin(FilePluginBase):
     name = "ListOfFiles"
 
     def get_stream_message_type(self, *_, **__) -> Type[DataBase]:
-        return ListOfFiles
+        return ListOfFileReferences
 
     def to_data_stream(
-        self, source_message: ListOfFiles, element_type: type
+        self, source_message: ListOfFileReferences, element_type: type
     ) -> DataStream:
         data_stream_list = []
         for fname in source_message.files:

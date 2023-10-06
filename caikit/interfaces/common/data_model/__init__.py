@@ -26,6 +26,7 @@ Domain agnostic data model objects
 # Local
 # Import individual packages
 from . import primitive_sequences, producer
+from .file import File
 from .primitive_sequences import BoolSequence, FloatSequence, IntSequence, StrSequence
 from .producer import ProducerId
-from .stream_sources import File, ListOfFiles
+from .stream_sources import FileStream, ListOfFileStreams

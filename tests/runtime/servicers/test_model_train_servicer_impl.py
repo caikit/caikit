@@ -352,7 +352,7 @@ def test_files_from_training_input_dir_are_used(
                     "model_name": "abc",
                     "parameters": {
                         "training_data": {
-                            "file": {
+                            "filestream": {
                                 "filename": input_file_name  # This is relative to training_input_dir
                             },
                         },

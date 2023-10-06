@@ -30,7 +30,7 @@ from py_to_proto.dataclass_to_proto import Annotated
 # Local
 from caikit.core import DataObjectBase, dataobject
 from caikit.core.data_model.base import DataBase
-from caikit.interfaces.common.data_model.stream_sources import File
+from caikit.interfaces.common.data_model import File, FileStream
 from caikit.interfaces.nlp.data_model.text_generation import (
     GeneratedTextStreamResult,
     GeneratedToken,
@@ -111,11 +111,8 @@ def test_pydantic_to_dataobject_datastream_file():
 
     # assert it's our DM object, all fine and dandy
     assert isinstance(datastream_dm_obj, DataBase)
-    assert isinstance(datastream_dm_obj.data_stream, File)
-    assert (
-        datastream_dm_obj.to_json()
-        == '{"file": {"filename": "hello", "data": null, "type": null}}'
-    )
+    assert isinstance(datastream_dm_obj.data_stream, FileStream)
+    assert datastream_dm_obj.to_json() == '{"filestream": {"filename": "hello"}}'
 
 
 @pytest.mark.parametrize(
@@ -251,8 +248,8 @@ def test_dataobject_to_pydantic_oneof():
     assert {
         "data_stream": Union[
             PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.JsonData),
-            PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.File),
-            PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.ListOfFiles),
+            PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.FileStream),
+            PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.ListOfFileStreams),
             PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.Directory),
             PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.S3Files),
         ]
@@ -268,7 +265,7 @@ def test_dataobject_to_pydantic_oneof():
         ),
     )
     assert issubclass(
-        PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.File),
+        PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.FileStream),
         type(
             data_stream_source_pydantic_model.model_validate_json(
                 '{"data_stream": {"filename": "file1"}}'

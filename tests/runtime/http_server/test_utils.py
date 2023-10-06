@@ -17,7 +17,7 @@ from typing import List, Optional, Union
 
 # Local
 from caikit.core import DataObjectBase, dataobject
-from caikit.interfaces.common.data_model.stream_sources import File
+from caikit.interfaces.common.data_model import File
 from caikit.runtime.http_server.pydantic_wrapper import dataobject_to_pydantic
 from caikit.runtime.http_server.utils import (
     convert_json_schema_to_multipart,

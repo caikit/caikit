@@ -995,7 +995,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
             file_obj IOBase: a file object to be filled
 
         Returns:
-            caikit.interfaces.common.data_mode.stream_sources: File.
+            file_descriptor: Optional[caikit.interfaces.common.data_mode.File]
         """
         raise NotImplementedError(f"to_file not implemented for {self.__class__}")
 

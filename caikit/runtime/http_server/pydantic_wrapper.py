@@ -40,13 +40,13 @@ import alog
 
 # Local
 from caikit.core.data_model.base import DataBase
+from caikit.interfaces.common.data_model import File
 from caikit.interfaces.common.data_model.primitive_sequences import (
     BoolSequence,
     FloatSequence,
     IntSequence,
     StrSequence,
 )
-from caikit.interfaces.common.data_model.stream_sources import File
 from caikit.runtime.http_server.utils import update_dict_at_dot_path
 
 log = alog.use_channel("SERVR-HTTP-PYDNTC")

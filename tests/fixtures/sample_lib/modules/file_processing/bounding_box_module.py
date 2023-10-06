@@ -23,7 +23,7 @@ from ...data_model.sample import (
     SampleOutputType,
 )
 from caikit.core.modules import ModuleLoader
-from caikit.interfaces.common.data_model.stream_sources import File
+from caikit.interfaces.common.data_model import File
 import caikit.core
 
 
