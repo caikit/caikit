@@ -35,7 +35,7 @@ from caikit.interfaces.runtime.data_model import (
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.servicer_util import raise_caikit_runtime_exception
 
-log = alog.use_channel("MR-SERVICR-I")
+log = alog.use_channel("TM-SERVICR-I")
 
 
 class TrainingManagementServicerImpl:
