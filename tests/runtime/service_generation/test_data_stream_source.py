@@ -67,12 +67,12 @@ def test_multiple_make_data_stream_source():
     assert stream_type.from_proto(proto_repr).to_proto() == proto_repr
 
 
-def test_data_model_element_type(sample_train_service):
+def test_data_model_element_type():
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     assert isinstance(stream_type._to_element_type({"number": 1}), SampleTrainingType)
 
 
-def test_primitive_element_type(sample_train_service):
+def test_primitive_element_type():
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
     assert isinstance(stream_type._to_element_type(1), int)
 
@@ -83,7 +83,7 @@ def test_make_data_stream_source_types():
     assert issubclass(make_data_stream_source(str), DataStreamSourceBase)
 
 
-def test_make_data_stream_source_empty(sample_train_service):
+def test_make_data_stream_source_empty():
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     ds = stream_type()
     assert isinstance(ds, DataStreamSourceBase)
@@ -205,7 +205,7 @@ def test_data_stream_source_base_path():
 #################
 
 
-def test_make_data_stream_source_jsondata(sample_train_service):
+def test_make_data_stream_source_jsondata():
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     ds = stream_type(
         jsondata=stream_type.JsonData(
@@ -220,7 +220,7 @@ def test_make_data_stream_source_jsondata(sample_train_service):
     validate_data_stream(data_stream, 2, SampleTrainingType)
 
 
-def test_make_data_stream_source_jsondata_other_task(sample_train_service):
+def test_make_data_stream_source_jsondata_other_task():
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
     ds = stream_type(jsondata=stream_type.JsonData(data=[1]))
     assert isinstance(ds, DataStreamSourceBase)
@@ -236,7 +236,7 @@ def test_make_data_stream_source_jsondata_other_task(sample_train_service):
 #################
 
 
-def test_make_data_stream_source_jsonfile(sample_train_service, sample_json_file):
+def test_make_data_stream_source_jsonfile(sample_json_file):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     ds = stream_type(file=File(filename=sample_json_file))
     assert isinstance(ds, DataStreamSourceBase)
@@ -247,7 +247,7 @@ def test_make_data_stream_source_jsonfile(sample_train_service, sample_json_file
     validate_data_stream(data_stream, 2, SampleTrainingType)
 
 
-def test_make_data_stream_source_csvfile(sample_train_service, sample_csv_file):
+def test_make_data_stream_source_csvfile(sample_csv_file):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     ds = stream_type(file=File(filename=sample_csv_file))
     assert isinstance(ds, DataStreamSourceBase)
@@ -258,7 +258,7 @@ def test_make_data_stream_source_csvfile(sample_train_service, sample_csv_file):
     validate_data_stream(data_stream, 3, SampleTrainingType)
 
 
-def test_make_data_stream_source_jsonlfile(sample_train_service, sample_jsonl_file):
+def test_make_data_stream_source_jsonlfile(sample_jsonl_file):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     ds = stream_type(file=File(filename=sample_jsonl_file))
     assert isinstance(ds, DataStreamSourceBase)
@@ -291,7 +291,7 @@ def test_make_data_stream_source_jsonlfile_extra_fields(tmp_path):
 
 
 def test_make_data_stream_source_from_file_with_no_extension(
-    sample_train_service, sample_json_file, sample_jsonl_file, sample_csv_file, tmp_path
+    sample_json_file, sample_jsonl_file, sample_csv_file, tmp_path
 ):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     for file in [sample_json_file, sample_jsonl_file, sample_csv_file]:
@@ -308,7 +308,6 @@ def test_make_data_stream_source_from_file_with_no_extension(
 
 
 def test_make_data_stream_source_from_multipart_formdata_file(
-    sample_train_service,
     sample_multipart_json,
     sample_multipart_csv,
     sample_multipart_json_with_content_header,
@@ -340,9 +339,7 @@ def test_make_data_stream_source_from_multipart_formdata_file(
 #################
 
 
-def test_make_data_stream_source_list_of_json_files(
-    sample_train_service, sample_json_file
-):
+def test_make_data_stream_source_list_of_json_files(sample_json_file):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     # does NOT work with sample_json_collection as each file needs to have data in array
     ds = stream_type(
@@ -356,9 +353,7 @@ def test_make_data_stream_source_list_of_json_files(
     validate_data_stream(data_stream, 4, SampleTrainingType)
 
 
-def test_make_data_stream_source_list_of_csv_files(
-    sample_train_service, sample_csv_collection
-):
+def test_make_data_stream_source_list_of_csv_files(sample_csv_collection):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     sample_files = [
         os.path.join(sample_csv_collection, file)
@@ -373,9 +368,7 @@ def test_make_data_stream_source_list_of_csv_files(
     validate_data_stream(data_stream, 6, SampleTrainingType)
 
 
-def test_make_data_stream_source_list_of_jsonl_files(
-    sample_train_service, sample_jsonl_collection
-):
+def test_make_data_stream_source_list_of_jsonl_files(sample_jsonl_collection):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     sample_files = [
         os.path.join(sample_jsonl_collection, file)
@@ -395,7 +388,7 @@ def test_make_data_stream_source_list_of_jsonl_files(
 #################
 
 
-def test_make_data_stream_source_jsondir(sample_train_service, sample_json_collection):
+def test_make_data_stream_source_jsondir(sample_json_collection):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     ds = stream_type(directory=Directory(dirname=sample_json_collection))
     assert isinstance(ds, DataStreamSourceBase)
@@ -406,7 +399,7 @@ def test_make_data_stream_source_jsondir(sample_train_service, sample_json_colle
     validate_data_stream(data_stream, 3, SampleTrainingType)
 
 
-def test_make_data_stream_source_csvdir(sample_train_service, sample_csv_collection):
+def test_make_data_stream_source_csvdir(sample_csv_collection):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     ds = stream_type(
         directory=Directory(dirname=sample_csv_collection, extension="csv")
@@ -419,9 +412,7 @@ def test_make_data_stream_source_csvdir(sample_train_service, sample_csv_collect
     validate_data_stream(data_stream, 6, SampleTrainingType)
 
 
-def test_make_data_stream_source_jsonldir(
-    sample_train_service, sample_jsonl_collection
-):
+def test_make_data_stream_source_jsonldir(sample_jsonl_collection):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     ds = stream_type(
         directory=Directory(dirname=sample_jsonl_collection, extension="jsonl")
@@ -460,21 +451,21 @@ def test_data_stream_operators():
 # Error Tests
 
 
-def test_make_data_stream_source_invalid_file_raises(sample_train_service):
+def test_make_data_stream_source_invalid_file_raises():
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     ds = stream_type(file=File(filename="invalid_file"))
     with pytest.raises(CaikitRuntimeException):
         ds.to_data_stream()
 
 
-def test_make_data_stream_source_invalid_dir_raises(sample_train_service):
+def test_make_data_stream_source_invalid_dir_raises():
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     ds = stream_type(directory=Directory(dirname="invalid_dir"))
     with pytest.raises(CaikitRuntimeException):
         ds.to_data_stream()
 
 
-def test_data_stream_source_single_oneof(sample_train_service):
+def test_data_stream_source_single_oneof():
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     with pytest.raises(CaikitRuntimeException):
         stream_type(
@@ -483,7 +474,7 @@ def test_data_stream_source_single_oneof(sample_train_service):
         )
 
 
-def test_make_data_stream_source_invalid_ext_dir(sample_train_service):
+def test_make_data_stream_source_invalid_ext_dir():
     with tempfile.TemporaryDirectory() as tempdir:
         fname = os.path.join(tempdir, f"sample.txt")
         with open(fname, "w") as handle:
@@ -497,9 +488,7 @@ def test_make_data_stream_source_invalid_ext_dir(sample_train_service):
         assert "Extension not supported!" in e.value.message
 
 
-def test_make_data_stream_source_no_files_w_ext_dir(
-    sample_train_service, sample_jsonl_collection
-):
+def test_make_data_stream_source_no_files_w_ext_dir(sample_jsonl_collection):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     ds = stream_type(
         directory=Directory(dirname=sample_jsonl_collection, extension="csv")
@@ -528,7 +517,7 @@ def test_make_data_stream_source_non_json_array_errors(tmp_path):
         ds.to_data_stream()
 
 
-def test_s3_not_implemented(sample_train_service):
+def test_s3_not_implemented():
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     ds = stream_type(s3files=S3Files())
     # Explicit .to_data_stream will fail
