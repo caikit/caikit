@@ -200,10 +200,10 @@ class DataStreamSourceBase(DataStream):
         full_fname = cls._get_resolved_source_path(fname)
         log.debug3("Attempting to guess file type for file: %s", full_fname)
         for factory_method in (
+            DataStream.from_multipart_file,
             DataStream.from_json_array,
             DataStream.from_jsonl,
             DataStream.from_header_csv,
-            DataStream.from_multipart_file,
         ):
             try:
                 stream = factory_method(full_fname).map(cls._to_element_type)
@@ -231,7 +231,9 @@ class DataStreamSourceBase(DataStream):
         to the underlying data objects
         """
         if issubclass(cls.ELEMENT_TYPE, DataBase):
-            return cls.ELEMENT_TYPE.from_json(raw_element)
+            # To allow for extra fields (e.g. in training data) that may not
+            # be needed by the data objects, we ignore unknown fields
+            return cls.ELEMENT_TYPE.from_json(raw_element, ignore_unknown_fields=True)
         return raw_element
 
     @staticmethod

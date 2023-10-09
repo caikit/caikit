@@ -742,13 +742,14 @@ class DataBase(metaclass=_DataBaseMetaClass):
         return cls(**kwargs)
 
     @classmethod
-    def from_json(cls, json_str):
+    def from_json(cls, json_str, ignore_unknown_fields=False):
         """Build a DataBase from a given JSON string. Use google's protobufs.json_format for
         deserialization
 
         Args:
             json_str (str or dict): A stringified JSON specification/dict of the
                 data_model
+            ignore_unknown_fields (bool): If True, ignores unknown JSON fields
 
         Returns:
             caikit.core.data_model.DataBase: A DataBase object.
@@ -763,7 +764,9 @@ class DataBase(metaclass=_DataBaseMetaClass):
         try:
             # Parse given JSON into google.protobufs.pyext.cpp_message.GeneratedProtocolMessageType
             parsed_proto = json_format.Parse(
-                json_str, cls.get_proto_class()(), ignore_unknown_fields=False
+                json_str,
+                cls.get_proto_class()(),
+                ignore_unknown_fields=ignore_unknown_fields,
             )
 
             # Use from_proto to return the DataBase object from the parsed proto
