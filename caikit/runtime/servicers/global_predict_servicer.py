@@ -315,6 +315,8 @@ class GlobalPredictServicer:
                 f"Exception raised during inference. This may be a problem with your input: {e}",
             ) from e
 
+        # NOTE: Specifically handling RpcError here is to pass through
+        # grpc client errors, since we expect those clients to be common
         except RpcError as e:
             log_dict = {
                 "log_code": "<RUN29029171W>",
