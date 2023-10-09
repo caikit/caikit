@@ -269,6 +269,27 @@ def test_make_data_stream_source_jsonlfile(sample_train_service, sample_jsonl_fi
     validate_data_stream(data_stream, 4, SampleTrainingType)
 
 
+def test_make_data_stream_source_jsonlfile_extra_fields(tmp_path):
+    """Test that extra fields that may be present in files are just ignored"""
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    file_path = os.path.join(str(tmp_path), "extra_fields.jsonl")
+    with open(file_path, "w") as fp:
+        fp.write(
+            """
+        {"number": 2, "label": "bar", "description": "bar"}
+        {"number": 3, "label": "foo", "description": "foo"}
+        """
+        )
+
+    ds = stream_type(file=File(filename=file_path))
+    assert isinstance(ds, DataStreamSourceBase)
+
+    data_stream = ds.to_data_stream()
+    assert isinstance(data_stream, DataStream)
+
+    validate_data_stream(data_stream, 2, SampleTrainingType)
+
+
 def test_make_data_stream_source_from_file_with_no_extension(
     sample_train_service, sample_json_file, sample_jsonl_file, sample_csv_file, tmp_path
 ):
