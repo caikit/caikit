@@ -1340,3 +1340,27 @@ def test_dataobject_custom_repr():
 
     inst = Foo(1)
     assert repr(inst) == custom_repr
+
+
+def test_dataobject_from_json_default_errors_on_extra_fields():
+    """Without ignore_unknown_fields, error on
+    building data object from extra fields"""
+
+    @dataobject
+    class Moo(DataObjectBase):
+        foo: int
+
+    with pytest.raises(ValueError):
+        Moo.from_json({"foo": 2, "boo": True})
+
+
+def test_dataobject_from_json_ignore_unknown_fields():
+    """With ignore_unknown_fields, ignore extra fields"""
+
+    @dataobject
+    class Moo(DataObjectBase):
+        foo: int
+
+    m1 = Moo.from_json({"foo": 2, "boo": True}, ignore_unknown_fields=True)
+    assert isinstance(m1, Moo)
+    assert m1.foo == 2
