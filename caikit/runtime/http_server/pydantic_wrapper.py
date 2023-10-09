@@ -191,7 +191,7 @@ async def pydantic_from_request(
     The currently supported Content-Types are `application/json`
     and `multipart/form-data`"""
     content_type = request.headers.get("Content-Type")
-    log.debug4("Detected request using %s type", content_type)
+    log.debug("Detected request using %s type", content_type)
 
     # If content type is json use pydantic to parse
     if content_type == "application/json":
@@ -199,9 +199,7 @@ async def pydantic_from_request(
         try:
             return pydantic_model.model_validate_json(raw_content)
         except pydantic.ValidationError as err:
-            raise RequestValidationError(  # pylint: disable=raise-missing-from
-                errors=err.errors()
-            )
+            raise RequestValidationError(errors=err.errors()) from err
     # Elif content is form-data then parse the form
     elif "multipart/form-data" in content_type:
         # Get the raw form data
@@ -325,9 +323,7 @@ def _parse_form_data_to_pydantic(
     try:
         return pydantic_model.model_validate(raw_model_obj)
     except pydantic.ValidationError as err:
-        raise RequestValidationError(  # pylint: disable=raise-missing-from
-            errors=err.errors()
-        )
+        raise RequestValidationError(errors=err.errors()) from err
 
 
 def _get_pydantic_subtypes(

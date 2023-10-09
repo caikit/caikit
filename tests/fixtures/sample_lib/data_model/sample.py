@@ -24,8 +24,7 @@ class SampleInputType(DataObjectBase):
 
 @dataobject(package="caikit_data_model.sample_lib")
 class SampleListInputType(DataObjectBase):
-    """A sample `domain primitive` input type for this library.
-    The analog to a `Raw Document` for the `Natural Language Processing` domain."""
+    """A sample list input type for this library"""
 
     inputs: List[SampleInputType]
 
