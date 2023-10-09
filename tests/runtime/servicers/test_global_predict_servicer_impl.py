@@ -68,6 +68,31 @@ def test_calling_predict_should_raise_if_module_raises(
     assert "Unhandled exception during prediction" in context.value.message
 
 
+def test_predict_raises_with_grpc_errors(
+    sample_inference_service,
+    sample_predict_servicer,
+    sample_task_model_id,
+    sample_task_unary_rpc,
+):
+    with pytest.raises(CaikitRuntimeException) as context:
+        # SampleModules will raise a RuntimeError if the throw flag is set
+        predict_class = get_inference_request(SampleModule.TASK_CLASS)
+        print(SampleModule.TASK_CLASS)
+
+        request = predict_class(
+            sample_input=HAPPY_PATH_INPUT_DM,
+            throw=True,
+            error="GRPC_RESOURCE_EXHAUSTED",
+        ).to_proto()
+        sample_predict_servicer.Predict(
+            request,
+            Fixtures.build_context(sample_task_model_id),
+            caikit_rpc=sample_task_unary_rpc,
+        )
+    assert context.value.status_code == grpc.StatusCode.RESOURCE_EXHAUSTED
+    assert "Model is overloaded" in context.value.message
+
+
 def test_invalid_input_to_a_valid_caikit_core_class_method_raises(
     sample_task_model_id,
     sample_inference_service,

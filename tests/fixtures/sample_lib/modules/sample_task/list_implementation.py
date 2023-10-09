@@ -34,7 +34,10 @@ class ListModule(caikit.core.ModuleBase):
         return cls(config["train"]["batch_size"], config["train"]["learning_rate"])
 
     def run(
-        self, sample_input: SampleInputType, throw: bool = False
+        self,
+        sample_input: SampleInputType,
+        throw: bool = False,
+        error_obj: Optional[Exception] = None,
     ) -> SampleOutputType:
         """
         Args:
