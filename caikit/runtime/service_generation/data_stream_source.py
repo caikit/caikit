@@ -268,6 +268,41 @@ class DirectoryDataStreamSourcePlugin(FilePluginBase):
     def get_field_number(self) -> Optional[int]:
         return 4
 
+
+class JsonDataStreamSourcePlugin(DataStreamSourcePlugin):
+    """This plugin has instantiation logic: it needs the stream's element type so that it can
+    generate a data model for List[element_type]"""
+
+    def __init__(self, element_type: Type[DataBase]):
+        """🌶🌶🌶️: This will probably explode if instantiated twice for the same type"""
+        package = get_runtime_service_package()
+        cls_name = self._make_data_stream_source_type_name(element_type)
+
+        JsonData = make_dataobject(
+            package=package,
+            proto_name=f"{cls_name}JsonData",
+            name="JsonData",
+            attrs={"__qualname__": f"{cls_name}.JsonData"},
+            annotations={"data": List[element_type]},
+        )
+
+        self.stream_message_type = JsonData
+
+    def get_stream_message_type(self) -> Type[DataBase]:
+        return self.stream_message_type
+
+    def to_data_stream(self, source_message: Type[DataBase], element_type: type) -> DataStream:
+        """source_message should be of type self.get_stream_message_type
+        So it _should_ contain an attribute named `data`, which is a list"""
+        return DataStream.from_iterable(source_message.data)
+
+    @staticmethod
+    def _make_data_stream_source_type_name(data_element_type: Type) -> str:
+        """Make the name for data stream source class that wraps the given type"""
+        element_name = data_element_type.__name__
+        return "DataStreamSource{}".format(element_name[0].upper() + element_name[1:])
+
+
 class DataStreamSourceBase(DataStream):
     """This base class acts as a sentinel so that dynamically generated data
     stream source classes can be identified programmatically.
@@ -553,9 +588,3 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
 
     # Return the global stream source object for this element type
     return _DATA_STREAM_SOURCE_TYPES[data_element_type]
-
-
-def _make_data_stream_source_type_name(data_element_type: Type) -> str:
-    """Make the name for data stream source class that wraps the given type"""
-    element_name = data_element_type.__name__
-    return "DataStreamSource{}".format(element_name[0].upper() + element_name[1:])
