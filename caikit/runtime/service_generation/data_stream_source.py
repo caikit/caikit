@@ -118,7 +118,7 @@ class FilePluginBase(DataStreamSourcePlugin):
 
         _, extension = os.path.splitext(fname)
         if not extension:
-            return cls._load_from_file_without_extension(fname)
+            return cls._load_from_file_without_extension(fname, element_type)
 
         full_fname = cls._get_resolved_source_path(fname)
         log.debug3("Pulling data stream from %s file [%s]", extension, full_fname)
@@ -144,7 +144,7 @@ class FilePluginBase(DataStreamSourcePlugin):
         )
 
     @classmethod
-    def _load_from_file_without_extension(cls, fname) -> DataStream:
+    def _load_from_file_without_extension(cls, fname, element_type: type) -> DataStream:
         """Similar to _create_data_stream_from_file, but we don't have a file extension to work
         with. Attempt to create a data stream using one of a few well-known formats.
         🌶🌶🌶️ on ordering here:
@@ -157,6 +157,7 @@ class FilePluginBase(DataStreamSourcePlugin):
             confidently return a stream even if that's not the case.
         """
         full_fname = cls._get_resolved_source_path(fname)
+        to_element_type = cls._to_element_partial(element_type)
         log.debug3("Attempting to guess file type for file: %s", full_fname)
         for factory_method in (
             DataStream.from_json_array,
@@ -165,7 +166,7 @@ class FilePluginBase(DataStreamSourcePlugin):
             DataStream.from_header_csv,
         ):
             try:
-                stream = factory_method(full_fname).map(cls._to_element_type)
+                stream = factory_method(full_fname).map(to_element_type)
                 # Iterate once and assume we have the correct file type if this works
                 stream.peek()
                 return stream
