@@ -338,7 +338,6 @@ class DataStreamSourceBase(DataStream):
 
     def __init__(self):
         super().__init__(self._generator)
-        self.name_to_plugin_map = {plugin.get_field_name(): plugin for plugin in self.PLUGINS}
 
     def _generator(self):
         stream = self.to_data_stream()
@@ -362,6 +361,12 @@ class DataStreamSourceBase(DataStream):
         self.generator_func = self._generator
         self.generator_args = tuple()
         self.generator_kwargs = {}
+
+    @property
+    def name_to_plugin_map(self):
+        if not hasattr(self, "_name_to_plugin_map"):
+            self._name_to_plugin_map = {plugin.get_field_name(): plugin for plugin in self.PLUGINS}
+        return self._name_to_plugin_map
 
     # pylint: disable=too-many-return-statements
     def to_data_stream(self) -> DataStream:
