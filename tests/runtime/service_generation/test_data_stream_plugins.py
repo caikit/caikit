@@ -63,3 +63,9 @@ def test_json_data_plugin():
     validate_data_stream(stream, 5, element_type)
 
 
+def test_json_data_plugin_acn_be_reinitialized():
+    element_type = sample_lib.data_model.SampleTrainingType
+    plugin = JsonDataStreamSourcePlugin(element_type=element_type)
+    plugin2 = JsonDataStreamSourcePlugin(element_type=element_type)
+
+    assert plugin.get_stream_message_type() is plugin2.get_stream_message_type()
