@@ -13,8 +13,10 @@
 # limitations under the License.
 
 # Standard
+from functools import partial
 from glob import glob
-from typing import Any, List, Type, Union
+from typing import Any, List, Optional, Type, Union
+import abc
 import os
 import sys
 
@@ -50,6 +52,153 @@ _DATA_STREAM_SOURCE_TYPES = {}
 
 log = alog.use_channel("DSTRM-SRC")
 error = error_handler.get(log)
+
+
+## Scratch!! ###################################################################
+
+
+class DataStreamSourcePlugin(abc.ABC):
+    """A DataStreamSourcePlugin is a pluggable source that defines the shape of
+    the data object needed as well as the code for accessing the data from some
+    source type.
+    """
+
+    ## Abstract Interface ##
+
+    @abc.abstractmethod
+    def get_stream_message_type(self) -> Type[DataBase]:
+        """Get the type of the dataobject class that will be used as the source
+        information
+        """
+
+    @abc.abstractmethod
+    def to_data_stream(
+        self, source_message: Type[DataBase], element_type: type
+    ) -> DataStream:
+        """Convert an instance of the source message type into a DataStream"""
+
+    ## Public Methods ##
+
+    def get_field_name(self) -> str:
+        """Common logic for creating the name of the plugin's field in the oneof
+        for the top-level source message
+        """
+        return self.get_stream_message_type().__name__.lower()
+
+    def get_field_number(self) -> Optional[int]:
+        """Allow plugins to return a static field number"""
+
+    ## Shared Impl ##
+
+    @staticmethod
+    def _to_element_type(element_type: type, raw_element: Any) -> Any:
+        if issubclass(element_type, DataBase):
+            # To allow for extra fields (e.g. in training data) that may not
+            # be needed by the data objects, we ignore unknown fields
+            return element_type.from_json(raw_element, ignore_unknown_fields=True)
+        return raw_element
+
+
+class FilePluginBase(DataStreamSourcePlugin):
+    """Intermediate base class for file-based plugins with helper utilities"""
+
+    @classmethod
+    def _create_data_stream_from_file(
+        cls, fname: str, element_type: type
+    ) -> DataStream:
+        """Create a data stream object by deducing file extension
+        and reading the file accordingly"""
+
+        _, extension = os.path.splitext(fname)
+        if not extension:
+            return cls._load_from_file_without_extension(fname)
+
+        full_fname = cls._get_resolved_source_path(fname)
+        log.debug3("Pulling data stream from %s file [%s]", extension, full_fname)
+
+        if not fname or not os.path.isfile(full_fname):
+            raise CaikitRuntimeException(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                f"Invalid {extension} data source file: {fname}",
+            )
+        to_element_type = partial(cls._to_element_type, element_type)
+        if extension == ".json":
+            stream = DataStream.from_json_array(full_fname).map(to_element_type)
+            # Iterate once to make sure this is a json array
+            stream.peek()
+            return stream
+        if extension == ".csv":
+            return DataStream.from_header_csv(full_fname).map(to_element_type)
+        if extension == ".jsonl":
+            return DataStream.from_jsonl(full_fname).map(to_element_type)
+        raise CaikitRuntimeException(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            f"Extension not supported! {extension}",
+        )
+
+    @classmethod
+    def _load_from_file_without_extension(cls, fname) -> DataStream:
+        """Similar to _create_data_stream_from_file, but we don't have a file extension to work
+        with. Attempt to create a data stream using one of a few well-known formats.
+        🌶🌶🌶️ on ordering here:
+        File formats are loosely arranged in order of least-to-most-sketchy format validation.
+        1. .json/.jsonl are pretty straightforward
+        2. multipart files are a little iffy- the content-type header line can be omitted, in
+            which case we check for a `--` string and roll our own boundary parser. This could
+            cause problems in the future for multi-yaml files that begin with `---`
+        3. CSV support simply assumes the first line of the file has the column headers, and may
+            confidently return a stream even if that's not the case.
+        """
+        full_fname = cls._get_resolved_source_path(fname)
+        log.debug3("Attempting to guess file type for file: %s", full_fname)
+        for factory_method in (
+            DataStream.from_json_array,
+            DataStream.from_jsonl,
+            DataStream.from_multipart_file,
+            DataStream.from_header_csv,
+        ):
+            try:
+                stream = factory_method(full_fname).map(cls._to_element_type)
+                # Iterate once and assume we have the correct file type if this works
+                stream.peek()
+                return stream
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                # Catch any exception: it's hard to know which all could be thrown by any of the
+                # formatters
+                log.debug3(
+                    "Failed to load file %s using data stream factory method %s: %s",
+                    full_fname,
+                    factory_method,
+                    e,
+                    exc_info=True,
+                )
+        raise CaikitRuntimeException(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            f"Could not load input file with no extension: {full_fname}",
+        )
+
+    @staticmethod
+    def _get_resolved_source_path(input_path: str) -> str:
+        """Get a fully resolved path, including any shared prefix"""
+        # Get any configured prefix
+        source_pfx = caikit.get_config().data_streams.file_source_base
+        # If a prefix is configured, use it, otherwise return the path as is
+        # NOTE: os.path.join will ignore the prefix if input_path is absolute
+        return os.path.join(source_pfx, input_path) if source_pfx else input_path
+
+
+class FileDataStreamSourcePlugin(FilePluginBase):
+    """Plugin for a single file"""
+
+    @staticmethod
+    def get_stream_message_type() -> Type[DataBase]:
+        return File
+
+    @classmethod
+    def to_data_stream(cls, source_message: File, element_type: type) -> DataStream:
+        return cls._create_data_stream_from_file(
+            fname=source_message.filename, element_type=element_type
+        )
 
 
 class DataStreamSourceBase(DataStream):
@@ -162,97 +311,97 @@ class DataStreamSourceBase(DataStream):
                 f"Extension not supported! {extension}",
             )
 
-    @classmethod
-    def _create_data_stream_from_file(cls, fname: str) -> DataStream:
-        """Create a data stream object by deducing file extension
-        and reading the file accordingly"""
+    # @classmethod
+    # def _create_data_stream_from_file(cls, fname: str) -> DataStream:
+    #     """Create a data stream object by deducing file extension
+    #     and reading the file accordingly"""
 
-        _, extension = os.path.splitext(fname)
-        if not extension:
-            return cls._load_from_file_without_extension(fname)
+    #     _, extension = os.path.splitext(fname)
+    #     if not extension:
+    #         return cls._load_from_file_without_extension(fname)
 
-        full_fname = cls._get_resolved_source_path(fname)
-        log.debug3("Pulling data stream from %s file [%s]", extension, full_fname)
+    #     full_fname = cls._get_resolved_source_path(fname)
+    #     log.debug3("Pulling data stream from %s file [%s]", extension, full_fname)
 
-        if not fname or not os.path.isfile(full_fname):
-            raise CaikitRuntimeException(
-                grpc.StatusCode.INVALID_ARGUMENT,
-                f"Invalid {extension} data source file: {fname}",
-            )
-        if extension == ".json":
-            stream = DataStream.from_json_array(full_fname).map(cls._to_element_type)
-            # Iterate once to make sure this is a json array
-            stream.peek()
-            return stream
-        if extension == ".csv":
-            return DataStream.from_header_csv(full_fname).map(cls._to_element_type)
-        if extension == ".jsonl":
-            return DataStream.from_jsonl(full_fname).map(cls._to_element_type)
-        raise CaikitRuntimeException(
-            grpc.StatusCode.INVALID_ARGUMENT,
-            f"Extension not supported! {extension}",
-        )
+    #     if not fname or not os.path.isfile(full_fname):
+    #         raise CaikitRuntimeException(
+    #             grpc.StatusCode.INVALID_ARGUMENT,
+    #             f"Invalid {extension} data source file: {fname}",
+    #         )
+    #     if extension == ".json":
+    #         stream = DataStream.from_json_array(full_fname).map(cls._to_element_type)
+    #         # Iterate once to make sure this is a json array
+    #         stream.peek()
+    #         return stream
+    #     if extension == ".csv":
+    #         return DataStream.from_header_csv(full_fname).map(cls._to_element_type)
+    #     if extension == ".jsonl":
+    #         return DataStream.from_jsonl(full_fname).map(cls._to_element_type)
+    #     raise CaikitRuntimeException(
+    #         grpc.StatusCode.INVALID_ARGUMENT,
+    #         f"Extension not supported! {extension}",
+    #     )
 
-    @classmethod
-    def _load_from_file_without_extension(cls, fname) -> DataStream:
-        """Similar to _create_data_stream_from_file, but we don't have a file extension to work
-        with. Attempt to create a data stream using one of a few well-known formats.
-        🌶🌶🌶️ on ordering here:
-        File formats are loosely arranged in order of least-to-most-sketchy format validation.
-        1. .json/.jsonl are pretty straightforward
-        2. multipart files are a little iffy- the content-type header line can be omitted, in
-            which case we check for a `--` string and roll our own boundary parser. This could
-            cause problems in the future for multi-yaml files that begin with `---`
-        3. CSV support simply assumes the first line of the file has the column headers, and may
-            confidently return a stream even if that's not the case.
-        """
-        full_fname = cls._get_resolved_source_path(fname)
-        log.debug3("Attempting to guess file type for file: %s", full_fname)
-        for factory_method in (
-            DataStream.from_json_array,
-            DataStream.from_jsonl,
-            DataStream.from_multipart_file,
-            DataStream.from_header_csv,
-        ):
-            try:
-                stream = factory_method(full_fname).map(cls._to_element_type)
-                # Iterate once and assume we have the correct file type if this works
-                stream.peek()
-                return stream
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                # Catch any exception: it's hard to know which all could be thrown by any of the
-                # formatters
-                log.debug3(
-                    "Failed to load file %s using data stream factory method %s: %s",
-                    full_fname,
-                    factory_method,
-                    e,
-                    exc_info=True,
-                )
-        raise CaikitRuntimeException(
-            grpc.StatusCode.INVALID_ARGUMENT,
-            f"Could not load input file with no extension: {full_fname}",
-        )
+    # @classmethod
+    # def _load_from_file_without_extension(cls, fname) -> DataStream:
+    #     """Similar to _create_data_stream_from_file, but we don't have a file extension to work
+    #     with. Attempt to create a data stream using one of a few well-known formats.
+    #     🌶🌶🌶️ on ordering here:
+    #     File formats are loosely arranged in order of least-to-most-sketchy format validation.
+    #     1. .json/.jsonl are pretty straightforward
+    #     2. multipart files are a little iffy- the content-type header line can be omitted, in
+    #         which case we check for a `--` string and roll our own boundary parser. This could
+    #         cause problems in the future for multi-yaml files that begin with `---`
+    #     3. CSV support simply assumes the first line of the file has the column headers, and may
+    #         confidently return a stream even if that's not the case.
+    #     """
+    #     full_fname = cls._get_resolved_source_path(fname)
+    #     log.debug3("Attempting to guess file type for file: %s", full_fname)
+    #     for factory_method in (
+    #         DataStream.from_json_array,
+    #         DataStream.from_jsonl,
+    #         DataStream.from_multipart_file,
+    #         DataStream.from_header_csv,
+    #     ):
+    #         try:
+    #             stream = factory_method(full_fname).map(cls._to_element_type)
+    #             # Iterate once and assume we have the correct file type if this works
+    #             stream.peek()
+    #             return stream
+    #         except Exception as e:  # pylint: disable=broad-exception-caught
+    #             # Catch any exception: it's hard to know which all could be thrown by any of the
+    #             # formatters
+    #             log.debug3(
+    #                 "Failed to load file %s using data stream factory method %s: %s",
+    #                 full_fname,
+    #                 factory_method,
+    #                 e,
+    #                 exc_info=True,
+    #             )
+    #     raise CaikitRuntimeException(
+    #         grpc.StatusCode.INVALID_ARGUMENT,
+    #         f"Could not load input file with no extension: {full_fname}",
+    #     )
 
-    @classmethod
-    def _to_element_type(cls, raw_element: Any) -> "ElementType":
-        """Stream adapter to adapt from the raw json object data representations
-        to the underlying data objects
-        """
-        if issubclass(cls.ELEMENT_TYPE, DataBase):
-            # To allow for extra fields (e.g. in training data) that may not
-            # be needed by the data objects, we ignore unknown fields
-            return cls.ELEMENT_TYPE.from_json(raw_element, ignore_unknown_fields=True)
-        return raw_element
+    # @classmethod
+    # def _to_element_type(cls, raw_element: Any) -> "ElementType":
+    #     """Stream adapter to adapt from the raw json object data representations
+    #     to the underlying data objects
+    #     """
+    #     if issubclass(cls.ELEMENT_TYPE, DataBase):
+    #         # To allow for extra fields (e.g. in training data) that may not
+    #         # be needed by the data objects, we ignore unknown fields
+    #         return cls.ELEMENT_TYPE.from_json(raw_element, ignore_unknown_fields=True)
+    #     return raw_element
 
-    @staticmethod
-    def _get_resolved_source_path(input_path: str) -> str:
-        """Get a fully resolved path, including any shared prefix"""
-        # Get any configured prefix
-        source_pfx = caikit.get_config().data_streams.file_source_base
-        # If a prefix is configured, use it, otherwise return the path as is
-        # NOTE: os.path.join will ignore the prefix if input_path is absolute
-        return os.path.join(source_pfx, input_path) if source_pfx else input_path
+    # @staticmethod
+    # def _get_resolved_source_path(input_path: str) -> str:
+    #     """Get a fully resolved path, including any shared prefix"""
+    #     # Get any configured prefix
+    #     source_pfx = caikit.get_config().data_streams.file_source_base
+    #     # If a prefix is configured, use it, otherwise return the path as is
+    #     # NOTE: os.path.join will ignore the prefix if input_path is absolute
+    #     return os.path.join(source_pfx, input_path) if source_pfx else input_path
 
 
 def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
