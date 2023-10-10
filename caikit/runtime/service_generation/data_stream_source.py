@@ -15,7 +15,7 @@
 # Standard
 from functools import partial
 from glob import glob
-from typing import Any, List, Optional, Type, Union
+from typing import Any, List, Optional, Type, Union, Callable
 import abc
 import os
 import sys
@@ -98,6 +98,10 @@ class DataStreamSourcePlugin(abc.ABC):
             return element_type.from_json(raw_element, ignore_unknown_fields=True)
         return raw_element
 
+    @staticmethod
+    def _to_element_partial(element_type: type) -> Callable:
+        return partial(DataStreamSourcePlugin._to_element_type, element_type)
+
 
 class FilePluginBase(DataStreamSourcePlugin):
     """Intermediate base class for file-based plugins with helper utilities"""
@@ -121,7 +125,7 @@ class FilePluginBase(DataStreamSourcePlugin):
                 grpc.StatusCode.INVALID_ARGUMENT,
                 f"Invalid {extension} data source file: {fname}",
             )
-        to_element_type = partial(cls._to_element_type, element_type)
+        to_element_type = cls._to_element_partial(element_type)
         if extension == ".json":
             stream = DataStream.from_json_array(full_fname).map(to_element_type)
             # Iterate once to make sure this is a json array
@@ -200,6 +204,69 @@ class FileDataStreamSourcePlugin(FilePluginBase):
             fname=source_message.filename, element_type=element_type
         )
 
+    def get_field_number(self) -> Optional[int]:
+        return 2
+
+
+class ListOfFilesDataStreamSourcePlugin(FilePluginBase):
+    """Plugin for a list of files"""
+
+    @staticmethod
+    def get_stream_message_type() -> Type[DataBase]:
+        return ListOfFiles
+
+    @classmethod
+    def to_data_stream(cls, source_message: ListOfFiles, element_type: type) -> DataStream:
+        data_stream_list = []
+        for fname in source_message.files:
+            data_stream_list.append(cls._create_data_stream_from_file(
+                fname=fname, element_type=element_type)
+            )
+
+        return DataStream.chain(data_stream_list).flatten()
+
+    def get_field_number(self) -> Optional[int]:
+        return 3
+
+
+class DirectoryDataStreamSourcePlugin(FilePluginBase):
+    """Plugin for a list of files"""
+
+    @staticmethod
+    def get_stream_message_type() -> Type[DataBase]:
+        return Directory
+
+    @classmethod
+    def to_data_stream(cls, source_message: Directory, element_type: type) -> DataStream:
+        dirname = source_message.dirname
+        full_dirname = cls._get_resolved_source_path(dirname)
+        extension = source_message.extension or "json"
+        if not dirname or not os.path.isdir(full_dirname):
+            raise CaikitRuntimeException(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                f"Invalid {extension} directory source file: {full_dirname}",
+            )
+        files_with_ext = list(glob(os.path.join(full_dirname, "*." + extension)))
+        to_element_type = cls._to_element_partial(element_type)
+        # make sure at least 1 file with the given extension exists
+        if len(files_with_ext) == 0:
+            raise CaikitRuntimeException(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                f"directory {dirname} contains no source files with extension {extension}",
+            )
+        if extension == "json":
+            return DataStream.from_json_collection(full_dirname, extension).map(to_element_type)
+        if extension == "csv":
+            return DataStream.from_csv_collection(full_dirname).map(to_element_type)
+        if extension == "jsonl":
+            return DataStream.from_jsonl_collection(full_dirname).map(to_element_type)
+        raise CaikitRuntimeException(
+            grpc.StatusCode.INVALID_ARGUMENT,
+            f"Extension not supported! {extension}",
+        )
+
+    def get_field_number(self) -> Optional[int]:
+        return 4
 
 class DataStreamSourceBase(DataStream):
     """This base class acts as a sentinel so that dynamically generated data
@@ -442,6 +509,7 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
                 Directory.__name__: Directory,
                 S3Files.__name__: S3Files,
             },
+
             annotations={
                 "data_stream": Union[
                     Annotated[JsonData, OneofField(JsonData.__name__.lower())],
