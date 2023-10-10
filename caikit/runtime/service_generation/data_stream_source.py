@@ -286,7 +286,7 @@ class JsonDataStreamSourcePlugin(DataStreamSourcePlugin):
             return
 
         package = get_runtime_service_package()
-        cls_name = self._make_data_stream_source_type_name(element_type)
+        cls_name = _make_data_stream_source_type_name(element_type)
 
         JsonData = make_dataobject(
             package=package,
@@ -306,12 +306,6 @@ class JsonDataStreamSourcePlugin(DataStreamSourcePlugin):
         """source_message should be of type self.get_stream_message_type
         So it _should_ contain an attribute named `data`, which is a list"""
         return DataStream.from_iterable(source_message.data)
-
-    @staticmethod
-    def _make_data_stream_source_type_name(data_element_type: Type) -> str:
-        """Make the name for data stream source class that wraps the given type"""
-        element_name = data_element_type.__name__
-        return "DataStreamSource{}".format(element_name[0].upper() + element_name[1:])
 
 
 class DataStreamSourceBase(DataStream):
@@ -599,3 +593,9 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
 
     # Return the global stream source object for this element type
     return _DATA_STREAM_SOURCE_TYPES[data_element_type]
+
+
+def _make_data_stream_source_type_name(data_element_type: Type) -> str:
+    """Make the name for data stream source class that wraps the given type"""
+    element_name = data_element_type.__name__
+    return "DataStreamSource{}".format(element_name[0].upper() + element_name[1:])
