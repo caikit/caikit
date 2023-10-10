@@ -21,7 +21,7 @@ import traceback
 # Third Party
 from google.protobuf.descriptor import FieldDescriptor
 from google.protobuf.message import Message as ProtobufMessage
-from grpc import ServicerContext, StatusCode
+from grpc import RpcError, ServicerContext, StatusCode
 from prometheus_client import Counter, Summary
 
 # First Party
@@ -315,6 +315,19 @@ class GlobalPredictServicer:
                 f"Exception raised during inference. This may be a problem with your input: {e}",
             ) from e
 
+        # NOTE: Specifically handling RpcError here is to pass through
+        # grpc client errors, since we expect those clients to be common
+        except RpcError as e:
+            log_dict = {
+                "log_code": "<RUN29029171W>",
+                "message": repr(e),
+                "model_id": model_id,
+            }
+            log.warning(log_dict)
+            raise CaikitRuntimeException(
+                e.code(),
+                e.details(),
+            ) from e
         except Exception as e:
             log_dict = {
                 "log_code": "<RUN49049070W>",
