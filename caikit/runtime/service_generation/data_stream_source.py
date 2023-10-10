@@ -196,13 +196,22 @@ class DataStreamSourceBase(DataStream):
     @classmethod
     def _load_from_file_without_extension(cls, fname) -> DataStream:
         """Similar to _create_data_stream_from_file, but we don't have a file extension to work
-        with. Attempt to create a data stream using one of a few well-known formats"""
+        with. Attempt to create a data stream using one of a few well-known formats.
+        🌶🌶🌶️ on ordering here:
+        File formats are loosely arranged in order of least-to-most-sketchy format validation.
+        1. .json/.jsonl are pretty straightforward
+        2. multipart files are a little iffy- the content-type header line can be omitted, in
+            which case we check for a `--` string and roll our own boundary parser. This could
+            cause problems in the future for multi-yaml files that begin with `---`
+        3. CSV support simply assumes the first line of the file has the column headers, and may
+            confidently return a stream even if that's not the case.
+        """
         full_fname = cls._get_resolved_source_path(fname)
         log.debug3("Attempting to guess file type for file: %s", full_fname)
         for factory_method in (
-            DataStream.from_multipart_file,
             DataStream.from_json_array,
             DataStream.from_jsonl,
+            DataStream.from_multipart_file,
             DataStream.from_header_csv,
         ):
             try:
