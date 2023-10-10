@@ -309,6 +309,7 @@ def test_make_data_stream_source_from_multipart_formdata_file(
     sample_multipart_json,
     sample_multipart_csv,
     sample_multipart_json_with_content_header,
+    sample_train_service,
     tmp_path,
 ):
     """Test multipart streams. NB: We expect that multipart files will not have an extension"""

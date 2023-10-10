@@ -24,7 +24,7 @@ import sys
 import grpc
 
 # First Party
-from py_to_proto.dataclass_to_proto import Annotated, OneofField
+from py_to_proto.dataclass_to_proto import Annotated, OneofField, FieldNumber
 import alog
 
 # Local
@@ -62,6 +62,9 @@ class DataStreamSourcePlugin(abc.ABC):
     the data object needed as well as the code for accessing the data from some
     source type.
     """
+
+    def __init__(self, **kwargs):
+        pass
 
     ## Abstract Interface ##
 
@@ -307,6 +310,25 @@ class JsonDataStreamSourcePlugin(DataStreamSourcePlugin):
         So it _should_ contain an attribute named `data`, which is a list"""
         return DataStream.from_iterable(source_message.data)
 
+    def get_field_number(self) -> Optional[int]:
+        return 1
+
+
+class S3FilesDataStreamSourcePlugin(DataStreamSourcePlugin):
+    def get_stream_message_type(self) -> Type[DataBase]:
+        return S3Files
+
+    def to_data_stream(self, source_message: Type[DataBase], element_type: type) -> DataStream:
+        error(
+            "<COR80419785E>",
+            NotImplementedError(
+                "S3Files are not implemented as stream sources in this runtime."
+            ),
+        )
+
+    def get_field_number(self) -> Optional[int]:
+        return 5
+
 
 class DataStreamSourceBase(DataStream):
     """This base class acts as a sentinel so that dynamically generated data
@@ -315,6 +337,7 @@ class DataStreamSourceBase(DataStream):
 
     def __init__(self):
         super().__init__(self._generator)
+        self.name_to_plugin_map = {plugin.get_field_name(): plugin for plugin in self.PLUGINS}
 
     def _generator(self):
         stream = self.to_data_stream()
@@ -347,9 +370,13 @@ class DataStreamSourceBase(DataStream):
         set_field = None
         for field_name in self.get_proto_class().DESCRIPTOR.fields_by_name:
             if getattr(self, field_name) is not None:
-                assert (
-                    set_field is None
-                ), "Found DataStreamSource with multiple sources set"
+                error.value_check(
+                    "<COR80421785E>", set_field is None, "Found DataStreamSource with multiple sources set: {} and {}",
+                    set_field, field_name
+                )
+                error.value_check(
+                    "<COR80420785E>", field_name in self.name_to_plugin_map, "no data stream plugin found for field: {}", field_name
+                )
                 set_field = field_name
 
         # If no field is set, return an empty DataStream
@@ -357,159 +384,85 @@ class DataStreamSourceBase(DataStream):
             log.debug3("Returning empty data stream")
             return DataStream.from_iterable([])
 
-        # If a S3 pointer is given, raise not implemented
-        if set_field == "s3files":
-            error(
-                "<COR80419785E>",
-                NotImplementedError(
-                    "S3Files are not implemented as stream sources in this runtime."
-                ),
-            )
+        # Get the correct plugin, and pass it the source field + the element type to serialize to
+        plugin = self.name_to_plugin_map[set_field]
+        return plugin.to_data_stream(getattr(self, set_field), self.ELEMENT_TYPE)
 
-        # If jsondata, pull from the data elements directly
-        if set_field == "jsondata":
-            log.debug3("Pulling data stream from inline json")
-            return DataStream.from_iterable(self.jsondata.data)
+        # # If a S3 pointer is given, raise not implemented
+        # if set_field == "s3files":
+        #     error(
+        #         "<COR80419785E>",
+        #         NotImplementedError(
+        #             "S3Files are not implemented as stream sources in this runtime."
+        #         ),
+        #     )
+        #
+        # # If jsondata, pull from the data elements directly
+        # if set_field == "jsondata":
+        #     log.debug3("Pulling data stream from inline json")
+        #     return DataStream.from_iterable(self.jsondata.data)
+        #
+        # # If jsonfile, attempt to read the file and pull in the data from there
+        # if set_field == "file":
+        #     return self._create_data_stream_from_file(fname=self.file.filename)
+        #
+        # # If list of files, attempt to read all files and combine datastreams from all
+        # if set_field == "listoffiles":
+        #     # combined list of data streams that we will chain and send back
+        #     data_stream_list = []
+        #     for fname in self.listoffiles.files:
+        #         data_stream_list.append(self._create_data_stream_from_file(fname=fname))
+        #
+        #     return DataStream.chain(data_stream_list).flatten()
+        #
+        # # If directory, attempt to read an element from each file in the dir
+        # if set_field == "directory":
+        #     dirname = self.directory.dirname
+        #     full_dirname = self._get_resolved_source_path(dirname)
+        #     extension = self.directory.extension or "json"
+        #     if not dirname or not os.path.isdir(full_dirname):
+        #         raise CaikitRuntimeException(
+        #             grpc.StatusCode.INVALID_ARGUMENT,
+        #             f"Invalid {extension} directory source file: {full_dirname}",
+        #         )
+        #     files_with_ext = list(glob(os.path.join(full_dirname, "*." + extension)))
+        #     # make sure at least 1 file with the given extension exists
+        #     if len(files_with_ext) == 0:
+        #         raise CaikitRuntimeException(
+        #             grpc.StatusCode.INVALID_ARGUMENT,
+        #             f"directory {dirname} contains no source files with extension {extension}",
+        #         )
+        #     if extension == "json":
+        #         return DataStream.from_json_collection(full_dirname, extension).map(
+        #             self._to_element_type
+        #         )
+        #     if extension == "csv":
+        #         return DataStream.from_csv_collection(full_dirname).map(
+        #             self._to_element_type
+        #         )
+        #     if extension == "jsonl":
+        #         return DataStream.from_jsonl_collection(full_dirname).map(
+        #             self._to_element_type
+        #         )
+        #     raise CaikitRuntimeException(
+        #         grpc.StatusCode.INVALID_ARGUMENT,
+        #         f"Extension not supported! {extension}",
+        #     )
 
-        # If jsonfile, attempt to read the file and pull in the data from there
-        if set_field == "file":
-            return self._create_data_stream_from_file(fname=self.file.filename)
+class PluginFactory():
 
-        # If list of files, attempt to read all files and combine datastreams from all
-        if set_field == "listoffiles":
-            # combined list of data streams that we will chain and send back
-            data_stream_list = []
-            for fname in self.listoffiles.files:
-                data_stream_list.append(self._create_data_stream_from_file(fname=fname))
+    def __init__(self):
+        pass
 
-            return DataStream.chain(data_stream_list).flatten()
-
-        # If directory, attempt to read an element from each file in the dir
-        if set_field == "directory":
-            dirname = self.directory.dirname
-            full_dirname = self._get_resolved_source_path(dirname)
-            extension = self.directory.extension or "json"
-            if not dirname or not os.path.isdir(full_dirname):
-                raise CaikitRuntimeException(
-                    grpc.StatusCode.INVALID_ARGUMENT,
-                    f"Invalid {extension} directory source file: {full_dirname}",
-                )
-            files_with_ext = list(glob(os.path.join(full_dirname, "*." + extension)))
-            # make sure at least 1 file with the given extension exists
-            if len(files_with_ext) == 0:
-                raise CaikitRuntimeException(
-                    grpc.StatusCode.INVALID_ARGUMENT,
-                    f"directory {dirname} contains no source files with extension {extension}",
-                )
-            if extension == "json":
-                return DataStream.from_json_collection(full_dirname, extension).map(
-                    self._to_element_type
-                )
-            if extension == "csv":
-                return DataStream.from_csv_collection(full_dirname).map(
-                    self._to_element_type
-                )
-            if extension == "jsonl":
-                return DataStream.from_jsonl_collection(full_dirname).map(
-                    self._to_element_type
-                )
-            raise CaikitRuntimeException(
-                grpc.StatusCode.INVALID_ARGUMENT,
-                f"Extension not supported! {extension}",
-            )
-
-    # @classmethod
-    # def _create_data_stream_from_file(cls, fname: str) -> DataStream:
-    #     """Create a data stream object by deducing file extension
-    #     and reading the file accordingly"""
-
-    #     _, extension = os.path.splitext(fname)
-    #     if not extension:
-    #         return cls._load_from_file_without_extension(fname)
-
-    #     full_fname = cls._get_resolved_source_path(fname)
-    #     log.debug3("Pulling data stream from %s file [%s]", extension, full_fname)
-
-    #     if not fname or not os.path.isfile(full_fname):
-    #         raise CaikitRuntimeException(
-    #             grpc.StatusCode.INVALID_ARGUMENT,
-    #             f"Invalid {extension} data source file: {fname}",
-    #         )
-    #     if extension == ".json":
-    #         stream = DataStream.from_json_array(full_fname).map(cls._to_element_type)
-    #         # Iterate once to make sure this is a json array
-    #         stream.peek()
-    #         return stream
-    #     if extension == ".csv":
-    #         return DataStream.from_header_csv(full_fname).map(cls._to_element_type)
-    #     if extension == ".jsonl":
-    #         return DataStream.from_jsonl(full_fname).map(cls._to_element_type)
-    #     raise CaikitRuntimeException(
-    #         grpc.StatusCode.INVALID_ARGUMENT,
-    #         f"Extension not supported! {extension}",
-    #     )
-
-    # @classmethod
-    # def _load_from_file_without_extension(cls, fname) -> DataStream:
-    #     """Similar to _create_data_stream_from_file, but we don't have a file extension to work
-    #     with. Attempt to create a data stream using one of a few well-known formats.
-    #     🌶🌶🌶️ on ordering here:
-    #     File formats are loosely arranged in order of least-to-most-sketchy format validation.
-    #     1. .json/.jsonl are pretty straightforward
-    #     2. multipart files are a little iffy- the content-type header line can be omitted, in
-    #         which case we check for a `--` string and roll our own boundary parser. This could
-    #         cause problems in the future for multi-yaml files that begin with `---`
-    #     3. CSV support simply assumes the first line of the file has the column headers, and may
-    #         confidently return a stream even if that's not the case.
-    #     """
-    #     full_fname = cls._get_resolved_source_path(fname)
-    #     log.debug3("Attempting to guess file type for file: %s", full_fname)
-    #     for factory_method in (
-    #         DataStream.from_json_array,
-    #         DataStream.from_jsonl,
-    #         DataStream.from_multipart_file,
-    #         DataStream.from_header_csv,
-    #     ):
-    #         try:
-    #             stream = factory_method(full_fname).map(cls._to_element_type)
-    #             # Iterate once and assume we have the correct file type if this works
-    #             stream.peek()
-    #             return stream
-    #         except Exception as e:  # pylint: disable=broad-exception-caught
-    #             # Catch any exception: it's hard to know which all could be thrown by any of the
-    #             # formatters
-    #             log.debug3(
-    #                 "Failed to load file %s using data stream factory method %s: %s",
-    #                 full_fname,
-    #                 factory_method,
-    #                 e,
-    #                 exc_info=True,
-    #             )
-    #     raise CaikitRuntimeException(
-    #         grpc.StatusCode.INVALID_ARGUMENT,
-    #         f"Could not load input file with no extension: {full_fname}",
-    #     )
-
-    # @classmethod
-    # def _to_element_type(cls, raw_element: Any) -> "ElementType":
-    #     """Stream adapter to adapt from the raw json object data representations
-    #     to the underlying data objects
-    #     """
-    #     if issubclass(cls.ELEMENT_TYPE, DataBase):
-    #         # To allow for extra fields (e.g. in training data) that may not
-    #         # be needed by the data objects, we ignore unknown fields
-    #         return cls.ELEMENT_TYPE.from_json(raw_element, ignore_unknown_fields=True)
-    #     return raw_element
-
-    # @staticmethod
-    # def _get_resolved_source_path(input_path: str) -> str:
-    #     """Get a fully resolved path, including any shared prefix"""
-    #     # Get any configured prefix
-    #     source_pfx = caikit.get_config().data_streams.file_source_base
-    #     # If a prefix is configured, use it, otherwise return the path as is
-    #     # NOTE: os.path.join will ignore the prefix if input_path is absolute
-    #     return os.path.join(source_pfx, input_path) if source_pfx else input_path
-
+    def get_plugins(self, element_type: Type[DataBase]) -> List[DataStreamSourcePlugin]:
+        """Builds the set of plugins to use for a data stream source of type element_type"""
+        return [
+            JsonDataStreamSourcePlugin(element_type=element_type),
+            FileDataStreamSourcePlugin(element_type=element_type),
+            ListOfFilesDataStreamSourcePlugin(element_type=element_type),
+            DirectoryDataStreamSourcePlugin(element_type=element_type),
+            S3FilesDataStreamSourcePlugin(element_type=element_type),
+        ]
 
 def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
     """Dynamically create a data stream source message type that supports
@@ -518,46 +471,41 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
     log.debug2("Looking for DataStreamSource[%s]", data_element_type)
     if data_element_type not in _DATA_STREAM_SOURCE_TYPES:
         cls_name = _make_data_stream_source_type_name(data_element_type)
+        package = get_runtime_service_package()
+
         log.debug("Creating DataStreamSource[%s] -> %s", data_element_type, cls_name)
 
-        # Set up the "sub class." In python, this is the same as creating a
-        # standalone class with a __qualname__ that nests it under a parent
-        # class. We do this outside the declaration of the parent class so that
-        # this class can be referenced within the Union annotation for the
-        # outer class itself. This class needs to be created dynamically because
-        # it encapsulates type information about the elements of the data stream.
-        package = get_runtime_service_package()
-        JsonData = make_dataobject(
-            package=package,
-            proto_name=f"{cls_name}JsonData",
-            name="JsonData",
-            attrs={"__qualname__": f"{cls_name}.JsonData"},
-            annotations={"data": List[data_element_type]},
-        )
+        # Get the required plugins
+        plugins = PluginFactory().get_plugins(data_element_type)
 
-        # Create the outer class that encapsulates the Union (oneof) or the
-        # various types of input sources
+        # Create the outer class that encapsulates the Union (oneof) of the various types of input
+        # sources
+
+        # Build the type annotation for the data model
+        # This describes a large oneof containing all the info from each data stream source plugin
+        annotation_list = [Annotated[plugin.get_stream_message_type(), OneofField(plugin.get_field_name()), FieldNumber(plugin.get_field_number())] for plugin in plugins]
+        data_stream_type_union = Union[tuple(annotation_list)]
+
+        # Create an attribute dictionary that will expose each of the source types on this datastream class itself.
+        # E.g. if I have the `JsonData` plugin enabled, this enables:
+        # >>> make_data_stream_source(some_type).JsonData
+        # to access the `JsonData` source message directly.
+        type_attrs = {
+            plugin.get_stream_message_type().__name__: plugin.get_stream_message_type() for plugin in plugins
+        }
+
         data_object = make_dataobject(
             package=package,
             name=cls_name,
             bases=(DataStreamSourceBase,),
             attrs={
                 "ELEMENT_TYPE": data_element_type,
-                JsonData.__name__: JsonData,
-                File.__name__: File,
-                ListOfFiles.__name__: ListOfFiles,
-                Directory.__name__: Directory,
-                S3Files.__name__: S3Files,
+                "PLUGINS": plugins,
+                **type_attrs
             },
 
             annotations={
-                "data_stream": Union[
-                    Annotated[JsonData, OneofField(JsonData.__name__.lower())],
-                    Annotated[File, OneofField(File.__name__.lower())],
-                    Annotated[ListOfFiles, OneofField(ListOfFiles.__name__.lower())],
-                    Annotated[Directory, OneofField(Directory.__name__.lower())],
-                    Annotated[S3Files, OneofField(S3Files.__name__.lower())],
-                ],
+                "data_stream": data_stream_type_union
             },
         )
 
