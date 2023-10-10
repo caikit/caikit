@@ -15,7 +15,7 @@
 # Standard
 from functools import partial
 from glob import glob
-from typing import Any, List, Optional, Type, Union, Callable
+from typing import Any, List, Optional, Type, Union, Callable, Dict
 import abc
 import os
 import sys
@@ -270,11 +270,21 @@ class DirectoryDataStreamSourcePlugin(FilePluginBase):
 
 
 class JsonDataStreamSourcePlugin(DataStreamSourcePlugin):
-    """This plugin has instantiation logic: it needs the stream's element type so that it can
+    """This plugin is for inline data, elements are provided in a list.
+
+    This plugin has instantiation logic: it needs the stream's element type so that it can
     generate a data model for List[element_type]"""
 
+    # class-level cache required to avoid creating duplicate data model classes
+    stream_source_type_cache: Dict[Type[DataBase], Type[DataBase]] = {}
+
     def __init__(self, element_type: Type[DataBase]):
-        """🌶🌶🌶️: This will probably explode if instantiated twice for the same type"""
+        """Creates a new data model to wrap the element type in a list.
+        This new data model is the message type for the stream"""
+        if element_type in JsonDataStreamSourcePlugin.stream_source_type_cache:
+            self.stream_message_type = JsonDataStreamSourcePlugin.stream_source_type_cache[element_type]
+            return
+
         package = get_runtime_service_package()
         cls_name = self._make_data_stream_source_type_name(element_type)
 
@@ -287,6 +297,7 @@ class JsonDataStreamSourcePlugin(DataStreamSourcePlugin):
         )
 
         self.stream_message_type = JsonData
+        JsonDataStreamSourcePlugin.stream_source_type_cache[element_type] = self.stream_message_type
 
     def get_stream_message_type(self) -> Type[DataBase]:
         return self.stream_message_type
