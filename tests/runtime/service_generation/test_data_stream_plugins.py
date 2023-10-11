@@ -14,6 +14,9 @@
 """
 Tests for the plugin mechanism for data stream sources
 """
+# Standard
+from unittest import mock
+
 # Third Party
 import pytest
 
@@ -37,6 +40,7 @@ from caikit.runtime.service_generation.data_stream_source import (
     S3FilesDataStreamSourcePlugin,
     make_data_stream_source,
 )
+from tests.data_model_helpers import reset_global_protobuf_registry, temp_dpool
 from tests.runtime.service_generation.test_data_stream_source import (
     validate_data_stream,
 )
@@ -112,6 +116,17 @@ def test_json_data_plugin_can_be_reinitialized():
 
 
 @pytest.fixture
+def reset_stream_source_types():
+    with reset_global_protobuf_registry():
+        with mock.patch(
+            "caikit.runtime.service_generation.data_stream_source._DATA_STREAM_SOURCE_TYPES",
+            {},
+        ):
+            with temp_dpool(True):
+                yield
+
+
+@pytest.fixture
 def plugin_factory():
     fct = DataStreamPluginFactory("TestFactory")
     fct.register(JsonDataStreamSourcePlugin)
@@ -181,7 +196,7 @@ def test_no_duplicate_field_numbers(plugin_factory):
         plugin_factory.get_plugins(cfg)
 
 
-def test_no_duplicate_field_names(plugin_factory):
+def test_no_duplicate_field_names(plugin_factory, reset_stream_source_types):
     """Make sure that new data stream sources cannot be created with duplicate
     field names
     """
@@ -197,7 +212,7 @@ def test_no_duplicate_field_names(plugin_factory):
         make_data_stream_source(int, plugin_factory, cfg)
 
 
-def test_multiple_instances(plugin_factory):
+def test_multiple_instances(plugin_factory, reset_stream_source_types):
     """Make sure that multiple instances of a type with different configs can be
     instantiated as long as field numbers and names are unique
     """
@@ -216,4 +231,8 @@ def test_multiple_instances(plugin_factory):
         override_env_vars=False,
     )
     plugin_factory.get_plugins(cfg)
-    make_data_stream_source(int, plugin_factory, cfg)
+
+    class LocalFoobar:
+        pass
+
+    make_data_stream_source(LocalFoobar, plugin_factory, cfg)
