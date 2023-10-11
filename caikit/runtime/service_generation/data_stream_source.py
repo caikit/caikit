@@ -87,10 +87,11 @@ class DataStreamSourcePlugin(FactoryConstructible):
     ) -> DataStream:
         """Convert an instance of the source message type into a DataStream"""
 
-    ## Public Methods ##
-
-    def get_field_number(self) -> Optional[int]:
+    @abc.abstractmethod
+    def get_field_number(self) -> int:
         """Allow plugins to return a static field number"""
+
+    ## Public Methods ##
 
     def get_field_name(self, element_type: type) -> str:
         """The name of the field that this plugin will use in the source oneof"""
@@ -218,7 +219,8 @@ class FileDataStreamSourcePlugin(FilePluginBase):
             fname=source_message.filename, element_type=element_type
         )
 
-    def get_field_number(self) -> Optional[int]:
+    @staticmethod
+    def get_field_number() -> int:
         return 2
 
 
@@ -245,7 +247,8 @@ class ListOfFilesDataStreamSourcePlugin(FilePluginBase):
 
         return DataStream.chain(data_stream_list).flatten()
 
-    def get_field_number(self) -> Optional[int]:
+    @staticmethod
+    def get_field_number() -> int:
         return 3
 
 
@@ -291,7 +294,8 @@ class DirectoryDataStreamSourcePlugin(FilePluginBase):
             f"Extension not supported! {extension}",
         )
 
-    def get_field_number(self) -> Optional[int]:
+    @staticmethod
+    def get_field_number() -> int:
         return 4
 
 
@@ -329,7 +333,8 @@ class JsonDataStreamSourcePlugin(DataStreamSourcePlugin):
         So it _should_ contain an attribute named `data`, which is a list"""
         return DataStream.from_iterable(source_message.data)
 
-    def get_field_number(self) -> Optional[int]:
+    @staticmethod
+    def get_field_number() -> int:
         return 1
 
 
@@ -349,7 +354,8 @@ class S3FilesDataStreamSourcePlugin(DataStreamSourcePlugin):
             ),
         )
 
-    def get_field_number(self) -> Optional[int]:
+    @staticmethod
+    def get_field_number() -> int:
         return 5
 
 
@@ -370,12 +376,26 @@ class DataStreamPluginFactory(ImportableFactory):
     ) -> List[DataStreamSourcePlugin]:
         """Builds the set of plugins to use for a data stream source of type element_type"""
         if self._plugins is None:
-            self._plugins = {}
+            self._plugins = []
             if plugins_config is None:
                 plugins_config = get_config().data_streams.source_plugins
             for name, cfg in plugins_config.items():
-                self._plugins[name] = self.construct(cfg, name)
-        return list(self._plugins.values())
+                self._plugins.append(self.construct(cfg, name))
+
+            # Make sure field numbers are unique
+            field_numbers = [plugin.get_field_number() for plugin in self._plugins]
+            duplicates_field_numbers = [
+                plugin.name
+                for plugin in self._plugins
+                if field_numbers.count(plugin.get_field_number()) > 1
+            ]
+            error.value_check(
+                "<COR69189361E>",
+                not duplicates_field_numbers,
+                "Duplicate plugin field numbers found for plugins: {}",
+                duplicates_field_numbers,
+            )
+        return self._plugins
 
 
 # Single default instance
@@ -469,6 +489,7 @@ class DataStreamSourceBase(DataStream):
 def make_data_stream_source(
     data_element_type: type,
     plugin_factory: DataStreamPluginFactory = PluginFactory,
+    plugins_config: Optional[aconfig.Config] = None,
 ) -> Type[DataBase]:
     """Dynamically create a data stream source message type that supports
     pulling an iterable of the given type from all valid data stream sources
@@ -481,7 +502,25 @@ def make_data_stream_source(
         log.debug("Creating DataStreamSource[%s] -> %s", data_element_type, cls_name)
 
         # Get the required plugins
-        plugins = plugin_factory.get_plugins()
+        plugins = plugin_factory.get_plugins(plugins_config)
+
+        # Make sure there are no field name duplicates
+        plug_to_name = {
+            plugin: plugin.get_field_name(data_element_type) for plugin in plugins
+        }
+        all_field_names = list(plug_to_name.values())
+        duplicates = {
+            plugin.name: field_name
+            for plugin, field_name in plug_to_name.items()
+            if all_field_names.count(field_name) > 1
+        }
+        error.value_check(
+            "<COR66854455E>",
+            not duplicates,
+            "Duplicate plugin field names found for type {}: {}",
+            data_element_type,
+            duplicates,
+        )
 
         # Create the outer class that encapsulates the Union (oneof) of the various types of input
         # sources
