@@ -124,8 +124,10 @@ def temp_dpool(inherit_global: bool = False, skip_inherit: Optional[List[str]] =
     # Nothing to do for protobuf 3.X
     except ImportError:
         pass
-    yield dpool
-    descriptor_pool._DEFAULT = global_dpool
+    try:
+        yield dpool
+    finally:
+        descriptor_pool._DEFAULT = global_dpool
 
 
 def justify_script_string(script_str):
