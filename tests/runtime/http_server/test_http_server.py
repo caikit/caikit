@@ -355,6 +355,39 @@ def test_inference_sample_task_multipart_input(
         assert response.status_code == 500
 
 
+def test_inference_file_task_multipart_flipped_input(
+    file_task_model_id, runtime_http_server
+):
+    """Ensure that multiple multipart json inputs are merged together instead of overriding"""
+    with TestClient(runtime_http_server.app) as client:
+        # cGRmZGF0Yf//AA== is b"pdfdata\xff\xff\x00" base64 encoded
+        temp_file = tempfile.NamedTemporaryFile()
+        temp_file_name = Path(temp_file.name).name
+        temp_file.write(b"pdfdata\xff\xff\x00")
+        temp_file.flush()
+        temp_file.seek(0)
+
+        file_input = {
+            "inputs.file": temp_file,
+            "inputs": json.dumps({"metadata": {"name": "agoodname"}}),
+        }
+
+        response = client.post(
+            f"/api/v1/{file_task_model_id}/task/file",
+            files=file_input,
+        )
+        content_stream = BytesIO(response.content)
+
+        assert response.status_code == 200
+        with zipfile.ZipFile(content_stream) as output_file:
+            assert len(output_file.namelist()) == 2
+            assert "metadata.json" in output_file.namelist()
+            assert f"processed_{temp_file_name}" in output_file.namelist()
+
+            with output_file.open(f"processed_{temp_file_name}") as pdf_result:
+                assert pdf_result.read() == b"bounding|pdfdata\xff\xff\x00|box"
+
+
 def test_inference_other_task(other_task_model_id, runtime_http_server):
     """Simple check that we can ping a model"""
     with TestClient(runtime_http_server.app) as client:

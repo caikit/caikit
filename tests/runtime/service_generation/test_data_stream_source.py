@@ -11,7 +11,11 @@ import pytest
 # Local
 from caikit.core.data_model import DataObjectBase, dataobject
 from caikit.core.data_model.streams.data_stream import DataStream
-from caikit.interfaces.common.data_model.stream_sources import Directory, FileStream, S3Files
+from caikit.interfaces.common.data_model.stream_sources import (
+    Directory,
+    FileStream,
+    S3Files,
+)
 from caikit.runtime.service_generation.data_stream_source import (
     DataStreamSourceBase,
     _make_data_stream_source_type_name,
@@ -386,7 +390,9 @@ def test_make_data_stream_source_list_of_jsonl_files(sample_jsonl_collection):
         os.path.join(sample_jsonl_collection, file)
         for file in os.listdir(sample_jsonl_collection)
     ]
-    ds = stream_type(listoffilestreams=stream_type.ListOfFileStreams(files=sample_files))
+    ds = stream_type(
+        listoffilestreams=stream_type.ListOfFileStreams(files=sample_files)
+    )
     assert isinstance(ds, DataStreamSourceBase)
 
     data_stream = ds.to_data_stream()

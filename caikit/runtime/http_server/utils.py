@@ -18,6 +18,9 @@ this includes things like parameter handles and openapi spec generation
 # Standard
 from typing import Any, Optional
 
+# Local
+from ...config.config import merge_configs
+
 
 def convert_json_schema_to_multipart(json_schema):
     """Helper function to convert a json schema from applicaiton/json into one
@@ -186,5 +189,11 @@ def update_dict_at_dot_path(dict_obj: dict, key: str, updated_value: Any) -> boo
         dict_obj = dict_obj.setdefault(part, {})
         if not isinstance(dict_obj, dict):
             return False
-    dict_obj[parts[-1]] = updated_value
+
+    # If value already exists and is a dict and the target value is a dict then
+    # deep merge the keys
+    if isinstance(dict_obj.get(parts[-1]), dict) and isinstance(updated_value, dict):
+        merge_configs(dict_obj[parts[-1]], updated_value)
+    else:
+        dict_obj[parts[-1]] = updated_value
     return True
