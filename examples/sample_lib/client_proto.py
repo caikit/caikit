@@ -23,8 +23,10 @@ import sys
 import grpc
 
 # Local
-# pylint: disable=no-name-in-module
+# pylint: disable=no-name-in-module,import-error
 from .generated import samplelibservice_pb2_grpc, samplelibtrainingservice_pb2_grpc
+
+# pylint: disable=no-name-in-module,import-error
 from .generated.caikit_sample_lib import (
     sampletaskrequest_pb2,
     sampletasksamplemoduletrainparameters_pb2,
