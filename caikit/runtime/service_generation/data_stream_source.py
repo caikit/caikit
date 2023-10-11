@@ -15,7 +15,7 @@
 # Standard
 from functools import partial
 from glob import glob
-from typing import Any, List, Optional, Type, Union, Callable, Dict
+from typing import Any, Callable, Dict, List, Optional, Type, Union
 import abc
 import os
 import sys
@@ -24,14 +24,17 @@ import sys
 import grpc
 
 # First Party
-from py_to_proto.dataclass_to_proto import Annotated, OneofField, FieldNumber
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber, OneofField
+import aconfig
 import alog
 
 # Local
+from caikit.config import get_config
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import _make_oneof_init, make_dataobject
 from caikit.core.data_model.streams.data_stream import DataStream
 from caikit.core.exceptions import error_handler
+from caikit.core.toolkit.factory import FactoryConstructible, ImportableFactory
 from caikit.interfaces.common.data_model.stream_sources import (
     Directory,
     File,
@@ -54,22 +57,26 @@ log = alog.use_channel("DSTRM-SRC")
 error = error_handler.get(log)
 
 
-## Scratch!! ###################################################################
+## Plugin Bases ################################################################
 
 
-class DataStreamSourcePlugin(abc.ABC):
+class DataStreamSourcePlugin(FactoryConstructible):
     """A DataStreamSourcePlugin is a pluggable source that defines the shape of
     the data object needed as well as the code for accessing the data from some
     source type.
     """
 
-    def __init__(self, **kwargs):
-        pass
+    def __init__(self, config: aconfig.Config, instance_name: str):
+        """Construct with the basic factor constructible interface and store the
+        args for use by the child
+        """
+        self._config = config
+        self._instance_name = instance_name
 
     ## Abstract Interface ##
 
     @abc.abstractmethod
-    def get_stream_message_type(self) -> Type[DataBase]:
+    def get_stream_message_type(self, element_type: type) -> Type[DataBase]:
         """Get the type of the dataobject class that will be used as the source
         information
         """
@@ -82,14 +89,12 @@ class DataStreamSourcePlugin(abc.ABC):
 
     ## Public Methods ##
 
-    def get_field_name(self) -> str:
-        """Common logic for creating the name of the plugin's field in the oneof
-        for the top-level source message
-        """
-        return self.get_stream_message_type().__name__.lower()
-
     def get_field_number(self) -> Optional[int]:
         """Allow plugins to return a static field number"""
+
+    def get_field_name(self, element_type: type) -> str:
+        """The name of the field that this plugin will use in the source oneof"""
+        return self.get_stream_message_type(element_type).__name__.lower()
 
     ## Shared Impl ##
 
@@ -195,11 +200,16 @@ class FilePluginBase(DataStreamSourcePlugin):
         return os.path.join(source_pfx, input_path) if source_pfx else input_path
 
 
+## Source Plugins ##############################################################
+
+
 class FileDataStreamSourcePlugin(FilePluginBase):
     """Plugin for a single file"""
 
+    name = "FileData"
+
     @staticmethod
-    def get_stream_message_type() -> Type[DataBase]:
+    def get_stream_message_type(*_, **__) -> Type[DataBase]:
         return File
 
     @classmethod
@@ -215,16 +225,22 @@ class FileDataStreamSourcePlugin(FilePluginBase):
 class ListOfFilesDataStreamSourcePlugin(FilePluginBase):
     """Plugin for a list of files"""
 
+    name = "ListOfFiles"
+
     @staticmethod
-    def get_stream_message_type() -> Type[DataBase]:
+    def get_stream_message_type(*_, **__) -> Type[DataBase]:
         return ListOfFiles
 
     @classmethod
-    def to_data_stream(cls, source_message: ListOfFiles, element_type: type) -> DataStream:
+    def to_data_stream(
+        cls, source_message: ListOfFiles, element_type: type
+    ) -> DataStream:
         data_stream_list = []
         for fname in source_message.files:
-            data_stream_list.append(cls._create_data_stream_from_file(
-                fname=fname, element_type=element_type)
+            data_stream_list.append(
+                cls._create_data_stream_from_file(
+                    fname=fname, element_type=element_type
+                )
             )
 
         return DataStream.chain(data_stream_list).flatten()
@@ -236,12 +252,16 @@ class ListOfFilesDataStreamSourcePlugin(FilePluginBase):
 class DirectoryDataStreamSourcePlugin(FilePluginBase):
     """Plugin for a list of files"""
 
+    name = "Directory"
+
     @staticmethod
-    def get_stream_message_type() -> Type[DataBase]:
+    def get_stream_message_type(*_, **__) -> Type[DataBase]:
         return Directory
 
     @classmethod
-    def to_data_stream(cls, source_message: Directory, element_type: type) -> DataStream:
+    def to_data_stream(
+        cls, source_message: Directory, element_type: type
+    ) -> DataStream:
         dirname = source_message.dirname
         full_dirname = cls._get_resolved_source_path(dirname)
         extension = source_message.extension or "json"
@@ -259,7 +279,9 @@ class DirectoryDataStreamSourcePlugin(FilePluginBase):
                 f"directory {dirname} contains no source files with extension {extension}",
             )
         if extension == "json":
-            return DataStream.from_json_collection(full_dirname, extension).map(to_element_type)
+            return DataStream.from_json_collection(full_dirname, extension).map(
+                to_element_type
+            )
         if extension == "csv":
             return DataStream.from_csv_collection(full_dirname).map(to_element_type)
         if extension == "jsonl":
@@ -279,19 +301,19 @@ class JsonDataStreamSourcePlugin(DataStreamSourcePlugin):
     This plugin has instantiation logic: it needs the stream's element type so that it can
     generate a data model for List[element_type]"""
 
+    name = "JsonData"
+
     # class-level cache required to avoid creating duplicate data model classes
     stream_source_type_cache: Dict[Type[DataBase], Type[DataBase]] = {}
 
-    def __init__(self, element_type: Type[DataBase]):
-        """Creates a new data model to wrap the element type in a list.
-        This new data model is the message type for the stream"""
-        if element_type in JsonDataStreamSourcePlugin.stream_source_type_cache:
-            self.stream_message_type = JsonDataStreamSourcePlugin.stream_source_type_cache[element_type]
-            return
+    @classmethod
+    def get_stream_message_type(cls, element_type: type) -> Type[DataBase]:
+        stream_message_type = cls.stream_source_type_cache.get(element_type)
+        if stream_message_type:
+            return stream_message_type
 
         package = get_runtime_service_package()
         cls_name = _make_data_stream_source_type_name(element_type)
-
         JsonData = make_dataobject(
             package=package,
             proto_name=f"{cls_name}JsonData",
@@ -299,14 +321,10 @@ class JsonDataStreamSourcePlugin(DataStreamSourcePlugin):
             attrs={"__qualname__": f"{cls_name}.JsonData"},
             annotations={"data": List[element_type]},
         )
+        cls.stream_source_type_cache[element_type] = JsonData
+        return JsonData
 
-        self.stream_message_type = JsonData
-        JsonDataStreamSourcePlugin.stream_source_type_cache[element_type] = self.stream_message_type
-
-    def get_stream_message_type(self) -> Type[DataBase]:
-        return self.stream_message_type
-
-    def to_data_stream(self, source_message: Type[DataBase], element_type: type) -> DataStream:
+    def to_data_stream(self, source_message: Type[DataBase], *_, **__) -> DataStream:
         """source_message should be of type self.get_stream_message_type
         So it _should_ contain an attribute named `data`, which is a list"""
         return DataStream.from_iterable(source_message.data)
@@ -316,10 +334,14 @@ class JsonDataStreamSourcePlugin(DataStreamSourcePlugin):
 
 
 class S3FilesDataStreamSourcePlugin(DataStreamSourcePlugin):
-    def get_stream_message_type(self) -> Type[DataBase]:
+    """Unimplemented!"""
+
+    name = "S3Files"
+
+    def get_stream_message_type(self, *_, **__) -> Type[DataBase]:
         return S3Files
 
-    def to_data_stream(self, source_message: Type[DataBase], element_type: type) -> DataStream:
+    def to_data_stream(self, *_, **__) -> DataStream:
         error(
             "<COR80419785E>",
             NotImplementedError(
@@ -329,6 +351,43 @@ class S3FilesDataStreamSourcePlugin(DataStreamSourcePlugin):
 
     def get_field_number(self) -> Optional[int]:
         return 5
+
+
+## DataStreamSourceRegistry ####################################################
+
+
+class DataStreamPluginFactory(ImportableFactory):
+    """The DataStreamSourceRegistry is responsible for holding a registry of
+    plugin instances that will be used to create and manage data stream sources
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._plugins = None
+
+    def get_plugins(
+        self, plugins_config: Optional[aconfig.Config] = None
+    ) -> List[DataStreamSourcePlugin]:
+        """Builds the set of plugins to use for a data stream source of type element_type"""
+        if self._plugins is None:
+            self._plugins = {}
+            if plugins_config is None:
+                plugins_config = get_config().data_streams.source_plugins
+            for name, cfg in plugins_config.items():
+                self._plugins[name] = self.construct(cfg, name)
+        return list(self._plugins.values())
+
+
+# Single default instance
+PluginFactory = DataStreamPluginFactory("DataStreamSource")
+PluginFactory.register(JsonDataStreamSourcePlugin)
+PluginFactory.register(FileDataStreamSourcePlugin)
+PluginFactory.register(ListOfFilesDataStreamSourcePlugin)
+PluginFactory.register(DirectoryDataStreamSourcePlugin)
+PluginFactory.register(S3FilesDataStreamSourcePlugin)
+
+
+## DataStreamSourceBase ########################################################
 
 
 class DataStreamSourceBase(DataStream):
@@ -365,7 +424,10 @@ class DataStreamSourceBase(DataStream):
     @property
     def name_to_plugin_map(self):
         if not hasattr(self, "_name_to_plugin_map"):
-            self._name_to_plugin_map = {plugin.get_field_name(): plugin for plugin in self.PLUGINS}
+            self._name_to_plugin_map = {
+                plugin.get_field_name(self.ELEMENT_TYPE): plugin
+                for plugin in self.PLUGINS
+            }
         return self._name_to_plugin_map
 
     # pylint: disable=too-many-return-statements
@@ -377,11 +439,17 @@ class DataStreamSourceBase(DataStream):
         for field_name in self.get_proto_class().DESCRIPTOR.fields_by_name:
             if getattr(self, field_name) is not None:
                 error.value_check(
-                    "<COR80421785E>", set_field is None, "Found DataStreamSource with multiple sources set: {} and {}",
-                    set_field, field_name
+                    "<COR80421785E>",
+                    set_field is None,
+                    "Found DataStreamSource with multiple sources set: {} and {}",
+                    set_field,
+                    field_name,
                 )
                 error.value_check(
-                    "<COR80420785E>", field_name in self.name_to_plugin_map, "no data stream plugin found for field: {}", field_name
+                    "<COR80420785E>",
+                    field_name in self.name_to_plugin_map,
+                    "no data stream plugin found for field: {}",
+                    field_name,
                 )
                 set_field = field_name
 
@@ -394,83 +462,14 @@ class DataStreamSourceBase(DataStream):
         plugin = self.name_to_plugin_map[set_field]
         return plugin.to_data_stream(getattr(self, set_field), self.ELEMENT_TYPE)
 
-        # # If a S3 pointer is given, raise not implemented
-        # if set_field == "s3files":
-        #     error(
-        #         "<COR80419785E>",
-        #         NotImplementedError(
-        #             "S3Files are not implemented as stream sources in this runtime."
-        #         ),
-        #     )
-        #
-        # # If jsondata, pull from the data elements directly
-        # if set_field == "jsondata":
-        #     log.debug3("Pulling data stream from inline json")
-        #     return DataStream.from_iterable(self.jsondata.data)
-        #
-        # # If jsonfile, attempt to read the file and pull in the data from there
-        # if set_field == "file":
-        #     return self._create_data_stream_from_file(fname=self.file.filename)
-        #
-        # # If list of files, attempt to read all files and combine datastreams from all
-        # if set_field == "listoffiles":
-        #     # combined list of data streams that we will chain and send back
-        #     data_stream_list = []
-        #     for fname in self.listoffiles.files:
-        #         data_stream_list.append(self._create_data_stream_from_file(fname=fname))
-        #
-        #     return DataStream.chain(data_stream_list).flatten()
-        #
-        # # If directory, attempt to read an element from each file in the dir
-        # if set_field == "directory":
-        #     dirname = self.directory.dirname
-        #     full_dirname = self._get_resolved_source_path(dirname)
-        #     extension = self.directory.extension or "json"
-        #     if not dirname or not os.path.isdir(full_dirname):
-        #         raise CaikitRuntimeException(
-        #             grpc.StatusCode.INVALID_ARGUMENT,
-        #             f"Invalid {extension} directory source file: {full_dirname}",
-        #         )
-        #     files_with_ext = list(glob(os.path.join(full_dirname, "*." + extension)))
-        #     # make sure at least 1 file with the given extension exists
-        #     if len(files_with_ext) == 0:
-        #         raise CaikitRuntimeException(
-        #             grpc.StatusCode.INVALID_ARGUMENT,
-        #             f"directory {dirname} contains no source files with extension {extension}",
-        #         )
-        #     if extension == "json":
-        #         return DataStream.from_json_collection(full_dirname, extension).map(
-        #             self._to_element_type
-        #         )
-        #     if extension == "csv":
-        #         return DataStream.from_csv_collection(full_dirname).map(
-        #             self._to_element_type
-        #         )
-        #     if extension == "jsonl":
-        #         return DataStream.from_jsonl_collection(full_dirname).map(
-        #             self._to_element_type
-        #         )
-        #     raise CaikitRuntimeException(
-        #         grpc.StatusCode.INVALID_ARGUMENT,
-        #         f"Extension not supported! {extension}",
-        #     )
 
-class PluginFactory():
+## make_data_stream_source #####################################################
 
-    def __init__(self):
-        pass
 
-    def get_plugins(self, element_type: Type[DataBase]) -> List[DataStreamSourcePlugin]:
-        """Builds the set of plugins to use for a data stream source of type element_type"""
-        return [
-            JsonDataStreamSourcePlugin(element_type=element_type),
-            FileDataStreamSourcePlugin(element_type=element_type),
-            ListOfFilesDataStreamSourcePlugin(element_type=element_type),
-            DirectoryDataStreamSourcePlugin(element_type=element_type),
-            S3FilesDataStreamSourcePlugin(element_type=element_type),
-        ]
-
-def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
+def make_data_stream_source(
+    data_element_type: type,
+    plugin_factory: DataStreamPluginFactory = PluginFactory,
+) -> Type[DataBase]:
     """Dynamically create a data stream source message type that supports
     pulling an iterable of the given type from all valid data stream sources
     """
@@ -482,14 +481,28 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
         log.debug("Creating DataStreamSource[%s] -> %s", data_element_type, cls_name)
 
         # Get the required plugins
-        plugins = PluginFactory().get_plugins(data_element_type)
+        plugins = plugin_factory.get_plugins()
 
         # Create the outer class that encapsulates the Union (oneof) of the various types of input
         # sources
 
+        # Determine the type stream message type for each source. This can
+        # potentially be expensive, so we do it once
+        stream_message_types = {
+            plugin.name: plugin.get_stream_message_type(data_element_type)
+            for plugin in plugins
+        }
+
         # Build the type annotation for the data model
         # This describes a large oneof containing all the info from each data stream source plugin
-        annotation_list = [Annotated[plugin.get_stream_message_type(), OneofField(plugin.get_field_name()), FieldNumber(plugin.get_field_number())] for plugin in plugins]
+        annotation_list = [
+            Annotated[
+                stream_message_types[plugin.name],
+                OneofField(plugin.get_field_name(data_element_type)),
+                FieldNumber(plugin.get_field_number()),
+            ]
+            for plugin in plugins
+        ]
         data_stream_type_union = Union[tuple(annotation_list)]
 
         # Create an attribute dictionary that will expose each of the source types on this datastream class itself.
@@ -497,22 +510,15 @@ def make_data_stream_source(data_element_type: Type) -> Type[DataBase]:
         # >>> make_data_stream_source(some_type).JsonData
         # to access the `JsonData` source message directly.
         type_attrs = {
-            plugin.get_stream_message_type().__name__: plugin.get_stream_message_type() for plugin in plugins
+            msg_type.__name__: msg_type for msg_type in stream_message_types.values()
         }
 
         data_object = make_dataobject(
             package=package,
             name=cls_name,
             bases=(DataStreamSourceBase,),
-            attrs={
-                "ELEMENT_TYPE": data_element_type,
-                "PLUGINS": plugins,
-                **type_attrs
-            },
-
-            annotations={
-                "data_stream": data_stream_type_union
-            },
+            attrs={"ELEMENT_TYPE": data_element_type, "PLUGINS": plugins, **type_attrs},
+            annotations={"data_stream": data_stream_type_union},
         )
 
         # Add this data stream source to the common data model and the module

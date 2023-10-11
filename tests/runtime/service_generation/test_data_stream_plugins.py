@@ -11,11 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# Local
+from caikit.interfaces.common.data_model.stream_sources import (
+    Directory,
+    File,
+    ListOfFiles,
+)
+from caikit.runtime.service_generation.data_stream_source import (
+    DirectoryDataStreamSourcePlugin,
+    FileDataStreamSourcePlugin,
+    JsonDataStreamSourcePlugin,
+    ListOfFilesDataStreamSourcePlugin,
+)
+from tests.runtime.service_generation.test_data_stream_source import (
+    validate_data_stream,
+)
 import sample_lib
-from caikit.interfaces.common.data_model.stream_sources import File, Directory, ListOfFiles
-from caikit.runtime.service_generation.data_stream_source import FileDataStreamSourcePlugin, \
-    DirectoryDataStreamSourcePlugin, ListOfFilesDataStreamSourcePlugin, JsonDataStreamSourcePlugin
-from tests.runtime.service_generation.test_data_stream_source import validate_data_stream
 
 
 def test_file_plugin(sample_json_file):
@@ -33,7 +44,9 @@ def test_directory_plugin(sample_json_collection):
     element_type = sample_lib.data_model.SampleTrainingType
     source_message = Directory(dirname=sample_json_collection, extension="json")
 
-    stream = DirectoryDataStreamSourcePlugin.to_data_stream(source_message, element_type)
+    stream = DirectoryDataStreamSourcePlugin.to_data_stream(
+        source_message, element_type
+    )
 
     validate_data_stream(stream, 3, element_type)
 
@@ -41,9 +54,13 @@ def test_directory_plugin(sample_json_collection):
 def test_list_of_files_plugin(sample_json_file, sample_csv_file, sample_jsonl_file):
     # Samples all have SampleTrainingType data
     element_type = sample_lib.data_model.SampleTrainingType
-    source_message = ListOfFiles(files=[sample_json_file, sample_jsonl_file, sample_csv_file])
+    source_message = ListOfFiles(
+        files=[sample_json_file, sample_jsonl_file, sample_csv_file]
+    )
 
-    stream = ListOfFilesDataStreamSourcePlugin.to_data_stream(source_message, element_type)
+    stream = ListOfFilesDataStreamSourcePlugin.to_data_stream(
+        source_message, element_type
+    )
 
     validate_data_stream(stream, 9, element_type)
 
@@ -51,21 +68,27 @@ def test_list_of_files_plugin(sample_json_file, sample_csv_file, sample_jsonl_fi
 def test_json_data_plugin():
     element_type = sample_lib.data_model.SampleTrainingType
     foo = sample_lib.data_model.SampleTrainingType(number=1, label="foo")
-    data = [foo]*5
+    data = [foo] * 5
 
     # This plugin is actually initialized so that it can build the source message type
-    plugin = JsonDataStreamSourcePlugin(element_type=element_type)
-    source_message_type = plugin.get_stream_message_type()
+    plugin = JsonDataStreamSourcePlugin({}, "")
+    source_message_type = plugin.get_stream_message_type(element_type=element_type)
     source_messsage = source_message_type(data=data)
 
-    stream = plugin.to_data_stream(source_message=source_messsage, element_type=element_type)
+    stream = plugin.to_data_stream(
+        source_message=source_messsage, element_type=element_type
+    )
 
     validate_data_stream(stream, 5, element_type)
 
 
-def test_json_data_plugin_acn_be_reinitialized():
+def test_json_data_plugin_can_be_reinitialized():
     element_type = sample_lib.data_model.SampleTrainingType
-    plugin = JsonDataStreamSourcePlugin(element_type=element_type)
-    plugin2 = JsonDataStreamSourcePlugin(element_type=element_type)
+    strm_type = JsonDataStreamSourcePlugin({}, "inst1").get_stream_message_type(
+        element_type=element_type
+    )
+    strm_type2 = JsonDataStreamSourcePlugin({}, "inst2").get_stream_message_type(
+        element_type=element_type
+    )
 
-    assert plugin.get_stream_message_type() is plugin2.get_stream_message_type()
+    assert strm_type is strm_type2
