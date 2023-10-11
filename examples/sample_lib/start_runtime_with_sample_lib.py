@@ -28,6 +28,7 @@ if __name__ == "__main__":
                         "grpc": {"enabled": True},
                         "http": {"enabled": True},
                         "training": {"save_with_id": False, "output_dir": workdir},
+                        "service_generation": {"package": "caikit_sample_lib"},
                     },
                 }
             )
