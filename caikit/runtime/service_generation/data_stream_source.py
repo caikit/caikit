@@ -173,12 +173,13 @@ class FilePluginBase(DataStreamSourcePlugin):
         ):
             try:
                 stream = factory_method(full_fname).map(to_element_type)
-                # Iterate once and assume we have the correct file type if this works
+                # Iterate once and assume we have the correct file type if this
+                # works
                 stream.peek()
                 return stream
             except Exception as e:  # pylint: disable=broad-exception-caught
-                # Catch any exception: it's hard to know which all could be thrown by any of the
-                # formatters
+                # Catch any exception: it's hard to know which all could be
+                # thrown by any of the formatters
                 log.debug3(
                     "Failed to load file %s using data stream factory method %s: %s",
                     full_fname,
@@ -209,18 +210,15 @@ class FileDataStreamSourcePlugin(FilePluginBase):
 
     name = "FileData"
 
-    @staticmethod
-    def get_stream_message_type(*_, **__) -> Type[DataBase]:
+    def get_stream_message_type(self, *_, **__) -> Type[DataBase]:
         return File
 
-    @classmethod
-    def to_data_stream(cls, source_message: File, element_type: type) -> DataStream:
-        return cls._create_data_stream_from_file(
+    def to_data_stream(self, source_message: File, element_type: type) -> DataStream:
+        return self._create_data_stream_from_file(
             fname=source_message.filename, element_type=element_type
         )
 
-    @staticmethod
-    def get_field_number() -> int:
+    def get_field_number(self) -> int:
         return 2
 
 
@@ -229,26 +227,23 @@ class ListOfFilesDataStreamSourcePlugin(FilePluginBase):
 
     name = "ListOfFiles"
 
-    @staticmethod
-    def get_stream_message_type(*_, **__) -> Type[DataBase]:
+    def get_stream_message_type(self, *_, **__) -> Type[DataBase]:
         return ListOfFiles
 
-    @classmethod
     def to_data_stream(
-        cls, source_message: ListOfFiles, element_type: type
+        self, source_message: ListOfFiles, element_type: type
     ) -> DataStream:
         data_stream_list = []
         for fname in source_message.files:
             data_stream_list.append(
-                cls._create_data_stream_from_file(
+                self._create_data_stream_from_file(
                     fname=fname, element_type=element_type
                 )
             )
 
         return DataStream.chain(data_stream_list).flatten()
 
-    @staticmethod
-    def get_field_number() -> int:
+    def get_field_number(self) -> int:
         return 3
 
 
@@ -257,16 +252,14 @@ class DirectoryDataStreamSourcePlugin(FilePluginBase):
 
     name = "Directory"
 
-    @staticmethod
-    def get_stream_message_type(*_, **__) -> Type[DataBase]:
+    def get_stream_message_type(self, *_, **__) -> Type[DataBase]:
         return Directory
 
-    @classmethod
     def to_data_stream(
-        cls, source_message: Directory, element_type: type
+        self, source_message: Directory, element_type: type
     ) -> DataStream:
         dirname = source_message.dirname
-        full_dirname = cls._get_resolved_source_path(dirname)
+        full_dirname = self._get_resolved_source_path(dirname)
         extension = source_message.extension or "json"
         if not dirname or not os.path.isdir(full_dirname):
             raise CaikitRuntimeException(
@@ -274,7 +267,7 @@ class DirectoryDataStreamSourcePlugin(FilePluginBase):
                 f"Invalid {extension} directory source file: {full_dirname}",
             )
         files_with_ext = list(glob(os.path.join(full_dirname, "*." + extension)))
-        to_element_type = cls._to_element_partial(element_type)
+        to_element_type = self._to_element_partial(element_type)
         # make sure at least 1 file with the given extension exists
         if len(files_with_ext) == 0:
             raise CaikitRuntimeException(
@@ -294,8 +287,7 @@ class DirectoryDataStreamSourcePlugin(FilePluginBase):
             f"Extension not supported! {extension}",
         )
 
-    @staticmethod
-    def get_field_number() -> int:
+    def get_field_number(self) -> int:
         return 4
 
 
@@ -310,9 +302,8 @@ class JsonDataStreamSourcePlugin(DataStreamSourcePlugin):
     # class-level cache required to avoid creating duplicate data model classes
     stream_source_type_cache: Dict[Type[DataBase], Type[DataBase]] = {}
 
-    @classmethod
-    def get_stream_message_type(cls, element_type: type) -> Type[DataBase]:
-        stream_message_type = cls.stream_source_type_cache.get(element_type)
+    def get_stream_message_type(self, element_type: type) -> Type[DataBase]:
+        stream_message_type = self.__class__.stream_source_type_cache.get(element_type)
         if stream_message_type:
             return stream_message_type
 
@@ -325,7 +316,7 @@ class JsonDataStreamSourcePlugin(DataStreamSourcePlugin):
             attrs={"__qualname__": f"{cls_name}.JsonData"},
             annotations={"data": List[element_type]},
         )
-        cls.stream_source_type_cache[element_type] = JsonData
+        self.__class__.stream_source_type_cache[element_type] = JsonData
         return JsonData
 
     def to_data_stream(self, source_message: Type[DataBase], *_, **__) -> DataStream:
@@ -333,8 +324,7 @@ class JsonDataStreamSourcePlugin(DataStreamSourcePlugin):
         So it _should_ contain an attribute named `data`, which is a list"""
         return DataStream.from_iterable(source_message.data)
 
-    @staticmethod
-    def get_field_number() -> int:
+    def get_field_number(self) -> int:
         return 1
 
 
@@ -354,8 +344,7 @@ class S3FilesDataStreamSourcePlugin(DataStreamSourcePlugin):
             ),
         )
 
-    @staticmethod
-    def get_field_number() -> int:
+    def get_field_number(self) -> int:
         return 5
 
 
@@ -478,7 +467,8 @@ class DataStreamSourceBase(DataStream):
             log.debug3("Returning empty data stream")
             return DataStream.from_iterable([])
 
-        # Get the correct plugin, and pass it the source field + the element type to serialize to
+        # Get the correct plugin, and pass it the source field + the element
+        # type to serialize to
         plugin = self.name_to_plugin_map[set_field]
         return plugin.to_data_stream(getattr(self, set_field), self.ELEMENT_TYPE)
 
@@ -522,8 +512,8 @@ def make_data_stream_source(
             duplicates,
         )
 
-        # Create the outer class that encapsulates the Union (oneof) of the various types of input
-        # sources
+        # Create the outer class that encapsulates the Union (oneof) of the
+        # various types of input sources
 
         # Determine the type stream message type for each source. This can
         # potentially be expensive, so we do it once
@@ -533,7 +523,8 @@ def make_data_stream_source(
         }
 
         # Build the type annotation for the data model
-        # This describes a large oneof containing all the info from each data stream source plugin
+        # This describes a large oneof containing all the info from each data
+        # stream source plugin
         annotation_list = [
             Annotated[
                 stream_message_types[plugin.name],
@@ -544,8 +535,9 @@ def make_data_stream_source(
         ]
         data_stream_type_union = Union[tuple(annotation_list)]
 
-        # Create an attribute dictionary that will expose each of the source types on this datastream class itself.
-        # E.g. if I have the `JsonData` plugin enabled, this enables:
+        # Create an attribute dictionary that will expose each of the source
+        # types on this datastream class itself. E.g. if I have the `JsonData`
+        # plugin enabled, this enables:
         # >>> make_data_stream_source(some_type).JsonData
         # to access the `JsonData` source message directly.
         type_attrs = {
