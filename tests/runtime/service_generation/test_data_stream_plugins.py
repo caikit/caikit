@@ -230,4 +230,9 @@ def test_multiple_instances(plugin_factory, reset_stream_source_types):
     class LocalFoobar:
         pass
 
-    make_data_stream_source(LocalFoobar, plugin_factory, cfg)
+    strm_src_cls = make_data_stream_source(LocalFoobar, plugin_factory, cfg)
+    assert strm_src_cls.ELEMENT_TYPE is LocalFoobar
+    assert set(strm_src_cls.get_proto_class().DESCRIPTOR.fields_by_name.keys()) == {
+        "foo",
+        "bar",
+    }
