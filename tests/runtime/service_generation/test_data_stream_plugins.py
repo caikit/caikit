@@ -51,9 +51,9 @@ def test_file_plugin(sample_json_file):
     # Sample json file has SampleTrainingType data
     element_type = sample_lib.data_model.SampleTrainingType
     source_message = File(filename=sample_json_file)
-
-    stream = FileDataStreamSourcePlugin.to_data_stream(source_message, element_type)
-
+    stream = FileDataStreamSourcePlugin({}, "").to_data_stream(
+        source_message, element_type
+    )
     validate_data_stream(stream, 2, element_type)
 
 
@@ -61,11 +61,9 @@ def test_directory_plugin(sample_json_collection):
     # Sample json collection has SampleTrainingType data
     element_type = sample_lib.data_model.SampleTrainingType
     source_message = Directory(dirname=sample_json_collection, extension="json")
-
-    stream = DirectoryDataStreamSourcePlugin.to_data_stream(
+    stream = DirectoryDataStreamSourcePlugin({}, "").to_data_stream(
         source_message, element_type
     )
-
     validate_data_stream(stream, 3, element_type)
 
 
@@ -75,11 +73,9 @@ def test_list_of_files_plugin(sample_json_file, sample_csv_file, sample_jsonl_fi
     source_message = ListOfFiles(
         files=[sample_json_file, sample_jsonl_file, sample_csv_file]
     )
-
-    stream = ListOfFilesDataStreamSourcePlugin.to_data_stream(
+    stream = ListOfFilesDataStreamSourcePlugin({}, "").to_data_stream(
         source_message, element_type
     )
-
     validate_data_stream(stream, 9, element_type)
 
 
@@ -92,7 +88,6 @@ def test_json_data_plugin():
     plugin = JsonDataStreamSourcePlugin({}, "")
     source_message_type = plugin.get_stream_message_type(element_type=element_type)
     source_messsage = source_message_type(data=data)
-
     stream = plugin.to_data_stream(
         source_message=source_messsage, element_type=element_type
     )
