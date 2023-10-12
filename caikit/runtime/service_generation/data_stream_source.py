@@ -67,7 +67,7 @@ class DataStreamSourcePlugin(FactoryConstructible):
     """
 
     def __init__(self, config: aconfig.Config, instance_name: str):
-        """Construct with the basic factor constructible interface and store the
+        """Construct with the basic factory constructible interface and store the
         args for use by the child
         """
         self._config = config
@@ -89,7 +89,9 @@ class DataStreamSourcePlugin(FactoryConstructible):
 
     @abc.abstractmethod
     def get_field_number(self) -> int:
-        """Allow plugins to return a static field number"""
+        """Each plugin must define its field number which may be informed by
+        self._config
+        """
 
     ## Public Methods ##
 
@@ -248,7 +250,7 @@ class ListOfFilesDataStreamSourcePlugin(FilePluginBase):
 
 
 class DirectoryDataStreamSourcePlugin(FilePluginBase):
-    """Plugin for a list of files"""
+    """Plugin for a directory holding files"""
 
     name = "Directory"
 
@@ -348,11 +350,11 @@ class S3FilesDataStreamSourcePlugin(DataStreamSourcePlugin):
         return 5
 
 
-## DataStreamSourceRegistry ####################################################
+## DataStreamPluginFactory #####################################################
 
 
 class DataStreamPluginFactory(ImportableFactory):
-    """The DataStreamSourceRegistry is responsible for holding a registry of
+    """The DataStreamPluginFactory is responsible for holding a registry of
     plugin instances that will be used to create and manage data stream sources
     """
 
@@ -373,16 +375,16 @@ class DataStreamPluginFactory(ImportableFactory):
 
             # Make sure field numbers are unique
             field_numbers = [plugin.get_field_number() for plugin in self._plugins]
-            duplicates_field_numbers = [
+            duplicate_field_number_names = [
                 plugin.name
                 for plugin in self._plugins
                 if field_numbers.count(plugin.get_field_number()) > 1
             ]
             error.value_check(
                 "<COR69189361E>",
-                not duplicates_field_numbers,
+                not duplicate_field_number_names,
                 "Duplicate plugin field numbers found for plugins: {}",
-                duplicates_field_numbers,
+                duplicate_field_number_names,
             )
         return self._plugins
 
