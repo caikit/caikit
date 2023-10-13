@@ -710,7 +710,17 @@ class DataBase(metaclass=_DataBaseMetaClass):
                         oneof = cls._fields_to_oneof[field]
                         contained_class = cls.get_class_for_proto(proto_attr)
                         contained_obj = contained_class.from_proto(proto_attr)
-                        kwargs[oneof] = getattr(contained_obj, "values")
+                        if hasattr(contained_obj, "values") and (
+                            contained_class.__module__.startswith(
+                                "caikit.core.data_model"
+                            )
+                            or contained_class.__module__.startswith(
+                                "caikit.interfaces.common.data_model"
+                            )
+                        ):
+                            kwargs[oneof] = getattr(contained_obj, "values")
+                        else:
+                            kwargs[oneof] = contained_obj
                     else:
                         contained_class = cls.get_class_for_proto(proto_attr)
                         contained_obj = contained_class.from_proto(proto_attr)

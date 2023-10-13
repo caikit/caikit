@@ -1250,6 +1250,37 @@ def test_dataobject_union_repeated():
     assert Foo.from_proto(proto=proto_repr_bar2).to_proto() == proto_repr_bar2
 
 
+def test_dataobject_complex_type_with_sequence():
+    """Ensure that dataobjects with names ending in Sequence are handled correctly"""
+
+    @dataobject
+    class FooSequence(DataObjectBase):
+        foo: List[int]
+
+    @dataobject
+    class BarSequence(DataObjectBase):
+        values: List[str]
+
+    @dataobject
+    class Baz(DataObjectBase):
+        """Union of sequences"""
+
+        series: Union[
+            Annotated[FooSequence, OneofField("ints"), FieldNumber(10)],
+            Annotated[BarSequence, OneofField("strs"), FieldNumber(20)],
+        ]
+
+    baz = Baz(series=FooSequence([1, 2, 3]))
+    assert baz.which_oneof("series") == "ints"
+    baz_foo_proto = baz.to_proto()
+    assert Baz.from_proto(baz_foo_proto).to_proto() == baz_foo_proto
+
+    baz = Baz(series=BarSequence(["a", "b", "c"]))
+    assert baz.which_oneof("series") == "strs"
+    baz_bar_proto = baz.to_proto()
+    assert Baz.from_proto(baz_bar_proto).to_proto() == baz_bar_proto
+
+
 def test_dataobject_function_inheritance():
     """Make sure inheritance works to override functionality without changing
     the schema of the parent
