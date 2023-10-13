@@ -20,6 +20,7 @@ collection of caikit.core derived libraries
 from typing import Dict, List, Type
 
 # First Party
+from aconfig import aconfig
 import alog
 
 # Local
@@ -36,10 +37,29 @@ TRAIN_FUNCTION_NAME = "train"
 ## Utilities ###################################################################
 
 
-def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
+def create_inference_rpcs(
+    modules: List[Type[ModuleBase]], caikit_config: aconfig.Config = None
+) -> List[CaikitRPCBase]:
     """Handles the logic to create all the RPCs for inference"""
     rpcs = []
-    task_groups = _group_modules_by_task(modules)
+
+    included_task_types = (
+        caikit_config
+        and caikit_config.runtime.service_generation
+        and caikit_config.runtime.service_generation.task_types
+        and caikit_config.runtime.service_generation.task_types.included
+    ) or []
+
+    excluded_task_types = (
+        caikit_config
+        and caikit_config.runtime.service_generation
+        and caikit_config.runtime.service_generation.task_types
+        and caikit_config.runtime.service_generation.task_types.excluded
+    ) or []
+
+    task_groups = _group_modules_by_task(
+        modules, included_task_types, excluded_task_types
+    )
 
     # Create the RPC for each task
     for task, task_methods in task_groups.items():
@@ -112,10 +132,20 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
 
 def _group_modules_by_task(
     modules: List[Type[ModuleBase]],
+    included_tasks: List[Type[TaskBase]],
+    excluded_tasks: List[Type[TaskBase]],
 ) -> Dict[Type[TaskBase], List[CaikitMethodSignature]]:
     task_groups = {}
     for ck_module in modules:
         for task_class in ck_module.tasks:
+            if (
+                included_tasks
+                and task_class.__name__ not in included_tasks
+                or excluded_tasks
+                and task_class.__name__ in excluded_tasks
+            ):
+                continue
+
             ck_module_task_name = task_class.__name__
             if ck_module_task_name is not None:
                 for (

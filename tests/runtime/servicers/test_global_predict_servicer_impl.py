@@ -80,7 +80,7 @@ def test_predict_raises_with_grpc_errors(
 ):
     with pytest.raises(CaikitRuntimeException) as context:
         # SampleModules will raise a RuntimeError if the throw flag is set
-        predict_class = get_inference_request(SampleModule.TASK_CLASS)
+        predict_class = get_inference_request(SampleTask)
         request = predict_class(
             sample_input=HAPPY_PATH_INPUT_DM,
             throw=True,

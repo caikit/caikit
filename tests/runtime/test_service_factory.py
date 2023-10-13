@@ -107,16 +107,6 @@ MODULE_LIST = [
 
 
 ### Test ServicePackageFactory._get_and_filter_modules function
-def test_get_and_filter_modules_respects_excluded_task_type():
-    with temp_config(
-        {
-            "runtime": {
-                "service_generation": {"task_types": {"excluded": ["SampleTask"]}}
-            }
-        }
-    ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert "SampleModule" not in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_excluded_modules():
@@ -136,41 +126,6 @@ def test_get_and_filter_modules_respects_excluded_modules():
         assert "OtherModule" in str(clean_modules)
 
 
-def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type():
-    assert "InnerModule" in str(MODULE_LIST)
-    with temp_config(
-        {
-            "runtime": {
-                "service_generation": {
-                    "module_guids": {"excluded": [ListModule.MODULE_ID]},
-                    "task_types": {"excluded": ["OtherTask"]},
-                }
-            }
-        }
-    ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert "ListModule" not in str(clean_modules)
-        assert "OtherModule" not in str(clean_modules)
-        assert "SampleModule" in str(clean_modules)
-
-
-def test_get_and_filter_modules_respects_included_modules_and_included_task_types():
-    with temp_config(
-        {
-            "runtime": {
-                "service_generation": {
-                    "module_guids": {"included": [ListModule.MODULE_ID]},
-                    "task_types": {"included": ["OtherTask"]},
-                }
-            }
-        }
-    ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert len(clean_modules) == 2
-        assert "OtherModule" in str(clean_modules)
-        assert "ListModule" in str(clean_modules)
-
-
 def test_get_and_filter_modules_respects_included_modules():
     with temp_config(
         {
@@ -185,39 +140,6 @@ def test_get_and_filter_modules_respects_included_modules():
         assert len(clean_modules) == 1
         assert "ListModule" in str(clean_modules)
         assert "SampleModule" not in str(clean_modules)
-
-
-def test_get_and_filter_modules_respects_included_task_types():
-    with temp_config(
-        {
-            "runtime": {
-                "service_generation": {
-                    "task_types": {"included": ["SampleTask"]},
-                }
-            }
-        }
-    ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert "SampleModule" in str(clean_modules)
-        assert "OtherModule" not in str(clean_modules)
-        # InnerModule has no task
-        assert "InnerModule" not in str(clean_modules)
-
-
-def test_get_and_filter_modules_respects_included_task_types_and_excluded_modules():
-    with temp_config(
-        {
-            "runtime": {
-                "service_generation": {
-                    "task_types": {"included": ["SampleTask"]},
-                    "module_guids": {"excluded": [ListModule.MODULE_ID]},
-                }
-            }
-        }
-    ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(cfg, "sample_lib")
-        assert "SampleModule" in str(clean_modules)
-        assert "ListModule" not in str(clean_modules)
 
 
 def test_override_domain(clean_data_model):

@@ -138,7 +138,9 @@ class ServicePackageFactory:
         )
 
         if service_type == cls.ServiceType.INFERENCE:
-            rpc_list = service_generation.create_inference_rpcs(clean_modules)
+            rpc_list = service_generation.create_inference_rpcs(
+                clean_modules, caikit_config
+            )
             service_name = f"{ai_domain_name}Service"
         else:  # service_type == cls.ServiceType.TRAINING
             rpc_list = service_generation.create_training_rpcs(clean_modules)
@@ -196,11 +198,6 @@ class ServicePackageFactory:
         log.debug("Found all modules %s for library %s.", modules, lib)
 
         # Check config for any explicit inclusions
-        included_task_types = (
-            caikit_config.runtime.service_generation
-            and caikit_config.runtime.service_generation.task_types
-            and caikit_config.runtime.service_generation.task_types.included
-        )
         included_modules = (
             caikit_config.runtime.service_generation
             and caikit_config.runtime.service_generation.module_guids
@@ -208,11 +205,6 @@ class ServicePackageFactory:
         )
 
         # Check config for any exclusions
-        excluded_task_types = (
-            caikit_config.runtime.service_generation
-            and caikit_config.runtime.service_generation.task_types
-            and caikit_config.runtime.service_generation.task_types.excluded
-        )
         excluded_modules = (
             caikit_config.runtime.service_generation
             and caikit_config.runtime.service_generation.module_guids
@@ -228,14 +220,6 @@ class ServicePackageFactory:
                     ck_module,
                 )
                 continue
-            task = next(iter(ck_module.tasks))
-            if excluded_task_types and task.__name__ in excluded_task_types:
-                log.debug(
-                    "Skipping module %s with excluded task %s",
-                    ck_module,
-                    task.__name__,
-                )
-                continue
 
             if excluded_modules and ck_module.MODULE_ID in excluded_modules:
                 log.debug(
@@ -246,23 +230,18 @@ class ServicePackageFactory:
                 continue
 
             # no inclusions specified means include everything
-            if (included_task_types is None or included_task_types == []) and (
-                included_modules is None or included_modules == []
-            ):
+            if included_modules is None or included_modules == []:
                 clean_modules.add(ck_module)
 
             # if inclusion is specified, use that
             else:
-                if (included_modules and ck_module.MODULE_ID in included_modules) or (
-                    included_task_types and task.__name__ in included_task_types
-                ):
+                if included_modules and ck_module.MODULE_ID in included_modules:
                     clean_modules.add(ck_module)
 
         log.debug(
-            "Filtered list of modules %s after excluding task types: %s and modules ids: %s. \
+            "Filtered list of modules %s after excluding modules ids: %s. \
                 Exclusions are defined in config",
             clean_modules,
-            excluded_task_types,
             excluded_modules,
         )
         return clean_modules
