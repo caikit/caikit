@@ -468,7 +468,7 @@ class DataStreamSourceBase(DataStream):
                 error.value_check(
                     "<RUN80420785E>",
                     field_name in self.name_to_plugin_map,
-                    "no data stream plugin found for field: {}",
+                    "No data stream plugin found for field: {}",
                     field_name,
                 )
                 set_field = field_name

@@ -12,29 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This file defines the abstraction for handling the output of training a model"""
+# Standard
+from typing import Optional
 import abc
 import os
 import typing
-from typing import Type, Union, Optional, List
 
-import aconfig
-
-from caikit import get_config
+# First Party
 from caikit.core import ModuleBase
-from caikit.core.data_model import DataBase
-from caikit.core.toolkit.factory import FactoryConstructible, ImportableFactory
 from caikit.interfaces.common.data_model.stream_sources import File
 
-
-
-
 T = typing.TypeVar("T")
+
 
 class ModelSaver(typing.Generic[T]):
     """Generic-typed, abstract base for model saver"""
 
     @abc.abstractmethod
-    def save_model(self, model: ModuleBase, model_name: str, training_id: Optional[str]):
+    def save_model(
+        self, model: ModuleBase, model_name: str, training_id: Optional[str]
+    ):
         """Save the loaded model, based on this target's configuration.
 
         Args:
@@ -64,7 +61,9 @@ class LocalFileModelSaver(ModelSaver[File]):
         self.target = target
         self.save_with_id = save_with_id
 
-    def save_model(self, model: ModuleBase, model_name: str, training_id: Optional[str]):
+    def save_model(
+        self, model: ModuleBase, model_name: str, training_id: Optional[str]
+    ):
         base_path = self.target.filename
         if self.save_with_id:
             base_path = os.path.join(base_path, training_id)
@@ -72,14 +71,4 @@ class LocalFileModelSaver(ModelSaver[File]):
         model.save(output_path=os.path.join(base_path, model_name))
 
 
-
-
-
-
-
-
-
-
 ########################################################################################################################
-
-
