@@ -57,6 +57,13 @@ def clear_messages_from_servicer(servicer):
         servicer._training_service.messages = messages
 
 
+# We need to add reset_model_manager to make sure all trainers use the config that we provide.
+# Without this, it didn't actually work since the get_trainer function always fetches a trainer
+# that was initialized before this config comes into play. Hence we’re never actually checking
+# a training in a sub_process. I verified this by running a failing test and seeing that we always
+# hit destroyable_thread.py in the stacktrace instead of destroyable_process in both scenarios.
+
+
 @pytest.fixture(autouse=True, params=[True, False])
 def set_train_location(request, reset_model_manager):
     """This fixture ensures that all tests in this file will be run with both
