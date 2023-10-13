@@ -178,6 +178,7 @@ def get_col_list(df_in, col):
 
 
 @pytest.mark.filterwarnings(
+    "ignore:'PYARROW_IGNORE_TIMEZONE' environment variable was not set.*",
     "ignore:`to_list` loads all data into the driver's memory.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
     "ignore:`to_numpy` loads all data into the driver's memory.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
 )
@@ -222,6 +223,7 @@ def test_timeseries_spark(df_mts_data):
 
 
 @pytest.mark.filterwarnings(
+    "ignore:'PYARROW_IGNORE_TIMEZONE' environment variable was not set.*",
     "ignore:`to_list` loads all data into the driver's memory.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
     "ignore:`to_numpy` loads all data into the driver's memory.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
     "ignore:If `index_col` is not specified for `to_spark`, the existing index is lost when converting to Spark DataFrame.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
