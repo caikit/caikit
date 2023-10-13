@@ -19,7 +19,7 @@ import os
 import typing
 
 # First Party
-from caikit.core import ModuleBase
+from ..modules import ModuleBase
 from caikit.interfaces.common.data_model.stream_sources import File
 
 T = typing.TypeVar("T")
@@ -46,7 +46,6 @@ class ModelSaver(typing.Generic[T]):
         Raises:
             Any appropriate exception if saving the model fails
         """
-        pass
 
 
 # Extend OutputTarget with a concrete message type
@@ -70,5 +69,3 @@ class LocalFileModelSaver(ModelSaver[File]):
 
         model.save(output_path=os.path.join(base_path, model_name))
 
-
-########################################################################################################################

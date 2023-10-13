@@ -62,12 +62,10 @@ class ModelSaverPluginBase(FactoryConstructible):
     @abc.abstractmethod
     def get_field_number(self) -> int:
         """Allow plugins to return a static field number"""
-        pass
 
     @abc.abstractmethod
     def make_model_saver(self, target: DataBase) -> ModelSaver:
         """Given an output target, build a model saver"""
-        pass
 
     ## Public Methods ##
 
@@ -195,11 +193,15 @@ class OutputTargetOneOf:
 
 ## make_output_target_message #####################################################
 
+# TODO: Ask Scott or Dean about correct multiple inheritance type hinting
+#OutputTargetAndDataBase = typing.TypeVar("OutputTargetAndDataBase", bound=Union[DataBase, OutputTargetOneOf])
+OutputTargetAndDataBase = typing.TypeVar("OutputTargetAndDataBase", DataBase, OutputTargetOneOf)
+
 
 def make_output_target_message(
     plugin_factory: ModelSaverPluginFactory = PluginFactory,
     plugins_config: Optional[aconfig.Config] = None,
-) -> Type[DataBase]:
+) -> Type[OutputTargetAndDataBase]:
     """Dynamically create the output target message"""
 
     # Get the required plugins
