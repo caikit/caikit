@@ -66,7 +66,7 @@ is known.
 """
 
 # Standard
-from typing import TYPE_CHECKING, Set
+from typing import Set
 import abc
 import functools
 
@@ -76,10 +76,6 @@ import alog
 # Local
 from ..exceptions import error_handler
 from .config import ModuleConfig
-
-if TYPE_CHECKING:
-    # Local
-    from ..task import TaskBase
 
 log = alog.use_channel("METADATA_INJECT")
 error = error_handler.get(log)
@@ -158,7 +154,7 @@ class _ModuleBaseMeta(abc.ABCMeta):
         return super().__new__(mcs, name, bases, attrs)
 
     @property
-    def tasks(cls) -> Set["TaskBase"]:
+    def tasks(cls) -> Set["caikit.core.TaskBase"]:
         return set(cls._TASK_CLASSES)
 
     def __setattr__(cls, name, val):

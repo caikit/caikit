@@ -72,7 +72,7 @@ def module(
             An ML task class that this module is an implementation for
             Not required if based on another caikit module using `base_module`,
             or if multiple tasks are specified using `tasks`.
-        tasks: Optional[Set[Type[TaskBase]]
+        tasks: Optional[List[Type[TaskBase]]
             List of ML task classes that this module implements.
         backend_type: backend_type
             Associated backend type for the module.
@@ -101,6 +101,13 @@ def module(
         error(
             "<COR34125316E>",
             ValueError("Specify either task or tasks parameter, not both."),
+        )
+    if tasks:
+        error.type_check(
+            "<COR34125317E>",
+            list,
+            allow_none=True,
+            tasks=tasks,
         )
 
     if any([id is None, version is None or name is None]):

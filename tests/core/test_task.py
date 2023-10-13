@@ -9,13 +9,7 @@ import pytest
 # Local
 from caikit.core import TaskBase, task
 from sample_lib import SampleModule
-from sample_lib.data_model.sample import (
-    FileDataType,
-    OtherOutputType,
-    SampleInputType,
-    SampleOutputType,
-    SampleTask,
-)
+from sample_lib.data_model.sample import SampleInputType, SampleOutputType, SampleTask
 from sample_lib.modules.multi_task import FirstTask, MultiTaskModule, SecondTask
 import caikit.core
 
@@ -148,7 +142,8 @@ def test_multiple_tasks_inherited_from_parent_module():
     class MultiTaskChildModule(MultiTaskModule):
         pass
 
-    assert FirstTask, SecondTask in MultiTaskChildModule.tasks
+    assert FirstTask in MultiTaskChildModule.tasks
+    assert SecondTask in MultiTaskChildModule.tasks
 
 
 def test_tasks_added_from_parent_and_child_module():
@@ -174,6 +169,22 @@ def test_task_is_not_required_for_modules():
         pass
 
     assert Stuff.tasks == set()
+
+
+def test_raises_if_tasks_not_list():
+    with pytest.raises(
+        TypeError,
+        match=".*tasks.*list.*",
+    ):
+
+        @caikit.core.modules.module(
+            id=str(uuid.uuid4()),
+            name="BadTypeModule",
+            version="0.0.1",
+            tasks=set([FirstTask, SecondTask]),
+        )
+        class Stuff(caikit.core.ModuleBase):
+            pass
 
 
 def test_task_and_tasks_are_mutually_exclusive():
@@ -377,6 +388,26 @@ def test_task_decorator_adds_taskmethods_to_modules():
     )
 
 
+def test_inference_signatures_returned_for_multiple_tasks():
+    first_task_signatures = MultiTaskModule.get_inference_signatures(FirstTask)
+
+    assert first_task_signatures is not None
+    assert len(first_task_signatures) == 1
+    (in_stream, out_stream, signature) = first_task_signatures[0]
+    assert in_stream is False
+    assert out_stream is False
+    assert signature.method_name == "run_some_task"
+
+    second_task_signatures = MultiTaskModule.get_inference_signatures(SecondTask)
+
+    assert second_task_signatures is not None
+    assert len(second_task_signatures) == 1
+    (in_stream, out_stream, signature) = second_task_signatures[0]
+    assert in_stream is False
+    assert out_stream is False
+    assert signature.method_name == "run_other_task"
+
+
 def test_task_decorator_datastream_throws_wrong_type():
     @task(
         unary_parameters={"sample_input": SampleInputType},
@@ -445,21 +476,29 @@ def test_task_decorator_datastream_params():
         ) -> caikit.core.data_model.DataStream[SampleOutputType]:
             pass
 
+    signatures = DataStreamStreamingModule.get_inference_signatures(
+        DataStreamStreamingTask
+    )
+
     stream_stream_method_signature = DataStreamStreamingModule.get_inference_signature(
         input_streaming=False, output_streaming=False
     )
+    assert (False, False, stream_stream_method_signature) in signatures
 
     out_stream_method_signature = DataStreamStreamingModule.get_inference_signature(
         input_streaming=False, output_streaming=True
     )
+    assert (False, True, out_stream_method_signature) in signatures
 
     in_stream_method_signature = DataStreamStreamingModule.get_inference_signature(
         input_streaming=True, output_streaming=False
     )
+    assert (True, False, in_stream_method_signature) in signatures
 
     bidi_stream_method_signature = DataStreamStreamingModule.get_inference_signature(
         input_streaming=True, output_streaming=True
     )
+    assert (True, True, bidi_stream_method_signature) in signatures
 
     assert stream_stream_method_signature.method_name == "run"
     assert stream_stream_method_signature.parameters == {

@@ -122,7 +122,7 @@ def _group_modules_by_task(
                     input_streaming,
                     output_streaming,
                     signature,
-                ) in ck_module._TASK_INFERENCE_SIGNATURES[task_class]:
+                ) in ck_module.get_inference_signatures(task_class):
                     task_groups.setdefault(task_class, {}).setdefault(
                         (input_streaming, output_streaming), []
                     ).append(signature)
