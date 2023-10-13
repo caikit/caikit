@@ -122,13 +122,15 @@ def test_task_validator_raises_on_wrong_streaming_type():
 
 
 def test_task_is_set_on_module_classes():
-    assert hasattr(SampleModule, "TASK_CLASS")
-    assert SampleModule.TASK_CLASS == SampleTask
+    assert hasattr(SampleModule, "tasks")
+    assert len(SampleModule.tasks) == 1
+    assert SampleTask in SampleModule.tasks
 
 
 def test_multiple_tasks_are_set_on_module_class():
-    assert hasattr(MultiTaskModule, "TASK_CLASSES")
-    assert FirstTask, SecondTask in MultiTaskModule.TASK_CLASSES
+    assert hasattr(MultiTaskModule, "tasks")
+    assert FirstTask in MultiTaskModule.tasks
+    assert SecondTask in MultiTaskModule.tasks
 
 
 def test_task_can_be_inferred_from_parent_module():
@@ -136,7 +138,7 @@ def test_task_can_be_inferred_from_parent_module():
     class Stuff(SampleModule):
         pass
 
-    assert Stuff.TASK_CLASS == SampleModule.TASK_CLASS
+    assert Stuff.tasks == SampleModule.tasks
 
 
 def test_multiple_tasks_inherited_from_parent_module():
@@ -146,7 +148,7 @@ def test_multiple_tasks_inherited_from_parent_module():
     class MultiTaskChildModule(MultiTaskModule):
         pass
 
-    assert FirstTask, SecondTask in MultiTaskChildModule.TASK_CLASSES
+    assert FirstTask, SecondTask in MultiTaskChildModule.tasks
 
 
 def test_tasks_added_from_parent_and_child_module():
@@ -163,7 +165,7 @@ def test_tasks_added_from_parent_and_child_module():
             pass
 
     for t in [FirstTask, SecondTask, ThirdTask]:
-        assert t in MultiTaskChildModule.TASK_CLASSES
+        assert t in MultiTaskChildModule.tasks
 
 
 def test_task_is_not_required_for_modules():
@@ -171,7 +173,7 @@ def test_task_is_not_required_for_modules():
     class Stuff(caikit.core.ModuleBase):
         pass
 
-    assert Stuff.TASK_CLASS is None
+    assert Stuff.tasks == set()
 
 
 def test_task_and_tasks_are_mutually_exclusive():

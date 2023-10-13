@@ -153,7 +153,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         request RPC function
         """
         return snake_to_upper_camel(
-            f"{module_class.TASK_CLASS.__name__}_{module_class.__name__}_Train"
+            f"{next(iter(module_class.tasks)).__name__}_{module_class.__name__}_Train"
         )
 
     @staticmethod

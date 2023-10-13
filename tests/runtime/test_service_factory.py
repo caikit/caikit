@@ -32,6 +32,7 @@ from caikit.runtime.service_factory import (
 )
 from sample_lib import SampleModule
 from sample_lib.data_model import SampleInputType, SampleOutputType
+from sample_lib.data_model.sample import SampleTask
 from sample_lib.modules import ListModule, OtherModule
 from tests.conftest import temp_config
 from tests.core.helpers import MockBackend
@@ -364,7 +365,7 @@ def test_backend_modules_included_in_service_generation(
     inference_service = ServicePackageFactory.get_service_package(
         ServicePackageFactory.ServiceType.INFERENCE
     )
-    predict_class = get_inference_request(SampleModule.TASK_CLASS)
+    predict_class = get_inference_request(SampleTask)
     sample_task_request = predict_class().to_proto()
 
     # Check that the new parameter defined in this backend module exists in the service
@@ -380,15 +381,13 @@ def test_get_inference_request_throws_wrong_type(runtime_grpc_server):
 def test_get_inference_request(runtime_grpc_server):
     """Test that we are able to get inference request DM with either module or task class"""
     assert get_inference_request(SampleModule).__name__ == "SampleTaskRequest"
-    assert (
-        get_inference_request(SampleModule.TASK_CLASS).__name__ == "SampleTaskRequest"
-    )
+    assert get_inference_request(SampleTask).__name__ == "SampleTaskRequest"
     assert (
         get_inference_request(SampleModule, output_streaming=True).__name__
         == "ServerStreamingSampleTaskRequest"
     )
     assert (
-        get_inference_request(SampleModule.TASK_CLASS, output_streaming=True).__name__
+        get_inference_request(SampleTask, output_streaming=True).__name__
         == "ServerStreamingSampleTaskRequest"
     )
     assert (
@@ -399,7 +398,7 @@ def test_get_inference_request(runtime_grpc_server):
     )
     assert (
         get_inference_request(
-            SampleModule.TASK_CLASS, input_streaming=True, output_streaming=True
+            SampleTask, input_streaming=True, output_streaming=True
         ).__name__
         == "BidiStreamingSampleTaskRequest"
     )

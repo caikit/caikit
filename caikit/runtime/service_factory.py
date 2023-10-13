@@ -222,21 +222,18 @@ class ServicePackageFactory:
         for ck_module in modules:
             # Only create for modules from defined included and exclusion list
 
-            if not ck_module.TASK_CLASS:
+            if not ck_module.tasks:
                 log.debug(
-                    "Skipping module %s with no task",
+                    "Skipping module %s with no tasks",
                     ck_module,
                 )
                 continue
-
-            if (
-                excluded_task_types
-                and ck_module.TASK_CLASS.__name__ in excluded_task_types
-            ):
+            task = next(iter(ck_module.tasks))
+            if excluded_task_types and task.__name__ in excluded_task_types:
                 log.debug(
                     "Skipping module %s with excluded task %s",
                     ck_module,
-                    ck_module.TASK_CLASS.__name__,
+                    task.__name__,
                 )
                 continue
 
@@ -257,8 +254,7 @@ class ServicePackageFactory:
             # if inclusion is specified, use that
             else:
                 if (included_modules and ck_module.MODULE_ID in included_modules) or (
-                    included_task_types
-                    and ck_module.TASK_CLASS.__name__ in included_task_types
+                    included_task_types and task.__name__ in included_task_types
                 ):
                     clean_modules.add(ck_module)
 
@@ -285,7 +281,7 @@ def get_inference_request(
         TaskBase,
     )
     task_class = (
-        task_or_module_class.TASK_CLASS
+        next(iter(task_or_module_class.tasks))
         if issubclass(task_or_module_class, ModuleBase)
         else task_or_module_class
     )
@@ -311,9 +307,8 @@ def get_train_request(module_class: Type[ModuleBase]) -> Type[DataBase]:
         module_class,
         ModuleBase,
     )
-    request_class_name = (
-        f"{module_class.TASK_CLASS.__name__}{module_class.__name__}TrainRequest"
-    )
+    first_task = next(iter(module_class.tasks))
+    request_class_name = f"{first_task.__name__}{module_class.__name__}TrainRequest"
     log.debug("Request class name %s for module %s.", request_class_name, module_class)
     return DataBase.get_class_for_name(request_class_name)
 
@@ -325,8 +320,8 @@ def get_train_params(module_class: Type[ModuleBase]) -> Type[DataBase]:
         module_class,
         ModuleBase,
     )
-    request_class_name = (
-        f"{module_class.TASK_CLASS.__name__}{module_class.__name__}TrainParameters"
-    )
+    first_task = next(iter(module_class.tasks))
+
+    request_class_name = f"{first_task.__name__}{module_class.__name__}TrainParameters"
     log.debug("Request class name %s for module %s.", request_class_name, module_class)
     return DataBase.get_class_for_name(request_class_name)

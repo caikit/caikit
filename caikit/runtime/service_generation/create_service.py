@@ -70,8 +70,8 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
     rpcs = []
 
     for ck_module in modules:
-        if not ck_module.TASK_CLASS:
-            log.debug("Skipping module %s with no task", ck_module)
+        if not ck_module.tasks:
+            log.debug("Skipping module %s with no tasks", ck_module)
             continue
 
         # If this train function has not been changed from the base, skip it as
@@ -115,7 +115,7 @@ def _group_modules_by_task(
 ) -> Dict[Type[TaskBase], List[CaikitMethodSignature]]:
     task_groups = {}
     for ck_module in modules:
-        for task_class in ck_module.TASK_CLASSES:
+        for task_class in ck_module.tasks:
             ck_module_task_name = task_class.__name__
             if ck_module_task_name is not None:
                 for (

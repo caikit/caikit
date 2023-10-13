@@ -350,7 +350,7 @@ class GlobalPredictServicer:
         """Raise if the model is not supported for the task"""
         rpc_set: Set[TaskPredictRPC] = set(self._inference_service.caikit_rpcs.values())
         module_rpc: TaskPredictRPC = next(
-            (rpc for rpc in rpc_set if model.TASK_CLASS == rpc.task),
+            (rpc for rpc in rpc_set if rpc.task in model.__class__.tasks),
             None,
         )
 

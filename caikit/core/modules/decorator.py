@@ -72,7 +72,7 @@ def module(
             An ML task class that this module is an implementation for
             Not required if based on another caikit module using `base_module`,
             or if multiple tasks are specified using `tasks`.
-        tasks: Optional[List[Type[TaskBase]]
+        tasks: Optional[Set[Type[TaskBase]]
             List of ML task classes that this module implements.
         backend_type: backend_type
             Associated backend type for the module.
@@ -147,7 +147,7 @@ def module(
         id = base_module_class.MODULE_ID
         version = base_module_class.MODULE_VERSION
         name = base_module_class.MODULE_NAME
-        task = base_module_class.TASK_CLASS
+        tasks = base_module_class._TASK_CLASSES
         backend_module_impl = True
 
     if task is not None:
@@ -181,8 +181,7 @@ def module(
         cls_.MODULE_CLASS = classname
         cls_.PRODUCER_ID = ProducerId(cls_.MODULE_NAME, cls_.MODULE_VERSION)
 
-        cls_.TASK_CLASS = task
-        cls_.TASK_CLASSES = tasks
+        cls_._TASK_CLASSES = tasks
 
         # Parse the `train` and `run` signatures
         cls_.RUN_SIGNATURE = CaikitMethodSignature(cls_, "run")
@@ -190,7 +189,7 @@ def module(
         cls_._TASK_INFERENCE_SIGNATURES = {}
 
         # If the module has tasks, validate them:
-        for t in cls_.TASK_CLASSES:
+        for t in cls_._TASK_CLASSES:
             if not t.has_inference_method_decorators(module_class=cls_):
                 # Hackity hack hack - make sure at least one flavor is supported
                 validated = False
@@ -217,16 +216,15 @@ def module(
             t.deferred_method_decoration(cls_)
 
         # Check to see if a super-class has any tasks.
-        # These will have been validated by the superclass decorator alreayd.
+        # These will have been validated by the superclass decorator already.
         tasks_in_hierarchy = []
 
         for class_ in cls_.mro():
-            if hasattr(class_, "TASK_CLASSES"):
-                tasks_in_hierarchy.extend(class_.TASK_CLASSES)
+            if hasattr(class_, "_TASK_CLASSES"):
+                tasks_in_hierarchy.extend(class_._TASK_CLASSES)
 
         if tasks_in_hierarchy:
-            cls_.TASK_CLASS = tasks_in_hierarchy.pop()
-            cls_.TASK_CLASSES += tasks_in_hierarchy + tasks
+            cls_._TASK_CLASSES += tasks_in_hierarchy
 
         # If no backend support described in the class, add current backend
         # as the only backend that can load models trained by this module
