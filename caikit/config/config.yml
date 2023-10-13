@@ -195,6 +195,12 @@ runtime:
         output_dir: training_output
         save_with_id: true
 
+        model_saver_plugins:
+            local:
+                type: Local
+                config:
+                    save_with_id: true # Could be top level for all model saver plugins
+
 inference_plugin:
     model_mesh:
         # Model Mesh specific versions

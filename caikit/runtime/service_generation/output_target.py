@@ -13,29 +13,35 @@
 # limitations under the License.
 """This file builds the data model for the `output_target` field, which contains
  all the output target types for any plugged-in model savers"""
+
+# Standard
+from typing import List, Optional, Type, Union
 import abc
 import typing
-from typing import Type, Optional, List
 
+# First Party
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber, OneofField
 import aconfig
 import alog
 
+# Local
 from caikit import get_config
-from caikit.core.exceptions import error_handler
-
-from caikit.core.model_management import ModelSaver, LocalFileModelSaver
 from caikit.core.data_model import DataBase
+from caikit.core.data_model.dataobject import make_dataobject
+from caikit.core.exceptions import error_handler
+from caikit.core.model_management import LocalFileModelSaver, ModelSaver
 from caikit.core.toolkit.factory import FactoryConstructible, ImportableFactory
 from caikit.interfaces.common.data_model.stream_sources import File
 
-log = alog.use_channel("DSTRM-SRC")
+log = alog.use_channel("MDSV-PLUG")
 error = error_handler.get(log)
 
 
 ## Plugin Bases ################################################################
 
+
 class ModelSaverPluginBase(FactoryConstructible):
-    """An OutputTargetPlugin is a pluggable source that defines the shape of
+    """An ModelSaverPlugin is a pluggable source that defines the shape of
     the data object that defines an output location, as well as the code for
     saving a trained model to that location.
     """
@@ -47,13 +53,11 @@ class ModelSaverPluginBase(FactoryConstructible):
         self._config = config
         self._instance_name = instance_name
 
-
     ## Abstract Interface ##
 
     @abc.abstractmethod
     def get_model_saver_class(self) -> Type[ModelSaver]:
-        """Return the type of model saver built by this plugin
-        """
+        """Return the type of model saver built by this plugin"""
 
     @abc.abstractmethod
     def get_field_number(self) -> int:
@@ -61,10 +65,9 @@ class ModelSaverPluginBase(FactoryConstructible):
         pass
 
     @abc.abstractmethod
-    def make_model_saver(self, target: Type[DataBase]) -> ModelSaver:
+    def make_model_saver(self, target: DataBase) -> ModelSaver:
         """Given an output target, build a model saver"""
         pass
-
 
     ## Public Methods ##
 
@@ -82,19 +85,19 @@ class ModelSaverPluginBase(FactoryConstructible):
         return typing.get_args(output_target_base)[0]
 
 
-
-
-
 ## Target Plugins ##############################################################
 
 
 class LocalModelSaverPlugin(ModelSaverPluginBase):
+    """Plugin for a local model saver"""
+
+    name = "Local"
 
     def get_model_saver_class(self) -> Type[ModelSaver]:
         return LocalFileModelSaver
 
-    def make_model_saver(self, target: Type[DataBase]) -> ModelSaver:
-        error.type_check("<COR13362169E>", File, target=target)
+    def make_model_saver(self, target: DataBase) -> ModelSaver:
+        error.type_check("<RUN37386095E>", File, target=target)
         target: File
         save_with_id = self._config.get("save_with_id", None)
         return LocalFileModelSaver(target=target, save_with_id=save_with_id)
@@ -103,12 +106,12 @@ class LocalModelSaverPlugin(ModelSaverPluginBase):
         return 1
 
 
-## OutputTargetRegistry ####################################################
+## ModelSaverPluginFactory ####################################################
 
 
 class ModelSaverPluginFactory(ImportableFactory):
-    """The DataStreamSourceRegistry is responsible for holding a registry of
-    plugin instances that will be used to create and manage data stream sources
+    """The ModelSaverPluginFactory is responsible for holding a registry of
+    plugin instances that will be used to create and manage model savers
     """
 
     def __init__(self, *args, **kwargs):
@@ -118,12 +121,11 @@ class ModelSaverPluginFactory(ImportableFactory):
     def get_plugins(
         self, plugins_config: Optional[aconfig.Config] = None
     ) -> List[ModelSaverPluginBase]:
-        """Builds the set of plugins to use for a data stream source of type element_type"""
+        """Builds the set of plugins to use for a model saver of type element_type"""
         if self._plugins is None:
             self._plugins = []
             if plugins_config is None:
-                # TODO: where to configure
-                plugins_config = get_config().data_streams.source_plugins
+                plugins_config = get_config().runtime.training.model_saver_plugins
             for name, cfg in plugins_config.items():
                 self._plugins.append(self.construct(cfg, name))
 
@@ -135,7 +137,7 @@ class ModelSaverPluginFactory(ImportableFactory):
                 if field_numbers.count(plugin.get_field_number()) > 1
             ]
             error.value_check(
-                "<COR69189361E>",
+                "<RUN13216546E>",
                 not duplicates_field_numbers,
                 "Duplicate plugin field numbers found for plugins: {}",
                 duplicates_field_numbers,
@@ -147,32 +149,94 @@ class ModelSaverPluginFactory(ImportableFactory):
 PluginFactory = ModelSaverPluginFactory("ModelSaver")
 PluginFactory.register(LocalModelSaverPlugin)
 
+## OutputTargetOneOf
+class OutputTargetOneOf:
+    """Class that implements output target api for runtime requests"""
+
+    # TODO: memoize?
+    @property
+    def name_to_plugin_map(self):
+        if not hasattr(self, "_name_to_plugin_map"):
+            self._name_to_plugin_map = {
+                plugin.get_field_name(): plugin for plugin in self.PLUGINS
+            }
+        return self._name_to_plugin_map
+
+    def get_model_saver(self):
+        """Find plugin for field and make model saver"""
+        # Determine which of the names is set
+        set_field = None
+        for field_name in self.get_proto_class().DESCRIPTOR.fields_by_name:
+            if getattr(self, field_name) is not None:
+                error.value_check(
+                    "<RUN40182782E>",
+                    set_field is None,
+                    "Found OutputTargetOneOf with multiple sources set: {} and {}",
+                    set_field,
+                    field_name,
+                )
+                error.value_check(
+                    "<RUN48659820E>",
+                    field_name in self.name_to_plugin_map,
+                    "No model saver plugin found for field: {}",
+                    field_name,
+                )
+                set_field = field_name
+
+        # If no field is set - default to no model saver
+        # Could consider default to one place e.g. one high level training_output_dir
+        if set_field is None:
+            log.error("<RUN00550784E>", "No model saver set")
+            return None
+
+        plugin = self.name_to_plugin_map[set_field]
+        return plugin.make_model_saver(getattr(self, set_field))
 
 
+## make_output_target_message #####################################################
 
-def make_output_target_message() -> typing.Type[DataBase]:
-    """Do the magic!"""
 
-    plugins = [LocalFileOutputPlugin()]
+def make_output_target_message(
+    plugin_factory: ModelSaverPluginFactory = PluginFactory,
+    plugins_config: Optional[aconfig.Config] = None,
+) -> Type[DataBase]:
+    """Dynamically create the output target message"""
+
+    # Get the required plugins
+    plugins = plugin_factory.get_plugins(plugins_config)
+
+    # Make sure there are no field name duplicates
+    plug_to_name = {plugin: plugin.get_field_name() for plugin in plugins}
+    all_field_names = list(plug_to_name.values())
+    duplicates = {
+        plugin.name: field_name
+        for plugin, field_name in plug_to_name.items()
+        if all_field_names.count(field_name) > 1
+    }
+    error.value_check(
+        "<RUN40793078E>",
+        not duplicates,
+        "Duplicate plugin field names found for output_target: {}",
+        duplicates,
+    )
 
     annotation_list = [
-        typing.Annotated[
-            plugin.get_message_type(),
+        Annotated[
+            plugin.get_output_target_type(),
             OneofField(plugin.get_field_name()),
             FieldNumber(plugin.get_field_number()),
         ]
         for plugin in plugins
     ]
-    # data_stream_type_union = typing.Union[tuple(annotation_list)]
-    # You need more than one thing in the union...
-    data_stream_type_union = typing.Union[typing.Annotated[File, OneofField("file"), 1], typing.Annotated[File, OneofField("filezz"), 2]]
+
+    output_target_type_union = Union[tuple(annotation_list)]
 
     data_object = make_dataobject(
         package="some_package",
         name="OutputTarget",
-        bases=(OutputTargetOneOfThing,),
+        bases=(OutputTargetOneOf,),
         attrs={"PLUGINS": plugins},
-        annotations={"output_target": data_stream_type_union},
+        annotations={"output_target": output_target_type_union},
     )
 
     return data_object
