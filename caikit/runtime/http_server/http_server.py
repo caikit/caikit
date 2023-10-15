@@ -128,8 +128,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
             allow_methods=["*"],
             allow_headers=["*"],
         )
-        print("CORSMiddleware is runnning!!!! \n\n\n\n")
-
         # Response validation
         @self.app.exception_handler(ResponseValidationError)
         async def validation_exception_handler(_, exc: ResponseValidationError):
