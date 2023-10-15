@@ -34,8 +34,8 @@ import time
 from fastapi import FastAPI, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import ResponseValidationError
-from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, PlainTextResponse
 from grpc import StatusCode
 from sse_starlette import EventSourceResponse, ServerSentEvent
 import pydantic
@@ -128,6 +128,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
             allow_methods=["*"],
             allow_headers=["*"],
         )
+        print("CORSMiddleware is runnning!!!! \n\n\n\n")
+
         # Response validation
         @self.app.exception_handler(ResponseValidationError)
         async def validation_exception_handler(_, exc: ResponseValidationError):
