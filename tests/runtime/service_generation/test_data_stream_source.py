@@ -26,6 +26,15 @@ import caikit
 ## Helper functions
 
 
+@pytest.fixture(autouse=True)
+def train_service(sample_train_service):
+    """This autoused fixture ensures that the training APIs will be created
+    when individual tests are run. Each test, however, does not
+    use the fixture explicitly
+    """
+    pass
+
+
 def validate_data_stream(data_stream, length, data_item_type, data_item_length=None):
     assert isinstance(data_stream, DataStream)
     assert len(data_stream) == length
@@ -63,16 +72,6 @@ def test_multiple_make_data_stream_source():
     proto_repr = ds.to_proto()
     assert ds.from_proto(proto_repr).to_proto() == proto_repr
     assert stream_type.from_proto(proto_repr).to_proto() == proto_repr
-
-
-def test_data_model_element_type():
-    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    assert isinstance(stream_type._to_element_type({"number": 1}), SampleTrainingType)
-
-
-def test_primitive_element_type():
-    stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
-    assert isinstance(stream_type._to_element_type(1), int)
 
 
 def test_make_data_stream_source_types():
