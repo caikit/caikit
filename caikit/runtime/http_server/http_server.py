@@ -272,9 +272,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 self._train_add_unary_input_unary_output_handler(rpc)
 
     def _get_model_id(self, request: Type[pydantic.BaseModel]) -> Dict[str, Any]:
-        """get the model id from the payload"""
+        """Get the model id from the payload"""
         request_kwargs = dict(request)
-        model_id = request_kwargs.get("model_id", None)
+        model_id = request_kwargs.get(MODEL_ID, None)
         if model_id is None:
             raise CaikitRuntimeException(
                 status_code=StatusCode.INVALID_ARGUMENT,
@@ -285,7 +285,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def _get_request_params(
         self, rpc: CaikitRPCBase, request: Type[pydantic.BaseModel]
     ) -> Dict[str, Any]:
-        """get the request params based on the RPC's req params, also
+        """Get the request params based on the RPC's req params, also
         convert to DM objects"""
         request_kwargs = dict(request)
         input_name = None
