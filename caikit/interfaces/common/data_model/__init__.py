@@ -29,4 +29,4 @@ from . import primitive_sequences, producer
 from .file import File
 from .primitive_sequences import BoolSequence, FloatSequence, IntSequence, StrSequence
 from .producer import ProducerId
-from .stream_sources import FileStream, ListOfFileStreams
+from .stream_sources import FileReference, ListOfFileReferences

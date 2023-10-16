@@ -213,7 +213,7 @@ def test_model_train_surfaces_caikit_errors(sample_model_train_servicer, output_
                     "model_name": "abc",
                     "parameters": {
                         "training_data": {
-                            "file": {
+                            "filereference": {
                                 "filename": input_file_name  # This is relative to training_input_dir
                             },
                         },
@@ -352,7 +352,7 @@ def test_files_from_training_input_dir_are_used(
                     "model_name": "abc",
                     "parameters": {
                         "training_data": {
-                            "filestream": {
+                            "filereference": {
                                 "filename": input_file_name  # This is relative to training_input_dir
                             },
                         },

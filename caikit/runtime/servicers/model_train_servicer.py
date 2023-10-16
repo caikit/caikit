@@ -28,8 +28,8 @@ import alog
 from caikit import get_config
 from caikit.interfaces.common.data_model.stream_sources import (
     Directory,
-    FileStream,
-    ListOfFileStreams,
+    FileReference,
+    ListOfFileReferences,
 )
 from caikit.runtime.protobufs import process_pb2, process_pb2_grpc
 from caikit.runtime.service_factory import ServicePackage
@@ -193,11 +193,11 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
             if isinstance(val, DataStreamSourceBase):
                 # 3. Look for file pointers and update them
                 source = val.data_stream
-                if isinstance(source, FileStream):
+                if isinstance(source, FileReference):
                     source.filename = self._update_file_ref(
                         source.filename, training_input_dir
                     )
-                if isinstance(source, ListOfFileStreams):
+                if isinstance(source, ListOfFileReferences):
                     source.files = [
                         self._update_file_ref(filename, training_input_dir)
                         for filename in source.files
