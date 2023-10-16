@@ -206,7 +206,7 @@ def test_global_predict_works_for_multitask_model(
     with patch.object(sample_predict_servicer, "_model_manager", mock_manager):
         response = sample_predict_servicer.Predict(
             predict_class(
-                file=File(filename="foo", data=bytes("bar", "utf-8"))
+                file_input=File(filename="foo", data=bytes("bar", "utf-8"))
             ).to_proto(),
             Fixtures.build_context(sample_task_model_id),
             caikit_rpc=sample_inference_service.caikit_rpcs["SecondTaskPredict"],

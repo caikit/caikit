@@ -27,8 +27,8 @@ import aconfig
 from caikit.core.data_model.streams.data_stream import DataStream
 from caikit.interfaces.common.data_model.stream_sources import (
     Directory,
-    File,
-    ListOfFiles,
+    FileReference,
+    ListOfFileReferences,
 )
 from caikit.runtime.service_generation.data_stream_source import (
     DataStreamPluginFactory,
@@ -50,7 +50,7 @@ import sample_lib
 def test_file_plugin(sample_json_file):
     # Sample json file has SampleTrainingType data
     element_type = sample_lib.data_model.SampleTrainingType
-    source_message = File(filename=sample_json_file)
+    source_message = FileReference(filename=sample_json_file)
     stream = FileDataStreamSourcePlugin({}, "").to_data_stream(
         source_message, element_type
     )
@@ -70,7 +70,7 @@ def test_directory_plugin(sample_json_collection):
 def test_list_of_files_plugin(sample_json_file, sample_csv_file, sample_jsonl_file):
     # Samples all have SampleTrainingType data
     element_type = sample_lib.data_model.SampleTrainingType
-    source_message = ListOfFiles(
+    source_message = ListOfFileReferences(
         files=[sample_json_file, sample_jsonl_file, sample_csv_file]
     )
     stream = ListOfFilesDataStreamSourcePlugin({}, "").to_data_stream(

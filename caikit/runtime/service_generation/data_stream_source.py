@@ -215,7 +215,9 @@ class FileDataStreamSourcePlugin(FilePluginBase):
     def get_stream_message_type(self, *_, **__) -> Type[DataBase]:
         return FileReference
 
-    def to_data_stream(self, source_message: FileReference, element_type: type) -> DataStream:
+    def to_data_stream(
+        self, source_message: FileReference, element_type: type
+    ) -> DataStream:
         return self._create_data_stream_from_file(
             fname=source_message.filename, element_type=element_type
         )
