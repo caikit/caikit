@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Standard
-from functools import partial
+from functools import cached_property, partial
 from glob import glob
 from typing import Any, Callable, Dict, List, Optional, Type, Union
 import abc
@@ -432,14 +432,11 @@ class DataStreamSourceBase(DataStream):
         self.generator_args = tuple()
         self.generator_kwargs = {}
 
-    @property
+    @cached_property
     def name_to_plugin_map(self):
-        if not hasattr(self, "_name_to_plugin_map"):
-            self._name_to_plugin_map = {
-                plugin.get_field_name(self.ELEMENT_TYPE): plugin
-                for plugin in self.PLUGINS
-            }
-        return self._name_to_plugin_map
+        return {
+            plugin.get_field_name(self.ELEMENT_TYPE): plugin for plugin in self.PLUGINS
+        }
 
     # pylint: disable=too-many-return-statements
     def to_data_stream(self) -> DataStream:
