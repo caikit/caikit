@@ -15,7 +15,7 @@
 """Tests for the rpc objects that hold our in-memory representation of
 what an RPC for a service looks like"""
 # Standard
-from typing import Iterable, Union
+from typing import Iterable, List, Union
 import uuid
 
 # Local
@@ -229,7 +229,37 @@ def test_task_inference_rpc_with_all_optional_params():
 
     data_model = rpc.create_request_data_model(package_name="blah")
     assert data_model is not None
+    assert data_model.fields == ("str_val",)
 
+    assert rpc.name == "TestTaskPredict"
+
+
+def test_task_inference_rpc_with_list_of_dm_params():
+    @caikit.core.task(
+        required_parameters={"str_val": str}, output_type=SampleOutputType
+    )
+    class TestTask(TaskBase):
+        pass
+
+    @caikit.core.module(
+        id=str(uuid.uuid4()), name="testest", version="9.9.9", task=TestTask
+    )
+    class TestModule(ModuleBase):
+        def run(
+            self, str_val: str, list_val: List[SampleOutputType]
+        ) -> SampleOutputType:
+            pass
+
+    rpc = TaskPredictRPC(
+        task=TestTask,
+        method_signatures=[TestModule.RUN_SIGNATURE],
+    )
+
+    data_model = rpc.create_request_data_model(package_name="list_dm")
+    assert data_model is not None
+
+    # assert we bring list_val as well
+    assert data_model.fields == ("str_val", "list_val")
     assert rpc.name == "TestTaskPredict"
 
 

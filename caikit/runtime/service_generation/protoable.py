@@ -183,7 +183,7 @@ def is_protoable_type(arg_type: Type) -> bool:
             log.debug2("List annotation has no type")
             protoable = False
         else:
-            protoable = typing.get_args(arg_type)[0] in proto_primitive_set
+            protoable = is_protoable_type(typing.get_args(arg_type)[0])
     elif typing.get_origin(arg_type) == dict:
         log.debug2("Arg is Dict")
         if len(typing.get_args(arg_type)) == 0:
