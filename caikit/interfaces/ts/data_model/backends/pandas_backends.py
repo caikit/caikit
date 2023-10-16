@@ -134,7 +134,9 @@ class PandasMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
                 )
                 result.append(dm.SingleTimeSeries(_backend=backend))
             else:
-                for k, k_df in self._df.groupby(key_columns):
+                for k, k_df in self._df.groupby(
+                    key_columns if len(key_columns) > 1 else key_columns[0]
+                ):
                     # if it is a single key string, we want to just wrap it in a list
                     if isinstance(k, (str, int)):
                         k = [k]

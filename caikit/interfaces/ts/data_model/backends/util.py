@@ -112,7 +112,8 @@ def strip_periodic(
     df = input_df
     if index >= 0:
         df = input_df if not create_copy else input_df.copy(deep=False)
-        df.iloc[:, index] = [
+        # df.iloc[:, index]
+        df[df.columns[index]] = [
             x.to_timestamp() if hasattr(x, "to_timestamp") else x
             for x in df.iloc[:, index]
         ]
