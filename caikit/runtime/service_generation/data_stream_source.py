@@ -340,7 +340,7 @@ class S3FilesDataStreamSourcePlugin(DataStreamSourcePlugin):
 
     def to_data_stream(self, *_, **__) -> DataStream:
         error(
-            "<COR80419785E>",
+            "<RUN80419785E>",
             NotImplementedError(
                 "S3Files are not implemented as stream sources in this runtime."
             ),
@@ -381,7 +381,7 @@ class DataStreamPluginFactory(ImportableFactory):
                 if field_numbers.count(plugin.get_field_number()) > 1
             ]
             error.value_check(
-                "<COR69189361E>",
+                "<RUN69189361E>",
                 not duplicate_field_number_names,
                 "Duplicate plugin field numbers found for plugins: {}",
                 duplicate_field_number_names,
@@ -447,14 +447,14 @@ class DataStreamSourceBase(DataStream):
         for field_name in self.get_proto_class().DESCRIPTOR.fields_by_name:
             if getattr(self, field_name) is not None:
                 error.value_check(
-                    "<COR80421785E>",
+                    "<RUN80421785E>",
                     set_field is None,
                     "Found DataStreamSource with multiple sources set: {} and {}",
                     set_field,
                     field_name,
                 )
                 error.value_check(
-                    "<COR80420785E>",
+                    "<RUN80420785E>",
                     field_name in self.name_to_plugin_map,
                     "no data stream plugin found for field: {}",
                     field_name,
@@ -504,7 +504,7 @@ def make_data_stream_source(
             if all_field_names.count(field_name) > 1
         }
         error.value_check(
-            "<COR66854455E>",
+            "<RUN66854455E>",
             not duplicates,
             "Duplicate plugin field names found for type {}: {}",
             data_element_type,
