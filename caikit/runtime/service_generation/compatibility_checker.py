@@ -14,6 +14,7 @@
 """This file contains logic to ensure proto-API compatibility and model support compatibility"""
 
 # Standard
+from types import ModuleType
 from typing import Dict
 
 # First Party
@@ -36,12 +37,18 @@ class ApiFieldNames:
         return cls._instance
 
     @staticmethod
+    def add_proto_spec(service_pb2_module: ModuleType):
+        ApiFieldNames().service_pb2_modules.append(service_pb2_module)
+
+    @staticmethod
     def clear():
         ApiFieldNames().service_pb2_modules = []
 
     @staticmethod
     def get_fields_for_message(message_name: str) -> Dict[str, int]:
         """Return first matching message found for 'message_name'"""
+        if len(ApiFieldNames().service_pb2_modules) == 0:
+            log.info("There is no service modules registered with ApiFieldNames")
         for service in ApiFieldNames().service_pb2_modules:
             if message_name in service.DESCRIPTOR.message_types_by_name:
                 message_type = service.DESCRIPTOR.message_types_by_name[message_name]
