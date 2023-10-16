@@ -286,6 +286,8 @@ def get_train_request(module_class: Type[ModuleBase]) -> Type[DataBase]:
         module_class,
         ModuleBase,
     )
+    # 🌶️🌶️🌶️ This is coupled to the naming scheme code in
+    # caikit.runtime.service_generation.rpcs, which is likely to change.
     first_task = next(iter(module_class.tasks))
     request_class_name = f"{first_task.__name__}{module_class.__name__}TrainRequest"
     log.debug("Request class name %s for module %s.", request_class_name, module_class)
