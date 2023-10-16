@@ -26,6 +26,15 @@ import caikit
 ## Helper functions
 
 
+@pytest.fixture(autouse=True)
+def train_service(sample_train_service):
+    """This autoused fixture ensures that the training APIs will be created
+    when individual tests are run. Each test, however, does not
+    use the fixture explicitly
+    """
+    pass
+
+
 def validate_data_stream(data_stream, length, data_item_type, data_item_length=None):
     assert isinstance(data_stream, DataStream)
     assert len(data_stream) == length
@@ -299,7 +308,6 @@ def test_make_data_stream_source_from_multipart_formdata_file(
     sample_multipart_json,
     sample_multipart_csv,
     sample_multipart_json_with_content_header,
-    sample_train_service,
     tmp_path,
 ):
     """Test multipart streams. NB: We expect that multipart files will not have an extension"""
