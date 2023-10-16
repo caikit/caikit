@@ -63,3 +63,4 @@ choose one: Accepted
 * Equivalent section for `output_path` (naming TBD)
 * An API breaking change to change `output_path` to something like `output_target` to be more generic and support a `oneof` for different output target representations
 * New base classes and factories to register user-defined implementations of the plugins
+* Runtime APIs will change based on the configured plugins, which could cause a mismatch if api specs are generated in one place without some plugins, and then a server is booted somewhere else with more plugins installed and configured.
