@@ -396,7 +396,10 @@ def test_inference_multi_task_module(multi_task_model_id, runtime_http_server):
     """Simple check that we can ping a model"""
     with TestClient(runtime_http_server.app) as client:
         # cGRmZGF0Yf//AA== is b"pdfdata\xff\xff\x00" base64 encoded
-        json_input = {"model_id": multi_task_model_id, "inputs": {"filename": "example.pdf", "data": "cGRmZGF0Yf//AA=="}}
+        json_input = {
+            "model_id": multi_task_model_id,
+            "inputs": {"filename": "example.pdf", "data": "cGRmZGF0Yf//AA=="},
+        }
         response = client.post(
             f"/api/v1/task/second",
             json=json_input,
