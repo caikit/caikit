@@ -31,7 +31,7 @@ class ModelSaver(typing.Generic[T]):
     @abc.abstractmethod
     def save_model(
         self, model: ModuleBase, model_name: str, training_id: Optional[str]
-    ):
+    ) -> typing.Any:
         """Save the loaded model, based on this target's configuration.
 
         Args:
@@ -41,11 +41,38 @@ class ModelSaver(typing.Generic[T]):
                 created this model
 
         Returns:
-            None on success
+            Any: Some representation of where the model was saved. This could be a path on disk.
 
         Raises:
             Any appropriate exception if saving the model fails
         """
+
+    @classmethod
+    def _save_path_with_id(
+            cls,
+            save_path: Optional[str],
+            save_with_id: bool,
+            training_id: str,
+            model_name: Optional[str],
+    ) -> Optional[str]:
+        """Shared utility method to inject both the training id and model name
+        into a save path.
+        """
+        if save_path is None:
+            return save_path
+
+        final_path_parts = [save_path]
+        # If told to save with the ID in the path, inject it before the
+        # model name.
+        if save_with_id and training_id not in save_path:
+            # Don't inject training id if it's already in the path
+            final_path_parts.append(training_id)
+
+        if model_name and model_name not in save_path:
+            # Don't inject model name if it's already in the path
+            final_path_parts.append(model_name)
+
+        return os.path.join(*final_path_parts)
 
 
 # Extend OutputTarget with a concrete message type
@@ -62,10 +89,13 @@ class LocalFileModelSaver(ModelSaver[File]):
 
     def save_model(
         self, model: ModuleBase, model_name: str, training_id: Optional[str]
-    ):
-        base_path = self.target.filename
-        if self.save_with_id:
-            base_path = os.path.join(base_path, training_id)
+    ) -> str:
+        save_path = self._save_path_with_id(
+            save_path=self.target.filename,
+            save_with_id=self.save_with_id,
+            training_id=training_id,
+            model_name=model_name
+        )
 
-        model.save(output_path=os.path.join(base_path, model_name))
-
+        model.save(model_path=save_path)
+        return save_path

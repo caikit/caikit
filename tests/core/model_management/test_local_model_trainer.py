@@ -31,7 +31,9 @@ import aconfig
 from caikit.config import get_config
 from caikit.core.data_model import DataStream, TrainingStatus
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
+from caikit.core.model_management import LocalFileModelSaver
 from caikit.core.model_management.local_model_trainer import LocalModelTrainer
+from caikit.interfaces.common.data_model.stream_sources import File
 from sample_lib.modules import SampleModule
 
 ## Helpers #####################################################################
@@ -157,8 +159,7 @@ def test_save_with_model_name(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        save_path=save_path,
-        save_with_id=False,
+        saver=LocalFileModelSaver(target=File(filename=save_path), save_with_id=False),
         model_name="abc",
     )
     model_future.wait()

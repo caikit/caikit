@@ -38,6 +38,7 @@ from .model_management import (
     model_finder_factory,
     model_initializer_factory,
     model_trainer_factory,
+    ModelSaver
 )
 from .modules.base import ModuleBase
 from .registries import module_registry
@@ -96,8 +97,7 @@ class ModelManager:
         module: Union[Type[ModuleBase], str],
         *args,
         trainer: Union[str, ModelTrainerBase] = "default",
-        save_path: Optional[Union[str, S3Path]] = None,
-        save_with_id: bool = False,
+        saver: Optional[ModelSaver] = None,
         model_name: Optional[str] = None,
         wait: bool = False,
         **kwargs,
@@ -121,11 +121,8 @@ class ModelManager:
             trainer (Union[str, ModelTrainerBase]): The trainer to use. If given
                 as a string, this is a key in the global config at
                 model_management.trainers.
-            save_path (Optional[Union[str, S3Path]]): Base path where the model should be
-                saved (may be relative to a remote trainer's filesystem, or link to S3
-                storage)
-            save_with_id (bool): Inject the training ID into the save path for
-                the output model
+            saver (Optional[ModelSaver]): An instance of a ModelSaver that will be
+                used to save the model after training.
             model_name (Optional[str]): Name of model that will be appended
                 to the end of the save_path
             wait (bool): Wait for training to complete before returning
@@ -156,8 +153,7 @@ class ModelManager:
             model_future = trainer.train(
                 module,
                 *args,
-                save_path=save_path,
-                save_with_id=save_with_id,
+                saver=saver,
                 model_name=model_name,
                 **kwargs,
             )
@@ -237,7 +233,7 @@ class ModelManager:
                 this model. If passed as a string, this names the finder in the
                 global config model_management.finders section.
             initializer (Union[str, ModelInitializerBase]): Loader to use when
-                initializint this model. If passed as a string, this is the name
+                initializing this model. If passed as a string, this is the name
                 of the initializer in the global
                 config model_management.initializers section.
 

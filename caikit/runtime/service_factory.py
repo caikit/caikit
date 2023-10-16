@@ -43,6 +43,8 @@ from caikit.interfaces.runtime.data_model import (
 )
 from caikit.runtime import service_generation
 from caikit.runtime.service_generation.rpcs import CaikitRPCBase
+from caikit.runtime.service_generation.output_target import make_output_target_message
+from caikit.runtime.service_generation.output_target import PluginFactory as OutputTargetPluginFactory
 from caikit.runtime.utils import import_util
 
 log = alog.use_channel("SVC-FACTORY")
@@ -155,7 +157,8 @@ class ServicePackageFactory:
             )
             service_name = f"{ai_domain_name}Service"
         else:  # service_type == cls.ServiceType.TRAINING
-            rpc_list = service_generation.create_training_rpcs(clean_modules)
+            output_target_type = make_output_target_message(plugin_factory=OutputTargetPluginFactory)
+            rpc_list = service_generation.create_training_rpcs(clean_modules, output_target_type)
             service_name = f"{ai_domain_name}TrainingService"
 
         rpc_list = [rpc for rpc in rpc_list if rpc.return_type is not None]

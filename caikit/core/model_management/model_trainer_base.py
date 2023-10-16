@@ -25,14 +25,13 @@ model_management:
                 <config option>: <value>
 """
 # Standard
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Type
 import abc
 import dataclasses
 import datetime
-import os
 
+from .model_saver import ModelSaver
 # Local
-from ...interfaces.common.data_model.stream_sources import S3Path
 from ..data_model import TrainingStatus
 from ..modules import ModuleBase
 from ..toolkit.factory import FactoryConstructible
@@ -61,14 +60,10 @@ class ModelTrainerBase(FactoryConstructible):
             self,
             trainer_name: str,
             training_id: str,
-            save_with_id: bool,
-            save_path: Optional[Union[str, S3Path]],
+            saver: Optional[ModelSaver] = None,
             model_name: Optional[str] = None,
             use_reversible_hash: bool = True,
         ):
-            # Trainers should deal with an S3 ref first and not pass it along here
-            if save_path and isinstance(save_path, S3Path):
-                raise ValueError("S3 output path not supported by this runtime")
             self._id = (
                 self.__class__.ID_DELIMITER.join(
                     [ReversibleHasher.hash(trainer_name), training_id]
@@ -76,12 +71,10 @@ class ModelTrainerBase(FactoryConstructible):
                 if use_reversible_hash
                 else training_id
             )
-            self._save_path = self.__class__._save_path_with_id(
-                save_path,
-                save_with_id,
-                self._id,
-                model_name,
-            )
+            self._saver = saver
+            # TODO: figure out what to do with this
+            self._save_path = None
+            self._model_name = model_name
 
         @property
         def id(self) -> str:
@@ -91,10 +84,23 @@ class ModelTrainerBase(FactoryConstructible):
             return self._id
 
         @property
+        def name(self) -> str:
+            """The user-provided name of the model being trained"""
+            return self._model_name
+
+        @property
+        def saver(self) -> ModelSaver:
+            """Trainers with remote execution must have a ModelSaver that can store
+            the trained model somewhere
+            """
+            return self._saver
+
+        @property
         def save_path(self) -> Optional[str]:
             """If created with a save path, the future must expose it, including
             any injected training id
             """
+            # TODO: ????
             return self._save_path
 
         @abc.abstractmethod
@@ -121,39 +127,12 @@ class ModelTrainerBase(FactoryConstructible):
             """Support result() to match concurrent.futures.Future"""
             return self.load()
 
-        @classmethod
-        def _save_path_with_id(
-            cls,
-            save_path: Optional[str],
-            save_with_id: bool,
-            training_id: str,
-            model_name: Optional[str],
-        ) -> Optional[str]:
-            """If asked to save_with_id, child classes should use this shared
-            utility to construct the final save path
-            """
-            if save_path is None:
-                return save_path
-
-            final_path_parts = [save_path]
-            # If told to save with the ID in the path, inject it before the
-            # model name.
-            if save_with_id and training_id not in save_path:
-                # (Don't inject training id if its already in the path)
-                final_path_parts.append(training_id)
-
-            if model_name and model_name not in save_path:
-                final_path_parts.append(model_name)
-
-            return os.path.join(*final_path_parts)
-
     @abc.abstractmethod
     def train(
         self,
         module_class: Type[ModuleBase],
         *args,
-        save_path: Optional[Union[str, S3Path]] = None,
-        save_with_id: bool = False,
+        saver: Optional[ModelSaver],
         model_name: Optional[str] = None,
         **kwargs,
     ) -> "ModelFutureBase":

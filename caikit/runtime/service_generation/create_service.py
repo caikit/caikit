@@ -23,6 +23,7 @@ from typing import Dict, List, Type
 from aconfig import aconfig
 import alog
 
+from .output_target import OutputTargetDataModel
 # Local
 from .rpcs import CaikitRPCBase, ModuleClassTrainRPC, TaskPredictRPC
 from caikit.core import ModuleBase, TaskBase
@@ -113,7 +114,7 @@ def create_inference_rpcs(
     return rpcs
 
 
-def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
+def create_training_rpcs(modules: List[Type[ModuleBase]], output_type: Type[OutputTargetDataModel]) -> List[CaikitRPCBase]:
     """Handles the logic to create all the RPCs for training"""
 
     rpcs = []
@@ -147,7 +148,7 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
         )
         with alog.ContextLog(log.debug, "Generating train RPC for %s", ck_module):
             try:
-                rpcs.append(ModuleClassTrainRPC(signature))
+                rpcs.append(ModuleClassTrainRPC(signature, output_type))
                 log.debug("Successfully generated train RPC for %s", ck_module)
             except Exception as err:  # pylint: disable=broad-exception-caught
                 log.warning(

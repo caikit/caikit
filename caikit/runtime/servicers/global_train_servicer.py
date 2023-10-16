@@ -27,7 +27,8 @@ import alog
 # Local
 from caikit import get_config
 from caikit.core import MODEL_MANAGER, ModuleBase
-from caikit.interfaces.common.data_model.stream_sources import S3Path
+from caikit.core.model_management import LocalFileModelSaver
+from caikit.interfaces.common.data_model.stream_sources import S3Path, File
 from caikit.interfaces.runtime.data_model import TrainingJob
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage
@@ -85,7 +86,7 @@ class GlobalTrainServicer:
         return get_config().runtime.training.output_dir
 
     @property
-    def save_with_id(self) -> str:
+    def save_with_id(self) -> bool:
         return get_config().runtime.training.save_with_id
 
     def Train(
@@ -214,23 +215,21 @@ class GlobalTrainServicer:
             request
         ).from_proto(request)
 
-        # Figure out where this model will be saved
-        model_path: Union[str, S3Path]
-        if request_data_model.output_path:
-            # If we got an S3 storage link, just pass that along to the trainer
-            model_path: S3Path = request_data_model.output_path
-        else:
-            # Otherwise, use either:
+        # Create the model_saver to handle saving the training output
+        model_saver = request_data_model.output_target.make_model_saver()
+        if model_saver is None:
+            # No output_target was supplied, so fall back to a configured local save path.
+            # Use either:
             # 1. The provided `training_output_dir` here, or
             # 2. The configured `runtime.training.output_dir`
-            model_path: str = training_output_dir or self.training_output_dir
+            local_path: str = training_output_dir or self.training_output_dir
+            model_saver = LocalFileModelSaver(target=File(filename=local_path), save_with_id=self.save_with_id)
 
         # Build the full set of kwargs for the train call
         kwargs.update(
             {
                 "module": module,
-                "save_path": model_path,
-                "save_with_id": self.save_with_id,
+                "model_saver": model_saver,
                 "model_name": request_data_model.model_name,
                 **build_caikit_library_request_dict(
                     request.parameters, module.TRAIN_SIGNATURE

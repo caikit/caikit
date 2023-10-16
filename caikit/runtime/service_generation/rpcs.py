@@ -29,6 +29,7 @@ from py_to_proto.dataclass_to_proto import (  # NOTE: Imported from here for com
 )
 import alog
 
+from .output_target import OutputTargetDataModel
 # Local
 from ...interfaces.common.data_model.stream_sources import S3Path
 from . import protoable, type_helpers
@@ -83,6 +84,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
     def __init__(
         self,
         method_signature: CaikitMethodSignature,
+        output_target_type: Type[OutputTargetDataModel],
     ):
         """Initialize a .proto generator with a single module to convert
 
@@ -111,7 +113,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
             self._method.default_parameters,
         )
 
-        params = {"model_name": str, "output_path": S3Path, "parameters": "PLACEHOLDER"}
+        params = {"model_name": str, "output_target": output_target_type, "parameters": "PLACEHOLDER"}
 
         self._req = _RequestMessage(
             ModuleClassTrainRPC.module_class_to_req_name(self.clz),

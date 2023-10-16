@@ -28,8 +28,8 @@ import uuid
 import aconfig
 import alog
 
+from .model_saver import ModelSaver
 # Local
-from ...interfaces.common.data_model.stream_sources import S3Path
 from ..data_model import TrainingStatus
 from ..exceptions import error_handler
 from ..modules import ModuleBase
@@ -71,8 +71,7 @@ class LocalModelTrainer(ModelTrainerBase):
             self,
             trainer_name: str,
             module_class: Type[ModuleBase],
-            save_path: Optional[Union[str, S3Path]],
-            save_with_id: bool,
+            saver: Optional[ModelSaver],
             model_name: Optional[str],
             external_training_id: Optional[str],
             use_subprocess: bool,
@@ -83,8 +82,7 @@ class LocalModelTrainer(ModelTrainerBase):
             super().__init__(
                 trainer_name=trainer_name,
                 training_id=external_training_id or str(uuid.uuid4()),
-                save_with_id=save_with_id,
-                save_path=save_path,
+                saver=saver,
                 model_name=model_name,
                 use_reversible_hash=external_training_id is None,
             )
@@ -111,10 +109,10 @@ class LocalModelTrainer(ModelTrainerBase):
                 )
                 # If training in a subprocess without a save path, the model
                 # will be unreachable once trained!
-                if not self.save_path:
+                if not self.saver:
                     log.warning(
                         "<COR28853922W>",
-                        "Training %s launched in a subprocess with no save path",
+                        "Training %s launched in a subprocess with no saver",
                         self.id,
                     )
             else:
@@ -180,6 +178,8 @@ class LocalModelTrainer(ModelTrainerBase):
             model or raise any errors that happened during training.
             """
             self.wait()
+            # NB: loading will only work if the ModelSaver used provided a
+            # local file path to re-load the model from.
             if self._use_subprocess:
                 log.debug2("Loading model saved in subprocess")
                 error.value_check(
@@ -220,10 +220,10 @@ class LocalModelTrainer(ModelTrainerBase):
                 configure_logging()
             with alog.ContextTimer(log.debug, "Training %s finished in: ", self.id):
                 trained_model = self._module_class.train(*args, **kwargs)
-            if self.save_path is not None:
-                log.debug("Saving training %s to %s", self.id, self.save_path)
+            if self.saver is not None:
+                log.debug("Saving training %s", self.id)
                 with alog.ContextTimer(log.debug, "Training %s saved in: ", self.id):
-                    trained_model.save(self.save_path)
+                    self._save_path = self.saver.save_model(model=trained_model, model_name=self.name, training_id=self.id)
             self._completion_time = self._completion_time or datetime.now()
             log.debug2("Completion time for %s: %s", self.id, self._completion_time)
             return trained_model
@@ -271,8 +271,7 @@ class LocalModelTrainer(ModelTrainerBase):
         self,
         module_class: Type[ModuleBase],
         *args,
-        save_path: Optional[str] = None,
-        save_with_id: bool = False,
+        saver: Optional[ModelSaver] = None,
         external_training_id: Optional[str] = None,
         model_name: Optional[str] = None,
         **kwargs,
@@ -297,8 +296,7 @@ class LocalModelTrainer(ModelTrainerBase):
         model_future = self.LocalModelFuture(
             self._instance_name,
             module_class,
-            save_path=save_path,
-            save_with_id=save_with_id,
+            saver=saver,
             external_training_id=external_training_id,
             use_subprocess=self._use_subprocess,
             subprocess_start_method=self._subprocess_start_method,

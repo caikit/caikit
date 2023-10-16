@@ -194,14 +194,14 @@ class OutputTargetOneOf:
 ## make_output_target_message #####################################################
 
 # TODO: Ask Scott or Dean about correct multiple inheritance type hinting
-#OutputTargetAndDataBase = typing.TypeVar("OutputTargetAndDataBase", bound=Union[DataBase, OutputTargetOneOf])
-OutputTargetAndDataBase = typing.TypeVar("OutputTargetAndDataBase", DataBase, OutputTargetOneOf)
+# OutputTargetAndDataBase = typing.TypeVar("OutputTargetAndDataBase", bound=Union[DataBase, OutputTargetOneOf])
+OutputTargetDataModel = typing.TypeVar("OutputTargetDataModel", DataBase, OutputTargetOneOf)
 
 
 def make_output_target_message(
     plugin_factory: ModelSaverPluginFactory = PluginFactory,
     plugins_config: Optional[aconfig.Config] = None,
-) -> Type[OutputTargetAndDataBase]:
+) -> Type[OutputTargetDataModel]:
     """Dynamically create the output target message"""
 
     # Get the required plugins
