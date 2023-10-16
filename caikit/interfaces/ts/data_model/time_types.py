@@ -20,19 +20,11 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Union
 import json
 
-try:
-    # Standard
-    from typing import Annotated
-except ImportError:  # pragma: no cover
-    # Third Party
-    from typing_extensions import Annotated
-
-
 # Third Party
 import numpy as np
 
 # First Party
-from py_to_proto.dataclass_to_proto import FieldNumber, OneofField
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber, OneofField
 import alog
 
 # Local
@@ -211,7 +203,7 @@ class ValueSequence(DataObjectBase):
 
         def fill_proto(self, proto):
             subproto = getattr(proto, "values")
-            subproto.extend([v for v in self.values])
+            subproto.extend(list(self.values))
 
         @classmethod
         def from_proto(cls, proto):

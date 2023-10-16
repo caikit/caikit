@@ -77,14 +77,13 @@ def pd_timestamp_to_seconds(ts) -> float:
     """
     if isinstance(ts, pd.Period):
         return ts.to_timestamp().timestamp()  # no utc shift
-    elif isinstance(ts, np.datetime64):
+    if isinstance(ts, np.datetime64):
         return ts.astype("datetime64[ns]").astype(float) / 1e9
-    elif isinstance(ts, datetime):
+    if isinstance(ts, datetime):
         return ts.timestamp()
-    elif isinstance(ts, (int, float, np.int32, np.int64, np.float32, np.float64)):
+    if isinstance(ts, (int, float, np.int32, np.int64, np.float32, np.float64)):
         return float(ts)
-    else:
-        raise ValueError(f"invalid type {type(ts)} for parameter ts.")
+    raise ValueError(f"invalid type {type(ts)} for parameter ts.")
 
 
 def strip_periodic(
@@ -155,5 +154,5 @@ def iteritems_workaround(series: Any, force_list: bool = False) -> Iterable:
 
     try:
         return series.to_numpy()
-    except:
+    except:  # pylint: disable=bare-except
         return series.to_list()

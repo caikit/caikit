@@ -136,7 +136,7 @@ class PandasMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
             else:
                 for k, k_df in self._df.groupby(key_columns):
                     # if it is a single key string, we want to just wrap it in a list
-                    if isinstance(k, str) or isinstance(k, int):
+                    if isinstance(k, (str, int)):
                         k = [k]
                     backend = PandasTimeSeriesBackend(
                         k_df,
@@ -177,8 +177,8 @@ class PandasTimeSeriesBackend(TimeSeriesBackendBase):
             data_frame:  pd.DataFrame
                 The raw data frame
             timestamp_column:  Optional[str]
-                The name of the column holding the timestamps. If set to None, timestamps will be assigned based on the
-                rows index (default is None)
+                The name of the column holding the timestamps. If set to None, timestamps will be
+                assigned based on the rows index (default is None)
             value_columns:  Optional[Iterable[str]]
                 A sequence of names of columns to hold as values
             ids:  Optional[iterable[int]]
@@ -228,6 +228,7 @@ class PandasTimeSeriesBackend(TimeSeriesBackendBase):
         self._value_columns = value_columns
         self._ids = [] if ids is None else ids
 
+    # pylint: disable=too-many-return-statements
     def get_attribute(
         self,
         data_model_class: Type["TimeSeries"],
@@ -281,11 +282,10 @@ class PandasTimeSeriesBackend(TimeSeriesBackendBase):
                 )
                 return DataBase.OneofFieldVal(val=val, which_oneof="time_period")
             # Otherwise, use the PointTimeSequence backend
-            else:
-                val = time_types.PointTimeSequence.from_backend(
-                    PandasPointTimeSequenceBackend(time_sequence)
-                )
-                return DataBase.OneofFieldVal(val=val, which_oneof="time_points")
+            val = time_types.PointTimeSequence.from_backend(
+                PandasPointTimeSequenceBackend(time_sequence)
+            )
+            return DataBase.OneofFieldVal(val=val, which_oneof="time_points")
 
         # If requesting the value sequences, return the wrapped value columns
         if name == "values":
@@ -311,8 +311,8 @@ class PandasValueSequenceBackend(UncachedBackendMixin, StrictFieldBackendMixin):
         try:
             json_str = json.dumps(any_val)
             return json_str
-        except:
-            raise TypeError("could not serialize the given value")
+        except Exception as exc:
+            raise TypeError("could not serialize the given value") from exc
 
     # This dtype is what shows up for non-periodic date ranges
     _TIMESTAMP_DTYPE = np.dtype("datetime64[ns]")
@@ -322,9 +322,12 @@ class PandasValueSequenceBackend(UncachedBackendMixin, StrictFieldBackendMixin):
     if HAVE_PYSPARK:
         # pyspark.pandas.DataFrame objects can contain
         # pyspark specific objects
+
         # Third Party
+        # pylint: disable=import-outside-toplevel
         from pyspark.ml.linalg import Vector as SVector
-        import pyspark
+
+        # import pyspark
 
         _DEFAULT_VECTOR_TYPES.append(SVector)
 
@@ -341,7 +344,7 @@ class PandasValueSequenceBackend(UncachedBackendMixin, StrictFieldBackendMixin):
             # what do we want to do here, are we just assuming it will convert forever?
             self._sequence_type = time_types.ValueSequence.TimePointSequence
             self._valid_oneof = "val_timepoint"
-        # todo not sur why np.issubdtype is running into issue if this is run after, but will look into
+        # todo not sure why np.issubdtype is running into issue if this is run after
         elif self._dtype == "string":
             self._sequence_type = time_types.ValueSequence.StrValueSequence
             self._valid_oneof = "val_str"
@@ -351,8 +354,8 @@ class PandasValueSequenceBackend(UncachedBackendMixin, StrictFieldBackendMixin):
         elif np.issubdtype(self._dtype, np.floating):
             self._sequence_type = time_types.ValueSequence.FloatValueSequence
             self._valid_oneof = "val_float"
-        # todo do we handle ndarrays in cells, if so we need to convert to list before going to json as ndarray is not
-        #  serializable
+        # todo do we handle ndarrays in cells, if so we need to convert to list before going to json
+        # as ndarray is not serializable
         # this is making the assumption that we have at least one value in the dataframe
         elif str(self._dtype) == "object" and isinstance(
             self._df[self._col_name].iloc[0],
@@ -435,8 +438,8 @@ class PandasPeriodicTimeSequenceBackend(UncachedBackendMixin, StrictFieldBackend
         if name == "period_length":
             if self._is_range_index:
                 return time_types.TimeDuration(dt_int=self._period_length)
-            else:
-                return time_types.TimeDuration(dt_str=self._period_length)
+
+            return time_types.TimeDuration(dt_str=self._period_length)
 
         # Delegate to common parent logic
         # This seems unreachable???
@@ -460,8 +463,8 @@ class PandasPointTimeSequenceBackend(
     ) -> Any:
         """Get the known attributes from the backend data"""
         if name == "points":
-            # TODO: a user may have ints/floats stored as objects in their dataframe, should we handle that or throw an
-            #  exception
+            # TODO: a user may have ints/floats stored as objects in their dataframe, should we
+            # handle that or throw an exception
             return [
                 time_types.TimePoint.from_backend(PandasTimePointBackend(point_data))
                 for point_data in iteritems_workaround(

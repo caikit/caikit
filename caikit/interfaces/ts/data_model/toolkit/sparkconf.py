@@ -66,6 +66,7 @@ def sparkconf_local(
     )
 
 
+# pylint: disable=line-too-long
 def sparkconf_k8s(
     app_name: str,
     namespace: str,
@@ -84,30 +85,41 @@ def sparkconf_k8s(
     **kwargs,
 ):
     """Return a spark configuraion object for use on a kubernetes cluster. For more information on
-    what some of these parameters are for see https://spark.apache.org/docs/latest/running-on-kubernetes.html
+    what some of these parameters are for see
+    https://spark.apache.org/docs/latest/running-on-kubernetes.html
 
-    NOTE: if you are simply running a local spark job, we advise you use the sparkconf_local method instead as it has fewer parameters
-    and more defaults to get you going more quickly.
+    NOTE: if you are simply running a local spark job, we advise you use the sparkconf_local method
+    instead as it has fewer parameters and more defaults to get you going more quickly.
 
     Args:
-        app_name (str): The application name (useful for for keeping track of jobs on a multiuser cluster)
+        app_name (str): The application name (useful for for keeping track of jobs on a multiuser
+            cluster)
         namespace (str): k8s namespace in which this job will run (e.g., "default")
         executor_image (str): The container image to use for spark executors.
         driver_image (str): The spark driver image to use (tpyically the same as exectuor image)
-        master (_type_, optional): The master specificication. Defaults to "k8s://https://kubernetes.default.svc:443".
+        master (_type_, optional): The master specificication. Defaults to
+            "k8s://https://kubernetes.default.svc:443".
         num_executors (str, optional): The number of executors to run. Defaults to "2".
-        executor_memory (str, optional): The maximum memory allocated to each executor (use g or M notation). Defaults to "1g".
+        executor_memory (str, optional): The maximum memory allocated to each executor (use g or M
+            notation). Defaults to "1g".
         executor_cores (str, optional): The maximum number of cores per executor. Defaults to "2".
-        driver_memory (str, optional): The maxumum memory allocated to the driver. Defaults to "1g".
-        driver_cores (str, optional): The maximum number of cores allocated to the driver. Defaults to "2".
-        pvc_mount_path (str | None, optional): The PVC mount path for exectuors and driver to mount (this usually has to be rwX). Defaults to None.
-        pvc_claim_name (str | None, optional): The PVC claim name assocated with the PVC mount. Defaults to None.
-        python_path (str | None, optional): The python path to use in python jobs in executor and driver python processes. Defaults to None.
-        k8s_service_account (str | None, optional): The k8s service account to use. Defaults to None.
+        driver_memory (str, optional): The maxumum memory allocated to the driver. Defaults to
+            "1g".
+        driver_cores (str, optional): The maximum number of cores allocated to the driver. Defaults
+            to "2".
+        pvc_mount_path (str | None, optional): The PVC mount path for exectuors and driver to mount
+            (this usually has to be rwX). Defaults to None.
+        pvc_claim_name (str | None, optional): The PVC claim name assocated with the PVC mount.
+            Defaults to None.
+        python_path (str | None, optional): The python path to use in python jobs in executor and
+            driver python processes. Defaults to None.
+        k8s_service_account (str | None, optional): The k8s service account to use. Defaults to
+            None.
         kwargs: passthru key,value arguments that will be added to the spark configuration
 
     Returns:
-        SparkConf: A spark configuration that has been defined in a way that makes it compatible with time series use cases and intended for use with a k8s cluster.
+        SparkConf: A spark configuration that has been defined in a way that makes it compatible
+            with time series use cases and intended for use with a k8s cluster.
     """
 
     if not WE_HAVE_PYSPARK:
@@ -173,7 +185,7 @@ def sparkconf_k8s(
 
         conf.set("spark.kubernetes.container.image.pullPolicy", "Always")
 
-    for param in kwargs:
-        conf.set(param, kwargs[param])
+    for param, val in kwargs.items():
+        conf.set(param, val)
 
     return conf

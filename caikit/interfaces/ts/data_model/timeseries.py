@@ -86,6 +86,7 @@ class TimeSeries(DataObjectBase):
                 self._backend = PandasMultiTimeSeriesBackend(*args, **kwargs)
             elif HAVE_PYSPARK and isinstance(data_arg, pyspark.sql.DataFrame):
                 # Local
+                # pylint: disable=import-outside-toplevel
                 from ..data_model.backends._spark_backends import (
                     SparkMultiTimeSeriesBackend,
                 )
@@ -100,19 +101,20 @@ class TimeSeries(DataObjectBase):
 
         if HAVE_PYSPARK:
             # Local
+            # pylint: disable=import-outside-toplevel
             from ..data_model.backends._spark_backends import (
                 SparkMultiTimeSeriesBackend,
             )
 
         if isinstance(backend, PandasMultiTimeSeriesBackend):
             return len(backend._df)
-        elif HAVE_PYSPARK and isinstance(self._backend, SparkMultiTimeSeriesBackend):
+        if HAVE_PYSPARK and isinstance(self._backend, SparkMultiTimeSeriesBackend):
             return backend._pyspark_df.count()
-        else:
-            error.log_raise(
-                "<COR75394521E>",
-                f"Unknown backend {type(backend)}",
-            )  # pragma: no cover
+
+        error.log_raise(
+            "<COR75394521E>",
+            f"Unknown backend {type(backend)}",
+        )  # pragma: no cover
 
     def _get_pd_df(self) -> Tuple[pd.DataFrame, Iterable[str], str, Iterable[str]]:
         """Convert the data to a pandas DataFrame, efficiently if possible"""
@@ -139,16 +141,16 @@ class TimeSeries(DataObjectBase):
         dfs = []
         value_columns = None
         timestamp_column = None
-        for ts in self.timeseries:
+        for ts in self.timeseries:  # pylint: disable=not-an-iterable
             if value_columns is None:
                 value_columns = ts.value_labels
                 if ts.timestamp_label != "":
                     timestamp_column = ts.timestamp_label
             df = ts._get_pd_df()[0]
 
-            for i in range(len(key_columns)):
-                id = ts.ids.values[i]
-                df[key_columns[i]] = [id] * df.shape[0]
+            for i, key_col in enumerate(key_columns):
+                id_val = ts.ids.values[i]
+                df[key_col] = [id_val] * df.shape[0]
             dfs.append(df)
         ignore_index = True  # timestamp_column != ""
         result = pd.concat(dfs, ignore_index=ignore_index)
@@ -173,12 +175,16 @@ class TimeSeries(DataObjectBase):
             df:  pd.DataFrame
                 The view of the data as a pandas DataFrame
         """
-        # if as_pandas is_multi is True, and timeseries is_multi is False => add a RESERVED id column with constant value
-        # if as_pandas is_multi is True, and timeseries is_multi is True => do nothing just return as is
+        # if as_pandas is_multi is True, and timeseries is_multi is False => add a RESERVED id
+        #   column with constant value
+        # if as_pandas is_multi is True, and timeseries is_multi is True => do nothing just return
+        #   as is
         # if as_pandas is_multi is False, and timeseries is_multi is True => remove the id columns
-        # if as_pandas is_multi is False, and timeseries is_multi is False => do nothing just return as is
+        # if as_pandas is_multi is False, and timeseries is_multi is False => do nothing just
+        #   return as is
         # if as_pandas is_multi is None => do nothing just return as is
         if len(self.id_labels) == 0:
+            # pylint: disable=unsubscriptable-object
             df = self.timeseries[0].as_pandas(include_timestamps=include_timestamps)
 
             # add a RESERVED id column with constant value
@@ -190,7 +196,8 @@ class TimeSeries(DataObjectBase):
         backend_df = self._get_pd_df()[0]
         timestamp_column = self._backend._timestamp_column
 
-        # if we want to include timestamps, but it is not already in the dataframe, we need to add it
+        # if we want to include timestamps, but it is not already in the dataframe, we need to
+        #  add it
         if include_timestamps and timestamp_column is None:
             backend_df = backend_df.copy()  # is this required???
             ts_column = self.__class__._DEFAULT_TS_COL
@@ -199,13 +206,14 @@ class TimeSeries(DataObjectBase):
                 self._backend._key_column, sort=False
             )[ts_column].transform(lambda x: list(range(len(x))))
             return backend_df
-        # if we do not want timestamps, but we already have them in the dataframe, we need to return a view without timestamps
-        elif (
+        # if we do not want timestamps, but we already have them in the dataframe, we need to
+        # return a view without timestamps
+        if (
             include_timestamps is not None and not include_timestamps
         ) and timestamp_column is not None:
             return backend_df.loc[:, backend_df.columns != timestamp_column]
-        else:
-            return backend_df
+
+        return backend_df
 
     def as_spark(
         self, include_timestamps=None, is_multi=None
@@ -215,6 +223,7 @@ class TimeSeries(DataObjectBase):
 
         # todo: is this right???
         if len(self.id_labels) == 0:
+            # pylint: disable=unsubscriptable-object
             df = self.timeseries[0].as_spark(include_timestamps=include_timestamps)
             # add a RESERVED id column with constant value
             if is_multi is not None and is_multi:
@@ -227,9 +236,11 @@ class TimeSeries(DataObjectBase):
             return df
 
         # Third Party
+        # pylint: disable=import-outside-toplevel
         from pyspark.sql import SparkSession
 
         # Local
+        # pylint: disable=import-outside-toplevel
         from ..data_model.backends._spark_backends import SparkMultiTimeSeriesBackend
 
         # If there is a backend that knows how to do the conversion, use that
@@ -240,7 +251,10 @@ class TimeSeries(DataObjectBase):
             if include_timestamps and timestamp_column is None:
 
                 def append_timestamp_column(aspark_df, key_cols, timestamp_name):
-                    sql = f"row_number() OVER (PARTITION BY {','.join(key_cols)} ORDER BY {','.join(key_cols)}) -1 as {timestamp_name}"
+                    sql = (
+                        f"row_number() OVER (PARTITION BY {','.join(key_cols)} "
+                        f"ORDER BY {','.join(key_cols)}) -1 as {timestamp_name}"
+                    )
                     return aspark_df.selectExpr("*", sql)
 
                 answer = append_timestamp_column(
@@ -253,13 +267,13 @@ class TimeSeries(DataObjectBase):
             ):
                 answer = answer.drop(timestamp_column)
             return answer
-        else:
-            pdf = strip_periodic(
-                self.as_pandas(include_timestamps=include_timestamps),
-                create_copy=True,
-            )
-            return (
-                SparkSession.builder.config(conf=sparkconf_local())
-                .getOrCreate()
-                .createDataFrame(pdf)
-            )
+
+        pdf = strip_periodic(
+            self.as_pandas(include_timestamps=include_timestamps),
+            create_copy=True,
+        )
+        return (
+            SparkSession.builder.config(conf=sparkconf_local())
+            .getOrCreate()
+            .createDataFrame(pdf)
+        )

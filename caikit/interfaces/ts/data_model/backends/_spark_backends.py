@@ -110,7 +110,7 @@ class SparkMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
                         self._pyspark_df, by=key_columns
                     ):
                         k = ids
-                        if isinstance(k, str) or isinstance(k, int):
+                        if isinstance(k, (str, int)):
                             k = [k]
                         backend = SparkTimeSeriesBackend(
                             data_frame=spark_df,
@@ -158,8 +158,8 @@ class SparkTimeSeriesBackend(TimeSeriesBackendBase):
             data_frame:  pyspark.sql.DataFrame
                 The raw data frame
             timestamp_column:  Optional[str]
-                The name of the column holding the timestamps. If set to None, timestamps will be assigned based on the
-                rows index (default is None)
+                The name of the column holding the timestamps. If set to None, timestamps will be
+                assigned based on the rows index (default is None)
             value_columns:  Optional[Iterable[str]]
                 A sequence of names of columns to hold as values
             ids:  Optional[iterable[int]]

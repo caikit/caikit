@@ -36,6 +36,7 @@ import alog
 from ....core import DataObjectBase
 from ....core.data_model import dataobject
 from ....core.exceptions import error_handler
+from ..data_model.backends.util import strip_periodic
 from .backends.base import TimeSeriesBackendBase
 from .backends.pandas_backends import PandasTimeSeriesBackend
 from .package import TS_PACKAGE
@@ -122,6 +123,7 @@ class SingleTimeSeries(DataObjectBase):
                 self._backend = PandasTimeSeriesBackend(*args, **kwargs)
             elif HAVE_PYSPARK and isinstance(data_arg, pyspark.sql.DataFrame):
                 # Local
+                # pylint: disable=import-outside-toplevel
                 from .backends._spark_backends import SparkTimeSeriesBackend
 
                 self._backend = SparkTimeSeriesBackend(*args, **kwargs)
@@ -163,10 +165,12 @@ class SingleTimeSeries(DataObjectBase):
         num_rows = list(col_lens)[0]
         log.debug("Num rows: %d", num_rows)
 
-        # todo not sure if this is needed here, is it even possible without making changes to the json?
+        # todo not sure if this is needed here, is it even possible without making changes to the
+        # json?
         # error.value_check(
         #     "<COR24439736F>",
-        #     self.time_period is not None and (self.timestamp_label is not None and self.timestamp_label != ""),
+        #     self.time_period is not None and (self.timestamp_label is not None and
+        #          self.timestamp_label != ""),
         #     "a timestamp_label is required if a time_period is specified",
         # )
 
@@ -263,13 +267,13 @@ class SingleTimeSeries(DataObjectBase):
         def deserialize_values_if_necessary(sequence_values):
             if isinstance(sequence_values, ValueSequence.TimePointSequence):
                 return [dateutil.parser.parse(v) for v in sequence_values.values]
-            elif isinstance(sequence_values, ValueSequence.AnyValueSequence):
+            if isinstance(sequence_values, ValueSequence.AnyValueSequence):
                 return [json.loads(v) for v in sequence_values.values]
-            elif isinstance(sequence_values, ValueSequence.VectorValueSequence):
-                # this is required as the underlying type is just a repeated scalar field, we need it to be a list
+            if isinstance(sequence_values, ValueSequence.VectorValueSequence):
+                # this is required as the underlying type is just a repeated scalar field, we need
+                # it to be a list
                 return [list(v) for v in sequence_values.values]
-            else:
-                return sequence_values.values
+            return sequence_values.values
 
         df_kwargs["data"] = dict(
             zip(
@@ -284,7 +288,8 @@ class SingleTimeSeries(DataObjectBase):
             result_df = result_df.rename(columns={"index": self.timestamp_label})
 
         # todo need to look into this? Is it required as we are not exposing
-        # self._backend = PandasTimeSeriesBackend(result_df, timestamp_column=self.timestamp_label, value_columns=value_labels)
+        # self._backend = PandasTimeSeriesBackend(result_df, timestamp_column=self.timestamp_label,
+        #   value_columns=value_labels)
         # Make the data frame
         return result_df, self.timestamp_label, value_labels
 
@@ -294,7 +299,7 @@ class SingleTimeSeries(DataObjectBase):
         """operate on pandas-like object instead of strickly pandas"""
         backend_df = adf
 
-        # if we want to include timestamps, but it is not already in the dataframe, we need to add it
+        # if we want to include timestamps, but it is not already in the dataframe, we need to add
         if include_timestamps and self.timestamp_label is None:
             dftouse = backend_df.copy(deep=False)  # this does seem to be necessary
             dftouse[self.__class__._DEFAULT_TS_COL] = (
@@ -303,13 +308,14 @@ class SingleTimeSeries(DataObjectBase):
                 else np.arange(len(dftouse))
             )
             return dftouse
-        # if we do not want timestamps, but we already have them in the dataframe, we need to return a view without timestamps
-        elif (
+        # if we do not want timestamps, but we already have them in the dataframe, we need to return
+        # a view without timestamps
+        if (
             include_timestamps is not None and not include_timestamps
         ) and self.timestamp_label is not None:
             return backend_df.loc[:, backend_df.columns != self.timestamp_label]
-        else:
-            return backend_df
+
+        return backend_df
 
     def as_pandas(self, include_timestamps=None) -> "pd.DataFrame":
         """Get the view of this timeseries as a pandas DataFrame
@@ -330,10 +336,12 @@ class SingleTimeSeries(DataObjectBase):
             )
 
         # Third Party
+        # pylint: disable=import-outside-toplevel
         from pyspark.pandas import DataFrame as psdataframe
+        from pyspark.sql import SparkSession
 
         # Local
-        from ..data_model.backends.util import strip_periodic
+        # pylint: disable=import-outside-toplevel
         from .backends._spark_backends import SparkTimeSeriesBackend
 
         # If there is a backend that knows how to do the conversion, use that
@@ -345,13 +353,10 @@ class SingleTimeSeries(DataObjectBase):
                 pandas_like, include_timestamps=include_timestamps
             )
             return timeseries_magic.to_spark()
-        else:
-            # Third Party
-            from pyspark.sql import SparkSession
 
-            spark = SparkSession.builder.config(conf=sparkconf_local()).getOrCreate()
-            return spark.createDataFrame(
-                strip_periodic(
-                    input_df=self.as_pandas(include_timestamps=include_timestamps)
-                )
+        spark = SparkSession.builder.config(conf=sparkconf_local()).getOrCreate()
+        return spark.createDataFrame(
+            strip_periodic(
+                input_df=self.as_pandas(include_timestamps=include_timestamps)
             )
+        )

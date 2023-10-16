@@ -109,7 +109,8 @@ class EvaluationRecord(DataObjectBase):
 @dataobject(package=TS_PACKAGE)
 class EvaluationResult(DataObjectBase):
     """EvaluationResult containing the evaluation results
-    Representation of EvaluationResult stores rows of the dataframe as list of records string lists to keep track of id and metric columns
+    Representation of EvaluationResult stores rows of the dataframe as list of records string lists
+    to keep track of id and metric columns
     """
 
     records: List[EvaluationRecord]
@@ -195,6 +196,7 @@ class EvaluationResult(DataObjectBase):
 
         records = []
 
+        has_offset = False
         for record in self.records:
             id_values = []
             metric_values = []
@@ -204,13 +206,14 @@ class EvaluationResult(DataObjectBase):
             metric_values = record.metric_values
             if record.offset:
                 offset = record.offset.value
+                has_offset = True
 
             records.append(id_values + metric_values + [offset])
 
         df = pd.DataFrame(
             records, columns=self.id_cols + self.metric_cols + [self.offset_col]
         )
-        if record.offset is None:
+        if not has_offset:
             df.drop([self.offset_col], axis=1, inplace=True)
 
         return df

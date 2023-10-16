@@ -19,6 +19,7 @@ import pandas as pd
 import caikit.interfaces.ts.data_model as dm
 
 
+# pylint: disable=too-many-return-statements
 def mts_equals(left: dm.TimeSeries, right: dm.TimeSeries, **kwargs) -> bool:
     """Compare if two TimeSeries objects are equal
     Args:
