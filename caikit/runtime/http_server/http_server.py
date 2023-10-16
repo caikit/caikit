@@ -346,7 +346,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 log.error("<RUN51881106E>", err, exc_info=True)
             return Response(content=json.dumps(error_content), status_code=error_code)
 
-    def _add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
+    def _add_unary_input_unary_output_handler(self, rpc: TaskPredictRPC):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
         pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
@@ -373,7 +373,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     model_id=model_id,
                     request_name=rpc.request.name,
                     inference_func_name=model.get_inference_signature(
-                        output_streaming=False, input_streaming=False
+                        output_streaming=False, input_streaming=False, task=rpc.task
                     ).method_name,
                     **request_params,
                 )

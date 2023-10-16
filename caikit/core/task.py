@@ -115,7 +115,7 @@ class TaskBase:
                     signature, decoration.input_streaming, decoration.output_streaming
                 )
 
-                module._INFERENCE_SIGNATURES.append(
+                module._TASK_INFERENCE_SIGNATURES.setdefault(cls, []).append(
                     (decoration.input_streaming, decoration.output_streaming, signature)
                 )
 

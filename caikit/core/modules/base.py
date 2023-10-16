@@ -24,7 +24,7 @@
 
 # Standard
 from io import BytesIO
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import collections
 import os
 import shutil
@@ -48,7 +48,7 @@ from caikit import core
 log = alog.use_channel("MODULE")
 error = error_handler.get(log)
 
-
+# pylint: disable=too-many-public-methods
 class ModuleBase(metaclass=_ModuleBaseMeta):
     """Abstract base class from which all modules should inherit."""
 
@@ -86,15 +86,35 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
 
     @classmethod
     def get_inference_signature(
-        cls, input_streaming: bool, output_streaming: bool
+        cls,
+        input_streaming: bool,
+        output_streaming: bool,
+        task: Type["caikit.core.TaskBase"] = None,
     ) -> Optional["caikit.core.signature_parsing.CaikitMethodSignature"]:
         """Returns the inference method signature that is capable of running the module's task
         for the given flavors of input and output streaming
         """
-        for in_streaming, out_streaming, signature in cls._INFERENCE_SIGNATURES:
+
+        if task is not None and task in cls._TASK_INFERENCE_SIGNATURES:
+            signatures = cls._TASK_INFERENCE_SIGNATURES[task]
+        elif cls._TASK_INFERENCE_SIGNATURES:
+            signatures = next(iter(cls._TASK_INFERENCE_SIGNATURES.values()))
+        else:
+            signatures = []
+
+        for in_streaming, out_streaming, signature in signatures:
             if in_streaming == input_streaming and out_streaming == output_streaming:
                 return signature
         return None
+
+    @classmethod
+    def get_inference_signatures(
+        cls, task: Type["caikit.core.TaskBase"]
+    ) -> List[Tuple[bool, bool, "caikit.core.signature_parsing.CaikitMethodSignature"]]:
+        """Returns inference method signatures for all supported flavors
+        of input and output streaming for a given task
+        """
+        return cls._TASK_INFERENCE_SIGNATURES.get(task)
 
     @property
     def load_backend(self):

@@ -23,7 +23,7 @@ import requests
 from caikit.config.config import get_config
 from caikit.runtime import get_inference_request
 from caikit.runtime.service_factory import ServicePackageFactory
-from text_sentiment.runtime_model import HuggingFaceSentimentModule
+from text_sentiment.runtime_model.hf_module import HuggingFaceSentimentTask
 import caikit
 
 if __name__ == "__main__":
@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
         # Run inference for two sample prompts
         for text in ["I am not feeling well today!", "Today is a nice sunny day"]:
-            request = get_inference_request(HuggingFaceSentimentModule.TASK_CLASS)(
+            request = get_inference_request(HuggingFaceSentimentTask)(
                 text_input=text
             ).to_proto()
             response = client_stub.HuggingFaceSentimentTaskPredict(

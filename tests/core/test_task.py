@@ -10,6 +10,7 @@ import pytest
 from caikit.core import TaskBase, task
 from sample_lib import SampleModule
 from sample_lib.data_model.sample import SampleInputType, SampleOutputType, SampleTask
+from sample_lib.modules.multi_task import FirstTask, MultiTaskModule, SecondTask
 import caikit.core
 
 
@@ -115,8 +116,15 @@ def test_task_validator_raises_on_wrong_streaming_type():
 
 
 def test_task_is_set_on_module_classes():
-    assert hasattr(SampleModule, "TASK_CLASS")
-    assert SampleModule.TASK_CLASS == SampleTask
+    assert hasattr(SampleModule, "tasks")
+    assert len(SampleModule.tasks) == 1
+    assert SampleTask in SampleModule.tasks
+
+
+def test_multiple_tasks_are_set_on_module_class():
+    assert hasattr(MultiTaskModule, "tasks")
+    assert FirstTask in MultiTaskModule.tasks
+    assert SecondTask in MultiTaskModule.tasks
 
 
 def test_task_can_be_inferred_from_parent_module():
@@ -124,21 +132,35 @@ def test_task_can_be_inferred_from_parent_module():
     class Stuff(SampleModule):
         pass
 
-    assert Stuff.TASK_CLASS == SampleModule.TASK_CLASS
+    assert Stuff.tasks == SampleModule.tasks
 
 
-def test_task_cannot_conflict_with_parent_module():
-    @task(unary_parameters={"foo": SampleInputType}, unary_output_type=SampleOutputType)
-    class SomeTask(TaskBase):
+def test_multiple_tasks_inherited_from_parent_module():
+    @caikit.core.modules.module(
+        id="multichild", name="MultiTaskChildModule", version="0.0.1"
+    )
+    class MultiTaskChildModule(MultiTaskModule):
         pass
 
-    with pytest.raises(TypeError, match="but superclass has"):
+    assert FirstTask in MultiTaskChildModule.tasks
+    assert SecondTask in MultiTaskChildModule.tasks
 
-        @caikit.core.modules.module(
-            id=str(uuid.uuid4()), name="Stuff", version="0.0.1", task=SomeTask
-        )
-        class Stuff(SampleModule):
+
+def test_tasks_added_from_parent_and_child_module():
+    @task(unary_parameters={"foo": int}, unary_output_type=SampleOutputType)
+    class ThirdTask(TaskBase):
+        pass
+
+    @caikit.core.modules.module(
+        id="taskfamily", name="MultiTaskChildModule", version="0.0.1", tasks=[ThirdTask]
+    )
+    class MultiTaskChildModule(MultiTaskModule):
+        @ThirdTask.taskmethod()
+        def run_third_task(self, foo: int) -> SampleOutputType:
             pass
+
+    for t in [FirstTask, SecondTask, ThirdTask]:
+        assert t in MultiTaskChildModule.tasks
 
 
 def test_task_is_not_required_for_modules():
@@ -146,7 +168,40 @@ def test_task_is_not_required_for_modules():
     class Stuff(caikit.core.ModuleBase):
         pass
 
-    assert Stuff.TASK_CLASS is None
+    assert Stuff.tasks == set()
+
+
+def test_raises_if_tasks_not_list():
+    with pytest.raises(
+        TypeError,
+        match=".*tasks.*list.*",
+    ):
+
+        @caikit.core.modules.module(
+            id=str(uuid.uuid4()),
+            name="BadTypeModule",
+            version="0.0.1",
+            tasks=set([FirstTask, SecondTask]),
+        )
+        class Stuff(caikit.core.ModuleBase):
+            pass
+
+
+def test_task_and_tasks_are_mutually_exclusive():
+    with pytest.raises(
+        ValueError,
+        match=".*Specify either task or tasks parameter, not both",
+    ):
+
+        @caikit.core.modules.module(
+            id=str(uuid.uuid4()),
+            name="Stuff",
+            version="0.0.1",
+            task=SampleTask,
+            tasks=[FirstTask, SecondTask],
+        )
+        class Stuff(caikit.core.ModuleBase):
+            pass
 
 
 def test_task_validation_throws_on_no_params():
@@ -333,6 +388,26 @@ def test_task_decorator_adds_taskmethods_to_modules():
     )
 
 
+def test_inference_signatures_returned_for_multiple_tasks():
+    first_task_signatures = MultiTaskModule.get_inference_signatures(FirstTask)
+
+    assert first_task_signatures is not None
+    assert len(first_task_signatures) == 1
+    (in_stream, out_stream, signature) = first_task_signatures[0]
+    assert in_stream is False
+    assert out_stream is False
+    assert signature.method_name == "run_some_task"
+
+    second_task_signatures = MultiTaskModule.get_inference_signatures(SecondTask)
+
+    assert second_task_signatures is not None
+    assert len(second_task_signatures) == 1
+    (in_stream, out_stream, signature) = second_task_signatures[0]
+    assert in_stream is False
+    assert out_stream is False
+    assert signature.method_name == "run_other_task"
+
+
 def test_task_decorator_datastream_throws_wrong_type():
     @task(
         unary_parameters={"sample_input": SampleInputType},
@@ -401,21 +476,29 @@ def test_task_decorator_datastream_params():
         ) -> caikit.core.data_model.DataStream[SampleOutputType]:
             pass
 
+    signatures = DataStreamStreamingModule.get_inference_signatures(
+        DataStreamStreamingTask
+    )
+
     stream_stream_method_signature = DataStreamStreamingModule.get_inference_signature(
         input_streaming=False, output_streaming=False
     )
+    assert (False, False, stream_stream_method_signature) in signatures
 
     out_stream_method_signature = DataStreamStreamingModule.get_inference_signature(
         input_streaming=False, output_streaming=True
     )
+    assert (False, True, out_stream_method_signature) in signatures
 
     in_stream_method_signature = DataStreamStreamingModule.get_inference_signature(
         input_streaming=True, output_streaming=False
     )
+    assert (True, False, in_stream_method_signature) in signatures
 
     bidi_stream_method_signature = DataStreamStreamingModule.get_inference_signature(
         input_streaming=True, output_streaming=True
     )
+    assert (True, True, bidi_stream_method_signature) in signatures
 
     assert stream_stream_method_signature.method_name == "run"
     assert stream_stream_method_signature.parameters == {

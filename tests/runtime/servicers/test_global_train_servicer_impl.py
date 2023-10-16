@@ -38,8 +38,10 @@ from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model.sample import (
     OtherOutputType,
+    OtherTask,
     SampleInputType,
     SampleOutputType,
+    SampleTask,
     SampleTrainingType,
 )
 from sample_lib.modules import CompositeModule, OtherModule, SampleModule
@@ -121,7 +123,7 @@ def test_global_train_sample_task(
         == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
     )
 
-    predict_class = get_inference_request(SampleModule.TASK_CLASS)
+    predict_class = get_inference_request(SampleTask)
     inference_response = sample_predict_servicer.Predict(
         predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
         Fixtures.build_context(training_response.model_name),
@@ -178,7 +180,7 @@ def test_global_train_other_task(
         == "sample_lib.modules.other_task.other_implementation.OtherModule"
     )
 
-    predict_class = get_inference_request(OtherModule.TASK_CLASS)
+    predict_class = get_inference_request(OtherTask)
     inference_response = sample_predict_servicer.Predict(
         predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
         Fixtures.build_context(training_response.model_name),
@@ -234,7 +236,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
     )
 
     # make sure the trained model can run inference
-    predict_class = get_inference_request(SampleModule.TASK_CLASS)
+    predict_class = get_inference_request(SampleTask)
     inference_response = sample_predict_servicer.Predict(
         predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
         Fixtures.build_context(training_response.model_name),
@@ -283,7 +285,7 @@ def test_run_train_job_works_with_wait(
             training_response.training_id,
         )
 
-        predict_class = get_inference_request(SampleModule.TASK_CLASS)
+        predict_class = get_inference_request(SampleTask)
         inference_response = sample_predict_servicer.Predict(
             predict_class(sample_input=SampleInputType(name="Test")).to_proto(),
             Fixtures.build_context(training_response.model_name),

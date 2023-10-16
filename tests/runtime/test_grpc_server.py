@@ -60,20 +60,15 @@ from caikit.runtime.protobufs import (
 )
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.utils.servicer_util import build_caikit_library_request_dict
-from sample_lib import (
-    CompositeModule,
-    InnerModule,
-    OtherModule,
-    SampleModule,
-    SamplePrimitiveModule,
-    StreamingModule,
-)
+from sample_lib import CompositeModule, InnerModule, OtherModule, SamplePrimitiveModule
 from sample_lib.data_model import (
     OtherOutputType,
     SampleInputType,
     SampleOutputType,
     SampleTrainingType,
 )
+from sample_lib.data_model.sample import OtherTask, SampleTask, StreamingTask
+from sample_lib.modules import FirstTask
 from tests.conftest import random_test_id, temp_config
 from tests.core.helpers import *
 from tests.fixtures import Fixtures
@@ -213,7 +208,7 @@ def test_predict_sample_module_ok_response(
 ):
     """Test RPC CaikitRuntime.SampleTaskPredict successful response"""
     stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
-    predict_request = get_inference_request(SampleModule.TASK_CLASS)(
+    predict_request = get_inference_request(SampleTask)(
         sample_input=HAPPY_PATH_INPUT_DM
     ).to_proto()
 
@@ -222,6 +217,21 @@ def test_predict_sample_module_ok_response(
     )
 
     assert actual_response == HAPPY_PATH_RESPONSE
+
+
+def test_predict_sample_module_multi_task_response(
+    multi_task_model_id, runtime_grpc_server, sample_inference_service
+):
+    """Test RPC CaikitRuntime.SampleTaskPredict successful response"""
+    stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
+    predict_class = get_inference_request(FirstTask)
+    predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
+
+    actual_response = stub.FirstTaskPredict(
+        predict_request, metadata=[("mm-model-id", multi_task_model_id)]
+    )
+
+    assert actual_response == SampleOutputType("Hello from FirstTask").to_proto()
 
 
 def test_global_predict_build_caikit_library_request_dict_creates_caikit_core_run_kwargs(
@@ -243,7 +253,7 @@ def test_global_predict_build_caikit_library_request_dict_creates_caikit_core_ru
     assert proto_expected_arguments == set(proto_request_dict.keys())
 
     # pythonic data model request
-    predict_class = get_inference_request(SampleModule.TASK_CLASS)
+    predict_class = get_inference_request(SampleTask)
     python_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
 
     python_sample_module_request_dict = build_caikit_library_request_dict(
@@ -263,7 +273,7 @@ def test_predict_streaming_module(
     """Test RPC CaikitRuntime.StreamingTaskPredict successful response"""
     stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
     predict_class = get_inference_request(
-        StreamingModule.TASK_CLASS, input_streaming=False, output_streaming=True
+        StreamingTask, input_streaming=False, output_streaming=True
     )
     predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
 
@@ -286,7 +296,7 @@ def test_predict_sample_module_error_response(
         stub = sample_inference_service.stub_class(
             runtime_grpc_server.make_local_channel()
         )
-        predict_class = get_inference_request(SampleModule.TASK_CLASS)
+        predict_class = get_inference_request(SampleTask)
         predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
 
         stub.SampleTaskPredict(
@@ -301,7 +311,7 @@ def test_rpc_validation_on_predict(
 ):
     """Check that the server catches models sent to the wrong task RPCs"""
     stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
-    predict_class = get_inference_request(OtherModule.TASK_CLASS)
+    predict_class = get_inference_request(OtherTask)
     predict_request = predict_class(
         sample_input_sampleinputtype=HAPPY_PATH_INPUT_DM
     ).to_proto()
@@ -332,7 +342,7 @@ def test_rpc_validation_on_predict_for_unsupported_model(
         stub = sample_inference_service.stub_class(
             runtime_grpc_server.make_local_channel()
         )
-        predict_class = get_inference_request(SampleModule.TASK_CLASS)
+        predict_class = get_inference_request(SampleTask)
         predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
         with pytest.raises(grpc.RpcError) as context:
             stub.SampleTaskPredict(
@@ -366,7 +376,7 @@ def test_rpc_validation_on_predict_for_wrong_streaming_flavor(
         )
 
         predict_class = get_inference_request(
-            SampleModule.TASK_CLASS,
+            SampleTask,
         )
         predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
         with pytest.raises(grpc.RpcError) as context:
@@ -422,7 +432,7 @@ def test_train_fake_module_ok_response_and_can_predict_with_trained_model(
     )
 
     # make sure the trained model can run inference
-    predict_class = get_inference_request(SampleModule.TASK_CLASS)
+    predict_class = get_inference_request(SampleTask)
     predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
     inference_response = inference_stub.SampleTaskPredict(
         predict_request, metadata=[("mm-model-id", actual_response.model_name)]
@@ -458,7 +468,7 @@ def test_train_fake_module_ok_response_with_loaded_model_can_predict_with_traine
     )
 
     # make sure the trained model can run inference
-    predict_class = get_inference_request(CompositeModule.TASK_CLASS)
+    predict_class = get_inference_request(SampleTask)
     predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
     inference_response = inference_stub.SampleTaskPredict(
         predict_request, metadata=[("mm-model-id", actual_response.model_name)]
@@ -505,7 +515,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
     )
 
     # make sure the trained model can run inference, and the batch size 100 was used
-    predict_class = get_inference_request(OtherModule.TASK_CLASS)
+    predict_class = get_inference_request(OtherTask)
     predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
     trained_inference_response = inference_stub.OtherTaskPredict(
         predict_request, metadata=[("mm-model-id", actual_response.model_name)]
@@ -565,7 +575,7 @@ def test_train_primitive_model(
     )
 
     # make sure the trained model can run inference
-    predict_class = get_inference_request(SampleModule.TASK_CLASS)
+    predict_class = get_inference_request(SampleTask)
     predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
 
     inference_response = inference_stub.SampleTaskPredict(
@@ -612,7 +622,7 @@ def test_train_fake_module_ok_response_with_datastream_jsondata(
     )
 
     # make sure the trained model can run inference
-    predict_class = get_inference_request(SampleModule.TASK_CLASS)
+    predict_class = get_inference_request(SampleTask)
     predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
     inference_response = inference_stub.SampleTaskPredict(
         predict_request, metadata=[("mm-model-id", actual_response.model_name)]
@@ -650,7 +660,7 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
     )
 
     # make sure the trained model can run inference
-    predict_class = get_inference_request(SampleModule.TASK_CLASS)
+    predict_class = get_inference_request(SampleTask)
     predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
     inference_response = inference_stub.SampleTaskPredict(
         predict_request, metadata=[("mm-model-id", actual_response.model_name)]
@@ -1115,7 +1125,7 @@ def test_metrics_stored_after_server_interrupt(
     with temp_config({"runtime": {"metering": {"enabled": True}}}, "merge"):
         with runtime_grpc_test_server(open_port) as server:
             stub = sample_inference_service.stub_class(server.make_local_channel())
-            predict_class = get_inference_request(SampleModule.TASK_CLASS)
+            predict_class = get_inference_request(SampleTask)
             predict_request = predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto()
             _ = stub.SampleTaskPredict(
                 predict_request, metadata=[("mm-model-id", sample_task_model_id)]

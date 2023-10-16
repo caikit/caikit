@@ -113,7 +113,7 @@ class GlobalTrainServicer:
             with alog.ContextLog(log.debug, outer_scope_name):
                 module = None
                 for mod in caikit.core.registries.module_registry().values():
-                    if mod.TASK_CLASS:
+                    if mod.tasks:
                         train_request_for_mod = (
                             ModuleClassTrainRPC.module_class_to_req_name(mod)
                         )

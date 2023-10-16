@@ -66,6 +66,7 @@ is known.
 """
 
 # Standard
+from typing import Set
 import abc
 import functools
 
@@ -151,6 +152,10 @@ class _ModuleBaseMeta(abc.ABCMeta):
             attrs["load"] = classmethod(metadata_injecting_load)
 
         return super().__new__(mcs, name, bases, attrs)
+
+    @property
+    def tasks(cls) -> Set["caikit.core.TaskBase"]:
+        return set(cls._TASK_CLASSES)
 
     def __setattr__(cls, name, val):
         """Overwrite __setattr__ to warn on any dynamic updates to the load function.
