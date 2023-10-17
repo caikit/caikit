@@ -28,14 +28,6 @@ sslocal = SparkSession.builder.getOrCreate
 
 test_log = alog.use_channel("TEST")
 
-alog.configure(
-    default_level=os.environ.get("LOG_LEVEL", "warning"),
-    filters=os.environ.get("LOG_FILTERS", "py4j.java_gateway:error"),
-    formatter="json" if os.environ.get("LOG_JSON", "").lower() == "true" else "pretty",
-    thread_id=os.environ.get("LOG_THREAD_ID", "").lower() == "true",
-)
-
-
 ## Test Data ###################################################################
 
 sample_data = {"key": [1, 2, 3], "val": [4, 5, 6], "val2": [7.1, 8.1, 9.1]}
