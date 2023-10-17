@@ -216,7 +216,7 @@ class GlobalTrainServicer:
         ).from_proto(request)
 
         # Create the model_saver to handle saving the training output
-        model_saver = request_data_model.output_target.make_model_saver()
+        model_saver = request_data_model.output_target.make_model_saver() if request_data_model.output_target else None
         if model_saver is None:
             # No output_target was supplied, so fall back to a configured local save path.
             # Use either:
@@ -229,7 +229,7 @@ class GlobalTrainServicer:
         kwargs.update(
             {
                 "module": module,
-                "model_saver": model_saver,
+                "saver": model_saver,
                 "model_name": request_data_model.model_name,
                 **build_caikit_library_request_dict(
                     request.parameters, module.TRAIN_SIGNATURE
