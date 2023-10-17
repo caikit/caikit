@@ -15,9 +15,6 @@ import tempfile
 import threading
 import time
 
-from caikit.core.data_model import DataBase
-from caikit.runtime.service_generation.output_target import PluginFactory as OutputTargetPluginFactory, \
-    make_output_target_message
 # Third Party
 from grpc_health.v1 import health_pb2, health_pb2_grpc
 import grpc
@@ -29,12 +26,17 @@ import alog
 
 # Local
 from caikit.core import MODEL_MANAGER
+from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import render_dataobject_protos
 from caikit.runtime import http_server
 from caikit.runtime.grpc_server import RuntimeGRPCServer
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
+from caikit.runtime.service_generation.output_target import (
+    PluginFactory as OutputTargetPluginFactory,
+)
+from caikit.runtime.service_generation.output_target import make_output_target_message
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
@@ -121,6 +123,7 @@ def sample_train_service(render_protos) -> ServicePackage:
         render_dataobject_protos(output_dir)
         training_service.service.write_proto_file(output_dir)
     return training_service
+
 
 @pytest.fixture(scope="session")
 def sample_output_target_type() -> Type[DataBase]:

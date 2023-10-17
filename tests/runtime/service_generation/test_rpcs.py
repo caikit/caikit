@@ -281,7 +281,10 @@ def test_module_train_rpc(sample_output_target_type):
         def train(cls, int_val: int, str_val: str) -> "TestModule":
             pass
 
-    rpc = ModuleClassTrainRPC(method_signature=TestModule.TRAIN_SIGNATURE, output_target_type=sample_output_target_type)
+    rpc = ModuleClassTrainRPC(
+        method_signature=TestModule.TRAIN_SIGNATURE,
+        output_target_type=sample_output_target_type,
+    )
 
     data_model = rpc.create_request_data_model(package_name="blah")
     assert data_model is not None
