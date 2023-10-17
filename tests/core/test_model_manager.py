@@ -26,8 +26,13 @@ import pytest
 # Local
 from caikit.core import LocalBackend
 from caikit.core.data_model import DataStream, TrainingStatus
-from caikit.core.model_management import ModelFinderBase, model_finder_factory
+from caikit.core.model_management import (
+    LocalPathModelSaver,
+    ModelFinderBase,
+    model_finder_factory,
+)
 from caikit.core.modules import ModuleBase, ModuleSaver, module
+from caikit.interfaces.common.data_model.stream_sources import PathReference
 
 # Unit Test Infrastructure
 from sample_lib.modules.sample_task import SampleModule
@@ -711,13 +716,17 @@ def test_train_with_wait(reset_globals):
         assert finished_train_future.get_info().status == TrainingStatus.COMPLETED
 
 
-def test_train_with_save_path(reset_globals):
-    """Make sure calling train with a save_path correctly saves out the model"""
+def test_train_with_saver(reset_globals):
+    """Make sure calling train with a saver correctly saves out the model"""
     with setup_test_trainer():
         with tempfile.TemporaryDirectory() as workdir:
             save_path = os.path.join(workdir, "saved_model")
             train_future = caikit.train(
-                SampleModule, DataStream.from_iterable([]), save_path=save_path
+                SampleModule,
+                DataStream.from_iterable([]),
+                saver=LocalPathModelSaver(
+                    target=PathReference(path=save_path), save_with_id=False
+                ),
             )
             assert train_future.get_info().status == TrainingStatus.RUNNING
             assert not os.path.exists(save_path)

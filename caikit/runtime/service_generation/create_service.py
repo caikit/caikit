@@ -23,8 +23,8 @@ from typing import Dict, List, Type
 from aconfig import aconfig
 import alog
 
-from .output_target import OutputTargetDataModel
 # Local
+from .output_target import OutputTargetDataModel
 from .rpcs import CaikitRPCBase, ModuleClassTrainRPC, TaskPredictRPC
 from caikit.core import ModuleBase, TaskBase
 from caikit.core.exceptions import error_handler
@@ -114,7 +114,9 @@ def create_inference_rpcs(
     return rpcs
 
 
-def create_training_rpcs(modules: List[Type[ModuleBase]], output_type: Type[OutputTargetDataModel]) -> List[CaikitRPCBase]:
+def create_training_rpcs(
+    modules: List[Type[ModuleBase]], output_type: Type[OutputTargetDataModel]
+) -> List[CaikitRPCBase]:
     """Handles the logic to create all the RPCs for training"""
 
     rpcs = []

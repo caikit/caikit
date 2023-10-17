@@ -216,14 +216,20 @@ class GlobalTrainServicer:
         ).from_proto(request)
 
         # Create the model_saver to handle saving the training output
-        model_saver = request_data_model.output_target.make_model_saver() if request_data_model.output_target else None
+        model_saver = (
+            request_data_model.output_target.make_model_saver()
+            if request_data_model.output_target
+            else None
+        )
         if model_saver is None:
             # No output_target was supplied, so fall back to a configured local save path.
             # Use either:
             # 1. The provided `training_output_dir` here, or
             # 2. The configured `runtime.training.output_dir`
             local_path: str = training_output_dir or self.training_output_dir
-            model_saver = LocalPathModelSaver(target=PathReference(path=local_path), save_with_id=self.save_with_id)
+            model_saver = LocalPathModelSaver(
+                target=PathReference(path=local_path), save_with_id=self.save_with_id
+            )
 
         # Build the full set of kwargs for the train call
         kwargs.update(

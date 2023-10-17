@@ -34,11 +34,11 @@ from .exceptions import error_handler
 from .model_management import (
     ModelFinderBase,
     ModelInitializerBase,
+    ModelSaver,
     ModelTrainerBase,
     model_finder_factory,
     model_initializer_factory,
     model_trainer_factory,
-    ModelSaver
 )
 from .modules.base import ModuleBase
 from .registries import module_registry

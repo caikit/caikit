@@ -28,7 +28,6 @@ import uuid
 import aconfig
 import alog
 
-from .model_saver import ModelSaver
 # Local
 from ..data_model import TrainingStatus
 from ..exceptions import error_handler
@@ -36,6 +35,7 @@ from ..modules import ModuleBase
 from ..toolkit.destroyable_process import DestroyableProcess
 from ..toolkit.destroyable_thread import DestroyableThread
 from ..toolkit.logging import configure as configure_logging
+from .model_saver import ModelSaver
 from .model_trainer_base import ModelTrainerBase, TrainingInfo
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
@@ -223,7 +223,9 @@ class LocalModelTrainer(ModelTrainerBase):
             if self.saver is not None:
                 log.debug("Saving training %s", self.id)
                 with alog.ContextTimer(log.debug, "Training %s saved in: ", self.id):
-                    self.saver.save_model(model=trained_model, model_name=self.name, training_id=self.id)
+                    self.saver.save_model(
+                        model=trained_model, model_name=self.name, training_id=self.id
+                    )
             self._completion_time = self._completion_time or datetime.now()
             log.debug2("Completion time for %s: %s", self.id, self._completion_time)
             return trained_model

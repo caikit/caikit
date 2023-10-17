@@ -23,6 +23,7 @@ from caikit.core.data_model import TrainingStatus
 from caikit.core.model_management import (
     ModelFinderBase,
     ModelInitializerBase,
+    ModelSaver,
     ModelTrainerBase,
     TrainingInfo,
     model_finder_factory,
@@ -124,12 +125,11 @@ class TestTrainer(ModelTrainerBase):
     class TestModelFuture(ModelTrainerBase.ModelFutureBase):
         __test__ = False
 
-        def __init__(self, parent, trained_model, save_path, save_with_id):
+        def __init__(self, parent, trained_model, saver):
             super().__init__(
                 trainer_name=parent.instance_name,
                 training_id=str(uuid.uuid4()),
-                save_path=save_path,
-                save_with_id=save_with_id,
+                saver=saver,
             )
             self._parent = parent
             self._trained_model = trained_model
@@ -148,8 +148,10 @@ class TestTrainer(ModelTrainerBase):
 
         def wait(self):
             self._completed = True
-            if self.save_path:
-                self._trained_model.save(self.save_path)
+            if self.saver:
+                self.saver.save_model(
+                    self._trained_model, model_name=self.name, training_id=self.id
+                )
 
         def load(self):
             return self._trained_model
@@ -158,12 +160,11 @@ class TestTrainer(ModelTrainerBase):
         self,
         module_class: Type[ModuleBase],
         *args,
-        save_path: Optional[str] = None,
-        save_with_id: bool = False,
+        saver: Optional[ModelSaver] = None,
         **kwargs,
     ):
         trained_model = module_class.train(*args, **kwargs)
-        future = self.TestModelFuture(self, trained_model, save_path, save_with_id)
+        future = self.TestModelFuture(self, trained_model, saver)
         self._futures[future.id] = future
         return future
 

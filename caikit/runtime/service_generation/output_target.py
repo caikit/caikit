@@ -200,7 +200,9 @@ class OutputTargetOneOf:
 
 # TODO: Ask Scott or Dean about correct multiple inheritance type hinting
 # OutputTargetAndDataBase = typing.TypeVar("OutputTargetAndDataBase", bound=Union[DataBase, OutputTargetOneOf])
-OutputTargetDataModel = typing.TypeVar("OutputTargetDataModel", DataBase, OutputTargetOneOf)
+OutputTargetDataModel = typing.TypeVar(
+    "OutputTargetDataModel", DataBase, OutputTargetOneOf
+)
 
 
 def make_output_target_message(

@@ -29,12 +29,12 @@ from py_to_proto.dataclass_to_proto import (  # NOTE: Imported from here for com
 )
 import alog
 
-from .output_target import OutputTargetDataModel
 # Local
 from ...interfaces.common.data_model.stream_sources import S3Path
 from . import protoable, type_helpers
 from .compatibility_checker import ApiFieldNames
 from .data_stream_source import make_data_stream_source
+from .output_target import OutputTargetDataModel
 from .proto_package import snake_to_upper_camel
 from caikit.core import ModuleBase, TaskBase
 from caikit.core.data_model.base import DataBase
@@ -113,7 +113,11 @@ class ModuleClassTrainRPC(CaikitRPCBase):
             self._method.default_parameters,
         )
 
-        params = {"model_name": str, "output_target": output_target_type, "parameters": "PLACEHOLDER"}
+        params = {
+            "model_name": str,
+            "output_target": output_target_type,
+            "parameters": "PLACEHOLDER",
+        }
 
         self._req = _RequestMessage(
             ModuleClassTrainRPC.module_class_to_req_name(self.clz),

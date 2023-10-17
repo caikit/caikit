@@ -33,6 +33,7 @@ class FileReference(DataObjectBase):
 @dataobject(PACKAGE_COMMON)
 class PathReference(DataObjectBase):
     """Reference to a path on local disk"""
+
     path: Annotated[str, FieldNumber(1)]
 
 

@@ -18,7 +18,7 @@ import abc
 import os
 import typing
 
-# First Party
+# Local
 from ..modules import ModuleBase
 from caikit.interfaces.common.data_model.stream_sources import PathReference
 
@@ -63,11 +63,11 @@ class ModelSaver(typing.Generic[T]):
 
     @classmethod
     def _save_path_with_id(
-            cls,
-            save_path: Optional[str],
-            save_with_id: bool,
-            training_id: str,
-            model_name: Optional[str],
+        cls,
+        save_path: Optional[str],
+        save_with_id: bool,
+        training_id: str,
+        model_name: Optional[str],
     ) -> Optional[str]:
         """Shared utility method to inject both the training id and model name
         into a save path.
@@ -89,7 +89,7 @@ class ModelSaver(typing.Generic[T]):
         return os.path.join(*final_path_parts)
 
 
-# Extend OutputTarget with a concrete message type
+# Extend ModelSaver with a concrete message type
 class LocalPathModelSaver(ModelSaver[PathReference]):
     """Holds the actual impl for saving the model"""
 
@@ -113,5 +113,5 @@ class LocalPathModelSaver(ModelSaver[PathReference]):
             save_path=self.target.path,
             save_with_id=self.save_with_id,
             training_id=training_id,
-            model_name=model_name
+            model_name=model_name,
         )

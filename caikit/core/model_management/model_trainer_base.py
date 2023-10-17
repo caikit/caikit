@@ -30,12 +30,12 @@ import abc
 import dataclasses
 import datetime
 
-from .model_saver import ModelSaver
 # Local
 from ..data_model import TrainingStatus
 from ..modules import ModuleBase
 from ..toolkit.factory import FactoryConstructible
 from ..toolkit.reversible_hasher import ReversibleHasher
+from .model_saver import ModelSaver
 
 
 @dataclasses.dataclass
@@ -74,7 +74,9 @@ class ModelTrainerBase(FactoryConstructible):
             self._saver = saver
             # TODO: figure out what to do with this
             if saver:
-                self._save_path = self._saver.save_path(model_name=model_name, training_id=training_id)
+                self._save_path = self._saver.save_path(
+                    model_name=model_name, training_id=training_id
+                )
             else:
                 self._save_path = None
             self._model_name = model_name

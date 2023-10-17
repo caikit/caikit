@@ -100,7 +100,9 @@ def test_train_save_and_load(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        save_path=save_path,
+        saver=LocalPathModelSaver(
+            target=PathReference(path=save_path), save_with_id=False
+        ),
     )
     model_future.wait()
 
@@ -123,8 +125,9 @@ def test_save_with_id(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        save_path=save_path,
-        save_with_id=True,
+        saver=LocalPathModelSaver(
+            target=PathReference(path=save_path), save_with_id=True
+        ),
     )
     model_future.wait()
     assert model_future.save_path != save_path
@@ -140,8 +143,9 @@ def test_save_with_id_and_model_name(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        save_path=save_path,
-        save_with_id=True,
+        saver=LocalPathModelSaver(
+            target=PathReference(path=save_path), save_with_id=True
+        ),
         model_name="abc",
     )
     model_future.wait()
@@ -159,7 +163,9 @@ def test_save_with_model_name(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        saver=LocalPathModelSaver(target=PathReference(path=save_path), save_with_id=False),
+        saver=LocalPathModelSaver(
+            target=PathReference(path=save_path), save_with_id=False
+        ),
         model_name="abc",
     )
     model_future.wait()
