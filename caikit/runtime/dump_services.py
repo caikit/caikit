@@ -29,14 +29,14 @@ import caikit
 log = alog.use_channel("RUNTIME-DUMP-SVC")
 
 
-def dump_grpc_services(output_dir: str):
+def dump_grpc_services(output_dir: str, write_modules_file):
     """Utility for rendering the all generated interfaces to proto files"""
     inf_enabled = get_config().runtime.service_generation.enable_inference
     train_enabled = get_config().runtime.service_generation.enable_training
 
     if inf_enabled:
         inf_svc = ServicePackageFactory.get_service_package(
-            ServicePackageFactory.ServiceType.INFERENCE, write_modules_file=True
+            ServicePackageFactory.ServiceType.INFERENCE, write_modules_file=write_modules_file
         )
     if train_enabled:
         train_svc = ServicePackageFactory.get_service_package(
@@ -99,12 +99,15 @@ def dump_http_services(output_dir: str):
 
 
 if __name__ == "__main__":
-    assert len(sys.argv) == 2, f"Usage: {sys.argv[0]} <output_dir>"
+    assert (
+        len(sys.argv) == 2
+    ), f"Usage: {sys.argv[0]} <output_dir>, <write_modules_json>"
     out_dir = sys.argv[1]
+    write_modules_json = sys.argv[2]
     # Set up logging so users can set LOG_LEVEL etc
     caikit.core.toolkit.logging.configure()
 
     if get_config().runtime.grpc.enabled:
-        dump_grpc_services(out_dir)
+        dump_grpc_services(out_dir, write_modules_json)
     if get_config().runtime.http.enabled:
         dump_http_services(out_dir)

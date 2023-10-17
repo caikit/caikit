@@ -29,7 +29,7 @@ log = alog.use_channel("TEST-DUMP-I")
 
 def test_dump_grpc_services_dir_exists():
     with tempfile.TemporaryDirectory() as workdir:
-        dump_grpc_services(workdir)
+        dump_grpc_services(workdir, False)
         assert os.path.exists(workdir)
 
         for file in os.listdir(workdir):
@@ -38,7 +38,7 @@ def test_dump_grpc_services_dir_exists():
 
 def test_dump_grpc_services_dir_does_not_exist():
     fake_dir = "fake_dir"
-    dump_grpc_services(fake_dir)
+    dump_grpc_services(fake_dir, False)
     assert os.path.exists(fake_dir)
 
     for file in os.listdir(fake_dir):
