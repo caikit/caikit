@@ -386,7 +386,7 @@ def test_global_train_surfaces_caikit_errors(sample_train_servicer, sample_text_
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     # we don't support .txt files yet, hence this should throw an error
     training_data = stream_type(
-        filereference=stream_type.FileReference(filename=sample_text_file)
+        file=stream_type.FileReference(filename=sample_text_file)
     )
 
     train_class = get_train_request(SampleModule)

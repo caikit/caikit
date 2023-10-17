@@ -494,7 +494,7 @@ def test_train_fake_module_does_not_change_another_instance_model_of_block(
     # Train an OtherModule with batch size 100
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
     training_data = stream_type(
-        filereference=stream_type.FileReference(filename=sample_int_file)
+        file=stream_type.FileReference(filename=sample_int_file)
     )
 
     train_request = get_train_request(OtherModule)(
@@ -644,7 +644,7 @@ def test_train_fake_module_ok_response_with_datastream_csv_file(
     """Test RPC CaikitRuntime.SampleTaskSampleModuleTrainRequest successful response with training data file type"""
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     training_data = stream_type(
-        filereference=stream_type.FileReference(filename=sample_csv_file)
+        file=stream_type.FileReference(filename=sample_csv_file)
     )
     model_name = random_test_id()
 
@@ -1265,7 +1265,7 @@ def test_construct_with_options(open_port, sample_train_service, sample_int_file
             # rejected
             stream_type = caikit.interfaces.common.data_model.DataStreamSourceInt
             training_data = stream_type(
-                filereference=stream_type.FileReference(filename=sample_int_file)
+                file=stream_type.FileReference(filename=sample_int_file)
             ).to_proto()
             train_request = sample_train_service.messages.OtherTaskOtherModuleTrainRequest(
                 model_name="Bar Training",

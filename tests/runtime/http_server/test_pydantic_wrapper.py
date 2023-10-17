@@ -112,7 +112,7 @@ def test_pydantic_to_dataobject_datastream_file():
     # assert it's our DM object, all fine and dandy
     assert isinstance(datastream_dm_obj, DataBase)
     assert isinstance(datastream_dm_obj.data_stream, FileReference)
-    assert datastream_dm_obj.to_json() == '{"filereference": {"filename": "hello"}}'
+    assert datastream_dm_obj.to_json() == '{"file": {"filename": "hello"}}'
 
 
 @pytest.mark.parametrize(
