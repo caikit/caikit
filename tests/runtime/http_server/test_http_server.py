@@ -303,6 +303,7 @@ def test_inference_sample_task(sample_task_model_id, runtime_http_server):
             json=json_input,
         )
         json_response = json.loads(response.content.decode(response.default_encoding))
+        print(json_response)
         assert response.status_code == 200, json_response
         assert json_response["greeting"] == "Hello world"
 
@@ -333,13 +334,12 @@ def test_inference_sample_task_multipart_input(
 
     with TestClient(runtime_http_server.app) as client:
         multipart_input = {
+            "model_id": sample_task_model_id,
             "inputs.name": "world",
             "parameters": json.dumps({"throw": False}),
         }
 
-        response = client.post(
-            f"/api/v1/{sample_task_model_id}/task/sample", files=multipart_input
-        )
+        response = client.post(f"/api/v1/task/sample", files=multipart_input)
 
         json_response = json.loads(response.content.decode(response.default_encoding))
         assert response.status_code == 200, json_response
@@ -347,7 +347,7 @@ def test_inference_sample_task_multipart_input(
 
         multipart_input["parameters"] = json.dumps({"throw": True})
         response = client.post(
-            f"/api/v1/{sample_task_model_id}/task/sample",
+            f"/api/v1/task/sample",
             files=multipart_input,
         )
         # this is 500 because we explicitly pass in `throw` as True, which
@@ -368,12 +368,13 @@ def test_inference_file_task_multipart_flipped_input(
         temp_file.seek(0)
 
         file_input = {
+            "model_id": file_task_model_id,
             "inputs.file": temp_file,
             "inputs": json.dumps({"metadata": {"name": "agoodname"}}),
         }
 
         response = client.post(
-            f"/api/v1/{file_task_model_id}/task/file",
+            f"/api/v1/task/file",
             files=file_input,
         )
         content_stream = BytesIO(response.content)

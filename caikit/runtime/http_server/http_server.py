@@ -397,18 +397,18 @@ class RuntimeHTTPServer(RuntimeServerBase):
         )
         # pylint: disable=unused-argument
         async def _handler(
-            model_id: str,
             context: Request,
         ) -> Response:
-            log.debug("In unary handler for %s for model %s", rpc.name, model_id)
-            loop = asyncio.get_running_loop()
 
             request = await pydantic_from_request(pydantic_request, context)
             request_params = self._get_request_params(rpc, request)
 
-            log.debug4("Sending request %s to model id %s", request_params, model_id)
             try:
                 model_id = self._get_model_id(request)
+                log.debug4(
+                    "Sending request %s to model id %s", request_params, model_id
+                )
+
                 log.debug("In unary handler for %s for model %s", rpc.name, model_id)
                 loop = asyncio.get_running_loop()
 
@@ -470,7 +470,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             response_model=pydantic_response,
             openapi_extra=self._get_request_openapi(pydantic_request),
         )
-        async def _handler(model_id: str, context: Request) -> EventSourceResponse:
+        async def _handler(context: Request) -> EventSourceResponse:
             log.debug("In streaming handler for %s", rpc.name)
 
             request = await pydantic_from_request(pydantic_request, context)
