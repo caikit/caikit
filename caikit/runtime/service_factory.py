@@ -117,6 +117,7 @@ class ServicePackageFactory:
                 concrete Servicer implementation to a protobufs Service and grpc Server
         """
         if service_type == cls.ServiceType.TRAINING_MANAGEMENT:
+            # TODO: should this use service_generation.get_runtime_service_package()?
             grpc_service = json_to_service(
                 name=TRAINING_MANAGEMENT_SERVICE_NAME,
                 package="caikit.runtime.training",

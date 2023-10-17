@@ -29,23 +29,23 @@ from caikit.runtime.service_generation.output_target import LocalModelSaverPlugi
 def test_local_saver_plugin():
     plugin = LocalModelSaverPlugin(config={}, instance_name="_test")
 
-    # Should have output target type `File`
+    # Should have output target type `PathReference`
     assert plugin.get_output_target_type() == PathReference
 
-    # Field name should be "file" (target type lower cased)
-    assert plugin.get_field_name() == "file"
+    # Field name should be "path_reference" (target type lower snake cased)
+    assert plugin.get_field_name() == "path_reference"
 
-    # Model saver is the local file one
+    # Model saver is the local path one
     assert plugin.get_model_saver_class() == LocalPathModelSaver
 
-    # Can construct a `LocalFileModelSaver` with a `File`
+    # Can construct a `LocalPathModelSaver` with a `PathReference`
     saver = plugin.make_model_saver(PathReference(path="foo"))
     assert isinstance(saver, LocalPathModelSaver)
 
 
 def test_local_saver_plugin_validates_target_type():
     plugin = LocalModelSaverPlugin(config={}, instance_name="_test")
-    with pytest.raises(TypeError, match="variable `target` has type `str` .* not in .*File"):
+    with pytest.raises(TypeError, match="variable `target` has type `str` .* not in .*PathReference"):
         plugin.make_model_saver(target="/some/path")
 
 
@@ -72,13 +72,13 @@ def test_output_target_message_class(plugin_factory):
     # For now: only has the `file` field. Can add more test model savers for more
     assert len(oneof.fields) == 1
 
-    assert hasattr(output_target_class, "file")
+    assert hasattr(output_target_class, "path_reference")
 
 
 def test_output_target_message_builds_model_savers(plugin_factory):
     output_target_class = make_output_target_message(plugin_factory)
 
-    target_field = output_target_class(file=PathReference(path="foo"))
+    target_field = output_target_class(path_reference=PathReference(path="foo"))
 
     saver = target_field.get_model_saver()
 

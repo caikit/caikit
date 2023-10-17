@@ -32,6 +32,7 @@ from caikit.core.exceptions import error_handler
 from caikit.core.model_management import LocalPathModelSaver, ModelSaver
 from caikit.core.toolkit.factory import FactoryConstructible, ImportableFactory
 from caikit.interfaces.common.data_model.stream_sources import PathReference
+from caikit.runtime import service_generation
 
 log = alog.use_channel("MDSV-PLUG")
 error = error_handler.get(log)
@@ -102,6 +103,10 @@ class LocalModelSaverPlugin(ModelSaverPluginBase):
 
     def get_field_number(self) -> int:
         return 1
+
+    def get_field_name(self) -> str:
+        # injecting a little underscore. TODO: put snake_case in default impl?
+        return "path_reference"
 
 
 ## ModelSaverPluginFactory ####################################################
@@ -234,7 +239,7 @@ def make_output_target_message(
     output_target_type_union = Union[tuple(annotation_list)]
 
     data_object = make_dataobject(
-        package="some_package",
+        package=service_generation.get_runtime_service_package(),
         name="OutputTarget",
         bases=(OutputTargetOneOf,),
         attrs={"PLUGINS": plugins},

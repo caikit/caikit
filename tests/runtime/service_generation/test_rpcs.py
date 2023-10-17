@@ -263,7 +263,7 @@ def test_task_inference_rpc_with_list_of_dm_params():
     assert rpc.name == "TestTaskPredict"
 
 
-def test_module_train_rpc():
+def test_module_train_rpc(sample_output_target_type):
     @caikit.core.task(
         required_parameters={"str_val": str}, output_type=SampleOutputType
     )
@@ -281,7 +281,7 @@ def test_module_train_rpc():
         def train(cls, int_val: int, str_val: str) -> "TestModule":
             pass
 
-    rpc = ModuleClassTrainRPC(method_signature=TestModule.TRAIN_SIGNATURE)
+    rpc = ModuleClassTrainRPC(method_signature=TestModule.TRAIN_SIGNATURE, output_target_type=sample_output_target_type)
 
     data_model = rpc.create_request_data_model(package_name="blah")
     assert data_model is not None
@@ -290,7 +290,7 @@ def test_module_train_rpc():
 
     # Training RPCs nest the actual training params from the `.train` signature
     assert hasattr(data_model, "model_name")
-    assert hasattr(data_model, "output_path")
+    assert hasattr(data_model, "output_target")
     assert hasattr(data_model, "parameters")
 
     training_message = data_model.from_json(

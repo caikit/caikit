@@ -321,7 +321,7 @@ def test_no_training_rpcs_module_with_no_train_function():
         def train_in_progress(self):
             pass
 
-    rpcs = create_training_rpcs([Foo])
+    rpcs = create_training_rpcs([Foo], output_type=None)
     assert len(rpcs) == 0
 
 
@@ -331,12 +331,12 @@ def test_no_training_rpcs_for_module_with_no_task():
         def train(self, foo: int) -> "Foo":
             pass
 
-    rpcs = create_training_rpcs([Foo])
+    rpcs = create_training_rpcs([Foo], output_type=None)
     assert len(rpcs) == 0
 
 
 def test_create_training_rpcs():
-    rpcs = create_training_rpcs([widget_class])
+    rpcs = create_training_rpcs([widget_class], output_type=None)
     assert len(rpcs) == 1
     assert widget_class in rpcs[0].module_list
 
