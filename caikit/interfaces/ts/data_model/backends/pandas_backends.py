@@ -103,6 +103,7 @@ class PandasMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
         self._key_column = key_column
         self._timestamp_column = timestamp_column
         key_column_list = [key_column] if isinstance(key_column, str) else key_column
+        # pylint: disable=duplicate-code
         self._value_columns = value_columns or [
             col
             for col in data_frame.columns
@@ -118,6 +119,7 @@ class PandasMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
     def get_attribute(
         self, data_model_class: Type["MultiTimeSeries"], name: str
     ) -> Any:
+        # pylint: disable=duplicate-code
         if isinstance(self._key_column, str):
             key_columns = [self._key_column]
         else:
