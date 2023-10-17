@@ -213,7 +213,8 @@ class FileDataStreamSourcePlugin(FilePluginBase):
     name = "FileData"
 
     def get_field_name(self, element_type: type) -> str:
-        """Half-Backwards compatibility and half keep FileReference consistent with ListofFiles/Directory"""
+        """Half-Backwards compatibility and half keep FileReference consistent
+        with ListofFiles/Directory"""
         return "file"
 
     def get_stream_message_type(self, *_, **__) -> Type[DataBase]:
@@ -234,6 +235,11 @@ class ListOfFilesDataStreamSourcePlugin(FilePluginBase):
     """Plugin for a list of files"""
 
     name = "ListOfFiles"
+
+    def get_field_name(self, element_type: type) -> str:
+        """Half-Backwards compatibility and half keep ListOfFile consistent
+        with File/Directory"""
+        return "list_of_files"
 
     def get_stream_message_type(self, *_, **__) -> Type[DataBase]:
         return ListOfFileReferences

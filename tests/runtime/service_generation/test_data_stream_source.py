@@ -349,7 +349,7 @@ def test_make_data_stream_source_list_of_json_files(sample_json_file):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     # does NOT work with sample_json_collection as each file needs to have data in array
     ds = stream_type(
-        listoffilereferences=stream_type.ListOfFileReferences(
+        list_of_files=stream_type.ListOfFileReferences(
             files=[sample_json_file, sample_json_file]
         )
     )
@@ -368,9 +368,7 @@ def test_make_data_stream_source_list_of_csv_files(sample_csv_collection):
         for file in os.listdir(sample_csv_collection)
     ]
     # send all files but last one
-    ds = stream_type(
-        listoffilereferences=stream_type.ListOfFileReferences(files=sample_files)
-    )
+    ds = stream_type(list_of_files=stream_type.ListOfFileReferences(files=sample_files))
 
     assert isinstance(ds, DataStreamSourceBase)
 
@@ -386,9 +384,7 @@ def test_make_data_stream_source_list_of_jsonl_files(sample_jsonl_collection):
         os.path.join(sample_jsonl_collection, file)
         for file in os.listdir(sample_jsonl_collection)
     ]
-    ds = stream_type(
-        listoffilereferences=stream_type.ListOfFileReferences(files=sample_files)
-    )
+    ds = stream_type(list_of_files=stream_type.ListOfFileReferences(files=sample_files))
     assert isinstance(ds, DataStreamSourceBase)
 
     data_stream = ds.to_data_stream()
