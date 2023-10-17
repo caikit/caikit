@@ -35,6 +35,7 @@ from caikit.runtime.service_factory import (
 )
 from sample_lib import SampleModule
 from sample_lib.data_model import SampleInputType, SampleOutputType
+from sample_lib.data_model.sample import SampleTask
 from sample_lib.modules import ListModule, OtherModule
 from tests.conftest import temp_config
 from tests.core.helpers import MockBackend
@@ -109,18 +110,6 @@ MODULE_LIST = [
 
 
 ### Test ServicePackageFactory._get_and_filter_modules function
-def test_get_and_filter_modules_respects_excluded_task_type():
-    with temp_config(
-        {
-            "runtime": {
-                "service_generation": {"task_types": {"excluded": ["SampleTask"]}}
-            }
-        }
-    ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(
-            cfg, "sample_lib", False
-        )
-        assert "SampleModule" not in str(clean_modules)
 
 
 def test_get_and_filter_modules_respects_excluded_modules():
@@ -142,45 +131,6 @@ def test_get_and_filter_modules_respects_excluded_modules():
         assert "OtherModule" in str(clean_modules)
 
 
-def test_get_and_filter_modules_respects_excluded_modules_and_excluded_task_type():
-    assert "InnerModule" in str(MODULE_LIST)
-    with temp_config(
-        {
-            "runtime": {
-                "service_generation": {
-                    "module_guids": {"excluded": [ListModule.MODULE_ID]},
-                    "task_types": {"excluded": ["OtherTask"]},
-                }
-            }
-        }
-    ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(
-            cfg, "sample_lib", False
-        )
-        assert "ListModule" not in str(clean_modules)
-        assert "OtherModule" not in str(clean_modules)
-        assert "SampleModule" in str(clean_modules)
-
-
-def test_get_and_filter_modules_respects_included_modules_and_included_task_types():
-    with temp_config(
-        {
-            "runtime": {
-                "service_generation": {
-                    "module_guids": {"included": [ListModule.MODULE_ID]},
-                    "task_types": {"included": ["OtherTask"]},
-                }
-            }
-        }
-    ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(
-            cfg, "sample_lib", False
-        )
-        assert len(clean_modules) == 2
-        assert "OtherModule" in str(clean_modules)
-        assert "ListModule" in str(clean_modules)
-
-
 def test_get_and_filter_modules_respects_included_modules():
     with temp_config(
         {
@@ -197,43 +147,6 @@ def test_get_and_filter_modules_respects_included_modules():
         assert len(clean_modules) == 1
         assert "ListModule" in str(clean_modules)
         assert "SampleModule" not in str(clean_modules)
-
-
-def test_get_and_filter_modules_respects_included_task_types():
-    with temp_config(
-        {
-            "runtime": {
-                "service_generation": {
-                    "task_types": {"included": ["SampleTask"]},
-                }
-            }
-        }
-    ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(
-            cfg, "sample_lib", False
-        )
-        assert "SampleModule" in str(clean_modules)
-        assert "OtherModule" not in str(clean_modules)
-        # InnerModule has no task
-        assert "InnerModule" not in str(clean_modules)
-
-
-def test_get_and_filter_modules_respects_included_task_types_and_excluded_modules():
-    with temp_config(
-        {
-            "runtime": {
-                "service_generation": {
-                    "task_types": {"included": ["SampleTask"]},
-                    "module_guids": {"excluded": [ListModule.MODULE_ID]},
-                }
-            }
-        }
-    ) as cfg:
-        clean_modules = ServicePackageFactory._get_and_filter_modules(
-            cfg, "sample_lib", False
-        )
-        assert "SampleModule" in str(clean_modules)
-        assert "ListModule" not in str(clean_modules)
 
 
 def test_assert_compatible_raises_if_prev_modules_path_is_not_valid():
@@ -490,7 +403,7 @@ def test_backend_modules_included_in_service_generation(
     inference_service = ServicePackageFactory.get_service_package(
         ServicePackageFactory.ServiceType.INFERENCE
     )
-    predict_class = get_inference_request(SampleModule.TASK_CLASS)
+    predict_class = get_inference_request(SampleTask)
     sample_task_request = predict_class().to_proto()
 
     # Check that the new parameter defined in this backend module exists in the service
@@ -506,15 +419,13 @@ def test_get_inference_request_throws_wrong_type(runtime_grpc_server):
 def test_get_inference_request(runtime_grpc_server):
     """Test that we are able to get inference request DM with either module or task class"""
     assert get_inference_request(SampleModule).__name__ == "SampleTaskRequest"
-    assert (
-        get_inference_request(SampleModule.TASK_CLASS).__name__ == "SampleTaskRequest"
-    )
+    assert get_inference_request(SampleTask).__name__ == "SampleTaskRequest"
     assert (
         get_inference_request(SampleModule, output_streaming=True).__name__
         == "ServerStreamingSampleTaskRequest"
     )
     assert (
-        get_inference_request(SampleModule.TASK_CLASS, output_streaming=True).__name__
+        get_inference_request(SampleTask, output_streaming=True).__name__
         == "ServerStreamingSampleTaskRequest"
     )
     assert (
@@ -525,7 +436,7 @@ def test_get_inference_request(runtime_grpc_server):
     )
     assert (
         get_inference_request(
-            SampleModule.TASK_CLASS, input_streaming=True, output_streaming=True
+            SampleTask, input_streaming=True, output_streaming=True
         ).__name__
         == "BidiStreamingSampleTaskRequest"
     )

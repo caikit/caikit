@@ -52,6 +52,12 @@ def test_to_protoable_signature_dm():
     ) == {"name": SampleInputType}
 
 
+def test_to_protoable_signature_list_dm():
+    assert to_protoable_signature(
+        signature={"name": List[SampleInputType]},
+    ) == {"name": List[SampleInputType]}
+
+
 def test_to_protoable_signature_union_dm():
     assert to_protoable_signature(
         signature={"name": Union[SampleInputType, str]},

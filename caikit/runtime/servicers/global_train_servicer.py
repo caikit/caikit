@@ -19,7 +19,7 @@ import traceback
 # Third Party
 from google.protobuf.descriptor import FieldDescriptor
 from google.protobuf.message import Message as ProtoMessageType
-from grpc import ServicerContext, StatusCode
+from grpc import RpcError, ServicerContext, StatusCode
 
 # First Party
 import alog
@@ -113,7 +113,7 @@ class GlobalTrainServicer:
             with alog.ContextLog(log.debug, outer_scope_name):
                 module = None
                 for mod in caikit.core.registries.module_registry().values():
-                    if mod.TASK_CLASS:
+                    if mod.tasks:
                         train_request_for_mod = (
                             ModuleClassTrainRPC.module_class_to_req_name(mod)
                         )
@@ -159,9 +159,20 @@ class GlobalTrainServicer:
                 f"Exception raised during training. This may be a problem with your input: {e}",
             ) from e
 
+        except RpcError as e:
+            log_dict = {
+                "log_code": "<RUN25225430W>",
+                "message": repr(e),
+            }
+            log.warning(log_dict)
+            raise CaikitRuntimeException(
+                e.code(),
+                e.details(),
+            ) from e
+
         except Exception as e:
             log_dict = {
-                "log_code": "<RUN49049070W>",
+                "log_code": "<RUN24215150W>",
                 "message": repr(e),
                 "stack_trace": traceback.format_exc(),
             }

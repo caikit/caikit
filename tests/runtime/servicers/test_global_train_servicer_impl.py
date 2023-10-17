@@ -38,8 +38,10 @@ from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model.sample import (
     OtherOutputType,
+    OtherTask,
     SampleInputType,
     SampleOutputType,
+    SampleTask,
     SampleTrainingType,
 )
 from sample_lib.modules import CompositeModule, OtherModule, SampleModule
@@ -121,7 +123,7 @@ def test_global_train_sample_task(
         == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
     )
 
-    predict_class = get_inference_request(SampleModule.TASK_CLASS)
+    predict_class = get_inference_request(SampleTask)
     inference_response = sample_predict_servicer.Predict(
         predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
         Fixtures.build_context(training_response.model_name),
@@ -178,7 +180,7 @@ def test_global_train_other_task(
         == "sample_lib.modules.other_task.other_implementation.OtherModule"
     )
 
-    predict_class = get_inference_request(OtherModule.TASK_CLASS)
+    predict_class = get_inference_request(OtherTask)
     inference_response = sample_predict_servicer.Predict(
         predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
         Fixtures.build_context(training_response.model_name),
@@ -234,7 +236,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
     )
 
     # make sure the trained model can run inference
-    predict_class = get_inference_request(SampleModule.TASK_CLASS)
+    predict_class = get_inference_request(SampleTask)
     inference_response = sample_predict_servicer.Predict(
         predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
         Fixtures.build_context(training_response.model_name),
@@ -283,7 +285,7 @@ def test_run_train_job_works_with_wait(
             training_response.training_id,
         )
 
-        predict_class = get_inference_request(SampleModule.TASK_CLASS)
+        predict_class = get_inference_request(SampleTask)
         inference_response = sample_predict_servicer.Predict(
             predict_class(sample_input=SampleInputType(name="Test")).to_proto(),
             Fixtures.build_context(training_response.model_name),
@@ -377,6 +379,33 @@ def test_local_trainer_rejects_s3_output_paths(
     ) as ctx:
         sample_train_servicer.Train(train_request, Fixtures.build_context("foo"))
     assert ctx.value.status_code == grpc.StatusCode.INVALID_ARGUMENT
+
+
+def test_global_train_surfaces_caikit_errors(sample_train_servicer, sample_text_file):
+    """Test whether global trainer surfaces errors from Caikit using both sub-process and thread"""
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    # we don't support .txt files yet, hence this should throw an error
+    training_data = stream_type(file=stream_type.File(filename=sample_text_file))
+
+    train_class = get_train_request(SampleModule)
+    train_request_params_class = get_train_params(SampleModule)
+    train_request = train_class(
+        model_name=random_test_id(),
+        parameters=train_request_params_class(
+            batch_size=42,
+            training_data=training_data,
+        ),
+    ).to_proto()
+
+    training_response = sample_train_servicer.Train(
+        train_request, Fixtures.build_context("foo")
+    )
+    MODEL_MANAGER.get_model_future(training_response.training_id).wait()
+
+    future_info = MODEL_MANAGER.get_model_future(
+        training_response.training_id
+    ).get_info()
+    assert "Extension not supported" in str(future_info.errors[0])
 
 
 #####################################################################

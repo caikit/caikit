@@ -109,10 +109,15 @@ class ClassifiedGeneratedTextResult(DataObjectBase):
     classification on the generated text.
     """
 
+    @dataobject(package=NLP_PACKAGE)
+    class TextGenTokenClassificationResults(DataObjectBase):
+        input: Annotated[Optional[List[TokenClassificationResult]], FieldNumber(10)]
+        output: Annotated[Optional[List[TokenClassificationResult]], FieldNumber(20)]
+
     generated_text: Annotated[Optional[str], FieldNumber(1)]  # The generated text
     token_classification_results: Annotated[
-        Optional[List[TokenClassificationResult]], FieldNumber(2)
-    ]  # Token classification results for this generated text
+        Optional[TextGenTokenClassificationResults], FieldNumber(2)
+    ]  # Token classification results for input and generated text
     finish_reason: Annotated[
         Optional[FinishReason], FieldNumber(3)
     ]  # Reason as to why text generation stopped
@@ -122,7 +127,7 @@ class ClassifiedGeneratedTextResult(DataObjectBase):
     seed: Annotated[
         Optional[np.uint64], FieldNumber(5)
     ]  # The random seed used for text generation
-    input_token_count: Annotated[int, FieldNumber(6)]
+    input_token_count: Annotated[Optional[int], FieldNumber(6)]
 
 
 @dataobject(package=NLP_PACKAGE)

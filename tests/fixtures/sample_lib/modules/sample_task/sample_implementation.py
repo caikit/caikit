@@ -6,6 +6,9 @@ from typing import Iterable, List, Optional, Union
 import os
 import time
 
+# Third Party
+from grpc import StatusCode, _channel
+
 # Local
 from ...data_model.sample import (
     SampleInputType,
@@ -39,7 +42,10 @@ class SampleModule(caikit.core.ModuleBase):
 
     @SampleTask.taskmethod()
     def run(
-        self, sample_input: SampleInputType, throw: bool = False
+        self,
+        sample_input: SampleInputType,
+        throw: bool = False,
+        error: Optional[str] = None,
     ) -> SampleOutputType:
         """
         Args:
@@ -49,6 +55,16 @@ class SampleModule(caikit.core.ModuleBase):
             sample_lib.data_model.SampleOutputType: The output
         """
         if throw:
+            if error and error == "GRPC_RESOURCE_EXHAUSTED":
+                raise _channel._InactiveRpcError(
+                    _channel._RPCState(
+                        due=(),
+                        details="Model is overloaded",
+                        initial_metadata=None,
+                        trailing_metadata=None,
+                        code=StatusCode.RESOURCE_EXHAUSTED,
+                    ),
+                )
             raise RuntimeError("barf!")
         assert isinstance(sample_input, SampleInputType)
         if sample_input.name == self.POISON_PILL_NAME:

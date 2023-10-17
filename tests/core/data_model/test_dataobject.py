@@ -1250,6 +1250,37 @@ def test_dataobject_union_repeated():
     assert Foo.from_proto(proto=proto_repr_bar2).to_proto() == proto_repr_bar2
 
 
+def test_dataobject_complex_type_with_sequence():
+    """Ensure that dataobjects with names ending in Sequence are handled correctly"""
+
+    @dataobject
+    class FooSequence(DataObjectBase):
+        foo: List[int]
+
+    @dataobject
+    class BarSequence(DataObjectBase):
+        values: List[str]
+
+    @dataobject
+    class Baz(DataObjectBase):
+        """Union of sequences"""
+
+        series: Union[
+            Annotated[FooSequence, OneofField("ints"), FieldNumber(10)],
+            Annotated[BarSequence, OneofField("strs"), FieldNumber(20)],
+        ]
+
+    baz = Baz(series=FooSequence([1, 2, 3]))
+    assert baz.which_oneof("series") == "ints"
+    baz_foo_proto = baz.to_proto()
+    assert Baz.from_proto(baz_foo_proto).to_proto() == baz_foo_proto
+
+    baz = Baz(series=BarSequence(["a", "b", "c"]))
+    assert baz.which_oneof("series") == "strs"
+    baz_bar_proto = baz.to_proto()
+    assert Baz.from_proto(baz_bar_proto).to_proto() == baz_bar_proto
+
+
 def test_dataobject_function_inheritance():
     """Make sure inheritance works to override functionality without changing
     the schema of the parent
@@ -1340,3 +1371,27 @@ def test_dataobject_custom_repr():
 
     inst = Foo(1)
     assert repr(inst) == custom_repr
+
+
+def test_dataobject_from_json_default_errors_on_extra_fields():
+    """Without ignore_unknown_fields, error on
+    building data object from extra fields"""
+
+    @dataobject
+    class Moo(DataObjectBase):
+        foo: int
+
+    with pytest.raises(ValueError):
+        Moo.from_json({"foo": 2, "boo": True})
+
+
+def test_dataobject_from_json_ignore_unknown_fields():
+    """With ignore_unknown_fields, ignore extra fields"""
+
+    @dataobject
+    class Moo(DataObjectBase):
+        foo: int
+
+    m1 = Moo.from_json({"foo": 2, "boo": True}, ignore_unknown_fields=True)
+    assert isinstance(m1, Moo)
+    assert m1.foo == 2

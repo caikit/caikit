@@ -710,7 +710,17 @@ class DataBase(metaclass=_DataBaseMetaClass):
                         oneof = cls._fields_to_oneof[field]
                         contained_class = cls.get_class_for_proto(proto_attr)
                         contained_obj = contained_class.from_proto(proto_attr)
-                        kwargs[oneof] = getattr(contained_obj, "values")
+                        if hasattr(contained_obj, "values") and (
+                            contained_class.__module__.startswith(
+                                "caikit.core.data_model"
+                            )
+                            or contained_class.__module__.startswith(
+                                "caikit.interfaces.common.data_model"
+                            )
+                        ):
+                            kwargs[oneof] = getattr(contained_obj, "values")
+                        else:
+                            kwargs[oneof] = contained_obj
                     else:
                         contained_class = cls.get_class_for_proto(proto_attr)
                         contained_obj = contained_class.from_proto(proto_attr)
@@ -742,13 +752,14 @@ class DataBase(metaclass=_DataBaseMetaClass):
         return cls(**kwargs)
 
     @classmethod
-    def from_json(cls, json_str):
+    def from_json(cls, json_str, ignore_unknown_fields=False):
         """Build a DataBase from a given JSON string. Use google's protobufs.json_format for
         deserialization
 
         Args:
             json_str (str or dict): A stringified JSON specification/dict of the
                 data_model
+            ignore_unknown_fields (bool): If True, ignores unknown JSON fields
 
         Returns:
             caikit.core.data_model.DataBase: A DataBase object.
@@ -763,7 +774,9 @@ class DataBase(metaclass=_DataBaseMetaClass):
         try:
             # Parse given JSON into google.protobufs.pyext.cpp_message.GeneratedProtocolMessageType
             parsed_proto = json_format.Parse(
-                json_str, cls.get_proto_class()(), ignore_unknown_fields=False
+                json_str,
+                cls.get_proto_class()(),
+                ignore_unknown_fields=ignore_unknown_fields,
             )
 
             # Use from_proto to return the DataBase object from the parsed proto

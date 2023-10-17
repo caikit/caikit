@@ -152,9 +152,28 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         """Helper function to convert from the name of a module to the name of the
         request RPC function
         """
-        return snake_to_upper_camel(
-            f"{module_class.TASK_CLASS.__name__}_{module_class.__name__}_Train"
+        # 🌶️🌶️🌶️ The naming scheme for training RPCs probably needs to change.
+        # This uses the first task from the `tasks` kwarg in the `@caikit.module` decorator.
+        # This is both:
+        # - Flaky, since re-ordering that list would be perfectly reasonable and valid to do except
+        #   for the side effect of breaking the training service api
+        # - Not very intuitive, since a module supporting multiple tasks will have a training
+        #   endpoint that lists only one of them
+        rpc_name = snake_to_upper_camel(
+            f"{next(iter(module_class.tasks)).__name__}_{module_class.__name__}_Train"
         )
+
+        if len(module_class.tasks) > 1:
+            log.warning(
+                "<RUN35134050W>",
+                "Multiple tasks detected for training rpc. "
+                "Module: [%s], Tasks: [%s], RPC name: %s ",
+                module_class,
+                module_class.tasks,
+                rpc_name,
+            )
+
+        return rpc_name
 
     @staticmethod
     def module_class_to_req_name(module_class: Type[ModuleBase]) -> str:

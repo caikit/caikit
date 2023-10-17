@@ -13,7 +13,11 @@
 # limitations under the License.
 
 # Standard
+from typing import Dict
 import uuid
+
+# Third Party
+import grpc
 
 
 class CaikitRuntimeException(Exception):
@@ -28,7 +32,12 @@ class CaikitRuntimeException(Exception):
         Same as Args. See above.
     """
 
-    def __init__(self, status_code, message, metadata=None):
+    def __init__(
+        self,
+        status_code: grpc.StatusCode,
+        message: str,
+        metadata: Dict[any, any] = None,
+    ):
         super().__init__(message)
         self.status_code = status_code
         self.message = message
@@ -40,3 +49,12 @@ class CaikitRuntimeException(Exception):
         else:
             # metadata is of None type
             self.metadata = {"error_id": self.id}
+
+    # This is to make the CaikitRuntimeException pickleable
+    # this is needed to ensure we can pass it through sub-processes' pipe
+    # which requires objects to be pickleable
+    def __reduce__(self) -> "CaikitRuntimeException":
+        return (
+            CaikitRuntimeException,
+            (self.status_code, self.message, self.metadata),
+        )

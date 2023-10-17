@@ -16,7 +16,10 @@ from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 # Local
+from caikit.core.data_model import ProducerId
 from caikit.runtime.service_factory import get_inference_request
+from sample_lib.data_model.sample import GeoSpatialTask
+from sample_lib.modules import MultiTaskModule, SecondTask
 from sample_lib.modules.geospatial import GeoStreamingModule
 
 try:
@@ -39,6 +42,7 @@ from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServic
 from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model import SampleInputType, SampleOutputType
+from sample_lib.data_model.sample import FileDataType, OtherOutputType, SampleTask
 from sample_lib.modules.sample_task import SampleModule
 from tests.conftest import temp_config
 from tests.fixtures import Fixtures
@@ -57,7 +61,7 @@ def test_calling_predict_should_raise_if_module_raises(
 ):
     with pytest.raises(CaikitRuntimeException) as context:
         # SampleModules will raise a RuntimeError if the throw flag is set
-        predict_class = get_inference_request(SampleModule.TASK_CLASS)
+        predict_class = get_inference_request(SampleTask)
         request = predict_class(sample_input=HAPPY_PATH_INPUT_DM, throw=True).to_proto()
         sample_predict_servicer.Predict(
             request,
@@ -66,6 +70,29 @@ def test_calling_predict_should_raise_if_module_raises(
         )
     assert context.value.status_code == grpc.StatusCode.INTERNAL
     assert "Unhandled exception during prediction" in context.value.message
+
+
+def test_predict_raises_with_grpc_errors(
+    sample_inference_service,
+    sample_predict_servicer,
+    sample_task_model_id,
+    sample_task_unary_rpc,
+):
+    with pytest.raises(CaikitRuntimeException) as context:
+        # SampleModules will raise a RuntimeError if the throw flag is set
+        predict_class = get_inference_request(SampleTask)
+        request = predict_class(
+            sample_input=HAPPY_PATH_INPUT_DM,
+            throw=True,
+            error="GRPC_RESOURCE_EXHAUSTED",
+        ).to_proto()
+        sample_predict_servicer.Predict(
+            request,
+            Fixtures.build_context(sample_task_model_id),
+            caikit_rpc=sample_task_unary_rpc,
+        )
+    assert context.value.status_code == grpc.StatusCode.RESOURCE_EXHAUSTED
+    assert "Model is overloaded" in context.value.message
 
 
 def test_invalid_input_to_a_valid_caikit_core_class_method_raises(
@@ -77,7 +104,7 @@ def test_invalid_input_to_a_valid_caikit_core_class_method_raises(
     """Test that a caikit.core module that gets an unexpected input value errors in an expected way"""
     with pytest.raises(CaikitRuntimeException) as context:
         # SampleModules will raise a ValueError if the poison pill name is given
-        predict_class = get_inference_request(SampleModule.TASK_CLASS)
+        predict_class = get_inference_request(SampleTask)
         request = predict_class(
             sample_input=SampleInputType(name=SampleModule.POISON_PILL_NAME)
         ).to_proto()
@@ -97,7 +124,7 @@ def test_global_predict_works_for_unary_rpcs(
     sample_task_unary_rpc,
 ):
     """Global predict of SampleTaskRequest returns a prediction"""
-    predict_class = get_inference_request(SampleModule.TASK_CLASS)
+    predict_class = get_inference_request(SampleTask)
     response = sample_predict_servicer.Predict(
         predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
         Fixtures.build_context(sample_task_model_id),
@@ -112,7 +139,7 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs(
     """Simple test that our SampleModule's bidirectional stream inference fn is supported"""
 
     predict_class = get_inference_request(
-        SampleModule.TASK_CLASS, input_streaming=True, output_streaming=True
+        SampleTask, input_streaming=True, output_streaming=True
     )
 
     def req_iterator() -> Iterator[predict_class]:
@@ -142,7 +169,7 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs_with_multiple_stre
     mock_manager.retrieve_model.return_value = GeoStreamingModule()
 
     predict_class = get_inference_request(
-        GeoStreamingModule.TASK_CLASS, input_streaming=True, output_streaming=True
+        GeoSpatialTask, input_streaming=True, output_streaming=True
     )
 
     def req_iterator() -> Iterator[predict_class]:
@@ -162,6 +189,34 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs_with_multiple_stre
             assert response.greeting == f"Hello from Gabe at {i}.0°, {100-i}.0°"
             count += 1
         assert count == 100
+
+
+def test_global_predict_works_for_multitask_model(
+    sample_inference_service,
+    sample_predict_servicer,
+    sample_task_model_id,
+):
+    mock_manager = MagicMock()
+    mock_manager.retrieve_model.return_value = MultiTaskModule()
+
+    predict_class = get_inference_request(
+        SecondTask, input_streaming=False, output_streaming=False
+    )
+    with patch.object(sample_predict_servicer, "_model_manager", mock_manager):
+        response = sample_predict_servicer.Predict(
+            predict_class(
+                file_input=FileDataType(filename="foo", data=bytes("bar", "utf-8"))
+            ).to_proto(),
+            Fixtures.build_context(sample_task_model_id),
+            caikit_rpc=sample_inference_service.caikit_rpcs["SecondTaskPredict"],
+        )
+
+    assert (
+        response
+        == OtherOutputType(
+            "Goodbye from SecondTask", ProducerId("MultiTaskModule", "0.0.1")
+        ).to_proto()
+    )
 
 
 def test_global_predict_predict_model_direct(
@@ -198,7 +253,7 @@ def test_global_predict_aborts_long_running_predicts(
     mock_manager.retrieve_model.return_value = dummy_model
 
     context = Fixtures.build_context("test-any-unresponsive-model")
-    predict_class = get_inference_request(SampleModule.TASK_CLASS)
+    predict_class = get_inference_request(SampleTask)
     predict_thread = threading.Thread(
         target=sample_predict_servicer.Predict,
         args=(
@@ -233,7 +288,7 @@ def test_metering_ignore_unsuccessful_calls(
         gps = GlobalPredictServicer(sample_inference_service)
         try:
             with patch.object(gps.rpc_meter, "update_metrics") as mock_update_func:
-                predict_class = get_inference_request(SampleModule.TASK_CLASS)
+                predict_class = get_inference_request(SampleTask)
                 request = predict_class(
                     sample_input=HAPPY_PATH_INPUT_DM, throw=True
                 ).to_proto()
@@ -257,7 +312,7 @@ def test_metering_predict_rpc_counter(
         sample_predict_servicer = GlobalPredictServicer(sample_inference_service)
         try:
             # Making 20 requests
-            predict_class = get_inference_request(SampleModule.TASK_CLASS)
+            predict_class = get_inference_request(SampleTask)
             for i in range(20):
                 sample_predict_servicer.Predict(
                     predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
@@ -298,7 +353,7 @@ def test_metering_write_to_metrics_file_twice(
         # need a new servicer to get a fresh new RPC meter
         sample_predict_servicer = GlobalPredictServicer(sample_inference_service)
         try:
-            predict_class = get_inference_request(SampleModule.TASK_CLASS)
+            predict_class = get_inference_request(SampleTask)
             sample_predict_servicer.Predict(
                 predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
                 Fixtures.build_context(sample_task_model_id),

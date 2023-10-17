@@ -20,6 +20,7 @@ collection of caikit.core derived libraries
 from typing import Dict, List, Type
 
 # First Party
+from aconfig import aconfig
 import alog
 
 # Local
@@ -65,10 +66,29 @@ def assert_compatible(modules: List[str], previous_modules: List[str]):
     )
 
 
-def create_inference_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
+def create_inference_rpcs(
+    modules: List[Type[ModuleBase]], caikit_config: aconfig.Config = None
+) -> List[CaikitRPCBase]:
     """Handles the logic to create all the RPCs for inference"""
     rpcs = []
-    task_groups = _group_modules_by_task(modules)
+
+    included_task_types = (
+        caikit_config
+        and caikit_config.runtime.service_generation
+        and caikit_config.runtime.service_generation.task_types
+        and caikit_config.runtime.service_generation.task_types.included
+    ) or []
+
+    excluded_task_types = (
+        caikit_config
+        and caikit_config.runtime.service_generation
+        and caikit_config.runtime.service_generation.task_types
+        and caikit_config.runtime.service_generation.task_types.excluded
+    ) or []
+
+    task_groups = _group_modules_by_task(
+        modules, included_task_types, excluded_task_types
+    )
 
     # Create the RPC for each task
     for task, task_methods in task_groups.items():
@@ -99,8 +119,8 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
     rpcs = []
 
     for ck_module in modules:
-        if not ck_module.TASK_CLASS:
-            log.debug("Skipping module %s with no task", ck_module)
+        if not ck_module.tasks:
+            log.debug("Skipping module %s with no tasks", ck_module)
             continue
 
         # If this train function has not been changed from the base, skip it as
@@ -141,18 +161,28 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
 
 def _group_modules_by_task(
     modules: List[Type[ModuleBase]],
+    included_tasks: List[Type[TaskBase]],
+    excluded_tasks: List[Type[TaskBase]],
 ) -> Dict[Type[TaskBase], List[CaikitMethodSignature]]:
     task_groups = {}
     for ck_module in modules:
-        if ck_module.TASK_CLASS:
-            ck_module_task_name = ck_module.TASK_CLASS.__name__
+        for task_class in ck_module.tasks:
+            if (
+                included_tasks
+                and task_class.__name__ not in included_tasks
+                or excluded_tasks
+                and task_class.__name__ in excluded_tasks
+            ):
+                continue
+
+            ck_module_task_name = task_class.__name__
             if ck_module_task_name is not None:
                 for (
                     input_streaming,
                     output_streaming,
                     signature,
-                ) in ck_module._INFERENCE_SIGNATURES:
-                    task_groups.setdefault(ck_module.TASK_CLASS, {}).setdefault(
+                ) in ck_module.get_inference_signatures(task_class):
+                    task_groups.setdefault(task_class, {}).setdefault(
                         (input_streaming, output_streaming), []
                     ).append(signature)
     return task_groups

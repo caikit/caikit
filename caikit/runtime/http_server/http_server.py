@@ -94,6 +94,7 @@ GRPC_CODE_TO_HTTP = {
 # data structures.
 REQUIRED_INPUTS_KEY = "inputs"
 OPTIONAL_INPUTS_KEY = "parameters"
+MODEL_ID = "model_id"
 
 # Endpoint to use for health checks
 HEALTH_ENDPOINT = "/health"
@@ -270,10 +271,21 @@ class RuntimeHTTPServer(RuntimeServerBase):
             elif isinstance(rpc, ModuleClassTrainRPC):
                 self._train_add_unary_input_unary_output_handler(rpc)
 
+    def _get_model_id(self, request: Type[pydantic.BaseModel]) -> Dict[str, Any]:
+        """Get the model id from the payload"""
+        request_kwargs = dict(request)
+        model_id = request_kwargs.get(MODEL_ID, None)
+        if model_id is None:
+            raise CaikitRuntimeException(
+                status_code=StatusCode.INVALID_ARGUMENT,
+                message="Please provide model_id in payload",
+            )
+        return model_id
+
     def _get_request_params(
         self, rpc: CaikitRPCBase, request: Type[pydantic.BaseModel]
     ) -> Dict[str, Any]:
-        """get the request params based on the RPC's req params, also
+        """Get the request params based on the RPC's req params, also
         convert to DM objects"""
         request_kwargs = dict(request)
         input_name = None
@@ -288,6 +300,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # but unfortunately we now have converted pydantic objects
         combined_dict = {}
         for field, value in request_kwargs.items():
+            if field == MODEL_ID:
+                continue
             if value:
                 if field == REQUIRED_INPUTS_KEY and input_name:
                     combined_dict[input_name] = value
@@ -346,23 +360,24 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 log.error("<RUN51881106E>", err, exc_info=True)
             return Response(content=json.dumps(error_content), status_code=error_code)
 
-    def _add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
+    def _add_unary_input_unary_output_handler(self, rpc: TaskPredictRPC):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
         pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
 
         @self.app.post(self._get_route(rpc), response_model=pydantic_response)
         # pylint: disable=unused-argument
-        async def _handler(
-            model_id: str, request: pydantic_request, context: Request
-        ) -> Response:
-            log.debug("In unary handler for %s for model %s", rpc.name, model_id)
-            loop = asyncio.get_running_loop()
-
-            request_params = self._get_request_params(rpc, request)
-
-            log.debug4("Sending request %s to model id %s", request_params, model_id)
+        async def _handler(request: pydantic_request, context: Request) -> Response:
             try:
+                model_id = self._get_model_id(request)
+                log.debug("In unary handler for %s for model %s", rpc.name, model_id)
+                loop = asyncio.get_running_loop()
+
+                request_params = self._get_request_params(rpc, request)
+
+                log.debug4(
+                    "Sending request %s to model id %s", request_params, model_id
+                )
                 model = self.global_predict_servicer._model_manager.retrieve_model(
                     model_id
                 )
@@ -373,7 +388,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     model_id=model_id,
                     request_name=rpc.request.name,
                     inference_func_name=model.get_inference_signature(
-                        output_streaming=False, input_streaming=False
+                        output_streaming=False, input_streaming=False, task=rpc.task
                     ).method_name,
                     **request_params,
                 )
@@ -405,15 +420,17 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # pylint: disable=unused-argument
         @self.app.post(self._get_route(rpc), response_model=pydantic_response)
         async def _handler(
-            model_id: str, request: pydantic_request, context: Request
+            request: pydantic_request, context: Request
         ) -> EventSourceResponse:
             log.debug("In streaming handler for %s", rpc.name)
-
             request_params = self._get_request_params(rpc, request)
-            log.debug4("Sending request %s to model id %s", request_params, model_id)
 
             async def _generator() -> pydantic_response:
                 try:
+                    model_id = self._get_model_id(request)
+                    log.debug4(
+                        "Sending request %s to model id %s", request_params, model_id
+                    )
                     model = self.global_predict_servicer._model_manager.retrieve_model(
                         model_id
                     )
@@ -460,9 +477,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 "-",
                 re.sub("Task$", "", re.sub("Predict$", "", rpc.name)),
             ).lower()
-            route = "/".join(
-                [self.config.runtime.http.route_prefix, "{model_id}", "task", task_name]
-            )
+            route = "/".join([self.config.runtime.http.route_prefix, "task", task_name])
             if route[0] != "/":
                 route = "/" + route
             return route
@@ -525,6 +540,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             request_annotations[REQUIRED_INPUTS_KEY] = inputs_type
         if parameters_type:
             request_annotations[OPTIONAL_INPUTS_KEY] = parameters_type
+        request_annotations[MODEL_ID] = str
         request_message = make_dataobject(
             name=f"{rpc.request.name}HttpRequest",
             annotations=request_annotations,

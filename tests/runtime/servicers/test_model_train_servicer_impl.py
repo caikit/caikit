@@ -29,7 +29,7 @@ from caikit.core.data_model import TrainingStatus
 from caikit.runtime.protobufs import process_pb2
 from caikit.runtime.servicers.model_train_servicer import ModelTrainServicerImpl
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from tests.conftest import temp_config
+from tests.conftest import set_use_subprocess, temp_config
 from tests.fixtures import Fixtures
 import sample_lib
 
@@ -57,12 +57,19 @@ def clear_messages_from_servicer(servicer):
         servicer._training_service.messages = messages
 
 
+# We need to add reset_model_manager to make sure all trainers use the config that we provide.
+# Without this, it didn't actually work since the get_trainer function always fetches a trainer
+# that was initialized before this config comes into play. Hence we’re never actually checking
+# a training in a sub_process. I verified this by running a failing test and seeing that we always
+# hit destroyable_thread.py in the stacktrace instead of destroyable_process in both scenarios.
+
+
 @pytest.fixture(autouse=True, params=[True, False])
-def set_train_location(request):
+def set_train_location(request, reset_model_manager):
     """This fixture ensures that all tests in this file will be run with both
     subprocess and local training styles
     """
-    with temp_config({"training": {"use_subprocess": request.param}}):
+    with set_use_subprocess(request.param):
         yield
 
 
@@ -182,6 +189,46 @@ def test_model_train_validation_error_raises(sample_model_train_servicer, output
     with pytest.raises(CaikitRuntimeException):
         context = Fixtures.build_context("foo")
         sample_model_train_servicer.Run(model_train_request, context)
+
+
+def test_model_train_surfaces_caikit_errors(sample_model_train_servicer, output_dir):
+    """Test whether model train surfaces errors from Caikit using both sub-process and thread"""
+    training_id = str(uuid.uuid4())
+
+    training_output_dir = os.path.join(output_dir, training_id)
+    training_input_dir = os.path.join(output_dir, training_id, "inputs")
+    # we don't support .txt files yet, hence this should throw an error
+    input_file_name = "data.txt"
+
+    os.makedirs(training_input_dir, exist_ok=True)
+    with open(os.path.join(training_input_dir, input_file_name), "w") as f:
+        json.dump([sample_lib.data_model.SampleTrainingType(number=1).to_dict()], f)
+
+    model_train_request = process_pb2.ProcessRequest(
+        trainingID=training_id,
+        request_dict={
+            "train_module": "00110203-0405-0607-0809-0a0b02dd0e0f",
+            "training_params": json.dumps(
+                {
+                    "model_name": "abc",
+                    "parameters": {
+                        "training_data": {
+                            "file": {
+                                "filename": input_file_name  # This is relative to training_input_dir
+                            },
+                        },
+                    },
+                }
+            ),
+        },
+        training_input_dir=training_input_dir,
+        training_output_dir=training_output_dir,
+    )
+    context = Fixtures.build_context("test-any-unresponsive-model")
+    with pytest.raises(CaikitRuntimeException) as e:
+        sample_model_train_servicer.Run(model_train_request, context)
+    assert isinstance(e.value, CaikitRuntimeException)
+    assert "Extension not supported" in e.value.message
 
 
 #####################################################################

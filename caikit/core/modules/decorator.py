@@ -17,7 +17,7 @@ caikit.module
 """
 
 # Standard
-from typing import Dict, Optional, Type, Union
+from typing import Dict, List, Optional, Type, Union
 import collections
 
 # Third Party
@@ -49,6 +49,7 @@ def module(
     name=None,
     version=None,
     task: Type[TaskBase] = None,
+    tasks: Optional[List[Type[TaskBase]]] = None,
     backend_type="LOCAL",
     base_module: Union[str, Type[ModuleBase]] = None,
     backend_config_override: Optional[Dict] = None,
@@ -69,7 +70,10 @@ def module(
             Not required if based on another caikit module using `base_module`
         task:  Type[TaskBase]
             An ML task class that this module is an implementation for
-            Not required if based on another caikit module using `base_module`
+            Not required if based on another caikit module using `base_module`,
+            or if multiple tasks are specified using `tasks`.
+        tasks: Optional[List[Type[TaskBase]]
+            List of ML task classes that this module implements.
         backend_type: backend_type
             Associated backend type for the module.
             Default: `LOCAL`
@@ -92,6 +96,19 @@ def module(
 
     # No mutable default
     backend_config_override = backend_config_override or {}
+
+    if task and tasks:
+        error(
+            "<COR34125316E>",
+            ValueError("Specify either task or tasks parameter, not both."),
+        )
+    if tasks:
+        error.type_check(
+            "<COR34125317E>",
+            list,
+            allow_none=True,
+            tasks=tasks,
+        )
 
     if any([id is None, version is None or name is None]):
         error.type_check(
@@ -137,11 +154,19 @@ def module(
         id = base_module_class.MODULE_ID
         version = base_module_class.MODULE_VERSION
         name = base_module_class.MODULE_NAME
-        task = base_module_class.TASK_CLASS
+        tasks = base_module_class._TASK_CLASSES
         backend_module_impl = True
 
+    if task is not None:
+        tasks = [task]
+
+    if tasks is None:
+        tasks = []
+
     error.type_check("<COR54118928E>", str, id=id, name=name, version=version)
-    error.subclass_check("<COR90789722E>", task, TaskBase, allow_none=True)
+
+    for t in tasks:
+        error.subclass_check("<COR90789722E>", t, TaskBase, allow_none=True)
 
     semver.VersionInfo.parse(version)  # Make sure this is a valid SemVer
 
@@ -163,39 +188,16 @@ def module(
         cls_.MODULE_CLASS = classname
         cls_.PRODUCER_ID = ProducerId(cls_.MODULE_NAME, cls_.MODULE_VERSION)
 
-        # Tasks: check to see if a super-class has one as well and that they match:
-        tasks = {
-            class_.TASK_CLASS for class_ in cls_.mro() if hasattr(class_, "TASK_CLASS")
-        }
-        if len(tasks) > 1:
-            error(
-                "<COR17197749E>",
-                TypeError(
-                    f"Class {cls_} has multiple task definitions in class hierarchy"
-                ),
-            )
-        if tasks:
-            parent_task = tasks.pop()
-            if task and task != parent_task:
-                error(
-                    "<COR44943734E>",
-                    TypeError(
-                        f"Class {cls_} has task {task} but superclass has task "
-                        f"{parent_task}"
-                    ),
-                )
-            cls_.TASK_CLASS = parent_task
-        else:
-            cls_.TASK_CLASS = task
+        cls_._TASK_CLASSES = tasks
 
         # Parse the `train` and `run` signatures
         cls_.RUN_SIGNATURE = CaikitMethodSignature(cls_, "run")
         cls_.TRAIN_SIGNATURE = CaikitMethodSignature(cls_, "train")
-        cls_._INFERENCE_SIGNATURES = []
+        cls_._TASK_INFERENCE_SIGNATURES = {}
 
-        # If the module has a task, validate it:
-        if cls_.TASK_CLASS:
-            if not cls_.TASK_CLASS.has_inference_method_decorators(module_class=cls_):
+        # If the module has tasks, validate them:
+        for t in cls_._TASK_CLASSES:
+            if not t.has_inference_method_decorators(module_class=cls_):
                 # Hackity hack hack - make sure at least one flavor is supported
                 validated = False
                 validation_errs = []
@@ -205,11 +207,11 @@ def module(
                     [False, True],
                 ]:
                     try:
-                        cls_.TASK_CLASS.validate_run_signature(
+                        t.validate_run_signature(
                             cls_.RUN_SIGNATURE, input_streaming, output_streaming
                         )
                         validated = True
-                        cls_._INFERENCE_SIGNATURES.append(
+                        cls_._TASK_INFERENCE_SIGNATURES.setdefault(t, []).append(
                             (input_streaming, output_streaming, cls_.RUN_SIGNATURE)
                         )
                         break
@@ -218,7 +220,18 @@ def module(
                 if not validated:
                     raise validation_errs[0]
 
-            cls_.TASK_CLASS.deferred_method_decoration(cls_)
+            t.deferred_method_decoration(cls_)
+
+        # Check to see if a super-class has any tasks.
+        # These will have been validated by the superclass decorator already.
+        tasks_in_hierarchy = []
+
+        for class_ in cls_.mro():
+            if hasattr(class_, "_TASK_CLASSES"):
+                tasks_in_hierarchy.extend(class_._TASK_CLASSES)
+
+        if tasks_in_hierarchy:
+            cls_._TASK_CLASSES += tasks_in_hierarchy
 
         # If no backend support described in the class, add current backend
         # as the only backend that can load models trained by this module

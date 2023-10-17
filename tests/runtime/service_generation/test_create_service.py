@@ -31,7 +31,9 @@ from sample_lib.data_model import (
     SampleOutputType,
     SampleTask,
 )
-from sample_lib.modules import SampleModule
+from sample_lib.data_model.sample import FileDataType
+from sample_lib.modules import FirstTask, MultiTaskModule, SampleModule, SecondTask
+from tests.conftest import temp_config
 import caikit
 import sample_lib
 
@@ -273,6 +275,36 @@ def test_create_inference_rpcs_removes_modules_with_no_task():
     assert len(rpcs) == 3
     assert sample_lib.modules.sample_task.SampleModule in rpcs[0].module_list
     assert sample_lib.modules.sample_task.InnerModule not in rpcs[0].module_list
+
+
+def test_create_inference_rpcs_uses_taskmethod_decorators():
+    rpcs = create_inference_rpcs([MultiTaskModule])
+    assert len(rpcs) == 2
+    assert MultiTaskModule in rpcs[0].module_list
+
+
+def test_create_inference_rpcs_with_included_tasks():
+    with temp_config(
+        {
+            "runtime": {
+                "service_generation": {
+                    "task_types": {"included": ["SampleTask"]},
+                }
+            }
+        }
+    ) as cfg:
+        rpcs = create_inference_rpcs([SampleModule, MultiTaskModule], cfg)
+        assert len(rpcs) == 3
+        assert rpcs[0].task == SampleTask
+
+
+def test_create_inference_rpcs_with_excluded_tasks():
+    with temp_config(
+        {"runtime": {"service_generation": {"task_types": {"excluded": ["FirstTask"]}}}}
+    ) as cfg:
+        rpcs = create_inference_rpcs([MultiTaskModule], cfg)
+        assert len(rpcs) == 1
+        assert rpcs[0].task == SecondTask
 
 
 ### create_training_rpcs tests #################################################

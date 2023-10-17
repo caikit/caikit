@@ -1,0 +1,5 @@
+module_class: sample_lib.modules.multi_task.multi_task_module.MultiTaskModule
+module_id: 00110203-0123-0456-0789-0a0b02dd1eef
+created: "2023-03-14 11:24:58.720898"
+name: MultiTaskModule
+version: 0.0.1

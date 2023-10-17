@@ -69,6 +69,22 @@ data_streams:
     # Base directory where stream source relative paths should be found
     file_source_base: null
 
+    # Config for data stream source plugins. The keys in the map are names for
+    # environment scoping and the values are factory blobs for an importable
+    # factory. Each blob requires a `type` and can optionally have `config` and
+    # `import_class`.
+    source_plugins:
+        inline:
+            type: JsonData
+        file:
+            type: FileData
+        file_list:
+            type: ListOfFiles
+        directory:
+            type: Directory
+        s3:
+            type: S3Files
+
 ### Runtime configurations
 runtime:
     # The runtime library (or libraries) whose models we want to serve using Caikit Runtime. This should
