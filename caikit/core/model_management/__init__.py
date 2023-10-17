@@ -27,5 +27,5 @@ from .factories import (
 )
 from .model_finder_base import ModelFinderBase
 from .model_initializer_base import ModelInitializerBase
-from .model_saver import LocalFileModelSaver, ModelSaver
+from .model_saver import LocalPathModelSaver, ModelSaver
 from .model_trainer_base import ModelTrainerBase, TrainingInfo

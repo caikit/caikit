@@ -184,9 +184,9 @@ class LocalModelTrainer(ModelTrainerBase):
                 log.debug2("Loading model saved in subprocess")
                 error.value_check(
                     "<COR16745216E>",
-                    self.save_path,
+                    self.saver is not None,
                     "Unable to load model from training {} "
-                    + "trained in subprocess without a save_path",
+                    + "trained in subprocess without a saver",
                     self.id,
                 )
                 error.value_check(
@@ -223,7 +223,7 @@ class LocalModelTrainer(ModelTrainerBase):
             if self.saver is not None:
                 log.debug("Saving training %s", self.id)
                 with alog.ContextTimer(log.debug, "Training %s saved in: ", self.id):
-                    self._save_path = self.saver.save_model(model=trained_model, model_name=self.name, training_id=self.id)
+                    self.saver.save_model(model=trained_model, model_name=self.name, training_id=self.id)
             self._completion_time = self._completion_time or datetime.now()
             log.debug2("Completion time for %s: %s", self.id, self._completion_time)
             return trained_model

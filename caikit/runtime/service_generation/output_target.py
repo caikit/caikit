@@ -29,9 +29,9 @@ from caikit import get_config
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.exceptions import error_handler
-from caikit.core.model_management import LocalFileModelSaver, ModelSaver
+from caikit.core.model_management import LocalPathModelSaver, ModelSaver
 from caikit.core.toolkit.factory import FactoryConstructible, ImportableFactory
-from caikit.interfaces.common.data_model.stream_sources import File
+from caikit.interfaces.common.data_model.stream_sources import PathReference
 
 log = alog.use_channel("MDSV-PLUG")
 error = error_handler.get(log)
@@ -92,13 +92,13 @@ class LocalModelSaverPlugin(ModelSaverPluginBase):
     name = "Local"
 
     def get_model_saver_class(self) -> Type[ModelSaver]:
-        return LocalFileModelSaver
+        return LocalPathModelSaver
 
     def make_model_saver(self, target: DataBase) -> ModelSaver:
-        error.type_check("<RUN37386095E>", File, target=target)
-        target: File
+        error.type_check("<RUN37386095E>", PathReference, target=target)
+        target: PathReference
         save_with_id = self._config.get("save_with_id", None)
-        return LocalFileModelSaver(target=target, save_with_id=save_with_id)
+        return LocalPathModelSaver(target=target, save_with_id=save_with_id)
 
     def get_field_number(self) -> int:
         return 1

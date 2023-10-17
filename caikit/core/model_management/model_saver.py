@@ -20,7 +20,7 @@ import typing
 
 # First Party
 from ..modules import ModuleBase
-from caikit.interfaces.common.data_model.stream_sources import File
+from caikit.interfaces.common.data_model.stream_sources import PathReference
 
 T = typing.TypeVar("T")
 
@@ -45,6 +45,20 @@ class ModelSaver(typing.Generic[T]):
 
         Raises:
             Any appropriate exception if saving the model fails
+        """
+
+    @abc.abstractmethod
+    def save_path(self, model_name: str, training_id: Optional[str]) -> typing.Any:
+        """If applicable, return some info about where the model was / will be saved.
+
+        Args:
+            model_name (str): The user-provided name of this model
+            training_id (str | None): The globally unique id tracking the training run that
+                created this model
+
+        Returns:
+            Any: Some representation of where the model was saved. This could be a path on disk.
+                    None if not applicable
         """
 
     @classmethod
@@ -76,14 +90,14 @@ class ModelSaver(typing.Generic[T]):
 
 
 # Extend OutputTarget with a concrete message type
-class LocalFileModelSaver(ModelSaver[File]):
+class LocalPathModelSaver(ModelSaver[PathReference]):
     """Holds the actual impl for saving the model"""
 
     # TODO: Do we even keep the base `training_output_dir`?
     # Could create a `LocalFileModelSaver` with that as the target if none given in api?
     # But also very awkward to have both
 
-    def __init__(self, target: File, save_with_id: bool):
+    def __init__(self, target: PathReference, save_with_id: bool):
         self.target = target
         self.save_with_id = save_with_id
 
@@ -91,7 +105,7 @@ class LocalFileModelSaver(ModelSaver[File]):
         self, model: ModuleBase, model_name: str, training_id: Optional[str]
     ) -> str:
         save_path = self._save_path_with_id(
-            save_path=self.target.filename,
+            save_path=self.target.path,
             save_with_id=self.save_with_id,
             training_id=training_id,
             model_name=model_name

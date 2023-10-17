@@ -20,8 +20,8 @@ import caikit
 import pytest
 
 from caikit.core.data_model import DataBase
-from caikit.core.model_management import LocalFileModelSaver
-from caikit.interfaces.common.data_model.stream_sources import File
+from caikit.core.model_management import LocalPathModelSaver
+from caikit.interfaces.common.data_model.stream_sources import PathReference
 from caikit.runtime.service_generation.output_target import LocalModelSaverPlugin, ModelSaverPluginFactory, \
     make_output_target_message, OutputTargetOneOf
 
@@ -30,17 +30,17 @@ def test_local_saver_plugin():
     plugin = LocalModelSaverPlugin(config={}, instance_name="_test")
 
     # Should have output target type `File`
-    assert plugin.get_output_target_type() == File
+    assert plugin.get_output_target_type() == PathReference
 
     # Field name should be "file" (target type lower cased)
     assert plugin.get_field_name() == "file"
 
     # Model saver is the local file one
-    assert plugin.get_model_saver_class() == LocalFileModelSaver
+    assert plugin.get_model_saver_class() == LocalPathModelSaver
 
     # Can construct a `LocalFileModelSaver` with a `File`
-    saver = plugin.make_model_saver(File(filename="foo"))
-    assert isinstance(saver, LocalFileModelSaver)
+    saver = plugin.make_model_saver(PathReference(path="foo"))
+    assert isinstance(saver, LocalPathModelSaver)
 
 
 def test_local_saver_plugin_validates_target_type():
@@ -78,8 +78,8 @@ def test_output_target_message_class(plugin_factory):
 def test_output_target_message_builds_model_savers(plugin_factory):
     output_target_class = make_output_target_message(plugin_factory)
 
-    target_field = output_target_class(file=File(filename="foo"))
+    target_field = output_target_class(file=PathReference(path="foo"))
 
     saver = target_field.get_model_saver()
 
-    assert isinstance(saver, LocalFileModelSaver)
+    assert isinstance(saver, LocalPathModelSaver)

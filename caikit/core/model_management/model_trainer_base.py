@@ -73,7 +73,10 @@ class ModelTrainerBase(FactoryConstructible):
             )
             self._saver = saver
             # TODO: figure out what to do with this
-            self._save_path = None
+            if saver:
+                self._save_path = self._saver.save_path(model_name=model_name, training_id=training_id)
+            else:
+                self._save_path = None
             self._model_name = model_name
 
         @property
