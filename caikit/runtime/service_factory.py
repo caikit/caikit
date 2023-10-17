@@ -295,9 +295,9 @@ class ServicePackageFactory:
             included_dict = {}
             for module in clean_modules:
                 for task_type in module.tasks:
-                    included_dict.setdefault(task_type.__name__, {})[module.MODULE_ID] = str(module)
-                # task_type = module.tasks.__name__
-                # included_dict.setdefault(task_type, {})[module.MODULE_ID] = str(module)
+                    included_dict.setdefault(task_type.__name__, {})[
+                        module.MODULE_ID
+                    ] = str(module)
             modules_dict = {
                 "included_modules": included_dict,
             }
