@@ -17,6 +17,8 @@ from enum import Enum
 from types import ModuleType
 from typing import Callable, Dict, Set, Type, Union
 import dataclasses
+import json
+import os
 
 # Third Party
 import google.protobuf.descriptor
@@ -94,7 +96,9 @@ class ServicePackageFactory:
         TRAINING_MANAGEMENT = 3
 
     @classmethod
-    def get_service_package(cls, service_type: ServiceType) -> ServicePackage:
+    def get_service_package(
+        cls, service_type: ServiceType, write_modules_file: bool = False
+    ) -> ServicePackage:
         """Public factory API. Returns a service package of the requested type, from the
         configured source.
 
@@ -102,6 +106,9 @@ class ServicePackageFactory:
             service_type (ServicePackageFactory.ServiceType): The type of service to build,
                 to match the servicer implementation that will handle it. e.g. the
                 GlobalPredictServicer expects an "INFERENCE" service
+            write_modules_file (bool): if set, write out a modules.json file to list the
+                included modules in this service generation. See config to customize file name at
+                runtime.service_generation.backwards_compatibility.current_modules_path
 
         Returns:
             ServicePackage: A container with properties referencing everything you need to bind a
@@ -134,10 +141,15 @@ class ServicePackageFactory:
         # Then do API introspection to come up with all the API definitions to support
         caikit_config = get_config()
         clean_modules = ServicePackageFactory._get_and_filter_modules(
-            caikit_config, caikit_config.runtime.library
+            caikit_config, caikit_config.runtime.library, write_modules_file
         )
 
         if service_type == cls.ServiceType.INFERENCE:
+            # Assert for backwards compatibility, if enabled, when service type is INFERENCE
+            ServicePackageFactory._check_backwards_compatibility(
+                caikit_config, clean_modules
+            )
+
             rpc_list = service_generation.create_inference_rpcs(
                 clean_modules, caikit_config
             )
@@ -177,8 +189,35 @@ class ServicePackageFactory:
 
     # Implementation details for pure python service packages #
     @staticmethod
+    def _check_backwards_compatibility(
+        caikit_config: aconfig.Config, clean_modules: Set[Type[ModuleBase]]
+    ):
+        backwards_compat_conf = (
+            caikit_config.runtime.service_generation.backwards_compatibility
+        )
+        if backwards_compat_conf and backwards_compat_conf.enabled:
+            previous_included_modules = set()
+            prev_modules_path = backwards_compat_conf.prev_modules_path
+            error.value_check(
+                "<SVC98335764E>",
+                os.path.exists(prev_modules_path) and os.path.isfile(prev_modules_path),
+                "prev_modules_path {} is not a valid file path or is missing permissions",
+                prev_modules_path,
+            )
+            with open(prev_modules_path, "r", encoding="utf-8") as f:
+                previous_modules = json.load(f)
+                previous_included_task_map = previous_modules["included_modules"]
+                for task_module in previous_included_task_map.values():
+                    previous_included_modules.update(task_module.keys())
+
+            service_generation.assert_compatible(
+                [mod.MODULE_ID for mod in clean_modules],
+                previous_included_modules,
+            )
+
+    @staticmethod
     def _get_and_filter_modules(
-        caikit_config: aconfig.Config, lib: str
+        caikit_config: aconfig.Config, lib: str, write_modules_file: bool
     ) -> Set[Type[ModuleBase]]:
         clean_modules = set()
         modules = [
@@ -244,6 +283,26 @@ class ServicePackageFactory:
             clean_modules,
             excluded_modules,
         )
+
+        # if enabled, write out the inclusions to modules.json
+        backwards_compat_conf = (
+            caikit_config.runtime.service_generation.backwards_compatibility
+        )
+        if write_modules_file:
+            modules_json_path = (
+                backwards_compat_conf and backwards_compat_conf.current_modules_path
+            ) or "modules.json"
+            included_dict = {}
+            for module in clean_modules:
+                for task_type in module.tasks:
+                    included_dict.setdefault(task_type.__name__, {})[
+                        module.MODULE_ID
+                    ] = str(module)
+            modules_dict = {
+                "included_modules": included_dict,
+            }
+            with open(modules_json_path, "w", encoding="utf-8") as f:
+                json.dump(modules_dict, f, indent=4, sort_keys=True)
         return clean_modules
 
 

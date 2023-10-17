@@ -61,3 +61,4 @@ if __name__ == "__main__":
     finally:
         # remove generated protos
         shutil.rmtree("protos", ignore_errors=True)
+        os.remove("modules.json")

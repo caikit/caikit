@@ -15,9 +15,13 @@
 from typing import Iterable
 import uuid
 
+# Third Party
+import pytest
+
 # Local
 from caikit.core import LocalBackend
 from caikit.runtime.service_generation.create_service import (
+    assert_compatible,
     create_inference_rpcs,
     create_training_rpcs,
 )
@@ -335,3 +339,38 @@ def test_create_training_rpcs():
     rpcs = create_training_rpcs([widget_class])
     assert len(rpcs) == 1
     assert widget_class in rpcs[0].module_list
+
+
+### assert_compatible tests #################################################
+def test_assert_compatible_does_not_raise_if_modules_continue_to_be_supported():
+    previous_module_list = [
+        sample_lib.modules.sample_task.SampleModule.MODULE_ID,
+        sample_lib.modules.sample_task.InnerModule.MODULE_ID,
+    ]
+
+    current_module_list = [
+        sample_lib.modules.sample_task.SampleModule.MODULE_ID,
+        sample_lib.modules.sample_task.InnerModule.MODULE_ID,
+        sample_lib.modules.other_task.OtherModule.MODULE_ID,
+    ]
+    assert_compatible(current_module_list, previous_module_list)
+
+
+def test_assert_compatible_raises_if_modules_are_no_longer_supported():
+    previous_module_list = [
+        sample_lib.modules.sample_task.SampleModule.MODULE_ID,
+        sample_lib.modules.sample_task.InnerModule.MODULE_ID,
+    ]
+
+    current_module_list = [
+        sample_lib.modules.sample_task.SampleModule.MODULE_ID,
+        sample_lib.modules.other_task.OtherModule.MODULE_ID,
+    ]  # missing InnerModule from prev
+
+    with pytest.raises(ValueError) as context:
+        assert_compatible(current_module_list, previous_module_list)
+    assert (
+        "BREAKING CHANGE! Found unsupported module(s) that were previously supported: "
+        in str(context.value)
+        and sample_lib.modules.sample_task.InnerModule.MODULE_ID in str(context.value)
+    )
