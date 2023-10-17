@@ -447,7 +447,7 @@ def test_model_manager_disk_caching_periodic_sync(good_model_path):
     """Make sure that when using disk caching, the manager periodically syncs
     its loaded models based on their presence in the cache
     """
-    purge_period = 0.001
+    purge_period = 0.002
     with TemporaryDirectory() as cache_dir:
         with non_singleton_model_managers(
             2,
