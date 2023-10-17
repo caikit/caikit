@@ -19,9 +19,15 @@ capable of converting to and from Pydantic models to our DataObjects.
 from typing import Dict, List, Type, Union, get_args, get_type_hints
 import base64
 import enum
+import inspect
+import json
 
 # Third Party
+from fastapi import Request, status
+from fastapi.datastructures import FormData
+from fastapi.exceptions import HTTPException, RequestValidationError
 from pydantic.functional_validators import BeforeValidator
+from starlette.datastructures import UploadFile
 import numpy as np
 import pydantic
 
@@ -30,15 +36,20 @@ from py_to_proto.dataclass_to_proto import (  # Imported here for 3.8 compat
     Annotated,
     get_origin,
 )
+import alog
 
 # Local
 from caikit.core.data_model.base import DataBase
+from caikit.interfaces.common.data_model import File
 from caikit.interfaces.common.data_model.primitive_sequences import (
     BoolSequence,
     FloatSequence,
     IntSequence,
     StrSequence,
 )
+from caikit.runtime.http_server.utils import update_dict_at_dot_path
+
+log = alog.use_channel("SERVR-HTTP-PYDNTC")
 
 # PYDANTIC_TO_DM_MAPPING is essentially a 2-way map of DMs <-> Pydantic models, you give it a
 # pydantic model, it gives you back a DM class, you give it a
@@ -170,3 +181,178 @@ def _from_base64(data: Union[bytes, str]) -> bytes:
     if isinstance(data, str):
         return base64.b64decode(data.encode("utf-8"))
     return data
+
+
+async def pydantic_from_request(
+    pydantic_model: Type[pydantic.BaseModel], request: Request
+):
+    """Function to convert a fastapi request into a given pydantic model. This
+    function parses the requests Content-Type and then correctly decodes the data.
+    The currently supported Content-Types are `application/json`
+    and `multipart/form-data`"""
+    content_type = request.headers.get("Content-Type")
+    log.debug("Detected request using %s type", content_type)
+
+    # If content type is json use pydantic to parse
+    if content_type == "application/json":
+        raw_content = await request.body()
+        try:
+            return pydantic_model.model_validate_json(raw_content)
+        except pydantic.ValidationError as err:
+            raise RequestValidationError(errors=err.errors()) from err
+    # Elif content is form-data then parse the form
+    elif "multipart/form-data" in content_type:
+        # Get the raw form data
+        raw_form = await request.form()
+        return _parse_form_data_to_pydantic(pydantic_model, raw_form)
+    else:
+        raise HTTPException(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            f"Unsupported media type: {content_type}.",
+        )
+
+
+def _parse_form_data_to_pydantic(
+    pydantic_model: Type[pydantic.BaseModel], form_data: FormData
+) -> pydantic.BaseModel:
+    """Helper function to parse a fastapi form data into a pydantic model"""
+
+    # Gather the file pydantic model. This is computed here to avoid recomputing it every loop
+    pydantic_file = dataobject_to_pydantic(File)
+
+    # Parse each form_data key into a python dict which is then
+    # converted to a pydantic model via .model_validate()
+    raw_model_obj = {}
+    for key in form_data.keys():
+
+        # Get the list of objects that has the key
+        # field name
+        raw_objects = form_data.getlist(key)
+
+        # Make sure form field actually has values
+        if not raw_objects or (len(raw_objects) > 0 and not raw_objects[0]):
+            log.debug4("Detected empty form key '%s'", key)
+            continue
+
+        # Get the type hint for the requested model
+        sub_key_list = key.split(".")
+        model_type_hints = _get_pydantic_subtypes(pydantic_model, sub_key_list)
+        log.debug4("Gathered hints '%s' for model key '%s'", model_type_hints, key)
+        if not model_type_hints:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unknown key '{key}'",
+            )
+
+        # Determine the root type hint if the request is a list
+        is_list = False
+        if get_origin(model_type_hints[0]) is list:
+            is_list = True
+            model_type_hints = get_args(model_type_hints[0])
+
+        # Recheck for union incase list was a list of unions
+        if get_origin(model_type_hints[0]) is Union:
+            model_type_hints = get_args(model_type_hints)
+
+        # Loop through and check for each type hint. This is required to
+        # match unions. We don't have to be too specific with parsing as
+        # pydantic will handle formatting
+        parsed = False
+        for type_hint in model_type_hints:
+            # Parse any UploadFile types into the raw bytes or File information
+            for n, sub_obj in enumerate(raw_objects):
+                if isinstance(sub_obj, UploadFile):
+                    # If we're looking for a pydantic file type then parse the
+                    # structure of UploadFile. Otherwise, just return the content bytes
+                    if type_hint == pydantic_file:
+                        raw_objects[n] = {
+                            "filename": sub_obj.filename,
+                            "data": sub_obj.file.read(),
+                            "type": sub_obj.content_type,
+                        }
+                    else:
+                        raw_objects[n] = sub_obj.file.read()
+
+            # If type_hint is a pydantic model then parse the json
+            if (
+                type_hint != pydantic_file
+                and inspect.isclass(type_hint)
+                and issubclass(type_hint, pydantic.BaseModel)
+            ):
+                failed_to_parse_json = False
+                for n, sub_obj in enumerate(raw_objects):
+                    try:
+                        raw_objects[n] = json.loads(sub_obj)
+                    except TypeError:
+                        raise HTTPException(  # pylint: disable=raise-missing-from
+                            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            detail=f"Unable to update object at key '{key};"
+                            "; expected value to be string",
+                        )
+                    except json.JSONDecodeError:
+                        failed_to_parse_json = True
+                        break
+
+                # If the json couldn't be parsed then skip this type
+                if failed_to_parse_json:
+                    log.debug3("Failed to parse json for key '%s'", key)
+                    continue
+
+            # If object is not supposed to be a list then just grab the first element
+            if not is_list:
+                raw_objects = raw_objects[0]
+
+            if not update_dict_at_dot_path(raw_model_obj, key, raw_objects):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Unable to update object at key '{key}'; value already exists",
+                )
+
+            # If we were able to parse the object then break out of the type loop
+            parsed = True
+            break
+
+        # If the data didn't match any of the types return 422
+        if not parsed:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Failed to parse key '{key}' with types {model_type_hints}",
+            )
+
+    # Process the dict into a pydantic model before returning
+    try:
+        return pydantic_model.model_validate(raw_model_obj)
+    except pydantic.ValidationError as err:
+        raise RequestValidationError(errors=err.errors()) from err
+
+
+def _get_pydantic_subtypes(
+    pydantic_model: Type[pydantic.BaseModel], keys: List[str]
+) -> List[type]:
+    """Recursive helper to get the type_hint for a field"""
+    if len(keys) == 0:
+        return [pydantic_model]
+
+    # Get the type hints for the current key
+    current_key = keys.pop(0)
+    current_type = get_type_hints(pydantic_model).get(current_key)
+    if not current_type:
+        return []
+
+    if get_origin(current_type) is Union:
+        # If we're trying to capture a union then return the entire union result
+        if len(keys) == 0:
+            return get_args(current_type)
+
+        # Get the arg which matches
+        for arg in get_args(current_type):
+            if result := _get_pydantic_subtypes(arg, keys):
+                return result
+    # If object is a list then recurse on its type
+    elif get_origin(current_type) is list:
+        if len(keys) == 0:
+            return [current_type]
+
+        return _get_pydantic_subtypes(get_args(current_type)[0], keys)
+    else:
+        return _get_pydantic_subtypes(current_type, keys)

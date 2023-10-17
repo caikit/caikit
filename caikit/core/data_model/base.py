@@ -18,6 +18,7 @@
 # Standard
 from dataclasses import dataclass
 from enum import Enum
+from io import IOBase
 from typing import Any, Dict, List, Optional, Type, Union
 import base64
 import datetime
@@ -78,6 +79,10 @@ class _DataBaseMetaClass(type):
         for name, val in vars(FieldDescriptor).items()
         if name.startswith("TYPE_") and "INT" in name
     ]
+
+    # Add property to track if a class supports exporting and importing via a
+    # file operation
+    supports_file_operations = False
 
     def __new__(mcs, name, bases, attrs):
         """When constructing a new data model class, we set the 'fields' class variable from the
@@ -300,6 +305,13 @@ class _DataBaseMetaClass(type):
         current_init = cls.__init__
         if current_init is None or current_init is DataBase.__init__:
             setattr(cls, "__init__", mcs._make_init(cls.fields))
+
+        # Check DataBase for file handlers
+        setattr(
+            cls,
+            "supports_file_operations",
+            cls.to_file != DataBase.to_file and cls.from_file != DataBase.from_file,
+        )
 
     @classmethod
     def _make_property_getter(mcs, field, oneof_name=None):
@@ -785,6 +797,19 @@ class DataBase(metaclass=_DataBaseMetaClass):
         except json_format.ParseError as ex:
             error("<COR90619980E>", ValueError(ex))
 
+    @classmethod
+    def from_file(cls, file_obj: IOBase):
+        """Build a DataBase from a given file-like object.
+
+        Args:
+            file_obj IOBase: A file object that contains some representation
+            of the dataobject
+
+        Returns:
+            caikit.core.data_model.DataBase: A DataBase object.
+        """
+        raise NotImplementedError(f"from_file not implemented for {cls}")
+
     def to_proto(self):
         """Return a new protobufs populated with the information in this data structure."""
         # get the name of the protobufs class
@@ -960,6 +985,19 @@ class DataBase(metaclass=_DataBaseMetaClass):
             kwargs["default"] = _default_serialization_overrides
 
         return json.dumps(self.to_dict(), **kwargs)
+
+    def to_file(self, file_obj: IOBase) -> Optional["File"]:
+        """Export a DataBaseObject into a file-like object `file_obj`. If the DataBase object
+        has requirements around file name or file type it can return them via
+        the optional "File" return object
+
+        Args:
+            file_obj IOBase: a file object to be filled
+
+        Returns:
+            file_descriptor: Optional[caikit.interfaces.common.data_mode.File]
+        """
+        raise NotImplementedError(f"to_file not implemented for {self.__class__}")
 
     def __repr__(self):
         """Human-friendly representation."""

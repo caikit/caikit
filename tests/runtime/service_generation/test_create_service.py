@@ -20,6 +20,7 @@ import pytest
 
 # Local
 from caikit.core import LocalBackend
+from caikit.interfaces.common.data_model import File
 from caikit.runtime.service_generation.create_service import (
     assert_compatible,
     create_inference_rpcs,
@@ -31,7 +32,6 @@ from sample_lib.data_model import (
     SampleOutputType,
     SampleTask,
 )
-from sample_lib.data_model.sample import FileDataType
 from sample_lib.modules import FirstTask, MultiTaskModule, SampleModule, SecondTask
 from tests.conftest import temp_config
 import caikit

@@ -20,8 +20,9 @@ API based on the task definitions available at boot.
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Dict, Iterable, Optional, Type, get_args
+from typing import Any, Dict, Iterable, Optional, Type, Union, get_args
 import asyncio
+import io
 import json
 import os
 import re
@@ -31,7 +32,7 @@ import threading
 import time
 
 # Third Party
-from fastapi import FastAPI, Request, Response, status
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import ResponseValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -46,7 +47,12 @@ import aconfig
 import alog
 
 # Local
-from .pydantic_wrapper import dataobject_to_pydantic, pydantic_to_dataobject
+from .pydantic_wrapper import (
+    dataobject_to_pydantic,
+    pydantic_from_request,
+    pydantic_to_dataobject,
+)
+from .utils import convert_json_schema_to_multipart, flatten_json_schema
 from caikit.config import get_config
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
@@ -320,15 +326,24 @@ class RuntimeHTTPServer(RuntimeServerBase):
         pydantic_request = dataobject_to_pydantic(
             DataBase.get_class_for_name(rpc.request.name)
         )
-        pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
+        response_data_object = self._get_response_dataobject(rpc)
+        pydantic_response = dataobject_to_pydantic(response_data_object)
 
-        @self.app.post(self._get_route(rpc), response_model=pydantic_response)
+        @self.app.post(
+            self._get_route(rpc),
+            responses=self._get_response_openapi(
+                response_data_object, pydantic_response
+            ),
+            openapi_extra=self._get_request_openapi(pydantic_request),
+            response_class=Response,
+        )
         # pylint: disable=unused-argument
-        async def _handler(request: pydantic_request, context: Request) -> Response:
+        async def _handler(context: Request) -> Response:
             log.debug("In unary handler for %s", rpc.name)
             loop = asyncio.get_running_loop()
 
             # build request DM object
+            request = await pydantic_from_request(pydantic_request, context)
             http_request_dm_object = pydantic_to_dataobject(request)
 
             try:
@@ -341,8 +356,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     wait=True,
                 )
                 result = await loop.run_in_executor(None, call)
-                return Response(content=result.to_json(), media_type="application/json")
+                if response_data_object.supports_file_operations:
+                    return self._format_file_response(result)
 
+                return Response(content=result.to_json(), media_type="application/json")
+            except HTTPException as err:
+                raise err
             except CaikitRuntimeException as err:
                 error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
                 error_content = {
@@ -358,18 +377,38 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     "id": None,
                 }
                 log.error("<RUN51881106E>", err, exc_info=True)
-            return Response(content=json.dumps(error_content), status_code=error_code)
+            return Response(
+                content=json.dumps(error_content), status_code=error_code
+            )  # pylint: disable=used-before-assignment
 
     def _add_unary_input_unary_output_handler(self, rpc: TaskPredictRPC):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
-        pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
+        response_data_object = self._get_response_dataobject(rpc)
+        pydantic_response = dataobject_to_pydantic(response_data_object)
 
-        @self.app.post(self._get_route(rpc), response_model=pydantic_response)
+        @self.app.post(
+            self._get_route(rpc),
+            responses=self._get_response_openapi(
+                response_data_object, pydantic_response
+            ),
+            openapi_extra=self._get_request_openapi(pydantic_request),
+            response_class=Response,
+        )
         # pylint: disable=unused-argument
-        async def _handler(request: pydantic_request, context: Request) -> Response:
+        async def _handler(
+            context: Request,
+        ) -> Response:
+
+            request = await pydantic_from_request(pydantic_request, context)
+            request_params = self._get_request_params(rpc, request)
+
             try:
                 model_id = self._get_model_id(request)
+                log.debug4(
+                    "Sending request %s to model id %s", request_params, model_id
+                )
+
                 log.debug("In unary handler for %s for model %s", rpc.name, model_id)
                 loop = asyncio.get_running_loop()
 
@@ -394,8 +433,14 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 )
                 result = await loop.run_in_executor(None, call)
                 log.debug4("Response from model %s is %s", model_id, result)
+
+                if response_data_object.supports_file_operations:
+                    return self._format_file_response(result)
+
                 return Response(content=result.to_json(), media_type="application/json")
 
+            except HTTPException as err:
+                raise err
             except CaikitRuntimeException as err:
                 error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
                 error_content = {
@@ -411,18 +456,24 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     "id": None,
                 }
                 log.error("<RUN51881106E>", err, exc_info=True)
-            return Response(content=json.dumps(error_content), status_code=error_code)
+            return Response(
+                content=json.dumps(error_content), status_code=error_code
+            )  # pylint: disable=used-before-assignment
 
     def _add_unary_input_stream_output_handler(self, rpc: CaikitRPCBase):
         pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
         pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
 
         # pylint: disable=unused-argument
-        @self.app.post(self._get_route(rpc), response_model=pydantic_response)
-        async def _handler(
-            request: pydantic_request, context: Request
-        ) -> EventSourceResponse:
+        @self.app.post(
+            self._get_route(rpc),
+            response_model=pydantic_response,
+            openapi_extra=self._get_request_openapi(pydantic_request),
+        )
+        async def _handler(context: Request) -> EventSourceResponse:
             log.debug("In streaming handler for %s", rpc.name)
+
+            request = await pydantic_from_request(pydantic_request, context)
             request_params = self._get_request_params(rpc, request)
 
             async def _generator() -> pydantic_response:
@@ -448,6 +499,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     ):
                         yield result
                     return
+                except HTTPException as err:
+                    raise err
                 except CaikitRuntimeException as err:
                     error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
                     error_content = {
@@ -561,6 +614,64 @@ class RuntimeHTTPServer(RuntimeServerBase):
             dm_obj = rpc.return_type
         assert isinstance(dm_obj, type) and issubclass(dm_obj, DataBase)
         return dm_obj
+
+    @staticmethod
+    def _format_file_response(dm_class: Type[DataBase]) -> Response:
+        """Convert a dm_class into a fastapi file Response"""
+        file_obj = io.BytesIO()
+        file_info = dm_class.to_file(file_obj)
+
+        file_type = "application/octet-stream"
+        content_disposition = "attachment"
+        if file_info:
+            file_type = file_info.type if file_info.type else file_type
+            content_disposition = f'attachment; filename="{file_info.filename}"'
+
+        return Response(
+            content=file_obj.getvalue(),
+            headers={"Content-Disposition": content_disposition},
+            media_type=file_type,
+        )
+
+    @staticmethod
+    def _get_request_openapi(
+        pydantic_model: Union[pydantic.BaseModel, Type[pydantic.BaseModel]]
+    ):
+        """Helper to generate the openapi schema for a given request"""
+        raw_schema = pydantic_model.model_json_schema()
+        parsed_schema = flatten_json_schema(raw_schema)
+
+        multipart_schema = convert_json_schema_to_multipart(parsed_schema)
+
+        return {
+            "requestBody": {
+                "content": {
+                    "application/json": {"schema": parsed_schema},
+                    "multipart/form-data": {"schema": multipart_schema},
+                },
+                "required": True,
+            }
+        }
+
+    @staticmethod
+    def _get_response_openapi(
+        dm_class: Type[DataBase], pydantic_model: Type[pydantic.BaseModel]
+    ):
+        """Helper to generate the openapi schema for a given response"""
+
+        if dm_class.supports_file_operations:
+            response_schema = {
+                "application/octet-stream": {"type": "string", "format": "binary"}
+            }
+        else:
+            response_schema = {
+                "application/json": flatten_json_schema(
+                    pydantic_model.model_json_schema()
+                )
+            }
+
+        output = {200: {"content": response_schema}}
+        return output
 
     @staticmethod
     def _health_check() -> str:

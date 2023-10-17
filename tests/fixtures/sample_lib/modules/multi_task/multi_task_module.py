@@ -1,12 +1,8 @@
 # Local
-from ...data_model.sample import (
-    FileDataType,
-    OtherOutputType,
-    SampleInputType,
-    SampleOutputType,
-)
+from ...data_model.sample import OtherOutputType, SampleInputType, SampleOutputType
 from caikit.core import TaskBase, module, task
 from caikit.core.data_model import ProducerId
+from caikit.interfaces.common.data_model import File
 import caikit
 
 
@@ -19,7 +15,7 @@ class FirstTask(TaskBase):
 
 
 @task(
-    unary_parameters={"file_input": FileDataType},
+    unary_parameters={"file_input": File},
     unary_output_type=OtherOutputType,
 )
 class SecondTask(TaskBase):
@@ -45,7 +41,7 @@ class MultiTaskModule(caikit.core.ModuleBase):
         return SampleOutputType("Hello from FirstTask")
 
     @SecondTask.taskmethod()
-    def run_other_task(self, file_input: FileDataType) -> OtherOutputType:
+    def run_other_task(self, file_input: File) -> OtherOutputType:
         return OtherOutputType(
             "Goodbye from SecondTask", ProducerId("MultiTaskModule", "0.0.1")
         )

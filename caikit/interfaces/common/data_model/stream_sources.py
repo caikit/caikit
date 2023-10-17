@@ -26,12 +26,12 @@ from caikit.core.data_model import PACKAGE_COMMON, DataObjectBase, dataobject
 
 
 @dataobject(PACKAGE_COMMON)
-class File(DataObjectBase):
+class FileReference(DataObjectBase):
     filename: Annotated[str, FieldNumber(1)]
 
 
 @dataobject(PACKAGE_COMMON)
-class ListOfFiles(DataObjectBase):
+class ListOfFileReferences(DataObjectBase):
     files: Annotated[List[str], FieldNumber(1)]
 
 

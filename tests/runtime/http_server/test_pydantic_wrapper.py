@@ -19,6 +19,7 @@ from typing import Dict, List, Union, get_args
 import enum
 
 # Third Party
+from fastapi.datastructures import FormData
 import numpy as np
 import pydantic
 import pytest
@@ -29,7 +30,7 @@ from py_to_proto.dataclass_to_proto import Annotated
 # Local
 from caikit.core import DataObjectBase, dataobject
 from caikit.core.data_model.base import DataBase
-from caikit.interfaces.common.data_model.stream_sources import File
+from caikit.interfaces.common.data_model import File, FileReference
 from caikit.interfaces.nlp.data_model.text_generation import (
     GeneratedTextStreamResult,
     GeneratedToken,
@@ -38,7 +39,9 @@ from caikit.runtime.http_server.pydantic_wrapper import (
     PYDANTIC_TO_DM_MAPPING,
     _from_base64,
     _get_pydantic_type,
+    _parse_form_data_to_pydantic,
     dataobject_to_pydantic,
+    pydantic_from_request,
     pydantic_to_dataobject,
 )
 from caikit.runtime.service_generation.data_stream_source import make_data_stream_source
@@ -108,7 +111,7 @@ def test_pydantic_to_dataobject_datastream_file():
 
     # assert it's our DM object, all fine and dandy
     assert isinstance(datastream_dm_obj, DataBase)
-    assert isinstance(datastream_dm_obj.data_stream, File)
+    assert isinstance(datastream_dm_obj.data_stream, FileReference)
     assert datastream_dm_obj.to_json() == '{"file": {"filename": "hello"}}'
 
 
@@ -245,8 +248,8 @@ def test_dataobject_to_pydantic_oneof():
     assert {
         "data_stream": Union[
             PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.JsonData),
-            PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.File),
-            PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.ListOfFiles),
+            PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.FileReference),
+            PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.ListOfFileReferences),
             PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.Directory),
             PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.S3Files),
         ]
@@ -262,10 +265,49 @@ def test_dataobject_to_pydantic_oneof():
         ),
     )
     assert issubclass(
-        PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.File),
+        PYDANTIC_TO_DM_MAPPING.get(sample_input_dm_class.FileReference),
         type(
             data_stream_source_pydantic_model.model_validate_json(
                 '{"data_stream": {"filename": "file1"}}'
             ).data_stream
         ),
     )
+
+
+def test_parse_form_data_to_pydantic():
+    file_input_dm_class = DataBase.get_class_for_name("FileInputType")
+    pydantic_model = dataobject_to_pydantic(file_input_dm_class)
+
+    form = FormData({"file.data": b"raw_bytes_data", "metadata": '{"name":"test"}'})
+
+    pydantic_instance = _parse_form_data_to_pydantic(pydantic_model, form)
+    assert pydantic_instance.file.data == b"raw_bytes_data"
+    assert pydantic_instance.metadata.name == "test"
+
+
+def test_parse_form_data_to_pydantic_sub_field():
+    file_input_dm_class = DataBase.get_class_for_name("FileInputType")
+    pydantic_model = dataobject_to_pydantic(file_input_dm_class)
+
+    form = FormData({"file.data": b"raw_bytes_data", "metadata.name": "test"})
+
+    pydantic_instance = _parse_form_data_to_pydantic(pydantic_model, form)
+    assert pydantic_instance.file.data == b"raw_bytes_data"
+    assert pydantic_instance.metadata.name == "test"
+
+
+def test_parse_form_data_to_pydantic_list():
+    sample_list_input_dm_class = DataBase.get_class_for_name("SampleListInputType")
+    pydantic_model = dataobject_to_pydantic(sample_list_input_dm_class)
+
+    form = FormData(
+        [
+            ("inputs", '{"name":"testname"}'),
+            ("inputs", '{"name":"anothername"}'),
+        ]
+    )
+
+    pydantic_instance = _parse_form_data_to_pydantic(pydantic_model, form)
+    assert isinstance(pydantic_instance.inputs, list)
+    assert pydantic_instance.inputs[0].name == "testname"
+    assert pydantic_instance.inputs[1].name == "anothername"

@@ -38,11 +38,12 @@ import grpc
 import pytest
 
 # Local
+from caikit.interfaces.common.data_model import File
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model import SampleInputType, SampleOutputType
-from sample_lib.data_model.sample import FileDataType, OtherOutputType, SampleTask
+from sample_lib.data_model.sample import OtherOutputType, SampleTask
 from sample_lib.modules.sample_task import SampleModule
 from tests.conftest import temp_config
 from tests.fixtures import Fixtures
@@ -205,7 +206,7 @@ def test_global_predict_works_for_multitask_model(
     with patch.object(sample_predict_servicer, "_model_manager", mock_manager):
         response = sample_predict_servicer.Predict(
             predict_class(
-                file_input=FileDataType(filename="foo", data=bytes("bar", "utf-8"))
+                file_input=File(filename="foo", data=bytes("bar", "utf-8"))
             ).to_proto(),
             Fixtures.build_context(sample_task_model_id),
             caikit_rpc=sample_inference_service.caikit_rpcs["SecondTaskPredict"],

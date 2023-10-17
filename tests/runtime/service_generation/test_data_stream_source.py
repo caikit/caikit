@@ -11,7 +11,11 @@ import pytest
 # Local
 from caikit.core.data_model import DataObjectBase, dataobject
 from caikit.core.data_model.streams.data_stream import DataStream
-from caikit.interfaces.common.data_model.stream_sources import Directory, File, S3Files
+from caikit.interfaces.common.data_model.stream_sources import (
+    Directory,
+    FileReference,
+    S3Files,
+)
 from caikit.runtime.service_generation.data_stream_source import (
     DataStreamSourceBase,
     _make_data_stream_source_type_name,
@@ -134,7 +138,7 @@ def test_data_stream_source_as_data_stream():
     with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl") as handle:
         handle.write("\n".join([str(val) for val in source_list]))
         handle.flush()
-        inst = stream_source(file=stream_source.File(filename=handle.name))
+        inst = stream_source(file=stream_source.FileReference(filename=handle.name))
         assert list(inst) == source_list
 
 
@@ -154,13 +158,15 @@ def test_data_stream_source_base_path():
 
             # Make sure it works with the relative file path
             assert (
-                list(stream_source(file=stream_source.File(filename=fname)))
+                list(stream_source(file=stream_source.FileReference(filename=fname)))
                 == source_data
             )
 
             # Make sure it works with the absolute file path
             assert (
-                list(stream_source(file=stream_source.File(filename=full_fname)))
+                list(
+                    stream_source(file=stream_source.FileReference(filename=full_fname))
+                )
                 == source_data
             )
 
@@ -187,7 +193,9 @@ def test_data_stream_source_base_path():
             # Make sure bad paths still raise the right errors
             with pytest.raises(CaikitRuntimeException):
                 list(
-                    stream_source(file=stream_source.File(filename="invalid/path.json"))
+                    stream_source(
+                        file=stream_source.FileReference(filename="invalid/path.json")
+                    )
                 )
             with pytest.raises(CaikitRuntimeException):
                 list(
@@ -235,10 +243,11 @@ def test_make_data_stream_source_jsondata_other_task():
 
 def test_make_data_stream_source_jsonfile(sample_json_file):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    ds = stream_type(file=File(filename=sample_json_file))
+    ds = stream_type(file=FileReference(filename=sample_json_file))
     assert isinstance(ds, DataStreamSourceBase)
 
     data_stream = ds.to_data_stream()
+    print(ds, data_stream)
     assert isinstance(data_stream, DataStream)
 
     validate_data_stream(data_stream, 2, SampleTrainingType)
@@ -246,7 +255,7 @@ def test_make_data_stream_source_jsonfile(sample_json_file):
 
 def test_make_data_stream_source_csvfile(sample_csv_file):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    ds = stream_type(file=File(filename=sample_csv_file))
+    ds = stream_type(file=FileReference(filename=sample_csv_file))
     assert isinstance(ds, DataStreamSourceBase)
 
     data_stream = ds.to_data_stream()
@@ -257,7 +266,7 @@ def test_make_data_stream_source_csvfile(sample_csv_file):
 
 def test_make_data_stream_source_jsonlfile(sample_jsonl_file):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    ds = stream_type(file=File(filename=sample_jsonl_file))
+    ds = stream_type(file=FileReference(filename=sample_jsonl_file))
     assert isinstance(ds, DataStreamSourceBase)
 
     data_stream = ds.to_data_stream()
@@ -278,7 +287,7 @@ def test_make_data_stream_source_jsonlfile_extra_fields(tmp_path):
         """
         )
 
-    ds = stream_type(file=File(filename=file_path))
+    ds = stream_type(file=FileReference(filename=file_path))
     assert isinstance(ds, DataStreamSourceBase)
 
     data_stream = ds.to_data_stream()
@@ -295,7 +304,7 @@ def test_make_data_stream_source_from_file_with_no_extension(
         no_extension_filename = os.path.join(str(tmp_path), "no_extension")
         shutil.copyfile(file, no_extension_filename)
 
-        ds = stream_type(file=File(filename=no_extension_filename))
+        ds = stream_type(file=FileReference(filename=no_extension_filename))
         assert isinstance(ds, DataStreamSourceBase)
 
         data_stream = ds.to_data_stream()
@@ -322,7 +331,7 @@ def test_make_data_stream_source_from_multipart_formdata_file(
         no_extension_filename = os.path.join(str(tmp_path), "no_extension")
         shutil.copyfile(file, no_extension_filename)
 
-        ds = stream_type(file=File(filename=no_extension_filename))
+        ds = stream_type(file=FileReference(filename=no_extension_filename))
         assert isinstance(ds, DataStreamSourceBase)
 
         data_stream = ds.to_data_stream()
@@ -340,7 +349,9 @@ def test_make_data_stream_source_list_of_json_files(sample_json_file):
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
     # does NOT work with sample_json_collection as each file needs to have data in array
     ds = stream_type(
-        listoffiles=stream_type.ListOfFiles(files=[sample_json_file, sample_json_file])
+        list_of_files=stream_type.ListOfFileReferences(
+            files=[sample_json_file, sample_json_file]
+        )
     )
     assert isinstance(ds, DataStreamSourceBase)
 
@@ -356,7 +367,9 @@ def test_make_data_stream_source_list_of_csv_files(sample_csv_collection):
         os.path.join(sample_csv_collection, file)
         for file in os.listdir(sample_csv_collection)
     ]
-    ds = stream_type(listoffiles=stream_type.ListOfFiles(files=sample_files))
+    # send all files but last one
+    ds = stream_type(list_of_files=stream_type.ListOfFileReferences(files=sample_files))
+
     assert isinstance(ds, DataStreamSourceBase)
 
     data_stream = ds.to_data_stream()
@@ -371,7 +384,7 @@ def test_make_data_stream_source_list_of_jsonl_files(sample_jsonl_collection):
         os.path.join(sample_jsonl_collection, file)
         for file in os.listdir(sample_jsonl_collection)
     ]
-    ds = stream_type(listoffiles=stream_type.ListOfFiles(files=sample_files))
+    ds = stream_type(list_of_files=stream_type.ListOfFileReferences(files=sample_files))
     assert isinstance(ds, DataStreamSourceBase)
 
     data_stream = ds.to_data_stream()
@@ -450,7 +463,7 @@ def test_data_stream_operators():
 
 def test_make_data_stream_source_invalid_file_raises():
     stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    ds = stream_type(file=File(filename="invalid_file"))
+    ds = stream_type(file=FileReference(filename="invalid_file"))
     with pytest.raises(CaikitRuntimeException):
         ds.to_data_stream()
 
@@ -507,7 +520,7 @@ def test_make_data_stream_source_non_json_array_errors(tmp_path):
         }
         """
         )
-    ds = stream_type(file=File(filename=file_path))
+    ds = stream_type(file=FileReference(filename=file_path))
     assert isinstance(ds, DataStreamSourceBase)
 
     with pytest.raises(ValueError, match="Non-array JSON object"):
