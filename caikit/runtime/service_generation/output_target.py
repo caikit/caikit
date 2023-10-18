@@ -121,6 +121,9 @@ class ModelSaverPluginFactory(ImportableFactory):
         super().__init__(*args, **kwargs)
         self._plugins = None
 
+    # Mostly duplicate code in data_stream_source.py with different config
+    # could be refactored when n=3
+    # pylint: disable=duplicate-code
     def get_plugins(
         self, plugins_config: Optional[aconfig.Config] = None
     ) -> List[ModelSaverPluginBase]:
@@ -198,8 +201,9 @@ class OutputTargetOneOf:
 
 ## make_output_target_message #####################################################
 
-# TODO: Ask Scott or Dean about correct multiple inheritance type hinting
-# OutputTargetAndDataBase = typing.TypeVar("OutputTargetAndDataBase", bound=Union[DataBase, OutputTargetOneOf])
+# Protocols is likely more correct here https://peps.python.org/pep-0544/
+# but would require empty method bodies for each method that exists in
+# all superclasses
 OutputTargetDataModel = typing.TypeVar(
     "OutputTargetDataModel", DataBase, OutputTargetOneOf
 )
@@ -214,6 +218,9 @@ def make_output_target_message(
     # Get the required plugins
     plugins = plugin_factory.get_plugins(plugins_config)
 
+    # Mostly duplicate code in output_target.py
+    # without element type, could be refactored when n=3
+    # pylint: disable=duplicate-code
     # Make sure there are no field name duplicates
     plug_to_name = {plugin: plugin.get_field_name() for plugin in plugins}
     all_field_names = list(plug_to_name.values())

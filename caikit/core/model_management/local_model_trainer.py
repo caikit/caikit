@@ -18,7 +18,7 @@ The LocalModelTrainer uses a local thread to launch and manage each training job
 # Standard
 from concurrent.futures.thread import _threads_queues
 from datetime import datetime, timedelta
-from typing import Any, Dict, Iterable, List, Optional, Type, Union
+from typing import Any, Dict, Iterable, List, Optional, Type
 import os
 import re
 import threading
