@@ -52,7 +52,7 @@ def test_local_saver_plugin():
 def test_local_saver_plugin_validates_target_type():
     plugin = LocalModelSaverPlugin(config={}, instance_name="_test")
     with pytest.raises(
-        TypeError, match="variable `target` has type `str` .* not in .*File"
+        TypeError, match="variable `target` has type `str` .* not in .*PathReference"
     ):
         plugin.make_model_saver(target="/some/path")
 

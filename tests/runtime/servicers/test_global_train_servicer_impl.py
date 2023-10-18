@@ -15,7 +15,6 @@
 # Standard
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
-import multiprocessing
 import os
 import threading
 import time
@@ -352,33 +351,6 @@ def test_global_train_Edge_Case_Widget_should_raise_when_error_surfaces_from_mod
         training_response.training_id
     ).get_info()
     assert f"Batch size of 999 is not allowed!" in str(future_info.errors[0])
-
-
-def test_local_trainer_rejects_s3_output_paths(
-    sample_train_service, sample_train_servicer
-):
-    """Test that if an output_path references S3 but the trainer does not know how to handle it, an error is raised"""
-    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
-    training_data = stream_type(
-        jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
-    )
-    train_class = get_train_request(SampleModule)
-    train_request_params_class = get_train_params(SampleModule)
-    train_request = train_class(
-        model_name=random_test_id(),
-        output_path=S3Path(path="foo"),
-        parameters=train_request_params_class(
-            batch_size=42,
-            training_data=training_data,
-            oom_exit=True,
-        ),
-    ).to_proto()
-
-    with pytest.raises(
-        CaikitRuntimeException, match=".*S3 output path not supported by this runtime"
-    ) as ctx:
-        sample_train_servicer.Train(train_request, Fixtures.build_context("foo"))
-    assert ctx.value.status_code == grpc.StatusCode.INVALID_ARGUMENT
 
 
 def test_global_train_surfaces_caikit_errors(sample_train_servicer, sample_text_file):

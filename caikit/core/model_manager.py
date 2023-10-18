@@ -29,7 +29,6 @@ import zipfile
 import alog
 
 # Local
-from ..interfaces.common.data_model.stream_sources import S3Path
 from .exceptions import error_handler
 from .model_management import (
     ModelFinderBase,

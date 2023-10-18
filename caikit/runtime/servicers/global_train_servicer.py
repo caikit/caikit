@@ -13,7 +13,7 @@
 # limitations under the License.
 # Standard
 from importlib.metadata import version
-from typing import Optional, Type, Union
+from typing import Optional, Type
 import traceback
 
 # Third Party

@@ -30,7 +30,6 @@ from py_to_proto.dataclass_to_proto import (  # NOTE: Imported from here for com
 import alog
 
 # Local
-from ...interfaces.common.data_model.stream_sources import S3Path
 from . import protoable, type_helpers
 from .compatibility_checker import ApiFieldNames
 from .data_stream_source import make_data_stream_source
