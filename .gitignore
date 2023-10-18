@@ -19,6 +19,8 @@ test
 
 # Virtual Env
 venv/
+.venv/
+
 # Mac personalization files
 *.DS_Store
 
@@ -30,3 +32,6 @@ tests/protos/*
 
 # Sphinx generated files
 _build/
+
+
+/caikit/_version.py

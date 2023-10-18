@@ -11,3 +11,4 @@ from .config import configure, get_config
 
 # Expose model management at the top level
 from .core import extract, get_model_future, load, module, resolve_and_load, train
+from .version import __version__, __version_tuple__
