@@ -1,56 +1,55 @@
+# Copyright The Caikit Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Tests for the Timeseries data model object
 """
-# Standard
-import warnings
-
-# Third Party
-import pyspark.sql
-
-# Local
-from caikit.interfaces.ts.data_model.backends.dfcache import EnsureCached
-
-warnings.filterwarnings("ignore", category=ResourceWarning)
 
 # Standard
-from datetime import datetime, timedelta, timezone
+from datetime import timezone
 from typing import Union
 import datetime as dt
 import json
+import warnings
 
 # Third Party
 from pandas import RangeIndex
-from pyspark.sql import SparkSession
 import dateutil
 import numpy as np
 import pandas as pd
+import pyspark.sql
 import pytest
 
 # Local
 from caikit.interfaces.ts.data_model._single_timeseries import SingleTimeSeries
-from caikit.interfaces.ts.data_model.backends import pandas_backends
 from caikit.interfaces.ts.data_model.backends._spark_backends import (
     SparkTimeSeriesBackend,
 )
+from caikit.interfaces.ts.data_model.backends.dfcache import EnsureCached
 from caikit.interfaces.ts.data_model.backends.util import (
     iteritems_workaround,
     pd_timestamp_to_seconds,
     strip_periodic,
 )
-from caikit.interfaces.ts.data_model.toolkit.sparkconf import sparkconf_local
 from tests.interfaces.ts.data_model.util import (
-    create_spark_dataframes,
-    df_col_to_nparray,
+    create_extended_test_dfs,
     df_project,
-    extend_pandas_test_dfs,
     key_helper,
 )
 from tests.interfaces.ts.helpers import test_log
 import caikit.interfaces.ts.data_model as dm
 
-spark = SparkSession.builder.config(conf=sparkconf_local()).getOrCreate()
-
-# sl.seton()
+warnings.filterwarnings("ignore", category=ResourceWarning)
 
 ## Helpers #####################################################################
 
@@ -159,12 +158,8 @@ for ts_range in [
 original_length = len(testable_data_frames)
 test_log.debug("Made a total of %d testable data frames!", original_length)
 
-# replicate the pandas dataframes as pyspark.sql.DataFrame
-testable_spark_dataframes = create_spark_dataframes(testable_data_frames)
-testable_data_frames = extend_pandas_test_dfs(
-    testable_pandas_data_frames=testable_data_frames,
-    testable_spark_dataframes=testable_spark_dataframes,
-)
+# replicate and extended the dataframes with pyspark.sql.DataFrame if needed
+testable_data_frames = create_extended_test_dfs(testable_data_frames)
 
 
 def check_df_ts_eq(
@@ -735,9 +730,6 @@ def test_timeseries_spark(df_ts_data):
     parametrized over ALL different flavors of data frame since all layouts
     should behave the same!
     """
-    # Third Party
-    import pyspark
-
     df, ts_source = df_ts_data
 
     with EnsureCached(df) as df:

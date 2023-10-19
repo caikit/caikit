@@ -1,17 +1,25 @@
+# Copyright The Caikit Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Tests for the Timeseries Evaluator data model object
 """
 # Standard
-import warnings
-
-warnings.filterwarnings("ignore", category=ResourceWarning)
-
-# Standard
 import json
+import warnings
 
 # Third Party
 from pandas.testing import assert_frame_equal
-import numpy as np
 import pandas as pd
 import pytest
 
@@ -19,9 +27,11 @@ import pytest
 from caikit.core.data_model import ProducerId
 import caikit.interfaces.ts.data_model as dm
 
+warnings.filterwarnings("ignore", category=ResourceWarning)
+
 
 @pytest.fixture(scope="module")
-def basic_pandas_df():
+def eval_df_wo_offset():
     """Simple pandas df for testing target generation on multi-time series dataframe"""
 
     cv_pd_df_wo_offset = pd.DataFrame(
@@ -32,6 +42,11 @@ def basic_pandas_df():
         }
     )
 
+    yield cv_pd_df_wo_offset
+
+
+@pytest.fixture(scope="module")
+def eval_df_w_offset():
     cv_pd_df_w_offset = pd.DataFrame(
         {
             "ID1": ["A", "B", "C"],
@@ -43,12 +58,11 @@ def basic_pandas_df():
         }
     )
 
-    yield cv_pd_df_wo_offset, cv_pd_df_w_offset
+    yield cv_pd_df_w_offset
 
 
-@pytest.mark.parametrize("data", ["basic_pandas_df"], ids=["pandas"])
-def test_Id_dm(data, request):
-    cv_pd_df_wo_offset, cv_pd_df_w_offset = request.getfixturevalue(data)
+def test_Id_dm(eval_df_w_offset):
+    cv_pd_df_w_offset = eval_df_w_offset
 
     id_values = cv_pd_df_w_offset["offset"].tolist()
 
@@ -70,9 +84,8 @@ def test_Id_dm(data, request):
     assert id_value_dm.index == id_values[2]
 
 
-@pytest.mark.parametrize("data", ["basic_pandas_df"], ids=["pandas"])
-def test_EvaluationRecord_dm(data, request):
-    cv_pd_df_wo_offset, cv_pd_df_w_offset = request.getfixturevalue(data)
+def test_EvaluationRecord_dm(eval_df_wo_offset, eval_df_w_offset):
+    cv_pd_df_wo_offset, cv_pd_df_w_offset = eval_df_wo_offset, eval_df_w_offset
 
     sample_EvaluationRecords = cv_pd_df_wo_offset.T.values.T.tolist()
 
@@ -140,9 +153,8 @@ def test_EvaluationRecord_dm(data, request):
     assert ER_dm_rndTrip.offset.index == 0
 
 
-@pytest.mark.parametrize("data", ["basic_pandas_df"], ids=["pandas"])
-def test_EvaluationResult_w_offset(data, request):
-    cv_pd_df_wo_offset, cv_pd_df_w_offset = request.getfixturevalue(data)
+def test_EvaluationResult_w_offset(eval_df_w_offset):
+    cv_pd_df_w_offset = eval_df_w_offset
 
     ER_dm = dm.EvaluationResult(
         id_cols=["ID1", "ID2"],
@@ -188,9 +200,8 @@ def test_EvaluationResult_w_offset(data, request):
     assert pdf.columns.tolist() == [x for x in cv_pd_df_w_offset.columns]
 
 
-@pytest.mark.parametrize("data", ["basic_pandas_df"], ids=["pandas"])
-def test_EvaluationResult_wo_offset(data, request):
-    cv_pd_df_wo_offset, cv_pd_df_w_offset = request.getfixturevalue(data)
+def test_EvaluationResult_wo_offset(eval_df_wo_offset):
+    cv_pd_df_wo_offset = eval_df_wo_offset
 
     ER_dm = dm.EvaluationResult(
         metric_cols=["prediction_mse", "prediction_mae", "prediction_smape"],
@@ -232,12 +243,11 @@ def test_EvaluationResult_wo_offset(data, request):
     assert pdf.columns.tolist() == [x for x in cv_pd_df_wo_offset.columns]
 
 
-@pytest.mark.parametrize("data", ["basic_pandas_df"], ids=["pandas"])
-def test_Errors(data, request):
-    cv_pd_df_wo_offset, cv_pd_df_w_offset = request.getfixturevalue(data)
+def test_Errors(eval_df_w_offset):
+    cv_pd_df_w_offset = eval_df_w_offset
 
     id_values = cv_pd_df_w_offset["offset"].tolist()
-    id_value_dms = [dm.Id(id_value) for id_value in id_values]
+    # id_value_dms = [dm.Id(id_value) for id_value in id_values]
 
     sample_EvaluationRecords = cv_pd_df_w_offset.T.values.T.tolist()
     ER_dm = dm.EvaluationRecord(

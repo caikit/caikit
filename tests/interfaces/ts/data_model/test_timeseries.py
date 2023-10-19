@@ -1,19 +1,28 @@
+# Copyright The Caikit Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+Tests for the Timeseries data model object
+"""
+
 # Standard
-import os
-import warnings
-
-# Local
-from caikit.interfaces.ts.data_model import SingleTimeSeries
-
-warnings.filterwarnings("ignore", category=ResourceWarning)
-
-# Standard
-from datetime import datetime, timedelta, timezone, tzinfo
-from typing import Any, Iterable, Union
+from datetime import datetime, timezone
+from typing import Iterable, Union
 import datetime as dt
 import json
-import time
+import os
 import traceback
+import warnings
 
 # Third Party
 from pandas import RangeIndex
@@ -25,28 +34,21 @@ import pytest
 
 # Local
 from caikit.core.data_model import ProducerId
+from caikit.interfaces.ts.data_model import SingleTimeSeries
 from caikit.interfaces.ts.data_model.backends.dfcache import EnsureCached
 from caikit.interfaces.ts.data_model.backends.util import (
     iteritems_workaround,
     pd_timestamp_to_seconds,
     strip_periodic,
 )
-from tests.interfaces.ts.data_model.util import (
-    create_spark_dataframes,
-    df_project,
-    extend_pandas_test_dfs,
-)
-from tests.interfaces.ts.helpers import test_log
-
-test_log.setLevel("DEBUG")
-# Third Party
-from pyspark.sql import SparkSession
-
-# Local
-from caikit.interfaces.ts.data_model.toolkit.sparkconf import sparkconf_local
+from tests.interfaces.ts.data_model.util import create_extended_test_dfs, df_project
+from tests.interfaces.ts.helpers import sslocal_fixture, test_log
 import caikit.interfaces.ts.data_model as dm
 
-spark = SparkSession.builder.config(conf=sparkconf_local()).getOrCreate()
+warnings.filterwarnings("ignore", category=ResourceWarning)
+
+test_log.setLevel("DEBUG")
+
 
 keys = [["a", "a", "b"], ["c", "d", "e"]]
 
@@ -155,12 +157,8 @@ for ts_range in [
             (cur_df, ts_col_name, ["key_int_1", "key_int_2"], None)
         )
 
-# replicate the pandas dataframes as pyspark.sql.DataFrame
-testable_spark_dataframes = create_spark_dataframes(testable_data_frames)
-testable_data_frames = extend_pandas_test_dfs(
-    testable_pandas_data_frames=testable_data_frames,
-    testable_spark_dataframes=testable_spark_dataframes,
-)
+# replicate and extended the dataframes with pyspark.sql.DataFrame if needed
+testable_data_frames = create_extended_test_dfs(testable_data_frames)
 
 
 def get_df_len(df_in):
@@ -639,12 +637,22 @@ def test_pd_timestamp_to_seconds():
         pd_timestamp_to_seconds([])
 
 
-def test_multi_timeseries_raises_on_bad_input():
+@pytest.fixture(scope="module")
+def trivial_pandas_df():
+    return pd.DataFrame(columns=["a", "b", "c"], data=[[1, 2, 3], [1, 4, 5]])
+
+
+@pytest.fixture(scope="module")
+def trivial_spark_df(trivial_pandas_df, sslocal_fixture):
+    return sslocal_fixture.createDataFrame(trivial_pandas_df)
+
+
+def test_multi_timeseries_raises_on_bad_input(trivial_pandas_df):
     # Local
     import caikit
 
     caikit.interfaces.ts.data_model.timeseries.HAVE_PYSPARK = False
-    df = pd.DataFrame(columns=["a", "b", "c"], data=[[1, 2, 3]])
+    df = trivial_pandas_df
     ts = dm.TimeSeries(df, key_column="a")
     with pytest.raises(NotImplementedError):
         ts.as_spark()
@@ -655,23 +663,18 @@ def test_multi_timeseries_raises_on_bad_input():
 
 
 # this method could be called internally, we just want to guard for that
-def test_multi_timeseries_bad_attribute():
-    df = pd.DataFrame(columns=["a", "b", "c"], data=[[1, 2, 3]])
+def test_multi_timeseries_bad_attribute(trivial_pandas_df):
+    df = trivial_pandas_df
     ts = dm.TimeSeries(df, key_column="a")
 
     with pytest.raises(ValueError):
         ts._backend.get_attribute(ts, "bad_attribute")
 
 
-def test_multi_timeseries_spark_bad_attribute():
-    # Third Party
-    from pyspark.sql import SparkSession
-
-    df = pd.DataFrame(columns=["a", "b", "c"], data=[[1, 2, 3], [1, 4, 5]])
+def test_multi_timeseries_spark_bad_attribute(trivial_spark_df):
+    df = trivial_spark_df
     ts = dm.TimeSeries(
-        SparkSession.builder.config(conf=sparkconf_local())
-        .getOrCreate()
-        .createDataFrame(df),
+        df,
         key_column="a",
     )
 
@@ -679,15 +682,10 @@ def test_multi_timeseries_spark_bad_attribute():
         ts._backend.get_attribute(ts, "bad_attribute")
 
 
-def test_as_spark_with_str_key_cols():
-    # Third Party
-    from pyspark.sql import SparkSession
-
-    df = pd.DataFrame(columns=["a", "b", "c"], data=[[1, 2, 3], [1, 4, 5]])
+def test_as_spark_with_str_key_cols(trivial_spark_df):
+    df = trivial_spark_df
     ts = dm.TimeSeries(
-        SparkSession.builder.config(conf=sparkconf_local())
-        .getOrCreate()
-        .createDataFrame(df),
+        df,
         key_column="a",
     )
     p1 = ts.as_spark(include_timestamps=True).toPandas()
@@ -695,15 +693,10 @@ def test_as_spark_with_str_key_cols():
     assert (p1.to_numpy() == p2.to_numpy()).all()
 
 
-def test_as_spark_with_producer_id():
-    # Third Party
-    from pyspark.sql import SparkSession
-
-    df = pd.DataFrame(columns=["a", "b", "c"], data=[[1, 2, 3], [1, 4, 5]])
+def test_as_spark_with_producer_id(trivial_spark_df):
+    df = trivial_spark_df
     ts = dm.TimeSeries(
-        SparkSession.builder.config(conf=sparkconf_local())
-        .getOrCreate()
-        .createDataFrame(df),
+        df,
         key_column="a",
         producer_id=ProducerId("Test", "1.2.3"),
     )
@@ -712,7 +705,7 @@ def test_as_spark_with_producer_id():
     assert ts.producer_id.version == "1.2.3"
 
 
-def test_mts_len():
+def test_mts_len(sslocal_fixture):
     df = pd.concat(
         [
             pd.DataFrame(
@@ -728,9 +721,7 @@ def test_mts_len():
 
     # spark
     mts = dm.TimeSeries(
-        SparkSession.builder.config(conf=sparkconf_local())
-        .getOrCreate()
-        .createDataFrame(df),
+        sslocal_fixture.createDataFrame(df),
         timestamp_column="ts",
         key_column="key",
     )
@@ -759,7 +750,7 @@ def test_mts_len():
     "ignore:.*loads all data into the driver's memory.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
     "ignore:toPandas attempted Arrow optimization.*:UserWarning",
 )
-def test_dm_serializes_spark_vectors():
+def test_dm_serializes_spark_vectors(sslocal_fixture):
     # Standard
     from datetime import datetime
 
@@ -785,7 +776,7 @@ def test_dm_serializes_spark_vectors():
     data = [
         (datetime(year=2020, month=1, day=1), "id", v),
     ]
-    df = spark.createDataFrame(data=data, schema=schema)
+    df = sslocal_fixture.createDataFrame(data=data, schema=schema)
 
     mts = dm.TimeSeries(
         df,

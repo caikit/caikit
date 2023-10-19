@@ -1,11 +1,22 @@
+# Copyright The Caikit Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Common test helpers
 """
 
 # Standard
-from functools import reduce
 from typing import Union
-import os
 import warnings
 
 # Third Party
@@ -20,9 +31,10 @@ import alog
 
 # Local
 from caikit.interfaces.ts.data_model.toolkit import optional_dependencies
+from caikit.interfaces.ts.data_model.toolkit.sparkconf import sparkconf_local
 import caikit.interfaces.ts.data_model as dm
 
-sslocal = SparkSession.builder.getOrCreate
+warnings.filterwarnings("ignore", category=ResourceWarning)
 
 ## Global Config ###############################################################
 
@@ -48,22 +60,32 @@ sample_mvts = list(
 ## Helpers #####################################################################
 
 
-@pytest.fixture
-def sample_spark_df():
-    """Pytest fixture for a self-enclosed spark data frame"""
-    spark = sslocal()
+@pytest.fixture(scope="session")
+def sslocal_fixture():
+    spark_session = SparkSession.builder.config(conf=sparkconf_local()).getOrCreate()
+    yield spark_session
+    spark_session.stop()
 
-    sample_spark_df = spark.createDataFrame(
+
+def sslocal():
+    return SparkSession.builder.config(conf=sparkconf_local()).getOrCreate()
+
+
+@pytest.fixture(scope="session")
+def sample_spark_df(sslocal_fixture):
+    """Pytest fixture for a self-enclosed spark data frame"""
+    spark = sslocal_fixture
+
+    sample_spark_df_ = spark.createDataFrame(
         [
-            Row(**{key: sample_data[key][idx] for key in sample_data})
-            for idx in range(len(sample_data["key"]))
+            Row(**{key: val[idx] for key, val in sample_data.items()})
+            for idx in range(sample_data["key"])
         ]
     )
-    warnings.filterwarnings("ignore", category=ResourceWarning)
-    yield sample_spark_df
+    yield sample_spark_df_
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def sample_spark_df_univariate(sample_spark_df):
     """Pytest fixture for a self-enclosed spark data frame"""
     return sample_spark_df.select(["key", "val"])
