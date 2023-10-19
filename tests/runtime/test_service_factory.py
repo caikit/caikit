@@ -22,10 +22,12 @@ import uuid
 
 # Third Party
 from google.protobuf.message import Message
+from grpc_tools import protoc
 import pytest
 
 # Local
 from caikit.core.data_model import render_dataobject_protos
+from caikit.runtime.dump_services import dump_grpc_services
 from caikit.runtime.service_factory import (
     ServicePackage,
     ServicePackageFactory,
@@ -33,6 +35,7 @@ from caikit.runtime.service_factory import (
     get_train_params,
     get_train_request,
 )
+from caikit.runtime.service_generation.compatibility_checker import ApiFieldNames
 from sample_lib import SampleModule
 from sample_lib.data_model import SampleInputType, SampleOutputType
 from sample_lib.data_model.sample import SampleTask
@@ -250,6 +253,108 @@ def test_assert_compatible_does_not_raise_if_supported_modules_continue_to_be_su
             ServicePackageFactory.get_service_package(
                 ServicePackageFactory.ServiceType.INFERENCE
             )
+
+
+def test_assert_compatible_respects_previously_defined_proto_spec():
+    # setup the test
+    # generate a service proto spec (this will be the "previous version" with only ListModule)
+    with tempfile.TemporaryDirectory() as tempdir:
+        with temp_config(
+            {
+                "runtime": {
+                    "service_generation": {
+                        "module_guids": {"included": [ListModule.MODULE_ID]},
+                    }
+                }
+            },
+            "merge",
+        ):
+            # dump_grpc_services(os.path.join(tempdir, "protos"))
+            dump_grpc_services("protos")
+            # Create a "compiled" dir and then compile these protos
+            # output_compiled_path = os.path.join(tempdir, "compiled")
+            output_compiled_path = "compiled"
+            if not os.path.exists(output_compiled_path):
+                os.makedirs(output_compiled_path)
+                # Creates an init file
+                with open(os.path.join(output_compiled_path, "__init__.py"), "w") as fp:
+                    pass
+            # Third Party
+            import pkg_resources
+
+            grpc_protos_include = pkg_resources.resource_filename(
+                "grpc_tools", "_proto"
+            )
+
+            for file in os.listdir("protos"):
+                if file.endswith(".proto"):
+                    proto_file = os.path.join(os.getcwd(), "protos", file)
+                    protoc_args = [
+                        "grpc_tools.protoc",
+                        "--proto_path=" + os.path.join(os.getcwd(), "protos"),
+                        "--proto_path=" + grpc_protos_include,
+                        "--grpc_python_out=" + output_compiled_path,
+                        "--python_out=" + output_compiled_path,
+                        proto_file,
+                    ]
+                try:
+                    retval = protoc.main(protoc_args)
+                except Exception as e:  # pragma: no cover
+                    raise RuntimeError(
+                        "Failed to compile proto files {}".format(repr(e))
+                    )
+                if retval != 0:
+                    raise RuntimeError(
+                        "Proto compilation returned code {}".format(retval)
+                    )
+
+            print("compiled has ", os.listdir("compiled"))
+
+            # import this compiled
+            with temp_dpool() as dpool:
+                # Standard
+                import sys
+
+                sys.path.append(os.path.join(os.getcwd(), "compiled"))
+                # First Party
+                from compiled import samplelibservice_pb2
+
+                print("dpool in test is: ", dpool)
+                ApiFieldNames.add_proto_spec(samplelibservice_pb2, d_pool=dpool)
+                # these fields for SampleTaskRequest comes from ListModule
+                assert ApiFieldNames.get_fields_for_message("SampleTaskRequest") == {
+                    "sample_input": 1,
+                    "throw": 2,
+                }
+
+    # call service generation, and generate another service with ListModule and SampleModule
+    with temp_config(
+        {
+            "runtime": {
+                "service_generation": {
+                    "module_guids": {
+                        "included": [ListModule.MODULE_ID, SampleModule.MODULE_ID]
+                    },
+                }
+            }
+        },
+        "merge",
+    ):
+        with temp_dpool(
+            inherit_global=True, skip_inherit=[".*sampletask.*\.proto"]
+        ) as dpool:
+            service_pckg = ServicePackageFactory.get_service_package(
+                ServicePackageFactory.ServiceType.INFERENCE
+            )
+            sample_task_request_fields = (
+                service_pckg.messages.SampleTaskRequest.DESCRIPTOR.fields
+            )
+            fields = {field.name: field.number for field in sample_task_request_fields}
+            # assert that the fields from previous version still exist
+            assert ("sample_input", 1) in fields.items()
+            assert ("throw", 2) in fields.items()
+            # assert that the new SampleTaskRequest now will have an extra field (error, 3) that comes from SampleModule
+            assert ("error", 3) in fields.items()
 
 
 def test_override_domain(clean_data_model):

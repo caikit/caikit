@@ -401,6 +401,11 @@ class _RequestMessage:
 
         existing_fields = ApiFieldNames.get_fields_for_message(self.name)
 
+        log.info(
+            "In rpc RequestMessage, msg_name %s has existing_fields %s",
+            msg_name,
+            existing_fields,
+        )
         if len(existing_fields) > 0:
             last_used_number = max(existing_fields.values())
         else:

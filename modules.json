@@ -1,0 +1,7 @@
+{
+    "included_modules": {
+        "SampleTask": {
+            "00af2203-0405-0607-0263-0a0b02dd0c2f": "<class 'sample_lib.modules.sample_task.list_implementation.ListModule'>"
+        }
+    }
+}
