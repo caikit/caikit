@@ -268,6 +268,23 @@ def file_task_model_id(box_model_path) -> str:
 
 
 @pytest.fixture
+def primitive_task_model_id(primitive_model_path) -> str:
+    """Loaded model ID using model manager load model implementation"""
+    model_id = random_test_id()
+    model_manager = ModelManager.get_instance()
+    # model load test already tests with archive - just using a model path here
+    model_manager.load_model(
+        model_id,
+        local_model_path=primitive_model_path,
+        model_type=Fixtures.get_good_model_type(),  # eventually we'd like to be determining the type from the model itself...
+    )
+    yield model_id
+
+    # teardown
+    model_manager.unload_model(model_id)
+
+
+@pytest.fixture
 def sample_task_unary_rpc(sample_inference_service: ServicePackage) -> TaskPredictRPC:
     return sample_inference_service.caikit_rpcs["SampleTaskPredict"]
 

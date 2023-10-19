@@ -308,6 +308,31 @@ def test_inference_sample_task(sample_task_model_id, runtime_http_server):
         assert json_response["greeting"] == "Hello world"
 
 
+def test_inference_primitive_task(primitive_task_model_id, runtime_http_server):
+    """Simple check that we can ping a model"""
+    with TestClient(runtime_http_server.app) as client:
+        json_input = {
+            "inputs": {
+                "str_type": "hello",
+                "list_str_type": [
+                    "another",
+                    "world",
+                ],
+                "int_type": 1,
+                "list_int_type": [2, 3],
+            },
+            "model_id": primitive_task_model_id,
+        }
+        response = client.post(
+            f"/api/v1/task/primitive",
+            json=json_input,
+        )
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        print(json_response)
+        assert response.status_code == 200, json_response
+        assert json_response["values"] == ["hello", "another", "world", "1", "2", "3"]
+
+
 def test_inference_sample_task_optional_field(
     sample_task_model_id, runtime_http_server
 ):
