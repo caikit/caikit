@@ -130,7 +130,11 @@ markers = [
     "examples: marks tests as e2e examples (deselect with '-m \"not examples\"')",
     "slow: marks tests requiring pyspark be installed (deselect with '-m \"not slow\"')"
 ]
-
+filterwarnings = [
+    "ignore:distutils Version classes are deprecated.*:DeprecationWarning",
+    "ignore:np.find_common_type is deprecated.*:DeprecationWarning",
+    "ignore:Converting `np.character` to a dtype is deprecated.*:DeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 100
