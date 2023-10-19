@@ -264,6 +264,30 @@ def test_create_inference_rpcs_for_multiple_modules_of_same_type():
     assert sample_lib.modules.sample_task.SampleModule in rpcs[2].module_list
     assert sample_lib.modules.other_task.OtherModule in rpcs[-1].module_list
 
+def test_create_inference_rpcs_respects_sorted_order_by_module_id():
+    module_list = [
+        sample_lib.modules.sample_task.ListModule, # 00af2203-0405-0607-0263-0a0b02dd0c2f
+        sample_lib.modules.sample_task.SampleModule, # 00110203-0405-0607-0809-0a0b02dd0e0f
+        sample_lib.modules.sample_task.SamplePrimitiveModule, # 00112233-0405-0607-0809-0a0b02dd0e0f
+    ]
+    rpcs = create_inference_rpcs(module_list)
+
+    # 3 RPCs, SampleModule, SamplePrimitiveModule and ListModule have task SampleTask with 3 flavors for
+    # streaming, but ListModule should be the last item in the first rpc's list because it has 
+    # the highest alphabetical order of MODULE_ID
+    assert len(rpcs) == 3
+    assert sample_lib.modules.sample_task.SampleModule in rpcs[0].module_list
+    assert sample_lib.modules.sample_task.SamplePrimitiveModule in rpcs[0].module_list
+    assert sample_lib.modules.sample_task.SampleModule in rpcs[1].module_list
+    assert sample_lib.modules.sample_task.SampleModule in rpcs[2].module_list
+    assert sample_lib.modules.sample_task.ListModule in rpcs[0].module_list
+    
+    # check for alphabetical order of modules in rpcs[0]
+    # this should always be deterministic
+    assert sample_lib.modules.sample_task.SampleModule == rpcs[0].module_list[0]
+    assert sample_lib.modules.sample_task.SamplePrimitiveModule == rpcs[0].module_list[1]
+    assert sample_lib.modules.sample_task.ListModule == rpcs[0].module_list[-1]
+
 
 def test_create_inference_rpcs_removes_modules_with_no_task():
     module_list = [
