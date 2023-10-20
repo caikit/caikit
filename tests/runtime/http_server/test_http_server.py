@@ -497,6 +497,38 @@ def test_inference_streaming_sample_module(sample_task_model_id, client):
         )
 
 
+def test_inference_streaming_sample_module_actual_server_throws(
+    sample_task_model_id, runtime_http_server
+):
+    """Simple check for testing a happy path unary-stream case
+    but pints the actual running server"""
+
+    for i in range(10):
+        input = {
+            "model_id": sample_task_model_id,
+            "inputs": {"name": f"world{i}"},
+            "parameters": {"err_stream": True},
+        }
+        url = f"http://localhost:{runtime_http_server.port}/api/v1/task/server-streaming-sample"
+        stream = requests.post(url=url, json=input, verify=False)
+        assert stream.status_code == 200
+        stream_content = stream.content.decode(stream.encoding)
+        stream_responses = json.loads(
+            "[{}]".format(
+                stream_content.replace("data: ", "")
+                .replace("\r\n", "")
+                .replace("}{", "}, {")
+            )
+        )
+        assert len(stream_responses) == 10
+        assert all(
+            resp.get("greeting") == f"Hello world{i} stream"
+            for resp in stream_responses
+        )
+
+
+
+
 def test_inference_streaming_sample_module_actual_server(
     sample_task_model_id, runtime_http_server
 ):
