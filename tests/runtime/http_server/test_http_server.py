@@ -36,6 +36,7 @@ import tls_test_tools
 # Local
 from caikit.core import MODEL_MANAGER, DataObjectBase, dataobject
 from caikit.runtime import http_server
+from caikit.runtime.http_server.http_server import StreamEventTypes
 from tests.conftest import temp_config
 from tests.runtime.conftest import (
     ModuleSubproc,
@@ -478,7 +479,10 @@ def test_inference_streaming_sample_module(sample_task_model_id, client):
         stream_responses = json.loads(
             "[{}]".format(
                 stream_content.replace("event: ", '{"event":')
-                .replace("message", '"message"}')
+                .replace(
+                    StreamEventTypes.MESSAGE,
+                    '"' + f"{StreamEventTypes.MESSAGE}" + '"}',
+                )
                 .replace("data: ", "")
                 .replace("\r\n", "")
                 .replace("}{", "}, {")
@@ -491,7 +495,7 @@ def test_inference_streaming_sample_module(sample_task_model_id, client):
             if "greeting" in resp
         )
         assert all(
-            resp.get("event") == "message"
+            resp.get("event") == StreamEventTypes.MESSAGE
             for resp in stream_responses
             if "event" in resp
         )
@@ -543,7 +547,8 @@ def test_inference_streaming_sample_module_actual_server(
         stream_content = stream.content.decode(stream.encoding)
         stream_responses = json.loads(
             "[{}]".format(
-                stream_content.replace("data: ", "")
+                stream_content.replace("event: ", '{"event":')
+                .replace("data: ", "")
                 .replace("\r\n", "")
                 .replace("}{", "}, {")
             )

@@ -19,6 +19,7 @@ API based on the task definitions available at boot.
 # Standard
 from contextlib import contextmanager
 from dataclasses import dataclass
+from enum import Enum
 from functools import partial
 from typing import Any, Dict, Iterable, Optional, Type, Union, get_args
 import asyncio
@@ -105,6 +106,13 @@ MODEL_ID = "model_id"
 
 # Endpoint to use for health checks
 HEALTH_ENDPOINT = "/health"
+
+
+# Stream event types enum
+class StreamEventTypes(str, Enum):
+    MESSAGE = "message"
+    ERROR = "error"
+
 
 # Small dataclass for consolidating TLS files
 @dataclass
@@ -400,7 +408,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
         async def _handler(
             context: Request,
         ) -> Response:
-
             request = await pydantic_from_request(pydantic_request, context)
             request_params = self._get_request_params(rpc, request)
 
@@ -499,7 +506,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         )
                     ):
                         yield {
-                            "event": "message",
+                            "event": StreamEventTypes.MESSAGE,
                             "data": result.to_json(),
                         }
                     return
@@ -508,7 +515,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 except CaikitRuntimeException as err:
                     error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
                     error_content = {
-                        "event": "error",
+                        "event": StreamEventTypes.ERROR,
                         "details": err.message,
                         "code": error_code,
                         "id": err.id,
@@ -516,7 +523,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 except Exception as err:  # pylint: disable=broad-exception-caught
                     error_code = 500
                     error_content = {
-                        "event": "error",
+                        "event": StreamEventTypes.ERROR,
                         "details": f"Unhandled exception: {str(err)}",
                         "code": error_code,
                         "id": None,

@@ -78,7 +78,7 @@ class SampleModule(caikit.core.ModuleBase):
         """
         Args:
             sample_input (sample_lib.data_model.SampleInputType): the input
-            sampleerr_stream_input (bool): An optional parameter to error out the stream
+            err_stream (bool): An optional parameter to error out the stream
 
         Returns:
             caikit.core.data_model.DataStream[sample_lib.data_model.SampleOutputType]: The output
