@@ -489,6 +489,34 @@ def test_inference_streaming_sample_module(sample_task_model_id, runtime_http_se
         )
 
 
+def test_inference_streaming_sample_module_another_test(
+    sample_task_model_id, runtime_http_server
+):
+    """Another check for testing a happy path unary-stream case"""
+    with TestClient(runtime_http_server.app) as client:
+        json_input = {
+            "model_id": sample_task_model_id,
+            "inputs": {"name": "another_test"},
+        }
+        stream = client.post(
+            f"/api/v1/task/server-streaming-sample",
+            json=json_input,
+        )
+        assert stream.status_code == 200
+        stream_content = stream.content.decode(stream.default_encoding)
+        stream_responses = json.loads(
+            "[{}]".format(
+                stream_content.replace("data: ", "")
+                .replace("\r\n", "")
+                .replace("}{", "}, {")
+            )
+        )
+        assert len(stream_responses) == 10
+        assert all(
+            resp.get("greeting") == "Hello world stream" for resp in stream_responses
+        )
+
+
 def test_no_model_id(runtime_http_server):
     """Simple check that we can ping a model"""
     with TestClient(runtime_http_server.app) as client:
