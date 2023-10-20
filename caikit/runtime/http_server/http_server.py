@@ -498,13 +498,17 @@ class RuntimeHTTPServer(RuntimeServerBase):
                             **request_params,
                         )
                     ):
-                        yield result
+                        yield {
+                            "event": "message",
+                            "data": result.to_json(),
+                        }
                     return
                 except HTTPException as err:
                     raise err
                 except CaikitRuntimeException as err:
                     error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
                     error_content = {
+                        "event": "error",
                         "details": err.message,
                         "code": error_code,
                         "id": err.id,
@@ -512,6 +516,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 except Exception as err:  # pylint: disable=broad-exception-caught
                     error_code = 500
                     error_content = {
+                        "event": "error",
                         "details": f"Unhandled exception: {str(err)}",
                         "code": error_code,
                         "id": None,

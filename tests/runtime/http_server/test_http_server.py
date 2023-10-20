@@ -477,14 +477,23 @@ def test_inference_streaming_sample_module(sample_task_model_id, client):
         stream_content = stream.content.decode(stream.default_encoding)
         stream_responses = json.loads(
             "[{}]".format(
-                stream_content.replace("data: ", "")
+                stream_content.replace("event: ", '{"event":')
+                .replace("message", '"message"}')
+                .replace("data: ", "")
                 .replace("\r\n", "")
                 .replace("}{", "}, {")
             )
         )
-        assert len(stream_responses) == 10
+        assert len(stream_responses) == 20
         assert all(
-            resp.get("greeting") == "Hello world stream" for resp in stream_responses
+            resp.get("greeting") == "Hello world stream"
+            for resp in stream_responses
+            if "greeting" in resp
+        )
+        assert all(
+            resp.get("event") == "message"
+            for resp in stream_responses
+            if "event" in resp
         )
 
 
