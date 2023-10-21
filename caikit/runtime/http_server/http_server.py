@@ -105,6 +105,9 @@ MODEL_ID = "model_id"
 # Endpoint to use for health checks
 HEALTH_ENDPOINT = "/health"
 
+# Endpoint to use for server info
+RUNTIME_INFO_ENDPOINT = "/runtimeInfo"
+
 # Small dataclass for consolidating TLS files
 @dataclass
 class _TlsFiles:
@@ -158,6 +161,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Add the health endpoint
         self.app.get(HEALTH_ENDPOINT, response_class=PlainTextResponse)(
             self._health_check
+        )
+
+        self.app.get(RUNTIME_INFO_ENDPOINT, response_class=JSONResponse)(
+            self._runtime_info
         )
 
         # Parse TLS configuration
@@ -253,6 +260,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
         while not self.server.started:
             time.sleep(1e-3)
         log.info("HTTP Server is running in thread")
+
+    def _runtime_info(self) -> Dict[str, str]:
+        log.debug4("Server info details")
+        return self._get_runtime_info()
 
     ##########
     ## Impl ##

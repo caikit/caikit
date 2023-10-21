@@ -544,6 +544,18 @@ def test_health_check_ok(runtime_http_server):
         assert response.text == "OK"
 
 
+def test_runtime_info_ok(runtime_http_server):
+    """Make sure the runtime info returns version data"""
+    with TestClient(runtime_http_server.app) as client:
+        response = client.get(http_server.RUNTIME_INFO_ENDPOINT)
+        assert response.status_code == 200
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert json_response["foo"] == "bar"
+        assert json_response["runtime_image"] == "1.2.3"
+        assert json_response["caikit_version"] == "0.0.1"
+        assert response.text == "OK"
+
+
 def test_http_server_shutdown_with_model_poll(open_port):
     """Test that a SIGINT successfully shuts down the running server"""
     with tempfile.TemporaryDirectory() as workdir:

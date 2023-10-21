@@ -38,6 +38,7 @@ from caikit.core.data_model.dataobject import _AUTO_GEN_PROTO_CLASSES
 from caikit.core.exceptions import error_handler
 from caikit.core.task import TaskBase
 from caikit.interfaces.runtime.data_model import (
+    RuntimeInfoStatusResponse,
     TrainingInfoRequest,
     TrainingStatusResponse,
 )
@@ -61,6 +62,20 @@ TRAINING_MANAGEMENT_SERVICE_SPEC = {
                 "name": "CancelTraining",
                 "input_type": TrainingInfoRequest.get_proto_class().DESCRIPTOR.full_name,
                 "output_type": TrainingStatusResponse.get_proto_class().DESCRIPTOR.full_name,
+            },
+        ]
+    }
+}
+
+RUNTIME_INFO_SERVICE_NAME = "RuntimeInfo"
+RUNTIME_INFO_SERVICE_SPEC = {
+    "service": {
+        "rpcs": [
+            {
+                "name": "GetServerInfo",
+                # TODO: this has no input param...but unsure how to codify that here since this json schema is required? str input_type? - was hitting validation errors in py_to_proto
+                "input_type": TrainingInfoRequest.get_proto_class().DESCRIPTOR.full_name,
+                "output_type": RuntimeInfoStatusResponse.get_proto_class().DESCRIPTOR.full_name,
             },
         ]
     }
@@ -94,6 +109,7 @@ class ServicePackageFactory:
         INFERENCE = 1  # Inference service for the GlobalPredictServicer
         TRAINING = 2  # Training service for the GlobalTrainServicer
         TRAINING_MANAGEMENT = 3
+        RUNTIME_INFO = 4
 
     @classmethod
     def get_service_package(
@@ -119,6 +135,22 @@ class ServicePackageFactory:
                 name=TRAINING_MANAGEMENT_SERVICE_NAME,
                 package="caikit.runtime.training",
                 json_service_def=TRAINING_MANAGEMENT_SERVICE_SPEC,
+            )
+
+            return ServicePackage(
+                service=grpc_service.service_class,
+                descriptor=grpc_service.descriptor,
+                registration_function=grpc_service.registration_function,
+                stub_class=grpc_service.client_stub_class,
+                messages=None,  # we don't need messages here
+                caikit_rpcs={},  # No caikit RPCs
+            )
+
+        if service_type == cls.ServiceType.RUNTIME_INFO:
+            grpc_service = json_to_service(
+                name=RUNTIME_INFO_SERVICE_NAME,
+                package="caikit.runtime.info",
+                json_service_def=RUNTIME_INFO_SERVICE_SPEC,
             )
 
             return ServicePackage(

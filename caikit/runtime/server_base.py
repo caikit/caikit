@@ -14,7 +14,8 @@
 """Base class with common functionality across all caikit servers"""
 
 # Standard
-from typing import Optional
+from importlib.metadata import version as pip_version
+from typing import Dict, Optional
 import abc
 import signal
 
@@ -76,6 +77,13 @@ class RuntimeServerBase(abc.ABC):
 
         self.training_service = training_service
 
+        # create server info service?
+        self.runtime_info_service: Optional[
+            ServicePackage
+        ] = ServicePackageFactory.get_service_package(
+            ServicePackageFactory.ServiceType.RUNTIME_INFO,
+        )
+
     @classmethod
     def _start_metrics_server(cls) -> None:
         """Start a single instance of the metrics server based on configuration"""
@@ -87,6 +95,23 @@ class RuntimeServerBase(abc.ABC):
             with alog.ContextTimer(log.info, "Booted metrics server in "):
                 start_http_server(get_config().runtime.metrics.port)
             cls._metrics_server_started = True
+
+    @classmethod
+    def _get_runtime_info(cls) -> Dict[str, str]:
+        """Get information on versions of libraries and server from config"""
+        version_dict = {}
+        # TODO: how to get library version for extensions?
+        # version_dict["caikit_nlp_version"] = pip_version("caikit_nlp")
+        version_dict["caikit_version"] = pip_version("caikit")
+        # TODO: why is cls.config != get_config() within this method --> fails with error  AttributeError: type object 'RuntimeHTTPServer' has no attribute 'config'
+        print("DOES VERSIONING EXIST", get_config().runtime.versioning)
+
+        if get_config().runtime.versioning:
+            print("GET_CONFIG", get_config().runtime.versioning)
+            # TODO: how to get library that is being run -- aka get caikit_nlp part dynamically
+            version_dict.update(get_config().runtime.versioning)
+
+        return version_dict
 
     def _intercept_interrupt_signal(self) -> None:
         """intercept signal handler"""

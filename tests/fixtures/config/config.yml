@@ -11,6 +11,10 @@ runtime:
         # Write to log file every N seconds
         log_interval: 5
 
+    versioning:
+        runtime_image: "1.2.3"
+        foo: bar
+
     training:
         output_dir: null
 

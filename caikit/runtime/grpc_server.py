@@ -140,6 +140,18 @@ class RuntimeGRPCServer(RuntimeServerBase):
             model_runtime_pb2.DESCRIPTOR.services_by_name["ModelRuntime"].full_name
         )
 
+        # Add runtime info servicer to the gRPC server
+        runtime_info_service: ServicePackage = (
+            ServicePackageFactory.get_service_package(
+                ServicePackageFactory.ServiceType.RUNTIME_INFO,
+            )
+        )
+        service_names.append(runtime_info_service.descriptor.full_name)
+
+        runtime_info_service.registration_function(
+            self._get_runtime_info(), self.server
+        )
+
         # Add gRPC default health servicer.
         # We use the non-blocking implementation to avoid thread starvation.
         health_servicer = health.HealthServicer(

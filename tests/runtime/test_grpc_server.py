@@ -44,6 +44,7 @@ from caikit import get_config
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.runtime.data_model import (
+    RuntimeInfoStatusResponse,
     TrainingInfoRequest,
     TrainingJob,
     TrainingStatus,
@@ -951,6 +952,28 @@ def test_runtime_status_ok_response(runtime_grpc_server):
     )
     assert actual_response.defaultModelSizeInBytes == 18874368
     assert actual_response.numericRuntimeVersion == 0
+
+
+# TODO: remove input of TrainingInfoRequest
+def test_runtime_info_ok_response(sample_task_model_id, runtime_grpc_server):
+    runtime_info_service: ServicePackage = ServicePackageFactory().get_service_package(
+        ServicePackageFactory.ServiceType.RUNTIME_INFO,
+    )
+
+    runtime_info_stub = runtime_info_service.stub_class(
+        runtime_grpc_server.make_local_channel()
+    )
+
+    training_info_request = TrainingInfoRequest(training_id=sample_task_model_id)
+    runtime_info_response: RuntimeInfoStatusResponse = (
+        RuntimeInfoStatusResponse.from_proto(
+            runtime_info_stub.GetServerInfo(training_info_request.to_proto())
+        )
+    )
+
+    assert runtime_info_response.caikit_version == "0.0.1"
+    assert runtime_info_response.runtime_image == "1.2.3"
+    assert 1 == 2
 
 
 #### Health Probe tests ####

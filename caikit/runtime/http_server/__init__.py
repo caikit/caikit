@@ -13,5 +13,5 @@
 # limitations under the License.
 
 # Local
-from .http_server import HEALTH_ENDPOINT, RuntimeHTTPServer
+from .http_server import HEALTH_ENDPOINT, RUNTIME_INFO_ENDPOINT, RuntimeHTTPServer
 from .pydantic_wrapper import dataobject_to_pydantic, pydantic_to_dataobject
