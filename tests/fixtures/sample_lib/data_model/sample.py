@@ -113,7 +113,7 @@ class FileTask(TaskBase):
     unary_output_type=StrSequence,
 )
 class PrimitiveTask(TaskBase):
-    """A sample task for testing ra"""
+    """A sample task for testing generic types"""
 
 
 @task(
