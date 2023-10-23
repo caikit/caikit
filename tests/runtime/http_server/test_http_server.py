@@ -294,6 +294,15 @@ def test_docs_using_running_http_server(runtime_http_server):
     assert response.status_code == 200
 
 
+def test_docs_with_models(
+    runtime_http_server, sample_task_model_id, primitive_task_model_id
+):
+    """Simple check that pinging /docs still returns 200 when models have been
+    loaded"""
+    response = requests.get(f"http://localhost:{runtime_http_server.port}/docs")
+    assert response.status_code == 200
+
+
 def test_inference_sample_task(sample_task_model_id, runtime_http_server):
     """Simple check that we can ping a model"""
     with TestClient(runtime_http_server.app) as client:
@@ -303,9 +312,32 @@ def test_inference_sample_task(sample_task_model_id, runtime_http_server):
             json=json_input,
         )
         json_response = json.loads(response.content.decode(response.default_encoding))
-        print(json_response)
         assert response.status_code == 200, json_response
         assert json_response["greeting"] == "Hello world"
+
+
+def test_inference_primitive_task(primitive_task_model_id, runtime_http_server):
+    """Simple check that we can ping a model"""
+    with TestClient(runtime_http_server.app) as client:
+        json_input = {
+            "inputs": {"name": "hello"},
+            "parameters": {
+                "bool_type": True,
+                "int_type": 1,
+                "float_type": 1.0,
+                "str_type": "astring",
+                "bytes_type": "cmF3Ynl0ZXMK",
+                "list_type": ["list", "of", "strings"],
+            },
+            "model_id": primitive_task_model_id,
+        }
+        response = client.post(
+            f"/api/v1/task/sample",
+            json=json_input,
+        )
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert response.status_code == 200, json_response
+        assert "hello: primitives!" in json_response["greeting"]
 
 
 def test_inference_sample_task_optional_field(

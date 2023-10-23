@@ -1,0 +1,14 @@
+module_class: sample_lib.modules.sample_task.SamplePrimitiveModule
+module_id: 00112233-0405-0607-0809-0a0b02dd0e0f
+created: "2023-03-28 16:34:58.720898"
+name: SampleModule
+sample_lib_version: 0.0.1
+saved: "2023-03-28 16:34:58.720929"
+tracking_id: e56dbd48-9231-432b-ad04-c02eeffdd158
+version: 0.0.1
+train:
+    training_params_json_dict:
+        foo:
+            bar: 123
+    training_params_dict:
+        layer_sizes: 1
