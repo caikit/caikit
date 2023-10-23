@@ -11,7 +11,7 @@ import zipfile
 # Local
 from caikit.core import DataObjectBase, TaskBase, dataobject, task
 from caikit.core.data_model import ProducerId
-from caikit.interfaces.common.data_model import File, StrSequence
+from caikit.interfaces.common.data_model import File
 
 
 @dataobject(package="caikit_data_model.sample_lib")
@@ -101,19 +101,6 @@ class OtherTask(TaskBase):
 )
 class FileTask(TaskBase):
     """A sample task for processing files"""
-
-
-@task(
-    required_parameters={
-        "str_type": str,
-        "list_str_type": List[str],
-        "int_type": int,
-        "list_int_type": List[int],
-    },
-    unary_output_type=StrSequence,
-)
-class PrimitiveTask(TaskBase):
-    """A sample task for testing generic types"""
 
 
 @task(
