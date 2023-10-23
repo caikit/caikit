@@ -60,6 +60,7 @@ all = [
 ## Dev Extra Sets ##
 
 dev-test = [
+    "grpcio_tools>=1.49.1,<=1.53.0",
     "pytest-asyncio>=0.21.0,<1",
     "pytest-cov>=2.10.1,<5.0",
     "pytest-html>=3.1.1,<5.0",
