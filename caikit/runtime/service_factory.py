@@ -72,7 +72,7 @@ RUNTIME_INFO_SERVICE_SPEC = {
     "service": {
         "rpcs": [
             {
-                "name": "GetServerInfo",
+                "name": "GetRuntimeInfo",
                 # TODO: this has no input param...but unsure how to codify that here since this json schema is required? str input_type? - was hitting validation errors in py_to_proto
                 "input_type": TrainingInfoRequest.get_proto_class().DESCRIPTOR.full_name,
                 "output_type": RuntimeInfoStatusResponse.get_proto_class().DESCRIPTOR.full_name,

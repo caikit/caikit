@@ -47,6 +47,9 @@ from caikit.runtime.servicers.model_train_servicer import ModelTrainServicerImpl
 from caikit.runtime.servicers.training_management_servicer import (
     TrainingManagementServicerImpl,
 )
+from caikit.runtime.servicers.runtime_info_servicer import (
+    RuntimeInfoServicerImpl,
+)
 
 # Have pylint ignore broad exception catching in this file so that we can log all
 # unexpected errors using alog.
@@ -149,7 +152,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
         service_names.append(runtime_info_service.descriptor.full_name)
 
         runtime_info_service.registration_function(
-            self._get_runtime_info(), self.server
+            RuntimeInfoServicerImpl(), self.server
         )
 
         # Add gRPC default health servicer.

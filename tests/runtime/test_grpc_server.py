@@ -967,12 +967,12 @@ def test_runtime_info_ok_response(sample_task_model_id, runtime_grpc_server):
     training_info_request = TrainingInfoRequest(training_id=sample_task_model_id)
     runtime_info_response: RuntimeInfoStatusResponse = (
         RuntimeInfoStatusResponse.from_proto(
-            runtime_info_stub.GetServerInfo(training_info_request.to_proto())
+            runtime_info_stub.GetRuntimeInfo(training_info_request.to_proto())
         )
     )
 
     assert runtime_info_response.caikit_version == "0.0.1"
-    assert runtime_info_response.runtime_image == "1.2.3"
+    assert runtime_info_response.runtime_image_version == "1.2.3"
     assert 1 == 2
 
 

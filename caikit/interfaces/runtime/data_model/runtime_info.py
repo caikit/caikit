@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Standard
-from typing import List
+from typing import Dict
 
 # First Party
 import alog
@@ -38,3 +38,4 @@ class RuntimeInfoStatusResponse(DataObjectBase):
     caikit_version: str
     runtime_image_version: str
     caikit_nlp_version: str
+    version_info: Dict[str, str]

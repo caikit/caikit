@@ -67,6 +67,9 @@ from caikit.runtime.service_generation.rpcs import (
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from caikit.runtime.servicers.runtime_info_servicer import (
+    RuntimeInfoServicerImpl,
+)
 
 ## Globals #####################################################################
 
@@ -163,8 +166,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
             self._health_check
         )
 
+        # Add runtime info endpoint
+        # self.runtime_info_servicer = RuntimeInfoServicerImpl(self.inference_service)
         self.app.get(RUNTIME_INFO_ENDPOINT, response_class=JSONResponse)(
-            self._runtime_info
+            RuntimeInfoServicerImpl().GetRuntimeInfo().version_info
         )
 
         # Parse TLS configuration
@@ -261,9 +266,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
             time.sleep(1e-3)
         log.info("HTTP Server is running in thread")
 
-    def _runtime_info(self) -> Dict[str, str]:
-        log.debug4("Server info details")
-        return self._get_runtime_info()
+    # def _runtime_info(self) -> Dict[str, str]:
+    #     log.debug4("Server info details")
+    #     return self._get_runtime_info()
 
     ##########
     ## Impl ##
