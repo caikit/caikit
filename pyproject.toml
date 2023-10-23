@@ -1,11 +1,9 @@
 [build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
+requires = ["setuptools>=60", "setuptools-scm>=8.0"]
 
 [project]
 name = "caikit"
-# Not the actual current version: overwritten by CI
-version = "0.0.1"
+dynamic = ["version"]
 description = "AI toolkit that enables AI users to consume stable task-specific model APIs and enables AI developers build algorithms and models in a modular/composable framework"
 license = {text = "Apache-2.0"}
 readme = "README.md"
@@ -13,7 +11,6 @@ requires-python = ">=3.8"
 classifiers=[
     "License :: OSI Approved :: Apache Software License"
 ]
-
 dependencies = [
     "alchemy-config>=1.1.1,<2.0.0",
     "alchemy-logging>=1.0.4,<2.0.0",
@@ -90,6 +87,13 @@ dev-build = [
 all-dev = [
     "caikit[all, dev-test, dev-docs, dev-fmt, dev-build]"
 ]
+
+[tool.setuptools.packages.find]
+where = [""]
+include = ["caikit", "caikit*"]
+
+[tool.setuptools_scm]
+write_to = "caikit/_version.py"
 
 [project.urls]
 Source = "https://github.com/caikit/caikit"
