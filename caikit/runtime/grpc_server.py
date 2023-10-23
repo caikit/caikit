@@ -44,11 +44,9 @@ from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServic
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.servicers.model_runtime_servicer import ModelRuntimeServicerImpl
 from caikit.runtime.servicers.model_train_servicer import ModelTrainServicerImpl
+from caikit.runtime.servicers.runtime_info_servicer import RuntimeInfoServicerImpl
 from caikit.runtime.servicers.training_management_servicer import (
     TrainingManagementServicerImpl,
-)
-from caikit.runtime.servicers.runtime_info_servicer import (
-    RuntimeInfoServicerImpl,
 )
 
 # Have pylint ignore broad exception catching in this file so that we can log all

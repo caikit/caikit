@@ -16,8 +16,8 @@
 # pylint: disable=E1101
 
 # Standard
-from typing import Dict
 from importlib.metadata import version as pip_version
+from typing import Dict
 
 # Third Party
 import grpc
@@ -26,12 +26,12 @@ import grpc
 import alog
 
 # Local
+from caikit.config import get_config
 from caikit.core import MODEL_MANAGER
 from caikit.interfaces.runtime.data_model import (
     RuntimeInfoStatusResponse,
     RuntimeInfoStatusResponseDict,
 )
-from caikit.config import get_config
 
 log = alog.use_channel("RI-SERVICR-I")
 
@@ -59,7 +59,6 @@ class RuntimeInfoServicerImpl:
         # return RuntimeInfoStatusResponseDict(
         #     version_info=version_dict
         # ).to_proto()
-
 
         return RuntimeInfoStatusResponse(
             caikit_version=version_dict["caikit_version"],
