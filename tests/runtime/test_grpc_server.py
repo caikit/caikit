@@ -1283,23 +1283,23 @@ def test_construct_with_options(open_port, sample_train_service, sample_int_file
             assert context.value.code() == grpc.StatusCode.RESOURCE_EXHAUSTED
 
 
-def test_grpc_server_startup(open_port, sample_train_service, sample_int_file):
-    """Make sure that the server can be booted with config options"""
-    socket_dir = tempfile.TemporaryDirectory()
-    with temp_config(
-        {"runtime": {"grpc": {"unix_socket_path": socket_dir.name + "/grpc.sock"}}},
-        "merge",
-    ):
-        server = RuntimeGRPCServer()
-        with server:
-            stub = model_runtime_pb2_grpc.ModelRuntimeStub(
-                grpc.insecure_channel(f"unix://{socket_dir.name}/grpc.sock")
-            )
-            runtime_status_request = model_runtime_pb2.RuntimeStatusRequest()
-            actual_response = stub.runtimeStatus(runtime_status_request)
-            assert (
-                actual_response.status == model_runtime_pb2.RuntimeStatusResponse.READY
-            )
+def test_grpc_server_socket_listen():
+    """Make sure that the server correctly listen on a unix socket"""
+    with tempfile.TemporaryDirectory() as socket_dir:
+        with temp_config(
+            {"runtime": {"grpc": {"unix_socket_path": socket_dir + "/grpc.sock"}}},
+            "merge",
+        ):
+            with RuntimeGRPCServer():
+                stub = model_runtime_pb2_grpc.ModelRuntimeStub(
+                    grpc.insecure_channel(f"unix://{socket_dir}/grpc.sock")
+                )
+                runtime_status_request = model_runtime_pb2.RuntimeStatusRequest()
+                actual_response = stub.runtimeStatus(runtime_status_request)
+                assert (
+                    actual_response.status
+                    == model_runtime_pb2.RuntimeStatusResponse.READY
+                )
 
 
 # Test implementation details #########################
