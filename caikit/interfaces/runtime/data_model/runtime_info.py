@@ -29,7 +29,7 @@ RUNTIME_PACKAGE = "caikit_data_model.runtime"
 
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
 @dataobject(RUNTIME_PACKAGE)
-class RuntimeRequest(DataObjectBase):
+class RuntimeInfoRequest(DataObjectBase):
     pass
 
 

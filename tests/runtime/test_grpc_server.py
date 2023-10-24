@@ -45,8 +45,8 @@ from caikit import get_config
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.runtime.data_model import (
+    RuntimeInfoRequest,
     RuntimeInfoResponse,
-    RuntimeRequest,
     TrainingInfoRequest,
     TrainingJob,
     TrainingStatus,
@@ -965,7 +965,7 @@ def test_runtime_info_ok_response(runtime_grpc_server):
         runtime_grpc_server.make_local_channel()
     )
 
-    runtime_request = RuntimeRequest()
+    runtime_request = RuntimeInfoRequest()
     runtime_info_response: RuntimeInfoResponse = RuntimeInfoResponse.from_proto(
         runtime_info_stub.GetRuntimeInfo(runtime_request.to_proto())
     )
@@ -999,7 +999,7 @@ def test_runtime_info_ok_response_all_sys_modules(runtime_grpc_server):
             runtime_grpc_server.make_local_channel()
         )
 
-        runtime_request = RuntimeRequest()
+        runtime_request = RuntimeInfoRequest()
         runtime_info_response: RuntimeInfoResponse = RuntimeInfoResponse.from_proto(
             runtime_info_stub.GetRuntimeInfo(runtime_request.to_proto())
         )
@@ -1043,7 +1043,7 @@ def test_runtime_info_ok_response_env_var_override(runtime_grpc_server):
             runtime_grpc_server.make_local_channel()
         )
 
-        runtime_request = RuntimeRequest()
+        runtime_request = RuntimeInfoRequest()
         runtime_info_response: RuntimeInfoResponse = RuntimeInfoResponse.from_proto(
             runtime_info_stub.GetRuntimeInfo(runtime_request.to_proto())
         )
