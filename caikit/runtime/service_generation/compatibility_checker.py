@@ -14,10 +14,14 @@
 """This file contains logic to ensure proto-API compatibility and model support compatibility"""
 
 # Standard
+from types import ModuleType
 from typing import Dict
 
 # First Party
 import alog
+
+# Third Party
+from google.protobuf import descriptor_pb2, descriptor_pool
 
 log = alog.use_channel("CMPAT-CHKR")
 
@@ -38,7 +42,17 @@ class ApiFieldNames:
     @staticmethod
     def clear():
         ApiFieldNames().service_pb2_modules = []
+        ApiFieldNames().d_pool = d_pool = None
 
+    @staticmethod
+    def add_proto_spec(
+        service_pb2_module: ModuleType, d_pool: descriptor_pool.DescriptorPool
+    ):
+        fd_proto = descriptor_pb2.FileDescriptorProto()
+        service_pb2_module.DESCRIPTOR.CopyToProto(fd_proto)
+        d_pool.Add(fd_proto)
+        ApiFieldNames().d_pool = d_pool
+        
     @staticmethod
     def get_fields_for_message(message_name: str) -> Dict[str, int]:
         """Return first matching message found for 'message_name'"""
