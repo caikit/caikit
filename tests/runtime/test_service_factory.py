@@ -17,6 +17,7 @@
 from pathlib import Path
 import json
 import os
+import shutil
 import tempfile
 import uuid
 
@@ -490,7 +491,7 @@ def test_get_train_params(runtime_grpc_server):
     )
 
 
-@pytest.mark.skip("WIP")
+# @pytest.mark.skip("WIP")
 def test_assert_compatible_respects_previously_defined_proto_spec(
     clean_data_model_with_no_sampletaskrequest_proto,
 ):
@@ -557,13 +558,12 @@ def test_assert_compatible_respects_previously_defined_proto_spec(
 
             # import this compiled service
             # Standard
-            # import sys
-            # import importlib
+            import importlib
+            import sys
 
-            # sys.path.append(output_compiled_path)
+            sys.path.append(output_compiled_path)
 
             # samplelib_pb2 = __import__("samplelibservice_pb2", fromlist=[mod_name])
-
 
     #         print("dpool in test is: ", dpool)
     #         ApiFieldNames.add_proto_spec(samplelibservice_pb2, d_pool=dpool)
@@ -602,7 +602,5 @@ def test_assert_compatible_respects_previously_defined_proto_spec(
     #         # assert that the new SampleTaskRequest now will have an extra field (error, 3) that comes from SampleModule
     #         assert ("error", 3) in fields.items()
 
-    # # Clean up
-    # shutil.rmtree(protos_dir_path, ignore_errors=True)
-    # shutil.rmtree(output_compiled_path, ignore_errors=True)
-
+    # Clean up
+    shutil.rmtree(protos_dir_path, ignore_errors=True)
