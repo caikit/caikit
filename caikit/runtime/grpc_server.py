@@ -153,7 +153,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
         # Listen on a unix socket as well for model mesh.
         if self.config.runtime.grpc.unix_socket_path and os.path.exists(
-            self.config.runtime.grpc.unix_socket_path
+            os.path.dirname(self.config.runtime.grpc.unix_socket_path)
         ):
             try:
                 self.server.add_insecure_port(
