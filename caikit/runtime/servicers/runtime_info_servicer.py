@@ -20,15 +20,11 @@ from typing import Dict
 import importlib.metadata
 import sys
 
-# Third Party
-import grpc
-
 # First Party
 import alog
 
 # Local
 from caikit.config import get_config
-from caikit.core import MODEL_MANAGER
 from caikit.interfaces.runtime.data_model import RuntimeInfoResponse
 
 log = alog.use_channel("RI-SERVICR-I")
@@ -38,11 +34,11 @@ class RuntimeInfoServicerImpl:
     """This class contains the implementation of all of the RPCs that are required to run a
     service in Model Mesh as a Model-Runtime."""
 
-    def GetRuntimeInfo(self, request, context):
+    def GetRuntimeInfo(self, request, context) -> RuntimeInfoResponse:  # pylint: disable=unused-argument
         """Get information on versions of libraries and server for GRPC"""
         return self.get_runtime_info_impl()
 
-    def get_runtime_info_impl(self):
+    def get_runtime_info_impl(self) -> RuntimeInfoResponse:
         """Get information on versions of libraries and server from config"""
         versions = {}
         for lib in sys.modules:
@@ -68,7 +64,7 @@ class RuntimeInfoServicerImpl:
             version_info=versions,
         ).to_proto()
 
-    def get_version_dict(self):
+    def get_version_dict(self) -> Dict[str, str]:
         """Get information on versions of libraries and server for HTTP"""
         runtime_info_response = self.get_runtime_info_impl()
         return runtime_info_response.version_info

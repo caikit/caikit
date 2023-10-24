@@ -14,8 +14,7 @@
 """Base class with common functionality across all caikit servers"""
 
 # Standard
-from importlib.metadata import version as pip_version
-from typing import Dict, Optional
+from typing import Optional
 import abc
 import signal
 
@@ -77,7 +76,7 @@ class RuntimeServerBase(abc.ABC):
 
         self.training_service = training_service
 
-        # create server info service?
+        # create runtime info service
         self.runtime_info_service: Optional[
             ServicePackage
         ] = ServicePackageFactory.get_service_package(
