@@ -17,6 +17,7 @@ from enum import Enum
 from types import ModuleType
 from typing import Callable, Dict, Set, Type, Union
 import dataclasses
+import importlib
 import json
 import os
 
@@ -42,8 +43,10 @@ from caikit.interfaces.runtime.data_model import (
     TrainingStatusResponse,
 )
 from caikit.runtime import service_generation
+from caikit.runtime.service_generation.compatibility_checker import ApiFieldNames
 from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.utils import import_util
+from tests.data_model_helpers import temp_dpool
 
 log = alog.use_channel("SVC-FACTORY")
 error = error_handler.get(log)
@@ -196,6 +199,8 @@ class ServicePackageFactory:
             caikit_config.runtime.service_generation.backwards_compatibility
         )
         if backwards_compat_conf and backwards_compat_conf.enabled:
+            # assert that there's no regressed modules
+            # (modules supported in prev version, now no longer supported)
             previous_included_modules = set()
             prev_modules_path = backwards_compat_conf.prev_modules_path
             error.value_check(
@@ -213,6 +218,40 @@ class ServicePackageFactory:
             service_generation.assert_compatible(
                 [mod.MODULE_ID for mod in clean_modules],
                 previous_included_modules,
+            )
+            # support the proto numbering from previous version
+            client_package_name = (
+                backwards_compat_conf.client_package
+                and backwards_compat_conf.client_package.package_name
+            )
+            if client_package_name:
+                with temp_dpool() as dpool:
+                    client_package = importlib.import_module(client_package_name)
+                    client_package_service_name = (
+                        backwards_compat_conf.client_package.service_name
+                        or "samplelibservice_pb2"
+                    )
+                    if hasattr(client_package, client_package_service_name):
+                        service_pb2 = getattr(
+                            client_package, client_package_service_name
+                        )
+                        log.info(
+                            "Found released service interfaces module: %s", service_pb2
+                        )
+                        # Register the old API so that we can ensure we build a compatible one
+                        ApiFieldNames.add_proto_spec(
+                            service_pb2_module=service_pb2, d_pool=dpool
+                        )
+                    else:
+                        log.info(
+                            "Found client package %s but could not find service: %s. \
+                                Check backwards_compatibility.client_package config.",
+                            client_package_name,
+                            client_package_service_name,
+                        )
+        else:
+            log.info(
+                "Skipping checking for backwards compatibility, enable in config to run."
             )
 
     @staticmethod
