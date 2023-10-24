@@ -14,7 +14,7 @@
 
 # Local
 from . import training_management
-from .runtime_info import RuntimeInfoStatusResponse
+from .runtime_info import RuntimeInfoResponse, RuntimeRequest
 from .training_management import (
     ModelPointer,
     TrainingInfoRequest,

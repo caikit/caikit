@@ -38,7 +38,8 @@ from caikit.core.data_model.dataobject import _AUTO_GEN_PROTO_CLASSES
 from caikit.core.exceptions import error_handler
 from caikit.core.task import TaskBase
 from caikit.interfaces.runtime.data_model import (
-    RuntimeInfoStatusResponse,
+    RuntimeInfoResponse,
+    RuntimeRequest,
     TrainingInfoRequest,
     TrainingStatusResponse,
 )
@@ -73,9 +74,8 @@ RUNTIME_INFO_SERVICE_SPEC = {
         "rpcs": [
             {
                 "name": "GetRuntimeInfo",
-                # TODO: this has no input param...but unsure how to codify that here since this json schema is required? str input_type? - was hitting validation errors in py_to_proto
-                "input_type": TrainingInfoRequest.get_proto_class().DESCRIPTOR.full_name,
-                "output_type": RuntimeInfoStatusResponse.get_proto_class().DESCRIPTOR.full_name,
+                "input_type": RuntimeRequest.get_proto_class().DESCRIPTOR.full_name,
+                "output_type": RuntimeInfoResponse.get_proto_class().DESCRIPTOR.full_name,
             },
         ]
     }

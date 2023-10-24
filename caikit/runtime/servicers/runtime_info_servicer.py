@@ -16,8 +16,9 @@
 # pylint: disable=E1101
 
 # Standard
-from importlib.metadata import version as pip_version
 from typing import Dict
+import importlib.metadata
+import sys
 
 # Third Party
 import grpc
@@ -28,10 +29,7 @@ import alog
 # Local
 from caikit.config import get_config
 from caikit.core import MODEL_MANAGER
-from caikit.interfaces.runtime.data_model import (
-    RuntimeInfoStatusResponse,
-    RuntimeInfoStatusResponseDict,
-)
+from caikit.interfaces.runtime.data_model import RuntimeInfoResponse
 
 log = alog.use_channel("RI-SERVICR-I")
 
@@ -41,27 +39,44 @@ class RuntimeInfoServicerImpl:
     service in Model Mesh as a Model-Runtime."""
 
     def GetRuntimeInfo(self, request, context):
+        """Get information on versions of libraries and server for GRPC"""
+        return self.get_runtime_info_impl()
+
+    def get_runtime_info_impl(self):
         """Get information on versions of libraries and server from config"""
-        version_dict = {}
-        # TODO: how to get library version for extensions?
-        # version_dict["caikit_nlp_version"] = pip_version("caikit_nlp")
-        version_dict["caikit_version"] = pip_version("caikit")
-        # TODO: why is cls.config != get_config() within this method --> fails with error  AttributeError: type object 'RuntimeHTTPServer' has no attribute 'config'
-        print("DOES VERSIONING EXIST", get_config().runtime.versioning)
+        versions = {}
+        for lib in sys.modules:
+            if (
+                get_config().runtime.versioning
+                and get_config().runtime.versioning.sys_modules
+            ):
+                if len(lib.split(".")) == 1:
+                    version = self.try_lib_version(lib)
+                    if version:
+                        versions[lib] = version
+            # just get caikit versions
+            else:
+                if len(lib.split(".")) == 1 and lib.startswith("caikit"):
+                    versions[lib] = self.try_lib_version(lib)
 
         if get_config().runtime.versioning:
-            print("GET_CONFIG", get_config().runtime.versioning)
-            # TODO: how to get library that is being run -- aka get caikit_nlp part dynamically
-            version_dict.update(get_config().runtime.versioning)
+            versions["runtime_image"] = get_config().runtime.versioning.get(
+                "runtime_image"
+            )
 
-        # return version_dict
-
-        # return RuntimeInfoStatusResponseDict(
-        #     version_info=version_dict
-        # ).to_proto()
-
-        return RuntimeInfoStatusResponse(
-            caikit_version=version_dict["caikit_version"],
-            runtime_image_version=version_dict.get("runtime_image"),
-            version_info=version_dict,
+        return RuntimeInfoResponse(
+            version_info=versions,
         ).to_proto()
+
+    def get_version_dict(self):
+        """Get information on versions of libraries and server for HTTP"""
+        runtime_info_response = self.get_runtime_info_impl()
+        return runtime_info_response.version_info
+
+    # TODO: fix so can get versions for something like alog --> alchemy_logging
+    def try_lib_version(self, name) -> str:
+        """Get version of python modules"""
+        try:
+            return importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError:
+            return None

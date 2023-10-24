@@ -96,23 +96,6 @@ class RuntimeServerBase(abc.ABC):
                 start_http_server(get_config().runtime.metrics.port)
             cls._metrics_server_started = True
 
-    # @classmethod
-    # def _get_runtime_info(cls) -> Dict[str, str]:
-    #     """Get information on versions of libraries and server from config"""
-    #     version_dict = {}
-    #     # TODO: how to get library version for extensions?
-    #     # version_dict["caikit_nlp_version"] = pip_version("caikit_nlp")
-    #     version_dict["caikit_version"] = pip_version("caikit")
-    #     # TODO: why is cls.config != get_config() within this method --> fails with error  AttributeError: type object 'RuntimeHTTPServer' has no attribute 'config'
-    #     print("DOES VERSIONING EXIST", get_config().runtime.versioning)
-
-    #     if get_config().runtime.versioning:
-    #         print("GET_CONFIG", get_config().runtime.versioning)
-    #         # TODO: how to get library that is being run -- aka get caikit_nlp part dynamically
-    #         version_dict.update(get_config().runtime.versioning)
-# 
-        # return version_dict
-
     def _intercept_interrupt_signal(self) -> None:
         """intercept signal handler"""
         signal.signal(signal.SIGINT, self.interrupt)

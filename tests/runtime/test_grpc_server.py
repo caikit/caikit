@@ -17,6 +17,7 @@
 # Standard
 from dataclasses import dataclass
 from unittest import mock
+from unittest.mock import patch
 import json
 import os
 import signal
@@ -44,7 +45,8 @@ from caikit import get_config
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.runtime.data_model import (
-    RuntimeInfoStatusResponse,
+    RuntimeInfoResponse,
+    RuntimeRequest,
     TrainingInfoRequest,
     TrainingJob,
     TrainingStatus,
@@ -954,8 +956,7 @@ def test_runtime_status_ok_response(runtime_grpc_server):
     assert actual_response.numericRuntimeVersion == 0
 
 
-# TODO: remove input of TrainingInfoRequest
-def test_runtime_info_ok_response(sample_task_model_id, runtime_grpc_server):
+def test_runtime_info_ok_response(runtime_grpc_server):
     runtime_info_service: ServicePackage = ServicePackageFactory().get_service_package(
         ServicePackageFactory.ServiceType.RUNTIME_INFO,
     )
@@ -964,16 +965,92 @@ def test_runtime_info_ok_response(sample_task_model_id, runtime_grpc_server):
         runtime_grpc_server.make_local_channel()
     )
 
-    training_info_request = TrainingInfoRequest(training_id=sample_task_model_id)
-    runtime_info_response: RuntimeInfoStatusResponse = (
-        RuntimeInfoStatusResponse.from_proto(
-            runtime_info_stub.GetRuntimeInfo(training_info_request.to_proto())
-        )
+    runtime_request = RuntimeRequest()
+    runtime_info_response: RuntimeInfoResponse = RuntimeInfoResponse.from_proto(
+        runtime_info_stub.GetRuntimeInfo(runtime_request.to_proto())
     )
 
-    assert runtime_info_response.caikit_version == "0.0.1"
-    assert runtime_info_response.runtime_image_version == "1.2.3"
-    assert 1 == 2
+    assert runtime_info_response.version_info.get("caikit") == "0.0.1"
+    assert runtime_info_response.version_info.get("runtime_image") == None
+    # dependent libraries not added if sys_modules not set to true
+    assert "py_to_proto" not in runtime_info_response.version_info
+
+
+def test_runtime_info_ok_response_all_sys_modules(runtime_grpc_server):
+    with temp_config(
+        {
+            "runtime": {
+                "versioning": {
+                    "sys_modules": True,
+                    "runtime_image": "1.2.3",
+                    "foo": "bar",
+                }
+            },
+        },
+        "merge",
+    ):
+        runtime_info_service: ServicePackage = (
+            ServicePackageFactory().get_service_package(
+                ServicePackageFactory.ServiceType.RUNTIME_INFO,
+            )
+        )
+
+        runtime_info_stub = runtime_info_service.stub_class(
+            runtime_grpc_server.make_local_channel()
+        )
+
+        runtime_request = RuntimeRequest()
+        runtime_info_response: RuntimeInfoResponse = RuntimeInfoResponse.from_proto(
+            runtime_info_stub.GetRuntimeInfo(runtime_request.to_proto())
+        )
+
+        assert runtime_info_response.version_info.get("caikit") == "0.0.1"
+        assert runtime_info_response.version_info.get("runtime_image") == "1.2.3"
+        # since alog is not the module name fails to get module version
+        assert "alog" not in runtime_info_response.version_info
+        # dependent libraries versions added
+        assert "py_to_proto" in runtime_info_response.version_info
+        # additional config values ignored
+        assert "foo" not in runtime_info_response.version_info
+
+
+@patch.dict(
+    os.environ,
+    {
+        "RUNTIME_VERSIONING_SYS_MODULES": "false",
+        "RUNTIME_VERSIONING_RUNTIME_IMAGE": "image:tag",
+    },
+)
+def test_runtime_info_ok_response_env_var_override(runtime_grpc_server):
+    with temp_config(
+        {
+            "runtime": {
+                "versioning": {
+                    "sys_modules": True,
+                    "runtime_image": "1.2.3",
+                }
+            },
+        },
+        "merge",
+    ):
+        runtime_info_service: ServicePackage = (
+            ServicePackageFactory().get_service_package(
+                ServicePackageFactory.ServiceType.RUNTIME_INFO,
+            )
+        )
+
+        runtime_info_stub = runtime_info_service.stub_class(
+            runtime_grpc_server.make_local_channel()
+        )
+
+        runtime_request = RuntimeRequest()
+        runtime_info_response: RuntimeInfoResponse = RuntimeInfoResponse.from_proto(
+            runtime_info_stub.GetRuntimeInfo(runtime_request.to_proto())
+        )
+
+        assert runtime_info_response.version_info.get("caikit") == "0.0.1"
+        assert runtime_info_response.version_info.get("runtime_image") == "image:tag"
+        assert "py_to_proto" not in runtime_info_response.version_info
 
 
 #### Health Probe tests ####

@@ -26,16 +26,15 @@ log = alog.use_channel("RUNTIMEOPS")
 
 RUNTIME_PACKAGE = "caikit_data_model.runtime"
 
-# @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
-# @dataobject(RUNTIME_PACKAGE)
-# class ModelPointer(DataObjectBase):
-#     model_id: str
+
+@work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
+@dataobject(RUNTIME_PACKAGE)
+class RuntimeRequest(DataObjectBase):
+    pass
+
 
 # TODO: what version details are in here -- is this meant to be more generic?
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
 @dataobject(RUNTIME_PACKAGE)
-class RuntimeInfoStatusResponse(DataObjectBase):
-    caikit_version: str
-    runtime_image_version: str
-    caikit_nlp_version: str
+class RuntimeInfoResponse(DataObjectBase):
     version_info: Dict[str, str]

@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 from typing import Dict
+from unittest.mock import patch
 import json
 import os
 import signal
@@ -549,11 +550,73 @@ def test_runtime_info_ok(runtime_http_server):
     with TestClient(runtime_http_server.app) as client:
         response = client.get(http_server.RUNTIME_INFO_ENDPOINT)
         assert response.status_code == 200
+
         json_response = json.loads(response.content.decode(response.default_encoding))
-        assert json_response["foo"] == "bar"
-        assert json_response["runtime_image"] == "1.2.3"
-        assert json_response["caikit_version"] == "0.0.1"
-        assert response.text == "OK"
+        assert json_response["caikit"] == "0.0.1"
+        assert "runtime_image" not in json_response
+        # dependent libraries not added if sys_modules not set to true
+        assert "py_to_proto" not in json_response
+
+
+def test_runtime_info_ok_response_all_sys_modules(runtime_http_server):
+    with temp_config(
+        {
+            "runtime": {
+                "versioning": {
+                    "sys_modules": True,
+                    "runtime_image": "1.2.3",
+                    "foo": "bar",
+                }
+            },
+        },
+        "merge",
+    ):
+        with TestClient(runtime_http_server.app) as client:
+            response = client.get(http_server.RUNTIME_INFO_ENDPOINT)
+            assert response.status_code == 200
+
+            json_response = json.loads(
+                response.content.decode(response.default_encoding)
+            )
+            assert json_response["runtime_image"] == "1.2.3"
+            assert json_response["caikit"] == "0.0.1"
+            # since alog is not the module name fails to get module version
+            assert "alog" not in json_response
+            # dependent libraries versions added
+            assert "py_to_proto" in json_response
+            # additional config values ignored
+            assert "foo" not in json_response
+
+
+@patch.dict(
+    os.environ,
+    {
+        "RUNTIME_VERSIONING_SYS_MODULES": "false",
+        "RUNTIME_VERSIONING_RUNTIME_IMAGE": "image:tag",
+    },
+)
+def test_runtime_info_ok_response_env_var_override(runtime_http_server):
+    with temp_config(
+        {
+            "runtime": {
+                "versioning": {
+                    "sys_modules": True,
+                    "runtime_image": "1.2.3",
+                }
+            },
+        },
+        "merge",
+    ):
+        with TestClient(runtime_http_server.app) as client:
+            response = client.get(http_server.RUNTIME_INFO_ENDPOINT)
+            assert response.status_code == 200
+
+            json_response = json.loads(
+                response.content.decode(response.default_encoding)
+            )
+            assert json_response["runtime_image"] == "image:tag"
+            assert json_response["caikit"] == "0.0.1"
+            assert "py_to_proto" not in json_response
 
 
 def test_http_server_shutdown_with_model_poll(open_port):
