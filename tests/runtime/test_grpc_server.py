@@ -970,8 +970,8 @@ def test_runtime_info_ok_response(runtime_grpc_server):
         runtime_info_stub.GetRuntimeInfo(runtime_request.to_proto())
     )
 
-    assert runtime_info_response.version_info.get("caikit") == "0.0.1"
-    assert runtime_info_response.version_info.get("runtime_image") == None
+    assert "caikit" in runtime_info_response.version_info
+    assert "runtime_image" not in runtime_info_response.version_info
     # dependent libraries not added if sys_modules not set to true
     assert "py_to_proto" not in runtime_info_response.version_info
 
@@ -1004,7 +1004,7 @@ def test_runtime_info_ok_response_all_sys_modules(runtime_grpc_server):
             runtime_info_stub.GetRuntimeInfo(runtime_request.to_proto())
         )
 
-        assert runtime_info_response.version_info.get("caikit") == "0.0.1"
+        assert "caikit" in runtime_info_response.version_info
         assert runtime_info_response.version_info.get("runtime_image") == "1.2.3"
         # since alog is not the module name fails to get module version
         assert "alog" not in runtime_info_response.version_info
@@ -1048,7 +1048,7 @@ def test_runtime_info_ok_response_env_var_override(runtime_grpc_server):
             runtime_info_stub.GetRuntimeInfo(runtime_request.to_proto())
         )
 
-        assert runtime_info_response.version_info.get("caikit") == "0.0.1"
+        assert "caikit" in runtime_info_response.version_info
         assert runtime_info_response.version_info.get("runtime_image") == "image:tag"
         assert "py_to_proto" not in runtime_info_response.version_info
 

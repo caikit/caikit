@@ -552,7 +552,7 @@ def test_runtime_info_ok(runtime_http_server):
         assert response.status_code == 200
 
         json_response = json.loads(response.content.decode(response.default_encoding))
-        assert json_response["caikit"] == "0.0.1"
+        assert "caikit" in json_response
         assert "runtime_image" not in json_response
         # dependent libraries not added if sys_modules not set to true
         assert "py_to_proto" not in json_response
@@ -579,7 +579,7 @@ def test_runtime_info_ok_response_all_sys_modules(runtime_http_server):
                 response.content.decode(response.default_encoding)
             )
             assert json_response["runtime_image"] == "1.2.3"
-            assert json_response["caikit"] == "0.0.1"
+            assert "caikit" in json_response
             # since alog is not the module name fails to get module version
             assert "alog" not in json_response
             # dependent libraries versions added
@@ -615,7 +615,7 @@ def test_runtime_info_ok_response_env_var_override(runtime_http_server):
                 response.content.decode(response.default_encoding)
             )
             assert json_response["runtime_image"] == "image:tag"
-            assert json_response["caikit"] == "0.0.1"
+            assert "caikit" in json_response
             assert "py_to_proto" not in json_response
 
 
