@@ -18,7 +18,6 @@
 
 # Standard
 from typing import Dict
-import sys
 
 # Third Party
 import importlib_metadata
@@ -38,8 +37,8 @@ class InfoServicer:
     library and services."""
 
     def GetRuntimeInfo(
-        self, request, context
-    ) -> RuntimeInfoResponse:  # pylint: disable=unused-argument
+        self, request, context  # pylint: disable=unused-argument
+    ) -> RuntimeInfoResponse:
         """Get information on versions of libraries and server for GRPC"""
         return self.get_runtime_info_impl()
 
