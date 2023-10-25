@@ -46,7 +46,7 @@ from tests.runtime.conftest import (
 ## Fixtures #####################################################################
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def client(runtime_http_server) -> TestClient:
     with TestClient(runtime_http_server.app) as client:
         yield client
