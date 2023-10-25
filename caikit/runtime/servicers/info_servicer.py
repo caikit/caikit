@@ -33,7 +33,7 @@ from caikit.interfaces.runtime.data_model import RuntimeInfoResponse
 log = alog.use_channel("RI-SERVICR-I")
 
 
-class InfoServicerImpl:
+class InfoServicer:
     """This class contains the implementation for retrieving information about the
     library and services."""
 

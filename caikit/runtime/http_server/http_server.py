@@ -66,7 +66,7 @@ from caikit.runtime.service_generation.rpcs import (
 )
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
-from caikit.runtime.servicers.info_servicer import InfoServicerImpl
+from caikit.runtime.servicers.info_servicer import InfoServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 ## Globals #####################################################################
@@ -107,7 +107,7 @@ MODEL_ID = "model_id"
 HEALTH_ENDPOINT = "/health"
 
 # Endpoint to use for server info
-RUNTIME_INFO_ENDPOINT = "/info/runtime"
+RUNTIME_INFO_ENDPOINT = "/info/version"
 
 # Small dataclass for consolidating TLS files
 @dataclass
@@ -146,7 +146,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Placeholders for global servicers
         self.global_predict_servicer = None
         self.global_train_servicer = None
-        self.runtime_info_servicer = InfoServicerImpl()
+        self.runtime_info_servicer = InfoServicer()
 
         # Set up inference if enabled
         if self.enable_inference:
