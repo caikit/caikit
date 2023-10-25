@@ -20,6 +20,9 @@
 from typing import Dict
 import sys
 
+# Third Party
+import importlib_metadata
+
 # First Party
 import alog
 
@@ -27,26 +30,23 @@ import alog
 from caikit.config import get_config
 from caikit.interfaces.runtime.data_model import RuntimeInfoResponse
 
-if sys.version_info < (3, 10):
-    import importlib_metadata as importlib_meta
-else:
-    import importlib.metadata as importlib_meta
-
 log = alog.use_channel("RI-SERVICR-I")
 
 
 class InfoServicerImpl:
     """This class contains the implementation for retrieving information about the
-        library and services."""
+    library and services."""
 
-    def GetRuntimeInfo(self, request, context) -> RuntimeInfoResponse:  # pylint: disable=unused-argument
+    def GetRuntimeInfo(
+        self, request, context
+    ) -> RuntimeInfoResponse:  # pylint: disable=unused-argument
         """Get information on versions of libraries and server for GRPC"""
         return self.get_runtime_info_impl()
 
     def get_runtime_info_impl(self) -> RuntimeInfoResponse:
         """Get information on versions of libraries and server from config"""
         versions = {}
-        for lib, dist_names in importlib_meta.packages_distributions().items():
+        for lib, dist_names in importlib_metadata.packages_distributions().items():
             if (
                 get_config().runtime.version_info
                 and get_config().runtime.version_info.all_packages
@@ -76,6 +76,6 @@ class InfoServicerImpl:
     def try_lib_version(self, name) -> str:
         """Get version of python modules"""
         try:
-            return importlib_meta.version(name)
-        except importlib_meta.PackageNotFoundError:
+            return importlib_metadata.version(name)
+        except importlib_metadata.PackageNotFoundError:
             return None
