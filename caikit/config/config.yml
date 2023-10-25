@@ -195,6 +195,11 @@ runtime:
         output_dir: training_output
         save_with_id: true
 
+    # Version details to retrieve
+    version_info:
+        all_packages: false
+        runtime_image: ""
+
 inference_plugin:
     model_mesh:
         # Model Mesh specific versions

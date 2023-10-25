@@ -553,19 +553,18 @@ def test_runtime_info_ok(runtime_http_server):
 
         json_response = json.loads(response.content.decode(response.default_encoding))
         assert "caikit" in json_response
-        assert "runtime_image" not in json_response
-        # dependent libraries not added if sys_modules not set to true
+        assert json_response["runtime_image"] == ""
+        # dependent libraries not added if all_packages not set to true
         assert "py_to_proto" not in json_response
 
 
-def test_runtime_info_ok_response_all_sys_modules(runtime_http_server):
+def test_runtime_info_ok_response_all_packages(runtime_http_server):
     with temp_config(
         {
             "runtime": {
-                "versioning": {
-                    "sys_modules": True,
+                "version_info": {
+                    "all_packages": True,
                     "runtime_image": "1.2.3",
-                    "foo": "bar",
                 }
             },
         },
@@ -583,38 +582,6 @@ def test_runtime_info_ok_response_all_sys_modules(runtime_http_server):
             # dependent libraries versions added
             assert "alog" in json_response
             assert "py_to_proto" in json_response
-            # additional config values ignored
-            assert "foo" not in json_response
-
-@patch.dict(
-    os.environ,
-    {
-        "RUNTIME_VERSIONING_SYS_MODULES": "false",
-        "RUNTIME_VERSIONING_RUNTIME_IMAGE": "image:tag",
-    },
-)
-def test_runtime_info_ok_response_env_var_override(runtime_http_server):
-    with temp_config(
-        {
-            "runtime": {
-                "versioning": {
-                    "sys_modules": True,
-                    "runtime_image": "1.2.3",
-                }
-            },
-        },
-        "merge",
-    ):
-        with TestClient(runtime_http_server.app) as client:
-            response = client.get(http_server.RUNTIME_INFO_ENDPOINT)
-            assert response.status_code == 200
-
-            json_response = json.loads(
-                response.content.decode(response.default_encoding)
-            )
-            assert json_response["runtime_image"] == "image:tag"
-            assert "caikit" in json_response
-            assert "py_to_proto" not in json_response
 
 
 def test_http_server_shutdown_with_model_poll(open_port):

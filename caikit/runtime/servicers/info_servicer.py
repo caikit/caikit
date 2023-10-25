@@ -11,17 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+"""This module contains the implementation for retrieving information about the
+   library and services."""
 # Have pylint ignore Class XXXX has no YYYY member so that we can use gRPC enums.
 # pylint: disable=E1101
 
 # Standard
 from typing import Dict
 import sys
-if sys.version_info < (3, 10):
-    import importlib_metadata as importlib_meta
-else:
-    import importlib.metadata as importlib_meta
 
 # First Party
 import alog
@@ -30,12 +27,17 @@ import alog
 from caikit.config import get_config
 from caikit.interfaces.runtime.data_model import RuntimeInfoResponse
 
+if sys.version_info < (3, 10):
+    import importlib_metadata as importlib_meta
+else:
+    import importlib.metadata as importlib_meta
+
 log = alog.use_channel("RI-SERVICR-I")
 
 
-class RuntimeInfoServicerImpl:
-    """This class contains the implementation of all of the RPCs that are required to run a
-    service in Model Mesh as a Model-Runtime."""
+class InfoServicerImpl:
+    """This class contains the implementation for retrieving information about the
+        library and services."""
 
     def GetRuntimeInfo(self, request, context) -> RuntimeInfoResponse:  # pylint: disable=unused-argument
         """Get information on versions of libraries and server for GRPC"""
@@ -46,8 +48,8 @@ class RuntimeInfoServicerImpl:
         versions = {}
         for lib, dist_names in importlib_meta.packages_distributions().items():
             if (
-                get_config().runtime.versioning
-                and get_config().runtime.versioning.sys_modules
+                get_config().runtime.version_info
+                and get_config().runtime.version_info.all_packages
             ):
                 version = self.try_lib_version(dist_names[0])
                 if version:
@@ -57,8 +59,8 @@ class RuntimeInfoServicerImpl:
                 if len(lib.split(".")) == 1 and lib.startswith("caikit"):
                     versions[lib] = self.try_lib_version(lib)
 
-        if get_config().runtime.versioning:
-            versions["runtime_image"] = get_config().runtime.versioning.get(
+        if get_config().runtime.version_info:
+            versions["runtime_image"] = get_config().runtime.version_info.get(
                 "runtime_image"
             )
 

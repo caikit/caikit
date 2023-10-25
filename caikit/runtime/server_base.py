@@ -35,7 +35,7 @@ import caikit
 log = alog.use_channel("SERVR-BASE")
 
 
-class RuntimeServerBase(abc.ABC):
+class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attributes
     __doc__ = __doc__
     _metrics_server_started = False
 
@@ -80,7 +80,7 @@ class RuntimeServerBase(abc.ABC):
         self.runtime_info_service: Optional[
             ServicePackage
         ] = ServicePackageFactory.get_service_package(
-            ServicePackageFactory.ServiceType.RUNTIME_INFO,
+            ServicePackageFactory.ServiceType.INFO,
         )
 
     @classmethod

@@ -68,8 +68,8 @@ TRAINING_MANAGEMENT_SERVICE_SPEC = {
     }
 }
 
-RUNTIME_INFO_SERVICE_NAME = "RuntimeInfo"
-RUNTIME_INFO_SERVICE_SPEC = {
+INFO_SERVICE_NAME = "Info"
+INFO_SERVICE_SPEC = {
     "service": {
         "rpcs": [
             {
@@ -109,7 +109,7 @@ class ServicePackageFactory:
         INFERENCE = 1  # Inference service for the GlobalPredictServicer
         TRAINING = 2  # Training service for the GlobalTrainServicer
         TRAINING_MANAGEMENT = 3
-        RUNTIME_INFO = 4
+        INFO = 4
 
     @classmethod
     def get_service_package(
@@ -146,11 +146,11 @@ class ServicePackageFactory:
                 caikit_rpcs={},  # No caikit RPCs
             )
 
-        if service_type == cls.ServiceType.RUNTIME_INFO:
+        if service_type == cls.ServiceType.INFO:
             grpc_service = json_to_service(
-                name=RUNTIME_INFO_SERVICE_NAME,
+                name=INFO_SERVICE_NAME,
                 package="caikit.runtime.info",
-                json_service_def=RUNTIME_INFO_SERVICE_SPEC,
+                json_service_def=INFO_SERVICE_SPEC,
             )
 
             return ServicePackage(
