@@ -46,7 +46,6 @@ from caikit.runtime import service_generation
 from caikit.runtime.service_generation.compatibility_checker import ApiFieldNames
 from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.utils import import_util
-from tests.data_model_helpers import temp_dpool
 
 log = alog.use_channel("SVC-FACTORY")
 error = error_handler.get(log)
@@ -225,30 +224,25 @@ class ServicePackageFactory:
                 and backwards_compat_conf.client_package.package_name
             )
             if client_package_name:
-                with temp_dpool() as dpool:
-                    client_package = importlib.import_module(client_package_name)
-                    client_package_service_name = (
-                        backwards_compat_conf.client_package.service_name
-                        or "samplelibservice_pb2"
+                client_package = importlib.import_module(client_package_name)
+                client_package_service_name = (
+                    backwards_compat_conf.client_package.service_name
+                    or "samplelibservice_pb2"
+                )
+                if hasattr(client_package, client_package_service_name):
+                    service_pb2 = getattr(client_package, client_package_service_name)
+                    log.info(
+                        "Found released service interfaces module: %s", service_pb2
                     )
-                    if hasattr(client_package, client_package_service_name):
-                        service_pb2 = getattr(
-                            client_package, client_package_service_name
-                        )
-                        log.info(
-                            "Found released service interfaces module: %s", service_pb2
-                        )
-                        # Register the old API so that we can ensure we build a compatible one
-                        ApiFieldNames.add_proto_spec(
-                            service_pb2_module=service_pb2, d_pool=dpool
-                        )
-                    else:
-                        log.info(
-                            "Found client package %s but could not find service: %s. \
-                                Check backwards_compatibility.client_package config.",
-                            client_package_name,
-                            client_package_service_name,
-                        )
+                    # Register the old API so that we can ensure we build a compatible one
+                    ApiFieldNames.add_proto_spec(service_pb2_module=service_pb2)
+                else:
+                    log.info(
+                        "Found client package %s but could not find service: %s. \
+                            Check backwards_compatibility.client_package config.",
+                        client_package_name,
+                        client_package_service_name,
+                    )
         else:
             log.info(
                 "Skipping checking for backwards compatibility, enable in config to run."

@@ -15,6 +15,7 @@
 """Unit tests for the service factory"""
 # Standard
 from pathlib import Path
+import importlib
 import json
 import os
 import shutil
@@ -36,6 +37,7 @@ from caikit.runtime.service_factory import (
     get_train_params,
     get_train_request,
 )
+from caikit.runtime.service_generation.compatibility_checker import ApiFieldNames
 from sample_lib import SampleModule
 from sample_lib.data_model import SampleInputType, SampleOutputType
 from sample_lib.data_model.sample import SampleTask
@@ -491,116 +493,9 @@ def test_get_train_params(runtime_grpc_server):
     )
 
 
-# @pytest.mark.skip("WIP")
-def test_assert_compatible_respects_previously_defined_proto_spec(
-    clean_data_model_with_no_sampletaskrequest_proto,
-):
-    # Test that we can create API with proto fields numbering respecting backwards compatibility,
-    # By first, creating a "previous version" with List Module that has 2 fields sample_input and throw
-    # then, creating a "new version" with List Module and Sample Module, and the new API spec should
-    # keep sample_input and throw fields, and add error as 3rd field
+# def test_assert_compatible_respects_previously_defined_proto_spec():
+#     client_package = importlib.import_module("watson_nlp_runtime_client")
+#     service_pb2 = getattr(client_package, "common_service_pb2")
 
-    protos_dir_path = os.path.join(os.getcwd(), "protos")
-    # output_compiled_path = os.path.join(os.getcwd(), "compiled")
-    with temp_config(
-        {
-            "runtime": {
-                "service_generation": {
-                    "module_guids": {"included": [ListModule.MODULE_ID]},
-                }
-            }
-        },
-        "merge",
-    ):
-        # generate a service proto spec (this will be the "previous version" with only ListModule)
-        dump_grpc_services(protos_dir_path)
-        # Create a "compiled" dir and then compile these protos
-
-        with temp_module() as (mod_name, mod_dir):
-            print("mod_name is: ", mod_name)
-            print("mod_dir is: ", mod_dir)
-
-            output_compiled_path = os.path.join(mod_dir, "compiled")
-            os.makedirs(output_compiled_path)
-            # Creates an init file
-            with open(os.path.join(output_compiled_path, "__init__.py"), "w") as fp:
-                pass
-
-            # Third Party
-            import pkg_resources
-
-            grpc_protos_include = pkg_resources.resource_filename(
-                "grpc_tools", "_proto"
-            )
-
-            for file in os.listdir(protos_dir_path):
-                if file.endswith(".proto"):
-                    proto_file = os.path.join(protos_dir_path, file)
-                    protoc_args = [
-                        "grpc_tools.protoc",
-                        "--proto_path=" + protos_dir_path,
-                        "--proto_path=" + grpc_protos_include,
-                        "--grpc_python_out=" + output_compiled_path,
-                        "--python_out=" + output_compiled_path,
-                        proto_file,
-                    ]
-                try:
-                    retval = protoc.main(protoc_args)
-                except Exception as e:  # pragma: no cover
-                    raise RuntimeError(
-                        "Failed to compile proto files {}".format(repr(e))
-                    )
-                if retval != 0:
-                    raise RuntimeError(
-                        "Proto compilation returned code {}".format(retval)
-                    )
-            print("compiled has ", os.listdir(output_compiled_path))
-
-            # import this compiled service
-            # Standard
-            import importlib
-            import sys
-
-            sys.path.append(output_compiled_path)
-
-            # samplelib_pb2 = __import__("samplelibservice_pb2", fromlist=[mod_name])
-
-    #         print("dpool in test is: ", dpool)
-    #         ApiFieldNames.add_proto_spec(samplelibservice_pb2, d_pool=dpool)
-    #         # these fields for SampleTaskRequest comes from ListModule
-    #         assert ApiFieldNames.get_fields_for_message("SampleTaskRequest") == {
-    #             "sample_input": 1,
-    #             "throw": 2,
-    #         }
-
-    # # call service generation, and generate another service with ListModule and SampleModule
-    # with temp_config(
-    #     {
-    #         "runtime": {
-    #             "service_generation": {
-    #                 "module_guids": {
-    #                     "included": [ListModule.MODULE_ID, SampleModule.MODULE_ID]
-    #                 },
-    #             }
-    #         }
-    #     },
-    #     "merge",
-    # ):
-    #     with temp_dpool(
-    #         inherit_global=True, skip_inherit=[".*sampletaskrequest.proto"]
-    #     ) as dpool:
-    #         service_pckg = ServicePackageFactory.get_service_package(
-    #             ServicePackageFactory.ServiceType.INFERENCE
-    #         )
-    #         sample_task_request_fields = (
-    #             service_pckg.messages.SampleTaskRequest.DESCRIPTOR.fields
-    #         )
-    #         fields = {field.name: field.number for field in sample_task_request_fields}
-    #         # assert that the fields from previous version still exist
-    #         assert ("sample_input", 1) in fields.items()
-    #         assert ("throw", 2) in fields.items()
-    #         # assert that the new SampleTaskRequest now will have an extra field (error, 3) that comes from SampleModule
-    #         assert ("error", 3) in fields.items()
-
-    # Clean up
-    shutil.rmtree(protos_dir_path, ignore_errors=True)
+#     print("service_pb2 is: ", dir(service_pb2))
+#     ApiFieldNames.add_proto_spec(service_pb2_module=service_pb2)
