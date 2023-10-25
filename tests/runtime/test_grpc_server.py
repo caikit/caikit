@@ -1006,9 +1006,8 @@ def test_runtime_info_ok_response_all_sys_modules(runtime_grpc_server):
 
         assert "caikit" in runtime_info_response.version_info
         assert runtime_info_response.version_info.get("runtime_image") == "1.2.3"
-        # since alog is not the module name fails to get module version
-        assert "alog" not in runtime_info_response.version_info
         # dependent libraries versions added
+        assert "alog" in runtime_info_response.version_info
         assert "py_to_proto" in runtime_info_response.version_info
         # additional config values ignored
         assert "foo" not in runtime_info_response.version_info

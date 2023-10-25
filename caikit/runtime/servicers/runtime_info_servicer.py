@@ -17,8 +17,11 @@
 
 # Standard
 from typing import Dict
-import importlib.metadata
 import sys
+if sys.version_info < (3, 10):
+    import importlib_metadata as importlib_meta
+else:
+    import importlib.metadata as importlib_meta
 
 # First Party
 import alog
@@ -41,15 +44,14 @@ class RuntimeInfoServicerImpl:
     def get_runtime_info_impl(self) -> RuntimeInfoResponse:
         """Get information on versions of libraries and server from config"""
         versions = {}
-        for lib in sys.modules:
+        for lib, dist_names in importlib_meta.packages_distributions().items():
             if (
                 get_config().runtime.versioning
                 and get_config().runtime.versioning.sys_modules
             ):
-                if len(lib.split(".")) == 1:
-                    version = self.try_lib_version(lib)
-                    if version:
-                        versions[lib] = version
+                version = self.try_lib_version(dist_names[0])
+                if version:
+                    versions[lib] = version
             # just get caikit versions
             else:
                 if len(lib.split(".")) == 1 and lib.startswith("caikit"):
@@ -69,10 +71,9 @@ class RuntimeInfoServicerImpl:
         runtime_info_response = self.get_runtime_info_impl()
         return runtime_info_response.version_info
 
-    # TODO: fix so can get versions for something like alog --> alchemy_logging
     def try_lib_version(self, name) -> str:
         """Get version of python modules"""
         try:
-            return importlib.metadata.version(name)
-        except importlib.metadata.PackageNotFoundError:
+            return importlib_meta.version(name)
+        except importlib_meta.PackageNotFoundError:
             return None

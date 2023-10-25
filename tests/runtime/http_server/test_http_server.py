@@ -580,13 +580,11 @@ def test_runtime_info_ok_response_all_sys_modules(runtime_http_server):
             )
             assert json_response["runtime_image"] == "1.2.3"
             assert "caikit" in json_response
-            # since alog is not the module name fails to get module version
-            assert "alog" not in json_response
             # dependent libraries versions added
+            assert "alog" in json_response
             assert "py_to_proto" in json_response
             # additional config values ignored
             assert "foo" not in json_response
-
 
 @patch.dict(
     os.environ,
