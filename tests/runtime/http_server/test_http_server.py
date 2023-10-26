@@ -480,8 +480,8 @@ def test_inference_streaming_sample_module(sample_task_model_id, client):
             "[{}]".format(
                 stream_content.replace("event: ", '{"event":')
                 .replace(
-                    StreamEventTypes.MESSAGE,
-                    '"' + f"{StreamEventTypes.MESSAGE}" + '"}',
+                    StreamEventTypes.MESSAGE.value,
+                    '"' + f"{StreamEventTypes.MESSAGE.value}" + '"}',
                 )
                 .replace("data: ", "")
                 .replace("\r\n", "")
@@ -495,7 +495,7 @@ def test_inference_streaming_sample_module(sample_task_model_id, client):
             if "greeting" in resp
         )
         assert all(
-            resp.get("event") == StreamEventTypes.MESSAGE
+            resp.get("event") == StreamEventTypes.MESSAGE.value
             for resp in stream_responses
             if "event" in resp
         )
@@ -517,8 +517,8 @@ def test_inference_streaming_sample_module_actual_server(
             "[{}]".format(
                 stream_content.replace("event: ", '{"event":')
                 .replace(
-                    StreamEventTypes.MESSAGE,
-                    '"' + f"{StreamEventTypes.MESSAGE}" + '"}',
+                    StreamEventTypes.MESSAGE.value,
+                    '"' + f"{StreamEventTypes.MESSAGE.value}" + '"}',
                 )
                 .replace("data: ", "")
                 .replace("\r\n", "")
@@ -532,7 +532,7 @@ def test_inference_streaming_sample_module_actual_server(
             if "greeting" in resp
         )
         assert all(
-            resp.get("event") == StreamEventTypes.MESSAGE
+            resp.get("event") == StreamEventTypes.MESSAGE.value
             for resp in stream_responses
             if "event" in resp
         )
@@ -558,8 +558,8 @@ def test_inference_streaming_sample_module_actual_server_throws(
             "[{}]".format(
                 stream_content.replace("event: ", '{"event":')
                 .replace(
-                    StreamEventTypes.ERROR,
-                    '"' + f"{StreamEventTypes.ERROR}" + '"}',
+                    StreamEventTypes.ERROR.value,
+                    '"' + f"{StreamEventTypes.ERROR.value}" + '"}',
                 )
                 .replace("data: ", "")
                 .replace("\r\n", "")
@@ -567,7 +567,7 @@ def test_inference_streaming_sample_module_actual_server_throws(
             )
         )
         assert len(stream_responses) == 2
-        assert stream_responses[0].get("event") == StreamEventTypes.ERROR
+        assert stream_responses[0].get("event") == StreamEventTypes.ERROR.value
         assert (
             stream_responses[1].get("details") == "ValueError('raising a ValueError')"
         )

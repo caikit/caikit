@@ -110,7 +110,7 @@ HEALTH_ENDPOINT = "/health"
 
 
 # Stream event types enum
-class StreamEventTypes(str, Enum):
+class StreamEventTypes(Enum):
     MESSAGE = "message"
     ERROR = "error"
 
@@ -507,7 +507,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         )
                     ):
                         yield {
-                            "event": StreamEventTypes.MESSAGE,
+                            "event": StreamEventTypes.MESSAGE.value,
                             "data": result.to_json(),
                         }
                     return
@@ -543,7 +543,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
                 # If an error occurs, yield an error response and terminate
                 yield ServerSentEvent(
-                    data=json.dumps(error_content), event=StreamEventTypes.ERROR
+                    data=json.dumps(error_content), event=StreamEventTypes.ERROR.value
                 )
 
             return EventSourceResponse(_generator())
