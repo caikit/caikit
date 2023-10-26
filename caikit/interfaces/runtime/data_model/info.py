@@ -23,21 +23,17 @@ import alog
 
 # Local
 from caikit.core.data_model import PACKAGE_COMMON, DataObjectBase, dataobject
-from caikit.core.toolkit.wip_decorator import Action, WipCategory, work_in_progress
 
 log = alog.use_channel("RUNTIMEOPS")
 
 RUNTIME_PACKAGE = f"{PACKAGE_COMMON}.runtime"
 
 
-@work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
 @dataobject(RUNTIME_PACKAGE)
 class RuntimeInfoRequest(DataObjectBase):
     pass
 
 
-# TODO: what version details are in here -- is this meant to be more generic?
-@work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
 @dataobject(RUNTIME_PACKAGE)
 class RuntimeInfoResponse(DataObjectBase):
     runtime_version: Optional[str]

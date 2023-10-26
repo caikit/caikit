@@ -48,8 +48,7 @@ class InfoServicer:
         """Get information on versions of libraries and server from config"""
         python_packages = {}
         config_version_info = get_config().runtime.version_info or {}
-        if config_version_info.get("python_packages"):
-            all_packages = config_version_info.get("python_packages").get("all")
+        all_packages = (config_version_info.get("python_packages") or {}).get("all")
 
         for lib, dist_names in importlib_metadata.packages_distributions().items():
             if all_packages:
