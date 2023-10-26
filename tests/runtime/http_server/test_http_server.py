@@ -553,7 +553,8 @@ def test_runtime_info_ok(runtime_http_server):
 
         json_response = json.loads(response.content.decode(response.default_encoding))
         assert "caikit" in json_response
-        assert json_response["runtime_image"] == ""
+        # runtime_image not added if not set
+        assert "runtime_image" not in json_response
         # dependent libraries not added if all_packages not set to true
         assert "py_to_proto" not in json_response
 

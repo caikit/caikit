@@ -971,7 +971,8 @@ def test_runtime_info_ok_response(runtime_grpc_server):
     )
 
     assert "caikit" in runtime_info_response.version_info
-    assert runtime_info_response.version_info.get("runtime_image") == ""
+    # runtime_image not added if not set
+    assert "runtime_image" not in runtime_info_response.version_info
     # dependent libraries not added if all_packages not set to true
     assert "py_to_proto" not in runtime_info_response.version_info
 

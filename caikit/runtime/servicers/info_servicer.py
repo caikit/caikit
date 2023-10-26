@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This module contains the implementation for retrieving information about the
-   library and services."""
+"""
+This module contains the implementation for retrieving information about the
+library and services.
+"""
 # Have pylint ignore Class XXXX has no YYYY member so that we can use gRPC enums.
 # pylint: disable=E1101
 
@@ -45,23 +47,23 @@ class InfoServicer:
     def get_runtime_info_impl(self) -> RuntimeInfoResponse:
         """Get information on versions of libraries and server from config"""
         versions = {}
+        version_info = get_config().runtime.version_info or {}
+        all_packages = version_info.get("all_packages")
         for lib, dist_names in importlib_metadata.packages_distributions().items():
-            if (
-                get_config().runtime.version_info
-                and get_config().runtime.version_info.all_packages
-            ):
-                version = self.try_lib_version(dist_names[0])
-                if version:
-                    versions[lib] = version
+            if all_packages:
+                lib_version = self.try_lib_version(dist_names[0])
+                if lib_version:
+                    versions[lib] = lib_version
             # just get caikit versions
             else:
                 if len(lib.split(".")) == 1 and lib.startswith("caikit"):
-                    versions[lib] = self.try_lib_version(lib)
+                    version = self.try_lib_version(lib)
+                    if version:
+                        versions[lib] = version
 
-        if get_config().runtime.version_info:
-            versions["runtime_image"] = get_config().runtime.version_info.get(
-                "runtime_image"
-            )
+        runtime_image = version_info.get("runtime_image")
+        if runtime_image:
+            versions["runtime_image"] = runtime_image
 
         return RuntimeInfoResponse(
             version_info=versions,
