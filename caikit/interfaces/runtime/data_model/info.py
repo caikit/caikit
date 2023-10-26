@@ -16,7 +16,7 @@ This file contains interfaces to handle information requests
 """
 
 # Standard
-from typing import Dict
+from typing import Dict, Optional
 
 # First Party
 import alog
@@ -40,4 +40,5 @@ class RuntimeInfoRequest(DataObjectBase):
 @work_in_progress(action=Action.WARNING, category=WipCategory.BETA)
 @dataobject(RUNTIME_PACKAGE)
 class RuntimeInfoResponse(DataObjectBase):
-    version_info: Dict[str, str]
+    runtime_version: Optional[str]
+    python_packages: Dict[str, str]

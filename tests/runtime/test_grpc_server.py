@@ -970,11 +970,11 @@ def test_runtime_info_ok_response(runtime_grpc_server):
         runtime_info_stub.GetRuntimeInfo(runtime_request.to_proto())
     )
 
-    assert "caikit" in runtime_info_response.version_info
-    # runtime_image not added if not set
-    assert "runtime_image" not in runtime_info_response.version_info
-    # dependent libraries not added if all_packages not set to true
-    assert "py_to_proto" not in runtime_info_response.version_info
+    assert "caikit" in runtime_info_response.python_packages
+    # runtime_version not added if not set
+    assert runtime_info_response.runtime_version == ""
+    # dependent libraries not added if all packages not set to true
+    assert "py_to_proto" not in runtime_info_response.python_packages
 
 
 def test_runtime_info_ok_response_all_packages(runtime_grpc_server):
@@ -1006,11 +1006,11 @@ def test_runtime_info_ok_response_all_packages(runtime_grpc_server):
             runtime_info_stub.GetRuntimeInfo(runtime_request.to_proto())
         )
 
-        assert "caikit" in runtime_info_response.version_info
-        assert runtime_info_response.version_info.get("runtime_image") == "1.2.3"
+        assert "caikit" in runtime_info_response.python_packages
+        assert runtime_info_response.runtime_version == "1.2.3"
         # dependent libraries versions added
-        assert "alog" in runtime_info_response.version_info
-        assert "py_to_proto" in runtime_info_response.version_info
+        assert "alog" in runtime_info_response.python_packages
+        assert "py_to_proto" in runtime_info_response.python_packages
 
 
 #### Health Probe tests ####

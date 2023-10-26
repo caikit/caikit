@@ -19,7 +19,7 @@ library and services.
 # pylint: disable=E1101
 
 # Standard
-from typing import Dict
+from typing import Dict, Union
 
 # Third Party
 import importlib_metadata
@@ -46,35 +46,37 @@ class InfoServicer:
 
     def get_runtime_info_impl(self) -> RuntimeInfoResponse:
         """Get information on versions of libraries and server from config"""
-        versions = {}
-        version_info = get_config().runtime.version_info or {}
-        if version_info.get("python_packages"):
-            all_packages = version_info.get("python_packages").get("all_packages")
+        python_packages = {}
+        config_version_info = get_config().runtime.version_info or {}
+        if config_version_info.get("python_packages"):
+            all_packages = config_version_info.get("python_packages").get("all")
 
         for lib, dist_names in importlib_metadata.packages_distributions().items():
             if all_packages:
                 lib_version = self.try_lib_version(dist_names[0])
                 if lib_version:
-                    versions[lib] = lib_version
+                    python_packages[lib] = lib_version
             # just get caikit versions
             else:
                 if len(lib.split(".")) == 1 and lib.startswith("caikit"):
                     version = self.try_lib_version(dist_names[0])
                     if version:
-                        versions[lib] = version
+                        python_packages[lib] = version
 
-        runtime_image = version_info.get("runtime_image")
-        if runtime_image:
-            versions["runtime_image"] = runtime_image
+        runtime_image = config_version_info.get("runtime_image")
 
         return RuntimeInfoResponse(
-            version_info=versions,
+            python_packages=python_packages,
+            runtime_version=runtime_image,
         ).to_proto()
 
-    def get_version_dict(self) -> Dict[str, str]:
+    def get_version_dict(self) -> Dict[str, Union[str, Dict]]:
         """Get information on versions of libraries and server for HTTP"""
+        versions = {}
         runtime_info_response = self.get_runtime_info_impl()
-        return runtime_info_response.version_info
+        versions["python_packages"] = runtime_info_response.python_packages
+        versions["runtime_version"] = runtime_info_response.runtime_version
+        return versions
 
     def try_lib_version(self, name) -> str:
         """Get version of python modules"""

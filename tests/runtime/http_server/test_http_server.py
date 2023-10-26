@@ -552,11 +552,11 @@ def test_runtime_info_ok(runtime_http_server):
         assert response.status_code == 200
 
         json_response = json.loads(response.content.decode(response.default_encoding))
-        assert "caikit" in json_response
-        # runtime_image not added if not set
-        assert "runtime_image" not in json_response
-        # dependent libraries not added if all_packages not set to true
-        assert "py_to_proto" not in json_response
+        assert "caikit" in json_response["python_packages"]
+        # runtime_version not added if not set
+        assert json_response["runtime_version"] == ""
+        # dependent libraries not added if all packages not set to true
+        assert "py_to_proto" not in json_response["python_packages"]
 
 
 def test_runtime_info_ok_response_all_packages(runtime_http_server):
@@ -580,11 +580,11 @@ def test_runtime_info_ok_response_all_packages(runtime_http_server):
             json_response = json.loads(
                 response.content.decode(response.default_encoding)
             )
-            assert json_response["runtime_image"] == "1.2.3"
-            assert "caikit" in json_response
+            assert json_response["runtime_version"] == "1.2.3"
+            assert "caikit" in json_response["python_packages"]
             # dependent libraries versions added
-            assert "alog" in json_response
-            assert "py_to_proto" in json_response
+            assert "alog" in json_response["python_packages"]
+            assert "py_to_proto" in json_response["python_packages"]
 
 
 def test_http_server_shutdown_with_model_poll(open_port):

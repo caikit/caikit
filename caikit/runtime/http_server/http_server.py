@@ -146,7 +146,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Placeholders for global servicers
         self.global_predict_servicer = None
         self.global_train_servicer = None
-        self.runtime_info_servicer = InfoServicer()
+        self.info_servicer = InfoServicer()
 
         # Set up inference if enabled
         if self.enable_inference:
@@ -167,7 +167,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         # Add runtime info endpoint
         self.app.get(RUNTIME_INFO_ENDPOINT, response_class=JSONResponse)(
-            self.runtime_info_servicer.get_version_dict
+            self.info_servicer.get_version_dict
         )
 
         # Parse TLS configuration
