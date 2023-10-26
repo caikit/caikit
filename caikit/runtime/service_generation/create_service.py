@@ -168,6 +168,8 @@ def _group_modules_by_task(
     excluded_tasks: List[Type[TaskBase]],
 ) -> Dict[Type[TaskBase], List[CaikitMethodSignature]]:
     task_groups = {}
+    # Sort modules so the order of modules processed is deterministic
+    modules = sorted(modules, key=lambda x: x.MODULE_ID)
     for ck_module in modules:
         for task_class in ck_module.tasks:
             if (

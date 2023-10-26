@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Any, Dict, Iterable, Optional, Type, Union, get_args
 import asyncio
+import inspect
 import io
 import json
 import os
@@ -635,12 +636,19 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
     @staticmethod
     def _get_request_openapi(
-        pydantic_model: Union[pydantic.BaseModel, Type[pydantic.BaseModel]]
+        pydantic_model: Union[pydantic.BaseModel, Type, Type[pydantic.BaseModel]]
     ):
         """Helper to generate the openapi schema for a given request"""
-        raw_schema = pydantic_model.model_json_schema()
-        parsed_schema = flatten_json_schema(raw_schema)
 
+        # Get the json schema from the pydantic model or TypeAdapter
+        if inspect.isclass(pydantic_model) and issubclass(
+            pydantic_model, pydantic.BaseModel
+        ):
+            raw_schema = pydantic_model.model_json_schema()
+        else:
+            raw_schema = pydantic.TypeAdapter(pydantic_model).json_schema()
+
+        parsed_schema = flatten_json_schema(raw_schema)
         multipart_schema = convert_json_schema_to_multipart(parsed_schema)
 
         return {
@@ -655,7 +663,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
     @staticmethod
     def _get_response_openapi(
-        dm_class: Type[DataBase], pydantic_model: Type[pydantic.BaseModel]
+        dm_class: Type[DataBase], pydantic_model: Union[Type, Type[pydantic.BaseModel]]
     ):
         """Helper to generate the openapi schema for a given response"""
 
@@ -664,11 +672,15 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 "application/octet-stream": {"type": "string", "format": "binary"}
             }
         else:
-            response_schema = {
-                "application/json": flatten_json_schema(
-                    pydantic_model.model_json_schema()
-                )
-            }
+            # Get the json schema from the pydantic model or TypeAdapter
+            if inspect.isclass(pydantic_model) and issubclass(
+                pydantic_model, pydantic.BaseModel
+            ):
+                json_schema = pydantic_model.model_json_schema()
+            else:
+                json_schema = pydantic.TypeAdapter(pydantic_model).json_schema()
+
+            response_schema = {"application/json": flatten_json_schema(json_schema)}
 
         output = {200: {"content": response_schema}}
         return output
