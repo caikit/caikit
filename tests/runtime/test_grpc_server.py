@@ -1119,6 +1119,49 @@ def test_mtls(open_port):
             stub.Check(health_check_request)
 
 
+def test_mtls_different_root(open_port):
+    """Make sure mtls communication works when the CA for the client is not the
+    same as the CA for the server (including health checks using the server's
+    CA)
+    """
+    # Server TLS Infra
+    server_ca_key = tls_test_tools.generate_key()[0]
+    server_ca_cert = tls_test_tools.generate_ca_cert(server_ca_key)
+    server_tls_key, server_tls_cert = tls_test_tools.generate_derived_key_cert_pair(
+        server_ca_key
+    )
+
+    # Client TLS Infra
+    client_ca_key = tls_test_tools.generate_key()[0]
+    client_ca_cert = tls_test_tools.generate_ca_cert(
+        client_ca_key, common_name="my.client"
+    )
+    client_tls_key, client_tls_cert = tls_test_tools.generate_derived_key_cert_pair(
+        client_ca_key, common_name="my.client"
+    )
+
+    server_tls_config = TLSConfig(
+        server=KeyPair(cert=server_tls_cert, key=server_tls_key),
+        client=KeyPair(cert=client_ca_cert, key=""),
+    )
+    with runtime_grpc_test_server(
+        open_port,
+        tls_config_override=server_tls_config,
+    ) as server:
+        # Connect using the client's creds
+        _assert_connection(
+            _make_secure_channel(
+                server, server_ca_cert, client_tls_key, client_tls_cert
+            )
+        )
+        # Connect using the server's creds
+        _assert_connection(
+            _make_secure_channel(
+                server, server_ca_cert, server_tls_key, server_tls_cert
+            )
+        )
+
+
 @pytest.mark.parametrize(
     "enabled_services",
     [(True, False), (False, True), (False, False)],
