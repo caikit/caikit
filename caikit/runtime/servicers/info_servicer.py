@@ -59,7 +59,7 @@ class InfoServicer:
             # just get caikit versions
             else:
                 if len(lib.split(".")) == 1 and lib.startswith("caikit"):
-                    version = self.try_lib_version(lib)
+                    version = self.try_lib_version(dist_names[0])
                     if version:
                         versions[lib] = version
 
