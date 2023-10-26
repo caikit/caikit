@@ -569,8 +569,7 @@ def test_inference_streaming_sample_module_actual_server_throws(
         assert len(stream_responses) == 2
         assert stream_responses[0].get("event") == StreamEventTypes.ERROR
         assert (
-            stream_responses[1].get("details")
-            == "Unhandled exception: raising a ValueError"
+            stream_responses[1].get("details") == "ValueError('raising a ValueError')"
         )
         assert stream_responses[1].get("code") == 400
 

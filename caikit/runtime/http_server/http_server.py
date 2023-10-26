@@ -32,6 +32,7 @@ import ssl
 import tempfile
 import threading
 import time
+import traceback
 
 # Third Party
 from fastapi import FastAPI, HTTPException, Request, Response, status
@@ -512,6 +513,18 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     return
                 except HTTPException as err:
                     raise err
+                except (TypeError, ValueError) as err:
+                    log_dict = {
+                        "log_code": "<RUN76624264W>",
+                        "message": repr(err),
+                        "stack_trace": traceback.format_exc(),
+                    }
+                    log.warning(log_dict)
+                    error_code = 400
+                    error_content = {
+                        "details": repr(err),
+                        "code": error_code,
+                    }
                 except CaikitRuntimeException as err:
                     error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
                     error_content = {
