@@ -43,6 +43,15 @@ from tests.runtime.conftest import (
     runtime_http_test_server,
 )
 
+## Fixtures #####################################################################
+
+
+@pytest.fixture
+def client(runtime_http_server) -> TestClient:
+    with TestClient(runtime_http_server.app) as client:
+        yield client
+
+
 ## Helpers #####################################################################
 
 
@@ -280,11 +289,10 @@ def test_services_disabled(open_port, enabled_services):
 ## Inference Tests #######################################################################
 
 
-def test_docs(runtime_http_server):
+def test_docs(client):
     """Simple check that pinging /docs returns 200"""
-    with TestClient(runtime_http_server.app) as client:
-        response = client.get("/docs")
-        assert response.status_code == 200
+    response = client.get("/docs")
+    assert response.status_code == 200
 
 
 def test_docs_using_running_http_server(runtime_http_server):
@@ -303,173 +311,164 @@ def test_docs_with_models(
     assert response.status_code == 200
 
 
-def test_inference_sample_task(sample_task_model_id, runtime_http_server):
+def test_inference_sample_task(sample_task_model_id, client):
     """Simple check that we can ping a model"""
-    with TestClient(runtime_http_server.app) as client:
-        json_input = {"inputs": {"name": "world"}, "model_id": sample_task_model_id}
-        response = client.post(
-            f"/api/v1/task/sample",
-            json=json_input,
-        )
-        json_response = json.loads(response.content.decode(response.default_encoding))
-        assert response.status_code == 200, json_response
-        assert json_response["greeting"] == "Hello world"
+    json_input = {"inputs": {"name": "world"}, "model_id": sample_task_model_id}
+    response = client.post(
+        f"/api/v1/task/sample",
+        json=json_input,
+    )
+    json_response = json.loads(response.content.decode(response.default_encoding))
+    assert response.status_code == 200, json_response
+    assert json_response["greeting"] == "Hello world"
 
 
-def test_inference_primitive_task(primitive_task_model_id, runtime_http_server):
+def test_inference_primitive_task(primitive_task_model_id, client):
     """Simple check that we can ping a model"""
-    with TestClient(runtime_http_server.app) as client:
-        json_input = {
-            "inputs": {"name": "hello"},
-            "parameters": {
-                "bool_type": True,
-                "int_type": 1,
-                "float_type": 1.0,
-                "str_type": "astring",
-                "bytes_type": "cmF3Ynl0ZXMK",
-                "list_type": ["list", "of", "strings"],
-            },
-            "model_id": primitive_task_model_id,
-        }
-        response = client.post(
-            f"/api/v1/task/sample",
-            json=json_input,
-        )
-        json_response = json.loads(response.content.decode(response.default_encoding))
-        assert response.status_code == 200, json_response
-        assert "hello: primitives!" in json_response["greeting"]
+    json_input = {
+        "inputs": {"name": "hello"},
+        "parameters": {
+            "bool_type": True,
+            "int_type": 1,
+            "float_type": 1.0,
+            "str_type": "astring",
+            "bytes_type": "cmF3Ynl0ZXMK",
+            "list_type": ["list", "of", "strings"],
+        },
+        "model_id": primitive_task_model_id,
+    }
+    response = client.post(
+        f"/api/v1/task/sample",
+        json=json_input,
+    )
+    json_response = json.loads(response.content.decode(response.default_encoding))
+    assert response.status_code == 200, json_response
+    assert "hello: primitives!" in json_response["greeting"]
 
 
-def test_inference_sample_task_optional_field(
-    sample_task_model_id, runtime_http_server
-):
+def test_inference_sample_task_optional_field(sample_task_model_id, client):
     """Simple check for optional fields"""
-    with TestClient(runtime_http_server.app) as client:
-        json_input = {
-            "model_id": sample_task_model_id,
-            "inputs": {"name": "world"},
-            "parameters": {"throw": True},
-        }
-        response = client.post(
-            f"/api/v1/task/sample",
-            json=json_input,
-        )
-        # this is 500 because we explicitly pass in `throw` as True, which
-        # raises an internal error in the module
-        assert response.status_code == 500
+    json_input = {
+        "model_id": sample_task_model_id,
+        "inputs": {"name": "world"},
+        "parameters": {"throw": True},
+    }
+    response = client.post(
+        f"/api/v1/task/sample",
+        json=json_input,
+    )
+    # this is 500 because we explicitly pass in `throw` as True, which
+    # raises an internal error in the module
+    assert response.status_code == 500
 
 
-def test_inference_sample_task_multipart_input(
-    sample_task_model_id, runtime_http_server
-):
+def test_inference_sample_task_multipart_input(sample_task_model_id, client):
     """Simple check that we can submit multipart requests"""
 
-    with TestClient(runtime_http_server.app) as client:
-        multipart_input = {
-            "model_id": sample_task_model_id,
-            "inputs.name": "world",
-            "parameters": json.dumps({"throw": False}),
-        }
+    multipart_input = {
+        "model_id": sample_task_model_id,
+        "inputs.name": "world",
+        "parameters": json.dumps({"throw": False}),
+    }
 
-        response = client.post(f"/api/v1/task/sample", files=multipart_input)
+    response = client.post(f"/api/v1/task/sample", files=multipart_input)
 
-        json_response = json.loads(response.content.decode(response.default_encoding))
-        assert response.status_code == 200, json_response
-        assert json_response["greeting"] == "Hello world"
+    json_response = json.loads(response.content.decode(response.default_encoding))
+    assert response.status_code == 200, json_response
+    assert json_response["greeting"] == "Hello world"
 
-        multipart_input["parameters"] = json.dumps({"throw": True})
-        response = client.post(
-            f"/api/v1/task/sample",
-            files=multipart_input,
-        )
-        # this is 500 because we explicitly pass in `throw` as True, which
-        # raises an internal error in the module
-        assert response.status_code == 500
+    multipart_input["parameters"] = json.dumps({"throw": True})
+    response = client.post(
+        f"/api/v1/task/sample",
+        files=multipart_input,
+    )
+    # this is 500 because we explicitly pass in `throw` as True, which
+    # raises an internal error in the module
+    assert response.status_code == 500
 
 
-def test_inference_file_task_multipart_flipped_input(
-    file_task_model_id, runtime_http_server
-):
+def test_inference_file_task_multipart_flipped_input(file_task_model_id, client):
     """Ensure that multiple multipart json inputs are merged together instead of overriding"""
-    with TestClient(runtime_http_server.app) as client:
-        # cGRmZGF0Yf//AA== is b"pdfdata\xff\xff\x00" base64 encoded
-        temp_file = tempfile.NamedTemporaryFile()
-        temp_file_name = Path(temp_file.name).name
-        temp_file.write(b"pdfdata\xff\xff\x00")
-        temp_file.flush()
-        temp_file.seek(0)
+    # cGRmZGF0Yf//AA== is b"pdfdata\xff\xff\x00" base64 encoded
+    temp_file = tempfile.NamedTemporaryFile()
+    temp_file_name = Path(temp_file.name).name
+    temp_file.write(b"pdfdata\xff\xff\x00")
+    temp_file.flush()
+    temp_file.seek(0)
 
-        file_input = {
-            "model_id": file_task_model_id,
-            "inputs.file": temp_file,
-            "inputs": json.dumps({"metadata": {"name": "agoodname"}}),
-        }
+    file_input = {
+        "model_id": file_task_model_id,
+        "inputs.file": temp_file,
+        "inputs": json.dumps({"metadata": {"name": "agoodname"}}),
+    }
 
-        response = client.post(
-            f"/api/v1/task/file",
-            files=file_input,
-        )
-        content_stream = BytesIO(response.content)
+    response = client.post(
+        f"/api/v1/task/file",
+        files=file_input,
+    )
+    content_stream = BytesIO(response.content)
 
-        assert response.status_code == 200
-        with zipfile.ZipFile(content_stream) as output_file:
-            assert len(output_file.namelist()) == 2
-            assert "metadata.json" in output_file.namelist()
-            assert f"processed_{temp_file_name}" in output_file.namelist()
+    assert response.status_code == 200
+    with zipfile.ZipFile(content_stream) as output_file:
+        assert len(output_file.namelist()) == 2
+        assert "metadata.json" in output_file.namelist()
+        assert f"processed_{temp_file_name}" in output_file.namelist()
 
-            with output_file.open(f"processed_{temp_file_name}") as pdf_result:
-                assert pdf_result.read() == b"bounding|pdfdata\xff\xff\x00|box"
+        with output_file.open(f"processed_{temp_file_name}") as pdf_result:
+            assert pdf_result.read() == b"bounding|pdfdata\xff\xff\x00|box"
 
 
-def test_inference_other_task(other_task_model_id, runtime_http_server):
+def test_inference_other_task(other_task_model_id, client):
     """Simple check that we can ping a model"""
-    with TestClient(runtime_http_server.app) as client:
-        json_input = {"model_id": other_task_model_id, "inputs": {"name": "world"}}
-        response = client.post(
-            f"/api/v1/task/other",
-            json=json_input,
-        )
-        json_response = json.loads(response.content.decode(response.default_encoding))
-        assert response.status_code == 200, json_response
-        assert json_response["farewell"] == "goodbye: world 42 times"
+    json_input = {"model_id": other_task_model_id, "inputs": {"name": "world"}}
+    response = client.post(
+        f"/api/v1/task/other",
+        json=json_input,
+    )
+    json_response = json.loads(response.content.decode(response.default_encoding))
+    assert response.status_code == 200, json_response
+    assert json_response["farewell"] == "goodbye: world 42 times"
 
 
-def test_output_file_task(file_task_model_id, runtime_http_server):
+def test_output_file_task(file_task_model_id, client):
     """Simple check that we can get a file output"""
-    with TestClient(runtime_http_server.app) as client:
-        # cGRmZGF0Yf//AA== is b"pdfdata\xff\xff\x00" base64 encoded
-        temp_file = tempfile.NamedTemporaryFile()
-        temp_file_name = Path(temp_file.name).name
-        temp_file.write(b"pdfdata\xff\xff\x00")
-        temp_file.flush()
-        temp_file.seek(0)
+    # cGRmZGF0Yf//AA== is b"pdfdata\xff\xff\x00" base64 encoded
+    temp_file = tempfile.NamedTemporaryFile()
+    temp_file_name = Path(temp_file.name).name
+    temp_file.write(b"pdfdata\xff\xff\x00")
+    temp_file.flush()
+    temp_file.seek(0)
 
-        file_input = {
-            "model_id": file_task_model_id,
-            "inputs.file": temp_file,
-            "inputs.metadata": json.dumps({"name": "agoodname"}),
-        }
+    file_input = {
+        "model_id": file_task_model_id,
+        "inputs.file": temp_file,
+        "inputs.metadata": json.dumps({"name": "agoodname"}),
+    }
 
-        response = client.post(
-            f"/api/v1/task/file",
-            files=file_input,
-        )
-        content_stream = BytesIO(response.content)
+    response = client.post(
+        f"/api/v1/task/file",
+        files=file_input,
+    )
+    content_stream = BytesIO(response.content)
 
-        assert response.status_code == 200
-        with zipfile.ZipFile(content_stream) as output_file:
-            assert len(output_file.namelist()) == 2
-            assert "metadata.json" in output_file.namelist()
-            assert f"processed_{temp_file_name}" in output_file.namelist()
+    assert response.status_code == 200
+    with zipfile.ZipFile(content_stream) as output_file:
+        assert len(output_file.namelist()) == 2
+        assert "metadata.json" in output_file.namelist()
+        assert f"processed_{temp_file_name}" in output_file.namelist()
 
-            with output_file.open(f"processed_{temp_file_name}") as pdf_result:
-                assert pdf_result.read() == b"bounding|pdfdata\xff\xff\x00|box"
+        with output_file.open(f"processed_{temp_file_name}") as pdf_result:
+            assert pdf_result.read() == b"bounding|pdfdata\xff\xff\x00|box"
 
 
-def test_inference_streaming_sample_module(sample_task_model_id, runtime_http_server):
+@pytest.mark.skip(
+    "Skipping testing streaming cases with FastAPI's testclient, pending resolution https://github.com/tiangolo/fastapi/discussions/10518"
+)
+def test_inference_streaming_sample_module(sample_task_model_id, client):
     """Simple check for testing a happy path unary-stream case"""
-    with TestClient(runtime_http_server.app) as client:
-        json_input = {"model_id": sample_task_model_id, "inputs": {"name": "world"}}
+    json_input = {"model_id": sample_task_model_id, "inputs": {"name": "world"}}
+    # send in multiple requests just to check
+    for i in range(10):
         stream = client.post(
             f"/api/v1/task/server-streaming-sample",
             json=json_input,
@@ -489,91 +488,107 @@ def test_inference_streaming_sample_module(sample_task_model_id, runtime_http_se
         )
 
 
-def test_no_model_id(runtime_http_server):
-    """Simple check that we can ping a model"""
-    with TestClient(runtime_http_server.app) as client:
-        response = client.post(
-            f"/api/v1/task/sample",
-            json={"inputs": {"name": "world"}},
-        )
-        assert response.status_code == 400
-        "Please provide model_id in payload" in response.content.decode(
-            response.default_encoding
-        )
-
-
-def test_inference_multi_task_module(multi_task_model_id, runtime_http_server):
-    """Simple check that we can ping a model"""
-    with TestClient(runtime_http_server.app) as client:
-        # cGRmZGF0Yf//AA== is b"pdfdata\xff\xff\x00" base64 encoded
-        json_input = {
-            "model_id": multi_task_model_id,
-            "inputs": {"filename": "example.pdf", "data": "cGRmZGF0Yf//AA=="},
-        }
-        response = client.post(
-            f"/api/v1/task/second",
-            json=json_input,
-        )
-        json_response = json.loads(response.content.decode(response.default_encoding))
-        assert response.status_code == 200, json_response
-        assert json_response["farewell"] == "Goodbye from SecondTask"
-
-
-def test_model_not_found(runtime_http_server):
-    """Simple check that we can ping a model"""
-    with TestClient(runtime_http_server.app) as client:
-        response = client.post(
-            f"/api/v1/task/sample",
-            json={"model_id": "not_an_id", "inputs": {"name": "world"}},
-        )
-        assert response.status_code == 404
-
-
-def test_inference_sample_task_incorrect_input(
+def test_inference_streaming_sample_module_actual_server(
     sample_task_model_id, runtime_http_server
 ):
+    """Simple check for testing a happy path unary-stream case
+    but pints the actual running server"""
+
+    for i in range(10):
+        input = {"model_id": sample_task_model_id, "inputs": {"name": f"world{i}"}}
+        url = f"http://localhost:{runtime_http_server.port}/api/v1/task/server-streaming-sample"
+        stream = requests.post(url=url, json=input, verify=False)
+        assert stream.status_code == 200
+        stream_content = stream.content.decode(stream.encoding)
+        stream_responses = json.loads(
+            "[{}]".format(
+                stream_content.replace("data: ", "")
+                .replace("\r\n", "")
+                .replace("}{", "}, {")
+            )
+        )
+        assert len(stream_responses) == 10
+        assert all(
+            resp.get("greeting") == f"Hello world{i} stream"
+            for resp in stream_responses
+        )
+
+
+def test_no_model_id(client):
+    """Simple check that we can ping a model"""
+    response = client.post(
+        f"/api/v1/task/sample",
+        json={"inputs": {"name": "world"}},
+    )
+    assert response.status_code == 400
+    "Please provide model_id in payload" in response.content.decode(
+        response.default_encoding
+    )
+
+
+def test_inference_multi_task_module(multi_task_model_id, client):
+    """Simple check that we can ping a model"""
+    # cGRmZGF0Yf//AA== is b"pdfdata\xff\xff\x00" base64 encoded
+    json_input = {
+        "model_id": multi_task_model_id,
+        "inputs": {"filename": "example.pdf", "data": "cGRmZGF0Yf//AA=="},
+    }
+    response = client.post(
+        f"/api/v1/task/second",
+        json=json_input,
+    )
+    json_response = json.loads(response.content.decode(response.default_encoding))
+    assert response.status_code == 200, json_response
+    assert json_response["farewell"] == "Goodbye from SecondTask"
+
+
+def test_model_not_found(client):
+    """Simple check that we can ping a model"""
+    response = client.post(
+        f"/api/v1/task/sample",
+        json={"model_id": "not_an_id", "inputs": {"name": "world"}},
+    )
+    assert response.status_code == 404
+
+
+def test_inference_sample_task_incorrect_input(sample_task_model_id, client):
     """Test that with an incorrect input, the test doesn't throw but
     instead returns None"""
-    with TestClient(runtime_http_server.app) as client:
-        json_input = {
-            "model_id": sample_task_model_id,
-            "inputs": {"blah": "world"},
-        }
-        response = client.post(
-            f"/api/v1/task/sample",
-            json=json_input,
-        )
-        assert response.status_code == 422, response.content.decode(
-            response.default_encoding
-        )
+    json_input = {
+        "model_id": sample_task_model_id,
+        "inputs": {"blah": "world"},
+    }
+    response = client.post(
+        f"/api/v1/task/sample",
+        json=json_input,
+    )
+    assert response.status_code == 422, response.content.decode(
+        response.default_encoding
+    )
 
 
 @pytest.mark.skip("Skipping since we're not tacking forward compatibility atm")
-def test_inference_sample_task_forward_compatibility(
-    sample_task_model_id, runtime_http_server
-):
+def test_inference_sample_task_forward_compatibility(sample_task_model_id, client):
     """Test that clients can send in params that don't exist on server
     without any error"""
-    with TestClient(runtime_http_server.app) as client:
-        json_input = {
-            "model_id": sample_task_model_id,
-            "inputs": {"name": "world", "blah": "blah"},
-        }
-        response = client.post(
-            f"/api/v1/task/sample",
-            json=json_input,
-        )
-        json_response = json.loads(response.content.decode(response.default_encoding))
-        assert response.status_code == 200, json_response
-        assert json_response["greeting"] == "Hello world"
+    json_input = {
+        "model_id": sample_task_model_id,
+        "inputs": {"name": "world", "blah": "blah"},
+    }
+    response = client.post(
+        f"/api/v1/task/sample",
+        json=json_input,
+    )
+    json_response = json.loads(response.content.decode(response.default_encoding))
+    assert response.status_code == 200, json_response
+    assert json_response["greeting"] == "Hello world"
 
 
-def test_health_check_ok(runtime_http_server):
+def test_health_check_ok(client):
     """Make sure the health check returns OK"""
-    with TestClient(runtime_http_server.app) as client:
-        response = client.get(http_server.HEALTH_ENDPOINT)
-        assert response.status_code == 200
-        assert response.text == "OK"
+    response = client.get(http_server.HEALTH_ENDPOINT)
+    assert response.status_code == 200
+    assert response.text == "OK"
 
 
 def test_http_server_shutdown_with_model_poll(open_port):
@@ -613,185 +628,181 @@ def test_http_server_shutdown_with_model_poll(open_port):
 ## Train Tests #######################################################################
 
 
-def test_train_sample_task(runtime_http_server):
+def test_train_sample_task(client, runtime_http_server):
     model_name = "sample_task_train"
-    with TestClient(runtime_http_server.app) as client:
-        json_input = {
-            "model_name": model_name,
-            "parameters": {
-                "training_data": {"data_stream": {"data": [{"number": 1}]}},
-                "batch_size": 42,
-            },
-        }
-        training_response = client.post(
-            f"/api/v1/SampleTaskSampleModuleTrain",
-            json=json_input,
-        )
+    json_input = {
+        "model_name": model_name,
+        "parameters": {
+            "training_data": {"data_stream": {"data": [{"number": 1}]}},
+            "batch_size": 42,
+        },
+    }
+    training_response = client.post(
+        f"/api/v1/SampleTaskSampleModuleTrain",
+        json=json_input,
+    )
 
-        # assert training response
-        training_json_response = json.loads(
-            training_response.content.decode(training_response.default_encoding)
-        )
-        assert training_response.status_code == 200, training_json_response
-        assert (training_id := training_json_response["training_id"])
-        assert training_json_response["model_name"] == model_name
+    # assert training response
+    training_json_response = json.loads(
+        training_response.content.decode(training_response.default_encoding)
+    )
+    assert training_response.status_code == 200, training_json_response
+    assert (training_id := training_json_response["training_id"])
+    assert training_json_response["model_name"] == model_name
 
-        # assert trained model
-        result = MODEL_MANAGER.get_model_future(training_id).load()
-        assert result.batch_size == 42
-        assert (
-            result.MODULE_CLASS
-            == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
-        )
+    # assert trained model
+    result = MODEL_MANAGER.get_model_future(training_id).load()
+    assert result.batch_size == 42
+    assert (
+        result.MODULE_CLASS
+        == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
+    )
 
-        # register the newly trained model for inferencing
-        register_trained_model(
-            runtime_http_server.global_predict_servicer,
-            model_name,
-            training_id,
-        )
+    # register the newly trained model for inferencing
+    register_trained_model(
+        runtime_http_server.global_predict_servicer,
+        model_name,
+        training_id,
+    )
 
-        # test inferencing on new model
-        json_input_inference = {"model_id": model_name, "inputs": {"name": "world"}}
-        response = client.post(
-            f"/api/v1/task/sample",
-            json=json_input_inference,
-        )
-        json_response = json.loads(response.content.decode(response.default_encoding))
-        assert response.status_code == 200, json_response
-        assert json_response["greeting"] == "Hello world"
+    # test inferencing on new model
+    json_input_inference = {"model_id": model_name, "inputs": {"name": "world"}}
+    response = client.post(
+        f"/api/v1/task/sample",
+        json=json_input_inference,
+    )
+    json_response = json.loads(response.content.decode(response.default_encoding))
+    assert response.status_code == 200, json_response
+    assert json_response["greeting"] == "Hello world"
 
 
-def test_train_sample_task_throws_s3_value_error(runtime_http_server):
+def test_train_sample_task_throws_s3_value_error(client):
     """test that if we provide s3 path, it throws an error"""
     model_name = "sample_task_train"
-    with TestClient(runtime_http_server.app) as client:
-        json_input = {
-            "model_name": model_name,
-            "output_path": {"path": "non-existent path_to_s3"},
-            "parameters": {
-                "training_data": {"data_stream": {"data": [{"number": 1}]}},
-                "batch_size": 42,
-            },
-        }
-        training_response = client.post(
-            f"/api/v1/SampleTaskSampleModuleTrain",
-            json=json_input,
-        )
-        assert (
-            "S3 output path not supported by this runtime"
-            in training_response.content.decode(training_response.default_encoding)
-        )
-        assert training_response.status_code == 500, training_response.content.decode(
-            training_response.default_encoding
-        )
+    json_input = {
+        "model_name": model_name,
+        "output_path": {"path": "non-existent path_to_s3"},
+        "parameters": {
+            "training_data": {"data_stream": {"data": [{"number": 1}]}},
+            "batch_size": 42,
+        },
+    }
+    training_response = client.post(
+        f"/api/v1/SampleTaskSampleModuleTrain",
+        json=json_input,
+    )
+    assert (
+        "S3 output path not supported by this runtime"
+        in training_response.content.decode(training_response.default_encoding)
+    )
+    assert training_response.status_code == 500, training_response.content.decode(
+        training_response.default_encoding
+    )
 
 
-def test_train_primitive_task(runtime_http_server):
+def test_train_primitive_task(client, runtime_http_server):
     model_name = "primitive_task_train"
-    with TestClient(runtime_http_server.app) as client:
-        json_input = {
-            "model_name": model_name,
-            "parameters": {
-                "sample_input": {"name": "test"},
-                "simple_list": ["hello", "world"],
-                "union_list": ["hello", "world"],
-                "union_list2": ["hello", "world"],
-                "union_list3": ["hello", "world"],
-                "union_list4": 1,
-                "training_params_json_dict_list": [{"foo": {"bar": [1, 2, 3]}}],
-                "training_params_json_dict": {"foo": {"bar": [1, 2, 3]}},
-                "training_params_dict": {"layer_sizes": 100, "window_scaling": 200},
-                "training_params_dict_int": {1: 0.1, 2: 0.01},
-            },
-        }
+    json_input = {
+        "model_name": model_name,
+        "parameters": {
+            "sample_input": {"name": "test"},
+            "simple_list": ["hello", "world"],
+            "union_list": ["hello", "world"],
+            "union_list2": ["hello", "world"],
+            "union_list3": ["hello", "world"],
+            "union_list4": 1,
+            "training_params_json_dict_list": [{"foo": {"bar": [1, 2, 3]}}],
+            "training_params_json_dict": {"foo": {"bar": [1, 2, 3]}},
+            "training_params_dict": {"layer_sizes": 100, "window_scaling": 200},
+            "training_params_dict_int": {1: 0.1, 2: 0.01},
+        },
+    }
 
-        training_response = client.post(
-            f"/api/v1/SampleTaskSamplePrimitiveModuleTrain",
-            json=json_input,
-        )
-        # assert training response
-        training_json_response = json.loads(
-            training_response.content.decode(training_response.default_encoding)
-        )
-        assert training_response.status_code == 200, training_json_response
-        assert (training_id := training_json_response["training_id"])
-        assert training_json_response["model_name"] == model_name
+    training_response = client.post(
+        f"/api/v1/SampleTaskSamplePrimitiveModuleTrain",
+        json=json_input,
+    )
+    # assert training response
+    training_json_response = json.loads(
+        training_response.content.decode(training_response.default_encoding)
+    )
+    assert training_response.status_code == 200, training_json_response
+    assert (training_id := training_json_response["training_id"])
+    assert training_json_response["model_name"] == model_name
 
-        # assert trained model
-        result = MODEL_MANAGER.get_model_future(training_id).load()
-        assert result.training_params_dict == {
-            "layer_sizes": 100,
-            "window_scaling": 200,
-        }
-        assert result.training_params_json_dict == {"foo": {"bar": [1, 2, 3]}}
-        assert (
-            result.MODULE_CLASS
-            == "sample_lib.modules.sample_task.primitive_party_implementation.SamplePrimitiveModule"
-        )
+    # assert trained model
+    result = MODEL_MANAGER.get_model_future(training_id).load()
+    assert result.training_params_dict == {
+        "layer_sizes": 100,
+        "window_scaling": 200,
+    }
+    assert result.training_params_json_dict == {"foo": {"bar": [1, 2, 3]}}
+    assert (
+        result.MODULE_CLASS
+        == "sample_lib.modules.sample_task.primitive_party_implementation.SamplePrimitiveModule"
+    )
 
-        # register the newly trained model for inferencing
-        register_trained_model(
-            runtime_http_server.global_predict_servicer,
-            model_name,
-            training_id,
-        )
+    # register the newly trained model for inferencing
+    register_trained_model(
+        runtime_http_server.global_predict_servicer,
+        model_name,
+        training_id,
+    )
 
-        # test inferencing on new model
-        json_input_inference = {"model_id": model_name, "inputs": {"name": "world"}}
-        response = client.post(
-            f"/api/v1/task/sample",
-            json=json_input_inference,
-        )
-        json_response = json.loads(response.content.decode(response.default_encoding))
-        assert response.status_code == 200, json_response
-        assert json_response["greeting"] == "hello: primitives! [1, 2, 3] 100"
+    # test inferencing on new model
+    json_input_inference = {"model_id": model_name, "inputs": {"name": "world"}}
+    response = client.post(
+        f"/api/v1/task/sample",
+        json=json_input_inference,
+    )
+    json_response = json.loads(response.content.decode(response.default_encoding))
+    assert response.status_code == 200, json_response
+    assert json_response["greeting"] == "hello: primitives! [1, 2, 3] 100"
 
 
-def test_train_other_task(runtime_http_server):
+def test_train_other_task(client, runtime_http_server):
     model_name = "other_task_train"
-    with TestClient(runtime_http_server.app) as client:
-        json_input = {
-            "model_name": model_name,
-            "parameters": {
-                "training_data": {"data_stream": {"data": [1, 2]}},
-                "sample_input": {"name": "test"},
-            },
-        }
+    json_input = {
+        "model_name": model_name,
+        "parameters": {
+            "training_data": {"data_stream": {"data": [1, 2]}},
+            "sample_input": {"name": "test"},
+        },
+    }
 
-        training_response = client.post(
-            f"/api/v1/OtherTaskOtherModuleTrain",
-            json=json_input,
-        )
-        # assert training response
-        training_json_response = json.loads(
-            training_response.content.decode(training_response.default_encoding)
-        )
-        assert training_response.status_code == 200, training_json_response
-        assert (training_id := training_json_response["training_id"])
-        assert training_json_response["model_name"] == model_name
+    training_response = client.post(
+        f"/api/v1/OtherTaskOtherModuleTrain",
+        json=json_input,
+    )
+    # assert training response
+    training_json_response = json.loads(
+        training_response.content.decode(training_response.default_encoding)
+    )
+    assert training_response.status_code == 200, training_json_response
+    assert (training_id := training_json_response["training_id"])
+    assert training_json_response["model_name"] == model_name
 
-        # assert trained model
-        result = MODEL_MANAGER.get_model_future(training_id).load()
-        assert result.batch_size == 64
-        assert (
-            result.MODULE_CLASS
-            == "sample_lib.modules.other_task.other_implementation.OtherModule"
-        )
+    # assert trained model
+    result = MODEL_MANAGER.get_model_future(training_id).load()
+    assert result.batch_size == 64
+    assert (
+        result.MODULE_CLASS
+        == "sample_lib.modules.other_task.other_implementation.OtherModule"
+    )
 
-        # register the newly trained model for inferencing
-        register_trained_model(
-            runtime_http_server.global_predict_servicer,
-            model_name,
-            training_id,
-        )
+    # register the newly trained model for inferencing
+    register_trained_model(
+        runtime_http_server.global_predict_servicer,
+        model_name,
+        training_id,
+    )
 
-        # test inferencing on new model
-        json_input_inference = {"model_id": model_name, "inputs": {"name": "world"}}
-        response = client.post(
-            f"/api/v1/task/other",
-            json=json_input_inference,
-        )
-        json_response = json.loads(response.content.decode(response.default_encoding))
-        assert response.status_code == 200, json_response
-        assert json_response["farewell"] == "goodbye: world 64 times"
+    # test inferencing on new model
+    json_input_inference = {"model_id": model_name, "inputs": {"name": "world"}}
+    response = client.post(
+        f"/api/v1/task/other",
+        json=json_input_inference,
+    )
+    json_response = json.loads(response.content.decode(response.default_encoding))
+    assert response.status_code == 200, json_response
+    assert json_response["farewell"] == "goodbye: world 64 times"
