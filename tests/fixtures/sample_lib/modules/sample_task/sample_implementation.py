@@ -88,10 +88,14 @@ class SampleModule(caikit.core.ModuleBase):
             SampleOutputType(f"Hello {sample_input.name} stream")
             for x in range(self.stream_size)
         ]
+        # raise a value error when the stream is iterated, not before.
+        def raise_exception():
+            raise ValueError("raising a ValueError")
+
         stream = (
             DataStream.from_iterable(list_)
             if not err_stream
-            else DataStream.from_iterable()
+            else DataStream.from_iterable([1]).map(lambda x: raise_exception())
         )
         return stream
 
