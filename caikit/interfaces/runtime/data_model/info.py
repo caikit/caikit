@@ -19,6 +19,7 @@ This file contains interfaces to handle information requests
 from typing import Dict, Optional
 
 # First Party
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
 import alog
 
 # Local
@@ -31,10 +32,10 @@ RUNTIME_PACKAGE = f"{PACKAGE_COMMON}.runtime"
 
 @dataobject(RUNTIME_PACKAGE)
 class RuntimeInfoRequest(DataObjectBase):
-    pass
+    """Empty request for runtime server information"""
 
 
 @dataobject(RUNTIME_PACKAGE)
 class RuntimeInfoResponse(DataObjectBase):
-    runtime_version: Optional[str]
-    python_packages: Dict[str, str]
+    runtime_version: Annotated[Optional[str], FieldNumber(1)]
+    python_packages: Annotated[Dict[str, str], FieldNumber(2)]

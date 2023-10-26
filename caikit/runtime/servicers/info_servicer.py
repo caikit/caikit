@@ -42,7 +42,7 @@ class InfoServicer:
         self, request, context  # pylint: disable=unused-argument
     ) -> RuntimeInfoResponse:
         """Get information on versions of libraries and server for GRPC"""
-        return self.get_runtime_info_impl()
+        return self.get_runtime_info_impl().to_proto()
 
     def get_runtime_info_impl(self) -> RuntimeInfoResponse:
         """Get information on versions of libraries and server from config"""
@@ -56,26 +56,21 @@ class InfoServicer:
                 if lib_version:
                     python_packages[lib] = lib_version
             # just get caikit versions
-            else:
-                if len(lib.split(".")) == 1 and lib.startswith("caikit"):
-                    version = self.try_lib_version(dist_names[0])
-                    if version:
-                        python_packages[lib] = version
+            elif len(lib.split(".")) == 1 and lib.startswith("caikit"):
+                version = self.try_lib_version(dist_names[0])
+                if version:
+                    python_packages[lib] = version
 
         runtime_image = config_version_info.get("runtime_image")
 
         return RuntimeInfoResponse(
             python_packages=python_packages,
             runtime_version=runtime_image,
-        ).to_proto()
+        )
 
     def get_version_dict(self) -> Dict[str, Union[str, Dict]]:
         """Get information on versions of libraries and server for HTTP"""
-        versions = {}
-        runtime_info_response = self.get_runtime_info_impl()
-        versions["python_packages"] = runtime_info_response.python_packages
-        versions["runtime_version"] = runtime_info_response.runtime_version
-        return versions
+        return self.get_runtime_info_impl().to_dict()
 
     def try_lib_version(self, name) -> str:
         """Get version of python modules"""

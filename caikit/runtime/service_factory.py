@@ -68,7 +68,7 @@ TRAINING_MANAGEMENT_SERVICE_SPEC = {
     }
 }
 
-INFO_SERVICE_NAME = "Info"
+INFO_SERVICE_NAME = "InfoService"
 INFO_SERVICE_SPEC = {
     "service": {
         "rpcs": [
