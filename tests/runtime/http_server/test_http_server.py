@@ -564,7 +564,9 @@ def test_runtime_info_ok_response_all_packages(runtime_http_server):
         {
             "runtime": {
                 "version_info": {
-                    "all_packages": True,
+                    "python_packages": {
+                        "all_packages": True,
+                    },
                     "runtime_image": "1.2.3",
                 }
             },

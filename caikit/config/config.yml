@@ -197,7 +197,8 @@ runtime:
 
     # Version details to retrieve
     version_info:
-        all_packages: false
+        python_packages:
+            all_packages: false
         runtime_image: ""
 
 inference_plugin:
