@@ -515,7 +515,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 except CaikitRuntimeException as err:
                     error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
                     error_content = {
-                        "event": StreamEventTypes.ERROR,
                         "details": err.message,
                         "code": error_code,
                         "id": err.id,
@@ -523,7 +522,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 except Exception as err:  # pylint: disable=broad-exception-caught
                     error_code = 500
                     error_content = {
-                        "event": StreamEventTypes.ERROR,
                         "details": f"Unhandled exception: {str(err)}",
                         "code": error_code,
                         "id": None,
@@ -531,7 +529,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     log.error("<RUN51881106E>", err, exc_info=True)
 
                 # If an error occurs, yield an error response and terminate
-                yield ServerSentEvent(data=json.dumps(error_content))
+                yield ServerSentEvent(
+                    data=json.dumps(error_content), event=StreamEventTypes.ERROR
+                )
 
             return EventSourceResponse(_generator())
 
