@@ -73,11 +73,12 @@ class SampleModule(caikit.core.ModuleBase):
 
     @SampleTask.taskmethod(output_streaming=True)
     def run_stream_out(
-        self, sample_input: SampleInputType
+        self, sample_input: SampleInputType, err_stream: bool = False
     ) -> DataStream[SampleOutputType]:
         """
         Args:
             sample_input (sample_lib.data_model.SampleInputType): the input
+            err_stream (bool): An optional parameter to error out the stream
 
         Returns:
             caikit.core.data_model.DataStream[sample_lib.data_model.SampleOutputType]: The output
@@ -87,7 +88,15 @@ class SampleModule(caikit.core.ModuleBase):
             SampleOutputType(f"Hello {sample_input.name} stream")
             for x in range(self.stream_size)
         ]
-        stream = DataStream.from_iterable(list_)
+        # raise a value error when the stream is iterated, not before.
+        def raise_exception():
+            raise ValueError("raising a ValueError")
+
+        stream = (
+            DataStream.from_iterable(list_)
+            if not err_stream
+            else DataStream.from_iterable([1]).map(lambda x: raise_exception())
+        )
         return stream
 
     @SampleTask.taskmethod(input_streaming=True, output_streaming=True)

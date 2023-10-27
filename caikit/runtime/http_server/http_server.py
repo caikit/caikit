@@ -19,6 +19,7 @@ API based on the task definitions available at boot.
 # Standard
 from contextlib import contextmanager
 from dataclasses import dataclass
+from enum import Enum
 from functools import partial
 from typing import Any, Dict, Iterable, Optional, Type, Union, get_args
 import asyncio
@@ -31,6 +32,7 @@ import ssl
 import tempfile
 import threading
 import time
+import traceback
 
 # Third Party
 from fastapi import FastAPI, HTTPException, Request, Response, status
@@ -109,6 +111,12 @@ HEALTH_ENDPOINT = "/health"
 
 # Endpoint to use for server info
 RUNTIME_INFO_ENDPOINT = "/info/version"
+
+# Stream event types enum
+class StreamEventTypes(Enum):
+    MESSAGE = "message"
+    ERROR = "error"
+
 
 # Small dataclass for consolidating TLS files
 @dataclass
@@ -410,7 +418,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
         async def _handler(
             context: Request,
         ) -> Response:
-
             request = await pydantic_from_request(pydantic_request, context)
             request_params = self._get_request_params(rpc, request)
 
@@ -508,10 +515,24 @@ class RuntimeHTTPServer(RuntimeServerBase):
                             **request_params,
                         )
                     ):
-                        yield result
+                        yield ServerSentEvent(
+                            data=result.to_json(), event=StreamEventTypes.MESSAGE.value
+                        )
                     return
                 except HTTPException as err:
                     raise err
+                except (TypeError, ValueError) as err:
+                    log_dict = {
+                        "log_code": "<RUN76624264W>",
+                        "message": repr(err),
+                        "stack_trace": traceback.format_exc(),
+                    }
+                    log.warning(log_dict)
+                    error_code = 400
+                    error_content = {
+                        "details": repr(err),
+                        "code": error_code,
+                    }
                 except CaikitRuntimeException as err:
                     error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
                     error_content = {
@@ -529,7 +550,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     log.error("<RUN51881106E>", err, exc_info=True)
 
                 # If an error occurs, yield an error response and terminate
-                yield ServerSentEvent(data=json.dumps(error_content))
+                yield ServerSentEvent(
+                    data=json.dumps(error_content), event=StreamEventTypes.ERROR.value
+                )
 
             return EventSourceResponse(_generator())
 

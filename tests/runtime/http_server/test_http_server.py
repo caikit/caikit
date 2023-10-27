@@ -37,6 +37,7 @@ import tls_test_tools
 # Local
 from caikit.core import MODEL_MANAGER, DataObjectBase, dataobject
 from caikit.runtime import http_server
+from caikit.runtime.http_server.http_server import StreamEventTypes
 from tests.conftest import temp_config
 from tests.runtime.conftest import (
     ModuleSubproc,
@@ -478,14 +479,26 @@ def test_inference_streaming_sample_module(sample_task_model_id, client):
         stream_content = stream.content.decode(stream.default_encoding)
         stream_responses = json.loads(
             "[{}]".format(
-                stream_content.replace("data: ", "")
+                stream_content.replace("event: ", '{"event":')
+                .replace(
+                    StreamEventTypes.MESSAGE.value,
+                    '"' + f"{StreamEventTypes.MESSAGE.value}" + '"}',
+                )
+                .replace("data: ", "")
                 .replace("\r\n", "")
                 .replace("}{", "}, {")
             )
         )
-        assert len(stream_responses) == 10
+        assert len(stream_responses) == 20
         assert all(
-            resp.get("greeting") == "Hello world stream" for resp in stream_responses
+            resp.get("greeting") == "Hello world stream"
+            for resp in stream_responses
+            if "greeting" in resp
+        )
+        assert all(
+            resp.get("event") == StreamEventTypes.MESSAGE.value
+            for resp in stream_responses
+            if "event" in resp
         )
 
 
@@ -493,7 +506,7 @@ def test_inference_streaming_sample_module_actual_server(
     sample_task_model_id, runtime_http_server
 ):
     """Simple check for testing a happy path unary-stream case
-    but pints the actual running server"""
+    but pings the actual running server"""
 
     for i in range(10):
         input = {"model_id": sample_task_model_id, "inputs": {"name": f"world{i}"}}
@@ -503,16 +516,63 @@ def test_inference_streaming_sample_module_actual_server(
         stream_content = stream.content.decode(stream.encoding)
         stream_responses = json.loads(
             "[{}]".format(
-                stream_content.replace("data: ", "")
+                stream_content.replace("event: ", '{"event":')
+                .replace(
+                    StreamEventTypes.MESSAGE.value,
+                    '"' + f"{StreamEventTypes.MESSAGE.value}" + '"}',
+                )
+                .replace("data: ", "")
                 .replace("\r\n", "")
                 .replace("}{", "}, {")
             )
         )
-        assert len(stream_responses) == 10
+        assert len(stream_responses) == 20
         assert all(
             resp.get("greeting") == f"Hello world{i} stream"
             for resp in stream_responses
+            if "greeting" in resp
         )
+        assert all(
+            resp.get("event") == StreamEventTypes.MESSAGE.value
+            for resp in stream_responses
+            if "event" in resp
+        )
+
+
+def test_inference_streaming_sample_module_actual_server_throws(
+    sample_task_model_id, runtime_http_server
+):
+    """Simple check for testing an exception in unary-stream case
+    that pings the actual running server"""
+
+    for i in range(10):
+        input = {
+            "model_id": sample_task_model_id,
+            "inputs": {"name": f"world{i}"},
+            "parameters": {"err_stream": True},
+        }
+        url = f"http://localhost:{runtime_http_server.port}/api/v1/task/server-streaming-sample"
+        stream = requests.post(url=url, json=input, verify=False)
+        assert stream.status_code == 200
+        stream_content = stream.content.decode(stream.encoding)
+        stream_responses = json.loads(
+            "[{}]".format(
+                stream_content.replace("event: ", '{"event":')
+                .replace(
+                    StreamEventTypes.ERROR.value,
+                    '"' + f"{StreamEventTypes.ERROR.value}" + '"}',
+                )
+                .replace("data: ", "")
+                .replace("\r\n", "")
+                .replace("}{", "}, {")
+            )
+        )
+        assert len(stream_responses) == 2
+        assert stream_responses[0].get("event") == StreamEventTypes.ERROR.value
+        assert (
+            stream_responses[1].get("details") == "ValueError('raising a ValueError')"
+        )
+        assert stream_responses[1].get("code") == 400
 
 
 def test_no_model_id(client):
