@@ -52,9 +52,8 @@ class InfoServicer:
 
         for lib, dist_names in importlib_metadata.packages_distributions().items():
             if (
-                (all_packages or (len(lib.split(".")) == 1 and lib.startswith("caikit")))
-                and version := self.try_lib_version(dist_names[0])
-            ):
+                all_packages or (len(lib.split(".")) == 1 and lib.startswith("caikit"))
+            ) and (version := self.try_lib_version(dist_names[0])):
                 python_packages[lib] = version
 
         runtime_image = config_version_info.get("runtime_image")
