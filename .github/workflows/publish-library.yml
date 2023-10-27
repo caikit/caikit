@@ -27,6 +27,7 @@ jobs:
         uses: actions/setup-python@v3
       - name: Build and check package
         run: |
+          pip install tox
           tox -e build,twinecheck
       - name: Upload package
         if: github.event_name == 'release'
