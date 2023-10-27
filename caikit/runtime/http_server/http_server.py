@@ -506,10 +506,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                             **request_params,
                         )
                     ):
-                        yield {
-                            "event": StreamEventTypes.MESSAGE.value,
-                            "data": result.to_json(),
-                        }
+                        yield ServerSentEvent(
+                            data=result.to_json(), event=StreamEventTypes.MESSAGE.value
+                        )
                     return
                 except HTTPException as err:
                     raise err
