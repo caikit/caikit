@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 from typing import Dict
+from unittest.mock import patch
 import json
 import os
 import signal
@@ -649,6 +650,48 @@ def test_health_check_ok(client):
     response = client.get(http_server.HEALTH_ENDPOINT)
     assert response.status_code == 200
     assert response.text == "OK"
+
+
+def test_runtime_info_ok(runtime_http_server):
+    """Make sure the runtime info returns version data"""
+    with TestClient(runtime_http_server.app) as client:
+        response = client.get(http_server.RUNTIME_INFO_ENDPOINT)
+        assert response.status_code == 200
+
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert "caikit" in json_response["python_packages"]
+        # runtime_version not added if not set
+        assert json_response["runtime_version"] == ""
+        # dependent libraries not added if all packages not set to true
+        assert "py_to_proto" not in json_response["python_packages"]
+
+
+def test_runtime_info_ok_response_all_packages(runtime_http_server):
+    with temp_config(
+        {
+            "runtime": {
+                "version_info": {
+                    "python_packages": {
+                        "all": True,
+                    },
+                    "runtime_image": "1.2.3",
+                }
+            },
+        },
+        "merge",
+    ):
+        with TestClient(runtime_http_server.app) as client:
+            response = client.get(http_server.RUNTIME_INFO_ENDPOINT)
+            assert response.status_code == 200
+
+            json_response = json.loads(
+                response.content.decode(response.default_encoding)
+            )
+            assert json_response["runtime_version"] == "1.2.3"
+            assert "caikit" in json_response["python_packages"]
+            # dependent libraries versions added
+            assert "alog" in json_response["python_packages"]
+            assert "py_to_proto" in json_response["python_packages"]
 
 
 def test_http_server_shutdown_with_model_poll(open_port):

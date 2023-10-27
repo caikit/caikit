@@ -17,6 +17,7 @@
 # Standard
 from dataclasses import dataclass
 from unittest import mock
+from unittest.mock import patch
 import json
 import os
 import signal
@@ -44,6 +45,8 @@ from caikit import get_config
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.runtime.data_model import (
+    RuntimeInfoRequest,
+    RuntimeInfoResponse,
     TrainingInfoRequest,
     TrainingJob,
     TrainingStatus,
@@ -951,6 +954,63 @@ def test_runtime_status_ok_response(runtime_grpc_server):
     )
     assert actual_response.defaultModelSizeInBytes == 18874368
     assert actual_response.numericRuntimeVersion == 0
+
+
+def test_runtime_info_ok_response(runtime_grpc_server):
+    runtime_info_service: ServicePackage = ServicePackageFactory().get_service_package(
+        ServicePackageFactory.ServiceType.INFO,
+    )
+
+    runtime_info_stub = runtime_info_service.stub_class(
+        runtime_grpc_server.make_local_channel()
+    )
+
+    runtime_request = RuntimeInfoRequest()
+    runtime_info_response: RuntimeInfoResponse = RuntimeInfoResponse.from_proto(
+        runtime_info_stub.GetRuntimeInfo(runtime_request.to_proto())
+    )
+
+    assert "caikit" in runtime_info_response.python_packages
+    # runtime_version not added if not set
+    assert runtime_info_response.runtime_version == ""
+    # dependent libraries not added if all packages not set to true
+    assert "py_to_proto" not in runtime_info_response.python_packages
+
+
+def test_runtime_info_ok_response_all_packages(runtime_grpc_server):
+    with temp_config(
+        {
+            "runtime": {
+                "version_info": {
+                    "python_packages": {
+                        "all": True,
+                    },
+                    "runtime_image": "1.2.3",
+                }
+            },
+        },
+        "merge",
+    ):
+        runtime_info_service: ServicePackage = (
+            ServicePackageFactory().get_service_package(
+                ServicePackageFactory.ServiceType.INFO,
+            )
+        )
+
+        runtime_info_stub = runtime_info_service.stub_class(
+            runtime_grpc_server.make_local_channel()
+        )
+
+        runtime_request = RuntimeInfoRequest()
+        runtime_info_response: RuntimeInfoResponse = RuntimeInfoResponse.from_proto(
+            runtime_info_stub.GetRuntimeInfo(runtime_request.to_proto())
+        )
+
+        assert "caikit" in runtime_info_response.python_packages
+        assert runtime_info_response.runtime_version == "1.2.3"
+        # dependent libraries versions added
+        assert "alog" in runtime_info_response.python_packages
+        assert "py_to_proto" in runtime_info_response.python_packages
 
 
 #### Health Probe tests ####
