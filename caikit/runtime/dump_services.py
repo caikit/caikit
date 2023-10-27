@@ -40,10 +40,14 @@ def dump_grpc_services(output_dir: str):
     train_mgt_svc = ServicePackageFactory.get_service_package(
         ServicePackageFactory.ServiceType.TRAINING_MANAGEMENT,
     )
+    info_svc = ServicePackageFactory.get_service_package(
+        ServicePackageFactory.ServiceType.INFO,
+    )
     render_dataobject_protos(output_dir)
     inf_svc.service.write_proto_file(output_dir)
     train_svc.service.write_proto_file(output_dir)
     train_mgt_svc.service.write_proto_file(output_dir)
+    info_svc.service.write_proto_file(output_dir)
 
 
 def dump_http_services(output_dir: str):

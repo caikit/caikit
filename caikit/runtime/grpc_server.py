@@ -42,6 +42,7 @@ from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
+from caikit.runtime.servicers.info_servicer import InfoServicer
 from caikit.runtime.servicers.model_runtime_servicer import ModelRuntimeServicerImpl
 from caikit.runtime.servicers.model_train_servicer import ModelTrainServicerImpl
 from caikit.runtime.servicers.training_management_servicer import (
@@ -139,6 +140,16 @@ class RuntimeGRPCServer(RuntimeServerBase):
         service_names.append(
             model_runtime_pb2.DESCRIPTOR.services_by_name["ModelRuntime"].full_name
         )
+
+        # Add runtime info servicer to the gRPC server
+        runtime_info_service: ServicePackage = (
+            ServicePackageFactory.get_service_package(
+                ServicePackageFactory.ServiceType.INFO,
+            )
+        )
+        service_names.append(runtime_info_service.descriptor.full_name)
+
+        runtime_info_service.registration_function(InfoServicer(), self.server)
 
         # Add gRPC default health servicer.
         # We use the non-blocking implementation to avoid thread starvation.
