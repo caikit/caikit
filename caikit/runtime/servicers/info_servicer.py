@@ -51,15 +51,11 @@ class InfoServicer:
         all_packages = (config_version_info.get("python_packages") or {}).get("all")
 
         for lib, dist_names in importlib_metadata.packages_distributions().items():
-            if all_packages:
-                lib_version = self.try_lib_version(dist_names[0])
-                if lib_version:
-                    python_packages[lib] = lib_version
-            # just get caikit versions
-            elif len(lib.split(".")) == 1 and lib.startswith("caikit"):
-                version = self.try_lib_version(dist_names[0])
-                if version:
-                    python_packages[lib] = version
+            if (
+                (all_packages or (len(lib.split(".")) == 1 and lib.startswith("caikit")))
+                and version := self.try_lib_version(dist_names[0])
+            ):
+                python_packages[lib] = version
 
         runtime_image = config_version_info.get("runtime_image")
 
