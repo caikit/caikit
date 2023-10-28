@@ -16,16 +16,18 @@ This module implements a common health probe for all running runtime servers.
 """
 # Standard
 from contextlib import contextmanager
-from typing import Tuple
+from typing import Optional, Tuple
 import os
 import sys
 import tempfile
+import warnings
 
 # First Party
 import alog
 
 # Local
 from ..config import get_config
+from ..core.toolkit import logging
 
 log = alog.use_channel("PROBE")
 
@@ -45,16 +47,20 @@ def health_probe() -> bool:
     config = get_config()
     tls_key = config.runtime.tls.server.key
     tls_cert = config.runtime.tls.server.cert
-    key_file, cert_file = tls_files
+    client_ca = config.runtime.tls.client.cert
     http_healthy, grpc_healthy = None, None
 
     if config.runtime.http.enabled:
         log.debug("Checking HTTP server health")
-        http_healthy = _http_health_probe(config.runtime.http.port, tls_key, tls_cert)
+        http_healthy = _http_health_probe(
+            config.runtime.http.port, tls_key, tls_cert, client_ca
+        )
 
     if config.runtime.grpc.enabled:
         log.debug("Checking gRPC server health")
-        grpc_healthy = _grpc_health_probe(config.runtime.grpc.port, tls_key, tls_cert)
+        grpc_healthy = _grpc_health_probe(
+            config.runtime.grpc.port, tls_key, tls_cert, client_ca
+        )
 
     if False in [http_healthy, grpc_healthy]:
         log.info(
@@ -74,6 +80,7 @@ def _http_health_probe(
     port: int,
     tls_key: Optional[str],
     tls_cert: Optional[str],
+    client_ca: Optional[str],
 ) -> bool:
     """Probe the http server
 
@@ -94,6 +101,8 @@ def _http_health_probe(
             enabled
         tls_cert (Optional[str]): Body or path to the TLS cert file if TLS/mTLS
             enabled
+        client_ca (Optional[str]): The client ca cert that the server is using
+            for mutual client auth
 
     Returns:
         healthy (bool): True if all servers are healthy, False otherwise
@@ -109,27 +118,38 @@ def _http_health_probe(
     # Requests requires that the TLS information be in files
     with _tls_files(tls_key, tls_cert) as tls_files:
         key_file, cert_file = tls_files
-        tls_enabled = key_file and cert_file
-        if tls_enabled:
+        if key_file and cert_file:
             protocol = "https"
-            kwargs = {"verify": cert_file, "cert": (key_file, cert_file)}
+            kwargs = {"verify": False}
+            if client_ca:
+                log.debug("Probing mTLS HTTP Server")
+                kwargs["cert"] = (key_file, cert_file)
+            else:
+                log.debug("Probing TLS HTTP Server")
         else:
+            log.debug("Probing INSECURE HTTP Server")
             protocol = "http"
             kwargs = {}
 
         try:
-            resp = requests.get(
-                f"{protocol}://localhost:{port}/{HEALTH_ENDPOINT}",
-                **kwargs,
-            )
+            # Suppress insecure connection warnings since we disable server
+            # verification. This is ok since this probe will be run against
+            # localhost in a pod where the server is _known_ to be authentic.
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", module="urllib3")
+                resp = requests.get(
+                    f"{protocol}://localhost:{port}{HEALTH_ENDPOINT}",
+                    timeout=0.01,
+                    **kwargs,
+                )
             resp.raise_for_status()
             return True
         except requests.exceptions.SSLError as err:
             log.debug("Got SSLError indicating a healthy SSL server! %s", err)
             log.debug2(err, exc_info=True)
             return True
-        except Exception:
-            pass
+        except Exception as err:
+            log.debug2("Caught unexpected error: %s", err, exc_info=True)
         return False
 
 
@@ -137,6 +157,7 @@ def _grpc_health_probe(
     port: int,
     tls_key: Optional[str],
     tls_cert: Optional[str],
+    client_ca: Optional[str],
 ) -> bool:
     """Probe the grpc server
 
@@ -150,6 +171,8 @@ def _grpc_health_probe(
             enabled
         tls_cert (Optional[str]): Body or path to the TLS cert file if TLS/mTLS
             enabled
+        client_ca (Optional[str]): The client ca cert that the server is using
+            for mutual client auth
 
     Returns:
         healthy (bool): True if all servers are healthy, False otherwise
@@ -166,11 +189,9 @@ def _grpc_health_probe(
 
     hostname = f"localhost:{port}"
     if tls_key and tls_cert:
-        tls_server_key = bytes(RuntimeGRPCServer._load_secret(tls_server_key), "utf-8")
-        tls_server_cert = bytes(
-            RuntimeGRPCServer._load_secret(tls_server_cert), "utf-8"
-        )
-        if (get_config().runtime.tls.get("client") or {}).get("cert"):
+        tls_server_key = bytes(RuntimeGRPCServer._load_secret(tls_key), "utf-8")
+        tls_server_cert = bytes(RuntimeGRPCServer._load_secret(tls_cert), "utf-8")
+        if client_ca:
             log.debug("Probing mTLS gRPC server")
             credentials = grpc.ssl_channel_credentials(
                 root_certificates=tls_server_cert,
@@ -226,5 +247,6 @@ def _tls_files(
 
 ## Main ########################################################################
 if __name__ == "__main__":
+    logging.configure()
     if not health_probe():
         sys.exit(1)
