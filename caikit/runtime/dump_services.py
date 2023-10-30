@@ -30,7 +30,7 @@ log = alog.use_channel("RUNTIME-DUMP-SVC")
 
 
 def dump_grpc_services(output_dir: str):
-    """Utility for rendering the all generated interfaces to proto files"""    
+    """Utility for rendering the all generated interfaces to proto files"""
     inf_enabled = get_config().runtime.service_generation.enable_inference
     train_enabled = get_config().runtime.service_generation.enable_training
 
