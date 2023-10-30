@@ -110,7 +110,7 @@ def create_inference_rpcs(
                         exc_info=True,
                     )
 
-    return rpcs
+    return sorted(rpcs, key=lambda x: x.name)
 
 
 def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]:
@@ -156,7 +156,7 @@ def create_training_rpcs(modules: List[Type[ModuleBase]]) -> List[CaikitRPCBase]
                     err,
                     exc_info=True,
                 )
-    return rpcs
+    return sorted(rpcs, key=lambda x: x.name)
 
 
 def _group_modules_by_task(
