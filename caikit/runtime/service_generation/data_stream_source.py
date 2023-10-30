@@ -422,8 +422,9 @@ class DataStreamSourceBase(DataStream):
         super().__init__(self._generator)
 
     def _generator(self):
-        stream = self.to_data_stream()
-        return stream.generator_func(*stream.generator_args, **stream.generator_kwargs)
+        return self._stream.generator_func(
+            *self._stream.generator_args, **self._stream.generator_kwargs
+        )
 
     def __getstate__(self) -> bytes:
         """A DataStreamSource is pickled by serializing its source
@@ -449,6 +450,13 @@ class DataStreamSourceBase(DataStream):
         return {
             plugin.get_field_name(self.ELEMENT_TYPE): plugin for plugin in self.PLUGINS
         }
+
+    @cached_property
+    def _stream(self):
+        """The internal _stream is cached here so that the result of calling to_data_stream can be
+        re-read, rather than requiring to_data_stream to be invoked on every read through the
+        stream"""
+        return self.to_data_stream()
 
     # pylint: disable=too-many-return-statements
     def to_data_stream(self) -> DataStream:

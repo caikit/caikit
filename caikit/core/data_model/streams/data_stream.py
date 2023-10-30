@@ -17,6 +17,7 @@
 """
 # Standard
 from collections.abc import Iterable
+from functools import cached_property
 from glob import glob
 from io import UnsupportedOperation
 from typing import Dict, Generic, List, Tuple, TypeVar, Union
@@ -103,7 +104,6 @@ class DataStream(Generic[T]):
 
         self.generator_func = generator_func
         self.generator_args, self.generator_kwargs = args, kwargs
-        self._length = None
 
     @classmethod
     def from_iterable(cls, data: typing.Iterable[T]) -> "DataStream[T]":
@@ -995,14 +995,20 @@ class DataStream(Generic[T]):
         return generator
 
     def __len__(self):
-        """Return the number of data items contained in this data stream.  This requires that the
-        data stream be iterated over, which may be time consuming.  This value is then stored
-        internally so that subsequent calls do not iterate over the data stream again.
-        """
-        if self._length is None:
-            self._length = sum(1 for data_item in self)
-
+        """See property method self._length"""
         return self._length
+
+    @cached_property
+    def _length(self):
+        """Return the number of data items contained in this data stream.  This requires that the
+        data stream be iterated over, which may be time-consuming.  This value is then stored
+        internally so that subsequent calls do not iterate over the data stream again.
+
+        This is implemented as a cached_property so that subclasses of DataStream which implement
+        their own __getstate__ and __setstate__ do not have to account for the existence of
+        self._length
+        """
+        return sum(1 for _ in self)
 
     def __or__(self, module):
         """Feed this data stream into the `.stream` method of a module.  This is syntactic sugar
