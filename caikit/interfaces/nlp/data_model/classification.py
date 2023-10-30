@@ -141,4 +141,4 @@ class ClassifiedGeneratedTextStreamResult(ClassifiedGeneratedTextResult):
     processed_index: Annotated[
         Optional[int], FieldNumber(7)
     ]  # Result index up to which text is processed
-    start_index: Annotated[int, FieldNumber(7)]  # Result start index for processed text
+    start_index: Annotated[int, FieldNumber(8)]  # Result start index for processed text
