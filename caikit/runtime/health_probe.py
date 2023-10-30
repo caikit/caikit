@@ -112,10 +112,12 @@ def _http_health_probe(
     with alog.ContextTimer(log.debug2, "Done with local grpc imports: "):
 
         # Third Party
-        import requests
+        import requests  # pylint: disable=import-outside-toplevel
 
         # Local
-        from .http_server import HEALTH_ENDPOINT
+        from .http_server import (  # pylint: disable=import-outside-toplevel
+            HEALTH_ENDPOINT,
+        )
 
     # Requests requires that the TLS information be in files
     with _tls_files(tls_key, tls_cert) as tls_files:
@@ -155,7 +157,7 @@ def _http_health_probe(
             log.debug("Got SSLError indicating a healthy SSL server! %s", err)
             log.debug2(err, exc_info=True)
             return True
-        except Exception as err:
+        except Exception as err:  # pylint: disable=broad-exception-caught
             log.debug2("Caught unexpected error: %s", err, exc_info=True)
         return False
 
@@ -188,11 +190,16 @@ def _grpc_health_probe(
     with alog.ContextTimer(log.debug2, "Done with local grpc imports: "):
 
         # Third Party
-        from grpc_health.v1 import health_pb2, health_pb2_grpc
-        import grpc
+        from grpc_health.v1 import (  # pylint: disable=import-outside-toplevel
+            health_pb2,
+            health_pb2_grpc,
+        )
+        import grpc  # pylint: disable=import-outside-toplevel
 
         # Local
-        from .grpc_server import RuntimeGRPCServer
+        from .grpc_server import (  # pylint: disable=import-outside-toplevel
+            RuntimeGRPCServer,
+        )
 
     hostname = f"localhost:{port}"
     if tls_key and tls_cert:
@@ -219,7 +226,8 @@ def _grpc_health_probe(
     try:
         client.Check(health_pb2.HealthCheckRequest())
         return True
-    except Exception:
+    except Exception as err:  # pylint: disable=broad-exception-caught
+        log.debug2("Caught unexpected error: %s", err, exc_info=True)
         return False
 
 
@@ -242,11 +250,11 @@ def _tls_files(
         key_file, cert_file = valid_file_vals
         if not key_file:
             key_file = os.path.join(workdir, "tls.key")
-            with open(key_file, "w") as handle:
+            with open(key_file, "w", encoding="utf-8") as handle:
                 handle.write(tls_key)
         if not cert_file:
             cert_file = os.path.join(workdir, "tls.cert")
-            with open(cert_file, "w") as handle:
+            with open(cert_file, "w", encoding="utf-8") as handle:
                 handle.write(tls_cert)
         yield key_file, cert_file
         return
