@@ -103,6 +103,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
         # And intercept a training service, if we have one
         if self.enable_training and self.training_service:
+            log.info("<RUN20247827I>", "Enabling gRPC training service")
             global_train_servicer = GlobalTrainServicer(self.training_service)
             self.server = CaikitRuntimeServerWrapper(
                 server=self.server,
