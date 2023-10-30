@@ -32,6 +32,7 @@ from ..core.toolkit import logging
 log = alog.use_channel("PROBE")
 
 
+@alog.timed_function(log.debug)
 def health_probe() -> bool:
     """Run a health probe against all running runtime servers.
 
@@ -108,12 +109,13 @@ def _http_health_probe(
         healthy (bool): True if all servers are healthy, False otherwise
     """
     # NOTE: Local imports for optional dependency
+    with alog.ContextTimer(log.debug2, "Done with local grpc imports: "):
 
-    # Third Party
-    import requests
+        # Third Party
+        import requests
 
-    # Local
-    from .http_server import HEALTH_ENDPOINT
+        # Local
+        from .http_server import HEALTH_ENDPOINT
 
     # Requests requires that the TLS information be in files
     with _tls_files(tls_key, tls_cert) as tls_files:
@@ -137,7 +139,12 @@ def _http_health_probe(
             # localhost in a pod where the server is _known_ to be authentic.
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", module="urllib3")
-                resp = requests.get(
+                session = requests.Session()
+                retries = requests.adapters.Retry(total=0)
+                session.mount(
+                    f"{protocol}://", requests.adapters.HTTPAdapter(max_retries=retries)
+                )
+                resp = session.get(
                     f"{protocol}://localhost:{port}{HEALTH_ENDPOINT}",
                     timeout=0.01,
                     **kwargs,
@@ -178,14 +185,14 @@ def _grpc_health_probe(
         healthy (bool): True if all servers are healthy, False otherwise
     """
     # NOTE: Local imports for optional dependency
+    with alog.ContextTimer(log.debug2, "Done with local grpc imports: "):
 
-    # Third party
-    # Third Party
-    from grpc_health.v1 import health_pb2, health_pb2_grpc
-    import grpc
+        # Third Party
+        from grpc_health.v1 import health_pb2, health_pb2_grpc
+        import grpc
 
-    # Local
-    from .grpc_server import RuntimeGRPCServer
+        # Local
+        from .grpc_server import RuntimeGRPCServer
 
     hostname = f"localhost:{port}"
     if tls_key and tls_cert:
