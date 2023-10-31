@@ -167,6 +167,26 @@ def test_data_stream_from_jsonl_is_pickleable(tmp_path):
     post_pickle_vals = list(pickled_stream)
 
     assert pre_pickle_vals == post_pickle_vals
+    # Interesting: Technically this is a stream of length 1 where the one element is [1,2,3,4,5,6]
+    validate_data_stream(pickled_stream, 1, list)
+
+
+def test_data_stream_from_json_is_pickleable(tmp_path):
+    tmpdir = str(tmp_path)
+
+    data = [1, 2, 3, 4, 5, 6]
+    filepath = os.path.join(tmpdir, "foo.json")
+    with open(filepath, "w") as f:
+        json.dump(data, f)
+
+    stream = DataStream.from_json_array(filepath)
+
+    pre_pickle_vals = list(stream)
+    pickled_stream = pickle.loads(pickle.dumps(stream))
+    post_pickle_vals = list(pickled_stream)
+
+    assert pre_pickle_vals == post_pickle_vals
+    validate_data_stream(pickled_stream, 6, int)
 
 
 def test_bad_json_stream(tmp_path):

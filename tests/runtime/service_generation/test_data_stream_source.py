@@ -104,6 +104,8 @@ def test_pickle_round_trip_primitive():
     round_trip = pickle.loads(pickle.dumps(inst))
     assert round_trip.to_dict() == inst.to_dict()
 
+    validate_data_stream(round_trip, 2, float)
+
 
 def test_pickle_round_trip_data_model():
     """Make sure that a source wrapping a data model object can be round-tripped
@@ -121,6 +123,17 @@ def test_pickle_round_trip_data_model():
     )
     round_trip = pickle.loads(pickle.dumps(inst))
     assert round_trip.to_dict() == inst.to_dict()
+
+    validate_data_stream(round_trip, 2, Foo)
+
+
+def test_pickle_round_trip_file(sample_json_file):
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    data_stream = stream_type(file=FileReference(filename=sample_json_file))
+
+    round_trip = pickle.loads(pickle.dumps(data_stream))
+
+    validate_data_stream(round_trip, 2, SampleTrainingType)
 
 
 def test_data_stream_source_as_data_stream():
@@ -544,3 +557,20 @@ def test_s3_not_implemented():
     ) as e:
         for val in ds:
             _ = val
+
+
+def test_datastream_sources_not_repeatedly_read(sample_json_file):
+    """This test ensures that `to_data_stream` is only called once on a single instance of a
+    DataStreamSource. This allows source plugin authors to control how data is cached for the
+    life of the stream"""
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    data_stream = stream_type(file=FileReference(filename=sample_json_file))
+
+    # Read the datastream as normal
+    validate_data_stream(data_stream, 2, SampleTrainingType)
+
+    # Delete the set source field so that .to_data_stream does not know how to find a source
+    data_stream.file = None
+
+    # Check that we can still read through the stream
+    validate_data_stream(data_stream, 2, SampleTrainingType)
