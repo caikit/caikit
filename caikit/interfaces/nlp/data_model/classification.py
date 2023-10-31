@@ -100,6 +100,7 @@ class TokenClassificationStreamResult(TokenClassificationResults):
     processed_index: Annotated[
         int, FieldNumber(2)
     ]  # Result index up to which text is processed
+    start_index: Annotated[int, FieldNumber(3)]  # Result start index for processed text
 
 
 @dataobject(package=NLP_PACKAGE)
@@ -140,3 +141,4 @@ class ClassifiedGeneratedTextStreamResult(ClassifiedGeneratedTextResult):
     processed_index: Annotated[
         Optional[int], FieldNumber(7)
     ]  # Result index up to which text is processed
+    start_index: Annotated[int, FieldNumber(8)]  # Result start index for processed text
