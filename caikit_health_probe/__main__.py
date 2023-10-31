@@ -17,6 +17,7 @@ This module implements a common health probe for all running runtime servers.
 # Standard
 from contextlib import contextmanager
 from typing import Optional, Tuple
+import importlib
 import os
 import sys
 import tempfile
@@ -25,9 +26,17 @@ import warnings
 # First Party
 import alog
 
-# Local
-from ..config import get_config
-from ..core.toolkit import logging
+# We play some tricks to import caikit's config here and avoid importing all of
+# caikit itself. The reason for this is that importing caikit can be very costly
+# relative to the actual cost of probing the servers and since this is intended
+# to stand alone as an executable, that import time cost is added to every call.
+caikit_spec = importlib.util.find_spec("caikit")
+sys.path = [os.path.dirname(caikit_spec.origin)] + sys.path
+# Third Party
+from config import get_config
+
+sys.path = sys.path[1:]
+
 
 log = alog.use_channel("PROBE")
 
@@ -114,11 +123,6 @@ def _http_health_probe(
         # Third Party
         import requests  # pylint: disable=import-outside-toplevel
 
-        # Local
-        from .http_server import (  # pylint: disable=import-outside-toplevel
-            HEALTH_ENDPOINT,
-        )
-
     # Requests requires that the TLS information be in files
     with _tls_files(tls_key, tls_cert) as tls_files:
         key_file, cert_file = tls_files
@@ -146,8 +150,9 @@ def _http_health_probe(
                 session.mount(
                     f"{protocol}://", requests.adapters.HTTPAdapter(max_retries=retries)
                 )
+                # NOTE: Not using the constant to avoid big imports
                 resp = session.get(
-                    f"{protocol}://localhost:{port}{HEALTH_ENDPOINT}",
+                    f"{protocol}://localhost:{port}/health",
                     timeout=0.01,
                     **kwargs,
                 )
@@ -196,15 +201,10 @@ def _grpc_health_probe(
         )
         import grpc  # pylint: disable=import-outside-toplevel
 
-        # Local
-        from .grpc_server import (  # pylint: disable=import-outside-toplevel
-            RuntimeGRPCServer,
-        )
-
     hostname = f"localhost:{port}"
     if tls_key and tls_cert:
-        tls_server_key = bytes(RuntimeGRPCServer._load_secret(tls_key), "utf-8")
-        tls_server_cert = bytes(RuntimeGRPCServer._load_secret(tls_cert), "utf-8")
+        tls_server_key = bytes(_load_secret(tls_key), "utf-8")
+        tls_server_cert = bytes(_load_secret(tls_cert), "utf-8")
         if client_ca:
             log.debug("Probing mTLS gRPC server")
             credentials = grpc.ssl_channel_credentials(
@@ -260,8 +260,26 @@ def _tls_files(
         return
 
 
+def _load_secret(secret: str) -> str:
+    """NOTE: Copied from grpc_server to avoid costly imports"""
+    if os.path.exists(secret):
+        with open(secret, "r", encoding="utf-8") as secret_file:
+            return secret_file.read()
+    return secret
+
+
 ## Main ########################################################################
-if __name__ == "__main__":
-    logging.configure()
+def main():
+    caikit_config = get_config()
+    alog.configure(
+        default_level=caikit_config.log.level,
+        filters=caikit_config.log.filters,
+        thread_id=caikit_config.log.thread_id,
+        formatter=caikit_config.log.formatter,
+    )
     if not health_probe():
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

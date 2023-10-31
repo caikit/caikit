@@ -18,14 +18,17 @@ Tests for the uniform health probe
 from contextlib import contextmanager
 from enum import Enum
 from typing import Tuple
+from unittest import mock
 
 # Third Party
 import pytest
 import tls_test_tools
 
+# First Party
+from caikit_health_probe import __main__ as caikit_health_probe
+
 # Local
 from caikit import get_config
-from caikit.runtime.health_probe import health_probe
 from tests.conftest import temp_config
 from tests.runtime.conftest import runtime_grpc_test_server, runtime_http_test_server
 from tests.runtime.http_server.test_http_server import generate_tls_configs
@@ -64,6 +67,14 @@ def maybe_runtime_http_test_server(*args, **kwargs):
         yield
 
 
+@contextmanager
+def temp_probe_config(*args, **kwargs):
+    with temp_config(*args, **kwargs) as the_config:
+        get_config_mock = mock.MagicMock(return_value=the_config)
+        with mock.patch.object(caikit_health_probe, "get_config", get_config_mock):
+            yield
+
+
 ## Tests #######################################################################
 
 
@@ -98,7 +109,7 @@ def test_health_probe(test_config: Tuple[TlsMode, bool], server_mode: ServerMode
         inline=inline,
         separate_client_ca=tls_mode == TlsMode.MTLS_SEPARATE_CLIENT_CA,
     ) as config_overrides:
-        with temp_config(
+        with temp_probe_config(
             {
                 "runtime": {
                     "grpc": {
@@ -113,14 +124,16 @@ def test_health_probe(test_config: Tuple[TlsMode, bool], server_mode: ServerMode
             "merge",
         ):
             # Health probe fails with no servers booted
-            assert not health_probe()
+            assert not caikit_health_probe.health_probe()
             # If booting the gRPC server, do so
             with maybe_runtime_grpc_test_server(grpc_port):
                 # If only running gRPC, health probe should pass
-                assert health_probe() == (server_mode == ServerMode.GRPC)
+                assert caikit_health_probe.health_probe() == (
+                    server_mode == ServerMode.GRPC
+                )
                 # If booting the HTTP server, do so
                 with maybe_runtime_http_test_server(
                     http_port, tls_config_override=config_overrides
                 ):
                     # Probe should always pass with both possible servers up
-                    assert health_probe()
+                    assert caikit_health_probe.health_probe()
