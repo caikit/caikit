@@ -17,7 +17,7 @@ This module implements a common health probe for all running runtime servers.
 # Standard
 from contextlib import contextmanager
 from typing import Optional, Tuple
-import importlib
+import importlib.util
 import os
 import sys
 import tempfile
