@@ -55,7 +55,7 @@ def clean_data_model(sample_inference_service, sample_train_service):
     with reset_global_protobuf_registry():
         with temp_dpool(
             inherit_global=True,
-            skip_inherit=[".*sampletask.*\.proto"],
+            skip_inherit=[r".*sampletask.*\.proto"],
         ) as dpool:
             yield dpool
 
