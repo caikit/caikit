@@ -30,6 +30,12 @@ dependencies = [
     "werkzeug>=2.3.7,<4.0.0"
 ]
 
+[project.scripts]
+
+caikit-runtime = "caikit.runtime.__main__:main"
+caikit-health-probe = "caikit_health_probe.__main__:main"
+caikit-render-interfaces = "caikit.runtime.dump_services:main"
+
 [project.optional-dependencies]
 
 ## Runtime Extra Sets ##
