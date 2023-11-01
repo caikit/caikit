@@ -13,6 +13,11 @@
 # limitations under the License.
 """
 Tests for the uniform health probe
+
+🌶️🌶️🌶️ This test relies on test infrastructure in caikit.runtime, so the test
+needs to live inside tests/runtime even though the functionality being tested is
+not. If this is moved to the top of tests, the runtime test infra boots up too
+early causing some of the core tests to fail!
 """
 # Standard
 from contextlib import contextmanager
