@@ -24,14 +24,16 @@ import alog
 
 # Local
 from caikit.runtime.dump_services import dump_grpc_services, dump_http_services
-from tests.conftest import PROTOBUF_VERSION
+from tests.conftest import ARM_ARCH, PROTOBUF_VERSION
 
 ## Helpers #####################################################################
 
 log = alog.use_channel("TEST-DUMP-I")
 
 
-@pytest.mark.skipif(PROTOBUF_VERSION < 4, reason="protobuf 3 serialization bug")
+@pytest.mark.skipif(
+    PROTOBUF_VERSION < 4 and ARM_ARCH, reason="protobuf 3 serialization bug"
+)
 def test_dump_grpc_services_dir_exists():
     with tempfile.TemporaryDirectory() as workdir:
         dump_grpc_services(workdir, False)
@@ -41,7 +43,9 @@ def test_dump_grpc_services_dir_exists():
             assert file.endswith(".proto")
 
 
-@pytest.mark.skipif(PROTOBUF_VERSION < 4, reason="protobuf 3 serialization bug")
+@pytest.mark.skipif(
+    PROTOBUF_VERSION < 4 and ARM_ARCH, reason="protobuf 3 serialization bug"
+)
 def test_dump_grpc_services_dir_does_not_exist():
     with tempfile.TemporaryDirectory() as workdir:
         fake_dir = os.path.join(workdir, "fake_dir")

@@ -9,6 +9,7 @@ from unittest.mock import patch
 import copy
 import importlib
 import os
+import platform
 import sys
 import tempfile
 import uuid
@@ -39,8 +40,9 @@ FIXTURES_DIR = os.path.join(
     "fixtures",
 )
 
-# Some tests need to be skipped if using protobuf 3.X
+# Some tests need to be skipped if using protobuf 3.X and arm
 PROTOBUF_VERSION = semver.parse(importlib.metadata.version("protobuf"))["major"]
+ARM_ARCH = "arm" in platform.machine()
 
 # Make sample_lib available for import
 sys.path.append(FIXTURES_DIR)
