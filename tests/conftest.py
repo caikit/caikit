@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from typing import Callable, List, Union
 from unittest.mock import patch
 import copy
-import json
+import importlib
 import os
 import sys
 import tempfile
@@ -15,6 +15,7 @@ import uuid
 
 # Third Party
 import pytest
+import semver
 
 # First Party
 import alog
@@ -37,6 +38,9 @@ FIXTURES_DIR = os.path.join(
     os.path.dirname(__file__),
     "fixtures",
 )
+
+# Some tests need to be skipped if using protobuf 3.X
+PROTOBUF_VERSION = semver.parse(importlib.metadata.version("protobuf"))["major"]
 
 # Make sample_lib available for import
 sys.path.append(FIXTURES_DIR)
