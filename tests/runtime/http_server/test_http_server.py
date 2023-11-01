@@ -16,11 +16,9 @@ Tests for the caikit HTTP server
 """
 # Standard
 from contextlib import contextmanager
-from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 from typing import Dict
-from unittest.mock import patch
 import json
 import os
 import signal
@@ -29,7 +27,6 @@ import zipfile
 
 # Third Party
 from fastapi.testclient import TestClient
-import numpy as np
 import pytest
 import requests
 import tls_test_tools
@@ -39,7 +36,7 @@ from caikit.core import MODEL_MANAGER, DataObjectBase, dataobject
 from caikit.core.model_management.multi_model_finder import MultiModelFinder
 from caikit.runtime import http_server
 from caikit.runtime.http_server.http_server import StreamEventTypes
-from tests.conftest import temp_config, temp_config_setup
+from tests.conftest import temp_config
 from tests.runtime.conftest import (
     ModuleSubproc,
     register_trained_model,
