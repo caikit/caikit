@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # Standard
+import argparse
 import json
 import os
 import sys
@@ -29,14 +30,15 @@ import caikit
 log = alog.use_channel("RUNTIME-DUMP-SVC")
 
 
-def dump_grpc_services(output_dir: str):
+def dump_grpc_services(output_dir: str, write_modules_file):
     """Utility for rendering the all generated interfaces to proto files"""
     inf_enabled = get_config().runtime.service_generation.enable_inference
     train_enabled = get_config().runtime.service_generation.enable_training
 
     if inf_enabled:
         inf_svc = ServicePackageFactory.get_service_package(
-            ServicePackageFactory.ServiceType.INFERENCE, write_modules_file=True
+            ServicePackageFactory.ServiceType.INFERENCE,
+            write_modules_file=write_modules_file,
         )
     if train_enabled:
         train_svc = ServicePackageFactory.get_service_package(
@@ -99,12 +101,35 @@ def dump_http_services(output_dir: str):
 
 
 if __name__ == "__main__":
-    assert len(sys.argv) == 2, f"Usage: {sys.argv[0]} <output_dir>"
-    out_dir = sys.argv[1]
+    parser = argparse.ArgumentParser(
+        description="Dump grpc and http services for inference and train"
+    )
+
+    # Add an argument for the output_dir
+    parser.add_argument(
+        "output_dir",
+        type=str,
+        help="Path to the output directory for service(s)' proto files",
+    )
+
+    # Add an argument for write_modules_json
+    parser.add_argument(
+        "-j",
+        "--write-modules-json",
+        default=False,
+        action="store_true",
+        help="Wether the modules.json (of supported modules) should be output?",
+    )
+
+    args = parser.parse_args()
+
+    out_dir = args.output_dir
+    write_modules_json = args.write_modules_json
+
     # Set up logging so users can set LOG_LEVEL etc
     caikit.core.toolkit.logging.configure()
 
     if get_config().runtime.grpc.enabled:
-        dump_grpc_services(out_dir)
+        dump_grpc_services(out_dir, write_modules_json)
     if get_config().runtime.http.enabled:
         dump_http_services(out_dir)
