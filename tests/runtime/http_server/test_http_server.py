@@ -618,6 +618,8 @@ def test_model_not_found(client):
 
 
 def test_model_not_found_with_lazy_load_multi_model_finder(open_port):
+    """An error check to make sure we return a 404 in case of
+    incorrect model_id while using multi model finder with lazy load enabled"""
     with tempfile.TemporaryDirectory() as workdir:
         # NOTE: This test requires that the ModelManager class not be a singleton.
         #   To accomplish this, the singleton instance is temporarily removed.
