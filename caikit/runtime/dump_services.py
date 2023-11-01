@@ -107,9 +107,7 @@ if __name__ == "__main__":
 
     # Add an argument for the output_dir
     parser.add_argument(
-        "-o",
-        "--output-dir",
-        default="protos",
+        "output_dir",
         type=str,
         help="Path to the output directory for service(s)' proto files",
     )
