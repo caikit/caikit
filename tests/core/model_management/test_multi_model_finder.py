@@ -28,6 +28,7 @@ from caikit.core import ModelManager
 from caikit.core.model_management.multi_model_finder import MultiModelFinder
 from tests.conftest import temp_config
 from tests.core.helpers import TestFinder
+import caikit
 
 ## Helpers #####################################################################
 
@@ -113,11 +114,17 @@ def test_multi_model_finder_first_not_found(test_finder_config, good_model_path)
         assert finder.find_model(good_model_path)
 
 
-def test_multi_model_finder_not_found():
+def test_multi_model_finder_not_found(reset_globals):
     """Make sure that a simple proxy to local works"""
     with temp_config_finder() as finder:
         assert isinstance(finder, MultiModelFinder)
         assert finder.find_model("not/a/valid/path") is None
+        with pytest.raises(ValueError) as e:
+            caikit.core.load("bad/path/to/model")
+        assert (
+            e.value.args[0]
+            == "value check failed: Unable to find a ModuleConfig for bad/path/to/model"
+        )
 
 
 @pytest.mark.parametrize(

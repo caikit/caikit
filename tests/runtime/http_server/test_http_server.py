@@ -16,11 +16,9 @@ Tests for the caikit HTTP server
 """
 # Standard
 from contextlib import contextmanager
-from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 from typing import Dict
-from unittest.mock import patch
 import json
 import os
 import signal
@@ -29,13 +27,13 @@ import zipfile
 
 # Third Party
 from fastapi.testclient import TestClient
-import numpy as np
 import pytest
 import requests
 import tls_test_tools
 
 # Local
 from caikit.core import MODEL_MANAGER, DataObjectBase, dataobject
+from caikit.core.model_management.multi_model_finder import MultiModelFinder
 from caikit.runtime import http_server
 from caikit.runtime.http_server.http_server import StreamEventTypes
 from tests.conftest import temp_config
@@ -43,6 +41,9 @@ from tests.runtime.conftest import (
     ModuleSubproc,
     register_trained_model,
     runtime_http_test_server,
+)
+from tests.runtime.model_management.test_model_manager import (
+    non_singleton_model_managers,
 )
 
 ## Fixtures #####################################################################
@@ -576,7 +577,7 @@ def test_inference_streaming_sample_module_actual_server_throws(
 
 
 def test_no_model_id(client):
-    """Simple check that we can ping a model"""
+    """Simple check to make sure we return a 400 if no model_id in payload"""
     response = client.post(
         f"/api/v1/task/sample",
         json={"inputs": {"name": "world"}},
@@ -604,12 +605,52 @@ def test_inference_multi_task_module(multi_task_model_id, client):
 
 
 def test_model_not_found(client):
-    """Simple check that we can ping a model"""
+    """Simple error check to make sure we return a 404 in case of
+    incorrect model_id"""
     response = client.post(
         f"/api/v1/task/sample",
         json={"model_id": "not_an_id", "inputs": {"name": "world"}},
     )
     assert response.status_code == 404
+
+
+def test_model_not_found_with_lazy_load_multi_model_finder(open_port):
+    """An error check to make sure we return a 404 in case of
+    incorrect model_id while using multi model finder with lazy load enabled"""
+    with tempfile.TemporaryDirectory() as workdir:
+        # NOTE: This test requires that the ModelManager class not be a singleton.
+        #   To accomplish this, the singleton instance is temporarily removed.
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": workdir,
+                    "lazy_load_local_models": True,
+                },
+                "model_management": {
+                    "finders": {
+                        "default": {
+                            "type": MultiModelFinder.name,
+                            "config": {
+                                "finder_priority": ["local"],
+                            },
+                        },
+                        "local": {"type": "LOCAL"},
+                    }
+                },
+            },
+            "merge",
+        ):
+            with runtime_http_test_server(open_port) as server:
+                # double checking that our local model_management change took affect
+                assert (
+                    server.global_predict_servicer._model_manager._lazy_load_local_models
+                )
+                response = requests.post(
+                    f"http://localhost:{server.port}/api/v1/task/sample",
+                    json={"model_id": "not_an_id", "inputs": {"name": "world"}},
+                )
+                assert response.status_code == 404
 
 
 def test_inference_sample_task_incorrect_input(sample_task_model_id, client):
