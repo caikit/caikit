@@ -835,7 +835,7 @@ def test_load_model_badmodel_error_response(runtime_grpc_server):
             modelKey="baz",
         )
         stub.loadModel(load_model_request)
-    assert context.value.code() == grpc.StatusCode.INTERNAL
+    assert context.value.code() == grpc.StatusCode.NOT_FOUND
 
 
 def test_unload_model_ok_response(sample_task_model_id, runtime_grpc_server):

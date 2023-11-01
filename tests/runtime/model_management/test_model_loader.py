@@ -114,7 +114,7 @@ def test_load_invalid_model_error_response(model_loader):
             local_model_path=Fixtures.get_bad_model_archive_path(),
             model_type="not_real",
         ).wait()
-    assert context.value.status_code == grpc.StatusCode.INTERNAL
+    assert context.value.status_code == grpc.StatusCode.NOT_FOUND
     assert model_id in context.value.message
 
 
@@ -308,7 +308,7 @@ def test_load_model_without_waiting_deferred_error(model_loader):
     )
     with pytest.raises(CaikitRuntimeException) as context:
         loaded_model.model()
-    assert context.value.status_code == grpc.StatusCode.INTERNAL
+    assert context.value.status_code == grpc.StatusCode.NOT_FOUND
     assert model_id in context.value.message
 
 
