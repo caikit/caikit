@@ -37,7 +37,7 @@ import traceback
 # Third Party
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import ResponseValidationError
+from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
 from grpc import StatusCode
 from sse_starlette import EventSourceResponse, ServerSentEvent
@@ -141,6 +141,18 @@ class RuntimeHTTPServer(RuntimeServerBase):
         super().__init__(get_config().runtime.http.port, tls_config_override)
 
         self.app = FastAPI()
+
+        # Request validation
+        @self.app.exception_handler(RequestValidationError)
+        async def validation_exception_handler(_, exc: RequestValidationError):
+            err_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+            error_content = {
+                "details": exc.errors(),
+                "code": err_code,
+                "id": None,
+            }
+            log.error("<RUN59871106E>", exc.errors(), exc_info=True)
+            return Response(content=json.dumps(error_content), status_code=err_code)
 
         # Response validation
         @self.app.exception_handler(ResponseValidationError)
