@@ -179,9 +179,13 @@ def runtime_http_test_server(open_port, *args, **kwargs):
             },
             "merge",
         ):
-            config_overrides = {}
-            if "tls_config_override" in kwargs:
-                config_overrides = kwargs["tls_config_override"]
+            # Forward the special "tls_config_override" to "tls_config_override"
+            # IFF the configs contain actual TLS (indicated by the presence of
+            # the special "use_in_test" element).
+            config_overrides = kwargs.pop("tls_config_override", {})
+            if "use_in_test" not in config_overrides:
+                config_overrides = {}
+            else:
                 kwargs["tls_config_override"] = config_overrides["runtime"]["tls"]
             with http_server.RuntimeHTTPServer(*args, **kwargs) as server:
                 _check_http_server_readiness(server, config_overrides)

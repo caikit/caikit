@@ -100,7 +100,7 @@ def dump_http_services(output_dir: str):
             handle.write(json.dumps(response.json(), indent=2))
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(
         description="Dump grpc and http services for inference and train"
     )
@@ -133,3 +133,7 @@ if __name__ == "__main__":
         dump_grpc_services(out_dir, write_modules_json)
     if get_config().runtime.http.enabled:
         dump_http_services(out_dir)
+
+
+if __name__ == "__main__":
+    main()

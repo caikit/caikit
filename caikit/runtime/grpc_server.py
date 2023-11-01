@@ -196,11 +196,20 @@ class RuntimeGRPCServer(RuntimeServerBase):
             )
             if self.tls_config.client.cert:
                 log.info("<RUN10001806I>", "Running with mutual TLS")
+                # Combine the client cert with the server's own cert so that
+                # health probes can use the server's key/cert instead of needing
+                # one signed by a potentially-external CA.
+                root_certificates = b"\n".join(
+                    [
+                        bytes(self._load_secret(self.tls_config.client.cert), "utf-8"),
+                        tls_server_pair[1],
+                    ]
+                )
                 # Client will verify the server using server cert and the server
                 # will verify the client using client cert.
                 server_credentials = grpc.ssl_server_credentials(
                     [tls_server_pair],
-                    root_certificates=self._load_secret(self.tls_config.client.cert),
+                    root_certificates=root_certificates,
                     require_client_auth=True,
                 )
             else:
