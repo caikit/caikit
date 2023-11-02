@@ -720,7 +720,7 @@ def test_inference_sample_task_incorrect_input(sample_task_model_id, client):
     assert "details" in json_response
     assert "code" in json_response
     assert "id" in json_response
-    assert "Extra inputs are not permitted" in json_response["details"][0]["msg"]
+    assert json_response["details"] == "Extra inputs are not permitted"
 
 
 @pytest.mark.skip("Skipping since we're not tacking forward compatibility atm")
