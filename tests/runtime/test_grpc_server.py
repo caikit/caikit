@@ -72,7 +72,7 @@ from sample_lib.data_model import (
 )
 from sample_lib.data_model.sample import OtherTask, SampleTask, StreamingTask
 from sample_lib.modules import FirstTask
-from tests.conftest import random_test_id, temp_config
+from tests.conftest import ARM_ARCH, PROTOBUF_VERSION, random_test_id, temp_config
 from tests.core.helpers import *
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import (
@@ -1022,6 +1022,9 @@ def test_grpc_health_probe_ok_response(runtime_grpc_server):
     assert actual_response.status == 1
 
 
+@pytest.mark.skipif(
+    PROTOBUF_VERSION < 4 and ARM_ARCH, reason="protobuf 3 serialization bug"
+)
 def test_grpc_server_can_render_all_necessary_protobufs(
     runtime_grpc_server, sample_inference_service, sample_train_service, tmp_path
 ):

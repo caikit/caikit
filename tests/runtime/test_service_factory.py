@@ -37,7 +37,7 @@ from sample_lib import SampleModule
 from sample_lib.data_model import SampleInputType, SampleOutputType
 from sample_lib.data_model.sample import SampleTask
 from sample_lib.modules import ListModule, OtherModule
-from tests.conftest import temp_config
+from tests.conftest import ARM_ARCH, PROTOBUF_VERSION, temp_config
 from tests.core.helpers import MockBackend
 from tests.data_model_helpers import reset_global_protobuf_registry, temp_dpool
 from tests.runtime.conftest import sample_inference_service, sample_train_service
@@ -320,6 +320,9 @@ def test_override_package(clean_data_model):
         assert "SampleModule" in str(clean_modules)
 
 
+@pytest.mark.skipif(
+    PROTOBUF_VERSION < 4 and ARM_ARCH, reason="protobuf 3 serialization bug"
+)
 def test_override_package_and_domain_with_proto_gen(clean_data_model):
     """
     Test override of both package and domain, to make sure they work together, and

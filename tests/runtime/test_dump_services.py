@@ -16,17 +16,24 @@ import os
 import shutil
 import tempfile
 
+# Third Party
+import pytest
+
 # First Party
 import alog
 
 # Local
 from caikit.runtime.dump_services import dump_grpc_services, dump_http_services
+from tests.conftest import ARM_ARCH, PROTOBUF_VERSION
 
 ## Helpers #####################################################################
 
 log = alog.use_channel("TEST-DUMP-I")
 
 
+@pytest.mark.skipif(
+    PROTOBUF_VERSION < 4 and ARM_ARCH, reason="protobuf 3 serialization bug"
+)
 def test_dump_grpc_services_dir_exists():
     with tempfile.TemporaryDirectory() as workdir:
         dump_grpc_services(workdir, False)
@@ -36,15 +43,19 @@ def test_dump_grpc_services_dir_exists():
             assert file.endswith(".proto")
 
 
+@pytest.mark.skipif(
+    PROTOBUF_VERSION < 4 and ARM_ARCH, reason="protobuf 3 serialization bug"
+)
 def test_dump_grpc_services_dir_does_not_exist():
-    fake_dir = "fake_dir"
-    dump_grpc_services(fake_dir, False)
-    assert os.path.exists(fake_dir)
+    with tempfile.TemporaryDirectory() as workdir:
+        fake_dir = os.path.join(workdir, "fake_dir")
+        dump_grpc_services(fake_dir, False)
+        assert os.path.exists(fake_dir)
 
-    for file in os.listdir(fake_dir):
-        assert file.endswith(".proto")
+        for file in os.listdir(fake_dir):
+            assert file.endswith(".proto")
 
-    shutil.rmtree(fake_dir)
+        shutil.rmtree(fake_dir)
 
 
 def test_dump_http_services_dir_exists():
@@ -58,12 +69,11 @@ def test_dump_http_services_dir_exists():
 
 
 def test_dump_http_services_dir_does_not_exist():
-    fake_dir = "fake_dir"
-    dump_http_services(fake_dir)
-    assert os.path.exists(fake_dir)
+    with tempfile.TemporaryDirectory() as workdir:
+        fake_dir = os.path.join(workdir, "fake_dir")
+        dump_http_services(fake_dir)
+        assert os.path.exists(fake_dir)
 
-    for file in os.listdir(fake_dir):
-        assert file == "openapi.json"
-        assert os.path.getsize(os.path.join(fake_dir, file)) > 0
-
-    shutil.rmtree(fake_dir)
+        for file in os.listdir(fake_dir):
+            assert file == "openapi.json"
+            assert os.path.getsize(os.path.join(fake_dir, file)) > 0
