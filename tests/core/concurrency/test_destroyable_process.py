@@ -201,4 +201,7 @@ def test_process_can_raise_nested_exception(process_type):
     assert proc.error.__cause__ is not None
     tb = traceback.format_exception(proc.error)
     assert len(tb) > 2
-    assert 'The above exception was the direct cause of the following exception:' in "".join(tb)
+    assert (
+        "The above exception was the direct cause of the following exception:"
+        in "".join(tb)
+    )

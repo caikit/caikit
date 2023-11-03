@@ -11,24 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# Standard
 import pickle
 import traceback
 
+# Third Party
 import pytest
 
-from caikit.core.concurrency.pickling_exception import ExceptionPickler, PickleFailureFallbackException
+# Local
+from caikit.core.concurrency.pickling_exception import (
+    ExceptionPickler,
+    PickleFailureFallbackException,
+)
 
 
 #### Custom exception types for testing ##################################
 class WellBehavedException(Exception):
-
     def __init__(self, *args):
         self.message = args[0]
         self.thing = args[1]
 
 
 class PoorlyBehavedException(Exception):
-
     def __init__(self, message, private_arg):
         self.message = message
         self._private_arg = private_arg
@@ -38,7 +42,6 @@ class PoorlyBehavedException(Exception):
 
 
 class ReallyPoorlyBehavedException(Exception):
-
     def __init__(self, message):
         self._something_entirely_different = message
 
@@ -115,10 +118,14 @@ def test_really_non_conforming_exception_types_can_be_pickled():
 
 
 def test_big_chain_of_interesting_exceptions_can_be_pickled():
-    chain = raise_from_all(ValueError("buffer size must be > 0!"),
-                           ReallyPoorlyBehavedException(message="input error!"),
-                           PoorlyBehavedException(message="Failed to validate input data", private_arg="code 7260"),
-                           WellBehavedException("Training failed due to invalid input", "retryable=False"))
+    chain = raise_from_all(
+        ValueError("buffer size must be > 0!"),
+        ReallyPoorlyBehavedException(message="input error!"),
+        PoorlyBehavedException(
+            message="Failed to validate input data", private_arg="code 7260"
+        ),
+        WellBehavedException("Training failed due to invalid input", "retryable=False"),
+    )
 
     pickler = ExceptionPickler(chain[0])
     pickler = pickle.loads(pickle.dumps(pickler))
@@ -133,7 +140,9 @@ def test_big_chain_of_interesting_exceptions_can_be_pickled():
 
 
 def test_pickler_works_with_mix_of_arg_and_kwarg():
-    exception = PoorlyBehavedException("this is my arg", private_arg="and this is my kwarg")
+    exception = PoorlyBehavedException(
+        "this is my arg", private_arg="and this is my kwarg"
+    )
 
     unpickled = pickle.loads(pickle.dumps(ExceptionPickler(exception))).get()
 

@@ -26,6 +26,7 @@ because it can't make any guarantees about the picklability of those objects. Th
 leads to one-line tracebacks on the unpickled exception, because there is no context
 to generate a useful stack trace from.
 """
+# Standard
 import pickle
 import re
 
@@ -37,11 +38,13 @@ class PickleFailureFallbackException(Exception):
 
 class ExceptionPickler:
 
-    # Matches the specific TypeError that raises when exception classes allow init kwargs but do not handle them in __reduce__
-    _type_error_expression = re.compile(r".*__init__\(\) missing \d required positional argument")
+    # Matches the specific TypeError that raises when exception classes allow init kwargs
+    # but do not handle them in __reduce__
+    _type_error_expression = re.compile(
+        r".*__init__\(\) missing \d required positional argument"
+    )
     # Matches the names of the positional arguments that are missing, from the TypeError's string
     _arg_match_expression = re.compile(r".*?'(.+?)'+")
-
 
     def __init__(self, exception: BaseException):
         """
@@ -73,12 +76,17 @@ class ExceptionPickler:
         """Package up the exception's details into a dict, taking care to:
         - include the __cause__ and __context__, which are not serialized by default
             - Recursively wrap _those_ in PicklingExceptionWrappers
-        - Check that this exception _can_ be pickled, and try to handle common problems with __reduce__
+        - Check that this exception _can_ be pickled, and try to handle common problems with
+            __reduce__
         """
         state_dict = {
             "exception": self.exception,
-            "cause": ExceptionPickler(self.exception.__cause__) if self.exception.__cause__ else None,
-            "context": ExceptionPickler(self.exception.__context__) if self.exception.__context__ else None
+            "cause": ExceptionPickler(self.exception.__cause__)
+            if self.exception.__cause__
+            else None,
+            "context": ExceptionPickler(self.exception.__context__)
+            if self.exception.__context__
+            else None,
         }
 
         # ty/catch pickle errors
@@ -102,7 +110,9 @@ class ExceptionPickler:
                             arg = getattr(self.exception, f"_{kwarg}")
                             kwargs[kwarg] = arg
                         else:
-                            raise ValueError(f"{self.exception} has no attributes matching kwarg name {kwarg}")
+                            raise ValueError(
+                                f"{self.exception} has no attributes matching kwarg name {kwarg}"
+                            )
 
                     state_dict.pop("exception")
                     state_dict["initializer"] = type(self.exception)
@@ -110,18 +120,16 @@ class ExceptionPickler:
                     state_dict["kwargs"] = kwargs
 
                     # check that we can re-build this exception
-                    _ = state_dict["initializer"](*state_dict["args"], **state_dict["kwargs"])
-                except Exception as e:
-                    state_dict["exception"] = PickleFailureFallbackException(str(self.exception))
+                    _ = state_dict["initializer"](
+                        *state_dict["args"], **state_dict["kwargs"]
+                    )
+                except Exception:
+                    state_dict["exception"] = PickleFailureFallbackException(
+                        str(self.exception)
+                    )
             else:
-                state_dict["exception"] = PickleFailureFallbackException(str(self.exception))
-
-
-
-
-        # if TypeError =.__init__() missing %d required positional arguments: 'attr1' and 'attr2'...
-        # instead try to store the class to initialize along with `exception.attr1`, `exception.attr2` etc
-        # if that fails or other error then...
-        # Init a PickleFallbackException with str(exception)
+                state_dict["exception"] = PickleFailureFallbackException(
+                    str(self.exception)
+                )
 
         return state_dict
