@@ -30,6 +30,15 @@ to generate a useful stack trace from.
 import pickle
 import re
 
+# First Party
+import alog
+
+# Local
+from caikit.core.exceptions import error_handler
+
+log = alog.use_channel("EXC_PICKLER")
+error = error_handler.get(log)
+
 
 class PickleFailureFallbackException(Exception):
     """Exception type used to replace exceptions that just cannot be pickled no matter
@@ -37,6 +46,7 @@ class PickleFailureFallbackException(Exception):
 
 
 class ExceptionPickler:
+    """Instances of this class can safely be pickled with any exception inside"""
 
     # Matches the specific TypeError that raises when exception classes allow init kwargs
     # but do not handle them in __reduce__
@@ -51,7 +61,9 @@ class ExceptionPickler:
         Args:
             exception: The exception that will be safely pickled within this container
         """
-        # TODO: value check not none
+        error.type_check(
+            "<COR12665309E>", Exception, allow_none=False, exception=exception
+        )
         self.exception = exception
 
     def get(self) -> BaseException:
@@ -92,10 +104,14 @@ class ExceptionPickler:
         # ty/catch pickle errors
         try:
             pickle.loads(pickle.dumps(self.exception))
+            log.debug4("Exception pickled successfully: %s", self.exception)
         except TypeError as type_error:
+            log.debug4("Exception could not be pickled directly: %s", self.exception)
             if self._type_error_expression.match(str(type_error)):
                 try:
                     keywords = self._arg_match_expression.findall(str(type_error))
+
+                    log.debug4("Looking for keyword arguments: %s", keywords)
 
                     # First grab the positional arguments. This should be provided by BaseException
                     args = self.exception.args
@@ -123,11 +139,24 @@ class ExceptionPickler:
                     _ = state_dict["initializer"](
                         *state_dict["args"], **state_dict["kwargs"]
                     )
-                except Exception:
+                    log.debug4(
+                        "Successfully found all the args to re-initialize exception"
+                    )
+
+                except Exception as e:
+                    log.debug4(
+                        "Failed to find all args and kwargs to unpickle exception. Reason: %s",
+                        e,
+                    )
+
                     state_dict["exception"] = PickleFailureFallbackException(
                         str(self.exception)
                     )
             else:
+                log.debug4(
+                    "Could not determine cause of pickling error: %s", type_error
+                )
+
                 state_dict["exception"] = PickleFailureFallbackException(
                     str(self.exception)
                 )
