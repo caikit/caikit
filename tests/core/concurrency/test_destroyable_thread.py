@@ -26,7 +26,7 @@ import time
 import pytest
 
 # Local
-from caikit.core.toolkit.destroyable_thread import (
+from caikit.core.concurrency.destroyable_thread import (
     DestroyableThread,
     ThreadDestroyedException,
 )
