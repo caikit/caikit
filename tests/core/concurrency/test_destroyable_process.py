@@ -15,18 +15,21 @@
 # Standard
 import multiprocessing
 import time
+import traceback
 
 # Third Party
 import pytest
 
 # Local
 from caikit.core.concurrency.destroyable_process import DestroyableProcess
+from tests.core.concurrency.test_exception_pickler import ReallyPoorlyBehavedException
 
 ## Helpers #####################################################################
 
 
 EXPECTED_THROW = ValueError("test-any-error")
 EXPECTED_SUCCESS = "test-any-result"
+UNPICKLABLE_ERROR = ReallyPoorlyBehavedException(message="This will not pickle")
 
 
 def infinite_wait():
@@ -40,6 +43,17 @@ def long_sleep():
 
 def thrower():
     raise EXPECTED_THROW
+
+
+def nested_thrower():
+    try:
+        raise EXPECTED_THROW
+    except Exception as e:
+        raise ValueError("some other error!") from e
+
+
+def bad_thrower():
+    raise UNPICKLABLE_ERROR
 
 
 def succeeder():
@@ -164,3 +178,27 @@ def test_default_event_is_set_on_completion(process_type):
     proc.start()
     proc.join()
     assert proc.completion_event.is_set()
+
+
+def test_process_can_raise_unpicklable_exception(process_type):
+    proc = DestroyableProcess(process_type, bad_thrower)
+    proc.start()
+    proc.join()
+
+    assert proc.threw
+    exception = proc.error
+
+    assert str(UNPICKLABLE_ERROR) in str(exception)
+
+
+def test_process_can_raise_nested_exception(process_type):
+    proc = DestroyableProcess(process_type, nested_thrower)
+    proc.start()
+    proc.join()
+
+    assert proc.threw
+
+    assert proc.error.__cause__ is not None
+    tb = traceback.format_exception(proc.error)
+    assert len(tb) > 2
+    assert 'The above exception was the direct cause of the following exception:' in "".join(tb)

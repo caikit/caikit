@@ -33,6 +33,7 @@ import alog
 # Local
 from .destroyable import Destroyable
 from caikit.core.exceptions import error_handler
+from .pickling_exception import ExceptionPickler
 
 log = alog.use_channel("DESTROY-PROC")
 error = error_handler.get(log)
@@ -173,7 +174,9 @@ class _DestroyableProcess(
                 err_str,
                 exc_info=True,
             )
-            self._child_conn.send(err)
+            # Wrap error for safe pickling
+            pickler = ExceptionPickler(err)
+            self._child_conn.send(pickler)
         finally:
             self._completion_event.set()
 
@@ -186,6 +189,9 @@ class _DestroyableProcess(
     @property
     def error(self) -> Optional[Exception]:
         self._update_result()
+
+        if isinstance(self.__result, ExceptionPickler):
+            return self.__result.get()
 
         if isinstance(self.__result, Exception):
             return self.__result
