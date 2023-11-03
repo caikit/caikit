@@ -19,6 +19,7 @@ a single column from a CSV file.
 """
 # Standard
 from typing import Dict
+import copy
 
 # First Party
 import alog
@@ -92,21 +93,17 @@ class CSVColumnFormatter:
                 # Don't mutate a list that we're iterating on here
                 # Subsequent re-entries into the stream would mutate the list further
                 # and really mess things up
-                data_item_copy = list(data_item[:])
+                data_item_copy = copy.deepcopy(data_item)
 
-                last_type = None
                 for i, (element, type_) in enumerate(
                     zip(data_item, self._expected_columns.values())
                 ):
-                    last_type = type_
-                    if type_ == list:
+                    if type_ is list:
                         data_item_copy[i] = CSVColumnFormatter._attempt_to_listify(
                             element
                         )
 
-                if (len(data_item) > len(self._expected_columns)) and (
-                    last_type == list  # More data in the data item left...
-                ):
+                if len(data_item) > len(self._expected_columns) and (type_ is list):
                     # Last element was a list, so slurp the rest of the row in
                     length = len(self._expected_columns)
 
