@@ -19,7 +19,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from io import IOBase
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 import base64
 import datetime
 import json
@@ -37,10 +37,11 @@ import alog
 from ..exceptions import error_handler
 from . import enums, json_dict, timestamp
 
-if TYPE_CHECKING:
-    # Local
-    from caikit.core.data_model.data_backends import DataModelBackendBase
-    from caikit.interfaces.common.data_model.file import File
+# if TYPE_CHECKING: # TODO: uncommenting this breaks `tox -e imports` because of a circular import
+#     # Local
+#     from caikit.core.data_model.data_backends import DataModelBackendBase
+#     from caikit.interfaces.common.data_model.file import File
+
 # metaclass-generated field members cannot be detected by pylint
 # pylint: disable=no-member
 # pylint: disable=too-many-lines
@@ -531,7 +532,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
         return instance
 
     @property
-    def backend(self) -> Optional["DataModelBackendBase"]:
+    def backend(self) -> Optional["DataModelBackendBase"]:  # type: ignore # noqa: F821 # see TYPE_CHECKING note at the top
         return getattr(self, _DataBaseMetaClass._BACKEND_ATTR, None)
 
     def which_oneof(self, oneof_name: str) -> Optional[str]:
@@ -988,7 +989,9 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
         return json.dumps(self.to_dict(), **kwargs)
 
-    def to_file(self, file_obj: IOBase) -> Optional["File"]:
+    def to_file(
+        self, file_obj: IOBase
+    ) -> Optional["File"]:  # type: ignore # noqa: F821 # see TYPE_CHECKING note at the top
         """Export a DataBaseObject into a file-like object `file_obj`. If the DataBase object
         has requirements around file name or file type it can return them via
         the optional "File" return object
