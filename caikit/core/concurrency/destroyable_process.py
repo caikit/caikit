@@ -31,8 +31,8 @@ import os
 import alog
 
 # Local
-from ..exceptions import error_handler
 from .destroyable import Destroyable
+from caikit.core.exceptions import error_handler
 
 log = alog.use_channel("DESTROY-PROC")
 error = error_handler.get(log)

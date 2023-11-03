@@ -20,7 +20,7 @@ import time
 import pytest
 
 # Local
-from caikit.core.toolkit.destroyable_process import DestroyableProcess
+from caikit.core.concurrency.destroyable_process import DestroyableProcess
 
 ## Helpers #####################################################################
 
