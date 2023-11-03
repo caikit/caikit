@@ -18,7 +18,7 @@ Tests for the caikit HTTP server
 from contextlib import contextmanager
 from io import BytesIO
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List, Optional
 import json
 import os
 import signal
@@ -90,6 +90,8 @@ def generate_tls_configs(
     mtls: bool = False,
     inline: bool = False,
     separate_client_ca: bool = False,
+    server_sans: Optional[List[str]] = None,
+    client_sans: Optional[List[str]] = None,
     **http_config_overrides,
 ) -> Dict[str, Dict]:
     """Helper to generate tls configs"""
@@ -101,7 +103,8 @@ def generate_tls_configs(
             ca_key = tls_test_tools.generate_key()[0]
             ca_cert = tls_test_tools.generate_ca_cert(ca_key)
             server_key, server_cert = tls_test_tools.generate_derived_key_cert_pair(
-                ca_key=ca_key
+                ca_key=ca_key,
+                san_list=server_sans,
             )
             server_certfile, server_keyfile = save_key_cert_pair(
                 "server", workdir, server_key, server_cert
@@ -163,6 +166,7 @@ def generate_tls_configs(
                     workdir,
                     *tls_test_tools.generate_derived_key_cert_pair(
                         ca_key=client_ca_key,
+                        san_list=client_sans,
                         **subject_kwargs,
                     ),
                 )
