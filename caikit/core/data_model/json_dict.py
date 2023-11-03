@@ -110,9 +110,7 @@ def _value_to_struct_value(value, struct_class, value_class, list_value_class):
         )
     elif isinstance(value, bool):
         struct_value = value_class(bool_value=value)
-    elif isinstance(value, int):
-        struct_value = value_class(number_value=value)
-    elif isinstance(value, float):
+    elif isinstance(value, (int, float)):
         struct_value = value_class(number_value=value)
     elif isinstance(value, str):
         struct_value = value_class(string_value=value)

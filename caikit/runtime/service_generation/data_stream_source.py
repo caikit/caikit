@@ -597,7 +597,7 @@ def make_data_stream_source(
                 ) from err
             DataStreamSourceBase.__init__(self)
 
-        setattr(data_object, "__init__", __init__)
+        data_object.__init__ = __init__
 
         _DATA_STREAM_SOURCE_TYPES[data_element_type] = data_object
 

@@ -112,6 +112,7 @@ HEALTH_ENDPOINT = "/health"
 # Endpoint to use for server info
 RUNTIME_INFO_ENDPOINT = "/info/version"
 
+
 # Stream event types enum
 class StreamEventTypes(Enum):
     MESSAGE = "message"
@@ -284,7 +285,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 if hasattr(rpc, "input_streaming") and rpc.input_streaming:
                     # Skipping the binding of this route since we don't have support
                     log.info(
-                        "No support for input streaming on REST Server yet! Skipping this rpc %s with input type %s",
+                        "No support for input streaming on REST Server yet!"
+                        "Skipping this rpc %s with input type %s",
                         rpc_info["name"],
                         rpc_info["input_type"],
                     )
@@ -370,7 +372,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     self.global_train_servicer.run_training_job,
                     request=http_request_dm_object.to_proto(),
                     module=rpc.clz,
-                    training_output_dir=None,  # pass None so that GTS picks up the config one # TODO: double-check?
+                    training_output_dir=None,  # pass None so that GTS picks up the config one # TODO: double-check? # noqa: E501
                     # context=context,
                     wait=True,
                 )
@@ -762,7 +764,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
         except OSError as err:
             log.error(
                 "<RUN80977064E>",
-                "Cannot create temporary TLS files. Either pass config as file paths or run with write permissions.",
+                (
+                    "Cannot create temporary TLS files."
+                    "Either pass config as file paths or run with write permissions."
+                ),
                 exc_info=True,
             )
             raise ValueError() from err

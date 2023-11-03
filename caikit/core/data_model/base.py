@@ -37,6 +37,11 @@ import alog
 from ..exceptions import error_handler
 from . import enums, json_dict, timestamp
 
+# if TYPE_CHECKING: # TODO: uncommenting this breaks `tox -e imports` because of a circular import
+#     # Local
+#     from caikit.core.data_model.data_backends import DataModelBackendBase
+#     from caikit.interfaces.common.data_model.file import File
+
 # metaclass-generated field members cannot be detected by pylint
 # pylint: disable=no-member
 # pylint: disable=too-many-lines
@@ -304,13 +309,11 @@ class _DataBaseMetaClass(type):
         # If there is not already an __init__ function defined, make one
         current_init = cls.__init__
         if current_init is None or current_init is DataBase.__init__:
-            setattr(cls, "__init__", mcs._make_init(cls.fields))
+            cls.__init__ = mcs._make_init(cls.fields)
 
         # Check DataBase for file handlers
-        setattr(
-            cls,
-            "supports_file_operations",
-            cls.to_file != DataBase.to_file and cls.from_file != DataBase.from_file,
+        cls.supports_file_operations = (
+            cls.to_file != DataBase.to_file and cls.from_file != DataBase.from_file
         )
 
     @classmethod
@@ -435,7 +438,7 @@ class _DataBaseMetaClass(type):
                         setattr(self, field_name, None)
 
         # Set docstring to the method explicitly
-        setattr(__init__, "__doc__", docstring)
+        __init__.___doc__ = docstring
         return __init__
 
     @classmethod
@@ -529,7 +532,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
         return instance
 
     @property
-    def backend(self) -> Optional["DataModelBackendBase"]:
+    def backend(self) -> Optional["DataModelBackendBase"]:  # type: ignore # noqa: F821 # see TYPE_CHECKING note at the top
         return getattr(self, _DataBaseMetaClass._BACKEND_ATTR, None)
 
     def which_oneof(self, oneof_name: str) -> Optional[str]:
@@ -730,7 +733,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
                                 "caikit.interfaces.common.data_model"
                             )
                         ):
-                            kwargs[oneof] = getattr(contained_obj, "values")
+                            kwargs[oneof] = contained_obj.values
                         else:
                             kwargs[oneof] = contained_obj
                     else:
@@ -936,7 +939,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
         fields_to_dict = []
         for field in self.fields:
             if (
-                not field in self._fields_to_oneof
+                field not in self._fields_to_oneof
                 or self.which_oneof(self._fields_to_oneof[field]) == field
             ):
                 fields_to_dict.append(field)
@@ -986,7 +989,9 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
         return json.dumps(self.to_dict(), **kwargs)
 
-    def to_file(self, file_obj: IOBase) -> Optional["File"]:
+    def to_file(
+        self, file_obj: IOBase
+    ) -> Optional["File"]:  # type: ignore # noqa: F821 # see TYPE_CHECKING note at the top
         """Export a DataBaseObject into a file-like object `file_obj`. If the DataBase object
         has requirements around file name or file type it can return them via
         the optional "File" return object

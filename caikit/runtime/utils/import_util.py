@@ -161,10 +161,7 @@ def get_dynamic_module(module_name: str, module_dir: str = None) -> ModuleType:
     Returns:
         (module): Handle to the module after dynamic import
     """
-    if module_dir:
-        module_path = module_dir + "." + module_name
-    else:
-        module_path = module_name
+    module_path = f"{module_dir}.{module_name}" if module_dir else module_name
     log.info("<RUN11997772I>", "Loading service module: %s", module_path)
     # Try to find the spec for the module that we're interested in.
     spec = importlib.util.find_spec(module_path)

@@ -283,7 +283,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
         """If the secret points to a file, return the contents (plaintext reads).
         Else return the string"""
         if os.path.exists(secret):
-            with open(secret, "r", encoding="utf-8") as secret_file:
+            with open(secret, encoding="utf-8") as secret_file:
                 return secret_file.read()
         return secret
 

@@ -29,13 +29,13 @@ import yaml
 
 def load_txt(filename):
     """Load a string from a file with utf8 encoding."""
-    with open(filename, mode="r", encoding="utf8") as fh:
+    with open(filename, encoding="utf8") as fh:
         return fh.read()
 
 
 def load_txt_lines(filename):
     """Load a list of files from a text file with utf8 encoding"""
-    with open(filename, mode="r", encoding="utf8") as fh:
+    with open(filename, encoding="utf8") as fh:
         wordlist = list(map(str.strip, fh.readlines()))
     return wordlist
 
@@ -60,7 +60,7 @@ def save_binary(data, filename):
 
 def load_csv(filename):
     """Load a csv into a list-of-lists."""
-    with open(filename, mode="r", newline="", encoding="utf-8") as fh:
+    with open(filename, newline="", encoding="utf-8") as fh:
         return list(csv.reader(fh, delimiter=",", quotechar='"'))
 
 
@@ -73,7 +73,7 @@ def save_csv(text_list, filename, mode="w"):
 
 def load_dict_csv(filename):
     """Load a csv into a list-of-dicts."""
-    with open(filename, mode="r", encoding="utf-8") as csv_file:
+    with open(filename, encoding="utf-8") as csv_file:
         csv_reader = csv.DictReader(csv_file)
         return list(csv_reader)
 
@@ -90,7 +90,7 @@ def save_dict_csv(dict_list, filename, mode="w"):
 
 def load_json(filename):
     """Load a json file into a dictionary."""
-    with open(filename, mode="r", encoding="utf8") as fh:
+    with open(filename, encoding="utf8") as fh:
         return json.load(fh)
 
 
@@ -102,7 +102,7 @@ def save_json(save_dict, filename, mode="w"):
 
 def load_yaml(filename):
     """Load a yaml file into a dictionary."""
-    with open(filename, mode="r", encoding="utf8") as fh:
+    with open(filename, encoding="utf8") as fh:
         return yaml.safe_load(fh)
 
 

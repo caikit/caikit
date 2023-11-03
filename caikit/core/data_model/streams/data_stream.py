@@ -48,6 +48,7 @@ error = error_handler.get(log)
 
 T = TypeVar("T")
 
+
 # ghart: These public methods are all needed. This class is essentially its own factory, so these
 # are all the different ways of coercing different data sources into a common stream class
 # pylint: disable=too-many-public-methods
@@ -314,15 +315,14 @@ class DataStream(Generic[T]):
     @classmethod
     def _from_csv_generator(cls, filename, skip, *csv_args, **csv_kwargs):
         # open the csv file (closure around `filename`)
-        with open(filename, mode="r", encoding="utf8") as fh:
+        with open(filename, encoding="utf8") as fh:
             # skip lines if requested
             for _ in range(skip):
                 # pylint: disable=stop-iteration-return
                 next(fh)
 
             # for each line of the csv file, yield a list
-            for line in csv.reader(fh, *csv_args, **csv_kwargs):
-                yield line
+            yield from csv.reader(fh, *csv_args, **csv_kwargs)
 
     @classmethod
     def from_header_csv(cls, filename: str, *args, **kwargs) -> "DataStream[Dict]":
@@ -368,7 +368,7 @@ class DataStream(Generic[T]):
     @classmethod
     def _from_header_csv_generator(cls, filename, *csv_args, **csv_kwargs):
         # open the csv file (closure around `filename`)
-        with open(filename, mode="r", encoding="utf8") as fh:
+        with open(filename, encoding="utf8") as fh:
             yield from cls._from_header_csv_buffer_generator(
                 fh, *csv_args, **csv_kwargs
             )
@@ -384,8 +384,7 @@ class DataStream(Generic[T]):
                 RuntimeError("File handler for csv with header not seekable"),
             )
         # for each line of the csv file, yield a dict
-        for line in csv.DictReader(fh, *csv_args, **csv_kwargs):
-            yield line
+        yield from csv.DictReader(fh, *csv_args, **csv_kwargs)
 
     @classmethod
     def from_txt(cls, filename: str) -> "DataStream[str]":
@@ -425,7 +424,7 @@ class DataStream(Generic[T]):
     @classmethod
     def _from_txt_generator(cls, filename):
         # open the file (closure around `filename`)
-        with open(filename, mode="r", encoding="utf8") as fh:
+        with open(filename, encoding="utf8") as fh:
             # for each line of the file
             for line in fh:
                 # strip new lines and carriage returns and yield the line
@@ -573,8 +572,7 @@ class DataStream(Generic[T]):
         for filename in glob(os.path.join(dirname, "*.csv")):
             data_stream_list.append(cls.from_header_csv(filename=filename))
         # yield the combined data item once flattened
-        for data_item in DataStream.chain(data_stream_list).flatten():
-            yield data_item
+        yield from DataStream.chain(data_stream_list).flatten()
 
     @classmethod
     def from_jsonl_collection(cls, dirname: str) -> "DataStream[Dict]":
@@ -602,8 +600,7 @@ class DataStream(Generic[T]):
         for filename in glob(os.path.join(dirname, "*.jsonl")):
             data_stream_list.append(cls.from_jsonl(filename=filename))
         # yield the combined data item once flattened
-        for data_item in DataStream.chain(data_stream_list).flatten():
-            yield data_item
+        yield from DataStream.chain(data_stream_list).flatten()
 
     @classmethod
     def from_multipart_file(cls, filename: str) -> "DataStream[JsonDictValue]":
@@ -806,8 +803,7 @@ class DataStream(Generic[T]):
 
         def generator_func():
             for inner_stream in self:
-                for data_item in inner_stream:
-                    yield data_item
+                yield from inner_stream
 
         return DataStream(generator_func)
 

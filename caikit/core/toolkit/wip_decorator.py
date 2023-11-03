@@ -129,10 +129,7 @@ def work_in_progress(*args, **kwargs):
     foo is still in the BETA phase and subject to change!
 
     """
-    if args:
-        wrapped_obj = args[0]
-    else:
-        wrapped_obj = None
+    wrapped_obj = args[0] if args else None
 
     # Set defaults
     category = kwargs.get("category", WipCategory.WIP)
