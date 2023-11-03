@@ -66,6 +66,11 @@ def raise_from_all(*exceptions):
     return chain
 
 
+def get_traceback(exc):
+    """Provides <py310 compatibility"""
+    return traceback.format_exception(type(exc), value=exc, tb=exc.__traceback__)
+
+
 def test_exceptions_keep_cause_and_context():
     chain = raise_from_all(ValueError("the_little_cause"), ValueError("the_big_effect"))
 
@@ -81,7 +86,7 @@ def test_exceptions_keep_cause_and_context():
     assert str(unpickled_effect) == str(effect)
     assert str(unpickled_effect.__cause__) == str(cause)
 
-    tb = "".join(traceback.format_exception(unpickled_effect))
+    tb = "".join(get_traceback(unpickled_effect))
     assert str(cause) in tb
 
 
@@ -134,7 +139,7 @@ def test_big_chain_of_interesting_exceptions_can_be_pickled():
 
     assert isinstance(exception.__cause__.__cause__.__cause__, ValueError)
 
-    tb = "".join(traceback.format_exception(exception))
+    tb = "".join(get_traceback(exception))
     for exc in chain:
         assert str(exc) in tb
 

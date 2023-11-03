@@ -22,7 +22,10 @@ import pytest
 
 # Local
 from caikit.core.concurrency.destroyable_process import DestroyableProcess
-from tests.core.concurrency.test_exception_pickler import ReallyPoorlyBehavedException
+from tests.core.concurrency.test_exception_pickler import (
+    ReallyPoorlyBehavedException,
+    get_traceback,
+)
 
 ## Helpers #####################################################################
 
@@ -199,7 +202,7 @@ def test_process_can_raise_nested_exception(process_type):
     assert proc.threw
 
     assert proc.error.__cause__ is not None
-    tb = traceback.format_exception(proc.error)
+    tb = get_traceback(proc.error)
     assert len(tb) > 2
     assert (
         "The above exception was the direct cause of the following exception:"
