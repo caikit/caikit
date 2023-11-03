@@ -114,9 +114,10 @@ class DataStreamValidator:
                 self._expected_keys.values(), data_item, range(len(data_item))
             ):
                 if not isinstance(element, type_):
-                    # pylint: disable=too-many-format-args
-                    message = "Expected element {} in data item to be of type {}, "
-                    "but got {}".format(index, type_, type(element))
+                    message = (
+                        f"Expected element {index} in data item to be"
+                        f"of type {type_}, but got {type(element)}"
+                    )
                     raise DataValidationError(message, data_item_number)
 
         else:

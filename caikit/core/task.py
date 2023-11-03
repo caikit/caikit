@@ -239,14 +239,13 @@ class TaskBase:
                     return
 
         # Do some streaming checks
-        if output_streaming:
-            if cls._is_iterable_type(output_type):
-                # task_output_type is already guaranteed to be Iterable[T]
-                streaming_type = typing.get_args(task_output_type)[0]
+        if output_streaming and cls._is_iterable_type(output_type):
+            # task_output_type is already guaranteed to be Iterable[T]
+            streaming_type = typing.get_args(task_output_type)[0]
 
-                for iterable_type in typing.get_args(output_type):
-                    if cls._subclass_check(iterable_type, streaming_type):
-                        return
+            for iterable_type in typing.get_args(output_type):
+                if cls._subclass_check(iterable_type, streaming_type):
+                    return
 
         raise TypeError(
             f"Wrong output type for module {module}: "

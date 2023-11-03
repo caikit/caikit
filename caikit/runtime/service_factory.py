@@ -236,7 +236,7 @@ class ServicePackageFactory:
                 "prev_modules_path {} is not a valid file path or is missing permissions",
                 prev_modules_path,
             )
-            with open(prev_modules_path, "r", encoding="utf-8") as f:
+            with open(prev_modules_path, encoding="utf-8") as f:
                 previous_modules = json.load(f)
                 previous_included_task_map = previous_modules["included_modules"]
                 for task_module in previous_included_task_map.values():

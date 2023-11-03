@@ -223,8 +223,7 @@ def _parse_form_data_to_pydantic(
     # Parse each form_data key into a python dict which is then
     # converted to a pydantic model via .model_validate()
     raw_model_obj = {}
-    for key in form_data.keys():
-
+    for key in form_data:
         # Get the list of objects that has the key
         # field name
         raw_objects = form_data.getlist(key)
@@ -284,7 +283,7 @@ def _parse_form_data_to_pydantic(
                     try:
                         raw_objects[n] = json.loads(sub_obj)
                     except TypeError:
-                        raise HTTPException(  # pylint: disable=raise-missing-from
+                        raise HTTPException(  # noqa: B904 # pylint: disable=raise-missing-from
                             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                             detail=f"Unable to update object at key '{key};"
                             "; expected value to be string",

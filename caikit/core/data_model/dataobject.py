@@ -217,18 +217,18 @@ def dataobject(*args, **kwargs) -> Callable[[_DataObjectBaseT], _DataObjectBaseT
         # Declare the merged class that binds DataBase to the wrapped class with
         # this generated proto class
         if not isinstance(proto_class, EnumTypeWrapper):
-            setattr(cls, "_proto_class", proto_class)
+            cls._proto_class = proto_class
             cls = _make_data_model_class(proto_class, cls)
 
             # If this was a default-generated dataclass __init__ and there are
             # any oneofs, we need to augment the __init__ to support kwargs for
             # the individual fields
             if _has_dataclass_init(cls) and cls._fields_oneofs_map:
-                setattr(cls, "__init__", _make_oneof_init(cls))
+                cls.__init__ = _make_oneof_init(cls)
 
         else:
             enums.import_enum(proto_class, cls)
-            setattr(cls, "_proto_enum", proto_class)
+            cls._proto_enum = proto_class
 
         # Return the decorated class
         return cls

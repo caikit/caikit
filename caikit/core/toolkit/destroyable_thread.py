@@ -60,7 +60,7 @@ class DestroyableThread(threading.Thread, Destroyable):
         runnable_func,
         *runnable_args,
         work_done_event: Optional[threading.Event] = None,
-        **runnable_kwargs
+        **runnable_kwargs,
     ):
         threading.Thread.__init__(self)
         self.work_done_event = work_done_event or threading.Event()
@@ -125,7 +125,7 @@ class DestroyableThread(threading.Thread, Destroyable):
                 *self.runnable_args, **self.runnable_kwargs
             )
             self.__threw = False
-        except:  # pylint: disable=bare-except
+        except:  # noqa: E722 # bare-except
             # PEP8 complains, but in this case we really do want to re-throw _any_ exception that
             # occurred. In the interest of transparently wrapping any work in these threads, we
             # want to keep exception signatures identical. E.g. if I expect this thread to throw a

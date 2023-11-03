@@ -26,7 +26,7 @@ from caikit.core.exceptions.error_handler import *  # pylint: disable=wildcard-i
 # Allow DeprecationWarnings through if anything tries to import from `toolkit.errors`
 _warnings.filterwarnings("default", category=DeprecationWarning)
 # And actually warn them
-_warnings.warn(
+_warnings.warn(  # noqa: B028 # no explicit stacklevel keyword argument
     "The caikit.toolkit.error_handler package has moved to caikit.core.exceptions",
     DeprecationWarning,
 )

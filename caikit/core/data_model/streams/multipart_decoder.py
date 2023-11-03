@@ -148,7 +148,7 @@ def _get_multipart_boundary(file) -> str:
 def _get_first_nonempty_line(file) -> str:
     """Return the first line of the file with content.
     Returns empty string if none exists."""
-    with open(file, "r", encoding="utf-8") as fp:
+    with open(file, encoding="utf-8") as fp:
         for line in fp:
             stripped_line = line.strip()
             if stripped_line != "":

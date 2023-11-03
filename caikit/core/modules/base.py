@@ -48,6 +48,7 @@ from caikit import core
 log = alog.use_channel("MODULE")
 error = error_handler.get(log)
 
+
 # pylint: disable=too-many-public-methods
 class ModuleBase(metaclass=_ModuleBaseMeta):
     """Abstract base class from which all modules should inherit."""
@@ -89,8 +90,8 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         cls,
         input_streaming: bool,
         output_streaming: bool,
-        task: Type["caikit.core.TaskBase"] = None,
-    ) -> Optional["caikit.core.signature_parsing.CaikitMethodSignature"]:
+        task: Type["core.TaskBase"] = None,
+    ) -> Optional["core.signature_parsing.CaikitMethodSignature"]:
         """Returns the inference method signature that is capable of running the module's task
         for the given flavors of input and output streaming
         """
@@ -109,8 +110,8 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
 
     @classmethod
     def get_inference_signatures(
-        cls, task: Type["caikit.core.TaskBase"]
-    ) -> List[Tuple[bool, bool, "caikit.core.signature_parsing.CaikitMethodSignature"]]:
+        cls, task: Type["core.TaskBase"]
+    ) -> List[Tuple[bool, bool, "core.signature_parsing.CaikitMethodSignature"]]:
         """Returns inference method signatures for all supported flavors
         of input and output streaming for a given task
         """
@@ -369,8 +370,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         time_passed = time.time() - start_time
 
         # stop on seconds or iterations depending on input arguments
-        # pylint: disable=unnecessary-lambda-assignment
-        continue_condition = (
+        continue_condition = (  # noqa: E731 # lambda-assignment
             lambda t_p, i_p: t_p <= num_seconds if num_seconds else i_p < num_iterations
         )
         response = None
@@ -741,10 +741,7 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             return fileio.load_json(dataset_path)
 
         # if all else fails
-        error(
-            "<COR81451234E>",
-            ValueError("Unsure of how to load: {0}".format(dataset_path)),
-        )
+        error("<COR81451234E>", ValueError(f"Unsure of how to load: {dataset_path}"))
 
     @staticmethod
     def _extract_gold_annotations(gold_set):

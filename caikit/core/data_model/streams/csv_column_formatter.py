@@ -104,14 +104,14 @@ class CSVColumnFormatter:
                             element
                         )
 
-                if len(data_item) > len(self._expected_columns):
-                    # More data in the data item left...
-                    if last_type == list:
-                        # Last element was a list, so slurp the rest of the row in
-                        length = len(self._expected_columns)
+                if (len(data_item) > len(self._expected_columns)) and (
+                    last_type == list  # More data in the data item left...
+                ):
+                    # Last element was a list, so slurp the rest of the row in
+                    length = len(self._expected_columns)
 
-                        data_item_copy[length - 1].extend(data_item[length:])
-                        data_item_copy = data_item_copy[0:length]
+                    data_item_copy[length - 1].extend(data_item[length:])
+                    data_item_copy = data_item_copy[0:length]
 
                 return data_item_copy
 

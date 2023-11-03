@@ -26,7 +26,7 @@ from caikit.core.exceptions import DataValidationError, error_handler
 # Allow DeprecationWarnings through if anything tries to import from `toolkit.errors`
 _warnings.filterwarnings("default", category=DeprecationWarning)
 # And actually warn them
-_warnings.warn(
+_warnings.warn(  # noqa: B028 # no explicit stacklevel keyword argument
     "The caikit.toolkit.errors package has moved to caikit.core.exceptions",
     DeprecationWarning,
 )

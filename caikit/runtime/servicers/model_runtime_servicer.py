@@ -51,7 +51,7 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             log.info(
                 {
                     "log_code": "<RUN10000106I>",
-                    "message": "Loading model '%s'" % request.modelId,
+                    "message": f"Loading model '{request.modelId}'",
                     "model_id": request.modelId,
                 }
             )
@@ -75,8 +75,7 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             log.info(
                 {
                     "log_code": "<RUN10000107I>",
-                    "message": "Model '%s' loaded! Model size [%s]"
-                    % (request.modelId, str(model_size)),
+                    "message": f"Model '{request.modelId}' loaded! Model size [{model_size}]",
                     "model_id": request.modelId,
                 }
             )
@@ -85,8 +84,7 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             log.warning(
                 {
                     "log_code": "<RUN82590507W>",
-                    "message": "Model '%s' was not loaded due to the rpc aborting"
-                    % request.modelId,
+                    "message": f"Model '{request.modelId}' was not loaded due to the rpc aborting",
                     "model_id": request.modelId,
                     "error_id": e.id,
                 }
@@ -101,8 +99,10 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             log.warning(
                 {
                     "log_code": "<RUN84720101W>",
-                    "message": "Model '%s' could not be loaded! Reason: [%s]"
-                    % (request.modelId, str(e.message)),
+                    "message": (
+                        f"Model '{request.modelId}' could not be loaded!"
+                        f"Reason: [{e.message}]"
+                    ),
                     "model_id": request.modelId,
                     "error_id": e.id,
                 }
@@ -137,7 +137,7 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             log.info(
                 {
                     "log_code": "<RUN10000110I>",
-                    "message": "Unloading model '%s'" % request.modelId,
+                    "message": f"Unloading model '{request.modelId}'",
                     "model_id": request.modelId,
                 }
             )
@@ -145,8 +145,7 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             log.info(
                 {
                     "log_code": "<RUN10000111I>",
-                    "message": "Unloaded model '%s' (Reclaimed size: %s)"
-                    % (request.modelId, model_size),
+                    "message": f"Unloaded model '{request.modelId}' (Reclaimed size: {model_size})",
                     "model_id": request.modelId,
                 }
             )
@@ -154,8 +153,10 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             log.warning(
                 {
                     "log_code": "<RUN18471838W>",
-                    "message": "Model '%s' could not be unloaded! Reason: [%s]"
-                    % (request.modelId, str(e.message)),
+                    "message": (
+                        f"Model '{request.modelId}' could not be unloaded!"
+                        f"Reason: [{e.message}]"
+                    ),
                     "model_id": request.modelId,
                     "error_id": e.id,
                 }
@@ -178,7 +179,7 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             log.info(
                 {
                     "log_code": "<RUN10000120I>",
-                    "message": "Predicting size of model '%s'" % request.modelId,
+                    "message": f"Predicting size of model '{request.modelId}'",
                     "model_id": request.modelId,
                 }
             )
@@ -188,8 +189,7 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             log.info(
                 {
                     "log_code": "<RUN10000123I>",
-                    "message": "Predicted model '%s' size: [%s]"
-                    % (request.modelId, str(predicted_size)),
+                    "message": f"Predicted model '{request.modelId}' size: [{predicted_size}]",
                     "model_id": request.modelId,
                 }
             )
@@ -198,8 +198,10 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             log.warning(
                 {
                     "log_code": "<RUN14920102W>",
-                    "message": "Model '%s' size could not be predicted! Reason: [%s]"
-                    % (request.modelId, e.message),
+                    "message": (
+                        f"Model '{request.modelId}' size could not be predicted!"
+                        f"Reason: [e.message]"
+                    ),
                     "model_id": request.modelId,
                     "error_id": e.id,
                 }
@@ -222,7 +224,7 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             log.info(
                 {
                     "log_code": "<RUN10000121I>",
-                    "message": "Computing size of model '%s'" % request.modelId,
+                    "message": f"Computing size of model '{request.modelId}'",
                     "model_id": request.modelId,
                 }
             )
@@ -230,8 +232,7 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             log.info(
                 {
                     "log_code": "<RUN10000122I>",
-                    "message": "Computed model '%s' size: [%s]"
-                    % (request.modelId, str(model_size)),
+                    "message": f"Computed model '{request.modelId}' size: [{model_size}]",
                     "model_id": request.modelId,
                 }
             )
@@ -239,8 +240,10 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             log.warning(
                 {
                     "log_code": "<RUN14440122W>",
-                    "message": "Failed to calculate model '%s' size! Reason: [%s]"
-                    % (request.modelId, e.message),
+                    "message": (
+                        f"Failed to calculate model '{request.modelId}' size!"
+                        f"Reason: [{e.message}]"
+                    ),
                     "model_id": request.modelId,
                     "error_id": e.id,
                 }

@@ -258,12 +258,12 @@ class Batcher:
                     # pylint: disable=consider-iterating-dictionary
                     new_kwargs = [
                         kwarg_name
-                        for kwarg_name in req_kwargs.keys()
+                        for kwarg_name in req_kwargs
                         if kwarg_name not in batch_kwargs
                     ]
                     missing_kwargs = [
                         kwarg_name
-                        for kwarg_name in batch_kwargs.keys()
+                        for kwarg_name in batch_kwargs
                         if kwarg_name not in req_kwargs
                     ]
 
@@ -359,9 +359,10 @@ class Batcher:
                         log.debug4(batch_kwargs)
                         batch_res = self._model.run_batch(**batch_kwargs)
                         # pylint: disable=line-too-long
-                        assert len(batch_res) == len(
-                            current_batch
-                        ), f"Got result of size [{len(batch_res)}] for batch of size [{len(current_batch)}]"
+                        assert len(batch_res) == len(current_batch), (
+                            f"Got result of size [{len(batch_res)}] for batch"
+                            "of size [{len(current_batch)}]"
+                        )
                         for i, (req_id, event, _) in enumerate(current_batch):
                             self._finished_tasks[req_id] = batch_res[i]
                             event.set()

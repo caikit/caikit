@@ -19,7 +19,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from io import IOBase
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 import base64
 import datetime
 import json
@@ -37,6 +37,10 @@ import alog
 from ..exceptions import error_handler
 from . import enums, json_dict, timestamp
 
+if TYPE_CHECKING:
+    # Local
+    from caikit.core.data_model.data_backends import DataModelBackendBase
+    from caikit.interfaces.common.data_model.file import File
 # metaclass-generated field members cannot be detected by pylint
 # pylint: disable=no-member
 # pylint: disable=too-many-lines
@@ -304,13 +308,11 @@ class _DataBaseMetaClass(type):
         # If there is not already an __init__ function defined, make one
         current_init = cls.__init__
         if current_init is None or current_init is DataBase.__init__:
-            setattr(cls, "__init__", mcs._make_init(cls.fields))
+            cls.__init__ = mcs._make_init(cls.fields)
 
         # Check DataBase for file handlers
-        setattr(
-            cls,
-            "supports_file_operations",
-            cls.to_file != DataBase.to_file and cls.from_file != DataBase.from_file,
+        cls.supports_file_operations = (
+            cls.to_file != DataBase.to_file and cls.from_file != DataBase.from_file
         )
 
     @classmethod
@@ -435,7 +437,7 @@ class _DataBaseMetaClass(type):
                         setattr(self, field_name, None)
 
         # Set docstring to the method explicitly
-        setattr(__init__, "__doc__", docstring)
+        __init__.___doc__ = docstring
         return __init__
 
     @classmethod
@@ -730,7 +732,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
                                 "caikit.interfaces.common.data_model"
                             )
                         ):
-                            kwargs[oneof] = getattr(contained_obj, "values")
+                            kwargs[oneof] = contained_obj.values
                         else:
                             kwargs[oneof] = contained_obj
                     else:
@@ -936,7 +938,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
         fields_to_dict = []
         for field in self.fields:
             if (
-                not field in self._fields_to_oneof
+                field not in self._fields_to_oneof
                 or self.which_oneof(self._fields_to_oneof[field]) == field
             ):
                 fields_to_dict.append(field)

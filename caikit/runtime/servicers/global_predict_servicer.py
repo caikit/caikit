@@ -158,61 +158,58 @@ class GlobalPredictServicer:
         model_id = get_metadata(context, self.MODEL_MESH_MODEL_ID_KEY)
         request_name = caikit_rpc.request.name
 
-        with self._handle_predict_exceptions(model_id, request_name):
-            with alog.ContextLog(
-                log.debug, "GlobalPredictServicer.Predict:%s", request_name
-            ):
-                # Retrieve the model from the model manager
-                log.debug("<RUN52259029D>", "Retrieving model '%s'", model_id)
-                model = self._model_manager.retrieve_model(model_id)
-                model_class = type(model)
+        with self._handle_predict_exceptions(model_id, request_name), alog.ContextLog(
+            log.debug, "GlobalPredictServicer.Predict:%s", request_name
+        ):
+            # Retrieve the model from the model manager
+            log.debug("<RUN52259029D>", "Retrieving model '%s'", model_id)
+            model = self._model_manager.retrieve_model(model_id)
+            model_class = type(model)
 
-                # Little hackity hack: Calling _verify_model_task upfront here as well to
-                # short-circuit requests where the model is _totally_ unsupported
-                self._verify_model_task(model)
+            # Little hackity hack: Calling _verify_model_task upfront here as well to
+            # short-circuit requests where the model is _totally_ unsupported
+            self._verify_model_task(model)
 
-                # Unmarshall the request object into the required module run argument(s)
-                with PREDICT_FROM_PROTO_SUMMARY.labels(
-                    grpc_request=request_name, model_id=model_id
-                ).time():
-                    inference_signature = model_class.get_inference_signature(
-                        input_streaming=caikit_rpc.input_streaming,
-                        output_streaming=caikit_rpc.output_streaming,
-                        task=caikit_rpc.task,
-                    )
-                    if not inference_signature:
-                        raise CaikitRuntimeException(
-                            StatusCode.INVALID_ARGUMENT,
-                            f"Model class {model_class} does not support {caikit_rpc.name}",
-                        )
-                    if caikit_rpc.input_streaming:
-                        caikit_library_request = (
-                            self._build_caikit_library_request_stream(
-                                request, inference_signature, caikit_rpc
-                            )
-                        )
-                    else:
-                        caikit_library_request = build_caikit_library_request_dict(
-                            request,
-                            inference_signature,
-                        )
-                response = self.predict_model(
-                    request_name,
-                    model_id,
-                    inference_func_name=inference_signature.method_name,
-                    aborter=RpcAborter(context) if self.use_abortable_threads else None,
-                    **caikit_library_request,
+            # Unmarshall the request object into the required module run argument(s)
+            with PREDICT_FROM_PROTO_SUMMARY.labels(
+                grpc_request=request_name, model_id=model_id
+            ).time():
+                inference_signature = model_class.get_inference_signature(
+                    input_streaming=caikit_rpc.input_streaming,
+                    output_streaming=caikit_rpc.output_streaming,
+                    task=caikit_rpc.task,
                 )
+                if not inference_signature:
+                    raise CaikitRuntimeException(
+                        StatusCode.INVALID_ARGUMENT,
+                        f"Model class {model_class} does not support {caikit_rpc.name}",
+                    )
+                if caikit_rpc.input_streaming:
+                    caikit_library_request = self._build_caikit_library_request_stream(
+                        request, inference_signature, caikit_rpc
+                    )
+                else:
+                    caikit_library_request = build_caikit_library_request_dict(
+                        request,
+                        inference_signature,
+                    )
+            response = self.predict_model(
+                request_name,
+                model_id,
+                inference_func_name=inference_signature.method_name,
+                aborter=RpcAborter(context) if self.use_abortable_threads else None,
+                **caikit_library_request,
+            )
 
-                # Marshall the response to the necessary return type
-                with PREDICT_TO_PROTO_SUMMARY.labels(
-                    grpc_request=request_name, model_id=model_id
-                ).time():
-                    if caikit_rpc.output_streaming:
-                        response_proto = build_proto_stream(response)
-                    else:
-                        response_proto = build_proto_response(response)
-                return response_proto
+            # Marshall the response to the necessary return type
+            with PREDICT_TO_PROTO_SUMMARY.labels(
+                grpc_request=request_name, model_id=model_id
+            ).time():
+                if caikit_rpc.output_streaming:
+                    response_proto = build_proto_stream(response)
+                else:
+                    response_proto = build_proto_response(response)
+            return response_proto
 
     def predict_model(
         self,
@@ -391,7 +388,7 @@ class GlobalPredictServicer:
         )
         stream_num += 1
 
-        for param in streaming_params.keys():
+        for param in streaming_params:
             # For each "streaming" parameter, grab one of the tee'd streams and map it to return
             # a `DataStream` of that individual parameter
 

@@ -39,14 +39,9 @@ error = error_handler.get(log)
 def to_dict(cls) -> Dict[str, int]:
     """Return a dict representation of the keys and values"""
     if not hasattr(cls, "__dict_repr__"):
-        setattr(
-            cls,
-            "__dict_repr__",
-            {
-                entry.name: entry.value
-                for entry in cls  # pylint: disable=not-an-iterable
-            },
-        )
+        cls.__dict_repr__ = {
+            entry.name: entry.value for entry in cls  # pylint: disable=not-an-iterable
+        }
     return cls.__dict_repr__
 
 
@@ -54,7 +49,7 @@ def to_dict(cls) -> Dict[str, int]:
 def to_munch(cls) -> munch.Munch:
     """Return a munchified version of the enum"""
     if not hasattr(cls, "__munch_repr__"):
-        setattr(cls, "__munch_repr__", munch.Munch(cls.to_dict()))
+        cls.__munch_repr__ = munch.Munch(cls.to_dict())
     return cls.__munch_repr__
 
 
@@ -90,8 +85,8 @@ def import_enum(
         enum_class = Enum._create_(name, proto_enum.items())
 
     # Add extra utility functions
-    setattr(enum_class, "to_dict", to_dict)
-    setattr(enum_class, "to_munch", to_munch)
+    enum_class.to_dict = to_dict
+    enum_class.to_munch = to_munch
 
     globals()[name] = enum_class
     rev_name = name + "Rev"
