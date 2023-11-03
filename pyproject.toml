@@ -45,6 +45,9 @@ runtime-grpc = [
     "grpcio-reflection>=1.35.0,<2.0",
     "prometheus_client>=0.12.0,<1.0",
     "py-grpc-prometheus>=0.7.0,<0.8",
+    # This is needed to support health probes for TLS gRPC servers since we
+    # cannot fully disable hostname verification.
+    "cryptography>=40.0.1,<41",
 ]
 
 runtime-http = [
