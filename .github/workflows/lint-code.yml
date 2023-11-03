@@ -35,7 +35,7 @@ jobs:
           python -m pip install -r setup_requirements.txt
       - name: Check Formatting
         run: tox -e fmt
-      - name: Run pylint
+      - name: Linting
         run: tox -e lint
       - name: Setup Graphviz # `graphviz/dot` is required for the import checker
         uses: ts-graphviz/setup-graphviz@v1
