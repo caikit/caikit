@@ -438,12 +438,10 @@ def _check_server_readiness(server):
 
 def _check_http_server_readiness(server, config_overrides: Dict[str, Dict]):
     mode = "http"
-    verify = None
     cert = None
     # tls
     if config_overrides:
         mode = "https"
-        verify = config_overrides["use_in_test"]["ca_cert"]
         # mtls
         if "client_cert" and "client_key" in config_overrides["use_in_test"]:
             cert = (
@@ -455,7 +453,7 @@ def _check_http_server_readiness(server, config_overrides: Dict[str, Dict]):
         try:
             response = requests.get(
                 f"{mode}://localhost:{server.port}{http_server.HEALTH_ENDPOINT}",
-                verify=verify,
+                verify=False,
                 cert=cert,
             )
             assert response.status_code == 200
