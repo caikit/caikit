@@ -93,12 +93,16 @@ class ExceptionPickler:
         """
         state_dict = {
             "exception": self.exception,
-            "cause": ExceptionPickler(self.exception.__cause__)
-            if self.exception.__cause__
-            else None,
-            "context": ExceptionPickler(self.exception.__context__)
-            if self.exception.__context__
-            else None,
+            "cause": (
+                ExceptionPickler(self.exception.__cause__)
+                if self.exception.__cause__
+                else None
+            ),
+            "context": (
+                ExceptionPickler(self.exception.__context__)
+                if self.exception.__context__
+                else None
+            ),
         }
 
         # ty/catch pickle errors
