@@ -206,7 +206,7 @@ def _grpc_health_probe(
     socket_file = get_config().runtime.grpc.unix_socket_path
 
     # If available, use a unix socket
-    if os.path.exists(os.path.dirname(socket_file)):
+    if socket_file and os.path.exists(os.path.dirname(socket_file)):
         socket_address = f"unix://{socket_file}"
         log.debug("Probing gRPC server over unix socket: %s", socket_file)
         channel = grpc.insecure_channel(socket_address)

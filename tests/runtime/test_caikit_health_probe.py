@@ -181,7 +181,7 @@ def test_health_probe(test_config: ProbeTestConfig):
                                 "grpc.sock",
                             )
                             if test_config.unix_socket
-                            else "",
+                            else None,
                         },
                         "http": {
                             "enabled": test_config.server_mode
