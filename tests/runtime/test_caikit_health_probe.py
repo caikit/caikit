@@ -125,8 +125,8 @@ def test_health_probe(test_config: Tuple[TlsMode, bool], server_mode: ServerMode
             client_sans = ["baz.bat"]
 
         # Set up tls values if needed
-        tls = tls_mode == TlsMode.TLS
-        mtls = "MTLS" in tls_mode.name
+        tls = tls_mode.name.startswith("TLS")
+        mtls = tls_mode.name.startswith("MTLS")
         with generate_tls_configs(
             port=http_port,
             tls=tls,
