@@ -154,7 +154,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 "code": err_code,
                 "id": None,
             }
-            log.error("<RUN59871106E>", exc.errors(), exc_info=True)
+            log.error("<RUN59871106E>", error_content, exc_info=True)
             return Response(content=json.dumps(error_content), status_code=err_code)
 
         # Response validation
@@ -412,7 +412,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     "code": error_code,
                     "id": None,
                 }
-                log.error("<RUN51881106E>", err, exc_info=True)
+                log.error("<RUN51231106E>", error_content, exc_info=True)
             return Response(
                 content=json.dumps(error_content), status_code=error_code
             )  # pylint: disable=used-before-assignment
@@ -490,7 +490,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     "code": error_code,
                     "id": None,
                 }
-                log.error("<RUN51881106E>", err, exc_info=True)
+                log.error("<RUN98751106E>", error_content, exc_info=True)
             return Response(
                 content=json.dumps(error_content), status_code=error_code
             )  # pylint: disable=used-before-assignment
@@ -564,7 +564,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         "code": error_code,
                         "id": None,
                     }
-                    log.error("<RUN51881106E>", err, exc_info=True)
+                    log.error("<RUN51891206E>", error_content, exc_info=True)
 
                 # If an error occurs, yield an error response and terminate
                 yield ServerSentEvent(
