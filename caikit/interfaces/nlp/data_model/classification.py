@@ -32,7 +32,7 @@ log = alog.use_channel("DATAM")
 
 @dataobject(package=NLP_PACKAGE)
 class InputWarnings(DataObjectBase):
-    """Input Warning data objects, which returns a reason and message associated with warnings 
+    """Input Warning data object, which returns a reason and message associated with warnings 
     to issue to a user that causes errors (such as failed text generation)
     """
     id: str
