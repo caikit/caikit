@@ -188,7 +188,7 @@ class ModelTrainServicerImpl(process_pb2_grpc.ProcessServicer):
         )
         training_request_data_model = dm_class.from_proto(train_message_request)
         # 2. Find any data streams
-        for attr_name in training_request_data_model.__annotations__.keys():
+        for attr_name in training_request_data_model.__annotations__:
             val = getattr(training_request_data_model, attr_name)
             if isinstance(val, DataStreamSourceBase):
                 # 3. Look for file pointers and update them

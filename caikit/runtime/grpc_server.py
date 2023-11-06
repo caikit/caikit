@@ -42,6 +42,7 @@ from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
+from caikit.runtime.servicers.info_servicer import InfoServicer
 from caikit.runtime.servicers.model_runtime_servicer import ModelRuntimeServicerImpl
 from caikit.runtime.servicers.model_train_servicer import ModelTrainServicerImpl
 from caikit.runtime.servicers.training_management_servicer import (
@@ -102,6 +103,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
         # And intercept a training service, if we have one
         if self.enable_training and self.training_service:
+            log.info("<RUN20247827I>", "Enabling gRPC training service")
             global_train_servicer = GlobalTrainServicer(self.training_service)
             self.server = CaikitRuntimeServerWrapper(
                 server=self.server,
@@ -139,6 +141,16 @@ class RuntimeGRPCServer(RuntimeServerBase):
         service_names.append(
             model_runtime_pb2.DESCRIPTOR.services_by_name["ModelRuntime"].full_name
         )
+
+        # Add runtime info servicer to the gRPC server
+        runtime_info_service: ServicePackage = (
+            ServicePackageFactory.get_service_package(
+                ServicePackageFactory.ServiceType.INFO,
+            )
+        )
+        service_names.append(runtime_info_service.descriptor.full_name)
+
+        runtime_info_service.registration_function(InfoServicer(), self.server)
 
         # Add gRPC default health servicer.
         # We use the non-blocking implementation to avoid thread starvation.
@@ -184,11 +196,20 @@ class RuntimeGRPCServer(RuntimeServerBase):
             )
             if self.tls_config.client.cert:
                 log.info("<RUN10001806I>", "Running with mutual TLS")
+                # Combine the client cert with the server's own cert so that
+                # health probes can use the server's key/cert instead of needing
+                # one signed by a potentially-external CA.
+                root_certificates = b"\n".join(
+                    [
+                        bytes(self._load_secret(self.tls_config.client.cert), "utf-8"),
+                        tls_server_pair[1],
+                    ]
+                )
                 # Client will verify the server using server cert and the server
                 # will verify the client using client cert.
                 server_credentials = grpc.ssl_server_credentials(
                     [tls_server_pair],
-                    root_certificates=self._load_secret(self.tls_config.client.cert),
+                    root_certificates=root_certificates,
                     require_client_auth=True,
                 )
             else:
@@ -262,7 +283,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
         """If the secret points to a file, return the contents (plaintext reads).
         Else return the string"""
         if os.path.exists(secret):
-            with open(secret, "r", encoding="utf-8") as secret_file:
+            with open(secret, encoding="utf-8") as secret_file:
                 return secret_file.read()
         return secret
 

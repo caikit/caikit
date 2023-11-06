@@ -106,9 +106,9 @@ class ModelSizer:
             # Probably just an archive file
             return os.path.getsize(local_model_path)
         except FileNotFoundError as ex:
-            message = "Failed to estimate size of model '%s', file '%s' not found" % (
-                model_id,
-                local_model_path,
+            message = (
+                f"Failed to estimate size of model '{model_id}',"
+                "file '{local_model_path}' not found"
             )
             log.error("<RUN62168924E>", message)
             raise CaikitRuntimeException(grpc.StatusCode.NOT_FOUND, message) from ex

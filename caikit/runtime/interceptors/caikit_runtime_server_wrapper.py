@@ -66,10 +66,7 @@ class CaikitRuntimeServerWrapper(grpc.Server):
             # concatenate it with the intercepted service name to produce
             # a fully qualified RPC method name that we wish to intercept
             # (e.g., '/natural_language_understanding.CaikitRuntime/SyntaxIzumoPredict')
-            fqm = "/%s/%s" % (
-                self._intercepted_svc_package.descriptor.full_name,
-                method.name,
-            )
+            fqm = f"/{self._intercepted_svc_package.descriptor.full_name}/{method.name}"
 
             log.info("<RUN81194024I>", "Intercepting RPC method %s", fqm)
             self._intercepted_methods.append((method.name, fqm))

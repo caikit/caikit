@@ -353,10 +353,7 @@ class TaskPredictRPC(CaikitRPCBase):
         # for unary input cases
         req_params = self.task.get_required_parameters(input_streaming=False)
         for param_name, param_type in method_params.items():
-            if param_name in req_params:
-                new_params[param_name] = req_params[param_name]
-            else:
-                new_params[param_name] = param_type
+            new_params[param_name] = req_params.get(param_name, param_type)
         return new_params
 
     def _task_to_req_name(self) -> str:
@@ -406,10 +403,7 @@ class _RequestMessage:
 
         existing_fields = ApiFieldNames.get_fields_for_message(self.name)
 
-        if len(existing_fields) > 0:
-            last_used_number = max(existing_fields.values())
-        else:
-            last_used_number = 0
+        last_used_number = max(existing_fields.values()) if existing_fields else 0
 
         for _, (item_name, typ) in enumerate(params.items()):
             if item_name in existing_fields:

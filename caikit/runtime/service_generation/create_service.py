@@ -111,7 +111,7 @@ def create_inference_rpcs(
                         exc_info=True,
                     )
 
-    return rpcs
+    return sorted(rpcs, key=lambda x: x.name)
 
 
 def create_training_rpcs(
@@ -159,7 +159,7 @@ def create_training_rpcs(
                     err,
                     exc_info=True,
                 )
-    return rpcs
+    return sorted(rpcs, key=lambda x: x.name)
 
 
 def _group_modules_by_task(

@@ -126,7 +126,7 @@ class QualityEvaluator:
 
         error(
             "<COR81451123E>",
-            ValueError("Unknown evaluation_type: {0}".format(evaluation_type)),
+            ValueError(f"Unknown evaluation_type: {evaluation_type}"),
         )
 
     def singlelabel_multiclass_evaluation(self, labels=None) -> dict:

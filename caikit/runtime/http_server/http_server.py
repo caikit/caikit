@@ -19,6 +19,7 @@ API based on the task definitions available at boot.
 # Standard
 from contextlib import contextmanager
 from dataclasses import dataclass
+from enum import Enum
 from functools import partial
 from typing import Any, Dict, Iterable, Optional, Type, Union, get_args
 import asyncio
@@ -31,11 +32,13 @@ import ssl
 import tempfile
 import threading
 import time
+import traceback
+import uuid
 
 # Third Party
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import ResponseValidationError
+from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
 from grpc import StatusCode
 from sse_starlette import EventSourceResponse, ServerSentEvent
@@ -67,6 +70,7 @@ from caikit.runtime.service_generation.rpcs import (
 )
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
+from caikit.runtime.servicers.info_servicer import InfoServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 ## Globals #####################################################################
@@ -106,6 +110,16 @@ MODEL_ID = "model_id"
 # Endpoint to use for health checks
 HEALTH_ENDPOINT = "/health"
 
+# Endpoint to use for server info
+RUNTIME_INFO_ENDPOINT = "/info/version"
+
+
+# Stream event types enum
+class StreamEventTypes(Enum):
+    MESSAGE = "message"
+    ERROR = "error"
+
+
 # Small dataclass for consolidating TLS files
 @dataclass
 class _TlsFiles:
@@ -129,6 +143,23 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         self.app = FastAPI()
 
+        # Request validation
+        @self.app.exception_handler(RequestValidationError)
+        async def request_validation_exception_handler(
+            _, exc: RequestValidationError
+        ) -> Response:
+            err_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+            error_content = {
+                "details": exc.errors()[0]["msg"]
+                if len(exc.errors()) > 0 and "msg" in exc.errors()[0]
+                else exc.errors(),
+                "additional_info": exc.errors(),
+                "code": err_code,
+                "id": uuid.uuid4().hex,
+            }
+            log.error("<RUN59871106E>", error_content, exc_info=True)
+            return Response(content=json.dumps(error_content), status_code=err_code)
+
         # Response validation
         @self.app.exception_handler(ResponseValidationError)
         async def validation_exception_handler(_, exc: ResponseValidationError):
@@ -143,6 +174,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Placeholders for global servicers
         self.global_predict_servicer = None
         self.global_train_servicer = None
+        self.info_servicer = InfoServicer()
 
         # Set up inference if enabled
         if self.enable_inference:
@@ -159,6 +191,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Add the health endpoint
         self.app.get(HEALTH_ENDPOINT, response_class=PlainTextResponse)(
             self._health_check
+        )
+
+        # Add runtime info endpoint
+        self.app.get(RUNTIME_INFO_ENDPOINT, response_class=JSONResponse)(
+            self.info_servicer.get_version_dict
         )
 
         # Parse TLS configuration
@@ -266,7 +303,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 if hasattr(rpc, "input_streaming") and rpc.input_streaming:
                     # Skipping the binding of this route since we don't have support
                     log.info(
-                        "No support for input streaming on REST Server yet! Skipping this rpc %s with input type %s",
+                        "No support for input streaming on REST Server yet!"
+                        "Skipping this rpc %s with input type %s",
                         rpc_info["name"],
                         rpc_info["input_type"],
                     )
@@ -352,7 +390,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     self.global_train_servicer.run_training_job,
                     request=http_request_dm_object.to_proto(),
                     module=rpc.clz,
-                    training_output_dir=None,  # pass None so that GTS picks up the config one # TODO: double-check?
+                    training_output_dir=None,  # pass None so that GTS picks up the config one # TODO: double-check? # noqa: E501
                     # context=context,
                     wait=True,
                 )
@@ -370,14 +408,15 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     "code": error_code,
                     "id": err.id,
                 }
+                log.error("<RUN87691106E>", error_content, exc_info=True)
             except Exception as err:  # pylint: disable=broad-exception-caught
                 error_code = 500
                 error_content = {
                     "details": f"Unhandled exception: {str(err)}",
                     "code": error_code,
-                    "id": None,
+                    "id": uuid.uuid4().hex,
                 }
-                log.error("<RUN51881106E>", err, exc_info=True)
+                log.error("<RUN51231106E>", error_content, exc_info=True)
             return Response(
                 content=json.dumps(error_content), status_code=error_code
             )  # pylint: disable=used-before-assignment
@@ -400,7 +439,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
         async def _handler(
             context: Request,
         ) -> Response:
-
             request = await pydantic_from_request(pydantic_request, context)
             request_params = self._get_request_params(rpc, request)
 
@@ -449,14 +487,15 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     "code": error_code,
                     "id": err.id,
                 }
+                log.error("<RUN53211098E>", error_content, exc_info=True)
             except Exception as err:  # pylint: disable=broad-exception-caught
                 error_code = 500
                 error_content = {
                     "details": f"Unhandled exception: {str(err)}",
                     "code": error_code,
-                    "id": None,
+                    "id": uuid.uuid4().hex,
                 }
-                log.error("<RUN51881106E>", err, exc_info=True)
+                log.error("<RUN98751106E>", error_content, exc_info=True)
             return Response(
                 content=json.dumps(error_content), status_code=error_code
             )  # pylint: disable=used-before-assignment
@@ -498,10 +537,24 @@ class RuntimeHTTPServer(RuntimeServerBase):
                             **request_params,
                         )
                     ):
-                        yield result
+                        yield ServerSentEvent(
+                            data=result.to_json(), event=StreamEventTypes.MESSAGE.value
+                        )
                     return
                 except HTTPException as err:
                     raise err
+                except (TypeError, ValueError) as err:
+                    log_dict = {
+                        "log_code": "<RUN76624264W>",
+                        "message": repr(err),
+                        "stack_trace": traceback.format_exc(),
+                    }
+                    log.warning(log_dict)
+                    error_code = 400
+                    error_content = {
+                        "details": repr(err),
+                        "code": error_code,
+                    }
                 except CaikitRuntimeException as err:
                     error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
                     error_content = {
@@ -509,17 +562,20 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         "code": error_code,
                         "id": err.id,
                     }
+                    log.error("<RUN53234506E>", error_content, exc_info=True)
                 except Exception as err:  # pylint: disable=broad-exception-caught
                     error_code = 500
                     error_content = {
                         "details": f"Unhandled exception: {str(err)}",
                         "code": error_code,
-                        "id": None,
+                        "id": uuid.uuid4().hex,
                     }
-                    log.error("<RUN51881106E>", err, exc_info=True)
+                    log.error("<RUN51891206E>", error_content, exc_info=True)
 
                 # If an error occurs, yield an error response and terminate
-                yield ServerSentEvent(data=json.dumps(error_content))
+                yield ServerSentEvent(
+                    data=json.dumps(error_content), event=StreamEventTypes.ERROR.value
+                )
 
             return EventSourceResponse(_generator())
 
@@ -729,7 +785,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
         except OSError as err:
             log.error(
                 "<RUN80977064E>",
-                "Cannot create temporary TLS files. Either pass config as file paths or run with write permissions.",
+                (
+                    "Cannot create temporary TLS files."
+                    "Either pass config as file paths or run with write permissions."
+                ),
                 exc_info=True,
             )
             raise ValueError() from err

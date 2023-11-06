@@ -54,7 +54,7 @@ def module(
     base_module: Union[str, Type[ModuleBase]] = None,
     backend_config_override: Optional[Dict] = None,
 ):
-    f"""Apply this decorator to any class that should be treated as a caikit module
+    """Apply this decorator to any class that should be treated as a caikit module
      (i.e., extends`{caikit.core.ModuleBase}) and registered with caikit.core so that the library
      "knows" the class is a caikit module and is capable of loading instances of the module.
 
@@ -240,7 +240,7 @@ def module(
         )
 
         # Set its own backend_type as an attribute
-        setattr(cls_, "BACKEND_TYPE", backend_type)
+        cls_.BACKEND_TYPE = backend_type
 
         # Verify UUID and add this module to the module registry
         if not backend_module_impl:

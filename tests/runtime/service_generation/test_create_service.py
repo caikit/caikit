@@ -61,8 +61,9 @@ def test_create_inference_rpcs_uses_task_from_module_decorator():
     # SampleModule also implements `SampleTask`
     rpcs = create_inference_rpcs([NewModule, SampleModule])
     assert len(rpcs) == 3  # SampleModule has 3 streaming flavors
-    assert NewModule in rpcs[0].module_list
+    assert NewModule in rpcs[1].module_list
     assert SampleModule in rpcs[0].module_list
+    assert SampleModule in rpcs[2].module_list
 
 
 def test_create_inference_rpcs_includes_backend_modules():
@@ -257,12 +258,15 @@ def test_create_inference_rpcs_for_multiple_modules_of_same_type():
 
     # 4 RPCs, SampleModule and SamplePrimitiveModule have task SampleTask with 3 flavors for
     # streaming, OtherModule has task OtherTask
+    # and the rpcs should be sorted by name (ie: ['BidiStreamingSampleTaskPredict', 'OtherTaskPredict',
+    # 'SampleTaskPredict', 'ServerStreamingSampleTaskPredict'])
     assert len(rpcs) == 4
-    assert sample_lib.modules.sample_task.SampleModule in rpcs[0].module_list
-    assert sample_lib.modules.sample_task.SamplePrimitiveModule in rpcs[0].module_list
-    assert sample_lib.modules.sample_task.SampleModule in rpcs[1].module_list
+    print("rpcs are: ", [x.name for x in rpcs])
     assert sample_lib.modules.sample_task.SampleModule in rpcs[2].module_list
-    assert sample_lib.modules.other_task.OtherModule in rpcs[-1].module_list
+    assert sample_lib.modules.sample_task.SamplePrimitiveModule in rpcs[2].module_list
+    assert sample_lib.modules.sample_task.SampleModule in rpcs[3].module_list
+    assert sample_lib.modules.sample_task.SampleModule in rpcs[0].module_list
+    assert sample_lib.modules.other_task.OtherModule in rpcs[1].module_list
 
 
 def test_create_inference_rpcs_respects_sorted_order_by_module_id():
@@ -275,20 +279,21 @@ def test_create_inference_rpcs_respects_sorted_order_by_module_id():
 
     # 3 RPCs, SampleModule, SamplePrimitiveModule and ListModule have task SampleTask with 3 flavors for
     # streaming
+    # and the rpcs should be sorted by name (ie ['BidiStreamingSampleTaskPredict', 'SampleTaskPredict', 'ServerStreamingSampleTaskPredict'])
     assert len(rpcs) == 3
     assert sample_lib.modules.sample_task.SampleModule in rpcs[0].module_list
-    assert sample_lib.modules.sample_task.SamplePrimitiveModule in rpcs[0].module_list
+    assert sample_lib.modules.sample_task.SamplePrimitiveModule in rpcs[1].module_list
     assert sample_lib.modules.sample_task.SampleModule in rpcs[1].module_list
     assert sample_lib.modules.sample_task.SampleModule in rpcs[2].module_list
-    assert sample_lib.modules.sample_task.ListModule in rpcs[0].module_list
+    assert sample_lib.modules.sample_task.ListModule in rpcs[1].module_list
 
-    # check for alphabetical order of modules in rpcs[0] by Module ID
+    # Within rpc SampleTaskPredict, check for alphabetical order of modules by Module ID
     # this should always be deterministic
-    assert sample_lib.modules.sample_task.SampleModule == rpcs[0].module_list[0]
+    assert sample_lib.modules.sample_task.SampleModule == rpcs[1].module_list[0]
     assert (
-        sample_lib.modules.sample_task.SamplePrimitiveModule == rpcs[0].module_list[1]
+        sample_lib.modules.sample_task.SamplePrimitiveModule == rpcs[1].module_list[1]
     )
-    assert sample_lib.modules.sample_task.ListModule == rpcs[0].module_list[-1]
+    assert sample_lib.modules.sample_task.ListModule == rpcs[1].module_list[-1]
 
 
 def test_create_inference_rpcs_removes_modules_with_no_task():

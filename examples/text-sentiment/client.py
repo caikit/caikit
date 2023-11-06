@@ -65,9 +65,9 @@ if __name__ == "__main__":
         port = 8080
         # Run inference for two sample prompts
         for text in ["I am not feeling well today!", "Today is a nice sunny day"]:
-            payload = {"inputs": text}
+            payload = {"inputs": text, "model_id": model_id}
             response = requests.post(
-                f"http://localhost:{port}/api/v1/{model_id}/task/hugging-face-sentiment",
+                f"http://localhost:{port}/api/v1/task/hugging-face-sentiment",
                 json=payload,
                 timeout=1,
             )

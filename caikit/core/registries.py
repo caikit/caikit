@@ -19,7 +19,7 @@ caikit need to access this state so that would easily cause an import cycle.
 """
 
 # Standard
-from typing import Any, Dict, Tuple, Type
+from typing import TYPE_CHECKING, Any, Dict, Tuple, Type
 
 # First Party
 import alog
@@ -27,7 +27,12 @@ import alog
 # Local
 from .exceptions import error_handler
 
+if TYPE_CHECKING:
+    # Local
+    from caikit.core import BackendBase, ModuleBase
+
 log = alog.use_channel("REGISTRIES")
+
 error = error_handler.get(log)
 
 
@@ -38,7 +43,7 @@ MODULE_REGISTRY = {}
 MODULE_BACKEND_REGISTRY = {}
 
 
-def module_registry() -> Dict[str, "caikit.core.ModuleBase"]:
+def module_registry() -> Dict[str, "ModuleBase"]:
     """🌶️🌶️🌶️ This returns global state that should only be mutated if you know what you're doing!
 
     Returns the dictionary of decorated @modules that have been imported.
@@ -53,9 +58,7 @@ def module_registry() -> Dict[str, "caikit.core.ModuleBase"]:
     return MODULE_REGISTRY
 
 
-def module_backend_registry() -> Dict[
-    str, Dict[str, Tuple["caikit.core.ModuleBase", Dict]]
-]:
+def module_backend_registry() -> Dict[str, Dict[str, Tuple["ModuleBase", Dict]]]:
     """🌶️🌶️🌶️ This returns global state that should only be mutated if you know what you're doing!
 
     Returns the module backend registry. This adds more nesting to the module registry,
@@ -103,10 +106,10 @@ def module_backend_types() -> Dict[str, str]:
     return MODULE_BACKEND_TYPES
 
 
-MODULE_BACKEND_CLASSES: Dict[str, Type["caikit.core.BackendBase"]] = {}
+MODULE_BACKEND_CLASSES: Dict[str, Type["BackendBase"]] = {}
 
 
-def module_backend_classes() -> Dict[str, Type["caikit.core.BackendBase"]]:
+def module_backend_classes() -> Dict[str, Type["BackendBase"]]:
     """🌶️🌶️🌶️ This returns global state that should only be mutated if you know what you're doing!
 
     Returns the mapping of backend type name to concrete backend class

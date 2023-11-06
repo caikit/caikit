@@ -18,7 +18,6 @@
 
 # the import order cannot adhere to the linter here because we must do things like
 # disable warnings, initialize the JVM and configure logging in a specific order
-# pylint: disable=wrong-import-position,wrong-import-order
 
 # NOTE: There are cyclic imports due to the "import *"s here, when modules then
 # "import core"
@@ -39,7 +38,7 @@ from .task import TaskBase, task
 from .toolkit import *
 
 # Configure the global model wrangling functions
-MODEL_MANAGER = ModelManager()
+MODEL_MANAGER = ModelManager()  # noqa: F405
 extract = MODEL_MANAGER.extract
 load = MODEL_MANAGER.load
 resolve_and_load = MODEL_MANAGER.resolve_and_load

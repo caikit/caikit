@@ -14,6 +14,7 @@ import sys
 import tempfile
 import threading
 import time
+import warnings
 
 # Third Party
 from grpc_health.v1 import health_pb2, health_pb2_grpc
@@ -161,9 +162,7 @@ def runtime_grpc_test_server(open_port, *args, **kwargs):
 
 
 @pytest.fixture(scope="session")
-def runtime_grpc_server(
-    session_scoped_open_port,
-) -> RuntimeGRPCServer:
+def runtime_grpc_server(session_scoped_open_port) -> RuntimeGRPCServer:
     with runtime_grpc_test_server(
         session_scoped_open_port,
     ) as server:
@@ -189,12 +188,18 @@ def runtime_http_test_server(open_port, *args, **kwargs):
             },
             "merge",
         ):
-            config_overrides = {}
-            if "tls_config_override" in kwargs:
-                config_overrides = kwargs["tls_config_override"]
-                kwargs["tls_config_override"] = config_overrides["runtime"]["tls"]
+            # Forward the special "tls_config_override" to "tls_config_override"
+            # IFF the configs contain actual TLS (indicated by the presence of
+            # the special "use_in_test" element).
+            config_overrides = kwargs.pop("tls_config_override", {})
+            if tls_config_override := config_overrides.get("runtime", {}).get("tls"):
+                kwargs["tls_config_override"] = tls_config_override
+            else:
+                config_overrides = {}
+            check_readiness = kwargs.pop("check_readiness", True)
             with http_server.RuntimeHTTPServer(*args, **kwargs) as server:
-                _check_http_server_readiness(server, config_overrides)
+                if check_readiness:
+                    _check_http_server_readiness(server, config_overrides)
                 # Give tests access to the workdir
                 server.workdir = workdir
                 yield server
@@ -444,12 +449,10 @@ def _check_server_readiness(server):
 
 def _check_http_server_readiness(server, config_overrides: Dict[str, Dict]):
     mode = "http"
-    verify = None
     cert = None
     # tls
     if config_overrides:
         mode = "https"
-        verify = config_overrides["use_in_test"]["ca_cert"]
         # mtls
         if "client_cert" and "client_key" in config_overrides["use_in_test"]:
             cert = (
@@ -459,11 +462,13 @@ def _check_http_server_readiness(server, config_overrides: Dict[str, Dict]):
     done = False
     while not done:
         try:
-            response = requests.get(
-                f"{mode}://localhost:{server.port}{http_server.HEALTH_ENDPOINT}",
-                verify=verify,
-                cert=cert,
-            )
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", module="urllib3")
+                response = requests.get(
+                    f"{mode}://localhost:{server.port}{http_server.HEALTH_ENDPOINT}",
+                    verify=False,
+                    cert=cert,
+                )
             assert response.status_code == 200
             assert response.text == "OK"
             done = True

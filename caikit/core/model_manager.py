@@ -244,11 +244,14 @@ class ModelManager:
 
         # This allows a user to load their own model (e.g. model saved to disk)
         load_path = get_config().load_path
-        if load_path is not None and isinstance(module_path, str):
-            if not os.path.exists(module_path):
-                full_module_path = os.path.join(load_path, module_path)
-                if os.path.exists(full_module_path):
-                    module_path = full_module_path
+        if (
+            load_path is not None
+            and isinstance(module_path, str)
+            and not os.path.exists(module_path)
+        ):
+            full_module_path = os.path.join(load_path, module_path)
+            if os.path.exists(full_module_path):
+                module_path = full_module_path
 
         # Ensure that we have a loadable directory.
         error.type_check("<COR98255419E>", str, BytesIO, bytes, module_path=module_path)

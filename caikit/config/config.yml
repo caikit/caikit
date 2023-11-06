@@ -194,12 +194,17 @@ runtime:
         # The directory to save trained models in
         output_dir: training_output
         save_with_id: true
-
         model_saver_plugins:
             local:
                 type: Local
                 config:
                     save_with_id: true # Could be top level for all model saver plugins
+
+    # Version details to retrieve
+    version_info:
+        python_packages:
+            all: false
+        runtime_image: ""
 
 inference_plugin:
     model_mesh:

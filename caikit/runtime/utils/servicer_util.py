@@ -220,7 +220,6 @@ def validate_data_model(
             # and check to make that it is either a primitive protobufs type or that
             # we have a data model class that we can deserialize the protobufs with
             if not is_protobuf_primitive_field(field):
-
                 if field.message_type and field.message_type.GetOptions().map_entry:
                     log.debug(
                         "<RUN51658878D>",
@@ -400,9 +399,7 @@ def build_caikit_library_request_dict(
 
         # 2. Remove any fields not in the module signature
         absent_field_names = [
-            field
-            for field in kwargs_dict.keys()
-            if field not in module_signature.parameters.keys()
+            field for field in kwargs_dict if field not in module_signature.parameters
         ]
         for absent_field_name in absent_field_names:
             kwargs_dict.pop(absent_field_name)
@@ -410,7 +407,6 @@ def build_caikit_library_request_dict(
         # 3. Handle type conversions
         updated_kwargs = {}
         for field_name, field_value in kwargs_dict.items():
-
             # 3.1 Model Pointers
             if isinstance(field_value, ModelPointer):
                 log.debug2("field %s value is a ModelPointer obj", field_name)

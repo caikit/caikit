@@ -126,8 +126,7 @@ class ModelLoader:
         except FileNotFoundError as fnfe:
             log_dict = {
                 "log_code": "<RUN98613924E>",
-                "message": "load failed to find model: %s with error: %s"
-                % (model_path, repr(fnfe)),
+                "message": f"load failed to find model: {model_path} with error: {repr(fnfe)}",
                 "model_id": model_id,
             }
             log.error(log_dict)
@@ -135,11 +134,21 @@ class ModelLoader:
                 StatusCode.NOT_FOUND,
                 f"Model {model_id} not found. Nested error: {fnfe}",
             ) from fnfe
+        except ValueError as ve:
+            log_dict = {
+                "log_code": "<RUN38617724E>",
+                "message": f"load failed to find model: {model_path} with error: {repr(ve)}",
+                "model_id": model_id,
+            }
+            log.error(log_dict)
+            raise CaikitRuntimeException(
+                StatusCode.NOT_FOUND,
+                f"Model {model_id} not found. Nested error: {ve}",
+            ) from ve
         except Exception as ex:
             log_dict = {
                 "log_code": "<RUN62912924E>",
-                "message": "load failed when processing path: %s with error: %s"
-                % (model_path, repr(ex)),
+                "message": f"load failed when processing path: {model_path} with error: {repr(ex)}",
                 "model_id": model_id,
             }
             log.error(log_dict, exc_info=True)

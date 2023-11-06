@@ -80,11 +80,11 @@ def import_protobufs(proto_dir, package_base_name, current_globals):
     all_enum_names = []
     for module in all_modules:
         if module.DESCRIPTOR.package.startswith(_package_name):
-            for message_name in module.DESCRIPTOR.message_types_by_name.keys():
+            for message_name in module.DESCRIPTOR.message_types_by_name:
                 message_val = getattr(module, message_name)
                 current_globals[message_name] = message_val
                 globals()[message_name] = message_val
-            for enum_name in module.DESCRIPTOR.enum_types_by_name.keys():
+            for enum_name in module.DESCRIPTOR.enum_types_by_name:
                 enum_val = getattr(module, enum_name)
                 current_globals[enum_name] = enum_val
                 globals()[enum_name] = enum_val

@@ -16,10 +16,9 @@ Tests for the caikit HTTP server
 """
 # Standard
 from contextlib import contextmanager
-from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List, Optional
 import json
 import os
 import signal
@@ -28,19 +27,23 @@ import zipfile
 
 # Third Party
 from fastapi.testclient import TestClient
-import numpy as np
 import pytest
 import requests
 import tls_test_tools
 
 # Local
 from caikit.core import MODEL_MANAGER, DataObjectBase, dataobject
+from caikit.core.model_management.multi_model_finder import MultiModelFinder
 from caikit.runtime import http_server
+from caikit.runtime.http_server.http_server import StreamEventTypes
 from tests.conftest import temp_config
 from tests.runtime.conftest import (
     ModuleSubproc,
     register_trained_model,
     runtime_http_test_server,
+)
+from tests.runtime.model_management.test_model_manager import (
+    non_singleton_model_managers,
 )
 
 ## Fixtures #####################################################################
@@ -86,19 +89,24 @@ def generate_tls_configs(
     tls: bool = False,
     mtls: bool = False,
     inline: bool = False,
+    separate_client_ca: bool = False,
+    server_sans: Optional[List[str]] = None,
+    client_sans: Optional[List[str]] = None,
     **http_config_overrides,
 ) -> Dict[str, Dict]:
     """Helper to generate tls configs"""
     with tempfile.TemporaryDirectory() as workdir:
         config_overrides = {}
-        client_keyfile, client_certfile, ca_certfile = None, None, None
+        client_keyfile, client_certfile = None, None
         ca_cert, server_cert, server_key = None, None, None
+        use_in_test = config_overrides.setdefault("use_in_test", {})
+        use_in_test["workdir"] = workdir
         if mtls or tls:
             ca_key = tls_test_tools.generate_key()[0]
             ca_cert = tls_test_tools.generate_ca_cert(ca_key)
-            ca_certfile, _ = save_key_cert_pair("ca", workdir, cert=ca_cert)
             server_key, server_cert = tls_test_tools.generate_derived_key_cert_pair(
-                ca_key=ca_key
+                ca_key=ca_key,
+                san_list=server_sans,
             )
             server_certfile, server_keyfile = save_key_cert_pair(
                 "server", workdir, server_key, server_cert
@@ -107,15 +115,20 @@ def generate_tls_configs(
             if inline:
                 tls_config = TLSConfig(
                     server=KeyPair(cert=server_cert, key=server_key),
-                    client=KeyPair(cert=ca_cert if mtls else "", key=""),
+                    client=KeyPair(cert="", key=""),
                 )
             else:
                 tls_config = TLSConfig(
                     server=KeyPair(cert=server_certfile, key=server_keyfile),
-                    client=KeyPair(cert=ca_certfile if mtls else "", key=""),
+                    client=KeyPair(cert="", key=""),
                 )
-            # need to save this ca_certfile in config_overrides so the tls tests below can access it from client side
-            config_overrides["use_in_test"] = {"ca_cert": ca_certfile}
+
+            # need to save this ca_certfile in config_overrides so the tls
+            # tests below can access it from client side
+            ca_certfile, _ = save_key_cert_pair("ca", workdir, cert=ca_cert)
+            use_in_test["ca_cert"] = ca_certfile
+            use_in_test["server_key"] = server_keyfile
+            use_in_test["server_cert"] = server_certfile
 
             # also saving a bad ca_certfile for a failure test case
             bad_ca_file = os.path.join(workdir, "bad_ca_cert.crt")
@@ -124,17 +137,42 @@ def generate_tls_configs(
                     "-----BEGIN CERTIFICATE-----\nfoobar\n-----END CERTIFICATE-----"
                 )
                 handle.write(bad_cert)
-            config_overrides["use_in_test"]["bad_ca_cert"] = bad_ca_file
+            use_in_test["bad_ca_cert"] = bad_ca_file
 
             if mtls:
+                if separate_client_ca:
+                    subject_kwargs = {"common_name": "my.client"}
+                    client_ca_key = tls_test_tools.generate_key()[0]
+                    client_ca_cert = tls_test_tools.generate_ca_cert(
+                        client_ca_key, **subject_kwargs
+                    )
+                else:
+                    subject_kwargs = {}
+                    client_ca_key = ca_key
+                    client_ca_cert = ca_cert
+
+                # If inlining the client CA
+                if inline:
+                    tls_config.client.cert = client_ca_cert
+                else:
+                    client_ca_certfile, _ = save_key_cert_pair(
+                        "client_ca", workdir, cert=client_ca_cert
+                    )
+                    tls_config.client.cert = client_ca_certfile
+
+                # Set up the client key/cert pair derived from the client CA
                 client_certfile, client_keyfile = save_key_cert_pair(
                     "client",
                     workdir,
-                    *tls_test_tools.generate_derived_key_cert_pair(ca_key=ca_key),
+                    *tls_test_tools.generate_derived_key_cert_pair(
+                        ca_key=client_ca_key,
+                        san_list=client_sans,
+                        **subject_kwargs,
+                    ),
                 )
                 # need to save the client cert and key in config_overrides so the mtls test below can access it
-                config_overrides["use_in_test"]["client_cert"] = client_certfile
-                config_overrides["use_in_test"]["client_key"] = client_keyfile
+                use_in_test["client_cert"] = client_certfile
+                use_in_test["client_key"] = client_keyfile
 
             config_overrides["runtime"] = {"tls": tls_config.to_dict()}
         config_overrides.setdefault("runtime", {})["http"] = {
@@ -158,9 +196,7 @@ def test_insecure_server(runtime_http_server, open_port):
 
 
 def test_basic_tls_server(open_port):
-    with generate_tls_configs(
-        open_port, tls=True, mtls=False, http_config_overrides={}
-    ) as config_overrides:
+    with generate_tls_configs(open_port, tls=True, mtls=False) as config_overrides:
         with runtime_http_test_server(
             open_port,
             tls_config_override=config_overrides,
@@ -174,9 +210,7 @@ def test_basic_tls_server(open_port):
 
 
 def test_basic_tls_server_with_wrong_cert(open_port):
-    with generate_tls_configs(
-        open_port, tls=True, mtls=False, http_config_overrides={}
-    ) as config_overrides:
+    with generate_tls_configs(open_port, tls=True, mtls=False) as config_overrides:
         with runtime_http_test_server(
             open_port,
             tls_config_override=config_overrides,
@@ -190,9 +224,7 @@ def test_basic_tls_server_with_wrong_cert(open_port):
 
 
 def test_mutual_tls_server(open_port):
-    with generate_tls_configs(
-        open_port, tls=True, mtls=True, http_config_overrides={}
-    ) as config_overrides:
+    with generate_tls_configs(open_port, tls=True, mtls=True) as config_overrides:
         with runtime_http_test_server(
             open_port,
             tls_config_override=config_overrides,
@@ -209,12 +241,36 @@ def test_mutual_tls_server(open_port):
             resp.raise_for_status()
 
 
+def test_mutual_tls_server_different_client_ca(open_port):
+    with generate_tls_configs(
+        open_port,
+        tls=True,
+        mtls=True,
+        separate_client_ca=True,
+    ) as config_overrides:
+        # start a non-blocking http server with mutual tls
+        with runtime_http_test_server(
+            open_port,
+            tls_config_override=config_overrides,
+        ) as http_server_with_mtls:
+            # Make a request with the client's key/cert pair
+            resp = requests.get(
+                f"https://localhost:{http_server_with_mtls.port}/docs",
+                verify=config_overrides["use_in_test"]["ca_cert"],
+                cert=(
+                    config_overrides["use_in_test"]["client_cert"],
+                    config_overrides["use_in_test"]["client_key"],
+                ),
+            )
+            resp.raise_for_status()
+
+
 def test_mutual_tls_server_inline(open_port):
     """Test that mutual TLS works when the TLS content is passed by value rather
     than with files
     """
     with generate_tls_configs(
-        open_port, tls=True, mtls=True, inline=True, http_config_overrides={}
+        open_port, tls=True, mtls=True, inline=True
     ) as config_overrides:
         with runtime_http_test_server(
             open_port,
@@ -233,9 +289,7 @@ def test_mutual_tls_server_inline(open_port):
 
 
 def test_mutual_tls_server_with_wrong_cert(open_port):
-    with generate_tls_configs(
-        open_port, tls=True, mtls=True, http_config_overrides={}
-    ) as config_overrides:
+    with generate_tls_configs(open_port, tls=True, mtls=True) as config_overrides:
         with runtime_http_test_server(
             open_port,
             tls_config_override=config_overrides,
@@ -477,14 +531,26 @@ def test_inference_streaming_sample_module(sample_task_model_id, client):
         stream_content = stream.content.decode(stream.default_encoding)
         stream_responses = json.loads(
             "[{}]".format(
-                stream_content.replace("data: ", "")
+                stream_content.replace("event: ", '{"event":')
+                .replace(
+                    StreamEventTypes.MESSAGE.value,
+                    '"' + f"{StreamEventTypes.MESSAGE.value}" + '"}',
+                )
+                .replace("data: ", "")
                 .replace("\r\n", "")
                 .replace("}{", "}, {")
             )
         )
-        assert len(stream_responses) == 10
+        assert len(stream_responses) == 20
         assert all(
-            resp.get("greeting") == "Hello world stream" for resp in stream_responses
+            resp.get("greeting") == "Hello world stream"
+            for resp in stream_responses
+            if "greeting" in resp
+        )
+        assert all(
+            resp.get("event") == StreamEventTypes.MESSAGE.value
+            for resp in stream_responses
+            if "event" in resp
         )
 
 
@@ -492,7 +558,7 @@ def test_inference_streaming_sample_module_actual_server(
     sample_task_model_id, runtime_http_server
 ):
     """Simple check for testing a happy path unary-stream case
-    but pints the actual running server"""
+    but pings the actual running server"""
 
     for i in range(10):
         input = {"model_id": sample_task_model_id, "inputs": {"name": f"world{i}"}}
@@ -502,20 +568,67 @@ def test_inference_streaming_sample_module_actual_server(
         stream_content = stream.content.decode(stream.encoding)
         stream_responses = json.loads(
             "[{}]".format(
-                stream_content.replace("data: ", "")
+                stream_content.replace("event: ", '{"event":')
+                .replace(
+                    StreamEventTypes.MESSAGE.value,
+                    '"' + f"{StreamEventTypes.MESSAGE.value}" + '"}',
+                )
+                .replace("data: ", "")
                 .replace("\r\n", "")
                 .replace("}{", "}, {")
             )
         )
-        assert len(stream_responses) == 10
+        assert len(stream_responses) == 20
         assert all(
             resp.get("greeting") == f"Hello world{i} stream"
             for resp in stream_responses
+            if "greeting" in resp
+        )
+        assert all(
+            resp.get("event") == StreamEventTypes.MESSAGE.value
+            for resp in stream_responses
+            if "event" in resp
         )
 
 
+def test_inference_streaming_sample_module_actual_server_throws(
+    sample_task_model_id, runtime_http_server
+):
+    """Simple check for testing an exception in unary-stream case
+    that pings the actual running server"""
+
+    for i in range(10):
+        input = {
+            "model_id": sample_task_model_id,
+            "inputs": {"name": f"world{i}"},
+            "parameters": {"err_stream": True},
+        }
+        url = f"http://localhost:{runtime_http_server.port}/api/v1/task/server-streaming-sample"
+        stream = requests.post(url=url, json=input, verify=False)
+        assert stream.status_code == 200
+        stream_content = stream.content.decode(stream.encoding)
+        stream_responses = json.loads(
+            "[{}]".format(
+                stream_content.replace("event: ", '{"event":')
+                .replace(
+                    StreamEventTypes.ERROR.value,
+                    '"' + f"{StreamEventTypes.ERROR.value}" + '"}',
+                )
+                .replace("data: ", "")
+                .replace("\r\n", "")
+                .replace("}{", "}, {")
+            )
+        )
+        assert len(stream_responses) == 2
+        assert stream_responses[0].get("event") == StreamEventTypes.ERROR.value
+        assert (
+            stream_responses[1].get("details") == "ValueError('raising a ValueError')"
+        )
+        assert stream_responses[1].get("code") == 400
+
+
 def test_no_model_id(client):
-    """Simple check that we can ping a model"""
+    """Simple check to make sure we return a 400 if no model_id in payload"""
     response = client.post(
         f"/api/v1/task/sample",
         json={"inputs": {"name": "world"}},
@@ -543,7 +656,8 @@ def test_inference_multi_task_module(multi_task_model_id, client):
 
 
 def test_model_not_found(client):
-    """Simple check that we can ping a model"""
+    """Simple error check to make sure we return a 404 in case of
+    incorrect model_id"""
     response = client.post(
         f"/api/v1/task/sample",
         json={"model_id": "not_an_id", "inputs": {"name": "world"}},
@@ -551,9 +665,47 @@ def test_model_not_found(client):
     assert response.status_code == 404
 
 
+def test_model_not_found_with_lazy_load_multi_model_finder(open_port):
+    """An error check to make sure we return a 404 in case of
+    incorrect model_id while using multi model finder with lazy load enabled"""
+    with tempfile.TemporaryDirectory() as workdir:
+        # NOTE: This test requires that the ModelManager class not be a singleton.
+        #   To accomplish this, the singleton instance is temporarily removed.
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": workdir,
+                    "lazy_load_local_models": True,
+                },
+                "model_management": {
+                    "finders": {
+                        "default": {
+                            "type": MultiModelFinder.name,
+                            "config": {
+                                "finder_priority": ["local"],
+                            },
+                        },
+                        "local": {"type": "LOCAL"},
+                    }
+                },
+            },
+            "merge",
+        ):
+            with runtime_http_test_server(open_port) as server:
+                # double checking that our local model_management change took affect
+                assert (
+                    server.global_predict_servicer._model_manager._lazy_load_local_models
+                )
+                response = requests.post(
+                    f"http://localhost:{server.port}/api/v1/task/sample",
+                    json={"model_id": "not_an_id", "inputs": {"name": "world"}},
+                )
+                assert response.status_code == 404
+
+
 def test_inference_sample_task_incorrect_input(sample_task_model_id, client):
-    """Test that with an incorrect input, the test doesn't throw but
-    instead returns None"""
+    """Test that with an incorrect input, we get back a 422"""
     json_input = {
         "model_id": sample_task_model_id,
         "inputs": {"blah": "world"},
@@ -562,9 +714,13 @@ def test_inference_sample_task_incorrect_input(sample_task_model_id, client):
         f"/api/v1/task/sample",
         json=json_input,
     )
-    assert response.status_code == 422, response.content.decode(
-        response.default_encoding
-    )
+    assert response.status_code == 422
+    json_response = json.loads(response.content.decode(response.default_encoding))
+    # assert standard fields in the response
+    assert json_response["details"] is not None
+    assert json_response["code"] is not None
+    assert json_response["id"] is not None
+    assert json_response["details"] == "Extra inputs are not permitted"
 
 
 @pytest.mark.skip("Skipping since we're not tacking forward compatibility atm")
@@ -589,6 +745,48 @@ def test_health_check_ok(client):
     response = client.get(http_server.HEALTH_ENDPOINT)
     assert response.status_code == 200
     assert response.text == "OK"
+
+
+def test_runtime_info_ok(runtime_http_server):
+    """Make sure the runtime info returns version data"""
+    with TestClient(runtime_http_server.app) as client:
+        response = client.get(http_server.RUNTIME_INFO_ENDPOINT)
+        assert response.status_code == 200
+
+        json_response = json.loads(response.content.decode(response.default_encoding))
+        assert "caikit" in json_response["python_packages"]
+        # runtime_version not added if not set
+        assert json_response["runtime_version"] == ""
+        # dependent libraries not added if all packages not set to true
+        assert "py_to_proto" not in json_response["python_packages"]
+
+
+def test_runtime_info_ok_response_all_packages(runtime_http_server):
+    with temp_config(
+        {
+            "runtime": {
+                "version_info": {
+                    "python_packages": {
+                        "all": True,
+                    },
+                    "runtime_image": "1.2.3",
+                }
+            },
+        },
+        "merge",
+    ):
+        with TestClient(runtime_http_server.app) as client:
+            response = client.get(http_server.RUNTIME_INFO_ENDPOINT)
+            assert response.status_code == 200
+
+            json_response = json.loads(
+                response.content.decode(response.default_encoding)
+            )
+            assert json_response["runtime_version"] == "1.2.3"
+            assert "caikit" in json_response["python_packages"]
+            # dependent libraries versions added
+            assert "alog" in json_response["python_packages"]
+            assert "py_to_proto" in json_response["python_packages"]
 
 
 def test_http_server_shutdown_with_model_poll(open_port):

@@ -17,6 +17,7 @@
 # Standard
 from dataclasses import dataclass
 from unittest import mock
+from unittest.mock import patch
 import json
 import os
 import signal
@@ -44,6 +45,8 @@ from caikit import get_config
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.runtime.data_model import (
+    RuntimeInfoRequest,
+    RuntimeInfoResponse,
     TrainingInfoRequest,
     TrainingJob,
     TrainingStatus,
@@ -69,7 +72,7 @@ from sample_lib.data_model import (
 )
 from sample_lib.data_model.sample import OtherTask, SampleTask, StreamingTask
 from sample_lib.modules import FirstTask
-from tests.conftest import random_test_id, temp_config
+from tests.conftest import ARM_ARCH, PROTOBUF_VERSION, random_test_id, temp_config
 from tests.core.helpers import *
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import (
@@ -832,7 +835,7 @@ def test_load_model_badmodel_error_response(runtime_grpc_server):
             modelKey="baz",
         )
         stub.loadModel(load_model_request)
-    assert context.value.code() == grpc.StatusCode.INTERNAL
+    assert context.value.code() == grpc.StatusCode.NOT_FOUND
 
 
 def test_unload_model_ok_response(sample_task_model_id, runtime_grpc_server):
@@ -953,6 +956,63 @@ def test_runtime_status_ok_response(runtime_grpc_server):
     assert actual_response.numericRuntimeVersion == 0
 
 
+def test_runtime_info_ok_response(runtime_grpc_server):
+    runtime_info_service: ServicePackage = ServicePackageFactory().get_service_package(
+        ServicePackageFactory.ServiceType.INFO,
+    )
+
+    runtime_info_stub = runtime_info_service.stub_class(
+        runtime_grpc_server.make_local_channel()
+    )
+
+    runtime_request = RuntimeInfoRequest()
+    runtime_info_response: RuntimeInfoResponse = RuntimeInfoResponse.from_proto(
+        runtime_info_stub.GetRuntimeInfo(runtime_request.to_proto())
+    )
+
+    assert "caikit" in runtime_info_response.python_packages
+    # runtime_version not added if not set
+    assert runtime_info_response.runtime_version == ""
+    # dependent libraries not added if all packages not set to true
+    assert "py_to_proto" not in runtime_info_response.python_packages
+
+
+def test_runtime_info_ok_response_all_packages(runtime_grpc_server):
+    with temp_config(
+        {
+            "runtime": {
+                "version_info": {
+                    "python_packages": {
+                        "all": True,
+                    },
+                    "runtime_image": "1.2.3",
+                }
+            },
+        },
+        "merge",
+    ):
+        runtime_info_service: ServicePackage = (
+            ServicePackageFactory().get_service_package(
+                ServicePackageFactory.ServiceType.INFO,
+            )
+        )
+
+        runtime_info_stub = runtime_info_service.stub_class(
+            runtime_grpc_server.make_local_channel()
+        )
+
+        runtime_request = RuntimeInfoRequest()
+        runtime_info_response: RuntimeInfoResponse = RuntimeInfoResponse.from_proto(
+            runtime_info_stub.GetRuntimeInfo(runtime_request.to_proto())
+        )
+
+        assert "caikit" in runtime_info_response.python_packages
+        assert runtime_info_response.runtime_version == "1.2.3"
+        # dependent libraries versions added
+        assert "alog" in runtime_info_response.python_packages
+        assert "py_to_proto" in runtime_info_response.python_packages
+
+
 #### Health Probe tests ####
 def test_grpc_health_probe_ok_response(runtime_grpc_server):
     """Test health check successful response"""
@@ -962,6 +1022,9 @@ def test_grpc_health_probe_ok_response(runtime_grpc_server):
     assert actual_response.status == 1
 
 
+@pytest.mark.skipif(
+    PROTOBUF_VERSION < 4 and ARM_ARCH, reason="protobuf 3 serialization bug"
+)
 def test_grpc_server_can_render_all_necessary_protobufs(
     runtime_grpc_server, sample_inference_service, sample_train_service, tmp_path
 ):
@@ -1057,6 +1120,49 @@ def test_mtls(open_port):
             stub = health_pb2_grpc.HealthStub(bad_channel)
             health_check_request = health_pb2.HealthCheckRequest()
             stub.Check(health_check_request)
+
+
+def test_mtls_different_root(open_port):
+    """Make sure mtls communication works when the CA for the client is not the
+    same as the CA for the server (including health checks using the server's
+    CA)
+    """
+    # Server TLS Infra
+    server_ca_key = tls_test_tools.generate_key()[0]
+    server_ca_cert = tls_test_tools.generate_ca_cert(server_ca_key)
+    server_tls_key, server_tls_cert = tls_test_tools.generate_derived_key_cert_pair(
+        server_ca_key
+    )
+
+    # Client TLS Infra
+    client_ca_key = tls_test_tools.generate_key()[0]
+    client_ca_cert = tls_test_tools.generate_ca_cert(
+        client_ca_key, common_name="my.client"
+    )
+    client_tls_key, client_tls_cert = tls_test_tools.generate_derived_key_cert_pair(
+        client_ca_key, common_name="my.client"
+    )
+
+    server_tls_config = TLSConfig(
+        server=KeyPair(cert=server_tls_cert, key=server_tls_key),
+        client=KeyPair(cert=client_ca_cert, key=""),
+    )
+    with runtime_grpc_test_server(
+        open_port,
+        tls_config_override=server_tls_config,
+    ) as server:
+        # Connect using the client's creds
+        _assert_connection(
+            _make_secure_channel(
+                server, server_ca_cert, client_tls_key, client_tls_cert
+            )
+        )
+        # Connect using the server's creds
+        _assert_connection(
+            _make_secure_channel(
+                server, server_ca_cert, server_tls_key, server_tls_cert
+            )
+        )
 
 
 @pytest.mark.parametrize(
