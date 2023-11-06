@@ -717,9 +717,9 @@ def test_inference_sample_task_incorrect_input(sample_task_model_id, client):
     assert response.status_code == 422
     json_response = json.loads(response.content.decode(response.default_encoding))
     # assert standard fields in the response
-    assert "details" in json_response
-    assert "code" in json_response
-    assert "id" in json_response
+    assert json_response["details"] is not None
+    assert json_response["code"] is not None
+    assert json_response["id"] is not None
     assert json_response["details"] == "Extra inputs are not permitted"
 
 
