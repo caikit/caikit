@@ -99,6 +99,8 @@ def generate_tls_configs(
         config_overrides = {}
         client_keyfile, client_certfile = None, None
         ca_cert, server_cert, server_key = None, None, None
+        use_in_test = config_overrides.setdefault("use_in_test", {})
+        use_in_test["workdir"] = workdir
         if mtls or tls:
             ca_key = tls_test_tools.generate_key()[0]
             ca_cert = tls_test_tools.generate_ca_cert(ca_key)
@@ -124,11 +126,9 @@ def generate_tls_configs(
             # need to save this ca_certfile in config_overrides so the tls
             # tests below can access it from client side
             ca_certfile, _ = save_key_cert_pair("ca", workdir, cert=ca_cert)
-            config_overrides["use_in_test"] = {
-                "ca_cert": ca_certfile,
-                "server_key": server_keyfile,
-                "server_cert": server_certfile,
-            }
+            use_in_test["ca_cert"] = ca_certfile
+            use_in_test["server_key"] = server_keyfile
+            use_in_test["server_cert"] = server_certfile
 
             # also saving a bad ca_certfile for a failure test case
             bad_ca_file = os.path.join(workdir, "bad_ca_cert.crt")
@@ -137,7 +137,7 @@ def generate_tls_configs(
                     "-----BEGIN CERTIFICATE-----\nfoobar\n-----END CERTIFICATE-----"
                 )
                 handle.write(bad_cert)
-            config_overrides["use_in_test"]["bad_ca_cert"] = bad_ca_file
+            use_in_test["bad_ca_cert"] = bad_ca_file
 
             if mtls:
                 if separate_client_ca:
@@ -171,8 +171,8 @@ def generate_tls_configs(
                     ),
                 )
                 # need to save the client cert and key in config_overrides so the mtls test below can access it
-                config_overrides["use_in_test"]["client_cert"] = client_certfile
-                config_overrides["use_in_test"]["client_key"] = client_keyfile
+                use_in_test["client_cert"] = client_certfile
+                use_in_test["client_key"] = client_keyfile
 
             config_overrides["runtime"] = {"tls": tls_config.to_dict()}
         config_overrides.setdefault("runtime", {})["http"] = {
