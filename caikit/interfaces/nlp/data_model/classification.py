@@ -30,6 +30,13 @@ from .text_generation import FinishReason
 
 log = alog.use_channel("DATAM")
 
+@dataobject(package=NLP_PACKAGE)
+class InputWarnings(DataObjectBase):
+    """Input Warning data objects, which returns a reason and message associated with warnings 
+    to issue to a user that causes errors (such as failed text generation)
+    """
+    id: str
+    message: str
 
 @dataobject(package=NLP_PACKAGE)
 class ClassificationTrainRecord(DataObjectBase):
@@ -82,6 +89,9 @@ class TokenClassificationResult(DataObjectBase):
     token_count: Annotated[
         Optional[int], FieldNumber(7)
     ]  # Length of tokens in the text
+    warnings: Annotated[
+        Optional[InputWarnings], FieldNumber(8)
+    ]  # Warning to user in the event of input errors
 
 
 @dataobject(package=NLP_PACKAGE)
@@ -129,6 +139,9 @@ class ClassifiedGeneratedTextResult(DataObjectBase):
         Optional[np.uint64], FieldNumber(5)
     ]  # The random seed used for text generation
     input_token_count: Annotated[Optional[int], FieldNumber(6)]
+    warnings: Annotated[
+        Optional[InputWarnings], FieldNumber(7)
+    ]  # Warning to user in the event of input errors 
 
 
 @dataobject(package=NLP_PACKAGE)
@@ -139,6 +152,6 @@ class ClassifiedGeneratedTextStreamResult(ClassifiedGeneratedTextResult):
     """
 
     processed_index: Annotated[
-        Optional[int], FieldNumber(7)
+        Optional[int], FieldNumber(8)
     ]  # Result index up to which text is processed
-    start_index: Annotated[int, FieldNumber(8)]  # Result start index for processed text
+    start_index: Annotated[int, FieldNumber(9)]  # Result start index for processed text
