@@ -145,7 +145,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         # Request validation
         @self.app.exception_handler(RequestValidationError)
-        async def request_validation_exception_handler(_, exc: RequestValidationError) -> Response:
+        async def request_validation_exception_handler(
+            _, exc: RequestValidationError
+        ) -> Response:
             err_code = status.HTTP_422_UNPROCESSABLE_ENTITY
             error_content = {
                 "details": exc.errors()[0]["msg"]
@@ -406,6 +408,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     "code": error_code,
                     "id": err.id,
                 }
+                log.error("<RUN87691106E>", error_content, exc_info=True)
             except Exception as err:  # pylint: disable=broad-exception-caught
                 error_code = 500
                 error_content = {
@@ -484,6 +487,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     "code": error_code,
                     "id": err.id,
                 }
+                log.error("<RUN53211098E>", error_content, exc_info=True)
             except Exception as err:  # pylint: disable=broad-exception-caught
                 error_code = 500
                 error_content = {
@@ -558,6 +562,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         "code": error_code,
                         "id": err.id,
                     }
+                    log.error("<RUN53234506E>", error_content, exc_info=True)
                 except Exception as err:  # pylint: disable=broad-exception-caught
                     error_code = 500
                     error_content = {
