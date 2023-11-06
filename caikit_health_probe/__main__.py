@@ -23,10 +23,6 @@ import sys
 import tempfile
 import warnings
 
-# Third Party
-from cryptography import x509
-from cryptography.hazmat.backends import default_backend
-
 # First Party
 import alog
 
@@ -231,18 +227,14 @@ def _grpc_health_probe(
                 root_certificates=tls_server_cert,
             )
 
-        # Since we are not guaranteed to know the hostname that the server is
-        # using and the server may not have 'localhost' in the SANs for the cert
-        # it is using, we need to parse out the correct hostname here so that it
-        # can be passed to grpc hostname verification. There is no option to
-        # fully disable grpc hostname verification as of the writing of this
-        # code.
-        host_name = _get_host_name(tls_server_cert)
-        channel = grpc.secure_channel(
-            hostname,
-            credentials=credentials,
-            options=(("grpc.ssl_target_name_override", host_name),),
-        )
+        # NOTE: If the server's certificate does not have 'localhost' in it,
+        #   this will cause certificate validation errors and fail. The original
+        #   workaround for this was to parse the cert's SANs and use hostname
+        #   overrides, but that requires a full cryptographic PEM parser which
+        #   is a security-sensitive dependency to pull that we want to avoid.
+        #   Instead, the workaround is to use the unix socket server option
+        #   above.
+        channel = grpc.secure_channel(hostname, credentials=credentials)
     else:
         log.debug("Probing INSECURE gRPC server")
         channel = grpc.insecure_channel(hostname)
@@ -291,23 +283,6 @@ def _load_secret(secret: str) -> str:
         with open(secret, "r", encoding="utf-8") as secret_file:
             return secret_file.read()
     return secret
-
-
-def _get_host_name(cert_bytes: bytes) -> str:
-    """Get the Common Name from the given certificate in order to provide
-    hostname verification for the gRPC health check
-    """
-    cert = x509.load_pem_x509_certificate(cert_bytes, default_backend())
-    if sans := cert.subject.get_attributes_for_oid(x509.OID_SUBJECT_ALTERNATIVE_NAME):
-        return sans[0].value
-    if ext_san := cert.extensions.get_extension_for_oid(
-        x509.OID_SUBJECT_ALTERNATIVE_NAME
-    ):
-        if hn_sans := ext_san.value.get_values_for_type(x509.DNSName):
-            return hn_sans[0]
-        if ip_sans := ext_san.value.get_values_for_type(x509.IPAddress):
-            return ip_sans[0]
-    return cert.subject.get_attributes_for_oid(x509.OID_COMMON_NAME)[0].value
 
 
 ## Main ########################################################################
