@@ -205,8 +205,17 @@ def _grpc_health_probe(
         )
         import grpc  # pylint: disable=import-outside-toplevel
 
+    # Server hostname to use unless using socket mode
     hostname = f"localhost:{port}"
-    if tls_key and tls_cert:
+    socket_file = get_config().runtime.grpc.unix_socket_path
+
+    # If available, use a unix socket
+    if os.path.exists(os.path.dirname(socket_file)):
+        socket_address = f"unix://{socket_file}"
+        log.debug("Probing gRPC server over unix socket: %s", socket_file)
+        channel = grpc.insecure_channel(socket_address)
+
+    elif tls_key and tls_cert:
         tls_server_key = bytes(_load_secret(tls_key), "utf-8")
         tls_server_cert = bytes(_load_secret(tls_cert), "utf-8")
         if client_ca:
