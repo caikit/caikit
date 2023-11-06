@@ -145,7 +145,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         # Request validation
         @self.app.exception_handler(RequestValidationError)
-        async def request_validation_exception_handler(_, exc: RequestValidationError):
+        async def request_validation_exception_handler(_, exc: RequestValidationError) -> Response:
             err_code = status.HTTP_422_UNPROCESSABLE_ENTITY
             error_content = {
                 "details": exc.errors()[0]["msg"]
