@@ -30,13 +30,16 @@ from .text_generation import FinishReason
 
 log = alog.use_channel("DATAM")
 
+
 @dataobject(package=NLP_PACKAGE)
 class InputWarnings(DataObjectBase):
-    """Input Warning data object, which returns a reason and message associated with warnings 
+    """Input Warning data object, which returns a reason and message associated with warnings
     to issue to a user that causes errors (such as failed text generation)
     """
+
     id: str
     message: str
+
 
 @dataobject(package=NLP_PACKAGE)
 class ClassificationTrainRecord(DataObjectBase):
@@ -141,7 +144,7 @@ class ClassifiedGeneratedTextResult(DataObjectBase):
     input_token_count: Annotated[Optional[int], FieldNumber(6)]
     warnings: Annotated[
         Optional[InputWarnings], FieldNumber(7)
-    ]  # Warning to user in the event of input errors 
+    ]  # Warning to user in the event of input errors
 
 
 @dataobject(package=NLP_PACKAGE)
