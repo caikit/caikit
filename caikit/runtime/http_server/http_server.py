@@ -33,6 +33,7 @@ import tempfile
 import threading
 import time
 import traceback
+import uuid
 
 # Third Party
 from fastapi import FastAPI, HTTPException, Request, Response, status
@@ -152,7 +153,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 else exc.errors(),
                 "additional_info": exc.errors(),
                 "code": err_code,
-                "id": None,
+                "id": uuid.uuid4().hex,
             }
             log.error("<RUN59871106E>", error_content, exc_info=True)
             return Response(content=json.dumps(error_content), status_code=err_code)
@@ -410,7 +411,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 error_content = {
                     "details": f"Unhandled exception: {str(err)}",
                     "code": error_code,
-                    "id": None,
+                    "id": uuid.uuid4().hex,
                 }
                 log.error("<RUN51231106E>", error_content, exc_info=True)
             return Response(
@@ -488,7 +489,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 error_content = {
                     "details": f"Unhandled exception: {str(err)}",
                     "code": error_code,
-                    "id": None,
+                    "id": uuid.uuid4().hex,
                 }
                 log.error("<RUN98751106E>", error_content, exc_info=True)
             return Response(
@@ -562,7 +563,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     error_content = {
                         "details": f"Unhandled exception: {str(err)}",
                         "code": error_code,
-                        "id": None,
+                        "id": uuid.uuid4().hex,
                     }
                     log.error("<RUN51891206E>", error_content, exc_info=True)
 
