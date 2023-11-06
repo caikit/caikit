@@ -33,11 +33,12 @@ import tempfile
 import threading
 import time
 import traceback
+import uuid
 
 # Third Party
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import ResponseValidationError
+from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
 from grpc import StatusCode
 from sse_starlette import EventSourceResponse, ServerSentEvent
@@ -141,6 +142,23 @@ class RuntimeHTTPServer(RuntimeServerBase):
         super().__init__(get_config().runtime.http.port, tls_config_override)
 
         self.app = FastAPI()
+
+        # Request validation
+        @self.app.exception_handler(RequestValidationError)
+        async def request_validation_exception_handler(
+            _, exc: RequestValidationError
+        ) -> Response:
+            err_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+            error_content = {
+                "details": exc.errors()[0]["msg"]
+                if len(exc.errors()) > 0 and "msg" in exc.errors()[0]
+                else exc.errors(),
+                "additional_info": exc.errors(),
+                "code": err_code,
+                "id": uuid.uuid4().hex,
+            }
+            log.error("<RUN59871106E>", error_content, exc_info=True)
+            return Response(content=json.dumps(error_content), status_code=err_code)
 
         # Response validation
         @self.app.exception_handler(ResponseValidationError)
@@ -390,14 +408,15 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     "code": error_code,
                     "id": err.id,
                 }
+                log.error("<RUN87691106E>", error_content, exc_info=True)
             except Exception as err:  # pylint: disable=broad-exception-caught
                 error_code = 500
                 error_content = {
                     "details": f"Unhandled exception: {str(err)}",
                     "code": error_code,
-                    "id": None,
+                    "id": uuid.uuid4().hex,
                 }
-                log.error("<RUN51881106E>", err, exc_info=True)
+                log.error("<RUN51231106E>", error_content, exc_info=True)
             return Response(
                 content=json.dumps(error_content), status_code=error_code
             )  # pylint: disable=used-before-assignment
@@ -468,14 +487,15 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     "code": error_code,
                     "id": err.id,
                 }
+                log.error("<RUN53211098E>", error_content, exc_info=True)
             except Exception as err:  # pylint: disable=broad-exception-caught
                 error_code = 500
                 error_content = {
                     "details": f"Unhandled exception: {str(err)}",
                     "code": error_code,
-                    "id": None,
+                    "id": uuid.uuid4().hex,
                 }
-                log.error("<RUN51881106E>", err, exc_info=True)
+                log.error("<RUN98751106E>", error_content, exc_info=True)
             return Response(
                 content=json.dumps(error_content), status_code=error_code
             )  # pylint: disable=used-before-assignment
@@ -542,14 +562,15 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         "code": error_code,
                         "id": err.id,
                     }
+                    log.error("<RUN53234506E>", error_content, exc_info=True)
                 except Exception as err:  # pylint: disable=broad-exception-caught
                     error_code = 500
                     error_content = {
                         "details": f"Unhandled exception: {str(err)}",
                         "code": error_code,
-                        "id": None,
+                        "id": uuid.uuid4().hex,
                     }
-                    log.error("<RUN51881106E>", err, exc_info=True)
+                    log.error("<RUN51891206E>", error_content, exc_info=True)
 
                 # If an error occurs, yield an error response and terminate
                 yield ServerSentEvent(
