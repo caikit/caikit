@@ -93,10 +93,6 @@ class ModelSaver(typing.Generic[T], abc.ABC):
 class LocalPathModelSaver(ModelSaver[PathReference]):
     """Holds the actual impl for saving the model"""
 
-    # TODO: Do we even keep the base `training_output_dir`?
-    # Could create a `LocalFileModelSaver` with that as the target if none given in api?
-    # But also very awkward to have both
-
     def __init__(self, target: PathReference, save_with_id: bool):
         self.target = target
         self.save_with_id = save_with_id
