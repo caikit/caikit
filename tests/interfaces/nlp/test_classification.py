@@ -271,3 +271,4 @@ def _validate_classification_generated_text_result(obj):
     assert obj.finish_reason == 5
     assert obj.seed == 42
     assert obj.warnings[0].id == InputWarningReason.UNSUITABLE_INPUT.value
+    assert obj.warnings[0].message == "unsuitable input detected"
