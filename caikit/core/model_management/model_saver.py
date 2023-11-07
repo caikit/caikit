@@ -25,7 +25,7 @@ from caikit.interfaces.common.data_model.stream_sources import PathReference
 T = typing.TypeVar("T")
 
 
-class ModelSaver(typing.Generic[T]):
+class ModelSaver(typing.Generic[T], abc.ABC):
     """Generic-typed, abstract base for model saver"""
 
     @abc.abstractmethod
