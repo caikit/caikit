@@ -146,7 +146,7 @@ class ClassifiedGeneratedTextResult(DataObjectBase):
     ]  # The random seed used for text generation
     input_token_count: Annotated[Optional[int], FieldNumber(6)]
     warnings: Annotated[
-        Optional[InputWarning], FieldNumber(9)
+        Optional[List[InputWarning]], FieldNumber(9)
     ]  # Warning to user in the event of input errors
 
 
