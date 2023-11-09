@@ -15,7 +15,7 @@
 """
 # Standard
 from dataclasses import dataclass, field
-from typing import Any, List, Union
+from typing import Any, Dict, List, Union
 import json
 
 # Third Party
@@ -94,7 +94,7 @@ class Vector1D(DataObjectBase):
         return cls(data=data)
 
     @classmethod
-    def from_json(cls, json_str: Union[dict[str, Any], str]) -> "Vector1D":
+    def from_json(cls, json_str: Union[Dict[str, Any], str]) -> "Vector1D":
         """JSON does not have different float types. Move data into data_pyfloatsequence"""
 
         json_obj = json.loads(json_str) if isinstance(json_str, str) else json_str
@@ -172,7 +172,7 @@ class ListOfVector1D(DataObjectBase):
         error.type_check_all("<NLP94783841E>", Vector1D, results=self.results)
 
     @classmethod
-    def from_json(cls, json_str: Union[dict[str, Any], str]) -> "ListOfVector1D":
+    def from_json(cls, json_str: Union[Dict[str, Any], str]) -> "ListOfVector1D":
         """Fill in the vector data in an appropriate data_<float type sequence>"""
 
         json_obj = json.loads(json_str) if isinstance(json_str, str) else json_str
