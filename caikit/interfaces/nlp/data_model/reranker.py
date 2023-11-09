@@ -15,7 +15,7 @@
 # Standard
 from typing import List, Optional
 
-# First Party
+# Local
 from caikit.core import DataObjectBase, dataobject
 from caikit.core.data_model.json_dict import JsonDict
 

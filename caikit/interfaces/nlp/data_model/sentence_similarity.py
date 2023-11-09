@@ -17,9 +17,11 @@
 from typing import List
 
 # First Party
+import alog
+
+# Local
 from caikit.core import DataObjectBase, dataobject
 from caikit.core.exceptions import error_handler
-import alog
 
 log = alog.use_channel("DATAM")
 error = error_handler.get(log)

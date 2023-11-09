@@ -15,7 +15,7 @@
 # Standard
 from typing import List
 
-# First Party
+# Local
 from caikit.core import TaskBase, task
 from caikit.interfaces.common.data_model import ListOfVector1D
 from caikit.interfaces.nlp.data_model.embedding_vectors import EmbeddingResult

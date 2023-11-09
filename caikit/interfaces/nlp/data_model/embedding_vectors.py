@@ -17,12 +17,12 @@
 from dataclasses import dataclass
 
 # First Party
-from caikit.core import DataObjectBase, dataobject
-from caikit.core.exceptions import error_handler
 import alog
 
 # Local
 from ...common.data_model import Vector1D
+from caikit.core import DataObjectBase, dataobject
+from caikit.core.exceptions import error_handler
 
 log = alog.use_channel("DATAM")
 error = error_handler.get(log)

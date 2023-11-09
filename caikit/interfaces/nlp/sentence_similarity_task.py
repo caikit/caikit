@@ -15,7 +15,7 @@
 # Standard
 from typing import List
 
-# First Party
+# Local
 from caikit.core import TaskBase, task
 from caikit.interfaces.nlp.data_model import SentenceListScores, SentenceScores
 
