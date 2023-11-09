@@ -11,6 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Data structures for embedding vector representations
+"""
+# Standard
+from typing import List
 
-# Local
-from . import data_model, embedding_tasks, rerank_task, sentence_similarity_task, tasks
+# First Party
+from caikit.core import DataObjectBase, dataobject
+from caikit.core.exceptions import error_handler
+import alog
+
+log = alog.use_channel("DATAM")
+error = error_handler.get(log)
+
+
+@dataobject(package="caikit_data_model.caikit_nlp")
+class SentenceScores(DataObjectBase):
+    scores: List[float]
+
+
+@dataobject(package="caikit_data_model.caikit_nlp")
+class SentenceListScores(DataObjectBase):
+
+    results: List[SentenceScores]

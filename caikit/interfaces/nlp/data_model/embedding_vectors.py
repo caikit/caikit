@@ -11,6 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Data structures for embedding vector representations
+"""
+# Standard
+from dataclasses import dataclass
+
+# First Party
+from caikit.core import DataObjectBase, dataobject
+from caikit.core.exceptions import error_handler
+import alog
 
 # Local
-from . import data_model, embedding_tasks, rerank_task, sentence_similarity_task, tasks
+from ...common.data_model import Vector1D
+
+log = alog.use_channel("DATAM")
+error = error_handler.get(log)
+
+
+@dataobject(package="caikit_data_model.caikit_nlp")
+@dataclass
+class EmbeddingResult(DataObjectBase):
+    """Result from text embedding task"""
+
+    result: Vector1D
