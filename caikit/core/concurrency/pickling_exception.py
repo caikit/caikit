@@ -105,7 +105,7 @@ class ExceptionPickler:
             ),
         }
 
-        # ty/catch pickle errors
+        # try/catch pickle errors
         try:
             pickle.loads(pickle.dumps(self.exception))
             log.debug4("Exception pickled successfully: %s", self.exception)
