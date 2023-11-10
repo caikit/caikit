@@ -46,8 +46,14 @@ class InfoServicer:
 
     def get_runtime_info_impl(self) -> RuntimeInfoResponse:
         """Get information on versions of libraries and server from config"""
-        python_packages = {}
         config_version_info = get_config().runtime.version_info or {}
+        python_packages = {
+            package: version
+            for package, version in config_version_info.get(
+                "python_packages", {}
+            ).items()
+            if package != "all"
+        }
         all_packages = (config_version_info.get("python_packages") or {}).get("all")
 
         for lib, dist_names in importlib_metadata.packages_distributions().items():

@@ -789,6 +789,27 @@ def test_runtime_info_ok_response_all_packages(runtime_http_server):
             assert "py_to_proto" in json_response["python_packages"]
 
 
+def test_runtime_info_ok_custom_python_packages(runtime_http_server):
+    """Make sure the runtime info returns version data"""
+    with temp_config(
+        {"runtime": {"version_info": {"python_packages": {"custom_package": "0.1.0"}}}},
+        merge_strategy="merge",
+    ):
+        with TestClient(runtime_http_server.app) as client:
+            response = client.get(http_server.RUNTIME_INFO_ENDPOINT)
+            assert response.status_code == 200
+
+            json_response = json.loads(
+                response.content.decode(response.default_encoding)
+            )
+            # runtime_version not added if not set
+            assert json_response["runtime_version"] == ""
+            # custom library is set while other random packages are not
+            assert "caikit" in json_response["python_packages"]
+            assert json_response["python_packages"]["custom_package"] == "0.1.0"
+            assert "py_to_proto" not in json_response["python_packages"]
+
+
 def test_http_server_shutdown_with_model_poll(open_port):
     """Test that a SIGINT successfully shuts down the running server"""
     with tempfile.TemporaryDirectory() as workdir:
