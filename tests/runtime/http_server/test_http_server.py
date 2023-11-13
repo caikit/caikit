@@ -1025,3 +1025,46 @@ def test_train_other_task(client, runtime_http_server):
     json_response = json.loads(response.content.decode(response.default_encoding))
     assert response.status_code == 200, json_response
     assert json_response["farewell"] == "goodbye: world 64 times"
+
+def test_inference_malformed_param(sample_task_model_id, primitive_task_model_id, client):
+    """Send a malformed parameter field to the the inference call to induce the correct HTTP error"""
+
+    # json_input = {
+    #     "inputs": {"name": "hello"},
+    #     "parameters": {
+    #         "bool_type": True,
+    #         "int_type": 1,
+    #         "float_type": 1.0,
+    #         "str_type": "astring",
+    #         "bytes_type": "cmF3Ynl0ZXMK",
+    #         "list_type": ["list", "of", "strings"],
+    #     },
+    #     "model_id": primitive_task_model_id,
+    # }
+    # response = client.post(
+    #     f"/api/v1/task/sample",
+    #     json=json_input,
+    # )
+    # json_response = json.loads(response.content.decode(response.default_encoding))
+    # assert response.status_code == 200, json_response
+    # assert "hello: primitives!" in json_response["greeting"]
+
+
+    
+    json_input = {
+        "model_id": sample_task_model_id,
+        "inputs": {"name": "world"},
+        "parameters": {
+            "throw": True,
+            "error": "RANDOM_ERROR",
+            },
+    }
+    response = client.post(
+        f"/api/v1/task/sample",
+        json=json_input,
+    )
+    # this is 500 because we explicitly pass in `throw` as True, which
+    # raises an internal error in the module
+    assert response.status_code == 500   
+    print(f" BANG!: {response.status_code}") 
+    
