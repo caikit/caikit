@@ -710,8 +710,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
         return {
             "requestBody": {
                 "content": {
-                    "application/json": {"schema": parsed_schema},
                     "multipart/form-data": {"schema": multipart_schema},
+                    "application/json": {"schema": parsed_schema},
                 },
                 "required": True,
             }
