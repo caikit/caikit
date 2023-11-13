@@ -110,7 +110,7 @@ def test_load_model_ok_response():
         model_id=model_id,
         local_model_path=Fixtures.get_good_model_path(),
         model_type=Fixtures.get_good_model_type(),
-    )
+    ).size()
     assert model_size > 0
 
 
@@ -127,7 +127,7 @@ def test_load_model_no_size_update():
         model_id=model_id,
         local_model_path=Fixtures.get_good_model_path(),
         model_type=Fixtures.get_good_model_type(),
-    )
+    ).size()
     assert model_size > 0
     loaded_model = MODEL_MANAGER.loaded_models[model_id]
     assert loaded_model.size() == model_size
@@ -668,7 +668,7 @@ def test_load_model():
 
             model_size = MODEL_MANAGER.load_model(
                 model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE
-            )
+            ).size()
             assert expected_model_size == model_size
             mock_loader.load_model.assert_called_once()
             call_args = mock_loader.load_model.call_args
@@ -832,12 +832,12 @@ def test_reload_partially_loaded():
             mock_loader.load_model.return_value = loaded_model
             model_size = MODEL_MANAGER.load_model(
                 model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE, wait=False
-            )
+            ).size()
             assert model_size == special_model_size
             assert (
                 MODEL_MANAGER.load_model(
                     model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE, wait=False
-                )
+                ).size()
                 == special_model_size
             )
 
