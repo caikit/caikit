@@ -158,7 +158,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         wait: bool = True,
         aborter: Optional[ActionAborter] = None,
         retries: Optional[int] = None,
-    ) -> int:
+    ) -> LoadedModel:
         """Load a model using model_path (in Cloud Object Storage) & give it a model ID
         Args:
             model_id (str):  Model ID string for the model to load.
@@ -166,9 +166,11 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             model_type (str): Type of the model to load.
             wait (bool): Wait for the model to finish loading
             aborter (Optional[ActionAborter]): The aborter to use for this load
-            retries: Optional[int]: Number of times to retry on load failure
+            retries (Optional[int]): Number of times to retry on load failure
+            return_loaded_model (bool): Return the LoadedModel instance instead
+                of the size
         Returns:
-            Model_size (int) : Size of the loaded model in bytes
+            model (LoadedModel): The LoadedModel instance
         """
         with LOAD_MODEL_DURATION_SUMMARY.labels(model_type=model_type).time():
 
@@ -179,7 +181,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             model = self.loaded_models.get(model_id)
             if model is not None:
                 log.debug("Model '%s' is already loaded", model_id)
-                return model.size()
+                return model
 
             # Grab the mutation lock and load the model if needed
             with self._loaded_models_lock:
@@ -224,8 +226,8 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             if wait:
                 model.wait()
 
-            # Return the model's size
-            return model.size()
+            # Return the loaded model handle
+            return model
 
     def sync_local_models(self, wait: bool = False):
         """Sync in-memory models with models in the configured local_model_dir
@@ -376,8 +378,8 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             )
 
         # Now retrieve the model and fall back to lazy loading
-        model_loaded = model_id in self.loaded_models
-        if not model_loaded and self._lazy_load_local_models:
+        loaded_model = self.loaded_models.get(model_id)
+        if not loaded_model and self._lazy_load_local_models:
             local_model_path = os.path.join(self._local_models_dir, model_id)
             log.debug2(
                 "Lazy loading local model %s from %s", model_id, local_model_path
@@ -389,17 +391,16 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             if not os.path.exists(local_model_path):
                 log.debug2("Attempting to load ephemeral model %s", model_id)
                 local_model_path = model_id
-            self.load_model(
+            loaded_model = self.load_model(
                 model_id=model_id,
                 local_model_path=local_model_path,
                 model_type=self._LOCAL_MODEL_TYPE,
                 wait=True,
                 retries=get_config().runtime.lazy_load_retries,
             )
-            model_loaded = True
 
         # If still not loaded, there's nothing to find, so raise NOT_FOUND
-        if not model_loaded:
+        if not loaded_model:
             msg = f"Model '{model_id}' not loaded"
             log.debug(
                 {"log_code": "<RUN61105243D>", "message": msg, "model_id": model_id}
@@ -410,7 +411,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
 
         # NOTE: If the model is partially loaded, this call will wait on the
         #   model future in the LoadedModel
-        return self.loaded_models[model_id].model()
+        return loaded_model.model()
 
     ## Implementation Details ##
 
