@@ -561,6 +561,7 @@ def test_model_unload_race(good_model_path):
 
                 # Retrieve the model and make sure there's no error
                 assert manager.retrieve_model(model_id)
+                assert model_id not in manager.loaded_models
 
 
 def test_load_local_model_deleted_dir():
