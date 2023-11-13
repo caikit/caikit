@@ -481,8 +481,8 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
                 try:
                     loaded_model.wait()
                 except CaikitRuntimeException as err:
-                    log.warning(
-                        "<RUN56627485W>",
+                    log.debug(
+                        "<RUN56627485D>",
                         "Failed to load model %s: %s",
                         model_id,
                         repr(err),
