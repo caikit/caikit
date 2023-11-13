@@ -525,6 +525,44 @@ def test_nested_local_model_load_unload(good_model_path):
             assert model_name in manager.loaded_models
 
 
+def test_model_unload_race(good_model_path):
+    """Test that if a model gets unloaded _while_ it's actively being loaded
+    (before retrieve_model completes, but after load_model completes), no
+    exception is raised.
+    """
+    with TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                    "lazy_load_poll_period_seconds": 0,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+
+            # Copy the model to the local_models_dir
+            model_id = random_test_id()
+            model_cache_path = os.path.join(cache_dir, model_id)
+            shutil.copytree(good_model_path, model_cache_path)
+
+            # Patch the manager's load_model to immediately unload the model
+            orig_load_model = manager.load_model
+
+            def load_and_unload_model(self, model_id: str, *args, **kwargs):
+                res = orig_load_model(model_id, *args, **kwargs)
+                manager.unload_model(model_id)
+                return res
+
+            with patch.object(manager.__class__, "load_model", load_and_unload_model):
+
+                # Retrieve the model and make sure there's no error
+                assert manager.retrieve_model(model_id)
+
+
 def test_load_local_model_deleted_dir():
     """Make sure losing the local_models_dir out from under a running manager
     doesn't kill the whole thing
