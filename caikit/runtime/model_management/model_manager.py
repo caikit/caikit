@@ -443,10 +443,8 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         unload_models = [
             model_id
             for model_id, loaded_model in self.loaded_models.items()
-            if model_id not in disk_models
-            and loaded_model.path().startswith(
-                self._local_models_dir,
-            )
+            if loaded_model.path().startswith(self._local_models_dir)
+            and not os.path.exists(loaded_model.path())
         ]
         log.debug("Unloaded local models: %s", unload_models)
 
@@ -483,8 +481,8 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
                 try:
                     loaded_model.wait()
                 except CaikitRuntimeException as err:
-                    log.warning(
-                        "<RUN56627485W>",
+                    log.debug(
+                        "<RUN56627485D>",
                         "Failed to load model %s: %s",
                         model_id,
                         repr(err),
