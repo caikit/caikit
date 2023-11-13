@@ -378,8 +378,8 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             )
 
         # Now retrieve the model and fall back to lazy loading
-        model_loaded = model_id in self.loaded_models
-        if not model_loaded and self._lazy_load_local_models:
+        loaded_model = self.loaded_models.get(model_id)
+        if not loaded_model and self._lazy_load_local_models:
             local_model_path = os.path.join(self._local_models_dir, model_id)
             log.debug2(
                 "Lazy loading local model %s from %s", model_id, local_model_path
@@ -391,17 +391,16 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             if not os.path.exists(local_model_path):
                 log.debug2("Attempting to load ephemeral model %s", model_id)
                 local_model_path = model_id
-            self.load_model(
+            loaded_model = self.load_model(
                 model_id=model_id,
                 local_model_path=local_model_path,
                 model_type=self._LOCAL_MODEL_TYPE,
                 wait=True,
                 retries=get_config().runtime.lazy_load_retries,
             )
-            model_loaded = True
 
         # If still not loaded, there's nothing to find, so raise NOT_FOUND
-        if not model_loaded:
+        if not loaded_model:
             msg = f"Model '{model_id}' not loaded"
             log.debug(
                 {"log_code": "<RUN61105243D>", "message": msg, "model_id": model_id}
@@ -412,7 +411,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
 
         # NOTE: If the model is partially loaded, this call will wait on the
         #   model future in the LoadedModel
-        return self.loaded_models[model_id].model()
+        return loaded_model.model()
 
     ## Implementation Details ##
 
