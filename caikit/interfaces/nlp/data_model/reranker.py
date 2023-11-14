@@ -19,15 +19,18 @@ from typing import List, Optional
 from caikit.core import DataObjectBase, dataobject
 from caikit.core.data_model.json_dict import JsonDict
 
+# First Party
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
+
 
 @dataobject(package="caikit_data_model.caikit_nlp")
 class RerankScore(DataObjectBase):
     """The score for one document (one query)"""
 
-    document: Optional[JsonDict]
-    index: int
-    score: float
-    text: Optional[str]
+    document: Annotated[Optional[JsonDict], FieldNumber(1)]
+    index: Annotated[int, FieldNumber(2)]
+    score: Annotated[float, FieldNumber(3)]
+    text: Annotated[Optional[str], FieldNumber(4)]
 
 
 @dataobject(package="caikit_data_model.caikit_nlp")
@@ -37,8 +40,8 @@ class RerankQueryResult(DataObjectBase):
     the relevance of that document for this query. Results are ordered most-relevant first.
     """
 
-    query: Optional[str]
-    scores: List[RerankScore]
+    query: Annotated[Optional[str], FieldNumber(1)]
+    scores: Annotated[List[RerankScore], FieldNumber(2)]
 
 
 @dataobject(package="caikit_data_model.caikit_nlp")
@@ -47,4 +50,4 @@ class RerankPredictions(DataObjectBase):
     For multiple queries, each one has a RerankQueryResult (ranking the documents for that query).
     """
 
-    results: List[RerankQueryResult]
+    results: Annotated[List[RerankQueryResult], FieldNumber(1)]

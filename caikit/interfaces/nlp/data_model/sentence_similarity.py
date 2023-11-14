@@ -18,6 +18,9 @@ from typing import List
 
 # First Party
 import alog
+# First Party
+import alog
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
 
 # Local
 from caikit.core import DataObjectBase, dataobject
@@ -29,10 +32,10 @@ error = error_handler.get(log)
 
 @dataobject(package="caikit_data_model.caikit_nlp")
 class SentenceScores(DataObjectBase):
-    scores: List[float]
+    scores: Annotated[List[float], FieldNumber(1)]
 
 
 @dataobject(package="caikit_data_model.caikit_nlp")
 class SentenceListScores(DataObjectBase):
 
-    results: List[SentenceScores]
+    results: Annotated[List[SentenceScores], FieldNumber(1)]

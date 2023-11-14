@@ -40,6 +40,11 @@ def simple_array_of_floats():
 
 
 @pytest.fixture
+def simple_array_of_ints():
+    return ["foo", 1, 2, 3, 4]
+
+
+@pytest.fixture
 def random_numpy_vector1d_float32():
     return random_number_generator.random(DUMMY_VECTOR_SHAPE, dtype=np.float32)
 

@@ -18,6 +18,7 @@ from dataclasses import dataclass
 
 # First Party
 import alog
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
 
 # Local
 from ...common.data_model import Vector1D
@@ -33,4 +34,4 @@ error = error_handler.get(log)
 class EmbeddingResult(DataObjectBase):
     """Result from text embedding task"""
 
-    result: Vector1D
+    result: Annotated[Vector1D, FieldNumber(1)]

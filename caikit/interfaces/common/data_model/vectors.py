@@ -24,6 +24,8 @@ import numpy as np
 
 # First Party
 import alog
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
+
 
 # Local
 from caikit.core import DataObjectBase, dataobject
@@ -37,13 +39,13 @@ error = error_handler.get(log)
 @dataobject(PACKAGE_COMMON)
 @dataclass
 class PyFloatSequence(DataObjectBase):
-    values: List[float] = field(default_factory=list)
+    values: Annotated[List[float], FieldNumber(1)] = field(default_factory=list)
 
 
 @dataobject(PACKAGE_COMMON)
 @dataclass
 class NpFloat32Sequence(DataObjectBase):
-    values: List[np.float32]
+    values: Annotated[List[np.float32], FieldNumber(1)]
 
     @classmethod
     def from_proto(cls, proto):
@@ -54,7 +56,7 @@ class NpFloat32Sequence(DataObjectBase):
 @dataobject(PACKAGE_COMMON)
 @dataclass
 class NpFloat64Sequence(DataObjectBase):
-    values: List[np.float64]
+    values: Annotated[List[np.float64], FieldNumber(1)]
 
     @classmethod
     def from_proto(cls, proto):
@@ -67,11 +69,11 @@ class NpFloat64Sequence(DataObjectBase):
 class Vector1D(DataObjectBase):
     """Data representation for a 1 dimension vector of float-type data."""
 
-    data: Union[
+    data: Annotated[Union[
         PyFloatSequence,
         NpFloat32Sequence,
         NpFloat64Sequence,
-    ]
+    ], FieldNumber(1)]
 
     def __post_init__(self):
         error.value_check(
@@ -165,7 +167,7 @@ class Vector1D(DataObjectBase):
 class ListOfVector1D(DataObjectBase):
     """Data representation for an embedding matrix holding 2D vectors"""
 
-    results: List[Vector1D]
+    results: Annotated[List[Vector1D], FieldNumber(1)]
 
     def __post_init__(self):
         error.type_check("<NLP94336739E>", list, results=self.results)
