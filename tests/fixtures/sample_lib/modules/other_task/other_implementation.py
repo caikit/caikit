@@ -5,7 +5,12 @@ A sample module for sample things!
 from typing import Union
 
 # Local
-from ...data_model.sample import OtherOutputType, OtherTask, SampleInputType
+from ...data_model.sample import (
+    JsonDictInputType,
+    OtherOutputType,
+    OtherTask,
+    SampleInputType,
+)
 from caikit.core.data_model import DataStream
 from caikit.core.data_model.producer import ProducerId
 from caikit.core.modules import ModuleLoader, ModuleSaver
@@ -22,7 +27,10 @@ class OtherModule(caikit.core.ModuleBase):
         self.learning_rate = learning_rate
 
     def run(
-        self, sample_input: Union[SampleInputType, str], include_producer_id=True
+        self,
+        sample_input: Union[SampleInputType, str],
+        json_dict: JsonDictInputType = None,
+        include_producer_id=True,
     ) -> Union[OtherOutputType, str]:
         farewell = f"goodbye: {sample_input.name} {self.batch_size} times"
         producer_id = ProducerId("other_mod", "1.1.1") if include_producer_id else None

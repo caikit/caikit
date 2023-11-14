@@ -474,7 +474,33 @@ def test_inference_file_task_multipart_flipped_input(file_task_model_id, client)
 
 def test_inference_other_task(other_task_model_id, client):
     """Simple check that we can ping a model"""
-    json_input = {"model_id": other_task_model_id, "inputs": {"name": "world"}}
+    json_input = {
+        "model_id": other_task_model_id,
+        "inputs": {
+            "name": "world",
+        },
+        "parameters": {
+            "json_dict": {
+                "jd": {
+                    "int_val": 1,
+                    "float_val": 0.42,
+                    "str_val": "asdf",
+                    "bool_val": False,
+                    "null_val": None,
+                    # "list_val": [
+                    #     2,
+                    #     3.14,
+                    #     "qwer",
+                    #     True,
+                    #     None,
+                    #     [1, 2, 3],
+                    #     {"nested": "val"},
+                    # ],
+                    "dict_val": {"yep": "works"},
+                },
+            }
+        },
+    }
     response = client.post(
         f"/api/v1/task/other",
         json=json_input,
