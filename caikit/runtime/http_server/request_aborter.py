@@ -67,9 +67,10 @@ class HttpRequestAborter(ActionAborter):
         # Add an empty list for event variables that will be notified on termination
         self.events: list[threading.Event] = []
 
-        # Start request aborter task
+        # Start request aborter task. Hold onto a reference of the task to ensure
+        # it isn't garbage collected
         log.debug("<RUN81824293>", "Watching for request disconnect")
-        self.event_loop.create_task(self.watch_for_disconnect())
+        self.task = self.event_loop.create_task(self.watch_for_disconnect())
 
     async def watch_for_disconnect(self):
         """Wait for a context to be disconnected"""
