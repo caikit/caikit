@@ -318,10 +318,12 @@ class ModuleSaver:
         context successfully exits, then the model configuration and all files it contains will
         be written and saved to disk inside the `model_path` directory.
 
-        If `exist_ok` is False, an exception will be raised before touching existing `model_path` files.
+        If `exist_ok` is False, an exception will be raised before touching existing `model_path`
+        files.
 
-        If any uncaught exceptions are thrown inside this context, and `exist_ok` is False, then this new `model_path`
-        will be removed. If `exist_ok` is True, the files will be kept and may include incomplete updates.
+        If any uncaught exceptions are thrown inside this context, and `exist_ok` is False,
+        then this new `model_path` will be removed. If `exist_ok` is True, the files will be kept
+        and may include incomplete updates.
         """
         os.makedirs(self.model_path, exist_ok=self.exist_ok)
         return self
@@ -331,8 +333,9 @@ class ModuleSaver:
         configuration and all files it contains will be written and saved to disk inside the
         `model_path` directory.
 
-        If any uncaught exceptions are thrown inside this context, and `exist_ok` is False, then this new `model_path`
-        will be removed. If `exist_ok` is True, the files will be kept and may include incomplete updates.
+        If any uncaught exceptions are thrown inside this context, and `exist_ok` is False,
+        then this new `model_path` will be removed. If `exist_ok` is True, the files will be kept
+        and may include incomplete updates.
         """
         if exc_type is not None:
             if not self.exist_ok:
