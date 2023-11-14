@@ -156,6 +156,61 @@ def test_save_module(model_path):
             assert module_saver.config.get("module_paths") == {"dummy": "./dummy"}
 
 
+def test_save_please_dont_destroy(model_path):
+    dummy_model = caikit.core.load(model_path)
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        # exist_ok=False raises FileExistsError
+        with pytest.raises(FileExistsError):
+            with ModuleSaver(
+                dummy_model,
+                model_path=tempdir,
+                exist_ok=False,
+            ):
+                pass
+
+        # Existing dir should definitely not be removed
+        assert os.path.exists(tempdir)
+
+        # exist_ok=True does not raise error
+        with ModuleSaver(
+            dummy_model,
+            model_path=tempdir,
+            exist_ok=True,
+        ):
+            pass
+        assert os.path.exists(tempdir)
+
+        # exist_ok=True and exception thrown -> please don't destroy!
+        with pytest.raises(ValueError):
+            with ModuleSaver(
+                dummy_model,
+                model_path=tempdir,
+                exist_ok=True,
+            ):
+                raise ValueError  # a test exception
+        assert os.path.exists(tempdir)
+
+
+def test_save_okay_to_destroy(model_path):
+    dummy_model = caikit.core.load(model_path)
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        test_subdir = os.path.join(tempdir, "subdir")
+
+        # exist_ok=False and exception thrown -> okay to destroy
+        with pytest.raises(ValueError):
+            with ModuleSaver(
+                dummy_model,
+                model_path=test_subdir,
+                exist_ok=False,
+            ):
+                assert os.path.exists(test_subdir)
+                raise ValueError  # a test exception
+
+        assert not os.path.exists(test_subdir)
+
+
 def test_save_module_kwargs_get_piped_through(model_path):
     """Testing additional keywords passed to save_module are processed by the module"""
     dummy_model = caikit.core.load(model_path)
