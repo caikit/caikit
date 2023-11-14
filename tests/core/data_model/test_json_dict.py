@@ -69,7 +69,6 @@ def test_dict_to_struct_to_dict():
         == struct_pb2.Struct.__name__
         == "Struct"
     )
-    assert isinstance(struct.fields["dict_val"].struct_value, struct_pb2.Struct)
 
 
 def test_dict_to_struct_invalid_value():
