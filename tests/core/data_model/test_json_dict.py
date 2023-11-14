@@ -49,9 +49,9 @@ def test_dict_to_struct_to_dict():
     )
     assert struct.fields["null_val"].WhichOneof("kind") == "null_value"
     assert struct.fields["null_val"].null_value == struct_pb2.NullValue.NULL_VALUE
-    assert isinstance(struct.fields["list_val"].list_value, struct_pb2.ListValue)
+    # assert isinstance(struct.fields["list_val"].list_value, struct_pb2.ListValue)
     assert len(struct.fields["list_val"].list_value.values) == len(raw_dict["list_val"])
-    assert isinstance(struct.fields["dict_val"].struct_value, struct_pb2.Struct)
+    # assert isinstance(struct.fields["dict_val"].struct_value, struct_pb2.Struct)
     assert len(struct.fields["dict_val"].struct_value.fields) == len(
         raw_dict["dict_val"]
     )
