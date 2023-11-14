@@ -56,8 +56,8 @@ from .pydantic_wrapper import (
     pydantic_from_request,
     pydantic_to_dataobject,
 )
-from .utils import convert_json_schema_to_multipart, flatten_json_schema
 from .request_aborter import HttpRequestAborter
+from .utils import convert_json_schema_to_multipart, flatten_json_schema
 from caikit.config import get_config
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject

@@ -25,16 +25,12 @@ import requests
 import uvicorn
 
 # Local
-from caikit.runtime.work_management.request_aborter import RequestAborter
+from caikit.runtime.http_server.request_aborter import HttpRequestAborter
 
 
-def check_server_timeout(
-    start_time: datetime.datetime, server: uvicorn.Server, timeout: int = 10
-):
+def get_time_remaining(start_time: datetime.datetime, timeout: int = 10) -> int:
     now = datetime.datetime.now()
-    if now > (start_time + datetime.timedelta(seconds=timeout)):
-        server.should_exit = True
-        raise TimeoutError("Failed to complete test within timelimit")
+    return ((start_time + datetime.timedelta(seconds=timeout)) - now).seconds
 
 
 def test_request_aborter(open_port):
@@ -48,16 +44,15 @@ def test_request_aborter(open_port):
     abort_event = threading.Event()
     request_finished = threading.Event()
 
-    # Define an endpoint that sleeps until the client disconnects. No tests should
-    # be run in this function as exceptions are caught by uvicorn
+    # Define an endpoint that sleeps until the client disconnects.
     @app.get("/test_abort")
     async def test_aborter(context: Request):
         # Create aborter and add parent event
-        TEST_ABORTER = RequestAborter(context, poll_time=0.001)
+        TEST_ABORTER = HttpRequestAborter(context, poll_time=0.001)
         TEST_ABORTER.add_event(abort_event)
 
         # Wait for client to disconnect
-        while not TEST_ABORTER.must_abort():
+        while not abort_event.is_set():
             await asyncio.sleep(0.001)
 
         # Assign TEST_ABORTER to the parent function. This allows the test to have
@@ -78,28 +73,36 @@ def test_request_aborter(open_port):
     server_thread = threading.Thread(target=server.run)
     server_thread.start()
 
-    # Wait for uvicorn to start
-    while not server.started:
-        check_server_timeout(start_time, server)
-        time.sleep(0.01)
+    server_exception = None
+    try:
+        # Wait for uvicorn to start
+        while not server.started:
+            if get_time_remaining(start_time) < 0:
+                raise TimeoutError("Server did not start in time")
 
-    # Try the endpoint but timeout after 1 second
-    with pytest.raises(ReadTimeout):
-        requests.get(
-            f"http://localhost:{open_port}/test_abort",
-            timeout=1,
-        )
+            time.sleep(0.01)
 
-    # Wait for the request to finish/abort
-    while not request_finished.is_set():
-        check_server_timeout(start_time, server)
-        time.sleep(0.01)
+        # Try the endpoint but timeout after 1 second
+        with pytest.raises(ReadTimeout):
+            requests.get(
+                f"http://localhost:{open_port}/test_abort",
+                timeout=0.1,
+            )
 
-    # Assert the request aborter actually aborted
-    assert test_request_aborter.TEST_ABORTER.must_abort()
-    assert abort_event.is_set()
-    assert request_finished.is_set()
+        # Wait for the request to finish/abort
+        request_finished.wait(get_time_remaining(start_time))
 
-    # Clean up the server
-    server.should_exit = True
-    server_thread.join()
+        # Assert the request aborter actually aborted
+        assert test_request_aborter.TEST_ABORTER.must_abort()
+        assert abort_event.is_set()
+        assert request_finished.is_set()
+
+    except Exception as exc:
+        server_exception = exc
+    finally:
+        # Clean up the server
+        server.should_exit = True
+        server_thread.join()
+
+    if server_exception:
+        raise server_exception
