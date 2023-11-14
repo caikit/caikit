@@ -31,11 +31,15 @@ class SampleListInputType(DataObjectBase):
 
 
 # Test w/ just import and no dataobject
-# @dataobject(package="caikit_data_model.sample_lib")
-# class JsonDictInputType(DataObjectBase):
-# """A sample `JsonDict` input type for this library."""
-#
-# jd: JsonDict
+@dataobject(package="caikit_data_model.sample_lib")
+class JsonDictInputType(DataObjectBase):
+    """A sample `JsonDict` input type for this library.
+
+    This exists because it impacts test_json_dict.py testing under proto3.
+    This class is not used, but it affects the descriptor pool behavior.
+    """
+
+    jd: JsonDict
 
 
 @dataobject(package="caikit_data_model.sample_lib")
