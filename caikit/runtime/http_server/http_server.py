@@ -57,6 +57,7 @@ from .pydantic_wrapper import (
     pydantic_to_dataobject,
 )
 from .utils import convert_json_schema_to_multipart, flatten_json_schema
+from .request_aborter import HttpRequestAborter
 from caikit.config import get_config
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
@@ -72,7 +73,6 @@ from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServic
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.servicers.info_servicer import InfoServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.work_management.request_aborter import RequestAborter
 
 ## Globals #####################################################################
 
@@ -463,7 +463,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
                 # TODO: use `async_wrap_*`?
                 aborter = (
-                    RequestAborter(context)
+                    HttpRequestAborter(context)
                     if get_config().runtime.use_abortable_threads
                     else None
                 )
@@ -538,7 +538,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     )
 
                     aborter = (
-                        RequestAborter(context)
+                        HttpRequestAborter(context)
                         if get_config().runtime.use_abortable_threads
                         else None
                     )

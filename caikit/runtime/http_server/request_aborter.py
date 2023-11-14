@@ -32,7 +32,7 @@ from caikit.runtime.work_management.abortable_action import ActionAborter
 log = alog.use_channel("REQUEST-ABORTER")
 
 
-class RequestAborter(ActionAborter):
+class HttpRequestAborter(ActionAborter):
     """
     In order to actually interrupt threads doing the work, events can be registered with an
     instance of this class in order ton receive notification on request disconnection. This allows
