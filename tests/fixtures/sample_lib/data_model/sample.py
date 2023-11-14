@@ -31,11 +31,11 @@ class SampleListInputType(DataObjectBase):
 
 
 # Test w/ just import and no dataobject
-# @dataobject(package="caikit_data_model.sample_lib")
-# class JsonDictInputType(DataObjectBase):
-# """A sample `JsonDict` input type for this library."""
-#
-# jd: JsonDict
+@dataobject(package="caikit_data_model.sample_lib")
+class JsonDictInputType(DataObjectBase):
+    """A sample `JsonDict` input type for this library."""
+
+    jd: JsonDict
 
 
 @dataobject(package="caikit_data_model.sample_lib")

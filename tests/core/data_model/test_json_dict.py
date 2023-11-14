@@ -49,20 +49,12 @@ def test_dict_to_struct_to_dict():
     )
     assert struct.fields["null_val"].WhichOneof("kind") == "null_value"
     assert struct.fields["null_val"].null_value == struct_pb2.NullValue.NULL_VALUE
-    # FIXME: For proto3 the class module does not match (see below)
-    # assert isinstance(struct.fields["list_val"].list_value, struct_pb2.ListValue)
+    assert isinstance(struct.fields["list_val"].list_value, struct_pb2.ListValue)
     assert len(struct.fields["list_val"].list_value.values) == len(raw_dict["list_val"])
-    # FIXME: For proto3 the class module does not match (see below)
-    # assert isinstance(struct.fields["dict_val"].struct_value, struct_pb2.Struct)
+    assert isinstance(struct.fields["dict_val"].struct_value, struct_pb2.Struct)
     assert len(struct.fields["dict_val"].struct_value.fields) == len(
         raw_dict["dict_val"]
     )
-    assert struct.fields["list_val"].list_value.__class__.__name__ == struct_pb2.ListValue.__name__ == "ListValue"
-    assert struct.fields["dict_val"].struct_value.__class__.__name__ == struct_pb2.Struct.__name__ == "Struct"
-
-    # FIXME: For proto3 only, None  !=  google.protobuf.struct_pb2
-    assert struct.fields["list_val"].list_value.__class__.__module__ == struct_pb2.ListValue.__module__
-    assert struct.fields["dict_val"].struct_value.__class__.__module__ == struct_pb2.Struct.__module__
 
 
 def test_dict_to_struct_invalid_value():
