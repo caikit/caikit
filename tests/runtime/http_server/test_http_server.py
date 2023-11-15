@@ -1028,7 +1028,7 @@ def test_train_other_task(client, runtime_http_server):
 
 
 def test_inference_malformed_param(client):
-    """Send a malformed data parameter field to the the inference call to induce the correct HTTP error"""
+    """Send a malformed data parameter field to the inference call to induce the correct HTTP error"""
 
     response = client.post(
         f"/api/v1/task/sample",
