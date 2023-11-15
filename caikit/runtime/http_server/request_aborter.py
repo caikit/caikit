@@ -45,7 +45,7 @@ class HttpRequestAborter(ActionAborter):
         self,
         context: Request,
         loop: Optional[asyncio.AbstractEventLoop] = None,
-        poll_time: Optional[float] = 1,
+        poll_time: Optional[float] = 0.25,
     ):
         """Initialize a Aborter and start the watch loop
 
