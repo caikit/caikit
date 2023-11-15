@@ -17,7 +17,7 @@ The server is responsible for binding caikit workloads to a consistent REST/SSE
 API based on the task definitions available at boot.
 """
 # Standard
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from enum import Enum
 from functools import partial
@@ -56,6 +56,7 @@ from .pydantic_wrapper import (
     pydantic_from_request,
     pydantic_to_dataobject,
 )
+from .request_aborter import HttpRequestAborter
 from .utils import convert_json_schema_to_multipart, flatten_json_schema
 from caikit.config import get_config
 from caikit.core.data_model import DataBase
@@ -460,18 +461,26 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     model_id
                 )
 
-                # TODO: use `async_wrap_*`?
-                call = partial(
-                    self.global_predict_servicer.predict_model,
-                    model_id=model_id,
-                    request_name=rpc.request.name,
-                    inference_func_name=model.get_inference_signature(
-                        output_streaming=False, input_streaming=False, task=rpc.task
-                    ).method_name,
-                    **request_params,
+                aborter_context = (
+                    HttpRequestAborter(context)
+                    if get_config().runtime.use_abortable_threads
+                    else nullcontext()
                 )
-                result = await loop.run_in_executor(None, call)
-                log.debug4("Response from model %s is %s", model_id, result)
+
+                with aborter_context as aborter:
+                    # TODO: use `async_wrap_*`?
+                    call = partial(
+                        self.global_predict_servicer.predict_model,
+                        model_id=model_id,
+                        request_name=rpc.request.name,
+                        inference_func_name=model.get_inference_signature(
+                            output_streaming=False, input_streaming=False, task=rpc.task
+                        ).method_name,
+                        aborter=aborter,
+                        **request_params,
+                    )
+                    result = await loop.run_in_executor(None, call)
+                    log.debug4("Response from model %s is %s", model_id, result)
 
                 if response_data_object.supports_file_operations:
                     return self._format_file_response(result)
@@ -526,20 +535,30 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         model_id
                     )
 
-                    log.debug("In stream generator for %s", rpc.name)
-                    async for result in async_wrap_iter(
-                        self.global_predict_servicer.predict_model(
-                            model_id=model_id,
-                            request_name=rpc.request.name,
-                            inference_func_name=model.get_inference_signature(
-                                output_streaming=True, input_streaming=False
-                            ).method_name,
-                            **request_params,
-                        )
-                    ):
-                        yield ServerSentEvent(
-                            data=result.to_json(), event=StreamEventTypes.MESSAGE.value
-                        )
+                    aborter_context = (
+                        HttpRequestAborter(context)
+                        if get_config().runtime.use_abortable_threads
+                        else nullcontext()
+                    )
+
+                    with aborter_context as aborter:
+                        log.debug("In stream generator for %s", rpc.name)
+                        async for result in async_wrap_iter(
+                            self.global_predict_servicer.predict_model(
+                                model_id=model_id,
+                                request_name=rpc.request.name,
+                                inference_func_name=model.get_inference_signature(
+                                    output_streaming=True, input_streaming=False
+                                ).method_name,
+                                aborter=aborter,
+                                **request_params,
+                            )
+                        ):
+                            yield ServerSentEvent(
+                                data=result.to_json(),
+                                event=StreamEventTypes.MESSAGE.value,
+                            )
+
                     return
                 except HTTPException as err:
                     raise err
