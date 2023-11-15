@@ -149,6 +149,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
             _, exc: RequestValidationError
         ) -> Response:
             err_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+            # try:
+            #     # Attempt to decode the byte string using UTF-8 encoding
+            #     exc.errors()[0]['input'] = exc.errors()[0]['input'].decode('utf-8')
+            # except UnicodeDecodeError as e:
+            #     # Handle the exception if the byte string cannot be decoded using UTF-8
+            #     print(f'Error occurred while converting to UTF-8: {str(e)}')            
+            exc.errors()[0]['input'] = exc.errors()[0]['input'].decode('utf-8')
             error_content = {
                 "details": exc.errors()[0]["msg"]
                 if len(exc.errors()) > 0 and "msg" in exc.errors()[0]
