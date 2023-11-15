@@ -1036,3 +1036,8 @@ def test_inference_malformed_param(client):
         headers={"Content-Type": "application/json"},
     )
     assert response.status_code == 422
+
+    json_response = json.loads(response.content.decode(response.default_encoding))
+
+    assert "Invalid JSON" in json_response["details"]
+    assert json_response["additional_info"][0]["type"] == "json_invalid"
