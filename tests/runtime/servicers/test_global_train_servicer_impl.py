@@ -103,19 +103,20 @@ def test_global_train_sample_task(
 
     assert training_response.training_id is not None
     assert isinstance(training_response.training_id, str)
-    register_trained_model(
+    result = register_trained_model(
         sample_predict_servicer,
         training_response.model_name,
         training_response.training_id,
     )
 
-    model_future = MODEL_MANAGER.get_model_future(training_response.training_id)
-    model_future.wait()
+    # Make sure model was saved to the expected spot
     expected_save_path = os.path.join(
-        caikit.get_config().runtime.training.output_dir, training_response.training_id, training_response.model_name
+        caikit.get_config().runtime.training.output_dir,
+        training_response.training_id,
+        training_response.model_name,
     )
     assert os.path.exists(expected_save_path)
-    result = caikit.load(expected_save_path)
+
     assert result.batch_size == 42
     assert (
         result.MODULE_CLASS
@@ -166,13 +167,12 @@ def test_global_train_other_task(
     assert training_response.model_name == "Other module Training"
     assert training_response.training_id is not None
     assert isinstance(training_response.training_id, str)
-    register_trained_model(
+    result = register_trained_model(
         sample_predict_servicer,
         training_response.model_name,
         training_response.training_id,
     )
 
-    result = sample_predict_servicer._model_manager.retrieve_model(training_response.model_name)
     assert result.batch_size == batch_size
     assert (
         result.MODULE_CLASS
@@ -220,13 +220,12 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
     assert training_response.model_name == "AnotherWidget_Training"
     assert training_response.training_id is not None
     assert isinstance(training_response.training_id, str)
-    register_trained_model(
+    training_result = register_trained_model(
         sample_predict_servicer,
         training_response.model_name,
         training_response.training_id,
     )
 
-    training_result = sample_predict_servicer._model_manager.retrieve_model(training_response.model_name)
     assert (
         training_result.MODULE_CLASS
         == "sample_lib.modules.sample_task.composite_module.CompositeModule"

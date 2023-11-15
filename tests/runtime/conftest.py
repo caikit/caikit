@@ -29,9 +29,9 @@ import alog
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model import DataBase, TrainingStatus
 from caikit.core.data_model.dataobject import render_dataobject_protos
+from caikit.core.model_management import LocalPathModelSaver
 from caikit.runtime import http_server
 from caikit.runtime.grpc_server import RuntimeGRPCServer
-from caikit.core.model_management import LocalPathModelSaver
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.service_generation.output_target import (
@@ -380,12 +380,20 @@ def register_trained_model(
     assert isinstance(training_future.saver, LocalPathModelSaver)
 
     # Get the save path
-    save_path = training_future.saver.save_path(model_name=model_id, training_id=training_id)
-
+    save_path = training_future.saver.save_path(
+        model_name=model_id, training_id=training_id
+    )
+    # Load it into the runtime
     if isinstance(servicer, RuntimeGRPCServer):
         servicer = servicer._global_predict_servicer
-
-    servicer._model_manager.load_model(model_id=model_id, local_model_path=save_path, model_type="test_trained_model", wait=True)
+    servicer._model_manager.load_model(
+        model_id=model_id,
+        local_model_path=save_path,
+        model_type="test_trained_model",
+        wait=True,
+    )
+    # And return a handle to it for tests to check
+    return servicer._model_manager.retrieve_model(model_id=model_id)
 
 
 class ModuleSubproc:

@@ -153,9 +153,6 @@ class TestTrainer(ModelTrainerBase):
                     self._trained_model, model_name=self.name, training_id=self.id
                 )
 
-        def load(self):
-            return self._trained_model
-
     def train(
         self,
         module_class: Type[ModuleBase],

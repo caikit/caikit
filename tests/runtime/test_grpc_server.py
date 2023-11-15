@@ -124,9 +124,7 @@ def test_model_train(runtime_grpc_server):
     )
     training_id = str(uuid.uuid4())
     model_name = "abc"
-    training_output_dir = os.path.join(
-            runtime_grpc_server.workdir, "training_output"
-        )
+    training_output_dir = os.path.join(runtime_grpc_server.workdir, "training_output")
     model_train_request = process_pb2.ProcessRequest(
         trainingID=training_id,
         request_dict={
@@ -176,8 +174,9 @@ def test_model_train(runtime_grpc_server):
     assert response.state == TrainingStatus.COMPLETED.value
 
     # Make sure we wait for training to finish
-    model_future = MODEL_MANAGER.get_model_future(response.training_id)
-    result = model_future.load()
+    result = register_trained_model(
+        runtime_grpc_server, model_id=model_name, training_id=training_id
+    )
 
     # Make sure we put the path bits in the right order: base/training_id/model_name
     expected_save_path = os.path.join(training_output_dir, training_id, model_name)

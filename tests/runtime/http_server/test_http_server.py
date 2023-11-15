@@ -848,19 +848,16 @@ def test_train_sample_task(client, runtime_http_server):
     assert (training_id := training_json_response["training_id"])
     assert training_json_response["model_name"] == model_name
 
-    # assert trained model
-    result = MODEL_MANAGER.get_model_future(training_id).load()
+    # assert trained model and register for inferencing
+    result = register_trained_model(
+        runtime_http_server.global_predict_servicer,
+        model_name,
+        training_id,
+    )
     assert result.batch_size == 42
     assert (
         result.MODULE_CLASS
         == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
-    )
-
-    # register the newly trained model for inferencing
-    register_trained_model(
-        runtime_http_server.global_predict_servicer,
-        model_name,
-        training_id,
     )
 
     # test inferencing on new model
@@ -904,8 +901,12 @@ def test_train_primitive_task(client, runtime_http_server):
     assert (training_id := training_json_response["training_id"])
     assert training_json_response["model_name"] == model_name
 
-    # assert trained model
-    result = MODEL_MANAGER.get_model_future(training_id).load()
+    # assert trained model and register for inferencing
+    result = register_trained_model(
+        runtime_http_server.global_predict_servicer,
+        model_name,
+        training_id,
+    )
     assert result.training_params_dict == {
         "layer_sizes": 100,
         "window_scaling": 200,
@@ -914,13 +915,6 @@ def test_train_primitive_task(client, runtime_http_server):
     assert (
         result.MODULE_CLASS
         == "sample_lib.modules.sample_task.primitive_party_implementation.SamplePrimitiveModule"
-    )
-
-    # register the newly trained model for inferencing
-    register_trained_model(
-        runtime_http_server.global_predict_servicer,
-        model_name,
-        training_id,
     )
 
     # test inferencing on new model
@@ -956,19 +950,16 @@ def test_train_other_task(client, runtime_http_server):
     assert (training_id := training_json_response["training_id"])
     assert training_json_response["model_name"] == model_name
 
-    # assert trained model
-    result = MODEL_MANAGER.get_model_future(training_id).load()
+    # assert trained model and register for inferencing
+    result = register_trained_model(
+        runtime_http_server.global_predict_servicer,
+        model_name,
+        training_id,
+    )
     assert result.batch_size == 64
     assert (
         result.MODULE_CLASS
         == "sample_lib.modules.other_task.other_implementation.OtherModule"
-    )
-
-    # register the newly trained model for inferencing
-    register_trained_model(
-        runtime_http_server.global_predict_servicer,
-        model_name,
-        training_id,
     )
 
     # test inferencing on new model

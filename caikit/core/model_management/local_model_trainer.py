@@ -173,18 +173,6 @@ class LocalModelTrainer(ModelTrainerBase):
             log.debug2("Done waiting for %s", self.id)
             self._completion_time = self._completion_time or datetime.now()
 
-        def load(self) -> ModuleBase:
-            """Wait for the training to complete, then return the resulting
-            model or raise any errors that happened during training.
-            """
-            self.wait()
-            # NB: loading will only work if the ModelSaver used provided a
-            # local file path to re-load the model from.
-            if self._use_subprocess:
-                error(log_code="<COR16745216E>", exception=RuntimeError("Cannot load model trained in a subprocess"))
-            else:
-                return self._worker.get_or_throw()
-
         ## Impl ##
         def _make_training_info(
             self, status: TrainingStatus, errors: Optional[List[Exception]] = None

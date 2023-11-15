@@ -21,7 +21,6 @@ import os
 import tempfile
 import threading
 
-import caikit
 # Third Party
 import pytest
 
@@ -36,6 +35,7 @@ from caikit.core.model_management import LocalPathModelSaver
 from caikit.core.model_management.local_model_trainer import LocalModelTrainer
 from caikit.interfaces.common.data_model.stream_sources import PathReference
 from sample_lib.modules import SampleModule
+import caikit
 
 ## Helpers #####################################################################
 

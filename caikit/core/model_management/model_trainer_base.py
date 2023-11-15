@@ -107,15 +107,11 @@ class ModelTrainerBase(FactoryConstructible):
         def wait(self):
             """Block until the job reaches a terminal state"""
 
-        @abc.abstractmethod
-        def load(self) -> ModuleBase:
-            """A model future must be loadable with no additional arguments"""
-
         ## Common Impl ##
 
-        def result(self) -> ModuleBase:
+        def result(self) -> None:
             """Support result() to match concurrent.futures.Future"""
-            return self.load()
+            return self.wait()
 
     @abc.abstractmethod
     def train(
