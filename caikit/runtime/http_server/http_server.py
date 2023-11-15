@@ -149,8 +149,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
             _, exc: RequestValidationError
         ) -> Response:
             err_code = status.HTTP_422_UNPROCESSABLE_ENTITY
-            if isinstance(exc.errors()[0]["input"], bytes):
-                exc.errors()[0]["input"] = exc.errors()[0]["input"].decode("utf-8")
             error_content = {
                 "details": exc.errors()[0]["msg"]
                 if len(exc.errors()) > 0 and "msg" in exc.errors()[0]
@@ -160,7 +158,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 "id": uuid.uuid4().hex,
             }
             log.error("<RUN59871106E>", error_content, exc_info=True)
-            return Response(content=json.dumps(error_content), status_code=err_code)
+            return Response(
+                content=json.dumps(jsonable_encoder(error_content)),
+                status_code=err_code,
+            )
 
         # Response validation
         @self.app.exception_handler(ResponseValidationError)
