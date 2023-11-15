@@ -1026,12 +1026,13 @@ def test_train_other_task(client, runtime_http_server):
     assert response.status_code == 200, json_response
     assert json_response["farewell"] == "goodbye: world 64 times"
 
+
 def test_inference_malformed_param(client):
     """Send a malformed data parameter field to the the inference call to induce the correct HTTP error"""
 
     response = client.post(
         f"/api/v1/task/sample",
-        data='{"bad_input": 100,}', # send intentionally bad json
+        data='{"bad_input": 100,}',  # send intentionally bad json
         headers={"Content-Type": "application/json"},
     )
     assert response.status_code == 422
