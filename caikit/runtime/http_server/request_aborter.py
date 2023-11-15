@@ -72,6 +72,14 @@ class HttpRequestAborter(ActionAborter):
         log.debug("<RUN81824293>", "Watching for request disconnect")
         self.task = self.event_loop.create_task(self.watch_for_disconnect())
 
+    def __enter__(self):
+        """Helper function to enable context manager support"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Automatically abort aborter when exiting contextmanager"""
+        self.abort()
+
     async def watch_for_disconnect(self):
         """Wait for a context to be disconnected"""
 
