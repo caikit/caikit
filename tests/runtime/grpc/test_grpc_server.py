@@ -17,7 +17,6 @@
 # Standard
 from dataclasses import dataclass
 from unittest import mock
-from unittest.mock import patch
 import json
 import os
 import signal
@@ -75,11 +74,8 @@ from sample_lib.modules import FirstTask
 from tests.conftest import ARM_ARCH, PROTOBUF_VERSION, random_test_id, temp_config
 from tests.core.helpers import *
 from tests.fixtures import Fixtures
-from tests.runtime.conftest import (
-    ModuleSubproc,
-    register_trained_model,
-    runtime_grpc_test_server,
-)
+from tests.runtime.conftest import ModuleSubproc
+from tests.runtime.grpc.conftest import register_trained_model, runtime_grpc_test_server
 import caikit.interfaces.common
 
 ## Helpers #####################################################################

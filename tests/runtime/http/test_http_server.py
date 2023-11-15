@@ -38,11 +38,8 @@ from caikit.core.model_management.multi_model_finder import MultiModelFinder
 from caikit.runtime import http_server
 from caikit.runtime.http_server.http_server import StreamEventTypes
 from tests.conftest import temp_config
-from tests.runtime.conftest import (
-    ModuleSubproc,
-    register_trained_model,
-    runtime_http_test_server,
-)
+from tests.runtime.conftest import ModuleSubproc
+from tests.runtime.http.conftest import register_trained_model, runtime_http_test_server
 from tests.runtime.model_management.test_model_manager import (
     non_singleton_model_managers,
 )

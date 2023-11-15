@@ -47,7 +47,7 @@ from sample_lib.data_model.sample import (
 from sample_lib.modules import CompositeModule, OtherModule, SampleModule
 from tests.conftest import random_test_id, set_use_subprocess
 from tests.fixtures import Fixtures
-from tests.runtime.conftest import register_trained_model
+from tests.runtime.grpc.conftest import register_trained_model
 import caikit.core
 
 ## Helpers #####################################################################

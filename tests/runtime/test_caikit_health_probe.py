@@ -37,8 +37,9 @@ import alog
 # Local
 from caikit import get_config
 from tests.conftest import temp_config
-from tests.runtime.conftest import runtime_grpc_test_server, runtime_http_test_server
-from tests.runtime.http_server.test_http_server import generate_tls_configs
+from tests.runtime.grpc.conftest import runtime_grpc_test_server
+from tests.runtime.http.conftest import runtime_http_test_server
+from tests.runtime.http.test_http_server import generate_tls_configs
 
 ## Helpers #####################################################################
 

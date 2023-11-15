@@ -40,7 +40,6 @@ from sample_lib.modules import ListModule, OtherModule
 from tests.conftest import ARM_ARCH, PROTOBUF_VERSION, temp_config
 from tests.core.helpers import MockBackend
 from tests.data_model_helpers import reset_global_protobuf_registry, temp_dpool
-from tests.runtime.conftest import sample_inference_service, sample_train_service
 import caikit
 
 ## Helpers #####################################################################

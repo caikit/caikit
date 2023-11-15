@@ -40,6 +40,12 @@ jobs:
           # Special matrix entry to ensure core tests pass without optional deps
           - setup: '3.8'
             tox: 'core'
+          # Special matrix entry to ensure http_server tests pass without other optional deps
+          - setup: '3.8'
+            tox: 'http_server'
+          # Special matrix entry to ensure grpc_server tests pass without other optional deps
+          - setup: '3.8'
+            tox: 'grpc_server'
 
     steps:
       - uses: actions/checkout@v3
