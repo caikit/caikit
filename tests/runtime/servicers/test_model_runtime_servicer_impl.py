@@ -57,7 +57,7 @@ class TestModelRuntimeServicerImpl(unittest.TestCase):
             ]
         )
         mock_manager = MagicMock()
-        mock_manager.load_model.return_value = 1
+        mock_manager.load_model.size.return_value = 1
 
         with patch.object(self.servicer, "model_manager", mock_manager):
             response = self.servicer.loadModel(request, context)
@@ -75,7 +75,7 @@ class TestModelRuntimeServicerImpl(unittest.TestCase):
             get_config().inference_plugin.model_mesh.max_model_concurrency
         )
         mock_manager = MagicMock()
-        mock_manager.load_model.return_value = 1
+        mock_manager.load_model.size.return_value = 1
 
         with patch.object(self.servicer, "model_manager", mock_manager):
             response = self.servicer.loadModel(request, context)

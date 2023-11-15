@@ -66,11 +66,12 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
                     request.modelType,
                     aborter=aborter,
                 )
-                model_size = work.do()
+                loaded_model = work.do()
             else:
-                model_size = self.model_manager.load_model(
+                loaded_model = self.model_manager.load_model(
                     request.modelId, request.modelPath, request.modelType
                 )
+            model_size = loaded_model.size()
 
             log.info(
                 {

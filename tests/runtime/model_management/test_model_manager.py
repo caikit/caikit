@@ -110,7 +110,7 @@ def test_load_model_ok_response():
         model_id=model_id,
         local_model_path=Fixtures.get_good_model_path(),
         model_type=Fixtures.get_good_model_type(),
-    )
+    ).size()
     assert model_size > 0
 
 
@@ -127,7 +127,7 @@ def test_load_model_no_size_update():
         model_id=model_id,
         local_model_path=Fixtures.get_good_model_path(),
         model_type=Fixtures.get_good_model_type(),
-    )
+    ).size()
     assert model_size > 0
     loaded_model = MODEL_MANAGER.loaded_models[model_id]
     assert loaded_model.size() == model_size
@@ -485,6 +485,85 @@ def test_model_manager_disk_caching_periodic_sync(good_model_path):
             assert mgr_one_unloaded and mgr_two_unloaded
 
 
+def test_nested_local_model_load_unload(good_model_path):
+    """Test that a model can be loaded in a subdirectory of the local_models_dir
+    and that the periodic sync does not unload the model.
+    """
+    with TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                    "lazy_load_poll_period_seconds": 0,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+
+            # Copy the model into a nested model directory
+            model_name = os.path.join("parent", os.path.basename(good_model_path))
+            model_cache_path = os.path.join(cache_dir, model_name)
+            assert not os.path.exists(model_cache_path)
+            shutil.copytree(good_model_path, model_cache_path)
+
+            # Trigger the periodic sync and make sure the model is NOT loaded
+            assert model_name not in manager.loaded_models
+            manager.sync_local_models(wait=True)
+            assert model_name not in manager.loaded_models
+
+            # Explicitly ask to load the nested model name to trigger the lazy
+            # load
+            model = manager.retrieve_model(model_name)
+            assert model
+            assert model_name in manager.loaded_models
+
+            # Re-trigger the sync and make sure the model does not get unloaded
+            manager.sync_local_models(wait=True)
+            assert model_name in manager.loaded_models
+
+
+def test_model_unload_race(good_model_path):
+    """Test that if a model gets unloaded _while_ it's actively being loaded
+    (before retrieve_model completes, but after load_model completes), no
+    exception is raised.
+    """
+    with TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                    "lazy_load_poll_period_seconds": 0,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+
+            # Copy the model to the local_models_dir
+            model_id = random_test_id()
+            model_cache_path = os.path.join(cache_dir, model_id)
+            shutil.copytree(good_model_path, model_cache_path)
+
+            # Patch the manager's load_model to immediately unload the model
+            orig_load_model = manager.load_model
+
+            def load_and_unload_model(self, model_id: str, *args, **kwargs):
+                res = orig_load_model(model_id, *args, **kwargs)
+                manager.unload_model(model_id)
+                return res
+
+            with patch.object(manager.__class__, "load_model", load_and_unload_model):
+
+                # Retrieve the model and make sure there's no error
+                assert manager.retrieve_model(model_id)
+                assert model_id not in manager.loaded_models
+
+
 def test_load_local_model_deleted_dir():
     """Make sure losing the local_models_dir out from under a running manager
     doesn't kill the whole thing
@@ -590,7 +669,7 @@ def test_load_model():
 
             model_size = MODEL_MANAGER.load_model(
                 model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE
-            )
+            ).size()
             assert expected_model_size == model_size
             mock_loader.load_model.assert_called_once()
             call_args = mock_loader.load_model.call_args
@@ -754,12 +833,12 @@ def test_reload_partially_loaded():
             mock_loader.load_model.return_value = loaded_model
             model_size = MODEL_MANAGER.load_model(
                 model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE, wait=False
-            )
+            ).size()
             assert model_size == special_model_size
             assert (
                 MODEL_MANAGER.load_model(
                     model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE, wait=False
-                )
+                ).size()
                 == special_model_size
             )
 

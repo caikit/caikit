@@ -206,6 +206,7 @@ def test_training_cancel_on_correct_id(training_management_servicer):
     )
 
     # training number 2 should still complete
+    model_future_2.wait()
     request_2 = TrainingInfoRequest(training_id=model_future_2.id).to_proto()
     response_2 = training_management_servicer.GetTrainingStatus(request_2, context=None)
     assert response_2.state == TrainingStatus.COMPLETED.value

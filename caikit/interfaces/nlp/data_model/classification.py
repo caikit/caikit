@@ -14,6 +14,7 @@
 """Data structures for classification representations"""
 
 # Standard
+from enum import Enum
 from typing import List, Optional
 
 # Third Party
@@ -29,6 +30,21 @@ from .package import NLP_PACKAGE
 from .text_generation import FinishReason
 
 log = alog.use_channel("DATAM")
+
+
+@dataobject(package=NLP_PACKAGE)
+class InputWarningReason(Enum):
+    UNSUITABLE_INPUT = 0
+
+
+@dataobject(package=NLP_PACKAGE)
+class InputWarning(DataObjectBase):
+    """Input Warning data object, which returns a reason and message associated with warnings
+    to issue to a user that causes errors (such as failed text generation)
+    """
+
+    id: Annotated[InputWarningReason, FieldNumber(1)]  # id of input error
+    message: Annotated[str, FieldNumber(2)]  # Error message detailing Warning
 
 
 @dataobject(package=NLP_PACKAGE)
@@ -129,6 +145,9 @@ class ClassifiedGeneratedTextResult(DataObjectBase):
         Optional[np.uint64], FieldNumber(5)
     ]  # The random seed used for text generation
     input_token_count: Annotated[Optional[int], FieldNumber(6)]
+    warnings: Annotated[
+        Optional[List[InputWarning]], FieldNumber(9)
+    ]  # Warning to user in the event of input errors
 
 
 @dataobject(package=NLP_PACKAGE)

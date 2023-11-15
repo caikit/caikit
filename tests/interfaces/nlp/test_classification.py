@@ -22,6 +22,10 @@ from caikit.interfaces.nlp.data_model import (
     TokenClassificationResult,
     TokenClassificationResults,
 )
+from caikit.interfaces.nlp.data_model.classification import (
+    InputWarning,
+    InputWarningReason,
+)
 
 ## Setup #########################################################################
 
@@ -60,7 +64,13 @@ classification_generated_text_result = ClassifiedGeneratedTextResult(
     generated_token_count=7,
     finish_reason=FinishReason.STOP_SEQUENCE,
     seed=42,
+    warnings=[
+        InputWarning(
+            id=InputWarningReason.UNSUITABLE_INPUT, message="unsuitable input detected"
+        )
+    ],
 )
+
 
 ## Tests ########################################################################
 
@@ -260,3 +270,5 @@ def _validate_classification_generated_text_result(obj):
     assert obj.generated_token_count == 7
     assert obj.finish_reason == 5
     assert obj.seed == 42
+    assert obj.warnings[0].id == InputWarningReason.UNSUITABLE_INPUT.value
+    assert obj.warnings[0].message == "unsuitable input detected"
