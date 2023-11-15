@@ -124,6 +124,9 @@ def test_model_train(runtime_grpc_server):
     )
     training_id = str(uuid.uuid4())
     model_name = "abc"
+    training_output_dir = os.path.join(
+            runtime_grpc_server.workdir, "training_output"
+        )
     model_train_request = process_pb2.ProcessRequest(
         trainingID=training_id,
         request_dict={
@@ -142,9 +145,7 @@ def test_model_train(runtime_grpc_server):
             ),
         },
         training_input_dir="training_input_dir",
-        training_output_dir=os.path.join(
-            runtime_grpc_server.workdir, "training_output", training_id
-        ),
+        training_output_dir=training_output_dir,
     )
     training_response = model_train_stub.Run(model_train_request)
     assert isinstance(training_response, process_pb2.ProcessResponse)
@@ -179,8 +180,8 @@ def test_model_train(runtime_grpc_server):
     result = model_future.load()
 
     # Make sure we put the path bits in the right order: base/training_id/model_name
-    training_id_and_model_name_path_bit = os.path.join(training_id, model_name)
-    assert training_id_and_model_name_path_bit in model_future.save_path
+    expected_save_path = os.path.join(training_output_dir, training_id, model_name)
+    assert os.path.exists(expected_save_path)
 
     assert (
         result.MODULE_CLASS

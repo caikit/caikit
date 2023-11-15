@@ -110,12 +110,12 @@ def test_global_train_sample_task(
     )
 
     model_future = MODEL_MANAGER.get_model_future(training_response.training_id)
-    expected_save_path_bits = os.path.join(
-        training_response.training_id, training_response.model_name
+    model_future.wait()
+    expected_save_path = os.path.join(
+        caikit.get_config().runtime.training.output_dir, training_response.training_id, training_response.model_name
     )
-    assert expected_save_path_bits in model_future.save_path
-
-    result = model_future.load()
+    assert os.path.exists(expected_save_path)
+    result = caikit.load(expected_save_path)
     assert result.batch_size == 42
     assert (
         result.MODULE_CLASS
@@ -172,7 +172,7 @@ def test_global_train_other_task(
         training_response.training_id,
     )
 
-    result = MODEL_MANAGER.get_model_future(training_response.training_id).load()
+    result = sample_predict_servicer._model_manager.retrieve_model(training_response.model_name)
     assert result.batch_size == batch_size
     assert (
         result.MODULE_CLASS
@@ -226,9 +226,7 @@ def test_global_train_Another_Widget_that_requires_SampleWidget_loaded_should_no
         training_response.training_id,
     )
 
-    training_result = MODEL_MANAGER.get_model_future(
-        training_response.training_id
-    ).load()
+    training_result = sample_predict_servicer._model_manager.retrieve_model(training_response.model_name)
     assert (
         training_result.MODULE_CLASS
         == "sample_lib.modules.sample_task.composite_module.CompositeModule"

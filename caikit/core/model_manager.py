@@ -157,9 +157,9 @@ class ModelManager:
                 **kwargs,
             )
             log.debug(
-                "Started training %s with save path %s",
+                "Started training %s with saver type %s",
                 model_future.id,
-                model_future.save_path,
+                type(saver) if saver else None,
             )
 
         # If requested, wait for the future to complete

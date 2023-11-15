@@ -21,6 +21,7 @@ import os
 import tempfile
 import threading
 
+import caikit
 # Third Party
 import pytest
 
@@ -110,12 +111,6 @@ def test_train_save_and_load(trainer_type_cfg, save_path):
     model = SampleModule.load(save_path)
     assert isinstance(model, SampleModule)
 
-    # Make sure that it can be loaded via the future
-    # NOTE: With a subprocess, this requires that save path is given so that the
-    #   model can be re-loaded from disk
-    model = model_future.load()
-    assert isinstance(model, SampleModule)
-
 
 def test_save_with_id(trainer_type_cfg, save_path):
     """Test that saving with the training id correctly injects the ID in the
@@ -130,9 +125,9 @@ def test_save_with_id(trainer_type_cfg, save_path):
         ),
     )
     model_future.wait()
-    assert model_future.save_path != save_path
-    assert model_future.id in model_future.save_path
-    assert os.path.exists(model_future.save_path)
+    model_path = os.path.join(save_path, model_future.id)
+    assert os.path.exists(model_path)
+    assert caikit.load(model_path)
 
 
 def test_save_with_id_and_model_name(trainer_type_cfg, save_path):
@@ -149,10 +144,9 @@ def test_save_with_id_and_model_name(trainer_type_cfg, save_path):
         model_name="abc",
     )
     model_future.wait()
-    assert model_future.save_path != save_path
-    assert model_future.id in model_future.save_path
-    assert "abc" in model_future.save_path
-    assert os.path.exists(model_future.save_path)
+    model_path = os.path.join(save_path, model_future.id, "abc")
+    assert os.path.exists(model_path)
+    assert caikit.load(model_path)
 
 
 def test_save_with_model_name(trainer_type_cfg, save_path):
@@ -169,10 +163,9 @@ def test_save_with_model_name(trainer_type_cfg, save_path):
         model_name="abc",
     )
     model_future.wait()
-    assert model_future.save_path != save_path
-    assert model_future.id not in model_future.save_path
-    assert "abc" in model_future.save_path
-    assert os.path.exists(model_future.save_path)
+    model_path = os.path.join(save_path, "abc")
+    assert os.path.exists(model_path)
+    assert caikit.load(model_path)
 
 
 def test_cancel_clean_termination(trainer_type_cfg):

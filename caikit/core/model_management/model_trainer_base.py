@@ -72,13 +72,6 @@ class ModelTrainerBase(FactoryConstructible):
                 else training_id
             )
             self._saver = saver
-            # TODO: figure out what to do with this
-            if saver:
-                self._save_path = self._saver.save_path(
-                    model_name=model_name, training_id=self.id
-                )
-            else:
-                self._save_path = None
             self._model_name = model_name
 
         @property
@@ -99,14 +92,6 @@ class ModelTrainerBase(FactoryConstructible):
             the trained model somewhere
             """
             return self._saver
-
-        @property
-        def save_path(self) -> Optional[str]:
-            """If created with a save path, the future must expose it, including
-            any injected training id
-            """
-            # TODO: ????
-            return self._save_path
 
         @abc.abstractmethod
         def get_info(self) -> TrainingInfo:

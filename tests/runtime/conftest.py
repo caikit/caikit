@@ -27,11 +27,11 @@ import alog
 
 # Local
 from caikit.core import MODEL_MANAGER
-from caikit.core.data_model import DataBase
+from caikit.core.data_model import DataBase, TrainingStatus
 from caikit.core.data_model.dataobject import render_dataobject_protos
 from caikit.runtime import http_server
 from caikit.runtime.grpc_server import RuntimeGRPCServer
-from caikit.runtime.model_management.loaded_model import LoadedModel
+from caikit.core.model_management import LocalPathModelSaver
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.service_generation.output_target import (
@@ -369,18 +369,23 @@ def register_trained_model(
     """Helper to auto-load a model that has completed training. This replaces
     the old auto-load feature which was only needed for unit tests
     """
-    model_future_factory = partial(MODEL_MANAGER.get_model_future, training_id)
-    loaded_model = (
-        LoadedModel.Builder()
-        .id(model_id)
-        .type("trained")
-        .path("")
-        .model_future_factory(model_future_factory)
-        .build()
-    )
+    training_future = MODEL_MANAGER.get_model_future(training_id)
+    # wait until training is done, if not yet
+    training_future.wait()
+    # Make sure it passed
+    assert training_future.get_info().status == TrainingStatus.COMPLETED
+    # And that it was saved
+    assert training_future.saver is not None
+    # ...And that it was saved to disk
+    assert isinstance(training_future.saver, LocalPathModelSaver)
+
+    # Get the save path
+    save_path = training_future.saver.save_path(model_name=model_id, training_id=training_id)
+
     if isinstance(servicer, RuntimeGRPCServer):
         servicer = servicer._global_predict_servicer
-    servicer._model_manager.loaded_models[model_id] = loaded_model
+
+    servicer._model_manager.load_model(model_id=model_id, local_model_path=save_path, model_type="test_trained_model", wait=True)
 
 
 class ModuleSubproc:

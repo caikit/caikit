@@ -680,8 +680,9 @@ def test_train_by_module_class(reset_globals):
     with setup_test_trainer():
         train_future = caikit.train(SampleModule, DataStream.from_iterable([]))
         assert isinstance(train_future, ModelTrainerBase.ModelFutureBase)
-        loaded_model = train_future.load()
-        assert isinstance(loaded_model, SampleModule)
+        # ensure model actually trained
+        trained_model = train_future._trained_model
+        assert isinstance(trained_model, SampleModule)
         found_future = caikit.get_model_future(train_future.id)
         assert found_future is train_future
 
@@ -695,8 +696,11 @@ def test_train_by_module_id(reset_globals):
             SampleModule.MODULE_ID, DataStream.from_iterable([])
         )
         assert isinstance(train_future, ModelTrainerBase.ModelFutureBase)
-        loaded_model = train_future.load()
-        assert isinstance(loaded_model, SampleModule)
+        train_future.wait()
+
+        # ensure model actually trained
+        trained_model = train_future._trained_model
+        assert isinstance(trained_model, SampleModule)
         found_future = caikit.get_model_future(train_future.id)
         assert found_future is train_future
 
@@ -730,7 +734,6 @@ def test_train_with_saver(reset_globals):
             )
             assert train_future.get_info().status == TrainingStatus.RUNNING
             assert not os.path.exists(save_path)
-            assert train_future.save_path == save_path
             train_future.wait()
             assert train_future.get_info().status == TrainingStatus.COMPLETED
             assert os.path.exists(save_path)

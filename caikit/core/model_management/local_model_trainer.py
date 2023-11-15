@@ -181,26 +181,9 @@ class LocalModelTrainer(ModelTrainerBase):
             # NB: loading will only work if the ModelSaver used provided a
             # local file path to re-load the model from.
             if self._use_subprocess:
-                log.debug2("Loading model saved in subprocess")
-                error.value_check(
-                    "<COR16745216E>",
-                    self.saver is not None,
-                    "Unable to load model from training {} "
-                    + "trained in subprocess without a saver",
-                    self.id,
-                )
-                error.value_check(
-                    "<COR59551640E>",
-                    os.path.exists(self.save_path),
-                    "Unable to load model from training {} "
-                    + "saved in subprocess, path does not exist: {}",
-                    self.id,
-                    self.save_path,
-                )
-                result = caikit.load(self.save_path)
+                error(log_code="<COR16745216E>", exception=RuntimeError("Cannot load model trained in a subprocess"))
             else:
-                result = self._worker.get_or_throw()
-            return result
+                return self._worker.get_or_throw()
 
         ## Impl ##
         def _make_training_info(
