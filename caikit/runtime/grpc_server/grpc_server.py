@@ -30,6 +30,9 @@ import alog
 # Local
 # Get the injectable servicer class definitions
 from caikit import get_config
+from caikit.runtime.grpc_server.interceptors.caikit_runtime_server_wrapper import (
+    CaikitRuntimeServerWrapper,
+)
 from caikit.runtime.grpc_server.service_factory import (
     ServicePackage,
     ServicePackageFactory,
@@ -49,9 +52,6 @@ from caikit.runtime.grpc_server.servicers.model_train_servicer import (
 )
 from caikit.runtime.grpc_server.servicers.training_management_servicer import (
     TrainingManagementServicerImpl,
-)
-from caikit.runtime.interceptors.caikit_runtime_server_wrapper import (
-    CaikitRuntimeServerWrapper,
 )
 from caikit.runtime.protobufs import (
     model_runtime_pb2,

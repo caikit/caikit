@@ -19,7 +19,7 @@ import grpc
 
 # Local
 from caikit.core.data_model.base import DataBase
-from caikit.runtime.interceptors.caikit_runtime_server_wrapper import (
+from caikit.runtime.grpc_server.interceptors.caikit_runtime_server_wrapper import (
     CaikitRuntimeServerWrapper,
 )
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
