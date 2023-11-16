@@ -35,11 +35,14 @@ import tls_test_tools
 # Local
 from caikit.core import MODEL_MANAGER, DataObjectBase, dataobject
 from caikit.core.model_management.multi_model_finder import MultiModelFinder
-from caikit.runtime.http import http_server
-from caikit.runtime.http.http_server import StreamEventTypes
+from caikit.runtime.http_server import http_server
+from caikit.runtime.http_server.http_server import StreamEventTypes
 from tests.conftest import temp_config
 from tests.runtime.conftest import ModuleSubproc
-from tests.runtime.http.conftest import register_trained_model, runtime_http_test_server
+from tests.runtime.http_server.conftest import (
+    register_trained_model,
+    runtime_http_test_server,
+)
 from tests.runtime.model_management.test_model_manager import (
     non_singleton_model_managers,
 )
@@ -861,7 +864,7 @@ def test_http_server_shutdown_with_model_poll(open_port):
     """Test that a SIGINT successfully shuts down the running server"""
     with tempfile.TemporaryDirectory() as workdir:
         server_proc = ModuleSubproc(
-            "caikit.runtime.http.http_server",
+            "caikit.runtime.http_server",
             RUNTIME_HTTP_PORT=str(open_port),
             RUNTIME_LOCAL_MODELS_DIR=workdir,
             RUNTIME_LAZY_LOAD_LOCAL_MODELS="true",

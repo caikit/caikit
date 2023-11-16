@@ -30,15 +30,24 @@ import alog
 # Local
 # Get the injectable servicer class definitions
 from caikit import get_config
-from caikit.runtime.grpc.service_factory import ServicePackage, ServicePackageFactory
-from caikit.runtime.grpc.servicers.global_predict_servicer import GlobalPredictServicer
-from caikit.runtime.grpc.servicers.global_train_servicer import GlobalTrainServicer
-from caikit.runtime.grpc.servicers.info_servicer import InfoServicer
-from caikit.runtime.grpc.servicers.model_runtime_servicer import (
+from caikit.runtime.grpc_server.service_factory import (
+    ServicePackage,
+    ServicePackageFactory,
+)
+from caikit.runtime.grpc_server.servicers.global_predict_servicer import (
+    GlobalPredictServicer,
+)
+from caikit.runtime.grpc_server.servicers.global_train_servicer import (
+    GlobalTrainServicer,
+)
+from caikit.runtime.grpc_server.servicers.info_servicer import InfoServicer
+from caikit.runtime.grpc_server.servicers.model_runtime_servicer import (
     ModelRuntimeServicerImpl,
 )
-from caikit.runtime.grpc.servicers.model_train_servicer import ModelTrainServicerImpl
-from caikit.runtime.grpc.servicers.training_management_servicer import (
+from caikit.runtime.grpc_server.servicers.model_train_servicer import (
+    ModelTrainServicerImpl,
+)
+from caikit.runtime.grpc_server.servicers.training_management_servicer import (
     TrainingManagementServicerImpl,
 )
 from caikit.runtime.interceptors.caikit_runtime_server_wrapper import (

@@ -25,7 +25,10 @@ import pytest
 # Local
 from .test_model_train_servicer_impl import sample_model_train_servicer
 from caikit.core import MODEL_MANAGER
-from caikit.runtime.grpc.service_factory import get_train_params, get_train_request
+from caikit.runtime.grpc_server.service_factory import (
+    get_train_params,
+    get_train_request,
+)
 from caikit.runtime.protobufs import process_pb2
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model.sample import SampleTrainingType

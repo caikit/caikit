@@ -47,7 +47,7 @@ from caikit.interfaces.common.data_model.primitive_sequences import (
     IntSequence,
     StrSequence,
 )
-from caikit.runtime.http.utils import update_dict_at_dot_path
+from caikit.runtime.http_server.utils import update_dict_at_dot_path
 
 log = alog.use_channel("SERVR-HTTP-PYDNTC")
 

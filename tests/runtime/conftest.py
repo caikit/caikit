@@ -17,7 +17,10 @@ import pytest
 
 # Local
 from caikit.core.data_model.dataobject import render_dataobject_protos
-from caikit.runtime.grpc.service_factory import ServicePackage, ServicePackageFactory
+from caikit.runtime.grpc_server.service_factory import (
+    ServicePackage,
+    ServicePackageFactory,
+)
 from caikit.runtime.model_management.model_manager import ModelManager
 from tests.conftest import random_test_id
 

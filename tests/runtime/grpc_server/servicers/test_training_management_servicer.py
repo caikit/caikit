@@ -35,7 +35,7 @@ from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingStatusResponse,
 )
-from caikit.runtime.grpc.servicers.training_management_servicer import (
+from caikit.runtime.grpc_server.servicers.training_management_servicer import (
     TrainingManagementServicerImpl,
 )
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException

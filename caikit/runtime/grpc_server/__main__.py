@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Local
-from caikit.runtime.http.http_server import http_server
+from caikit.runtime.grpc_server import grpc_server
 
 if __name__ == "__main__":
-    http_server.main()
+    grpc_server.main()

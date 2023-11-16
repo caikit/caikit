@@ -29,7 +29,7 @@ from caikit import get_config
 from caikit.core import MODEL_MANAGER, ModuleBase
 from caikit.interfaces.common.data_model.stream_sources import S3Path
 from caikit.interfaces.runtime.data_model import TrainingJob
-from caikit.runtime.grpc.service_factory import ServicePackage
+from caikit.runtime.grpc_server.service_factory import ServicePackage
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_generation.rpcs import ModuleClassTrainRPC
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -46,6 +46,7 @@ error = caikit.core.exceptions.error_handler.get(log)
 # Protobuf non primitives
 # Ref: https://developers.google.com/protocol-buffers/docs/reference/cpp/google.protobuf.descriptor
 NON_PRIMITIVE_TYPES = [FieldDescriptor.TYPE_MESSAGE, FieldDescriptor.TYPE_ENUM]
+
 
 # pylint: disable=too-many-instance-attributes
 class GlobalTrainServicer:
@@ -251,10 +252,8 @@ class GlobalTrainServicer:
         # API which would integrate with different training backends
         # as per their interface requirements.
         if wait:
-
             # Register the cancellation callback if given a context
             if context is not None:
-
                 # Create a callback to register termination of training
                 def rpc_termination_callback():
                     """Cancel the model future if it has not yet completed"""

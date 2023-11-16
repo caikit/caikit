@@ -20,8 +20,10 @@ import alog
 
 # Local
 from caikit.core import MODEL_MANAGER
-from caikit.runtime.grpc.servicers.global_predict_servicer import GlobalPredictServicer
-from caikit.runtime.http import http_server
+from caikit.runtime.grpc_server.servicers.global_predict_servicer import (
+    GlobalPredictServicer,
+)
+from caikit.runtime.http_server import http_server
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from tests.conftest import temp_config
 

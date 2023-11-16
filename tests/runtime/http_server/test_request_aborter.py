@@ -25,7 +25,7 @@ import requests
 import uvicorn
 
 # Local
-from caikit.runtime.http.request_aborter import HttpRequestAborter
+from caikit.runtime.http_server.request_aborter import HttpRequestAborter
 
 
 def get_time_remaining(start_time: datetime.datetime, timeout: int = 10) -> int:

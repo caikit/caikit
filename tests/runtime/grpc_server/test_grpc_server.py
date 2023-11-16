@@ -52,8 +52,11 @@ from caikit.interfaces.runtime.data_model import (
     TrainingStatusResponse,
 )
 from caikit.runtime import get_inference_request, get_train_params, get_train_request
-from caikit.runtime.grpc.grpc_server import RuntimeGRPCServer
-from caikit.runtime.grpc.service_factory import ServicePackage, ServicePackageFactory
+from caikit.runtime.grpc_server import RuntimeGRPCServer
+from caikit.runtime.grpc_server.service_factory import (
+    ServicePackage,
+    ServicePackageFactory,
+)
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.protobufs import (
     model_runtime_pb2,
@@ -75,7 +78,10 @@ from tests.conftest import ARM_ARCH, PROTOBUF_VERSION, random_test_id, temp_conf
 from tests.core.helpers import *
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import ModuleSubproc
-from tests.runtime.grpc.conftest import register_trained_model, runtime_grpc_test_server
+from tests.runtime.grpc_server.conftest import (
+    register_trained_model,
+    runtime_grpc_test_server,
+)
 import caikit.interfaces.common
 
 ## Helpers #####################################################################
@@ -1325,7 +1331,7 @@ def test_grpc_sever_shutdown_with_model_poll(open_port):
     """Test that a SIGINT successfully shuts down the running server"""
     with tempfile.TemporaryDirectory() as workdir:
         server_proc = ModuleSubproc(
-            "caikit.runtime.grpc.grpc_server",
+            "caikit.runtime.grpc_server",
             kill_timeout=30.0,
             RUNTIME_GRPC_PORT=str(open_port),
             RUNTIME_LOCAL_MODELS_DIR=workdir,

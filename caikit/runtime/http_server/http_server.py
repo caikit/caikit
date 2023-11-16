@@ -62,10 +62,14 @@ from caikit.config import get_config
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
-from caikit.runtime.grpc.service_factory import ServicePackage
-from caikit.runtime.grpc.servicers.global_predict_servicer import GlobalPredictServicer
-from caikit.runtime.grpc.servicers.global_train_servicer import GlobalTrainServicer
-from caikit.runtime.grpc.servicers.info_servicer import InfoServicer
+from caikit.runtime.grpc_server.service_factory import ServicePackage
+from caikit.runtime.grpc_server.servicers.global_predict_servicer import (
+    GlobalPredictServicer,
+)
+from caikit.runtime.grpc_server.servicers.global_train_servicer import (
+    GlobalTrainServicer,
+)
+from caikit.runtime.grpc_server.servicers.info_servicer import InfoServicer
 from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_generation.rpcs import (
     CaikitRPCBase,

@@ -13,8 +13,7 @@
 # limitations under the License.
 
 # Local
-from .grpc_server.service_factory import (
-    get_inference_request,
-    get_train_params,
-    get_train_request,
-)
+from caikit.runtime.http_server import http_server
+
+if __name__ == "__main__":
+    http_server.main()

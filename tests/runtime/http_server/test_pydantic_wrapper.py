@@ -35,7 +35,7 @@ from caikit.interfaces.nlp.data_model.text_generation import (
     GeneratedTextStreamResult,
     GeneratedToken,
 )
-from caikit.runtime.http.pydantic_wrapper import (
+from caikit.runtime.http_server.pydantic_wrapper import (
     PYDANTIC_TO_DM_MAPPING,
     _from_base64,
     _get_pydantic_type,
