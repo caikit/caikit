@@ -45,7 +45,7 @@ def main():
 
         try:
             # Local
-            from caikit.runtime.grpc_server import (  # pylint: disable=import-outside-toplevel
+            from caikit.runtime.grpc_server.grpc_server import (  # pylint: disable=import-outside-toplevel
                 RuntimeGRPCServer,
             )
         except ModuleNotFoundError as e:

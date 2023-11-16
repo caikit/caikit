@@ -21,7 +21,7 @@ import alog
 # Local
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model.dataobject import render_dataobject_protos
-from caikit.runtime.grpc_server import RuntimeGRPCServer
+from caikit.runtime.grpc_server.grpc_server import RuntimeGRPCServer
 from caikit.runtime.grpc_server.service_factory import (
     ServicePackage,
     ServicePackageFactory,

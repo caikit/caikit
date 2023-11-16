@@ -52,7 +52,7 @@ from caikit.interfaces.runtime.data_model import (
     TrainingStatusResponse,
 )
 from caikit.runtime import get_inference_request, get_train_params, get_train_request
-from caikit.runtime.grpc_server import RuntimeGRPCServer
+from caikit.runtime.grpc_server.grpc_server import RuntimeGRPCServer
 from caikit.runtime.grpc_server.service_factory import (
     ServicePackage,
     ServicePackageFactory,
