@@ -15,12 +15,13 @@
 # Standard
 from typing import List, Optional
 
-# Local
-from caikit.core import DataObjectBase, dataobject
-from caikit.core.data_model.json_dict import JsonDict
-
 # First Party
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
+
+# Local
+from ...common.data_model import ProducerId
+from caikit.core import DataObjectBase, dataobject
+from caikit.core.data_model.json_dict import JsonDict
 
 
 @dataobject(package="caikit_data_model.caikit_nlp")
@@ -34,8 +35,8 @@ class RerankScore(DataObjectBase):
 
 
 @dataobject(package="caikit_data_model.caikit_nlp")
-class RerankQueryResult(DataObjectBase):
-    """Result for one query in a rerank task.
+class RerankScores(DataObjectBase):
+    """Scores for a query in a rerank task.
     This is a list of n ReRankScore where n is based on top_n documents and each score indicates
     the relevance of that document for this query. Results are ordered most-relevant first.
     """
@@ -45,9 +46,21 @@ class RerankQueryResult(DataObjectBase):
 
 
 @dataobject(package="caikit_data_model.caikit_nlp")
-class RerankPredictions(DataObjectBase):
-    """Result for a rerank tasks (supporting multiple queries).
+class RerankResult(DataObjectBase):
+    """Result for one query in a rerank task.
+    This is a list of n ReRankScore where n is based on top_n documents and each score indicates
+    the relevance of that document for this query. Results are ordered most-relevant first.
+    """
+
+    result: Annotated[RerankScores, FieldNumber(1)]
+    producer_id: Annotated[ProducerId, FieldNumber(2)]
+
+
+@dataobject(package="caikit_data_model.caikit_nlp")
+class RerankResults(DataObjectBase):
+    """Results list for rerank tasks (supporting multiple queries).
     For multiple queries, each one has a RerankQueryResult (ranking the documents for that query).
     """
 
-    results: Annotated[List[RerankQueryResult], FieldNumber(1)]
+    results: Annotated[List[RerankScores], FieldNumber(1)]
+    producer_id: Annotated[ProducerId, FieldNumber(2)]

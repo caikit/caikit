@@ -32,10 +32,14 @@ from .classification import (
     TokenClassificationResults,
     TokenClassificationStreamResult,
 )
-from .embedding_vectors import EmbeddingResult
+from .embedding_vectors import EmbeddingResult, EmbeddingResults
 from .package import NLP_PACKAGE
-from .reranker import RerankPredictions, RerankQueryResult, RerankScore
-from .sentence_similarity import SentenceListScores, SentenceScores
+from .reranker import RerankResult, RerankResults, RerankScore, RerankScores
+from .sentence_similarity import (
+    SentenceSimilarityResult,
+    SentenceSimilarityResults,
+    SentenceSimilarityScores,
+)
 from .text import Token, TokenizationResults, TokenizationStreamResult
 from .text_generation import (
     FinishReason,

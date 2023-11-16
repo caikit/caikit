@@ -23,9 +23,8 @@ from google.protobuf import json_format
 import numpy as np
 
 # First Party
-import alog
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
-
+import alog
 
 # Local
 from caikit.core import DataObjectBase, dataobject
@@ -69,11 +68,14 @@ class NpFloat64Sequence(DataObjectBase):
 class Vector1D(DataObjectBase):
     """Data representation for a 1 dimension vector of float-type data."""
 
-    data: Annotated[Union[
-        PyFloatSequence,
-        NpFloat32Sequence,
-        NpFloat64Sequence,
-    ], FieldNumber(1)]
+    data: Annotated[
+        Union[
+            PyFloatSequence,
+            NpFloat32Sequence,
+            NpFloat64Sequence,
+        ],
+        FieldNumber(1),
+    ]
 
     def __post_init__(self):
         error.value_check(
@@ -167,18 +169,18 @@ class Vector1D(DataObjectBase):
 class ListOfVector1D(DataObjectBase):
     """Data representation for an embedding matrix holding 2D vectors"""
 
-    results: Annotated[List[Vector1D], FieldNumber(1)]
+    vectors: Annotated[List[Vector1D], FieldNumber(1)]
 
     def __post_init__(self):
-        error.type_check("<NLP94336739E>", list, results=self.results)
-        error.type_check_all("<NLP94783841E>", Vector1D, results=self.results)
+        error.type_check("<NLP94336739E>", list, vectors=self.vectors)
+        error.type_check_all("<NLP94783841E>", Vector1D, vectors=self.vectors)
 
     @classmethod
     def from_json(cls, json_str: Union[Dict[str, Any], str]) -> "ListOfVector1D":
         """Fill in the vector data in an appropriate data_<float type sequence>"""
 
         json_obj = json.loads(json_str) if isinstance(json_str, str) else json_str
-        for v in json_obj["results"]:
+        for v in json_obj["vectors"]:
             data = v.pop("data")
             if data is not None:
                 v["data_pyfloatsequence"] = data

@@ -100,20 +100,22 @@ def input_scores2(input_random_score, input_random_score_3):
 
 @pytest.fixture
 def input_result_1(input_scores):
-    return {"query": "foo", "scores": input_scores}
+    return {"result": dm.RerankScores(query="foo", scores=input_scores)}
 
 
 @pytest.fixture
 def input_result_2(input_scores2):
-    return {"query": "bar", "scores": input_scores2}
+    return {"result": dm.RerankScores(query="bar", scores=input_scores2)}
 
 
 @pytest.fixture
-def input_results(input_result_1, input_result_2):
-    return [
-        dm.RerankQueryResult(**input_result_1),
-        dm.RerankQueryResult(**input_result_2),
-    ]
+def input_results(input_scores, input_scores2):
+    return {
+        "results": [
+            dm.RerankScores(query="foo", scores=input_scores),
+            dm.RerankScores(query="bar", scores=input_scores2),
+        ]
+    }
 
 
 @pytest.fixture
@@ -122,13 +124,8 @@ def input_sentence_similarity_scores_1():
 
 
 @pytest.fixture
-def input_rerank_predictions(input_results):
-    return {"results": input_results}
-
-
-@pytest.fixture
-def input_sentence_list_scores(input_sentence_similarities_scores):
-    return {"results": input_sentence_similarities_scores}
+def input_sentence_similarity_result(input_sentence_similarity_scores_1):
+    return {"result": dm.SentenceSimilarityScores(**input_sentence_similarity_scores_1)}
 
 
 @pytest.fixture
@@ -141,9 +138,14 @@ def input_sentence_similarities_scores(
     input_sentence_similarity_scores_1, input_sentence_similarity_scores_2
 ):
     return [
-        dm.SentenceScores(**input_sentence_similarity_scores_1),
-        dm.SentenceScores(**input_sentence_similarity_scores_2),
+        dm.SentenceSimilarityScores(**input_sentence_similarity_scores_1),
+        dm.SentenceSimilarityScores(**input_sentence_similarity_scores_2),
     ]
+
+
+@pytest.fixture
+def input_sentence_similarity_results(input_sentence_similarities_scores):
+    return {"results": input_sentence_similarities_scores}
 
 
 ## Tests ########################################################################
@@ -154,10 +156,10 @@ def input_sentence_similarities_scores(
     [
         (dm.RerankScore, "input_score"),
         (dm.RerankScore, "input_random_score"),
-        (dm.RerankQueryResult, "input_result_1"),
-        (dm.RerankPredictions, "input_rerank_predictions"),
-        (dm.SentenceScores, "input_sentence_similarity_scores_1"),
-        (dm.SentenceListScores, "input_sentence_list_scores"),
+        (dm.RerankResult, "input_result_1"),
+        (dm.RerankResults, "input_results"),
+        (dm.SentenceSimilarityResult, "input_sentence_similarity_result"),
+        (dm.SentenceSimilarityResults, "input_sentence_similarity_results"),
     ],
 )
 def test_data_object(data_object, inputs, request):

@@ -17,12 +17,11 @@
 from typing import List
 
 # First Party
-import alog
-# First Party
-import alog
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
+import alog
 
 # Local
+from ...common.data_model import ProducerId
 from caikit.core import DataObjectBase, dataobject
 from caikit.core.exceptions import error_handler
 
@@ -31,11 +30,23 @@ error = error_handler.get(log)
 
 
 @dataobject(package="caikit_data_model.caikit_nlp")
-class SentenceScores(DataObjectBase):
+class SentenceSimilarityScores(DataObjectBase):
+    """Scores for a sentence similarity task"""
+
     scores: Annotated[List[float], FieldNumber(1)]
 
 
 @dataobject(package="caikit_data_model.caikit_nlp")
-class SentenceListScores(DataObjectBase):
+class SentenceSimilarityResult(DataObjectBase):
+    """Result for sentence similarity task"""
 
-    results: Annotated[List[SentenceScores], FieldNumber(1)]
+    result: Annotated[SentenceSimilarityScores, FieldNumber(1)]
+    producer_id: Annotated[ProducerId, FieldNumber(2)]
+
+
+@dataobject(package="caikit_data_model.caikit_nlp")
+class SentenceSimilarityResults(DataObjectBase):
+    """Results list for sentence similarity tasks"""
+
+    results: Annotated[List[SentenceSimilarityScores], FieldNumber(1)]
+    producer_id: Annotated[ProducerId, FieldNumber(2)]

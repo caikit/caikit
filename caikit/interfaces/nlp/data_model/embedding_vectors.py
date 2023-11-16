@@ -17,11 +17,11 @@
 from dataclasses import dataclass
 
 # First Party
-import alog
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
+import alog
 
 # Local
-from ...common.data_model import Vector1D
+from ...common.data_model import ListOfVector1D, ProducerId, Vector1D
 from caikit.core import DataObjectBase, dataobject
 from caikit.core.exceptions import error_handler
 
@@ -35,3 +35,13 @@ class EmbeddingResult(DataObjectBase):
     """Result from text embedding task"""
 
     result: Annotated[Vector1D, FieldNumber(1)]
+    producer_id: Annotated[ProducerId, FieldNumber(2)]
+
+
+@dataobject(package="caikit_data_model.caikit_nlp")
+@dataclass
+class EmbeddingResults(DataObjectBase):
+    """Results from text embeddings task"""
+
+    results: Annotated[ListOfVector1D, FieldNumber(1)]
+    producer_id: Annotated[ProducerId, FieldNumber(2)]
