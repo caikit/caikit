@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 
 # Local
 from caikit.core.data_model import ProducerId
-from caikit.runtime.service_factory import get_inference_request
+from caikit.runtime.grpc.service_factory import get_inference_request
 from sample_lib.data_model.sample import GeoSpatialTask
 from sample_lib.modules import MultiTaskModule, SecondTask
 from sample_lib.modules.geospatial import GeoStreamingModule
@@ -39,7 +39,7 @@ import pytest
 
 # Local
 from caikit.interfaces.common.data_model import File
-from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
+from caikit.runtime.grpc.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model import SampleInputType, SampleOutputType

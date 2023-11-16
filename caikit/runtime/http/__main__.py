@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Local
-from caikit.runtime.http_server import http_server
+from caikit.runtime.http.http_server import http_server
 
 if __name__ == "__main__":
     http_server.main()

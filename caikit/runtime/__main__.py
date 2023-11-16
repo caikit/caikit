@@ -45,7 +45,7 @@ def main():
 
         try:
             # Local
-            from caikit.runtime.grpc_server import (  # pylint: disable=import-outside-toplevel
+            from caikit.runtime.grpc.grpc_server import (  # pylint: disable=import-outside-toplevel
                 RuntimeGRPCServer,
             )
         except ModuleNotFoundError as e:
@@ -70,7 +70,7 @@ def main():
 
         try:
             # Local
-            from caikit.runtime.http_server import (  # pylint: disable=import-outside-toplevel
+            from caikit.runtime.http.http_server import (  # pylint: disable=import-outside-toplevel
                 RuntimeHTTPServer,
             )
         except ModuleNotFoundError as e:
@@ -82,7 +82,7 @@ def main():
             log.error("<RUN76169927E>", message)
             raise
 
-        log.debug("Starting up caikit.runtime.http_server")
+        log.debug("Starting up caikit.runtime.http.http_server")
 
         _http_server = RuntimeHTTPServer()
         _http_server.start(blocking=True)  # make http always blocking

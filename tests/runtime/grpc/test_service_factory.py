@@ -26,7 +26,7 @@ import pytest
 
 # Local
 from caikit.core.data_model import render_dataobject_protos
-from caikit.runtime.service_factory import (
+from caikit.runtime.grpc.service_factory import (
     ServicePackage,
     ServicePackageFactory,
     get_inference_request,

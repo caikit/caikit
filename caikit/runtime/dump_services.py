@@ -23,7 +23,7 @@ import alog
 
 # Local
 from ..core.data_model import render_dataobject_protos
-from .service_factory import ServicePackageFactory
+from .grpc.service_factory import ServicePackageFactory
 from caikit.config.config import get_config
 import caikit
 
@@ -74,7 +74,7 @@ def dump_http_services(output_dir: str):
         )
 
         # Local
-        from .http_server import (  # pylint: disable=import-outside-toplevel
+        from .http.http_server import (  # pylint: disable=import-outside-toplevel
             RuntimeHTTPServer,
         )
     except ModuleNotFoundError as e:

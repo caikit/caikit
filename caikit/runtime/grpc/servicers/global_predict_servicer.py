@@ -32,9 +32,9 @@ from caikit import get_config
 from caikit.core import ModuleBase
 from caikit.core.data_model import DataBase, DataStream
 from caikit.core.signature_parsing import CaikitMethodSignature
+from caikit.runtime.grpc.service_factory import ServicePackage
 from caikit.runtime.metrics.rpc_meter import RPCMeter
 from caikit.runtime.model_management.model_manager import ModelManager
-from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import clean_lib_names

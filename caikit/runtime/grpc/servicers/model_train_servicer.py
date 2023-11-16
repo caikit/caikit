@@ -31,11 +31,11 @@ from caikit.interfaces.common.data_model.stream_sources import (
     FileReference,
     ListOfFileReferences,
 )
+from caikit.runtime.grpc.service_factory import ServicePackage
+from caikit.runtime.grpc.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.protobufs import process_pb2, process_pb2_grpc
-from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.data_stream_source import DataStreamSourceBase
 from caikit.runtime.service_generation.rpcs import ModuleClassTrainRPC
-from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit.core
 

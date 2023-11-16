@@ -21,12 +21,12 @@ import alog
 # Local
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model.dataobject import render_dataobject_protos
-from caikit.runtime.grpc_server import RuntimeGRPCServer
+from caikit.runtime.grpc.grpc_server import RuntimeGRPCServer
+from caikit.runtime.grpc.service_factory import ServicePackage, ServicePackageFactory
+from caikit.runtime.grpc.servicers.global_predict_servicer import GlobalPredictServicer
+from caikit.runtime.grpc.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.model_management.loaded_model import LoadedModel
-from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
-from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
-from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from tests.conftest import temp_config
 
 log = alog.use_channel("TEST-GRPCCONF")
