@@ -35,7 +35,7 @@ from ..data_model import TrainingStatus
 from ..modules import ModuleBase
 from ..toolkit.factory import FactoryConstructible
 from ..toolkit.reversible_hasher import ReversibleHasher
-from .model_saver import ModelSaver
+from .model_saver_base import ModelSaverBase
 
 
 @dataclasses.dataclass
@@ -60,7 +60,7 @@ class ModelTrainerBase(FactoryConstructible):
             self,
             trainer_name: str,
             training_id: str,
-            saver: Optional[ModelSaver] = None,
+            saver: Optional[ModelSaverBase] = None,
             model_name: Optional[str] = None,
             use_reversible_hash: bool = True,
         ):
@@ -87,7 +87,7 @@ class ModelTrainerBase(FactoryConstructible):
             return self._model_name
 
         @property
-        def saver(self) -> ModelSaver:
+        def saver(self) -> ModelSaverBase:
             """Trainers with remote execution must have a ModelSaver that can store
             the trained model somewhere
             """
@@ -118,7 +118,7 @@ class ModelTrainerBase(FactoryConstructible):
         self,
         module_class: Type[ModuleBase],
         *args,
-        saver: Optional[ModelSaver],
+        saver: Optional[ModelSaverBase],
         model_name: Optional[str] = None,
         **kwargs,
     ) -> "ModelFutureBase":

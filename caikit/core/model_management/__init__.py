@@ -24,8 +24,10 @@ from .factories import (
     model_finder_factory,
     model_initializer_factory,
     model_trainer_factory,
+    model_saver_builder_factory
 )
 from .model_finder_base import ModelFinderBase
 from .model_initializer_base import ModelInitializerBase
-from .model_saver import LocalPathModelSaver, ModelSaver
+from .model_saver_base import ModelSaverBase
+from .local_model_saver import LocalModelSaver
 from .model_trainer_base import ModelTrainerBase, TrainingInfo

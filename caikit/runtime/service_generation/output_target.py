@@ -29,7 +29,7 @@ from caikit import get_config
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.exceptions import error_handler
-from caikit.core.model_management import LocalPathModelSaver, ModelSaver
+from caikit.core.model_management import LocalModelSaver, ModelSaverBase
 from caikit.core.toolkit.factory import FactoryConstructible, ImportableFactory
 from caikit.interfaces.common.data_model.stream_sources import PathReference
 from caikit.runtime import service_generation
@@ -57,7 +57,7 @@ class ModelSaverPluginBase(FactoryConstructible):
     ## Abstract Interface ##
 
     @abc.abstractmethod
-    def get_model_saver_class(self) -> Type[ModelSaver]:
+    def get_model_saver_class(self) -> Type[ModelSaverBase]:
         """Return the type of model saver built by this plugin"""
 
     @abc.abstractmethod
@@ -65,7 +65,7 @@ class ModelSaverPluginBase(FactoryConstructible):
         """Allow plugins to return a static field number"""
 
     @abc.abstractmethod
-    def make_model_saver(self, target: DataBase) -> ModelSaver:
+    def make_model_saver(self, target: DataBase) -> ModelSaverBase:
         """Given an output target, build a model saver"""
 
     ## Public Methods ##
@@ -80,7 +80,7 @@ class ModelSaverPluginBase(FactoryConstructible):
         # Gorp here to get the generic type T of the target class
         # Could just be overriden directly by your plugin
         bases = self.get_model_saver_class().__orig_bases__
-        output_target_base = [b for b in bases if typing.get_origin(b) == ModelSaver][0]
+        output_target_base = [b for b in bases if typing.get_origin(b) == ModelSaverBase][0]
         return typing.get_args(output_target_base)[0]
 
 
@@ -92,14 +92,14 @@ class LocalModelSaverPlugin(ModelSaverPluginBase):
 
     name = "Local"
 
-    def get_model_saver_class(self) -> Type[ModelSaver]:
-        return LocalPathModelSaver
+    def get_model_saver_class(self) -> Type[ModelSaverBase]:
+        return LocalModelSaver
 
-    def make_model_saver(self, target: DataBase) -> ModelSaver:
+    def make_model_saver(self, target: DataBase) -> ModelSaverBase:
         error.type_check("<RUN37386095E>", PathReference, target=target)
         target: PathReference
         save_with_id = self._config.get("save_with_id", None)
-        return LocalPathModelSaver(target=target, save_with_id=save_with_id)
+        return LocalModelSaver(target=target, save_with_id=save_with_id)
 
     def get_field_number(self) -> int:
         return 1

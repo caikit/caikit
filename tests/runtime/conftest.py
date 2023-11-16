@@ -29,7 +29,7 @@ import alog
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model import DataBase, TrainingStatus
 from caikit.core.data_model.dataobject import render_dataobject_protos
-from caikit.core.model_management import LocalPathModelSaver
+from caikit.core.model_management import LocalModelSaver
 from caikit.runtime import http_server
 from caikit.runtime.grpc_server import RuntimeGRPCServer
 from caikit.runtime.model_management.model_manager import ModelManager
@@ -377,7 +377,7 @@ def register_trained_model(
     # And that it was saved
     assert training_future.saver is not None
     # ...And that it was saved to disk
-    assert isinstance(training_future.saver, LocalPathModelSaver)
+    assert isinstance(training_future.saver, LocalModelSaver)
 
     # Get the save path
     save_path = training_future.saver.save_path(

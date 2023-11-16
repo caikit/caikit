@@ -35,7 +35,7 @@ from ..modules import ModuleBase
 from ..toolkit.destroyable_process import DestroyableProcess
 from ..toolkit.destroyable_thread import DestroyableThread
 from ..toolkit.logging import configure as configure_logging
-from .model_saver import ModelSaver
+from .model_saver_base import ModelSaverBase
 from .model_trainer_base import ModelTrainerBase, TrainingInfo
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
@@ -71,7 +71,7 @@ class LocalModelTrainer(ModelTrainerBase):
             self,
             trainer_name: str,
             module_class: Type[ModuleBase],
-            saver: Optional[ModelSaver],
+            saver: Optional[ModelSaverBase],
             model_name: Optional[str],
             external_training_id: Optional[str],
             use_subprocess: bool,
@@ -244,7 +244,7 @@ class LocalModelTrainer(ModelTrainerBase):
         self,
         module_class: Type[ModuleBase],
         *args,
-        saver: Optional[ModelSaver] = None,
+        saver: Optional[ModelSaverBase] = None,
         external_training_id: Optional[str] = None,
         model_name: Optional[str] = None,
         **kwargs,

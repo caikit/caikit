@@ -31,7 +31,7 @@ import aconfig
 from caikit.config import get_config
 from caikit.core.data_model import DataStream, TrainingStatus
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
-from caikit.core.model_management import LocalPathModelSaver
+from caikit.core.model_management import LocalModelSaver
 from caikit.core.model_management.local_model_trainer import LocalModelTrainer
 from caikit.interfaces.common.data_model.stream_sources import PathReference
 from sample_lib.modules import SampleModule
@@ -101,7 +101,7 @@ def test_train_save_and_load(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        saver=LocalPathModelSaver(
+        saver=LocalModelSaver(
             target=PathReference(path=save_path), save_with_id=False
         ),
     )
@@ -120,7 +120,7 @@ def test_save_with_id(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        saver=LocalPathModelSaver(
+        saver=LocalModelSaver(
             target=PathReference(path=save_path), save_with_id=True
         ),
     )
@@ -138,7 +138,7 @@ def test_save_with_id_and_model_name(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        saver=LocalPathModelSaver(
+        saver=LocalModelSaver(
             target=PathReference(path=save_path), save_with_id=True
         ),
         model_name="abc",
@@ -157,7 +157,7 @@ def test_save_with_model_name(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        saver=LocalPathModelSaver(
+        saver=LocalModelSaver(
             target=PathReference(path=save_path), save_with_id=False
         ),
         model_name="abc",

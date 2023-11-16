@@ -51,6 +51,13 @@ model_management:
                 # List of module backend configurations in priority order
                 backend_priority:
                     - type: LOCAL
+    # Each entry in this map will correspond to a field in the `output_target`
+    # message in each RPC in the training service.
+    savers:
+        local:
+            type: LOCAL
+            config:
+                save_with_id: True
 
 log:
     # Default level for all python loggers
@@ -191,9 +198,12 @@ runtime:
 
     # Training configuration for server
     training:
-        # The directory to save trained models in
+        # These two configs are used when no `output_target` is sent with the training request
+        # They are used to construct a `Local` model saver + output target
         output_dir: training_output
         save_with_id: true
+
+        # TODO: delete?
         model_saver_plugins:
             local:
                 type: Local

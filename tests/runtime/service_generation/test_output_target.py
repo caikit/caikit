@@ -21,7 +21,7 @@ import pytest
 
 # Local
 from caikit.core.data_model import DataBase
-from caikit.core.model_management import LocalPathModelSaver
+from caikit.core.model_management import LocalModelSaver
 from caikit.interfaces.common.data_model.stream_sources import PathReference
 from caikit.runtime.service_generation.output_target import (
     LocalModelSaverPlugin,
@@ -42,11 +42,11 @@ def test_local_saver_plugin():
     assert plugin.get_field_name() == "path_reference"
 
     # Model saver is the local path one
-    assert plugin.get_model_saver_class() == LocalPathModelSaver
+    assert plugin.get_model_saver_class() == LocalModelSaver
 
     # Can construct a `LocalPathModelSaver` with a `PathReference`
     saver = plugin.make_model_saver(PathReference(path="foo"))
-    assert isinstance(saver, LocalPathModelSaver)
+    assert isinstance(saver, LocalModelSaver)
 
 
 def test_local_saver_plugin_validates_target_type():
@@ -91,4 +91,4 @@ def test_output_target_message_builds_model_savers(plugin_factory):
 
     saver = target_field.get_model_saver()
 
-    assert isinstance(saver, LocalPathModelSaver)
+    assert isinstance(saver, LocalModelSaver)

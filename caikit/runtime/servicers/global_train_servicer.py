@@ -27,7 +27,7 @@ import alog
 # Local
 from caikit import get_config
 from caikit.core import MODEL_MANAGER, ModuleBase
-from caikit.core.model_management import LocalPathModelSaver
+from caikit.core.model_management import LocalModelSaver
 from caikit.interfaces.common.data_model.stream_sources import PathReference
 from caikit.interfaces.runtime.data_model import TrainingJob
 from caikit.runtime.model_management.model_manager import ModelManager
@@ -229,7 +229,7 @@ class GlobalTrainServicer:
             # 1. The provided `training_output_dir` here, or
             # 2. The configured `runtime.training.output_dir`
             local_path: str = training_output_dir or self.training_output_dir
-            model_saver = LocalPathModelSaver(
+            model_saver = LocalModelSaver(
                 target=PathReference(path=local_path), save_with_id=self.save_with_id
             )
 

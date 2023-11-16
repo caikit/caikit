@@ -23,7 +23,7 @@ from caikit.core.data_model import TrainingStatus
 from caikit.core.model_management import (
     ModelFinderBase,
     ModelInitializerBase,
-    ModelSaver,
+    ModelSaverBase,
     ModelTrainerBase,
     TrainingInfo,
     model_finder_factory,
@@ -157,7 +157,7 @@ class TestTrainer(ModelTrainerBase):
         self,
         module_class: Type[ModuleBase],
         *args,
-        saver: Optional[ModelSaver] = None,
+        saver: Optional[ModelSaverBase] = None,
         **kwargs,
     ):
         trained_model = module_class.train(*args, **kwargs)
