@@ -22,7 +22,7 @@ import requests
 # Local
 from caikit.config.config import get_config
 from caikit.runtime import get_inference_request
-from caikit.runtime.grpc_server.service_factory import ServicePackageFactory
+from caikit.runtime.service_factory import ServicePackageFactory
 from text_sentiment.runtime_model.hf_module import HuggingFaceSentimentTask
 import caikit
 

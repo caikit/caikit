@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 
 # Local
 from caikit.core.data_model import ProducerId
-from caikit.runtime.grpc_server.service_factory import get_inference_request
+from caikit.runtime.service_factory import get_inference_request
 from sample_lib.data_model.sample import GeoSpatialTask
 from sample_lib.modules import MultiTaskModule, SecondTask
 from sample_lib.modules.geospatial import GeoStreamingModule

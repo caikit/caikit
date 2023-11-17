@@ -25,7 +25,7 @@ import grpc
 import alog
 
 # Local
-from caikit.runtime.grpc_server.service_factory import ServicePackage
+from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 

@@ -23,7 +23,7 @@ import alog
 
 # Local
 from ..core.data_model import render_dataobject_protos
-from .grpc_server.service_factory import ServicePackageFactory
+from .service_factory import ServicePackageFactory
 from caikit.config.config import get_config
 import caikit
 

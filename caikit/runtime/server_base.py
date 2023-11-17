@@ -27,11 +27,8 @@ import alog
 
 # Local
 from caikit.config import get_config
-from caikit.runtime.grpc_server.service_factory import (
-    ServicePackage,
-    ServicePackageFactory,
-)
 from caikit.runtime.model_management.model_manager import ModelManager
+from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit
 

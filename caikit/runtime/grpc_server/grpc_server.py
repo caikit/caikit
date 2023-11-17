@@ -33,10 +33,6 @@ from caikit import get_config
 from caikit.runtime.grpc_server.interceptors.caikit_runtime_server_wrapper import (
     CaikitRuntimeServerWrapper,
 )
-from caikit.runtime.grpc_server.service_factory import (
-    ServicePackage,
-    ServicePackageFactory,
-)
 from caikit.runtime.grpc_server.servicers.global_predict_servicer import (
     GlobalPredictServicer,
 )
@@ -59,6 +55,7 @@ from caikit.runtime.protobufs import (
     process_pb2_grpc,
 )
 from caikit.runtime.server_base import RuntimeServerBase
+from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 
 # Have pylint ignore broad exception catching in this file so that we can log all
 # unexpected errors using alog.

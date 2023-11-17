@@ -321,7 +321,7 @@ class ServicePackageStreamWrapper(DataStreamSourceBase):
             stream_type = getattr(mod, stream_type_name)
         except (KeyError, AttributeError):
             # Local
-            from caikit.runtime.grpc_server.service_factory import (  # pylint: disable=import-outside-toplevel
+            from caikit.runtime.service_factory import (  # pylint: disable=import-outside-toplevel
                 ServicePackageFactory,
             )
 

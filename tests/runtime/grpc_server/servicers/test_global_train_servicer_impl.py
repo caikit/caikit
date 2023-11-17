@@ -29,13 +29,13 @@ from caikit.config import get_config
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.common.data_model.stream_sources import S3Path
-from caikit.runtime.grpc_server.service_factory import (
+from caikit.runtime.grpc_server.servicers.global_train_servicer import (
+    GlobalTrainServicer,
+)
+from caikit.runtime.service_factory import (
     get_inference_request,
     get_train_params,
     get_train_request,
-)
-from caikit.runtime.grpc_server.servicers.global_train_servicer import (
-    GlobalTrainServicer,
 )
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model.sample import (

@@ -53,10 +53,6 @@ from caikit.interfaces.runtime.data_model import (
 )
 from caikit.runtime import get_inference_request, get_train_params, get_train_request
 from caikit.runtime.grpc_server.grpc_server import RuntimeGRPCServer
-from caikit.runtime.grpc_server.service_factory import (
-    ServicePackage,
-    ServicePackageFactory,
-)
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.protobufs import (
     model_runtime_pb2,
@@ -64,6 +60,7 @@ from caikit.runtime.protobufs import (
     process_pb2,
     process_pb2_grpc,
 )
+from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.utils.servicer_util import build_caikit_library_request_dict
 from sample_lib import CompositeModule, InnerModule, OtherModule, SamplePrimitiveModule
 from sample_lib.data_model import (

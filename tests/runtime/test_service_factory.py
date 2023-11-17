@@ -26,7 +26,7 @@ import pytest
 
 # Local
 from caikit.core.data_model import render_dataobject_protos
-from caikit.runtime.grpc_server.service_factory import (
+from caikit.runtime.service_factory import (
     ServicePackage,
     ServicePackageFactory,
     get_inference_request,
@@ -412,13 +412,13 @@ def test_backend_modules_included_in_service_generation(
     assert "backend_param" in sample_task_request.DESCRIPTOR.fields_by_name.keys()
 
 
-def test_get_inference_request_throws_wrong_type(runtime_grpc_server):
+def test_get_inference_request_throws_wrong_type(sample_inference_service):
     with pytest.raises(TypeError) as e:
         get_inference_request(task_or_module_class="something random")
     assert "subclass check failed" in e.value.args[0]
 
 
-def test_get_inference_request(runtime_grpc_server):
+def test_get_inference_request(sample_inference_service):
     """Test that we are able to get inference request DM with either module or task class"""
     assert get_inference_request(SampleModule).__name__ == "SampleTaskRequest"
     assert get_inference_request(SampleTask).__name__ == "SampleTaskRequest"
@@ -444,26 +444,26 @@ def test_get_inference_request(runtime_grpc_server):
     )
 
 
-def test_get_train_request_throws_wrong_type(runtime_grpc_server):
+def test_get_train_request_throws_wrong_type(sample_inference_service):
     with pytest.raises(TypeError) as e:
         get_train_request("not_a_module")
     assert "subclass check failed" in e.value.args[0]
 
 
-def test_get_train_request(runtime_grpc_server):
+def test_get_train_request(sample_inference_service):
     assert (
         get_train_request(SampleModule).__name__ == "SampleTaskSampleModuleTrainRequest"
     )
     assert get_train_request(OtherModule).__name__ == "OtherTaskOtherModuleTrainRequest"
 
 
-def test_get_train_params_throws_wrong_type(runtime_grpc_server):
+def test_get_train_params_throws_wrong_type(sample_inference_service):
     with pytest.raises(TypeError) as e:
         get_train_params("not_a_module")
     assert "subclass check failed" in e.value.args[0]
 
 
-def test_get_train_params(runtime_grpc_server):
+def test_get_train_params(sample_inference_service):
     assert (
         get_train_params(SampleModule).__name__
         == "SampleTaskSampleModuleTrainParameters"
