@@ -25,41 +25,6 @@ from caikit.core.model_management import LocalModelSaver
 from caikit.runtime.service_generation.output_target import make_output_target_message
 import caikit
 
-#
-# def test_local_saver_plugin():
-#     plugin = LocalModelSaverPlugin(config={}, instance_name="_test")
-#
-#     # Should have output target type `PathReference`
-#     assert plugin.get_output_target_type() == PathReference
-#
-#     # Field name should be "path_reference" (target type lower snake cased)
-#     assert plugin.get_field_name() == "path_reference"
-#
-#     # Model saver is the local path one
-#     assert plugin.get_model_saver_class() == LocalModelSaver
-#
-#     # Can construct a `LocalPathModelSaver` with a `PathReference`
-#     saver = plugin.make_model_saver(PathReference(path="foo"))
-#     assert isinstance(saver, LocalModelSaver)
-#
-#
-# def test_local_saver_plugin_validates_target_type():
-#     plugin = LocalModelSaverPlugin(config={}, instance_name="_test")
-#     with pytest.raises(
-#         TypeError, match="variable `target` has type `str` .* not in .*PathReference"
-#     ):
-#         plugin.make_model_saver(target="/some/path")
-#
-#
-# @pytest.fixture
-# def plugin_factory():
-#     fct = ModelSaverPluginFactory("TestFactory")
-#     fct.register(LocalModelSaverPlugin)
-#     yield fct
-
-
-# TODO: add fixture like `reset_stream_source_types`
-
 
 def test_output_target_message_class():
     output_target_class = make_output_target_message()
@@ -85,3 +50,6 @@ def test_output_targets_can_be_used_to_build_model_savers():
     saver = caikit.core.make_model_saver(target_field.output_target)
 
     assert isinstance(saver, LocalModelSaver)
+
+
+# TODO: tests for configurable fields / extra mock savers?
