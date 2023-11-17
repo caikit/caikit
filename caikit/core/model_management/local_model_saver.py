@@ -54,5 +54,5 @@ class LocalModelSaverBuilder(ModelSaverBuilderBase[str]):
         self._instance_name = instance_name
         self.save_with_id = config.save_with_id
 
-    def build_model_saver(self, output_target: str) -> ModelSaverBase[int]:
+    def build_model_saver(self, output_target: str) -> ModelSaverBase[str]:
         return LocalModelSaver(target=output_target, save_with_id=self.save_with_id)
