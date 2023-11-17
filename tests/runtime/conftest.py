@@ -377,7 +377,7 @@ def register_trained_model(
     assert isinstance(training_future.saver, LocalModelSaver)
 
     # Get the save path
-    save_path = training_future.saver._save_path(
+    save_path = training_future.saver._get_save_path(
         model_name=model_id, training_id=training_id
     )
     # Load it into the runtime

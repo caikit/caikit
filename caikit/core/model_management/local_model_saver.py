@@ -33,11 +33,11 @@ class LocalModelSaver(ModelSaverBase[str]):
     def save_model(
         self, model: ModuleBase, model_name: str, training_id: Optional[str]
     ) -> str:
-        save_path = self._save_path(model_name=model_name, training_id=training_id)
+        save_path = self._get_save_path(model_name=model_name, training_id=training_id)
         model.save(model_path=save_path)
         return save_path
 
-    def _save_path(self, model_name: str, training_id: Optional[str]) -> str:
+    def _get_save_path(self, model_name: str, training_id: Optional[str]) -> str:
         return self._get_save_path_with_id(
             save_path=self.target,
             save_with_id=self.save_with_id,
