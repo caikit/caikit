@@ -46,7 +46,7 @@ def make_output_target_message(
 
     field_number = 1
     for saver_name in model_savers_config:
-        saver_builder = caikit.core.MODEL_MANAGER.get_saver_builder(saver_name)
+        saver_builder = caikit.core.MODEL_MANAGER.get_saver(saver_name)
         output_target_type = saver_builder.output_target_type()
         annotation_list.append(
             Annotated[output_target_type, OneofField(saver_name), field_number]

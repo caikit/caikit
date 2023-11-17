@@ -189,9 +189,7 @@ class ServicePackageFactory:
             )
             service_name = f"{ai_domain_name}Service"
         else:  # service_type == cls.ServiceType.TRAINING
-            output_target_type = make_output_target_message(
-                # plugin_factory=OutputTargetPluginFactory
-            )
+            output_target_type = make_output_target_message()
             rpc_list = service_generation.create_training_rpcs(
                 clean_modules, output_target_type
             )

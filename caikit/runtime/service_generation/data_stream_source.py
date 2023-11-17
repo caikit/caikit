@@ -374,9 +374,6 @@ class DataStreamPluginFactory(ImportableFactory):
         super().__init__(*args, **kwargs)
         self._plugins = None
 
-    # Mostly duplicate code in output_target.py with different config
-    # could be refactored when n=3
-    # pylint: disable=duplicate-code
     def get_plugins(
         self, plugins_config: Optional[aconfig.Config] = None
     ) -> List[DataStreamSourcePlugin]:
@@ -516,9 +513,6 @@ def make_data_stream_source(
         # Get the required plugins
         plugins = plugin_factory.get_plugins(plugins_config)
 
-        # Mostly duplicate code in output_target.py with element type
-        # could be refactored when n=3
-        # pylint: disable=duplicate-code
         # Make sure there are no field name duplicates
         plug_to_name = {
             plugin: plugin.get_field_name(data_element_type) for plugin in plugins

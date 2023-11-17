@@ -33,14 +33,14 @@ from .exceptions import error_handler
 from .model_management import (
     ModelFinderBase,
     ModelInitializerBase,
-    ModelSaverBase,
+    ModelSaveFunctor,
     ModelTrainerBase,
     model_finder_factory,
     model_initializer_factory,
-    model_saver_builder_factory,
+    model_saver_factory,
     model_trainer_factory,
 )
-from .model_management.model_saver_base import ModelSaverBuilderBase, OutputTargetType
+from .model_management.model_saver_base import ModelSaverBase, OutputTargetType
 from .modules.base import ModuleBase
 from .registries import module_registry
 from .toolkit.factory import Factory, FactoryConstructible
@@ -76,7 +76,7 @@ class ModelManager:
         self._trainers = {}
         self._finders = {}
         self._initializers = {}
-        self._saver_builders = {}
+        self._savers = {}
         self.__singleton_lock = Lock()
 
     def initialize_components(self):
@@ -99,7 +99,7 @@ class ModelManager:
         module: Union[Type[ModuleBase], str],
         *args,
         trainer: Union[str, ModelTrainerBase] = "default",
-        saver: Optional[ModelSaverBase] = None,
+        save_functor: Optional[ModelSaveFunctor] = None,
         model_name: Optional[str] = None,
         wait: bool = False,
         **kwargs,
@@ -155,14 +155,14 @@ class ModelManager:
             model_future = trainer.train(
                 module,
                 *args,
-                saver=saver,
+                save_functor=save_functor,
                 model_name=model_name,
                 **kwargs,
             )
             log.debug(
                 "Started training %s with saver type %s",
                 model_future.id,
-                type(saver) if saver else None,
+                type(save_functor) if save_functor else None,
             )
 
         # If requested, wait for the future to complete
@@ -421,21 +421,19 @@ class ModelManager:
             component_type=ModelInitializerBase,
         )
 
-    def get_saver_builder(
-        self, saver_builder: Union[str, ModelSaverBuilderBase]
-    ) -> ModelSaverBuilderBase:
+    def get_saver(self, saver_builder: Union[str, ModelSaverBase]) -> ModelSaverBase:
         return self._get_component(
             component=saver_builder,
-            component_dict=self._saver_builders,
-            component_factory=model_saver_builder_factory,
+            component_dict=self._savers,
+            component_factory=model_saver_factory,
             component_name="saver builder",
             component_cfg=get_config().model_management.savers,
-            component_type=ModelSaverBuilderBase,
+            component_type=ModelSaverBase,
         )
 
-    def make_model_saver(
+    def make_save_functor(
         self, output_target: OutputTargetType, saver_name: Optional[str] = None
-    ) -> ModelSaverBase[OutputTargetType]:
+    ) -> ModelSaveFunctor:
         """Given an output target, uses an appropriate ModelSaverBuilder to
         construct a ModelSaver encapsulating the output target.
 
@@ -447,14 +445,14 @@ class ModelManager:
                 configured ModelSaverBase[OutputTargetType].
 
         Returns:
-            ModelSaverBase[OutputTargetType]: A configured model saver
+            ModelSaveFunctor[OutputTargetType]: A configured model saver
         """
         if saver_name is not None:
-            builder = self.get_saver_builder(saver_name)
-            return builder.build_model_saver(output_target)
+            builder = self.get_saver(saver_name)
+            return builder.save_functor(output_target)
 
         saver_builders = [
-            self.get_saver_builder(saver_name)
+            self.get_saver(saver_name)
             for saver_name in get_config().model_management.savers
         ]
         # Filter down to builders that match our output target type
@@ -471,7 +469,7 @@ class ModelManager:
             )
 
         # Try the first one!
-        return saver_builders[0].build_model_saver(output_target)
+        return saver_builders[0].save_functor(output_target)
 
     ## Implementation Details ##################################################
 

@@ -5,7 +5,7 @@ This sets up global test configs when pytest starts
 # Standard
 from contextlib import contextmanager
 from functools import partial
-from typing import Dict, Type, Union
+from typing import Callable, Dict, Type, Union
 import os
 import shlex
 import socket
@@ -372,14 +372,16 @@ def register_trained_model(
     # Make sure it passed
     assert training_future.get_info().status == TrainingStatus.COMPLETED
     # And that it was saved
-    assert training_future.saver is not None
+    assert training_future.save_functor is not None
     # ...And that it was saved to disk
-    assert isinstance(training_future.saver, LocalModelSaver)
+    assert isinstance(training_future.save_functor.func.__self__, LocalModelSaver)
 
-    # Get the save path
-    save_path = training_future.saver._get_save_path(
-        model_name=model_id, training_id=training_id
+    save_path = training_future.save_functor.func.__self__._get_save_path(
+        target=training_future.save_functor.args[0],
+        model_name=model_id,
+        training_id=training_id,
     )
+
     # Load it into the runtime
     if isinstance(servicer, RuntimeGRPCServer):
         servicer = servicer._global_predict_servicer

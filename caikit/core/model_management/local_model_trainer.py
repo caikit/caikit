@@ -35,7 +35,7 @@ from ..modules import ModuleBase
 from ..toolkit.destroyable_process import DestroyableProcess
 from ..toolkit.destroyable_thread import DestroyableThread
 from ..toolkit.logging import configure as configure_logging
-from .model_saver_base import ModelSaverBase
+from .model_saver_base import ModelSaveFunctor
 from .model_trainer_base import ModelTrainerBase, TrainingInfo
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
@@ -71,7 +71,7 @@ class LocalModelTrainer(ModelTrainerBase):
             self,
             trainer_name: str,
             module_class: Type[ModuleBase],
-            saver: Optional[ModelSaverBase],
+            save_functor: Optional[ModelSaveFunctor],
             model_name: Optional[str],
             external_training_id: Optional[str],
             use_subprocess: bool,
@@ -82,7 +82,7 @@ class LocalModelTrainer(ModelTrainerBase):
             super().__init__(
                 trainer_name=trainer_name,
                 training_id=external_training_id or str(uuid.uuid4()),
-                saver=saver,
+                save_functor=save_functor,
                 model_name=model_name,
                 use_reversible_hash=external_training_id is None,
             )
@@ -109,7 +109,7 @@ class LocalModelTrainer(ModelTrainerBase):
                 )
                 # If training in a subprocess without a save path, the model
                 # will be unreachable once trained!
-                if not self.saver:
+                if not self.save_functor:
                     log.warning(
                         "<COR28853922W>",
                         "Training %s launched in a subprocess with no saver",
@@ -191,10 +191,10 @@ class LocalModelTrainer(ModelTrainerBase):
                 configure_logging()
             with alog.ContextTimer(log.debug, "Training %s finished in: ", self.id):
                 trained_model = self._module_class.train(*args, **kwargs)
-            if self.saver is not None:
+            if self.save_functor is not None:
                 log.debug("Saving training %s", self.id)
                 with alog.ContextTimer(log.debug, "Training %s saved in: ", self.id):
-                    self.saver.save_model(
+                    self.save_functor(
                         model=trained_model, model_name=self.name, training_id=self.id
                     )
             self._completion_time = self._completion_time or datetime.now()
@@ -244,7 +244,7 @@ class LocalModelTrainer(ModelTrainerBase):
         self,
         module_class: Type[ModuleBase],
         *args,
-        saver: Optional[ModelSaverBase] = None,
+        save_functor: Optional[ModelSaveFunctor] = None,
         external_training_id: Optional[str] = None,
         model_name: Optional[str] = None,
         **kwargs,
@@ -269,7 +269,7 @@ class LocalModelTrainer(ModelTrainerBase):
         model_future = self.LocalModelFuture(
             self._instance_name,
             module_class,
-            saver=saver,
+            save_functor=save_functor,
             external_training_id=external_training_id,
             use_subprocess=self._use_subprocess,
             subprocess_start_method=self._subprocess_start_method,

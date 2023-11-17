@@ -100,7 +100,9 @@ def test_train_save_and_load(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        saver=LocalModelSaver(target=save_path, save_with_id=False),
+        save_functor=LocalModelSaver(
+            config=aconfig.Config({"save_with_id": False}), instance_name="test"
+        ).save_functor(save_path),
     )
     model_future.wait()
 
@@ -117,7 +119,9 @@ def test_save_with_id(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        saver=LocalModelSaver(target=save_path, save_with_id=True),
+        save_functor=LocalModelSaver(
+            config=aconfig.Config({"save_with_id": True}), instance_name="test"
+        ).save_functor(save_path),
     )
     model_future.wait()
     model_path = os.path.join(save_path, model_future.id)
@@ -133,7 +137,9 @@ def test_save_with_id_and_model_name(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        saver=LocalModelSaver(target=save_path, save_with_id=True),
+        save_functor=LocalModelSaver(
+            config=aconfig.Config({"save_with_id": True}), instance_name="test"
+        ).save_functor(save_path),
         model_name="abc",
     )
     model_future.wait()
@@ -150,7 +156,9 @@ def test_save_with_model_name(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        saver=LocalModelSaver(target=save_path, save_with_id=False),
+        save_functor=LocalModelSaver(
+            config=aconfig.Config({"save_with_id": False}), instance_name="test"
+        ).save_functor(save_path),
         model_name="abc",
     )
     model_future.wait()

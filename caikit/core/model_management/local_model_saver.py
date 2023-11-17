@@ -14,39 +14,18 @@
 """Local implementation of a model saver"""
 # Standard
 from typing import Optional
+import functools
 
 # First Party
 import aconfig
 
 # Local
 from ..modules import ModuleBase
-from .model_saver_base import ModelSaverBase, ModelSaverBuilderBase
+from .model_saver_base import ModelSaveFunctor, ModelSaverBase
 
 
 class LocalModelSaver(ModelSaverBase[str]):
-    """Holds the actual impl for saving the model"""
-
-    def __init__(self, target: str, save_with_id: bool):
-        self.target = target
-        self.save_with_id = save_with_id
-
-    def save_model(
-        self, model: ModuleBase, model_name: str, training_id: Optional[str]
-    ) -> str:
-        save_path = self._get_save_path(model_name=model_name, training_id=training_id)
-        model.save(model_path=save_path)
-        return save_path
-
-    def _get_save_path(self, model_name: str, training_id: Optional[str]) -> str:
-        return self._get_save_path_with_id(
-            save_path=self.target,
-            save_with_id=self.save_with_id,
-            training_id=training_id,
-            model_name=model_name,
-        )
-
-
-class LocalModelSaverBuilder(ModelSaverBuilderBase[str]):
+    """Local implementation of a model saver. Simply saves models to disk"""
 
     name = "LOCAL"
 
@@ -54,5 +33,29 @@ class LocalModelSaverBuilder(ModelSaverBuilderBase[str]):
         self._instance_name = instance_name
         self.save_with_id = config.save_with_id
 
-    def build_model_saver(self, output_target: str) -> ModelSaverBase[str]:
-        return LocalModelSaver(target=output_target, save_with_id=self.save_with_id)
+    def save_functor(self, output_target: str) -> ModelSaveFunctor:
+        """Returns a ModelSaveFunctor that saves the model under the path `output_target`."""
+        return functools.partial(self._save_method, output_target)
+
+    def _save_method(
+        self,
+        output_target,
+        model: ModuleBase,
+        model_name: str,
+        training_id: Optional[str],
+    ) -> str:
+        save_path = self._get_save_path(
+            target=output_target, model_name=model_name, training_id=training_id
+        )
+        model.save(model_path=save_path)
+        return save_path
+
+    def _get_save_path(
+        self, target: str, model_name: str, training_id: Optional[str]
+    ) -> str:
+        return self._get_save_path_with_id(
+            save_path=target,
+            save_with_id=self.save_with_id,
+            training_id=training_id,
+            model_name=model_name,
+        )

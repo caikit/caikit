@@ -242,6 +242,7 @@ def test_model_train_sample_widget(
     output_in_config,
     save_with_id,
     use_custom_id,
+    reset_model_manager,
 ):
     """This test tests end-to-end training. It includes verifying that the model
     is saved in the right place. The place where the model is saved comes from:
@@ -270,8 +271,10 @@ def test_model_train_sample_widget(
             "runtime": {
                 "training": {
                     "output_dir": config_output_dir,
-                    "save_with_id": save_with_id,
                 },
+            },
+            "model_management": {
+                "savers": {"local": {"config": {"save_with_id": save_with_id}}}
             },
         },
         "merge",

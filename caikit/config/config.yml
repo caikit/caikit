@@ -198,17 +198,9 @@ runtime:
 
     # Training configuration for server
     training:
-        # These two configs are used when no `output_target` is sent with the training request
-        # They are used to construct a `Local` model saver + output target
+        # This config is used when no `output_target` is sent with the training request
+        # A local saver is used to save the model under this path
         output_dir: training_output
-        save_with_id: true
-
-        # TODO: delete?
-        model_saver_plugins:
-            local:
-                type: Local
-                config:
-                    save_with_id: true # Could be top level for all model saver plugins
 
     # Version details to retrieve
     version_info:

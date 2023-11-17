@@ -16,6 +16,7 @@ and download and load them.
 """
 # Standard
 from contextlib import contextmanager
+from typing import Callable
 import os
 import tempfile
 import uuid
@@ -23,16 +24,15 @@ import uuid
 # Third Party
 import pytest
 
+# First Party
+import aconfig
+
 # Local
 from caikit.core import LocalBackend
 from caikit.core.data_model import DataStream, TrainingStatus
-from caikit.core.model_management import (
-    LocalModelSaver,
-    ModelFinderBase,
-    model_finder_factory,
-)
-from caikit.core.model_management.local_model_saver import LocalModelSaverBuilder
-from caikit.core.model_management.model_saver_base import ModelSaverBuilderBase
+from caikit.core.model_management import ModelFinderBase, model_finder_factory
+from caikit.core.model_management.local_model_saver import LocalModelSaver
+from caikit.core.model_management.model_saver_base import ModelSaverBase
 from caikit.core.modules import ModuleBase, ModuleSaver, module
 
 # Unit Test Infrastructure
@@ -721,7 +721,7 @@ def test_train_with_wait(reset_globals):
         assert finished_train_future.get_info().status == TrainingStatus.COMPLETED
 
 
-def test_train_with_saver(reset_globals):
+def test_train_with_save_functor(reset_globals):
     """Make sure calling train with a saver correctly saves out the model"""
     with setup_test_trainer():
         with tempfile.TemporaryDirectory() as workdir:
@@ -729,7 +729,9 @@ def test_train_with_saver(reset_globals):
             train_future = caikit.train(
                 SampleModule,
                 DataStream.from_iterable([]),
-                saver=LocalModelSaver(target=save_path, save_with_id=False),
+                save_functor=LocalModelSaver(
+                    config=aconfig.Config({"save_with_id": True}), instance_name="test"
+                ).save_functor(output_target=save_path),
             )
             assert train_future.get_info().status == TrainingStatus.RUNNING
             assert not os.path.exists(save_path)
@@ -738,21 +740,21 @@ def test_train_with_saver(reset_globals):
             assert os.path.exists(save_path)
 
 
-def test_get_saver_builder(reset_globals):
-    builder = caikit.core.MODEL_MANAGER.get_saver_builder("local")
-    assert isinstance(builder, LocalModelSaverBuilder)
-
-    saver = builder.build_model_saver(output_target="some/path")
+def test_get_saver(reset_globals):
+    saver = caikit.core.MODEL_MANAGER.get_saver("local")
     assert isinstance(saver, LocalModelSaver)
 
+    functor = saver.save_functor(output_target="some/path")
+    assert isinstance(functor, Callable)
 
-def test_make_model_saver(reset_globals):
-    saver = caikit.make_model_saver(output_target="some/path")
-    assert isinstance(saver, LocalModelSaver)
+
+def test_make_save_functor(reset_globals):
+    saver = caikit.make_save_functor(output_target="some/path")
+    assert isinstance(saver, Callable)
 
 
 def test_make_model_saver_fails_for_unsupported_target_type(reset_globals):
     with pytest.raises(
         TypeError, match="Unable to find a ModelSaver for output target type .*int.*"
     ):
-        caikit.make_model_saver(output_target=5)
+        caikit.make_save_functor(output_target=5)

@@ -14,7 +14,7 @@ from .core import (
     extract,
     get_model_future,
     load,
-    make_model_saver,
+    make_save_functor,
     module,
     resolve_and_load,
     train,

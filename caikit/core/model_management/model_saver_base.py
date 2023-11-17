@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This file defines the abstraction for handling the output of training a model"""
+"""This file defines the abstraction for saving the output of training a model"""
 # Standard
 from typing import Optional
 import abc
@@ -33,18 +33,22 @@ error = error_handler.get(log)
 OutputTargetType = typing.TypeVar("OutputTargetType")
 
 
-class ModelSaverBase(typing.Generic[OutputTargetType], abc.ABC):
-    """Generic-typed, abstract base for model saver.
+class ModelSaveFunctor(typing.Protocol):
+    """Interface definition for a `save` function"""
 
-    Model savers are lifetime-scoped to saving a single model to a single target.
-    They encapsulate the target information (where the model should be saved) so that the
-    save_model API only needs to be passed the model itself and some identifiers.
+    def __call__(self, model: ModuleBase, model_name: str, training_id: Optional[str]):
+        """Saves the `model` with name `model_name` created by training job `training_id`"""
+
+
+class ModelSaverBase(typing.Generic[OutputTargetType], FactoryConstructible):
+    """A ModelSaverBuilder is lifetime-scoped with the application.
+    It holds static configuration that is used to construct individual ModelSavers.
     """
 
     def __new__(cls, *args, **kwargs):
         origins = [typing.get_origin(b) for b in cls.__orig_bases__]
         error.value_check(
-            "<COR97725051E>",
+            "<COR16695051E>",
             ModelSaverBase in origins,
             "Missing generic type on class {}",
             cls,
@@ -53,23 +57,25 @@ class ModelSaverBase(typing.Generic[OutputTargetType], abc.ABC):
         return instance
 
     @abc.abstractmethod
-    def save_model(
-        self, model: ModuleBase, model_name: str, training_id: Optional[str]
-    ) -> typing.Any:
-        """Save the loaded model, based on this target's configuration.
+    def save_functor(self, output_target: OutputTargetType) -> ModelSaveFunctor:
+        """Construct a new save functor to save a model to the given target
 
         Args:
-            model (ModuleBase): a loaded model to be saved
-            model_name (str): The user-provided name of this model
-            training_id (str | None): The globally unique id tracking the training run that
-                created this model
+            output_target (OutputTargetType):
 
         Returns:
-            Any: Some representation of where the model was saved. This could be a path on disk.
-
-        Raises:
-            Any appropriate exception if saving the model fails
+            ModelSaveFunctor:
+                A model save functor for this output target type
         """
+
+    @classmethod
+    def output_target_type(cls) -> typing.Type[OutputTargetType]:
+        bases = cls.__orig_bases__
+        # Guaranteed to exist if __new__ succeeds
+        output_target_base = [
+            b for b in bases if typing.get_origin(b) == ModelSaverBase
+        ][0]
+        return typing.get_args(output_target_base)[0]
 
     @classmethod
     def _get_save_path_with_id(
@@ -97,43 +103,3 @@ class ModelSaverBase(typing.Generic[OutputTargetType], abc.ABC):
             final_path_parts.append(model_name)
 
         return os.path.join(*final_path_parts)
-
-
-class ModelSaverBuilderBase(typing.Generic[OutputTargetType], FactoryConstructible):
-    """A ModelSaverBuilder is lifetime-scoped with the application.
-    It holds static configuration that is used to construct individual ModelSavers.
-    """
-
-    def __new__(cls, *args, **kwargs):
-        origins = [typing.get_origin(b) for b in cls.__orig_bases__]
-        error.value_check(
-            "<COR16695051E>",
-            ModelSaverBuilderBase in origins,
-            "Missing generic type on class {}",
-            cls,
-        )
-        instance = super().__new__(cls)
-        return instance
-
-    @abc.abstractmethod
-    def build_model_saver(
-        self, output_target: OutputTargetType
-    ) -> ModelSaverBase[OutputTargetType]:
-        """Construct a new ModelSaver to save to the given target
-
-        Args:
-            output_target (OutputTargetType):
-
-        Returns:
-            ModelSaverBase[OutputTargetType]:
-                A model saver for this output target type
-        """
-
-    @classmethod
-    def output_target_type(cls) -> typing.Type[OutputTargetType]:
-        bases = cls.__orig_bases__
-        # Guaranteed to exist if __new__ succeeds
-        output_target_base = [
-            b for b in bases if typing.get_origin(b) == ModelSaverBuilderBase
-        ][0]
-        return typing.get_args(output_target_base)[0]

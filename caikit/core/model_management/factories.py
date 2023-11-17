@@ -18,7 +18,7 @@ Global factories for model management
 from ..toolkit.factory import ImportableFactory
 from .local_model_finder import LocalModelFinder
 from .local_model_initializer import LocalModelInitializer
-from .local_model_saver import LocalModelSaverBuilder
+from .local_model_saver import LocalModelSaver
 from .local_model_trainer import LocalModelTrainer
 from .multi_model_finder import MultiModelFinder
 
@@ -43,5 +43,5 @@ model_initializer_factory.register(LocalModelInitializer)
 # an output_target and returning a valid model saver for that output type.
 # A model saver is responsible for taking a loaded model, and saving it to its
 # output target.
-model_saver_builder_factory = ImportableFactory("ModelSaverBuilder")
-model_saver_builder_factory.register(LocalModelSaverBuilder)
+model_saver_factory = ImportableFactory("ModelSaver")
+model_saver_factory.register(LocalModelSaver)
