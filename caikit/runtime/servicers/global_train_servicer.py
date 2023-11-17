@@ -47,7 +47,6 @@ error = caikit.core.exceptions.error_handler.get(log)
 # Ref: https://developers.google.com/protocol-buffers/docs/reference/cpp/google.protobuf.descriptor
 NON_PRIMITIVE_TYPES = [FieldDescriptor.TYPE_MESSAGE, FieldDescriptor.TYPE_ENUM]
 
-
 # pylint: disable=too-many-instance-attributes
 class GlobalTrainServicer:
     """Something something about the train servicer"""
@@ -252,8 +251,10 @@ class GlobalTrainServicer:
         # API which would integrate with different training backends
         # as per their interface requirements.
         if wait:
+
             # Register the cancellation callback if given a context
             if context is not None:
+
                 # Create a callback to register termination of training
                 def rpc_termination_callback():
                     """Cancel the model future if it has not yet completed"""

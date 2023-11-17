@@ -72,6 +72,7 @@ class MockModelFuture:
 
 
 def test_training_runs(training_management_servicer, training_pool):
+
     # Create a future and set it in the training manager
     event = threading.Event()
     model_future = MODEL_MANAGER.train(
@@ -231,6 +232,7 @@ def test_training_cancel_on_mock_model_future(training_management_servicer):
 
 
 def test_training_complete_status(training_management_servicer, training_pool):
+
     # Create a future and set it in the training manager
     model_future = MODEL_MANAGER.train(
         SampleModule,
