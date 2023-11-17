@@ -33,22 +33,6 @@ from caikit import get_config
 from caikit.runtime.grpc_server.interceptors.caikit_runtime_server_wrapper import (
     CaikitRuntimeServerWrapper,
 )
-from caikit.runtime.grpc_server.servicers.global_predict_servicer import (
-    GlobalPredictServicer,
-)
-from caikit.runtime.grpc_server.servicers.global_train_servicer import (
-    GlobalTrainServicer,
-)
-from caikit.runtime.grpc_server.servicers.info_servicer import InfoServicer
-from caikit.runtime.grpc_server.servicers.model_runtime_servicer import (
-    ModelRuntimeServicerImpl,
-)
-from caikit.runtime.grpc_server.servicers.model_train_servicer import (
-    ModelTrainServicerImpl,
-)
-from caikit.runtime.grpc_server.servicers.training_management_servicer import (
-    TrainingManagementServicerImpl,
-)
 from caikit.runtime.protobufs import (
     model_runtime_pb2,
     model_runtime_pb2_grpc,
@@ -56,6 +40,14 @@ from caikit.runtime.protobufs import (
 )
 from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
+from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
+from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
+from caikit.runtime.servicers.info_servicer import InfoServicer
+from caikit.runtime.servicers.model_runtime_servicer import ModelRuntimeServicerImpl
+from caikit.runtime.servicers.model_train_servicer import ModelTrainServicerImpl
+from caikit.runtime.servicers.training_management_servicer import (
+    TrainingManagementServicerImpl,
+)
 
 # Have pylint ignore broad exception catching in this file so that we can log all
 # unexpected errors using alog.

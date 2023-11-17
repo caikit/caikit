@@ -26,10 +26,8 @@ import pytest
 # Local
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model import TrainingStatus
-from caikit.runtime.grpc_server.servicers.model_train_servicer import (
-    ModelTrainServicerImpl,
-)
 from caikit.runtime.protobufs import process_pb2
+from caikit.runtime.servicers.model_train_servicer import ModelTrainServicerImpl
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from tests.conftest import set_use_subprocess, temp_config
 from tests.fixtures import Fixtures

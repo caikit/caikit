@@ -20,11 +20,9 @@ import alog
 
 # Local
 from caikit.core import MODEL_MANAGER
-from caikit.runtime.grpc_server.servicers.global_predict_servicer import (
-    GlobalPredictServicer,
-)
 from caikit.runtime.http_server import http_server
 from caikit.runtime.model_management.loaded_model import LoadedModel
+from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from tests.conftest import temp_config
 
 log = alog.use_channel("TEST-HTTPCONF")

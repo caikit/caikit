@@ -19,6 +19,9 @@ import pytest
 from caikit.core.data_model.dataobject import render_dataobject_protos
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
+from caikit.runtime.service_generation.rpcs import TaskPredictRPC
+from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
+from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from tests.conftest import random_test_id
 
 
@@ -88,6 +91,35 @@ def sample_train_service(render_protos) -> ServicePackage:
         render_dataobject_protos(output_dir)
         training_service.service.write_proto_file(output_dir)
     return training_service
+
+
+@pytest.fixture(scope="session")
+def sample_predict_servicer(sample_inference_service) -> GlobalPredictServicer:
+    servicer = GlobalPredictServicer(inference_service=sample_inference_service)
+    yield servicer
+    # Make sure to not leave the rpc_meter hanging
+    # (It does try to clean itself up on destruction, but just to be sure)
+    rpc_meter = getattr(servicer, "rpc_meter", None)
+    if rpc_meter:
+        rpc_meter.end_writer_thread()
+
+
+@pytest.fixture(scope="session")
+def sample_train_servicer(sample_train_service) -> GlobalTrainServicer:
+    servicer = GlobalTrainServicer(training_service=sample_train_service)
+    yield servicer
+
+
+@pytest.fixture
+def sample_task_unary_rpc(sample_inference_service: ServicePackage) -> TaskPredictRPC:
+    return sample_inference_service.caikit_rpcs["SampleTaskPredict"]
+
+
+@pytest.fixture
+def sample_task_streaming_rpc(
+    sample_inference_service: ServicePackage,
+) -> TaskPredictRPC:
+    return sample_inference_service.caikit_rpcs["ServerStreamingSampleTaskPredict"]
 
 
 @pytest.fixture

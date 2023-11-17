@@ -39,9 +39,7 @@ import pytest
 
 # Local
 from caikit.interfaces.common.data_model import File
-from caikit.runtime.grpc_server.servicers.global_predict_servicer import (
-    GlobalPredictServicer,
-)
+from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model import SampleInputType, SampleOutputType

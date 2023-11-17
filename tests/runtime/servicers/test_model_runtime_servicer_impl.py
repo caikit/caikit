@@ -27,10 +27,8 @@ import unittest
 
 # Local
 from caikit import get_config
-from caikit.runtime.grpc_server.servicers.model_runtime_servicer import (
-    ModelRuntimeServicerImpl,
-)
 from caikit.runtime.protobufs import model_runtime_pb2
+from caikit.runtime.servicers.model_runtime_servicer import ModelRuntimeServicerImpl
 from caikit.runtime.types.aborted_exception import AbortedException
 from tests.fixtures import Fixtures
 
