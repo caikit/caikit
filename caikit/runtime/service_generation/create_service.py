@@ -24,7 +24,7 @@ from aconfig import aconfig
 import alog
 
 # Local
-from .output_target import OutputTargetDataModel
+from ...core.data_model import DataBase
 from .rpcs import CaikitRPCBase, ModuleClassTrainRPC, TaskPredictRPC
 from caikit.core import ModuleBase, TaskBase
 from caikit.core.exceptions import error_handler
@@ -115,7 +115,7 @@ def create_inference_rpcs(
 
 
 def create_training_rpcs(
-    modules: List[Type[ModuleBase]], output_type: Type[OutputTargetDataModel]
+    modules: List[Type[ModuleBase]], output_type: Type[DataBase]
 ) -> List[CaikitRPCBase]:
     """Handles the logic to create all the RPCs for training"""
 

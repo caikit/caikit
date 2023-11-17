@@ -33,7 +33,6 @@ from caikit.core.data_model import DataStream, TrainingStatus
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.core.model_management import LocalModelSaver
 from caikit.core.model_management.local_model_trainer import LocalModelTrainer
-from caikit.interfaces.common.data_model.stream_sources import PathReference
 from sample_lib.modules import SampleModule
 import caikit
 
@@ -101,9 +100,7 @@ def test_train_save_and_load(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        saver=LocalModelSaver(
-            target=PathReference(path=save_path), save_with_id=False
-        ),
+        saver=LocalModelSaver(target=save_path, save_with_id=False),
     )
     model_future.wait()
 
@@ -120,9 +117,7 @@ def test_save_with_id(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        saver=LocalModelSaver(
-            target=PathReference(path=save_path), save_with_id=True
-        ),
+        saver=LocalModelSaver(target=save_path, save_with_id=True),
     )
     model_future.wait()
     model_path = os.path.join(save_path, model_future.id)
@@ -138,9 +133,7 @@ def test_save_with_id_and_model_name(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        saver=LocalModelSaver(
-            target=PathReference(path=save_path), save_with_id=True
-        ),
+        saver=LocalModelSaver(target=save_path, save_with_id=True),
         model_name="abc",
     )
     model_future.wait()
@@ -157,9 +150,7 @@ def test_save_with_model_name(trainer_type_cfg, save_path):
     model_future = trainer.train(
         SampleModule,
         training_data=DataStream.from_iterable([]),
-        saver=LocalModelSaver(
-            target=PathReference(path=save_path), save_with_id=False
-        ),
+        saver=LocalModelSaver(target=save_path, save_with_id=False),
         model_name="abc",
     )
     model_future.wait()

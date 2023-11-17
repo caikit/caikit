@@ -15,15 +15,16 @@
 # Standard
 from typing import Optional
 import abc
-import alog
 import os
 import typing
 
-from caikit.core.exceptions import error_handler
+# First Party
+import alog
 
 # Local
 from ..modules import ModuleBase
 from ..toolkit.factory import FactoryConstructible
+from caikit.core.exceptions import error_handler
 
 log = alog.use_channel("MODEL_SAVER_BASE")
 
@@ -43,7 +44,10 @@ class ModelSaverBase(typing.Generic[OutputTargetType], abc.ABC):
     def __new__(cls, *args, **kwargs):
         origins = [typing.get_origin(b) for b in cls.__orig_bases__]
         error.value_check(
-            "<COR97725051E>", ModelSaverBase in origins, "Missing generic type on class {}", cls
+            "<COR97725051E>",
+            ModelSaverBase in origins,
+            "Missing generic type on class {}",
+            cls,
         )
         instance = super().__new__(cls)
         return instance
@@ -103,13 +107,18 @@ class ModelSaverBuilderBase(typing.Generic[OutputTargetType], FactoryConstructib
     def __new__(cls, *args, **kwargs):
         origins = [typing.get_origin(b) for b in cls.__orig_bases__]
         error.value_check(
-            "<COR16695051E>", ModelSaverBuilderBase in origins, "Missing generic type on class {}", cls
+            "<COR16695051E>",
+            ModelSaverBuilderBase in origins,
+            "Missing generic type on class {}",
+            cls,
         )
         instance = super().__new__(cls)
         return instance
 
     @abc.abstractmethod
-    def build_model_saver(self, output_target: OutputTargetType) -> ModelSaverBase[OutputTargetType]:
+    def build_model_saver(
+        self, output_target: OutputTargetType
+    ) -> ModelSaverBase[OutputTargetType]:
         """Construct a new ModelSaver to save to the given target
 
         Args:
@@ -124,5 +133,7 @@ class ModelSaverBuilderBase(typing.Generic[OutputTargetType], FactoryConstructib
     def output_target_type(cls) -> typing.Type[OutputTargetType]:
         bases = cls.__orig_bases__
         # Guaranteed to exist if __new__ succeeds
-        output_target_base = [b for b in bases if typing.get_origin(b) == ModelSaverBuilderBase][0]
+        output_target_base = [
+            b for b in bases if typing.get_origin(b) == ModelSaverBuilderBase
+        ][0]
         return typing.get_args(output_target_base)[0]

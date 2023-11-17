@@ -22,7 +22,6 @@ import uuid
 
 # Third Party
 import pytest
-from caikit.core.model_management.model_saver_base import ModelSaverBuilderBase
 
 # Local
 from caikit.core import LocalBackend
@@ -33,8 +32,8 @@ from caikit.core.model_management import (
     model_finder_factory,
 )
 from caikit.core.model_management.local_model_saver import LocalModelSaverBuilder
+from caikit.core.model_management.model_saver_base import ModelSaverBuilderBase
 from caikit.core.modules import ModuleBase, ModuleSaver, module
-from caikit.interfaces.common.data_model.stream_sources import PathReference
 
 # Unit Test Infrastructure
 from sample_lib.modules.sample_task import SampleModule
@@ -730,9 +729,7 @@ def test_train_with_saver(reset_globals):
             train_future = caikit.train(
                 SampleModule,
                 DataStream.from_iterable([]),
-                saver=LocalModelSaver(
-                    target=save_path, save_with_id=False
-                ),
+                saver=LocalModelSaver(target=save_path, save_with_id=False),
             )
             assert train_future.get_info().status == TrainingStatus.RUNNING
             assert not os.path.exists(save_path)
@@ -755,5 +752,7 @@ def test_make_model_saver(reset_globals):
 
 
 def test_make_model_saver_fails_for_unsupported_target_type(reset_globals):
-    with pytest.raises(TypeError, match="Unable to find a ModelSaver for output target type .*int.*"):
+    with pytest.raises(
+        TypeError, match="Unable to find a ModelSaver for output target type .*int.*"
+    ):
         caikit.make_model_saver(output_target=5)

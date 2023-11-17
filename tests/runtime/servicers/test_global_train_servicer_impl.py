@@ -30,6 +30,7 @@ from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.common.data_model.stream_sources import S3Path
 from caikit.runtime.service_factory import (
     get_inference_request,
+    get_output_target_type,
     get_train_params,
     get_train_request,
 )
@@ -293,6 +294,73 @@ def test_run_train_job_works_with_wait(
                 greeting="Hello Test",
             ).to_proto()
         )
+
+
+def test_global_train_with_output_target(
+    sample_train_service,
+    sample_train_servicer,
+    sample_inference_service,
+    sample_predict_servicer,
+    sample_task_unary_rpc,
+    tmp_path,
+):
+    """Global train of TrainRequest returns a training job with the correct
+    model name, and some training id for a basic train function that doesn't
+    require any loaded model
+    """
+    stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+    training_data = stream_type(
+        jsondata=stream_type.JsonData(data=[SampleTrainingType(1)])
+    )
+    model_name = random_test_id()
+    train_class = get_train_request(SampleModule)
+    train_request_params_class = get_train_params(SampleModule)
+    output_path = os.path.join(str(tmp_path), "some/fun/path")
+    train_request = train_class(
+        model_name=model_name,
+        output_target=get_output_target_type()(output_path),
+        parameters=train_request_params_class(
+            batch_size=42,
+            training_data=training_data,
+        ),
+    ).to_proto()
+
+    training_response = sample_train_servicer.Train(
+        train_request, Fixtures.build_context("foo")
+    )
+
+    result = register_trained_model(
+        sample_predict_servicer,
+        training_response.model_name,
+        training_response.training_id,
+    )
+
+    # Make sure model was saved to the expected spot
+    expected_save_path = os.path.join(
+        output_path,
+        training_response.training_id,
+        training_response.model_name,
+    )
+    assert os.path.exists(expected_save_path)
+
+    assert result.batch_size == 42
+    assert (
+        result.MODULE_CLASS
+        == "sample_lib.modules.sample_task.sample_implementation.SampleModule"
+    )
+
+    predict_class = get_inference_request(SampleTask)
+    inference_response = sample_predict_servicer.Predict(
+        predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
+        Fixtures.build_context(training_response.model_name),
+        caikit_rpc=sample_task_unary_rpc,
+    )
+    assert (
+        inference_response
+        == SampleOutputType(
+            greeting="Hello Gabe",
+        ).to_proto()
+    )
 
 
 #############

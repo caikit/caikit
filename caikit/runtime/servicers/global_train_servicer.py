@@ -28,7 +28,6 @@ import alog
 from caikit import get_config
 from caikit.core import MODEL_MANAGER, ModuleBase
 from caikit.core.model_management import LocalModelSaver
-from caikit.interfaces.common.data_model.stream_sources import PathReference
 from caikit.interfaces.runtime.data_model import TrainingJob
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage
@@ -217,20 +216,19 @@ class GlobalTrainServicer:
 
         # Create the model_saver to handle saving the training output
         if (
-            model_saver := (
-                request_data_model.output_target.make_model_saver()
-                if request_data_model.output_target
-                else None
+            model_saver := caikit.make_model_saver(
+                output_target=request_data_model.output_target.output_target
             )
-            is None
-        ):
+            if request_data_model.output_target
+            else None
+        ) is None:
             # No output_target was supplied, so fall back to a configured local save path.
             # Use either:
             # 1. The provided `training_output_dir` here, or
             # 2. The configured `runtime.training.output_dir`
             local_path: str = training_output_dir or self.training_output_dir
             model_saver = LocalModelSaver(
-                target=PathReference(path=local_path), save_with_id=self.save_with_id
+                target=local_path, save_with_id=self.save_with_id
             )
 
         # Build the full set of kwargs for the train call

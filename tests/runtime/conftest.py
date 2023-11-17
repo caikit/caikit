@@ -34,9 +34,6 @@ from caikit.runtime import http_server
 from caikit.runtime.grpc_server import RuntimeGRPCServer
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
-from caikit.runtime.service_generation.output_target import (
-    PluginFactory as OutputTargetPluginFactory,
-)
 from caikit.runtime.service_generation.output_target import make_output_target_message
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
@@ -128,7 +125,7 @@ def sample_train_service(render_protos) -> ServicePackage:
 
 @pytest.fixture(scope="session")
 def sample_output_target_type() -> Type[DataBase]:
-    return make_output_target_message(plugin_factory=OutputTargetPluginFactory)
+    return make_output_target_message()
 
 
 @pytest.fixture(scope="session")
@@ -380,7 +377,7 @@ def register_trained_model(
     assert isinstance(training_future.saver, LocalModelSaver)
 
     # Get the save path
-    save_path = training_future.saver.save_path(
+    save_path = training_future.saver._save_path(
         model_name=model_id, training_id=training_id
     )
     # Load it into the runtime

@@ -22,73 +22,66 @@ import pytest
 # Local
 from caikit.core.data_model import DataBase
 from caikit.core.model_management import LocalModelSaver
-from caikit.interfaces.common.data_model.stream_sources import PathReference
-from caikit.runtime.service_generation.output_target import (
-    LocalModelSaverPlugin,
-    ModelSaverPluginFactory,
-    OutputTargetOneOf,
-    make_output_target_message,
-)
+from caikit.runtime.service_generation.output_target import make_output_target_message
 import caikit
 
-
-def test_local_saver_plugin():
-    plugin = LocalModelSaverPlugin(config={}, instance_name="_test")
-
-    # Should have output target type `PathReference`
-    assert plugin.get_output_target_type() == PathReference
-
-    # Field name should be "path_reference" (target type lower snake cased)
-    assert plugin.get_field_name() == "path_reference"
-
-    # Model saver is the local path one
-    assert plugin.get_model_saver_class() == LocalModelSaver
-
-    # Can construct a `LocalPathModelSaver` with a `PathReference`
-    saver = plugin.make_model_saver(PathReference(path="foo"))
-    assert isinstance(saver, LocalModelSaver)
-
-
-def test_local_saver_plugin_validates_target_type():
-    plugin = LocalModelSaverPlugin(config={}, instance_name="_test")
-    with pytest.raises(
-        TypeError, match="variable `target` has type `str` .* not in .*PathReference"
-    ):
-        plugin.make_model_saver(target="/some/path")
-
-
-@pytest.fixture
-def plugin_factory():
-    fct = ModelSaverPluginFactory("TestFactory")
-    fct.register(LocalModelSaverPlugin)
-    yield fct
+#
+# def test_local_saver_plugin():
+#     plugin = LocalModelSaverPlugin(config={}, instance_name="_test")
+#
+#     # Should have output target type `PathReference`
+#     assert plugin.get_output_target_type() == PathReference
+#
+#     # Field name should be "path_reference" (target type lower snake cased)
+#     assert plugin.get_field_name() == "path_reference"
+#
+#     # Model saver is the local path one
+#     assert plugin.get_model_saver_class() == LocalModelSaver
+#
+#     # Can construct a `LocalPathModelSaver` with a `PathReference`
+#     saver = plugin.make_model_saver(PathReference(path="foo"))
+#     assert isinstance(saver, LocalModelSaver)
+#
+#
+# def test_local_saver_plugin_validates_target_type():
+#     plugin = LocalModelSaverPlugin(config={}, instance_name="_test")
+#     with pytest.raises(
+#         TypeError, match="variable `target` has type `str` .* not in .*PathReference"
+#     ):
+#         plugin.make_model_saver(target="/some/path")
+#
+#
+# @pytest.fixture
+# def plugin_factory():
+#     fct = ModelSaverPluginFactory("TestFactory")
+#     fct.register(LocalModelSaverPlugin)
+#     yield fct
 
 
 # TODO: add fixture like `reset_stream_source_types`
 
 
-def test_output_target_message_class(plugin_factory):
-    output_target_class = make_output_target_message(plugin_factory)
+def test_output_target_message_class():
+    output_target_class = make_output_target_message()
 
-    # Inherits from both DataBase and our oneof class
+    # Inherits from DataBase
     assert issubclass(output_target_class, DataBase)
-    assert issubclass(output_target_class, OutputTargetOneOf)
 
     # Should have one `oneof`
     assert len(output_target_class.get_proto_class().DESCRIPTOR.oneofs) == 1
     oneof = output_target_class.get_proto_class().DESCRIPTOR.oneofs[0]
 
-    # For now: only has the `file` field. Can add more test model savers for more
+    # For now: only has the `local` field. Can add more test model savers for more
     assert len(oneof.fields) == 1
 
-    assert hasattr(output_target_class, "path_reference")
+    assert hasattr(output_target_class, "local")
 
 
-def test_output_target_message_builds_model_savers(plugin_factory):
-    output_target_class = make_output_target_message(plugin_factory)
+def test_output_targets_can_be_used_to_build_model_savers():
+    output_target_class = make_output_target_message()
 
-    target_field = output_target_class(path_reference=PathReference(path="foo"))
+    target_field = output_target_class(local="foo")
 
-    saver = target_field.get_model_saver()
+    saver = caikit.core.make_model_saver(target_field.output_target)
 
     assert isinstance(saver, LocalModelSaver)

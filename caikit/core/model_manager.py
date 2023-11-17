@@ -37,8 +37,8 @@ from .model_management import (
     ModelTrainerBase,
     model_finder_factory,
     model_initializer_factory,
+    model_saver_builder_factory,
     model_trainer_factory,
-    model_saver_builder_factory
 )
 from .model_management.model_saver_base import ModelSaverBuilderBase, OutputTargetType
 from .modules.base import ModuleBase
@@ -421,7 +421,9 @@ class ModelManager:
             component_type=ModelInitializerBase,
         )
 
-    def get_saver_builder(self, saver_builder: Union[str, ModelSaverBuilderBase]) -> ModelSaverBuilderBase:
+    def get_saver_builder(
+        self, saver_builder: Union[str, ModelSaverBuilderBase]
+    ) -> ModelSaverBuilderBase:
         return self._get_component(
             component=saver_builder,
             component_dict=self._saver_builders,
@@ -431,7 +433,9 @@ class ModelManager:
             component_type=ModelSaverBuilderBase,
         )
 
-    def make_model_saver(self, output_target: OutputTargetType, saver_name: Optional[str] = None) -> ModelSaverBase[OutputTargetType]:
+    def make_model_saver(
+        self, output_target: OutputTargetType, saver_name: Optional[str] = None
+    ) -> ModelSaverBase[OutputTargetType]:
         """Given an output target, uses an appropriate ModelSaverBuilder to
         construct a ModelSaver encapsulating the output target.
 
@@ -449,13 +453,22 @@ class ModelManager:
             builder = self.get_saver_builder(saver_name)
             return builder.build_model_saver(output_target)
 
-        saver_builders = [self.get_saver_builder(saver_name) for saver_name in get_config().model_management.savers]
+        saver_builders = [
+            self.get_saver_builder(saver_name)
+            for saver_name in get_config().model_management.savers
+        ]
         # Filter down to builders that match our output target type
-        saver_builders = [sb for sb in saver_builders if issubclass(type(output_target), sb.output_target_type())]
+        saver_builders = [
+            sb
+            for sb in saver_builders
+            if issubclass(type(output_target), sb.output_target_type())
+        ]
 
         # Too bad we don't have an error.subclass_check_any...
         if len(saver_builders) == 0:
-            raise TypeError(f"Unable to find a ModelSaver for output target type {type(output_target)}")
+            raise TypeError(
+                f"Unable to find a ModelSaver for output target type {type(output_target)}"
+            )
 
         # Try the first one!
         return saver_builders[0].build_model_saver(output_target)

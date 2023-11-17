@@ -33,7 +33,6 @@ import alog
 from . import protoable, type_helpers
 from .compatibility_checker import ApiFieldNames
 from .data_stream_source import make_data_stream_source
-from .output_target import OutputTargetDataModel
 from .proto_package import snake_to_upper_camel
 from caikit.core import ModuleBase, TaskBase
 from caikit.core.data_model.base import DataBase
@@ -83,7 +82,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
     def __init__(
         self,
         method_signature: CaikitMethodSignature,
-        output_target_type: Type[OutputTargetDataModel],
+        output_target_type: Type[DataBase],
     ):
         """Initialize a .proto generator with a single module to convert
 

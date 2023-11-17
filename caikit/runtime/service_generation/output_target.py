@@ -15,12 +15,10 @@
  all the output target types for any plugged-in model savers"""
 
 # Standard
-from typing import List, Optional, Type, Union
-import abc
-import typing
+from typing import Optional, Type, Union
 
 # First Party
-from py_to_proto.dataclass_to_proto import Annotated, FieldNumber, OneofField
+from py_to_proto.dataclass_to_proto import Annotated, OneofField
 import aconfig
 import alog
 
@@ -29,229 +27,37 @@ from caikit import get_config
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.exceptions import error_handler
-from caikit.core.model_management import LocalModelSaver, ModelSaverBase
-from caikit.core.toolkit.factory import FactoryConstructible, ImportableFactory
-from caikit.interfaces.common.data_model.stream_sources import PathReference
 from caikit.runtime import service_generation
+import caikit
 
 log = alog.use_channel("MDSV-PLUG")
 error = error_handler.get(log)
 
 
-## Plugin Bases ################################################################
-
-
-class ModelSaverPluginBase(FactoryConstructible):
-    """An ModelSaverPlugin is a pluggable source that defines the shape of
-    the data object that defines an output location, as well as the code for
-    saving a trained model to that location.
-    """
-
-    def __init__(self, config: aconfig.Config, instance_name: str):
-        """Construct with the basic factor constructible interface and store the
-        args for use by the child
-        """
-        self._config = config
-        self._instance_name = instance_name
-
-    ## Abstract Interface ##
-
-    @abc.abstractmethod
-    def get_model_saver_class(self) -> Type[ModelSaverBase]:
-        """Return the type of model saver built by this plugin"""
-
-    @abc.abstractmethod
-    def get_field_number(self) -> int:
-        """Allow plugins to return a static field number"""
-
-    @abc.abstractmethod
-    def make_model_saver(self, target: DataBase) -> ModelSaverBase:
-        """Given an output target, build a model saver"""
-
-    ## Public Methods ##
-
-    def get_field_name(self) -> str:
-        """The name of the field that this plugin will use in the output target oneof"""
-        return self.get_output_target_type().__name__.lower()
-
-    # Default impls
-    def get_output_target_type(self) -> Type[DataBase]:
-        """Return the output target message expected by your model saver"""
-        # Gorp here to get the generic type T of the target class
-        # Could just be overriden directly by your plugin
-        bases = self.get_model_saver_class().__orig_bases__
-        output_target_base = [b for b in bases if typing.get_origin(b) == ModelSaverBase][0]
-        return typing.get_args(output_target_base)[0]
-
-
-## Target Plugins ##############################################################
-
-
-class LocalModelSaverPlugin(ModelSaverPluginBase):
-    """Plugin for a local model saver"""
-
-    name = "Local"
-
-    def get_model_saver_class(self) -> Type[ModelSaverBase]:
-        return LocalModelSaver
-
-    def make_model_saver(self, target: DataBase) -> ModelSaverBase:
-        error.type_check("<RUN37386095E>", PathReference, target=target)
-        target: PathReference
-        save_with_id = self._config.get("save_with_id", None)
-        return LocalModelSaver(target=target, save_with_id=save_with_id)
-
-    def get_field_number(self) -> int:
-        return 1
-
-    def get_field_name(self) -> str:
-        # injecting a little underscore. TODO: put snake_case in default impl?
-        return "path_reference"
-
-
-## ModelSaverPluginFactory ####################################################
-
-
-class ModelSaverPluginFactory(ImportableFactory):
-    """The ModelSaverPluginFactory is responsible for holding a registry of
-    plugin instances that will be used to create and manage model savers
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._plugins = None
-
-    # Mostly duplicate code in data_stream_source.py with different config
-    # could be refactored when n=3
-    # pylint: disable=duplicate-code
-    def get_plugins(
-        self, plugins_config: Optional[aconfig.Config] = None
-    ) -> List[ModelSaverPluginBase]:
-        """Builds the set of plugins to use for a model saver of type element_type"""
-        if self._plugins is None:
-            self._plugins = []
-            if plugins_config is None:
-                plugins_config = get_config().runtime.training.model_saver_plugins
-            for name, cfg in plugins_config.items():
-                self._plugins.append(self.construct(cfg, name))
-
-            # Make sure field numbers are unique
-            field_numbers = [plugin.get_field_number() for plugin in self._plugins]
-            duplicates_field_numbers = [
-                plugin.name
-                for plugin in self._plugins
-                if field_numbers.count(plugin.get_field_number()) > 1
-            ]
-            error.value_check(
-                "<RUN13216546E>",
-                not duplicates_field_numbers,
-                "Duplicate plugin field numbers found for plugins: {}",
-                duplicates_field_numbers,
-            )
-        return self._plugins
-
-
-# Single default instance
-PluginFactory = ModelSaverPluginFactory("ModelSaver")
-PluginFactory.register(LocalModelSaverPlugin)
-
-## OutputTargetOneOf
-class OutputTargetOneOf:
-    """Class that implements output target api for runtime requests"""
-
-    # TODO: memoize?
-    @property
-    def name_to_plugin_map(self):
-        if not hasattr(self, "_name_to_plugin_map"):
-            self._name_to_plugin_map = {
-                plugin.get_field_name(): plugin for plugin in self.PLUGINS
-            }
-        return self._name_to_plugin_map
-
-    def get_model_saver(self):
-        """Find plugin for field and make model saver"""
-        # Determine which of the names is set
-        set_field = None
-        for field_name in self.get_proto_class().DESCRIPTOR.fields_by_name:
-            if getattr(self, field_name) is not None:
-                error.value_check(
-                    "<RUN40182782E>",
-                    set_field is None,
-                    "Found OutputTargetOneOf with multiple sources set: {} and {}",
-                    set_field,
-                    field_name,
-                )
-                error.value_check(
-                    "<RUN48659820E>",
-                    field_name in self.name_to_plugin_map,
-                    "No model saver plugin found for field: {}",
-                    field_name,
-                )
-                set_field = field_name
-
-        # If no field is set - default to no model saver
-        # Could consider default to one place e.g. one high level training_output_dir
-        if set_field is None:
-            log.error("<RUN00550784E>", "No model saver set")
-            return None
-
-        plugin = self.name_to_plugin_map[set_field]
-        return plugin.make_model_saver(getattr(self, set_field))
-
-
-## make_output_target_message #####################################################
-
-# Protocols is likely more correct here https://peps.python.org/pep-0544/
-# but would require empty method bodies for each method that exists in
-# all superclasses
-OutputTargetDataModel = typing.TypeVar(
-    "OutputTargetDataModel", DataBase, OutputTargetOneOf
-)
-
-
 def make_output_target_message(
-    plugin_factory: ModelSaverPluginFactory = PluginFactory,
-    plugins_config: Optional[aconfig.Config] = None,
-) -> Type[OutputTargetDataModel]:
+    model_savers_config: Optional[aconfig.Config] = None,
+) -> Type[DataBase]:
     """Dynamically create the output target message"""
 
-    # Get the required plugins
-    plugins = plugin_factory.get_plugins(plugins_config)
+    if not model_savers_config:
+        model_savers_config = get_config().model_management.savers
 
-    # Mostly duplicate code in output_target.py
-    # without element type, could be refactored when n=3
-    # pylint: disable=duplicate-code
-    # Make sure there are no field name duplicates
-    plug_to_name = {plugin: plugin.get_field_name() for plugin in plugins}
-    all_field_names = list(plug_to_name.values())
-    duplicates = {
-        plugin.name: field_name
-        for plugin, field_name in plug_to_name.items()
-        if all_field_names.count(field_name) > 1
-    }
-    error.value_check(
-        "<RUN40793078E>",
-        not duplicates,
-        "Duplicate plugin field names found for output_target: {}",
-        duplicates,
-    )
+    annotation_list = []
 
-    annotation_list = [
-        Annotated[
-            plugin.get_output_target_type(),
-            OneofField(plugin.get_field_name()),
-            FieldNumber(plugin.get_field_number()),
-        ]
-        for plugin in plugins
-    ]
+    field_number = 1
+    for saver_name in model_savers_config:
+        saver_builder = caikit.core.MODEL_MANAGER.get_saver_builder(saver_name)
+        output_target_type = saver_builder.output_target_type()
+        annotation_list.append(
+            Annotated[output_target_type, OneofField(saver_name), field_number]
+        )
+        field_number += 1
 
     output_target_type_union = Union[tuple(annotation_list)]
 
     data_object = make_dataobject(
         package=service_generation.get_runtime_service_package(),
         name="OutputTarget",
-        bases=(OutputTargetOneOf,),
-        attrs={"PLUGINS": plugins},
         annotations={"output_target": output_target_type_union},
     )
 
