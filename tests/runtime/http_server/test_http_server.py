@@ -632,7 +632,7 @@ def test_inference_malformed_param(client):
     """Send a malformed data parameter field to the inference call to induce the correct HTTP error"""
 
     response = client.post(
-        f"/api/v1/task/sample",
+        "/api/v1/task/sample",
         data='{"bad_input": 100,}',  # send intentionally bad json
         headers={"Content-Type": "application/json"},
     )
@@ -651,7 +651,7 @@ def test_inference_non_serializable_json(client):
     base64_data = base64.b64encode(byte_data)
 
     response = client.post(
-        f"/api/v1/task/sample",
+        "/api/v1/task/sample",
         data=base64_data,  # send byte object
         headers={"Content-Type": "application/json"},
     )
