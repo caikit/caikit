@@ -22,14 +22,6 @@ Data model definitions for structures in the time series domain
 # Local
 # Import the protobufs
 from .package import TS_PACKAGE
-
-# Import core enums and add in from this data model
-from caikit.core.data_model import enums
-
-enums.import_enums(globals())
-
-
-# Local
 from .time_types import (
     PeriodicTimeSequence,
     PointTimeSequence,
@@ -38,9 +30,6 @@ from .time_types import (
     TimePoint,
     ValueSequence,
 )
-
-# Import producer and data streams from the core
-# from caikit.core.data_model import *
 
 from ._single_timeseries import SingleTimeSeries  # isort:skip
 from .timeseries import TimeSeries  # isort:skip
