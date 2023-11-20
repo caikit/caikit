@@ -19,6 +19,7 @@ from contextlib import contextmanager
 from io import BytesIO
 from pathlib import Path
 from typing import Dict, List, Optional
+import base64
 import json
 import os
 import signal
@@ -639,6 +640,41 @@ def test_inference_streaming_sample_module_actual_server_throws(
             stream_responses[1].get("details") == "ValueError('raising a ValueError')"
         )
         assert stream_responses[1].get("code") == 400
+
+
+def test_inference_malformed_param(client):
+    """Send a malformed data parameter field to the inference call to induce the correct HTTP error"""
+
+    response = client.post(
+        "/api/v1/task/sample",
+        data='{"bad_input": 100,}',  # send intentionally bad json
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 422
+
+    json_response = json.loads(response.content.decode(response.default_encoding))
+
+    assert "Invalid JSON" in json_response["details"]
+    assert json_response["additional_info"][0]["type"] == "json_invalid"
+
+
+def test_inference_non_serializable_json(client):
+    """Send non_serializable json as the data parameter field to the inference call to test correct error handling"""
+
+    byte_data = bytes([1, 2, 3, 4, 5])
+    base64_data = base64.b64encode(byte_data)
+
+    response = client.post(
+        "/api/v1/task/sample",
+        data=base64_data,  # send byte object
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 422
+
+    json_response = json.loads(response.content.decode(response.default_encoding))
+
+    assert "Invalid JSON" in json_response["details"]
+    assert json_response["additional_info"][0]["type"] == "json_invalid"
 
 
 def test_no_model_id(client):
