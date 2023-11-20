@@ -18,7 +18,7 @@
 from typing import Optional, Type, Union
 
 # First Party
-from py_to_proto.dataclass_to_proto import Annotated, OneofField
+from py_to_proto.dataclass_to_proto import Annotated, FieldNumber, OneofField
 import aconfig
 import alog
 
@@ -49,7 +49,9 @@ def make_output_target_message(
         saver = caikit.core.MODEL_MANAGER.get_saver(saver_name)
         output_target_type = saver.output_target_type()
         annotation_list.append(
-            Annotated[output_target_type, OneofField(saver_name), field_number]
+            Annotated[
+                output_target_type, OneofField(saver_name), FieldNumber(field_number)
+            ]
         )
         field_number += 1
 
