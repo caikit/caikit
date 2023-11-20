@@ -116,7 +116,7 @@ class PointTimeSequence(DataObjectBase):
 class Vector(DataObjectBase):
     """A vector represents a finite sequence of doubles"""
 
-    data: List[float]
+    data: Annotated[List[float], FieldNumber(1)]
 
 
 @dataobject(package=TS_PACKAGE)
