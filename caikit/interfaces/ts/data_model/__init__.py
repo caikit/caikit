@@ -33,4 +33,4 @@ from .time_types import (
 
 from ._single_timeseries import SingleTimeSeries  # isort:skip
 from .timeseries import TimeSeries  # isort:skip
-from .timeseries_evaluate import Id, EvaluationRecord, EvaluationResult  # isort:skip
+from .timeseries_evaluation import Id, EvaluationRecord, EvaluationResult  # isort:skip
