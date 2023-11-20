@@ -41,7 +41,8 @@ error = error_handler.get(log)
 
 class ModuleSaver:
     """A module saver that provides common functionality used for saving modules and also a context
-    manager that cleans up gracefully in case an error is encountered during the save process.
+    manager that cleans up in case an error is encountered during the save process for a model_path
+    that did not already exist.
     """
 
     SAVED_KEY_NAME = "saved"
@@ -51,7 +52,7 @@ class ModuleSaver:
     MODULE_ID_KEY_NAME = "module_id"
     MODULE_CLASS_KEY_NAME = "module_class"
 
-    def __init__(self, module: ModuleBase, model_path):
+    def __init__(self, module: ModuleBase, model_path, exist_ok=True):
         """Construct a new module saver.
 
         Args:
@@ -60,8 +61,10 @@ class ModuleSaver:
             model_path (str): The absolute path to the directory where the model
                 will be saved.  If this directory does not exist, it will be
                 created.
+            exist_ok (bool): Allow to overwrite existing model_path files.
         """
         self.model_path = os.path.normpath(model_path)
+        self.exist_ok = exist_ok
 
         # Get possibly nested caikit library path
         module_path = module.__module__
@@ -313,20 +316,31 @@ class ModuleSaver:
     def __enter__(self):
         """Enter the module saver context.  This creates the `model_path` directory.  If this
         context successfully exits, then the model configuration and all files it contains will
-        be written and saved to disk inside the `model_path` directory.  If any uncaught exceptions
-        are thrown inside this context, then `model_path` will be removed.
+        be written and saved to disk inside the `model_path` directory.
+
+        If `exist_ok` is False, an exception will be raised before touching existing `model_path`
+        files.
+
+        If any uncaught exceptions are thrown inside this context, and `exist_ok` is False,
+        then this new `model_path` will be removed. If `exist_ok` is True, the files will be kept
+        and may include incomplete updates.
         """
-        os.makedirs(self.model_path, exist_ok=True)
+        os.makedirs(self.model_path, exist_ok=self.exist_ok)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit the module saver context. If this context successfully exits, then the model
         configuration and all files it contains will be written and saved to disk inside the
-        `model_path` directory.  If any uncaught exceptions are thrown inside this context, then
-        `model_path` will be removed.
+        `model_path` directory.
+
+        If any uncaught exceptions are thrown inside this context, and `exist_ok` is False,
+        then this new `model_path` will be removed. If `exist_ok` is True, the files will be kept
+        and may include incomplete updates.
         """
         if exc_type is not None:
-            shutil.rmtree(self.model_path, ignore_errors=True)
+            if not self.exist_ok:
+                # Presume it is okay to rmtree
+                shutil.rmtree(self.model_path, ignore_errors=True)
             return
 
         ModuleConfig(self.config).save(self.model_path)
