@@ -41,7 +41,7 @@ class Seconds(DataObjectBase):
     timedelta
     """
 
-    seconds: float
+    seconds: Annotated[float, FieldNumber(1)]
 
     def as_datetime(self) -> datetime:
         """Return a python datetime object.
