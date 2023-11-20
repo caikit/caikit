@@ -73,9 +73,9 @@ class SingleTimeSeries(DataObjectBase):
         Annotated[PeriodicTimeSequence, OneofField("time_period"), FieldNumber(10)],
         Annotated[PointTimeSequence, OneofField("time_points"), FieldNumber(20)],
     ]
-    values: List[ValueSequence]
-    timestamp_label: str
-    value_labels: List[str]
+    values: Annotated[List[ValueSequence], FieldName(1)]
+    timestamp_label: Annotated[str, FieldName(2)]
+    value_labels: Annotated[List[str], FieldName(3)]
     ids: Union[
         Annotated[IntIDSequence, OneofField("id_int"), FieldNumber(30)],
         Annotated[StringIDSequence, OneofField("id_str"), FieldNumber(40)],
