@@ -15,14 +15,13 @@
 # Standard
 import multiprocessing
 import time
-import traceback
 
 # Third Party
 import pytest
 
 # Local
-from caikit.core.concurrency.destroyable_process import DestroyableProcess
-from tests.core.concurrency.test_exception_pickler import (
+from caikit.core.toolkit.concurrency.destroyable_process import DestroyableProcess
+from tests.core.toolkit.concurrency.test_exception_pickler import (
     ReallyPoorlyBehavedException,
     get_traceback,
 )

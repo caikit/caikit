@@ -19,7 +19,7 @@ import traceback
 import pytest
 
 # Local
-from caikit.core.concurrency.pickling_exception import (
+from caikit.core.toolkit.concurrency.pickling_exception import (
     ExceptionPickler,
     PickleFailureFallbackException,
 )

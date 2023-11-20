@@ -31,7 +31,7 @@ import os
 import alog
 
 # Local
-from ..exceptions import error_handler
+from caikit.core.exceptions import error_handler
 from .destroyable import Destroyable
 from .pickling_exception import ExceptionPickler
 
