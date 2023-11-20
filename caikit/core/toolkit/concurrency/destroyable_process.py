@@ -31,9 +31,9 @@ import os
 import alog
 
 # Local
-from caikit.core.exceptions import error_handler
 from .destroyable import Destroyable
 from .pickling_exception import ExceptionPickler
+from caikit.core.exceptions import error_handler
 
 log = alog.use_channel("DESTROY-PROC")
 error = error_handler.get(log)
