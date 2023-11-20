@@ -61,7 +61,7 @@ class SingleTimeSeries(DataObjectBase):
     class StringIDSequence(DataObjectBase):
         """Nested value sequence of strings"""
 
-        values: List[str]
+        values: Annotated[List[str], FieldNumber(1)]
 
     @dataobject(package=TS_PACKAGE)
     class IntIDSequence(DataObjectBase):
