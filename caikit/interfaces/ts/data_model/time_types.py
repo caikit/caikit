@@ -62,9 +62,6 @@ class Seconds(DataObjectBase):
         """Create a Seconds from a timedelta"""
         return cls(seconds=time_delta.total_seconds())
 
-    def to_dict(self) -> dict:
-        return {"seconds": self.seconds}
-
 
 @dataobject(package=TS_PACKAGE)
 class TimePoint(DataObjectBase):
