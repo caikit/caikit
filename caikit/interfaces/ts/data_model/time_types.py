@@ -99,8 +99,8 @@ class PeriodicTimeSequence(DataObjectBase):
     occur at a regular period
     """
 
-    start_time: TimePoint
-    period_length: TimeDuration
+    start_time: Annotated[TimePoint, FieldNumber(1)]
+    period_length: Annotated[TimeDuration, FieldNumber(2)]
 
 
 @dataobject(package=TS_PACKAGE)
