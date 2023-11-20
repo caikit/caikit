@@ -13,7 +13,15 @@
 # limitations under the License.
 
 # Local
-from . import classification, package, text, text_generation
+from . import (
+    classification,
+    embedding_vectors,
+    package,
+    reranker,
+    sentence_similarity,
+    text,
+    text_generation,
+)
 from .classification import (
     ClassificationResult,
     ClassificationResults,
@@ -24,7 +32,14 @@ from .classification import (
     TokenClassificationResults,
     TokenClassificationStreamResult,
 )
+from .embedding_vectors import EmbeddingResult, EmbeddingResults
 from .package import NLP_PACKAGE
+from .reranker import RerankResult, RerankResults, RerankScore, RerankScores
+from .sentence_similarity import (
+    SentenceSimilarityResult,
+    SentenceSimilarityResults,
+    SentenceSimilarityScores,
+)
 from .text import Token, TokenizationResults, TokenizationStreamResult
 from .text_generation import (
     FinishReason,
