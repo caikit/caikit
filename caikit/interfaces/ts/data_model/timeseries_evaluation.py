@@ -60,9 +60,9 @@ class EvaluationRecord(DataObjectBase):
     EvaluationRecord{id_values=["A", "B"], metric_values=[0.234, 0.568, 0.417], offset="overall"}
     """
 
-    id_values: List[Id]
-    metric_values: List[float]
-    offset: Id
+    id_values: Annotated[List[Id], FieldNumber(1)]
+    metric_values: Annotated[List[float], FieldNumber(2)]
+    offset: Annotated[Id, FieldNumber(3)]
 
     def __init__(self, id_values=None, metric_values=None, offset=None):
         """Construct a new EvaluationRecord instance
@@ -113,11 +113,11 @@ class EvaluationResult(DataObjectBase):
     to keep track of id and metric columns
     """
 
-    records: List[EvaluationRecord]
-    id_cols: List[str]
-    metric_cols: List[str]
-    offset_col: str
-    producer_id: ProducerId
+    records: Annotated[List[EvaluationRecord], FieldNumber(1)]
+    id_cols: Annotated[List[str], FieldNumber(2)]
+    metric_cols: Annotated[List[str], FieldNumber(3)]
+    offset_col: Annotated[str, FieldNumber(4)]
+    producer_id: Annotated[ProducerId, FieldNumber(5)]
 
     def __init__(
         self,
