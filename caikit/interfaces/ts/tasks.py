@@ -18,7 +18,7 @@ All timeseries tasks used by modules
 
 # Local
 from .data_model.timeseries import TimeSeries
-from .data_model.timeseries_evaluate import EvaluationResult
+from .data_model.timeseries_evaluation import EvaluationResult
 from caikit.core import TaskBase, task
 
 
