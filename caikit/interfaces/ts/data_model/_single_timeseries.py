@@ -67,7 +67,7 @@ class SingleTimeSeries(DataObjectBase):
     class IntIDSequence(DataObjectBase):
         """Nested value sequence of ints"""
 
-        values: List[int]
+        values: Annotated[List[int], FieldNumber(1)]
 
     time_sequence: Union[
         Annotated[PeriodicTimeSequence, OneofField("time_period"), FieldNumber(10)],
