@@ -147,7 +147,7 @@ class ExceptionPickler:
                         "Successfully found all the args to re-initialize exception"
                     )
 
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-exception-caught
                     log.debug4(
                         "Failed to find all args and kwargs to unpickle exception. Reason: %s",
                         e,
