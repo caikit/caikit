@@ -109,7 +109,7 @@ class PointTimeSequence(DataObjectBase):
     or may not be evenly distributed in time
     """
 
-    points: List[TimePoint]
+    points: Annotated[List[TimePoint], FieldNumber(1)]
 
 
 @dataobject(package=TS_PACKAGE)
@@ -130,25 +130,25 @@ class ValueSequence(DataObjectBase):
     class IntValueSequence(DataObjectBase):
         """Nested value sequence of integers"""
 
-        values: List[int]
+        values: Annotated[List[int], FieldNumber(1)]
 
     @dataobject(package=TS_PACKAGE)
     class FloatValueSequence(DataObjectBase):
         """Nested value sequence of floats"""
 
-        values: List[float]
+        values: Annotated[List[float], FieldNumber(1)]
 
     @dataobject(package=TS_PACKAGE)
     class StrValueSequence(DataObjectBase):
         """Nested value sequence of strings"""
 
-        values: List[str]
+        values: Annotated[List[str], FieldNumber(1)]
 
     @dataobject(package=TS_PACKAGE)
     class VectorValueSequence(DataObjectBase):
         """Nested value sequence of vectors"""
 
-        values: List[Vector]
+        values: Annotated[List[Vector], FieldNumber(1)]
 
         def _convert_np_to_list(self, v):
             v = v.tolist()
@@ -193,7 +193,7 @@ class ValueSequence(DataObjectBase):
     class TimePointSequence(DataObjectBase):
         """Nested value sequence of TimePoints"""
 
-        values: List[str]
+        values: Annotated[List[str], FieldNumber(1)]
 
         def to_dict(self):
             result = []
@@ -214,7 +214,7 @@ class ValueSequence(DataObjectBase):
     class AnyValueSequence(DataObjectBase):
         """Nested value sequence of Any objects"""
 
-        values: List[str]
+        values: Annotated[List[str], FieldNumber(1)]
 
         def to_dict(self):
             result = []
