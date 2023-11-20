@@ -39,9 +39,9 @@ model_finder_factory.register(MultiModelFinder)
 model_initializer_factory = ImportableFactory("ModelInitializer")
 model_initializer_factory.register(LocalModelInitializer)
 
-# Model saver builder factory. A model saver builder is responsible for taking
-# an output_target and returning a valid model saver for that output type.
-# A model saver is responsible for taking a loaded model, and saving it to its
-# output target.
+# Model saver factory. A model saver is responsible for taking an output_target
+# and returning a valid model save functor.
+# A model saver functor is a callable that saves the input model to the output
+# target.
 model_saver_factory = ImportableFactory("ModelSaver")
 model_saver_factory.register(LocalModelSaver)
