@@ -45,7 +45,7 @@ from caikit.runtime.utils.servicer_util import (
     get_metadata,
     validate_data_model,
 )
-from caikit.runtime.work_management.abortable_action import AbortableAction
+from caikit.runtime.work_management.abortable_action import WorkWatcher, AbortableWork
 from caikit.runtime.work_management.rpc_aborter import RpcAborter
 
 PREDICT_RPC_COUNTER = Counter(
@@ -94,6 +94,7 @@ class GlobalPredictServicer:
         self,
         inference_service: ServicePackage,
         use_abortable_threads: bool = get_config().runtime.use_abortable_threads,
+        watcher: WorkWatcher = None
     ):
         self._started_metering = False
         self._model_manager = ModelManager.get_instance()
@@ -112,6 +113,7 @@ class GlobalPredictServicer:
             )
 
         self.use_abortable_threads = use_abortable_threads
+        self._watcher = watcher
         self._inference_service = inference_service
         # Validate that the Caikit Library CDM is compatible with our service descriptor
         validate_data_model(self._inference_service.descriptor)
@@ -272,10 +274,7 @@ class GlobalPredictServicer:
                 with PREDICT_CAIKIT_LIBRARY_SUMMARY.labels(
                     grpc_request=request_name, model_id=model_id
                 ).time():
-                    if aborter is not None:
-                        work = AbortableAction(aborter, model_run_fn, **kwargs)
-                        response = work.do()
-                    else:
+                    with AbortableWork(aborter, self._watcher):
                         response = model_run_fn(**kwargs)
 
             # Update Prometheus metrics

@@ -289,7 +289,7 @@ def test_global_predict_aborts_long_running_predicts(
             assert dummy_model.started.wait(2)
             # Simulate a timeout or client abort
             context.cancel()
-            predict_thread.join(10)
+            predict_thread.join(2)
 
         # Make sure the prediction actually stopped
         assert not predict_thread.is_alive()

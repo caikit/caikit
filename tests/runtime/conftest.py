@@ -36,6 +36,7 @@ from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
+from caikit.runtime.work_management.abortable_action import WorkWatcher
 from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
 
@@ -98,13 +99,16 @@ def sample_inference_service(render_protos) -> ServicePackage:
 
 @pytest.fixture(scope="session")
 def sample_predict_servicer(sample_inference_service) -> GlobalPredictServicer:
-    servicer = GlobalPredictServicer(inference_service=sample_inference_service)
+    watcher = WorkWatcher()
+    watcher.start()
+    servicer = GlobalPredictServicer(inference_service=sample_inference_service, watcher=watcher)
     yield servicer
     # Make sure to not leave the rpc_meter hanging
     # (It does try to clean itself up on destruction, but just to be sure)
     rpc_meter = getattr(servicer, "rpc_meter", None)
     if rpc_meter:
         rpc_meter.end_writer_thread()
+    watcher.stop()
 
 
 @pytest.fixture(scope="session")

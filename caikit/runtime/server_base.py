@@ -32,6 +32,7 @@ from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit
+from caikit.runtime.work_management.abortable_action import WorkWatcher
 
 log = alog.use_channel("SERVR-BASE")
 error = error_handler.get(log)
@@ -111,6 +112,8 @@ class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attribute
         )
 
         self.thread_pool: ThreadPoolExecutor = ServerThreadPool.pool
+        # Create a work watcher that can be used to handle request cancellations or timeouts
+        self.watcher = WorkWatcher()
 
         # Handle interrupts
         # NB: This means that stop() methods will be called even if the process is interrupted

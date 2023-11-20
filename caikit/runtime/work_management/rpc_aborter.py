@@ -26,7 +26,7 @@ import alog
 
 # Local
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.work_management.abortable_action import ActionAborter
+from caikit.runtime.work_management.abortable_action import ActionAborter, AbortableContext
 
 log = alog.use_channel("CALL-ABORTER")
 
@@ -49,6 +49,7 @@ class RpcAborter(ActionAborter):
         self.is_terminated = False
         # Add an empty list for condition variables that will be notified on termination
         self.events = []
+        self.context = None
 
         callback_registered = context.add_callback(self.__rpc_terminated)
 
@@ -74,9 +75,17 @@ class RpcAborter(ActionAborter):
         if self.must_abort():
             event.set()
 
+    def set_context(self, context: AbortableContext):
+        self.context = context
+
+    def unset_context(self):
+        self.context = None
+
     def __rpc_terminated(self):
         # First set the flag so anybody waiting on us knows that gRPC wants us to abort work
         self.is_terminated = True
+        if self.context:
+            self.context.abort()
 
         # Then notify everybody waiting on us
         for event in self.events:

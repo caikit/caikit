@@ -84,7 +84,8 @@ class RuntimeGRPCServer(RuntimeServerBase):
         if self.enable_inference:
             log.info("<RUN20247875I>", "Enabling gRPC inference service")
             self._global_predict_servicer = GlobalPredictServicer(
-                self.inference_service
+                self.inference_service,
+                watcher=self.watcher
             )
             self.server = CaikitRuntimeServerWrapper(
                 server=self.server,
@@ -225,6 +226,8 @@ class RuntimeGRPCServer(RuntimeServerBase):
         """
         # Start the server. This is non-blocking, so we need to wait after
         self.server.start()
+        # Boot the work watcher
+        self.watcher.start()
 
         log.info(
             "<RUN10001001I>",
@@ -248,12 +251,15 @@ class RuntimeGRPCServer(RuntimeServerBase):
             grace_period_seconds = (
                 self.config.runtime.grpc.server_shutdown_grace_period_seconds
             )
+        log.debug4("Stopping grpc server with %s grace seconds", grace_period_seconds)
         self.server.stop(grace_period_seconds)
         # Ensure we flush out any remaining billing metrics and stop metering
         if self.config.runtime.metering.enabled and self._global_predict_servicer:
             self._global_predict_servicer.stop_metering()
         # Shut down the model manager's model polling if enabled
         self._shut_down_model_manager()
+        # Shut down the work watcher
+        self.watcher.stop()
 
     def render_protos(self, proto_out_dir: str) -> None:
         """Renders all the necessary protos for this service into a directory

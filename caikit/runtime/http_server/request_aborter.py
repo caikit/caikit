@@ -27,7 +27,7 @@ from fastapi import Request
 import alog
 
 # Local
-from caikit.runtime.work_management.abortable_action import ActionAborter
+from caikit.runtime.work_management.abortable_action import ActionAborter, AbortableContext
 
 log = alog.use_channel("REQUEST-ABORTER")
 
@@ -66,6 +66,7 @@ class HttpRequestAborter(ActionAborter):
         self.is_terminated = threading.Event()
         # Add an empty list for event variables that will be notified on termination
         self.events: list[threading.Event] = []
+        self.context = None
 
         # Start request aborter task. Hold onto a reference of the task to ensure
         # it isn't garbage collected
@@ -95,6 +96,8 @@ class HttpRequestAborter(ActionAborter):
             if is_disconnected:
                 log.debug("<RUN81824293>", "Client disconnected, terminating action")
                 self.is_terminated.set()
+                if self.context:
+                    self.context.abort()
                 for event in self.events:
                     event.set()
                 return
@@ -114,3 +117,11 @@ class HttpRequestAborter(ActionAborter):
         # Sanity check: If we have already terminated, notify anything waiting on this condition
         if self.must_abort():
             event.set()
+
+    def set_context(self, context: AbortableContext):
+        self.context = context
+        if self.must_abort():
+            self.context.abort()
+
+    def unset_context(self):
+        self.context = None
