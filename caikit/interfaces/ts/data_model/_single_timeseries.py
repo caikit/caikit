@@ -92,8 +92,6 @@ class SingleTimeSeries(DataObjectBase):
         # this is called from MultiTimeSeries
         if backend := kwargs.get("_backend", None):
             self._backend = backend
-        # elif "values" in kwargs:
-        #     super().__init__(*args, **kwargs)
         elif "values" in kwargs:
             self._ids = None
             if "id_int" in kwargs:

@@ -22,7 +22,7 @@ to do.
 """
 
 # Standard
-from typing import Any, Iterable, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, Type, Union
 
 # Third Party
 import pandas as pd
@@ -41,6 +41,10 @@ from .base import MultiTimeSeriesBackendBase, TimeSeriesBackendBase
 from .dfcache import EnsureCached
 from .pandas_backends import PandasMultiTimeSeriesBackend, PandasTimeSeriesBackend
 from .util import mock_pd_groupby
+
+if TYPE_CHECKING:
+    # Local
+    from ..timeseries import TimeSeries
 
 log = alog.use_channel("SPBCK")
 error = error_handler.get(log)
@@ -86,14 +90,13 @@ class SparkMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
             else (ProducerId(*producer_id) if producer_id is not None else None)
         )
 
-    def get_attribute(
-        self, data_model_class: Type["MultiTimeSeries"], name: str
-    ) -> Any:
+    def get_attribute(self, data_model_class: Type["TimeSeries"], name: str) -> Any:
         # pylint: disable=duplicate-code
-        if isinstance(self._key_column, str):
-            key_columns = [self._key_column]
-        else:
-            key_columns = self._key_column
+        key_columns = (
+            [self._key_column]
+            if isinstance(self._key_column, str)
+            else self._key_column
+        )
 
         if name == "timeseries":
             result = []

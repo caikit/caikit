@@ -17,7 +17,7 @@ Core data model backends backed by pandas
 
 # Standard
 from datetime import datetime
-from typing import Any, Iterable, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, Type, Union
 import json
 
 # Third Party
@@ -42,6 +42,10 @@ from .base import (
 )
 from .util import iteritems_workaround, pd_timestamp_to_seconds
 import caikit.interfaces.ts.data_model as dm
+
+if TYPE_CHECKING:
+    # Local
+    from ..timeseries import TimeSeries
 
 log = alog.use_channel("PDBCK")
 error = error_handler.get(log)
@@ -116,14 +120,13 @@ class PandasMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
             else (ProducerId(*producer_id) if producer_id is not None else None)
         )
 
-    def get_attribute(
-        self, data_model_class: Type["MultiTimeSeries"], name: str
-    ) -> Any:
+    def get_attribute(self, data_model_class: Type["TimeSeries"], name: str) -> Any:
         # pylint: disable=duplicate-code
-        if isinstance(self._key_column, str):
-            key_columns = [self._key_column]
-        else:
-            key_columns = self._key_column
+        key_columns = (
+            [self._key_column]
+            if isinstance(self._key_column, str)
+            else self._key_column
+        )
 
         if name == "timeseries":
             result = []
@@ -240,7 +243,7 @@ class PandasTimeSeriesBackend(TimeSeriesBackendBase):
         external_df: pd.DataFrame = None,
     ) -> Any:
         """When fetching a data attribute from the timeseries, this aliases to
-        the appropriate set of packend wrappers for the various fields.
+        the appropriate set of backend wrappers for the various fields.
         """
 
         # use the external definition of our pandas-like dataframe if
@@ -250,19 +253,17 @@ class PandasTimeSeriesBackend(TimeSeriesBackendBase):
         if name == "timestamp_label":
             return self._timestamp_column
 
-        if name == "ids":
-            if self._ids is not None and len(self._ids) != 0:
-                if isinstance(self._ids[0], (np.int_, int)):
-                    val = data_model_class.IntIDSequence(
-                        values=[
-                            id.item() if isinstance(id, np.int_) else id
-                            for id in self._ids
-                        ]
-                    )
-                    return DataBase.OneofFieldVal(val=val, which_oneof="id_int")
-                if isinstance(self._ids[0], str):
-                    val = data_model_class.StringIDSequence(values=self._ids)
-                    return DataBase.OneofFieldVal(val=val, which_oneof="id_str")
+        if name == "ids" and self._ids is not None and len(self._ids) != 0:
+            if isinstance(self._ids[0], (np.int_, int)):
+                val = data_model_class.IntIDSequence(
+                    values=[
+                        id.item() if isinstance(id, np.int_) else id for id in self._ids
+                    ]
+                )
+                return DataBase.OneofFieldVal(val=val, which_oneof="id_int")
+            if isinstance(self._ids[0], str):
+                val = data_model_class.StringIDSequence(values=self._ids)
+                return DataBase.OneofFieldVal(val=val, which_oneof="id_str")
 
         # If requesting the value_labels, this is the value column names
         if name == "value_labels":
@@ -380,16 +381,20 @@ class PandasValueSequenceBackend(UncachedBackendMixin, StrictFieldBackendMixin):
 
         if name == "sequence":
             name = self._valid_oneof
-        if name in ["val_int", "val_float", "val_str", "val_vector"]:
-            if name == self._valid_oneof:
-                return self._sequence_type(
-                    values=[
-                        self._converter(val)
-                        for val in iteritems_workaround(
-                            self._df[self._col_name], force_list=True
-                        )
-                    ],
-                )
+        if name == self._valid_oneof and name in [
+            "val_int",
+            "val_float",
+            "val_str",
+            "val_vector",
+        ]:
+            return self._sequence_type(
+                values=[
+                    self._converter(val)
+                    for val in iteritems_workaround(
+                        self._df[self._col_name], force_list=True
+                    )
+                ],
+            )
         if name == self._valid_oneof == "val_any":
             return self._sequence_type(
                 values=[

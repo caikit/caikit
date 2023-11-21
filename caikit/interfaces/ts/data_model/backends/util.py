@@ -142,11 +142,12 @@ def iteritems_workaround(series: Any, force_list: bool = False) -> Iterable:
         return series
 
     # handle an edge case of pyspark.ml.linalg.DenseVector
-    if HAVE_PYSPARK:
-        if isinstance(series, pyspark.pandas.series.Series) and isinstance(
-            series[0], pyspark.ml.linalg.Vector
-        ):
-            return [x.toArray().tolist() for x in series.to_numpy()]
+    if (
+        HAVE_PYSPARK
+        and isinstance(series, pyspark.pandas.series.Series)
+        and isinstance(series[0], pyspark.ml.linalg.Vector)
+    ):
+        return [x.toArray().tolist() for x in series.to_numpy()]
 
     # note that we're forcing a list only if we're not
     # a native pandas series
@@ -155,5 +156,5 @@ def iteritems_workaround(series: Any, force_list: bool = False) -> Iterable:
 
     try:
         return series.to_numpy()
-    except:  # pylint: disable=bare-except
+    except:  # noqa: E722
         return series.to_list()

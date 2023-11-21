@@ -154,20 +154,12 @@ class ValueSequence(DataObjectBase):
         def to_dict(self):
             result = []
             for v in self.values:
-                if isinstance(v, np.ndarray):
-                    v_in = self._convert_np_to_list(v)
-                # we don't create these at the application leve
-                # It should emerge only from to/from_proto invocations
-                # elif isinstance(v, Vector):
-                #    v_in = v.data
-                else:
-                    v_in = v
-
+                v_in = self._convert_np_to_list(v) if isinstance(v, np.ndarray) else v
                 result.append({"data": v_in if isinstance(v_in, list) else v.data})
             return {"values": result}
 
         def fill_proto(self, proto):
-            subproto = getattr(proto, "values")
+            subproto = proto.values
             subproto.extend(
                 [
                     Vector.from_json(
@@ -199,7 +191,7 @@ class ValueSequence(DataObjectBase):
             return {"values": result}
 
         def fill_proto(self, proto):
-            subproto = getattr(proto, "values")
+            subproto = proto.values
             subproto.extend(list(self.values))
 
         @classmethod
@@ -221,7 +213,7 @@ class ValueSequence(DataObjectBase):
             return {"values": result}
 
         def fill_proto(self, proto):
-            subproto = getattr(proto, "values")
+            subproto = proto.values
             subproto.extend([json.loads(v) for v in self.values])
 
         @classmethod

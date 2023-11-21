@@ -40,10 +40,9 @@ class EnsureCached:
     def __init__(self, dataframe: DataFrame):
         self._did_cache = False
         self._df = dataframe
-        if hasattr(dataframe, "cache"):
-            if not self._df.is_cached:
-                self._df.cache()
-                self._did_cache = True
+        if hasattr(dataframe, "cache") and not self._df.is_cached:
+            self._df.cache()
+            self._did_cache = True
 
     def __enter__(self):
         return self._df
