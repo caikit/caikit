@@ -22,7 +22,7 @@ to do.
 """
 
 # Standard
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Tuple, Type, Union
 
 # Third Party
 import pandas as pd
@@ -40,7 +40,6 @@ from .._single_timeseries import SingleTimeSeries
 from .base import MultiTimeSeriesBackendBase, TimeSeriesBackendBase
 from .dfcache import EnsureCached
 from .pandas_backends import PandasMultiTimeSeriesBackend, PandasTimeSeriesBackend
-from .util import mock_pd_groupby
 
 if TYPE_CHECKING:
     # Local
@@ -63,7 +62,7 @@ class SparkMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
         error.type_check("<COR77829913F>", pyspark.sql.DataFrame, data_frame=data_frame)
 
         # for param validation
-        _ = PandasMultiTimeSeriesBackend(
+        PandasMultiTimeSeriesBackend(
             data_frame=pd.DataFrame(columns=data_frame.columns),
             key_column=key_column,
             timestamp_column=timestamp_column,
@@ -209,3 +208,20 @@ class SparkTimeSeriesBackend(TimeSeriesBackendBase):
             self._pdbackend_helper._timestamp_column,
             self._pdbackend_helper._value_columns,
         )
+
+
+def mock_pd_groupby(a_df_like, by: List[str], return_pandas_api=False):
+    """Roughly mocks the behavior of pandas groupBy but on a spark dataframe."""
+
+    distinct_keys = a_df_like.select(by).distinct().collect()
+    for dkey in distinct_keys:
+        adict = dkey.asDict()
+        filter_statement = ""
+        for k, v in adict.items():
+            filter_statement += f" {k} == '{v}' and"
+        if filter_statement.endswith("and"):
+            filter_statement = filter_statement[0:-3]
+        sub_df = a_df_like.filter(filter_statement)
+        value = tuple(adict.values())
+        value = value[0] if len(value) == 1 else value
+        yield value, sub_df.pandas_api() if return_pandas_api else sub_df
