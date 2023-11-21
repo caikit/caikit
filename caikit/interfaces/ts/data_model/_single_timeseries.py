@@ -73,16 +73,16 @@ class SingleTimeSeries(DataObjectBase):
         Annotated[PeriodicTimeSequence, OneofField("time_period"), FieldNumber(10)],
         Annotated[PointTimeSequence, OneofField("time_points"), FieldNumber(20)],
     ]
-    values: Annotated[List[ValueSequence], FieldName(1)]
-    timestamp_label: Annotated[str, FieldName(2)]
-    value_labels: Annotated[List[str], FieldName(3)]
+    values: Annotated[List[ValueSequence], FieldNumber(1)]
+    timestamp_label: Annotated[str, FieldNumber(2)]
+    value_labels: Annotated[List[str], FieldNumber(3)]
     ids: Union[
         Annotated[IntIDSequence, OneofField("id_int"), FieldNumber(30)],
         Annotated[StringIDSequence, OneofField("id_str"), FieldNumber(40)],
     ]
 
     _DEFAULT_TS_COL = "timestamp"
-    _private_slots = ("_which_oneof_time_sequence", "_which_oneof_ids")
+    # _private_slots = ("_which_oneof_time_sequence", "_which_oneof_ids")
 
     # TODO: We need to clean up the init semantics
     def __init__(self, *args, **kwargs):
@@ -90,8 +90,10 @@ class SingleTimeSeries(DataObjectBase):
         backend
         """
         # this is called from MultiTimeSeries
-        if "_backend" in kwargs:
-            self._backend = kwargs["_backend"]
+        if backend := kwargs.get("_backend", None):
+            self._backend = backend
+        # elif "values" in kwargs:
+        #     super().__init__(*args, **kwargs)
         elif "values" in kwargs:
             self._ids = None
             if "id_int" in kwargs:
@@ -165,18 +167,9 @@ class SingleTimeSeries(DataObjectBase):
         num_rows = list(col_lens)[0]
         log.debug("Num rows: %d", num_rows)
 
-        # todo not sure if this is needed here, is it even possible without making changes to the
-        # json?
-        # error.value_check(
-        #     "<COR24439736F>",
-        #     self.time_period is not None and (self.timestamp_label is not None and
-        #          self.timestamp_label != ""),
-        #     "a timestamp_label is required if a time_period is specified",
-        # )
-
         # If the time index is stored periodically, this can be represented as a
         # periodic index in pandas iff the start time and period are grounded in
-        # real datetime space. If they are purely numerica, they can be
+        # real datetime space. If they are purely numerical, they can be
         # converted to a set of point values. The only invalid combination is a
         # numeric start time and a timedelta duration.
         #
@@ -296,7 +289,7 @@ class SingleTimeSeries(DataObjectBase):
     ## Views ##
 
     def _as_pandas_ops(self, adf, include_timestamps: Union[None, bool] = False):
-        """operate on pandas-like object instead of strickly pandas"""
+        """operate on pandas-like object instead of strictly pandas"""
         backend_df = adf
 
         # if we want to include timestamps, but it is not already in the dataframe, we need to add
