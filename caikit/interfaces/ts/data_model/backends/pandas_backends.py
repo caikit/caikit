@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, Type, Union
 import json
 
 # Third Party
-# TODO: make pandas and numpy non-optional elsewhere!
 from pandas import RangeIndex
 import numpy as np
 import pandas as pd
@@ -32,6 +31,7 @@ import alog
 # Local
 from .....core.data_model import DataBase, ProducerId
 from .....core.exceptions import error_handler
+from ... import data_model as dm
 from .. import time_types
 from ..toolkit.optional_dependencies import HAVE_PYSPARK
 from .base import (
@@ -41,7 +41,6 @@ from .base import (
     UncachedBackendMixin,
 )
 from .util import iteritems_workaround, pd_timestamp_to_seconds
-import caikit.interfaces.ts.data_model as dm
 
 if TYPE_CHECKING:
     # Local
@@ -64,31 +63,31 @@ class PandasMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
         ids: Optional[Union[Iterable[int], Iterable[str]]] = None,
         producer_id: Optional[Union[Tuple[str, str], ProducerId]] = None,
     ):
-        error.type_check("<COR81128380F>", pd.DataFrame, data_frame=data_frame)
+        error.type_check("<COR81128390E>", pd.DataFrame, data_frame=data_frame)
         error.type_check(
-            "<COR81128381F>",
+            "<COR81128391E>",
             list,
             str,
             key_column=key_column,
         )
         error.type_check(
-            "<COR81128382F>", str, int, type(None), timestamp_column=timestamp_column
+            "<COR81128392E>", str, int, type(None), timestamp_column=timestamp_column
         )
         error.type_check_all(
-            "<COR81128383F>",
+            "<COR81128393E>",
             str,
             int,
             allow_none=True,
             value_columns=value_columns,
         )
         error.type_check_all(
-            "<COR81128384F>",
+            "<COR81128394E>",
             str,
             allow_none=True,
             ids=ids,
         )
         error.type_check(
-            "<COR81128385F>",
+            "<COR81128395E>",
             tuple,
             ProducerId,
             allow_none=True,
@@ -97,7 +96,7 @@ class PandasMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
 
         # Validate the column names
         error.value_check(
-            "<COR04942286F>",
+            "<COR04942296E>",
             (timestamp_column is None or (timestamp_column in data_frame.columns)),
             "Invalid timestamp column/index: {}",
             timestamp_column,
@@ -238,7 +237,7 @@ class PandasTimeSeriesBackend(TimeSeriesBackendBase):
     # pylint: disable=too-many-return-statements
     def get_attribute(
         self,
-        data_model_class: Type["TimeSeries"],
+        data_model_class: Type["dm.SingleTimeSeries"],
         name: str,
         external_df: pd.DataFrame = None,
     ) -> Any:
@@ -331,8 +330,6 @@ class PandasValueSequenceBackend(UncachedBackendMixin, StrictFieldBackendMixin):
         # Third Party
         # pylint: disable=import-outside-toplevel
         from pyspark.ml.linalg import Vector as SVector
-
-        # import pyspark
 
         _DEFAULT_VECTOR_TYPES.append(SVector)
 
