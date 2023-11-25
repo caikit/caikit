@@ -139,6 +139,8 @@ runtime:
         route_prefix: api/v1
         # Maximum number of seconds to wait for graceful shutdown
         server_shutdown_grace_period_seconds: 5
+        # Timeout for health probe to receive a response
+        probe_timeout: 0.01
 
     # Configuration for the metrics server
     metrics:

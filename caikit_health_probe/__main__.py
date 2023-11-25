@@ -153,7 +153,7 @@ def _http_health_probe(
                 # NOTE: Not using the constant to avoid big imports
                 resp = session.get(
                     f"{protocol}://localhost:{port}/health",
-                    timeout=0.01,
+                    timeout=get_config().runtime.http.probe_timeout,
                     **kwargs,
                 )
             resp.raise_for_status()
