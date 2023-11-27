@@ -43,6 +43,9 @@ if __name__ == "__main__":
                 "library": "sample_lib",
                 "grpc": {"enabled": True},
                 "http": {"enabled": True},
+                "service_generation": {
+                    "package": "caikit_sample_lib"
+                },  # Same as the server
             },
         }
     )
@@ -95,6 +98,7 @@ if __name__ == "__main__":
             model_name=model_id,
             parameters=get_train_params(SampleModule)(training_data=training_data),
         )
+        print(request)
         response = training_stub.SampleTaskSampleModuleTrain(request.to_proto())
         print("*" * 30)
         print("RESPONSE from TRAIN gRPC\n")
