@@ -88,7 +88,7 @@ if __name__ == "__main__":
             caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
         )
         training_data = stream_type(
-            file=stream_type.File(filename="protos/sample.json")
+            file=stream_type.FileReference(filename="protos/sample.json")
         )
         train_class = DataBase.get_class_for_name("SampleTaskSampleModuleTrainRequest")
         train_request_params_class = DataBase.get_class_for_name(
@@ -122,7 +122,7 @@ if __name__ == "__main__":
         sleep(1)
 
         # send inference request on trained model
-        predict_class = get_inference_request(SampleModule.TASK_CLASS)
+        predict_class = get_inference_request(SampleModule)
         sample_input = SampleInputType(name="world")
 
         request = predict_class(sample_input=sample_input)
