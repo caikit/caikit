@@ -130,14 +130,10 @@ You should receive a successful response back with a response body:
 
 ```shell
 curl -X 'POST' \
-  'http://localhost:8080/api/v1/my_model/task/sample' \
+  'http://localhost:8080/api/v1/task/sample' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
-  -d '{
-  "inputs": {
-    "name": "IBM"
-  }
-}'
+  -d '{"inputs": {"name": "world"}, "model_id": "my_model"}'
 ```
 
 You should receive a 200 response back with a response body:

@@ -140,9 +140,9 @@ if __name__ == "__main__":
         # For now this assumes you have the model trained using the gRPC steps above
         port = 8080
         # Run inference for sample text
-        payload = {"inputs": {"name": "world"}}
+        payload = {"inputs": {"name": "world"}, "model_id": model_id}
         response = requests.post(
-            f"http://localhost:{port}/api/v1/{model_id}/task/sample",
+            f"http://localhost:{port}/api/v1/task/sample",
             json=payload,
             timeout=1,
         )
