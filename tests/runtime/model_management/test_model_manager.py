@@ -518,7 +518,9 @@ def test_lazy_load_of_large_model(good_model_path):
                         bf.write("This is a big file\n" * 1000)
 
             stop_write_event = threading.Event()
-            writer_thread = threading.Thread(target=write_big_file, args=(model_cache_path, stop_write_event))
+            writer_thread = threading.Thread(
+                target=write_big_file, args=(model_cache_path, stop_write_event)
+            )
             writer_thread.start()
 
             try:
@@ -538,6 +540,7 @@ def test_lazy_load_of_large_model(good_model_path):
             finally:
                 stop_write_event.set()
                 writer_thread.join()
+
 
 def test_nested_local_model_load_unload(good_model_path):
     """Test that a model can be loaded in a subdirectory of the local_models_dir

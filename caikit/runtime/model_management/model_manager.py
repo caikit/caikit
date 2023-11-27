@@ -14,11 +14,13 @@
 # Standard
 from collections import Counter as DictCounter
 from functools import partial
+from pathlib import Path
 from typing import Dict, Optional
 import atexit
 import gc
 import os
 import threading
+import time
 
 # Third Party
 from grpc import StatusCode
@@ -452,6 +454,15 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         # Load new models
         for model_id in new_models:
             model_path = os.path.join(self._local_models_dir, model_id)
+
+            # Check to make sure the model is not still being written to disk
+            disk_size = self._get_total_disk_size(model_path)
+            # Tiny sleep to wait out another write
+            time.sleep(0.01)
+            if self._get_total_disk_size(model_path) > disk_size:
+                log.debug("Model %s is still being written", model_id)
+                continue
+
             self.load_model(
                 model_id,
                 model_path,
@@ -489,6 +500,11 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
                         repr(err),
                         exc_info=True,
                     )
+
+    @staticmethod
+    def _get_total_disk_size(model_dir: str):
+        dir_path = Path(model_dir)
+        return sum([f.stat().st_size for f in dir_path.glob("*") if f.is_file()])
 
     def __report_total_model_size_metric(self):
         # Just a happy little lock to ensure that with concurrent loading and unloading,
