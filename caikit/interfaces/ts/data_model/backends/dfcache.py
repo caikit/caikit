@@ -13,20 +13,24 @@
 # limitations under the License.
 """Utilities related to manageing spark DataFrame caching"""
 
+# Standard
+from contextlib import contextmanager
+
 # Third Party
 from pyspark.sql import DataFrame
 
 
-class EnsureCached:
+@contextmanager
+def ensure_spark_cached(dataframe: DataFrame) -> DataFrame:
     """Will ensure that a given dataframe is cached.
     If dataframe is already cached it does nothing. If it's not
     cached, it will cache it and then uncache the object when
-    the EnsureCached object container goes out of scope. Users
+    the ensure_spark_cached object container goes out of scope. Users
     must utilize the with pattern of access.
 
     Example:
     ```python
-        with EnsureCached(df) as _:
+        with ensure_spark_cached(df) as _:
             # do dataframey sorts of things on df
             # it's guarenteed to be cached
             # inside this block
@@ -36,17 +40,9 @@ class EnsureCached:
         # before entering the with block above.
     ```
     """
-
-    def __init__(self, dataframe: DataFrame):
-        self._did_cache = False
-        self._df = dataframe
-        if hasattr(dataframe, "cache") and not self._df.is_cached:
-            self._df.cache()
-            self._did_cache = True
-
-    def __enter__(self):
-        return self._df
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self._did_cache:
-            self._df.unpersist()
+    do_cache = hasattr(dataframe, "cache") and not dataframe.is_cached
+    if do_cache:
+        dataframe.cache()
+    yield dataframe
+    if do_cache:
+        dataframe.unpersist()

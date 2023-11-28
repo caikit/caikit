@@ -35,7 +35,7 @@ import pytest
 # Local
 from caikit.core.data_model import ProducerId
 from caikit.interfaces.ts.data_model import SingleTimeSeries
-from caikit.interfaces.ts.data_model.backends.dfcache import EnsureCached
+from caikit.interfaces.ts.data_model.backends._spark_backends import ensure_spark_cached
 from caikit.interfaces.ts.data_model.backends.util import (
     iteritems_workaround,
     pd_timestamp_to_seconds,
@@ -186,7 +186,7 @@ def test_timeseries_spark(df_mts_data):
     """Subset of test_timeseries_pd to exercise to_spark functionality of multi_timeseries"""
     df, ts_source, key_source, value_source = df_mts_data
 
-    with EnsureCached(df) as df:
+    with ensure_spark_cached(df) as df:
         value_source = None if value_source is None else [value_source]
 
         mts = dm.TimeSeries(
@@ -237,7 +237,7 @@ def test_timeseries_pd(df_mts_data):
     """
     df, ts_source, key_source, value_source = df_mts_data
 
-    with EnsureCached(df) as df:
+    with ensure_spark_cached(df) as df:
         test_log.debug("Running test_timeseries_pd:\n%s", df)
         test_log.debug("ts_source: %s", ts_source)
         test_log.debug("key_source: %s", key_source)

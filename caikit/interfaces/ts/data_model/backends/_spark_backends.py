@@ -23,6 +23,7 @@ to do.
 
 # Standard
 from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Tuple, Type, Union
+from contextlib import contextmanager
 
 # Third Party
 import pandas as pd
@@ -38,7 +39,6 @@ from .....core.data_model import ProducerId
 from .....core.exceptions import error_handler
 from .._single_timeseries import SingleTimeSeries
 from .base import MultiTimeSeriesBackendBase, TimeSeriesBackendBase
-from .dfcache import EnsureCached
 from .pandas_backends import PandasMultiTimeSeriesBackend, PandasTimeSeriesBackend
 
 if TYPE_CHECKING:
@@ -48,6 +48,32 @@ if TYPE_CHECKING:
 log = alog.use_channel("SPBCK")
 error = error_handler.get(log)
 
+@contextmanager
+def ensure_spark_cached(dataframe: pyspark.sql.DataFrame) -> pyspark.sql.DataFrame:
+    """Will ensure that a given dataframe is cached.
+    If dataframe is already cached it does nothing. If it's not
+    cached, it will cache it and then uncache the object when
+    the ensure_spark_cached object container goes out of scope. Users
+    must utilize the with pattern of access.
+
+    Example:
+    ```python
+        with ensure_spark_cached(df) as _:
+            # do dataframey sorts of things on df
+            # it's guarenteed to be cached
+            # inside this block
+        # that's it, you're done.
+        # df remains cached if it already was
+        # or it's no longer cached if it wasn't
+        # before entering the with block above.
+    ```
+    """
+    do_cache = hasattr(dataframe, "cache") and not dataframe.is_cached
+    if do_cache:
+        dataframe.cache()
+    yield dataframe
+    if do_cache:
+        dataframe.unpersist()
 
 class SparkMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
     def __init__(
@@ -95,7 +121,7 @@ class SparkMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
             result = []
 
             if len(self._key_columns) == 0:
-                with EnsureCached(self._pyspark_df) as _:
+                with ensure_spark_cached(self._pyspark_df) as _:
                     backend = SparkTimeSeriesBackend(
                         data_frame=self._pyspark_df,
                         timestamp_column=self._timestamp_column,
@@ -103,7 +129,7 @@ class SparkMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
                     )
                     result.append(SingleTimeSeries(_backend=backend))
             else:
-                with EnsureCached(self._pyspark_df) as _:
+                with ensure_spark_cached(self._pyspark_df) as _:
                     for ids, spark_df in mock_pd_groupby(
                         self._pyspark_df, by=self._key_columns
                     ):
@@ -189,7 +215,7 @@ class SparkTimeSeriesBackend(TimeSeriesBackendBase):
         the appropriate set of backend wrappers for the various fields.
         """
 
-        with EnsureCached(self._pyspark_df) as _:
+        with ensure_spark_cached(self._pyspark_df) as _:
             return self._pdbackend_helper.get_attribute(
                 data_model_class=data_model_class,
                 name=name,

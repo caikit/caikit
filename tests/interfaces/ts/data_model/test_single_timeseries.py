@@ -35,7 +35,7 @@ from caikit.interfaces.ts.data_model._single_timeseries import SingleTimeSeries
 from caikit.interfaces.ts.data_model.backends._spark_backends import (
     SparkTimeSeriesBackend,
 )
-from caikit.interfaces.ts.data_model.backends.dfcache import EnsureCached
+from caikit.interfaces.ts.data_model.backends._spark_backends import ensure_spark_cached
 from caikit.interfaces.ts.data_model.backends.util import (
     iteritems_workaround,
     pd_timestamp_to_seconds,
@@ -598,7 +598,7 @@ def test_timeseries_pd(df_ts_data):
     """
     df, ts_source = df_ts_data
 
-    with EnsureCached(df) as df:
+    with ensure_spark_cached(df) as df:
         # this doesn't for spark dataframes
         test_log.debug("Running test_timeseries_pd:\n%s", df)
         test_log.debug("ts_source: %s", ts_source)
@@ -732,7 +732,7 @@ def test_timeseries_spark(df_ts_data):
     """
     df, ts_source = df_ts_data
 
-    with EnsureCached(df) as df:
+    with ensure_spark_cached(df) as df:
         # this doesn't for spark dataframes
         test_log.debug("Running test_timeseries_spark:\n%s", df)
         test_log.debug("ts_source: %s", ts_source)
