@@ -14,11 +14,13 @@
 # Standard
 from collections import Counter as DictCounter
 from functools import partial
+from pathlib import Path
 from typing import Dict, Optional
 import atexit
 import gc
 import os
 import threading
+import time
 
 # Third Party
 from grpc import StatusCode
@@ -130,6 +132,16 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             self._local_models_dir
             and self._lazy_load_local_models
             and self._lazy_load_poll_period_seconds
+        )
+        self._lazy_load_write_detection_period_seconds = (
+            runtime_cfg.lazy_load_write_detection_period_seconds
+        )
+        error.type_check(
+            "<RUN58138047E>",
+            int,
+            float,
+            allow_none=True,
+            lazy_load_write_detection_period_seconds=self._lazy_load_write_detection_period_seconds,
         )
         if self._enable_lazy_load_poll:
             atexit.register(self.shut_down)
@@ -452,6 +464,11 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         # Load new models
         for model_id in new_models:
             model_path = os.path.join(self._local_models_dir, model_id)
+
+            if self._model_write_in_progress(model_path):
+                log.debug("Model %s is still being written", model_id)
+                continue
+
             self.load_model(
                 model_id,
                 model_path,
@@ -489,6 +506,35 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
                         repr(err),
                         exc_info=True,
                     )
+
+    def _model_write_in_progress(self, model_dir: str) -> bool:
+        """Returns true if model_dir is currently being written to. Uses the
+        runtime.lazy_load_write_detection_period_seconds configuration to sleep between
+        consecutive size checks of the directory.
+
+        Always returns false if runtime.lazy_load_write_detection_period_seconds is zero,
+        negative, or None.
+        """
+        if (
+            self._lazy_load_write_detection_period_seconds is None
+            or self._lazy_load_write_detection_period_seconds <= 0
+        ):
+            return False
+
+        # Get the current directory size
+        size = self._get_total_disk_size(model_dir)
+        # Sleep a bit to wait out another write
+        time.sleep(self._lazy_load_write_detection_period_seconds)
+        # Get the size again. If it has changed, then a write is currently  in progress
+        return self._get_total_disk_size(model_dir) != size
+
+    @staticmethod
+    def _get_total_disk_size(model_dir: str) -> int:
+        """Returns the sum of st_size of all files contained within the directory structure rooted
+        at model_dir.
+        """
+        dir_path = Path(model_dir)
+        return sum([f.stat().st_size for f in dir_path.rglob("*") if f.is_file()])
 
     def __report_total_model_size_metric(self):
         # Just a happy little lock to ensure that with concurrent loading and unloading,

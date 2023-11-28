@@ -485,6 +485,63 @@ def test_model_manager_disk_caching_periodic_sync(good_model_path):
             assert mgr_one_unloaded and mgr_two_unloaded
 
 
+def test_lazy_load_of_large_model(good_model_path):
+    """Test that a large model that is actively being written to disk is not incorrectly loaded
+    too soon by the lazy loading poll
+    """
+    with TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                    "lazy_load_poll_period_seconds": 0,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+
+            # Start with a valid model
+            model_name = os.path.basename(good_model_path)
+            model_cache_path = os.path.join(cache_dir, model_name)
+            assert not os.path.exists(model_cache_path)
+            shutil.copytree(good_model_path, model_cache_path)
+
+            # Then kick off a thread that will start writing a large file inside this model dir.
+            # This simulates uploading a large model artifact
+            def write_big_file(path: str, stop_event: threading.Event):
+                big_file = os.path.join(path, "big_model_artifact.txt")
+                with open(big_file, "w") as bf:
+                    while not stop_event.is_set():
+                        bf.write("This is a big file\n" * 1000)
+
+            stop_write_event = threading.Event()
+            writer_thread = threading.Thread(
+                target=write_big_file, args=(model_cache_path, stop_write_event)
+            )
+            writer_thread.start()
+
+            try:
+                # Trigger the periodic sync and make sure the model is NOT loaded
+                assert model_name not in manager.loaded_models
+                manager.sync_local_models(wait=True)
+                assert model_name not in manager.loaded_models
+
+                # Stop the model writing thread (Finish the model upload)
+                stop_write_event.set()
+                writer_thread.join()
+
+                # Re-trigger the sync and make sure the model is loaded this time
+                manager.sync_local_models(wait=True)
+                assert model_name in manager.loaded_models
+
+            finally:
+                stop_write_event.set()
+                writer_thread.join()
+
+
 def test_nested_local_model_load_unload(good_model_path):
     """Test that a model can be loaded in a subdirectory of the local_models_dir
     and that the periodic sync does not unload the model.
