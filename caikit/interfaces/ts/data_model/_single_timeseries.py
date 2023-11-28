@@ -16,7 +16,7 @@ The core data model object for a TimeSeries
 """
 # Standard
 from datetime import timedelta
-from typing import Iterable, List, Tuple, Union
+from typing import Iterable, List, Optional, Tuple, Union
 import json
 
 # Third Party
@@ -308,19 +308,37 @@ class SingleTimeSeries(DataObjectBase):
 
         return backend_df
 
-    def as_pandas(self, include_timestamps=None) -> "pd.DataFrame":
+    def as_pandas(self, include_timestamps: Optional[bool] = None) -> "pd.DataFrame":
         """Get the view of this timeseries as a pandas DataFrame
 
+        Args:
+            include_timestamps (bool, optional): Control the addition or removal of
+            timestamps. True will include timestamps, generating if needed, while False will
+            remove timestamps. Use None to returned what is available, leaving unchanged.
+            Defaults to None.
+
         Returns:
-            df:  pd.DataFrame
-                The view of the data as a pandas DataFrame
+            pd.DataFrame: The view of the data as a pandas DataFrame
         """
         backend_df = self._get_pd_df()[0]
         return self._as_pandas_ops(
             adf=backend_df, include_timestamps=include_timestamps
         )
 
-    def as_spark(self, include_timestamps=None) -> "pyspark.sql.DataFrame":
+    def as_spark(
+        self, include_timestamps: Optional[bool] = None
+    ) -> "pyspark.sql.DataFrame":
+        """Get the view of this timeseries as a spark DataFrame
+
+        Args:
+            include_timestamps (bool, optional): Control the addition or removal of
+            timestamps. True will include timestamps, generating if needed, while False will
+            remove timestamps. Use None to returned what is available, leaving unchanged.
+            Defaults to None.
+
+        Returns:
+            pyspark.sql.DataFrame: The view of the data as a spark DataFrame
+        """
         if not HAVE_PYSPARK:
             raise NotImplementedError(
                 "You must have pyspark installed for this to work!"

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Standard
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 # Third Party
 import numpy as np
@@ -168,12 +168,24 @@ class TimeSeries(DataObjectBase):
             value_columns,
         )
 
-    def as_pandas(self, include_timestamps=None, is_multi=None) -> "pd.DataFrame":
+    def as_pandas(
+        self, include_timestamps: Optional[bool] = None, is_multi: Optional[bool] = None
+    ) -> "pd.DataFrame":
         """Get the view of this timeseries as a pandas DataFrame
 
+        Args:
+            include_timestamps (bool, optional): Control the addition or removal of
+            timestamps. True will include timestamps, generating if needed, while False will
+            remove timestamps. Use None to returned what is available, leaving unchanged.
+            Defaults to None.
+
+            is_multi (bool, optional): Controls how id_labels are handled in the output. If
+            the id_labels are specified in the data model, they are always returned. If there
+            are no id_labels specified, setting is_multi to True will add a new column with
+            generated id labels (0), while False or None will not add any id_labels.
+
         Returns:
-            df:  pd.DataFrame
-                The view of the data as a pandas DataFrame
+            pd.DataFrame: The view of the data as a pandas DataFrame
         """
         # if as_pandas is_multi is True, and timeseries is_multi is False => add a RESERVED id
         #   column with constant value
@@ -197,9 +209,9 @@ class TimeSeries(DataObjectBase):
         timestamp_column = self._backend._timestamp_column
 
         # if we want to include timestamps, but it is not already in the dataframe, we need to
-        #  add it
+        # add it
         if include_timestamps and timestamp_column is None:
-            backend_df = backend_df.copy()  # is this required???
+            backend_df = backend_df.copy()  # avoid mutating original
             ts_column = self.__class__._DEFAULT_TS_COL
             backend_df[ts_column] = [0] * len(backend_df)
             backend_df[ts_column] = backend_df.groupby(
@@ -216,8 +228,24 @@ class TimeSeries(DataObjectBase):
         return backend_df
 
     def as_spark(
-        self, include_timestamps=None, is_multi=None
+        self, include_timestamps: Optional[bool] = None, is_multi: Optional[bool] = None
     ) -> "pyspark.sql.DataFrame":
+        """Get the view of this timeseries as a spark DataFrame
+
+        Args:
+            include_timestamps (bool, optional): Control the addition or removal of
+            timestamps. True will include timestamps, generating if needed, while False will
+            remove timestamps. Use None to returned what is available, leaving unchanged.
+            Defaults to None.
+
+            is_multi (bool, optional): Controls how id_labels are handled in the output. If
+            the id_labels are specified in the data model, they are always returned. If there
+            are no id_labels specified, setting is_multi to True will add a new column with
+            generated id labels (0), while False or None will not add any id_labels.
+
+        Returns:
+            pyspark.sql.DataFrame: The view of the data as a spark DataFrame
+        """
         if not HAVE_PYSPARK:
             raise NotImplementedError("pyspark must be available to use this method.")
 
