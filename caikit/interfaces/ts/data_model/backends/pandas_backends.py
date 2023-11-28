@@ -58,7 +58,7 @@ class PandasMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
         self,
         data_frame: pd.DataFrame,
         key_column: Union[Iterable[str], str],
-        timestamp_column: str = None,
+        timestamp_column: Optional[str] = None,
         value_columns: Optional[Iterable[str]] = None,
         ids: Optional[Union[Iterable[int], Iterable[str]]] = None,
         producer_id: Optional[Union[Tuple[str, str], ProducerId]] = None,
@@ -118,19 +118,18 @@ class PandasMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
             if isinstance(producer_id, ProducerId)
             else (ProducerId(*producer_id) if producer_id is not None else None)
         )
-
-    def get_attribute(self, data_model_class: Type["TimeSeries"], name: str) -> Any:
-        # pylint: disable=duplicate-code
-        key_columns = (
+        self._timeseries = None
+        self._key_columns = (
             [self._key_column]
             if isinstance(self._key_column, str)
             else self._key_column
         )
 
+    def get_attribute(self, data_model_class: Type["TimeSeries"], name: str) -> Any:
         if name == "timeseries":
             result = []
 
-            if len(key_columns) == 0:
+            if len(self._key_columns) == 0:
                 backend = PandasTimeSeriesBackend(
                     self._df,
                     timestamp_column=self._timestamp_column,
@@ -139,7 +138,9 @@ class PandasMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
                 result.append(dm.SingleTimeSeries(_backend=backend))
             else:
                 for k, k_df in self._df.groupby(
-                    key_columns if len(key_columns) > 1 else key_columns[0]
+                    self._key_columns
+                    if len(self._key_columns) > 1
+                    else self._key_columns[0]
                 ):
                     # if it is a single key string, we want to just wrap it in a list
                     if isinstance(k, (str, int)):
@@ -155,7 +156,7 @@ class PandasMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
             return result
 
         if name == "id_labels":
-            return key_columns
+            return self._key_columns
 
         # If requesting producer_id or ids, just return the stored value
         if name == "producer_id":
@@ -448,8 +449,7 @@ class PandasPeriodicTimeSequenceBackend(UncachedBackendMixin, StrictFieldBackend
             return time_types.TimeDuration(dt_str=self._period_length)
 
         # Delegate to common parent logic
-        # This seems unreachable???
-        # return super().get_attribute(data_model_class, name)
+        return super().get_attribute(data_model_class, name)
 
 
 class PandasPointTimeSequenceBackend(
@@ -479,8 +479,7 @@ class PandasPointTimeSequenceBackend(
             ]
 
         # Delegate to common parent logic
-        # This seems unreachable???
-        # return super().get_attribute(data_model_class, name)
+        return super().get_attribute(data_model_class, name)
 
 
 class PandasTimePointBackend(UncachedBackendMixin, StrictFieldBackendMixin):

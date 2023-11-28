@@ -48,7 +48,7 @@ class TimeSeries(DataObjectBase):
     _DEFAULT_TS_COL = "timestamp"
 
     def __init__(self, *args, **kwargs):
-        """Constructing a MultiTimeSeries will currently delegate
+        """Constructing a TimeSeries will currently delegate
         to either a pandas or spark dataframe backend depending
         on whether a native pandas or spark dataframe are passed for
         the first argument respectively.
@@ -79,7 +79,7 @@ class TimeSeries(DataObjectBase):
             data_arg = args[0]
 
             # This will be done if SingleTimeSeries
-            if "key_column" not in kwargs or kwargs["key_column"] is None:
+            if kwargs.get("key_column") is None:
                 kwargs["key_column"] = []
 
             if isinstance(data_arg, pd.DataFrame):
