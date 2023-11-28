@@ -1,0 +1,4 @@
+caikit[runtime-grpc, runtime-http]
+
+# For http client
+requests
