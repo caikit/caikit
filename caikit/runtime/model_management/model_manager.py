@@ -133,6 +133,16 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             and self._lazy_load_local_models
             and self._lazy_load_poll_period_seconds
         )
+        self._lazy_load_write_detection_period_seconds = (
+            runtime_cfg.lazy_load_write_detection_period_seconds
+        )
+        error.type_check(
+            "<RUN58138047E>",
+            int,
+            float,
+            allow_none=True,
+            lazy_load_write_detection_period_seconds=self._lazy_load_write_detection_period_seconds,
+        )
         if self._enable_lazy_load_poll:
             atexit.register(self.shut_down)
 
@@ -455,11 +465,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         for model_id in new_models:
             model_path = os.path.join(self._local_models_dir, model_id)
 
-            # Check to make sure the model is not still being written to disk
-            disk_size = self._get_total_disk_size(model_path)
-            # Tiny sleep to wait out another write
-            time.sleep(0.01)
-            if self._get_total_disk_size(model_path) > disk_size:
+            if self._model_write_in_progress(model_path):
                 log.debug("Model %s is still being written", model_id)
                 continue
 
@@ -500,6 +506,20 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
                         repr(err),
                         exc_info=True,
                     )
+
+    def _model_write_in_progress(self, model_dir: str) -> bool:
+        if (
+            self._lazy_load_write_detection_period_seconds is None
+            or self._lazy_load_write_detection_period_seconds <= 0
+        ):
+            return False
+
+        # Get the current directory size
+        size = self._get_total_disk_size(model_dir)
+        # Sleep a bit to wait out another write
+        time.sleep(self._lazy_load_write_detection_period_seconds)
+        # Get the size again. If it has changed, then a write is currently  in progress
+        return self._get_total_disk_size(model_dir) != size
 
     @staticmethod
     def _get_total_disk_size(model_dir: str):
