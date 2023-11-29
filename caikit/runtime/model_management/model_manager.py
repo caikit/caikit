@@ -113,7 +113,10 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         error.value_check(
             "<RUN44773514E>",
             not (self._lazy_load_local_models and (not self._local_models_dir)),
-            "runtime.local_models_dir must be a valid path if set with runtime.lazy_load_local_models",
+            (
+                "runtime.local_models_dir must be a valid path"
+                " if set with runtime.lazy_load_local_models"
+            ),
         )
 
         # Set up local model periodic sync
