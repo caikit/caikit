@@ -45,6 +45,8 @@ from caikit import get_config
 from caikit.core import MODEL_MANAGER
 from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.runtime.data_model import (
+    ModelInfoRequest,
+    ModelInfoResponse,
     RuntimeInfoRequest,
     RuntimeInfoResponse,
     TrainingInfoRequest,
@@ -1011,6 +1013,31 @@ def test_runtime_info_ok_response_all_packages(runtime_grpc_server):
         # dependent libraries versions added
         assert "alog" in runtime_info_response.python_packages
         assert "py_to_proto" in runtime_info_response.python_packages
+
+
+def test_model_info_ok_response(runtime_grpc_server, sample_task_model_id):
+    info_service: ServicePackage = ServicePackageFactory().get_service_package(
+        ServicePackageFactory.ServiceType.INFO,
+    )
+
+    model_info_stub = info_service.stub_class(runtime_grpc_server.make_local_channel())
+
+    model_request = ModelInfoRequest()
+    model_info_response: ModelInfoResponse = ModelInfoResponse.from_proto(
+        model_info_stub.GetModelsInfo(model_request.to_proto())
+    )
+
+    assert len(model_info_response.models) > 0
+
+    found_sample_task = False
+    for model in model_info_response.models:
+        # Assert name and id exist
+        assert model.name and model.module_id
+        if model.name == sample_task_model_id:
+            assert model.module_name == "SampleModule"
+            found_sample_task = True
+
+    assert found_sample_task, "Unable to find sample_task model in models list"
 
 
 #### Health Probe tests ####
