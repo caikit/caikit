@@ -16,7 +16,7 @@ This file contains interfaces to handle information requests
 """
 
 # Standard
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 # First Party
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
@@ -39,3 +39,28 @@ class RuntimeInfoRequest(DataObjectBase):
 class RuntimeInfoResponse(DataObjectBase):
     runtime_version: Annotated[Optional[str], FieldNumber(1)]
     python_packages: Annotated[Dict[str, str], FieldNumber(2)]
+
+
+@dataobject(RUNTIME_PACKAGE)
+class ModelInfoRequest(DataObjectBase):
+    """Empty request for runtime server information"""
+
+
+@dataobject(RUNTIME_PACKAGE)
+class ModelInfo(DataObjectBase):
+    """Empty request for runtime server information"""
+
+    # Model information
+    model_path: Annotated[str, FieldNumber(1)]
+    name: Annotated[str, FieldNumber(2)]
+    size: Annotated[int, FieldNumber(3)]
+
+    # Module Information
+    module_id: Annotated[str, FieldNumber(4)]
+    module_name: Annotated[str, FieldNumber(5)]
+    version: Annotated[str, FieldNumber(6)]
+
+
+@dataobject(RUNTIME_PACKAGE)
+class ModelInfoResponse(DataObjectBase):
+    models: Annotated[List[ModelInfo], FieldNumber(1)]

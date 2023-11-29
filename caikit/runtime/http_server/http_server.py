@@ -113,6 +113,7 @@ HEALTH_ENDPOINT = "/health"
 
 # Endpoint to use for server info
 RUNTIME_INFO_ENDPOINT = "/info/version"
+MODELS_INFO_ENDPOINT = "/info/models"
 
 
 # Stream event types enum
@@ -197,6 +198,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Add runtime info endpoint
         self.app.get(RUNTIME_INFO_ENDPOINT, response_class=JSONResponse)(
             self.info_servicer.get_version_dict
+        )
+        self.app.get(MODELS_INFO_ENDPOINT, response_class=JSONResponse)(
+            self.info_servicer.get_models_info
         )
 
         # Parse TLS configuration
