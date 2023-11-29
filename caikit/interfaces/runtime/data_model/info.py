@@ -48,7 +48,7 @@ class ModelInfoRequest(DataObjectBase):
 
 @dataobject(RUNTIME_PACKAGE)
 class ModelInfo(DataObjectBase):
-    """Empty request for runtime server information"""
+    """Information regarding a specific Model instance"""
 
     # Model information
     model_path: Annotated[str, FieldNumber(1)]
@@ -63,4 +63,6 @@ class ModelInfo(DataObjectBase):
 
 @dataobject(RUNTIME_PACKAGE)
 class ModelInfoResponse(DataObjectBase):
+    """Model Info response contains a list of ModelInfos"""
+
     models: Annotated[List[ModelInfo], FieldNumber(1)]
