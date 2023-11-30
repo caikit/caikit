@@ -73,7 +73,7 @@ def test_example_text_sentiment():
             # Client worked well, let's stop the server
             server.terminate()
 
-    
+
 @pytest.mark.skip("Skipping until we figure out how to parallelize tests")
 @pytest.mark.examples
 def test_example_sample_lib():
@@ -116,25 +116,19 @@ def test_example_sample_lib():
 
             # Client worked well, let's stop the server
             server.terminate()
-    
-            
-def test_lazy_load_local_models_invalid_model_dir():
-    """Make sure an ephemeral model (not on disk) can be lazy loaded if the
-    right finder configuration is present to load it without hitting disk.
-    """
 
-    # breakpoint()
+
+def test_lazy_load_local_models_invalid_model_dir():
+    """Make sure a ValueError is raised,
+    when lazy_load_local_models is set to True but local_models_dir does not exist.
+    """
 
     invalid_local_models_dir = path.abspath(
         path.join(path.dirname(__file__), "invalid")
     )
-    workdir = path.abspath(path.join(path.dirname(__file__), "models"))
 
     with TemporaryDirectory() as workdir:
-        print("BANG1")
 
-        # with pytest.raises(CaikitRuntimeException) as context:
-        # with pytest.raises(Exception) as e_info:
         caikit.config.configure(
             config_dict={
                 "merge_strategy": "merge",
@@ -152,8 +146,12 @@ def test_lazy_load_local_models_invalid_model_dir():
             }
         )
 
-        # print(f"Message: {context.value.status_code}")
-        # print(e_info.type)  # This will output the type of the exception
-        # print(e_info.value)  # This will output the message of the exception
-
-    print("BANG2")
+        with pytest.raises(
+            ValueError,
+            match=(
+                "runtime.local_models_dir must be a valid path if set with"
+                " runtime.lazy_load_local_models"
+            ),
+        ) as excinfo:
+            dump_http_services(workdir)
+        print(str(excinfo.value))

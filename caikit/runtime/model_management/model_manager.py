@@ -114,6 +114,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         self._lazy_load_local_models = runtime_cfg.lazy_load_local_models
         error.value_check(
             "<RUN44773514E>",
+            # _lazy_load_local_models is set, and _local_models_dir is empty
             not (self._lazy_load_local_models and (not self._local_models_dir)),
             (
                 "runtime.local_models_dir must be a valid path"
