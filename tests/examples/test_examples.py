@@ -14,6 +14,7 @@
 
 # Standard
 from os import getenv, path
+from tempfile import TemporaryDirectory
 import asyncio
 import subprocess
 
@@ -21,7 +22,12 @@ import subprocess
 import pytest
 
 # Local
+from caikit.config.config import get_config
+from caikit.runtime.__main__ import main
+from caikit.runtime.dump_services import dump_grpc_services, dump_http_services
+from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from tests.examples.shared import requirements, waitForPort
+import caikit
 
 
 @pytest.mark.examples
@@ -66,3 +72,44 @@ def test_example_text_sentiment():
 
             # Client worked well, let's stop the server
             server.terminate()
+
+
+def test_lazy_load_local_models_invalid_model_dire():
+    """Make sure an ephemeral model (not on disk) can be lazy loaded if the
+    right finder configuration is present to load it without hitting disk.
+    """
+
+    # breakpoint()
+
+    invalid_local_models_dir = path.abspath(
+        path.join(path.dirname(__file__), "invalid")
+    )
+    workdir = path.abspath(path.join(path.dirname(__file__), "models"))
+
+    with TemporaryDirectory() as workdir:
+        print("BANG1")
+
+        # with pytest.raises(CaikitRuntimeException) as context:
+        # with pytest.raises(Exception) as e_info:
+        caikit.config.configure(
+            config_dict={
+                "merge_strategy": "merge",
+                "runtime": {
+                    "library": "sample_lib",
+                    "local_models_dir": invalid_local_models_dir,
+                    "lazy_load_local_models": True,
+                    "grpc": {"enabled": True},
+                    "http": {"enabled": True},
+                    "training": {"save_with_id": False, "output_dir": workdir},
+                    "service_generation": {
+                        "package": "caikit_sample_lib"
+                    },  # This is done to avoid name collision with Caikit itself
+                },
+            }
+        )
+
+        # print(f"Message: {context.value.status_code}")
+        # print(e_info.type)  # This will output the type of the exception
+        # print(e_info.value)  # This will output the message of the exception
+
+    print("BANG2")
