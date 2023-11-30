@@ -74,7 +74,7 @@ def test_example_text_sentiment():
             server.terminate()
 
 
-def test_lazy_load_local_models_invalid_model_dire():
+def test_lazy_load_local_models_invalid_model_dir():
     """Make sure an ephemeral model (not on disk) can be lazy loaded if the
     right finder configuration is present to load it without hitting disk.
     """
