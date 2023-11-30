@@ -22,8 +22,6 @@ import subprocess
 import pytest
 
 # Local
-from caikit.config.config import get_config
-from caikit.runtime.__main__ import main
 from caikit.runtime.dump_services import dump_grpc_services, dump_http_services
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from tests.examples.shared import requirements, waitForPort
