@@ -73,7 +73,51 @@ def test_example_text_sentiment():
             # Client worked well, let's stop the server
             server.terminate()
 
+    
+@pytest.mark.skip("Skipping until we figure out how to parallelize tests")
+@pytest.mark.examples
+def test_example_sample_lib():
+    # Example specific grpc port
+    grpc_port = 8085
+    with requirements("sample_lib") as (python_venv, example_dir):
+        # Start the server
+        with subprocess.Popen(
+            [python_venv, "start_runtime_with_sample_lib.py"],
+            cwd=example_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        ) as server:
+            # Check if the gRPC port is open
+            # The gRPC server start-up time has some inherent variability
+            # 60s timeout should cover most situations, while keeping the
+            # test execution time reasonable
+            if not asyncio.run(waitForPort(grpc_port, 60)):
+                server.terminate()
+                pytest.fail(
+                    "Failed to connect to the gRPC server on port {} in 30s.".format(
+                        grpc_port
+                    )
+                )
 
+            # Server is running, start the client
+            # Use a timeout of 10s for inference. Capture outputs to report
+            # them in case of failure.
+            try:
+                subprocess.run(
+                    [python_venv, path.join(example_dir, "client.py")],
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    timeout=30,
+                )
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+                server.terminate()
+                pytest.fail("Client failed with output: {}".format(e))
+
+            # Client worked well, let's stop the server
+            server.terminate()
+    
+            
 def test_lazy_load_local_models_invalid_model_dir():
     """Make sure an ephemeral model (not on disk) can be lazy loaded if the
     right finder configuration is present to load it without hitting disk.

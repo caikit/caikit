@@ -159,7 +159,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 "id": uuid.uuid4().hex,
             }
             log.error("<RUN59871106E>", error_content, exc_info=True)
-            return Response(content=json.dumps(error_content), status_code=err_code)
+            return JSONResponse(
+                content=jsonable_encoder(error_content),
+                status_code=err_code,
+            )
 
         # Response validation
         @self.app.exception_handler(ResponseValidationError)

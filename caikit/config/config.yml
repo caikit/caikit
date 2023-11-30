@@ -103,6 +103,10 @@ runtime:
     # that fail due to partially uploaded model artifacts when the load is
     # initiated.
     lazy_load_retries: 2
+    # Amount of time to watch for file updates to detect if a model is being written.
+    # Models that are being written will not be prematurely loaded
+    # Use zero or a negative value or None to disable
+    lazy_load_write_detection_period_seconds: 0.05
 
     # Number of threads to make available for load jobs (null => all)
     load_threads: null
@@ -139,6 +143,8 @@ runtime:
         route_prefix: api/v1
         # Maximum number of seconds to wait for graceful shutdown
         server_shutdown_grace_period_seconds: 5
+        # Timeout for health probe to receive a response
+        probe_timeout: 0.01
 
     # Configuration for the metrics server
     metrics:
