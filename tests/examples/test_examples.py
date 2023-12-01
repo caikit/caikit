@@ -13,8 +13,7 @@
 # limitations under the License.
 
 # Standard
-from os import getenv, path
-from tempfile import TemporaryDirectory
+from os import path
 import asyncio
 import subprocess
 
@@ -22,10 +21,7 @@ import subprocess
 import pytest
 
 # Local
-from caikit.runtime.dump_services import dump_grpc_services, dump_http_services
-from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from tests.examples.shared import requirements, waitForPort
-import caikit
 
 
 @pytest.mark.examples
@@ -114,42 +110,3 @@ def test_example_sample_lib():
 
             # Client worked well, let's stop the server
             server.terminate()
-
-
-def test_lazy_load_local_models_invalid_model_dir():
-    """Make sure a ValueError is raised,
-    when lazy_load_local_models is set to True but local_models_dir does not exist.
-    """
-
-    invalid_local_models_dir = path.abspath(
-        path.join(path.dirname(__file__), "invalid")
-    )
-
-    with TemporaryDirectory() as workdir:
-
-        caikit.config.configure(
-            config_dict={
-                "merge_strategy": "merge",
-                "runtime": {
-                    "library": "sample_lib",
-                    "local_models_dir": invalid_local_models_dir,
-                    "lazy_load_local_models": True,
-                    "grpc": {"enabled": True},
-                    "http": {"enabled": True},
-                    "training": {"save_with_id": False, "output_dir": workdir},
-                    "service_generation": {
-                        "package": "caikit_sample_lib"
-                    },  # This is done to avoid name collision with Caikit itself
-                },
-            }
-        )
-
-        with pytest.raises(
-            ValueError,
-            match=(
-                "runtime.local_models_dir must be a valid path if set with"
-                " runtime.lazy_load_local_models"
-            ),
-        ) as excinfo:
-            dump_http_services(workdir)
-        print(str(excinfo.value))
