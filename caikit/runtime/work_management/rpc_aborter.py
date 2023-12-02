@@ -26,7 +26,7 @@ import alog
 
 # Local
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.work_management.abortable_action import ActionAborter, AbortableContext
+from caikit.runtime.work_management.abortable_action import ActionAborter, AbortableContextBase
 
 log = alog.use_channel("CALL-ABORTER")
 
@@ -58,12 +58,9 @@ class RpcAborter(ActionAborter):
         if not callback_registered:
             log.warning(
                 "<RUN65620101W>",
-                "Failed to register rpc termination callback, aborting rpc",
+                "Failed to register rpc termination callback, call has likely terminated",
             )
-            raise CaikitRuntimeException(
-                grpc.StatusCode.ABORTED,
-                "Could not register RPC callback, call has likely terminated.",
-            )
+            self.is_terminated = True
 
     def must_abort(self):
         return self.is_terminated
@@ -75,8 +72,10 @@ class RpcAborter(ActionAborter):
         if self.must_abort():
             event.set()
 
-    def set_context(self, context: AbortableContext):
+    def set_context(self, context: AbortableContextBase):
         self.context = context
+        if self.must_abort():
+            self.context.abort()
 
     def unset_context(self):
         self.context = None

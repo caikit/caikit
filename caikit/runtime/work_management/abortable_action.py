@@ -29,7 +29,7 @@ from caikit.runtime.types.aborted_exception import AbortedException
 log = alog.use_channel("ABORT-ACTION")
 
 
-class AbortableContext(abc.ABC):
+class AbortableContextBase(abc.ABC):
 
     @abc.abstractmethod
     def abort(self):
@@ -51,7 +51,7 @@ class ActionAborter(abc.ABC):
         """Add an event to notify when abort happens"""
 
     @abc.abstractmethod
-    def set_context(self, context: AbortableContext):
+    def set_context(self, context: AbortableContextBase):
         """Set the abortable context that must be notified to abort work"""
 
     @abc.abstractmethod
@@ -222,7 +222,7 @@ class WorkWatcher:
             return False
 
 
-class AbortableWork(AbortableContext):
+class AbortableContext(AbortableContextBase):
     """Context manager for running work inside a context where it's safe to abort.
 
     This is a class instead of a `@contextmanager` function because __exit__ needs to

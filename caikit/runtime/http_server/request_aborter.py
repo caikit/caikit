@@ -27,7 +27,7 @@ from fastapi import Request
 import alog
 
 # Local
-from caikit.runtime.work_management.abortable_action import ActionAborter, AbortableContext
+from caikit.runtime.work_management.abortable_action import ActionAborter, AbortableContextBase
 
 log = alog.use_channel("REQUEST-ABORTER")
 
@@ -118,7 +118,7 @@ class HttpRequestAborter(ActionAborter):
         if self.must_abort():
             event.set()
 
-    def set_context(self, context: AbortableContext):
+    def set_context(self, context: AbortableContextBase):
         self.context = context
         if self.must_abort():
             self.context.abort()

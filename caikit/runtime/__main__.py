@@ -14,6 +14,7 @@
 # First Party
 import alog
 
+import caikit
 # Local
 from caikit.config.config import get_config
 
