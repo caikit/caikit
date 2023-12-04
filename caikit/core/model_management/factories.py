@@ -21,6 +21,7 @@ from .local_model_finder import LocalModelFinder
 from .local_model_initializer import LocalModelInitializer
 from .local_model_trainer import LocalModelTrainer
 from .multi_model_finder import MultiModelFinder
+from .multi_model_initializer import MultiModelInitializer
 
 # Model trainer factory. A trainer is responsible for performing the train
 # operation against a configured framework connection.
@@ -38,3 +39,4 @@ model_finder_factory.register(MultiModelFinder)
 # location.
 model_initializer_factory = ImportableFactory("ModelInitializer")
 model_initializer_factory.register(LocalModelInitializer)
+model_initializer_factory.register(MultiModelInitializer)
