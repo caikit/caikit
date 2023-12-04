@@ -34,8 +34,8 @@ import pytest
 from caikit.interfaces.ts.data_model._single_timeseries import SingleTimeSeries
 from caikit.interfaces.ts.data_model.backends._spark_backends import (
     SparkTimeSeriesBackend,
+    ensure_spark_cached,
 )
-from caikit.interfaces.ts.data_model.backends._spark_backends import ensure_spark_cached
 from caikit.interfaces.ts.data_model.backends.util import (
     iteritems_workaround,
     pd_timestamp_to_seconds,

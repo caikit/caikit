@@ -22,8 +22,8 @@ to do.
 """
 
 # Standard
-from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Tuple, Type, Union
 from contextlib import contextmanager
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Tuple, Type, Union
 
 # Third Party
 import pandas as pd
@@ -47,6 +47,7 @@ if TYPE_CHECKING:
 
 log = alog.use_channel("SPBCK")
 error = error_handler.get(log)
+
 
 @contextmanager
 def ensure_spark_cached(dataframe: pyspark.sql.DataFrame) -> pyspark.sql.DataFrame:
@@ -74,6 +75,7 @@ def ensure_spark_cached(dataframe: pyspark.sql.DataFrame) -> pyspark.sql.DataFra
     yield dataframe
     if do_cache:
         dataframe.unpersist()
+
 
 class SparkMultiTimeSeriesBackend(MultiTimeSeriesBackendBase):
     def __init__(
