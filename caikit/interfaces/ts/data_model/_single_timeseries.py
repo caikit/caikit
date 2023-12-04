@@ -278,7 +278,7 @@ class SingleTimeSeries(DataObjectBase):
             result_df.reset_index(inplace=True)
             result_df = result_df.rename(columns={"index": self.timestamp_label})
 
-        # todo need to look into this? Is it required as we are not exposing
+        # Not exposing the _single_timeseries and the dataframe will be cached elsewhere
         # self._backend = PandasTimeSeriesBackend(result_df, timestamp_column=self.timestamp_label,
         #   value_columns=value_labels)
         # Make the data frame
