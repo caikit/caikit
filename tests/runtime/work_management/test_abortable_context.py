@@ -46,7 +46,7 @@ def wait_for_watcher_to_run(work_watcher, timeout=1):
     while (datetime.datetime.now() - start).total_seconds() < timeout:
         if work_watcher._queue.empty():
             return
-        time.sleep(0.01)
+        time.sleep(0.001)
 
 
 def test_context_runs_stuff(work_watcher, rpc_aborter):
@@ -72,8 +72,8 @@ def test_context_can_be_canceled(work_watcher, rpc_aborter, grpc_context):
     assert result == 1
 
 
-def test_context_aborts_immediately_if_rpc_already_canceled(work_watcher, rpc_aborter, grpc_context):
-    """The context does not even start if the rpc context was previously canceled"""
+def test_context_aborts_if_rpc_already_canceled(work_watcher, rpc_aborter, grpc_context):
+    """The context will abort if the rpc context was previously canceled"""
     grpc_context.cancel()
 
     with pytest.raises(AbortedException):
