@@ -1064,19 +1064,20 @@ def test_lazy_load_true_local_models_dir_valid():
 
     with TemporaryDirectory() as cache_dir:
 
-        with non_singleton_model_managers(
-            1,
+        ModelManager._ModelManager__instance = None
+        with temp_config(
             {
                 "runtime": {
                     "local_models_dir": cache_dir,
                     "lazy_load_local_models": True,
                     "training": {"save_with_id": False, "output_dir": cache_dir},
-                },
+                }
             },
-            "merge",
-        ) as managers:
-            manager = managers[0]
-            assert manager._local_models_dir == cache_dir
+            merge_strategy="merge",
+        ):
+            MODEL_MANAGER = ModelManager()
+            assert len(MODEL_MANAGER.loaded_models) == 0
+            assert MODEL_MANAGER._local_models_dir == cache_dir
 
 
 def test_lazy_load_true_local_models_dir_invalid():
@@ -1090,18 +1091,18 @@ def test_lazy_load_true_local_models_dir_invalid():
             ValueError,
         ) as excinfo:
 
-            with non_singleton_model_managers(
-                1,
+            ModelManager._ModelManager__instance = None
+            with temp_config(
                 {
                     "runtime": {
                         "local_models_dir": "",
                         "lazy_load_local_models": True,
                         "training": {"save_with_id": False, "output_dir": cache_dir},
-                    },
+                    }
                 },
-                "merge",
-            ) as managers:
-                manager = managers[0]
+                merge_strategy="merge",
+            ):
+                MODEL_MANAGER = ModelManager()
 
 
 def test_lazy_load_false_local_models_dir_valid():
@@ -1111,19 +1112,20 @@ def test_lazy_load_false_local_models_dir_valid():
 
     with TemporaryDirectory() as cache_dir:
 
-        with non_singleton_model_managers(
-            1,
+        ModelManager._ModelManager__instance = None
+        with temp_config(
             {
                 "runtime": {
                     "local_models_dir": cache_dir,
                     "lazy_load_local_models": False,
                     "training": {"save_with_id": False, "output_dir": cache_dir},
-                },
+                }
             },
-            "merge",
-        ) as managers:
-            manager = managers[0]
-            assert manager._local_models_dir == cache_dir
+            merge_strategy="merge",
+        ):
+            MODEL_MANAGER = ModelManager()
+            assert len(MODEL_MANAGER.loaded_models) == 0
+            assert MODEL_MANAGER._local_models_dir == cache_dir
 
 
 def test_lazy_load_false_local_models_dir_invalid():
@@ -1133,16 +1135,17 @@ def test_lazy_load_false_local_models_dir_invalid():
 
     with TemporaryDirectory() as cache_dir:
 
-        with non_singleton_model_managers(
-            1,
+        ModelManager._ModelManager__instance = None
+        with temp_config(
             {
                 "runtime": {
                     "local_models_dir": "",
                     "lazy_load_local_models": False,
                     "training": {"save_with_id": False, "output_dir": cache_dir},
-                },
+                }
             },
-            "merge",
-        ) as managers:
-            manager = managers[0]
-            assert not manager._local_models_dir
+            merge_strategy="merge",
+        ):
+            MODEL_MANAGER = ModelManager()
+            assert len(MODEL_MANAGER.loaded_models) == 0
+            assert not MODEL_MANAGER._local_models_dir
