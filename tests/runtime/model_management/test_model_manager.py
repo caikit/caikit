@@ -31,7 +31,6 @@ import pytest
 from caikit import get_config
 from caikit.core.model_manager import ModelManager as CoreModelManager
 from caikit.core.modules import ModuleBase
-from caikit.runtime.dump_services import dump_grpc_services, dump_http_services
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -1069,15 +1068,9 @@ def test_lazy_load_true_local_models_dir_valid():
             1,
             {
                 "runtime": {
-                    "library": "sample_lib",
                     "local_models_dir": cache_dir,
                     "lazy_load_local_models": True,
-                    "grpc": {"enabled": True},
-                    "http": {"enabled": True},
                     "training": {"save_with_id": False, "output_dir": cache_dir},
-                    "service_generation": {
-                        "package": "caikit_sample_lib"
-                    },  # This is done to avoid name collision with Caikit itself
                 },
             },
             "merge",
@@ -1091,10 +1084,6 @@ def test_lazy_load_true_local_models_dir_invalid():
     Raise ValueError with an appropriate message
     """
 
-    invalid_local_models_dir = path.abspath(
-        path.join(path.dirname(__file__), "invalid")
-    )
-
     with TemporaryDirectory() as cache_dir:
 
         with pytest.raises(
@@ -1105,15 +1094,9 @@ def test_lazy_load_true_local_models_dir_invalid():
                 1,
                 {
                     "runtime": {
-                        "library": "sample_lib",
-                        "local_models_dir": invalid_local_models_dir,
+                        "local_models_dir": "",
                         "lazy_load_local_models": True,
-                        "grpc": {"enabled": True},
-                        "http": {"enabled": True},
                         "training": {"save_with_id": False, "output_dir": cache_dir},
-                        "service_generation": {
-                            "package": "caikit_sample_lib"
-                        },  # This is done to avoid name collision with Caikit itself
                     },
                 },
                 "merge",
@@ -1132,15 +1115,9 @@ def test_lazy_load_false_local_models_dir_valid():
             1,
             {
                 "runtime": {
-                    "library": "sample_lib",
                     "local_models_dir": cache_dir,
                     "lazy_load_local_models": False,
-                    "grpc": {"enabled": True},
-                    "http": {"enabled": True},
                     "training": {"save_with_id": False, "output_dir": cache_dir},
-                    "service_generation": {
-                        "package": "caikit_sample_lib"
-                    },  # This is done to avoid name collision with Caikit itself
                 },
             },
             "merge",
@@ -1154,25 +1131,15 @@ def test_lazy_load_false_local_models_dir_invalid():
     Check that the local_models_dir is False / Empty
     """
 
-    invalid_local_models_dir = path.abspath(
-        path.join(path.dirname(__file__), "invalid")
-    )
-
     with TemporaryDirectory() as cache_dir:
 
         with non_singleton_model_managers(
             1,
             {
                 "runtime": {
-                    "library": "sample_lib",
-                    "local_models_dir": invalid_local_models_dir,
+                    "local_models_dir": "",
                     "lazy_load_local_models": False,
-                    "grpc": {"enabled": True},
-                    "http": {"enabled": True},
                     "training": {"save_with_id": False, "output_dir": cache_dir},
-                    "service_generation": {
-                        "package": "caikit_sample_lib"
-                    },  # This is done to avoid name collision with Caikit itself
                 },
             },
             "merge",
