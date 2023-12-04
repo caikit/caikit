@@ -148,11 +148,7 @@ class TimeSeries(DataObjectBase):
         if set(left_id_map.keys()) != set(right_id_map.keys()):
             return False
 
-        for l_key, l_ts in left_id_map.items():
-            if l_ts != right_id_map[l_key]:
-                return False
-
-        return True
+        return all(l_ts == right_id_map[l_key] for l_key, l_ts in left_id_map.items())
 
     def _get_pd_df(self) -> Tuple[pd.DataFrame, Iterable[str], str, Iterable[str]]:
         """Convert the data to a pandas DataFrame, efficiently if possible"""
