@@ -284,6 +284,36 @@ class SingleTimeSeries(DataObjectBase):
         # Make the data frame
         return result_df, self.timestamp_label, value_labels
 
+    def __eq__(self, other: "SingleTimeSeries") -> bool:
+        """Equivalence operator for SingleTimeSeries objects.
+
+        Performs ordering of data based on timestamp_label prior to checking for equivalence. Relies
+        on underlying pandas equivalence testing function `pd.testing.assert_frame_equal`.
+
+        Args:
+            other (SingleTimeSeries): SingleTimeSeries to test against.
+
+        Returns:
+            bool: True if the SingleTimeSeries are equivalent.
+        """
+
+        error.type_check("<COR98387946E>", SingleTimeSeries, other=other)
+
+        if self.timestamp_label != other.timestamp_label:
+            return False
+
+        sort_columns = [self.timestamp_label] if self.timestamp_label else []
+
+        try:
+            pd.testing.assert_frame_equal(
+                self.as_pandas().sort_values(by=sort_columns),
+                other.as_pandas().sort_values(by=sort_columns),
+            )
+        except AssertionError:
+            return False
+
+        return True
+
     ## Views ##
 
     def _as_pandas_ops(self, adf, include_timestamps: Union[None, bool] = False):

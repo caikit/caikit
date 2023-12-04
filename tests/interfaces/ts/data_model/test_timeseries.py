@@ -789,3 +789,44 @@ def test_dm_serializes_spark_vectors(sslocal_fixture):
     json_str = mts.to_json()
     mts2 = dm.TimeSeries.from_json(json_str)
     assert json_str == mts2.to_json()
+
+
+def test_ts_eq():
+    """Test time series equivalence"""
+    df = pd.concat(
+        [
+            pd.DataFrame(
+                [("a", x, x * 5) for x in range(20)], columns=["id", "ts", "val"]
+            ),
+            pd.DataFrame(
+                [("b", x, x * 5) for x in range(30)], columns=["id", "ts", "val"]
+            ),
+        ],
+        axis=0,
+    )
+
+    mts = dm.TimeSeries(df, key_column=["id"], timestamp_column="ts")
+    mts_a = dm.TimeSeries(df[df.id == "a"], key_column=["id"], timestamp_column="ts")
+    mts_missing_time = dm.TimeSeries(
+        df[df.ts < 20], key_column=["id"], timestamp_column="ts"
+    )
+
+    # null is equal
+    assert dm.TimeSeries(pd.DataFrame()) == dm.TimeSeries(pd.DataFrame())
+
+    # trivially equal
+    assert mts == mts
+    assert mts_a == mts_a
+
+    # number of ids different
+    assert mts != mts_a
+
+    # same number of ids, but different ones
+    df_c = df.copy()
+    df_c.loc[df_c["id"] == "b", "id"] = "c"
+    mts_c = dm.TimeSeries(df_c, key_column=["id"], timestamp_column="ts")
+
+    assert mts != mts_c
+
+    # missing time points
+    assert mts != mts_missing_time

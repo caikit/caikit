@@ -116,6 +116,44 @@ class TimeSeries(DataObjectBase):
             f"Unknown backend {type(backend)}",
         )  # pragma: no cover
 
+    def __eq__(self, other: "TimeSeries") -> bool:
+        """Equivalence operator for TimeSeries objects.
+
+        Args:
+            other (TimeSeries): TimeSeries to test against.
+
+        Returns:
+            bool: True if the TimeSeries are equivalent.
+        """
+
+        # if number of mts is different, always unequal
+        if len(self.timeseries) != len(other.timeseries):
+            return False
+
+        # empty mts is equal
+        if len(self.timeseries) == 0:
+            # ignoring edge cases of empty mts with different columns
+            # unclear if this is even possible
+            return True  # pragma: no cover
+
+        # degenerate case
+        if len(self.timeseries) == 1:
+            return self.timeseries[0] == other.timeseries[0]
+
+        # create map between keys and time series
+        left_id_map = {tuple(ts.ids.values): ts for ts in self.timeseries}
+        right_id_map = {tuple(ts.ids.values): ts for ts in other.timeseries}
+
+        # quickly check keys are identical
+        if set(left_id_map.keys()) != set(right_id_map.keys()):
+            return False
+
+        for l_key, l_ts in left_id_map.items():
+            if l_ts != right_id_map[l_key]:
+                return False
+
+        return True
+
     def _get_pd_df(self) -> Tuple[pd.DataFrame, Iterable[str], str, Iterable[str]]:
         """Convert the data to a pandas DataFrame, efficiently if possible"""
 
