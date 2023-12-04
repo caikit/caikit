@@ -15,12 +15,19 @@
 # Third Party
 import pandas as pd
 
+# First Party
+import alog
+
 # Local
-import caikit.interfaces.ts.data_model as dm
+from ....core.exceptions import error_handler
+from . import TimeSeries
+
+log = alog.use_channel("TSDM")
+error = error_handler.get(log)
 
 
 # pylint: disable=too-many-return-statements
-def mts_equals(left: dm.TimeSeries, right: dm.TimeSeries, **kwargs) -> bool:
+def mts_equals(left: TimeSeries, right: TimeSeries, **kwargs) -> bool:
     """Compare if two TimeSeries objects are equal
     Args:
         left (dm.TimeSeries): A multi-time series to compare.
@@ -28,6 +35,8 @@ def mts_equals(left: dm.TimeSeries, right: dm.TimeSeries, **kwargs) -> bool:
     Returns:
         bool: True if they are identical
     """
+
+    error.type_check("<COR98387946E>", TimeSeries, left=left, right=right)
 
     # if number of mts is different, always unequal
     if len(left.timeseries) != len(right.timeseries):
