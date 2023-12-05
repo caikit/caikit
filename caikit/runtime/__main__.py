@@ -16,7 +16,6 @@ import alog
 
 # Local
 from caikit.config.config import get_config
-import caikit
 
 log = alog.use_channel("RUNTIME-MAIN")
 

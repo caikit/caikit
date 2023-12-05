@@ -25,7 +25,6 @@ import grpc
 import alog
 
 # Local
-from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.work_management.abortable_action import (
     AbortableContextBase,
     ActionAborter,

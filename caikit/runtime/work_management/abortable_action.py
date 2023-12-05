@@ -194,7 +194,7 @@ class WorkWatcher:
                 # Ensure this context/thread pair is unregistered
                 self.unregister(context_id)
 
-            except Exception as e:
+            except Exception:
                 log.warning("Caught exception while running abort loop", exc_info=True)
 
     def _kill_thread(self, context_id: uuid.UUID) -> bool:
@@ -205,12 +205,6 @@ class WorkWatcher:
                 ctypes.c_long(thread_id), ctypes.py_object(AbortedException)
             )
             if async_exception_result > 1:
-                # log.error(
-                #     "<COR14653277E>",
-                #     "Could not raise async exception on destroyable thread for %s. Result code: %s",
-                #     self.runnable_func,
-                #     async_exception_result,
-                # )
                 log.warning("Failed to abort thread")
                 return False
 
