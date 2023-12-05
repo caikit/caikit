@@ -1070,7 +1070,6 @@ def test_lazy_load_true_local_models_dir_valid():
                 "runtime": {
                     "local_models_dir": cache_dir,
                     "lazy_load_local_models": True,
-                    "training": {"save_with_id": False, "output_dir": cache_dir},
                 }
             },
             merge_strategy="merge",
@@ -1097,7 +1096,6 @@ def test_lazy_load_true_local_models_dir_invalid():
                     "runtime": {
                         "local_models_dir": "",
                         "lazy_load_local_models": True,
-                        "training": {"save_with_id": False, "output_dir": cache_dir},
                     }
                 },
                 merge_strategy="merge",
@@ -1118,7 +1116,6 @@ def test_lazy_load_false_local_models_dir_valid():
                 "runtime": {
                     "local_models_dir": cache_dir,
                     "lazy_load_local_models": False,
-                    "training": {"save_with_id": False, "output_dir": cache_dir},
                 }
             },
             merge_strategy="merge",
@@ -1141,7 +1138,6 @@ def test_lazy_load_false_local_models_dir_invalid():
                 "runtime": {
                     "local_models_dir": "",
                     "lazy_load_local_models": False,
-                    "training": {"save_with_id": False, "output_dir": cache_dir},
                 }
             },
             merge_strategy="merge",
