@@ -45,7 +45,11 @@ from caikit.runtime.utils.servicer_util import (
     get_metadata,
     validate_data_model,
 )
-from caikit.runtime.work_management.abortable_action import WorkWatcher, AbortableContext, AbortableAction
+from caikit.runtime.work_management.abortable_action import (
+    AbortableAction,
+    AbortableContext,
+    WorkWatcher,
+)
 from caikit.runtime.work_management.rpc_aborter import RpcAborter
 
 PREDICT_RPC_COUNTER = Counter(
@@ -95,7 +99,7 @@ class GlobalPredictServicer:
         inference_service: ServicePackage,
         use_abortable_threads: bool = get_config().runtime.use_abortable_threads,
         use_abortable_contexts: bool = get_config().runtime.use_abortable_contexts,
-        watcher: WorkWatcher = None
+        watcher: WorkWatcher = None,
     ):
         self._started_metering = False
         self._model_manager = ModelManager.get_instance()

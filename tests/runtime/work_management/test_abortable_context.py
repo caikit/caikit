@@ -15,11 +15,16 @@
 import datetime
 import threading
 import time
+
+# Third Party
 import pytest
 
 # Local
 from caikit.runtime.types.aborted_exception import AbortedException
-from caikit.runtime.work_management.abortable_action import AbortableContext, WorkWatcher
+from caikit.runtime.work_management.abortable_action import (
+    AbortableContext,
+    WorkWatcher,
+)
 from caikit.runtime.work_management.rpc_aborter import RpcAborter
 from tests.fixtures import Fixtures
 
@@ -33,13 +38,16 @@ def work_watcher():
 
     watcher.stop()
 
+
 @pytest.fixture()
 def grpc_context():
     return Fixtures.build_context("abortable-context-test")
 
+
 @pytest.fixture()
 def rpc_aborter(grpc_context):
     return RpcAborter(grpc_context)
+
 
 def wait_for_watcher_to_run(work_watcher, timeout=1):
     start = datetime.datetime.now()
@@ -72,7 +80,9 @@ def test_context_can_be_canceled(work_watcher, rpc_aborter, grpc_context):
     assert result == 1
 
 
-def test_context_aborts_if_rpc_already_canceled(work_watcher, rpc_aborter, grpc_context):
+def test_context_aborts_if_rpc_already_canceled(
+    work_watcher, rpc_aborter, grpc_context
+):
     """The context will abort if the rpc context was previously canceled"""
     grpc_context.cancel()
 

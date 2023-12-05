@@ -101,7 +101,9 @@ def sample_inference_service(render_protos) -> ServicePackage:
 def sample_predict_servicer(sample_inference_service) -> GlobalPredictServicer:
     watcher = WorkWatcher()
     watcher.start()
-    servicer = GlobalPredictServicer(inference_service=sample_inference_service, watcher=watcher)
+    servicer = GlobalPredictServicer(
+        inference_service=sample_inference_service, watcher=watcher
+    )
     yield servicer
     # Make sure to not leave the rpc_meter hanging
     # (It does try to clean itself up on destruction, but just to be sure)

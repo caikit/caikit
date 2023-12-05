@@ -15,8 +15,8 @@
 import threading
 import unittest
 
-from caikit.runtime.work_management.abortable_action import AbortableContextBase
 # Local
+from caikit.runtime.work_management.abortable_action import AbortableContextBase
 from caikit.runtime.work_management.rpc_aborter import RpcAborter
 from tests.fixtures import Fixtures
 
@@ -63,7 +63,7 @@ class TestRpcAborter(unittest.TestCase):
 
 def test_call_aborter_invokes_abortable_context():
     """The whole reason this class exists:
-        If the grpc context is canceled, the abortable context should be aborted
+    If the grpc context is canceled, the abortable context should be aborted
     """
     grpc_ctx = Fixtures.build_context("call_aborter_event_party")
     abort_ctx = StubAbortableContext()

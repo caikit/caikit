@@ -31,8 +31,8 @@ from caikit.core.exceptions import error_handler
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-import caikit
 from caikit.runtime.work_management.abortable_action import WorkWatcher
+import caikit
 
 log = alog.use_channel("SERVR-BASE")
 error = error_handler.get(log)

@@ -27,6 +27,8 @@ class AbortedException(CaikitRuntimeException):
 
     def __init__(self, message: str = None):
         if not message:
-            message = ("Work in this thread was aborted by a context manager. "
-                       "This is usually due to a client timeout or cancellation.")
+            message = (
+                "Work in this thread was aborted by a context manager. "
+                "This is usually due to a client timeout or cancellation."
+            )
         super().__init__(grpc.StatusCode.ABORTED, message)

@@ -84,8 +84,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
         if self.enable_inference:
             log.info("<RUN20247875I>", "Enabling gRPC inference service")
             self._global_predict_servicer = GlobalPredictServicer(
-                self.inference_service,
-                watcher=self.watcher
+                self.inference_service, watcher=self.watcher
             )
             self.server = CaikitRuntimeServerWrapper(
                 server=self.server,

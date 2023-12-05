@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import ctypes
-import uuid
-from queue import SimpleQueue
 # Standard
+from queue import SimpleQueue
 from typing import Callable, Dict
 import abc
+import ctypes
 import threading
+import uuid
 
 # First Party
 import alog
@@ -30,7 +30,6 @@ log = alog.use_channel("ABORT-ACTION")
 
 
 class AbortableContextBase(abc.ABC):
-
     @abc.abstractmethod
     def abort(self):
         """Called to abort work in progress"""
@@ -138,7 +137,7 @@ class AbortableAction:
 class WorkWatcher:
     """This class implements a listener which will observe all ongoing work registered with
     ActionAborters and raise exceptions in the working threads if they need to be aborted.
-    
+
     This offers a performance advantage over using `AbortableActions`, since only one extra
     listener thread is created that lives for the whole lifetime of the program. The caveat
     is that all work to be aborted must be running in a thread that is safe to kill: this would
