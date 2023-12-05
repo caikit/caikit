@@ -21,7 +21,7 @@ import threading
 import alog
 
 # Local
-from caikit.core.toolkit.destroyable_thread import DestroyableThread
+from caikit.core.toolkit.concurrency.destroyable_thread import DestroyableThread
 from caikit.runtime.types.aborted_exception import AbortedException
 
 log = alog.use_channel("ABORT-ACTION")

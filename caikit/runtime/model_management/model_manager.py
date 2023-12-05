@@ -447,7 +447,13 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         try:
             disk_models = os.listdir(self._local_models_dir)
         except FileNotFoundError as err:
+            log.error(
+                "<RUN44739499E>", "Failed to read model ids from disk", exc_info=True
+            )
             raise StopIteration() from err
+
+        log.debug3("All models found in local disk cache: %s", disk_models)
+        log.debug3("Currently loaded models: %s", list(self.loaded_models.keys()))
 
         # Find all models that aren't currently loaded
         new_models = [

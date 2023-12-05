@@ -33,14 +33,14 @@ from ...interfaces.common.data_model.stream_sources import S3Path
 from ..data_model import TrainingStatus
 from ..exceptions import error_handler
 from ..modules import ModuleBase
-from ..toolkit.destroyable_process import DestroyableProcess
-from ..toolkit.destroyable_thread import DestroyableThread
 from ..toolkit.logging import configure as configure_logging
 from .model_trainer_base import ModelTrainerBase, TrainingInfo
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
     CaikitCoreStatusCode,
 )
+from caikit.core.toolkit.concurrency.destroyable_process import DestroyableProcess
+from caikit.core.toolkit.concurrency.destroyable_thread import DestroyableThread
 import caikit
 
 log = alog.use_channel("LOC-TRNR")
