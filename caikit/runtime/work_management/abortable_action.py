@@ -13,7 +13,7 @@
 # limitations under the License.
 import ctypes
 import uuid
-from queue import Queue
+from queue import SimpleQueue
 # Standard
 from typing import Callable, Dict
 import abc
@@ -146,7 +146,8 @@ class WorkWatcher:
     """
 
     def __init__(self):
-        self._queue = Queue()
+        # Using a SimpleQueue because we don't need the Queue's task api
+        self._queue = SimpleQueue()
         self._thread = threading.Thread(target=self._watch_loop)
 
         self._context_thread_map: Dict[uuid.UUID, int] = {}
