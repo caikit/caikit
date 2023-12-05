@@ -1086,9 +1086,7 @@ def test_lazy_load_true_local_models_dir_invalid():
 
     with TemporaryDirectory() as cache_dir:
 
-        with pytest.raises(
-            ValueError,
-        ) as excinfo:
+        with pytest.raises(ValueError):
 
             ModelManager._ModelManager__instance = None
             with temp_config(
