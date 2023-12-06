@@ -93,11 +93,18 @@ class TimeSeries(DataObjectBase):
 
                 self._backend = SparkMultiTimeSeriesBackend(*args, **kwargs)
 
-    def __len__(self):
+    def __len__(self) -> int:
+        """Return the length of the time series object.
+
+        Returns:
+            int: Length
+        """
         backend = getattr(self, "_backend", None)
 
         if backend is None:
-            return len(self.as_pandas())
+            if self.timeseries:
+                return sum(len(ts) for ts in self.timeseries)
+            return 0
 
         if HAVE_PYSPARK:
             # Local

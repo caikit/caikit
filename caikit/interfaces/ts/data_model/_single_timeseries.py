@@ -82,7 +82,6 @@ class SingleTimeSeries(DataObjectBase):
     ]
 
     _DEFAULT_TS_COL = "timestamp"
-    # _private_slots = ("_which_oneof_time_sequence", "_which_oneof_ids")
 
     # TODO: We need to clean up the init semantics
     def __init__(self, *args, **kwargs):
@@ -283,6 +282,16 @@ class SingleTimeSeries(DataObjectBase):
         #   value_columns=value_labels)
         # Make the data frame
         return result_df, self.timestamp_label, value_labels
+
+    def __len__(self) -> int:
+        """Return the length of the single time series object.
+
+        Returns:
+            int: Length
+        """
+        if self.values:
+            return len(self.values[0].sequence.values)
+        return 0
 
     def __eq__(self, other: "SingleTimeSeries") -> bool:
         """Equivalence operator for SingleTimeSeries objects.
