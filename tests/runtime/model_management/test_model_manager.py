@@ -1086,7 +1086,13 @@ def test_lazy_load_true_local_models_dir_invalid():
 
     with TemporaryDirectory() as cache_dir:
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=(
+                "runtime.local_models_dir must be a valid path if set with"
+                " runtime.lazy_load_local_models"
+            ),
+        ) as exec_info:
 
             ModelManager._ModelManager__instance = None
             with temp_config(
@@ -1099,6 +1105,8 @@ def test_lazy_load_true_local_models_dir_invalid():
                 merge_strategy="merge",
             ):
                 MODEL_MANAGER = ModelManager()
+
+        assert "runtime.local_models_dir must be a valid path" in str(exec_info.value)
 
 
 def test_lazy_load_false_local_models_dir_valid():
