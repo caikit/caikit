@@ -163,8 +163,7 @@ runtime:
         port: 8086
 
     # Whether or not to abort work on client cancellation
-    use_abortable_threads: false
-    use_abortable_contexts: true
+    use_abortable_threads: true
 
     # Configuration items for service generation
     service_generation:

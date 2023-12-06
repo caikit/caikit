@@ -28,9 +28,9 @@ import uvicorn
 from caikit.runtime.http_server.request_aborter import HttpRequestAborter
 
 
-def get_time_remaining(start_time: datetime.datetime, timeout: int = 10) -> int:
+def get_time_remaining(start_time: datetime.datetime, timeout: int = 10) -> float:
     now = datetime.datetime.now()
-    return ((start_time + datetime.timedelta(seconds=timeout)) - now).seconds
+    return ((start_time + datetime.timedelta(seconds=timeout)) - now).total_seconds()
 
 
 def test_request_aborter(open_port):
@@ -51,13 +51,14 @@ def test_request_aborter(open_port):
         TEST_ABORTER = HttpRequestAborter(context, poll_time=0.001)
         TEST_ABORTER.add_event(abort_event)
 
-        # Wait for client to disconnect
-        while not abort_event.is_set():
-            await asyncio.sleep(0.001)
-
         # Assign TEST_ABORTER to the parent function. This allows the test to have
         # access to this object without using globals
         test_request_aborter.TEST_ABORTER = TEST_ABORTER
+
+        # Wait for client to disconnect
+        while not abort_event.is_set() and get_time_remaining(start_time) > 0:
+            await asyncio.sleep(0.001)
+
         request_finished.set()
 
     # Start up a local uvicorn server in a thread
@@ -80,13 +81,13 @@ def test_request_aborter(open_port):
             if get_time_remaining(start_time) < 0:
                 raise TimeoutError("Server did not start in time")
 
-            time.sleep(0.01)
+            time.sleep(0.001)
 
-        # Try the endpoint but timeout after 1 second
+        # Try the endpoint but timeout after 10ms
         with pytest.raises(ReadTimeout):
             requests.get(
                 f"http://localhost:{open_port}/test_abort",
-                timeout=0.1,
+                timeout=0.01,
             )
 
         # Wait for the request to finish/abort

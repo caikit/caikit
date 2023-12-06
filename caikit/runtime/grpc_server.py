@@ -133,7 +133,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
         # Add model runtime servicer to the gRPC server
         model_runtime_pb2_grpc.add_ModelRuntimeServicer_to_server(
-            ModelRuntimeServicerImpl(), self.server
+            ModelRuntimeServicerImpl(interrupter=self.watcher), self.server
         )
         service_names.append(
             model_runtime_pb2.DESCRIPTOR.services_by_name["ModelRuntime"].full_name

@@ -36,6 +36,7 @@ from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
+from caikit.runtime.servicers.model_runtime_servicer import ModelRuntimeServicerImpl
 from caikit.runtime.work_management.abortable_action import WorkWatcher
 from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
@@ -163,6 +164,12 @@ def runtime_grpc_server(session_scoped_open_port) -> RuntimeGRPCServer:
     ) as server:
         _check_server_readiness(server)
         yield server
+
+
+@pytest.fixture(scope="session")
+def model_runtime_servicer(runtime_grpc_server) -> ModelRuntimeServicerImpl:
+    # Builds a new servicer, the one in the server is a bit hard to access
+    return ModelRuntimeServicerImpl(interrupter=runtime_grpc_server.watcher)
 
 
 @contextmanager

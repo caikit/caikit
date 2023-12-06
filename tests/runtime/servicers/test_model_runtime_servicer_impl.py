@@ -33,79 +33,72 @@ from caikit.runtime.types.aborted_exception import AbortedException
 from tests.fixtures import Fixtures
 
 
-class TestModelRuntimeServicerImpl(unittest.TestCase):
-    """This test suite tests the ModelRuntimeServicerImpl class"""
+def test_model_load_sets_per_model_concurrency(model_runtime_servicer):
+    model = "test-any-model-id"
+    # Grab a model type that has some max concurrency set
+    model_type = list(
+        get_config().inference_plugin.model_mesh.max_model_concurrency_per_type.keys()
+    )[0]
+    request = model_runtime_pb2.LoadModelRequest(modelId=model, modelType=model_type)
+    context = Fixtures.build_context(model)
 
-    def setUp(self):
-        """This method runs before each test begins to run"""
-        self.servicer = ModelRuntimeServicerImpl()
+    expected_concurrency = (
+        get_config().inference_plugin.model_mesh.max_model_concurrency_per_type[
+            model_type
+        ]
+    )
+    mock_manager = MagicMock()
+    mock_manager.load_model.size.return_value = 1
 
-    def test_model_load_sets_per_model_concurrency(self):
-        model = "test-any-model-id"
-        # Grab a model type that has some max concurrency set
-        model_type = list(
-            get_config().inference_plugin.model_mesh.max_model_concurrency_per_type.keys()
-        )[0]
-        request = model_runtime_pb2.LoadModelRequest(
-            modelId=model, modelType=model_type
-        )
-        context = Fixtures.build_context(model)
+    with patch.object(model_runtime_servicer, "model_manager", mock_manager):
+        response = model_runtime_servicer.loadModel(request, context)
+    assert expected_concurrency == response.maxConcurrency
 
-        expected_concurrency = (
-            get_config().inference_plugin.model_mesh.max_model_concurrency_per_type[
-                model_type
-            ]
-        )
-        mock_manager = MagicMock()
-        mock_manager.load_model.size.return_value = 1
 
-        with patch.object(self.servicer, "model_manager", mock_manager):
-            response = self.servicer.loadModel(request, context)
-        self.assertEqual(expected_concurrency, response.maxConcurrency)
+def test_model_load_sets_default_max_model_concurrency(model_runtime_servicer):
+    model = "test-any-model-id"
+    model_type = "some-fake-model-type"
+    request = model_runtime_pb2.LoadModelRequest(modelId=model, modelType=model_type)
+    context = Fixtures.build_context(model)
 
-    def test_model_load_sets_default_max_model_concurrency(self):
-        model = "test-any-model-id"
-        model_type = "some-fake-model-type"
-        request = model_runtime_pb2.LoadModelRequest(
-            modelId=model, modelType=model_type
-        )
-        context = Fixtures.build_context(model)
+    expected_concurrency = (
+        get_config().inference_plugin.model_mesh.max_model_concurrency
+    )
+    mock_manager = MagicMock()
+    mock_manager.load_model.size.return_value = 1
 
-        expected_concurrency = (
-            get_config().inference_plugin.model_mesh.max_model_concurrency
-        )
-        mock_manager = MagicMock()
-        mock_manager.load_model.size.return_value = 1
+    with patch.object(model_runtime_servicer, "model_manager", mock_manager):
+        response = model_runtime_servicer.loadModel(request, context)
+    assert expected_concurrency == response.maxConcurrency
 
-        with patch.object(self.servicer, "model_manager", mock_manager):
-            response = self.servicer.loadModel(request, context)
-        self.assertEqual(expected_concurrency, response.maxConcurrency)
 
-    def test_load_model_aborts(self):
-        """ModelRuntimeServicer.loadModel will abort a long-running load"""
-        model = "test-any-model-id"
-        request = model_runtime_pb2.LoadModelRequest(modelId=model)
-        context = Fixtures.build_context(model)
+def test_load_model_aborts(model_runtime_servicer):
+    """ModelRuntimeServicer.loadModel will abort a long-running load"""
+    model = "test-any-model-id"
+    request = model_runtime_pb2.LoadModelRequest(modelId=model)
+    context = Fixtures.build_context(model)
 
-        mock_manager = MagicMock()
-        started = Event()
+    mock_manager = MagicMock()
+    started = Event()
 
-        def never_return(*args, **kwargs):
-            started.set()
-            while True:
-                time.sleep(0.01)
+    def never_return(*args, **kwargs):
+        started.set()
+        while True:
+            time.sleep(0.01)
 
-        mock_manager.load_model.side_effect = never_return
-        load_thread = Thread(target=self.servicer.loadModel, args=(request, context))
+    mock_manager.load_model.side_effect = never_return
+    load_thread = Thread(
+        target=model_runtime_servicer.loadModel, args=(request, context)
+    )
 
-        with catch_threading_exception() as cm:
-            with patch.object(self.servicer, "model_manager", mock_manager):
-                load_thread.start()
-                started.wait()
-                context.cancel()
-                load_thread.join(10)
+    with catch_threading_exception() as cm:
+        with patch.object(model_runtime_servicer, "model_manager", mock_manager):
+            load_thread.start()
+            started.wait()
+            context.cancel()
+            load_thread.join(10)
 
-            self.assertFalse(load_thread.is_alive())
+        assert not load_thread.is_alive()
 
-            # Make sure the correct exception was raised
-            assert cm.exc_type == AbortedException
+        # Make sure the correct exception was raised
+        assert cm.exc_type == AbortedException

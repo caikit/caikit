@@ -1061,6 +1061,7 @@ def test_canceling_model_loads_causes_exceptions(runtime_grpc_server):
 
     def never_return(*args, **kwargs):
         request_received.set()
+        print("Set request received event")
         try:
             while True:
                 time.sleep(0.01)
@@ -1078,7 +1079,7 @@ def test_canceling_model_loads_causes_exceptions(runtime_grpc_server):
         load_model_future.cancel()
 
         # Wait for an exception to be raised in our mock, and assert it was
-        request_finished.wait(10)
+        request_finished.wait(2)
         assert request_finished.is_set()
 
 

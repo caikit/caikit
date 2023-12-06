@@ -46,7 +46,6 @@ from caikit.runtime.utils.servicer_util import (
     validate_data_model,
 )
 from caikit.runtime.work_management.abortable_action import (
-    AbortableAction,
     AbortableContext,
     WorkWatcher,
 )
@@ -98,7 +97,6 @@ class GlobalPredictServicer:
         self,
         inference_service: ServicePackage,
         use_abortable_threads: bool = get_config().runtime.use_abortable_threads,
-        use_abortable_contexts: bool = get_config().runtime.use_abortable_contexts,
         watcher: WorkWatcher = None,
     ):
         self._started_metering = False
@@ -118,7 +116,6 @@ class GlobalPredictServicer:
             )
 
         self.use_abortable_threads = use_abortable_threads
-        self.use_abortable_contexts = use_abortable_contexts
         self._watcher = watcher
         self._inference_service = inference_service
         # Validate that the Caikit Library CDM is compatible with our service descriptor
@@ -280,12 +277,9 @@ class GlobalPredictServicer:
                 with PREDICT_CAIKIT_LIBRARY_SUMMARY.labels(
                     grpc_request=request_name, model_id=model_id
                 ).time():
-                    if self.use_abortable_contexts:
+                    if self.use_abortable_threads:
                         with AbortableContext(aborter, self._watcher):
                             response = model_run_fn(**kwargs)
-                    elif self.use_abortable_threads:
-                        work = AbortableAction(aborter, model_run_fn, **kwargs)
-                        response = work.do()
                     else:
                         response = model_run_fn(**kwargs)
 

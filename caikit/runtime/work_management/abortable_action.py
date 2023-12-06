@@ -235,11 +235,14 @@ class AbortableContext(AbortableContextBase):
 
     def __enter__(self):
         if self.aborter and self.watcher:
+            log.debug4("Entering abortable context %s", self.id)
             # Set this context on the aborter so that it can notify us when work should be aborted
             self.aborter.set_context(self)
             # Register this context with the watcher so that it knows which thread to kill
             thread_id = threading.get_ident()
             self.watcher.register(self.id, thread_id)
+        else:
+            log.debug4("Aborter or Interrupter was None, no abortable context created.")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.aborter and self.watcher:

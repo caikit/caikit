@@ -69,7 +69,7 @@ class HttpRequestAborter(ActionAborter):
         self.is_terminated = threading.Event()
         # Add an empty list for event variables that will be notified on termination
         self.events: list[threading.Event] = []
-        self.context = None
+        self.abortable_context = None
 
         # Start request aborter task. Hold onto a reference of the task to ensure
         # it isn't garbage collected
@@ -99,8 +99,8 @@ class HttpRequestAborter(ActionAborter):
             if is_disconnected:
                 log.debug("<RUN81824293>", "Client disconnected, terminating action")
                 self.is_terminated.set()
-                if self.context:
-                    self.context.abort()
+                if self.abortable_context:
+                    self.abortable_context.abort()
                 for event in self.events:
                     event.set()
                 return
@@ -122,9 +122,9 @@ class HttpRequestAborter(ActionAborter):
             event.set()
 
     def set_context(self, context: AbortableContextBase):
-        self.context = context
+        self.abortable_context = context
         if self.must_abort():
-            self.context.abort()
+            self.abortable_context.abort()
 
     def unset_context(self):
-        self.context = None
+        self.abortable_context = None
