@@ -30,9 +30,11 @@ import alog
 # Local
 from ....core import DataObjectBase
 from ....core.data_model import dataobject
+from ....core.exceptions import error_handler
 from .package import TS_PACKAGE
 
 log = alog.use_channel("TSDM")
+error = error_handler.get(log)
 
 
 @dataobject(package=TS_PACKAGE)
@@ -147,9 +149,14 @@ class ValueSequence(DataObjectBase):
 
         values: Annotated[List[Vector], FieldNumber(1)]
 
+        def __post_init__(self):
+            error.type_check("<COR61333730E>", list, values=self.values)
+            error.type_check_all(
+                "<COR61333731E>", list, np.ndarray, Vector, values=self.values
+            )
+
         def _convert_np_to_list(self, v):
-            v = v.tolist()
-            return v
+            return v.tolist()
 
         def to_dict(self):
             result = []
@@ -162,16 +169,15 @@ class ValueSequence(DataObjectBase):
             subproto = proto.values
             subproto.extend(
                 [
-                    Vector.from_json(
-                        {
-                            "data": v
-                            if isinstance(v, list)
-                            else self._convert_np_to_list(v)
-                        }
+                    v.to_proto()
+                    if isinstance(v, Vector)
+                    else Vector(
+                        v if isinstance(v, list) else self._convert_np_to_list(v)
                     ).to_proto()
                     for v in self.values
                 ]
             )
+            return proto
 
         @classmethod
         def from_proto(cls, proto):
@@ -193,6 +199,7 @@ class ValueSequence(DataObjectBase):
         def fill_proto(self, proto):
             subproto = proto.values
             subproto.extend(list(self.values))
+            return proto
 
         @classmethod
         def from_proto(cls, proto):
@@ -215,6 +222,7 @@ class ValueSequence(DataObjectBase):
         def fill_proto(self, proto):
             subproto = proto.values
             subproto.extend([json.loads(v) for v in self.values])
+            return proto
 
         @classmethod
         def from_proto(cls, proto):
