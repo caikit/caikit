@@ -253,7 +253,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         be unloaded.
 
         Args:
-            wait (bool): Wait for loading to complete
+            wait (bool): After starting all loads, wait for them to complete
         """
         try:
             self._local_models_dir_sync(wait)

@@ -93,8 +93,8 @@ runtime:
     # TODO: replace with libraries below when runtime can support multiple libraries
     library: sample_lib
     local_models_dir: models
-    # When loading models at boot, wait for the load to complete before moving
-    # on to the next model
+    # When loading models at boot, wait for the loads to complete before booting
+    # the server
     wait_for_initial_model_loads: true
 
     # If enabled, the models in local_models_dir will be periodically sync'ed
