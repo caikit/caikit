@@ -23,7 +23,7 @@ to do.
 
 # Standard
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, Type, Union
 
 # Third Party
 import pandas as pd
@@ -40,6 +40,7 @@ from .....core.exceptions import error_handler
 from .._single_timeseries import SingleTimeSeries
 from .base import MultiTimeSeriesBackendBase, TimeSeriesBackendBase
 from .pandas_backends import PandasMultiTimeSeriesBackend, PandasTimeSeriesBackend
+from .spark_util import mock_pd_groupby
 
 if TYPE_CHECKING:
     # Local
@@ -230,20 +231,3 @@ class SparkTimeSeriesBackend(TimeSeriesBackendBase):
             self._pdbackend_helper._timestamp_column,
             self._pdbackend_helper._value_columns,
         )
-
-
-def mock_pd_groupby(a_df_like, by: List[str], return_pandas_api=False):
-    """Roughly mocks the behavior of pandas groupBy but on a spark dataframe."""
-
-    distinct_keys = a_df_like.select(by).distinct().collect()
-    for dkey in distinct_keys:
-        adict = dkey.asDict()
-        filter_statement = ""
-        for k, v in adict.items():
-            filter_statement += f" {k} == '{v}' and"
-        if filter_statement.endswith("and"):
-            filter_statement = filter_statement[0:-3]
-        sub_df = a_df_like.filter(filter_statement)
-        value = tuple(adict.values())
-        value = value[0] if len(value) == 1 else value
-        yield value, sub_df.pandas_api() if return_pandas_api else sub_df

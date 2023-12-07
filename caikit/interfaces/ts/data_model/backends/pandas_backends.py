@@ -40,7 +40,8 @@ from .base import (
     TimeSeriesBackendBase,
     UncachedBackendMixin,
 )
-from .util import iteritems_workaround, pd_timestamp_to_seconds
+from .spark_util import iteritems_workaround
+from .util import pd_timestamp_to_seconds
 
 if TYPE_CHECKING:
     # Local

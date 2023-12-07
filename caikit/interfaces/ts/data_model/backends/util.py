@@ -15,14 +15,11 @@
 
 # Standard
 from datetime import datetime
-from typing import Any, Iterable, Union
+from typing import Union
 
 # Third Party
 import numpy as np
 import pandas as pd
-
-# Local
-from ..toolkit.optional_dependencies import HAVE_PYSPARK, pyspark
 
 
 def timezoneoffset(adatetime: datetime) -> int:
@@ -102,42 +99,3 @@ def strip_periodic(
         ]
 
     return df
-
-
-def iteritems_workaround(series: Any, force_list: bool = False) -> Iterable:
-    """pyspark.pandas.Series objects do not support
-    iteration. For native pandas.Series objects this
-    function will be a no-op.
-
-    For pyspark.pandas.Series or other iterable objects
-    we try to_numpy() (unless force_list
-    is true) and if that fails we resort to a to_list()
-
-    """
-
-    # python just stinks!
-    if not hasattr(series, "to_list") and not hasattr(series, "to_numpy"):
-        raise NotImplementedError(
-            f"invalid typed {type(series)} passed for parameter series"
-        )
-
-    if isinstance(series, pd.Series):
-        return series
-
-    # handle an edge case of pyspark.ml.linalg.DenseVector
-    if (
-        HAVE_PYSPARK
-        and isinstance(series, pyspark.pandas.series.Series)
-        and isinstance(series[0], pyspark.ml.linalg.Vector)
-    ):
-        return [x.toArray().tolist() for x in series.to_numpy()]
-
-    # note that we're forcing a list only if we're not
-    # a native pandas series
-    if force_list:
-        return series.to_list()
-
-    try:
-        return series.to_numpy()
-    except:  # noqa: E722
-        return series.to_list()

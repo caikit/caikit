@@ -36,8 +36,8 @@ from caikit.interfaces.ts.data_model.backends._spark_backends import (
     SparkTimeSeriesBackend,
     ensure_spark_cached,
 )
+from caikit.interfaces.ts.data_model.backends.spark_util import iteritems_workaround
 from caikit.interfaces.ts.data_model.backends.util import (
-    iteritems_workaround,
     pd_timestamp_to_seconds,
     strip_periodic,
 )
