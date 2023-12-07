@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
+from concurrent.futures import Future, ThreadPoolExecutor
+import dataclasses
 import datetime
-import threading
+import random
 import time
 
 # Third Party
+import grpc
 import pytest
 
 # Local
@@ -40,7 +43,7 @@ def work_watcher():
 
 
 @pytest.fixture()
-def grpc_context():
+def grpc_context() -> grpc.ServicerContext:
     return Fixtures.build_context("abortable-context-test")
 
 
@@ -50,6 +53,9 @@ def rpc_aborter(grpc_context):
 
 
 def wait_for_watcher_to_run(work_watcher, timeout=1):
+    """Helper to wait until the interrupter's queue is empty.
+    This should only deadlock if the interrupter's polling thread exits.
+    """
     start = datetime.datetime.now()
     while (datetime.datetime.now() - start).total_seconds() < timeout:
         if work_watcher._queue.empty():
@@ -92,59 +98,65 @@ def test_context_aborts_if_rpc_already_canceled(
             assert False
 
 
-#
-#
-# class TestAbortableAction(unittest.TestCase):
-#     """This test suite tests the abortable action class"""
-#
-#     def setUp(self):
-#         """This method runs before each test begins to run"""
-#         self.rpc_context = Fixtures.build_context()
-#         self.aborter = RpcAborter(self.rpc_context)
-#
-#     def test_it_can_run_a_function(self):
-#         expected_result = "test-any-result"
-#         action = AbortableAction(self.aborter, lambda *args, **kwargs: expected_result)
-#         result = action.do()
-#         self.assertEqual(expected_result, result)
-#
-#     def test_it_raises_if_the_rpc_has_already_terminated(self):
-#         action = AbortableAction(self.aborter, lambda *args, **kwargs: None)
-#         self.rpc_context.cancel()
-#
-#         with self.assertRaises(AbortedException) as context:
-#             action.do()
-#
-#     def test_it_raises_if_the_function_raises(self):
-#         expected_exception = ValueError("test-any-error")
-#
-#         def thrower():
-#             raise expected_exception
-#
-#         action = AbortableAction(self.aborter, thrower)
-#         with self.assertRaises(ValueError) as ctx:
-#             action.do()
-#
-#         self.assertEqual(expected_exception, ctx.exception)
-#
-#     def test_it_raises_if_the_rpc_is_terminated_mid_function(self):
-#         infinite_function_has_started = threading.Event()
-#
-#         def infinite_function():
-#             infinite_function_has_started.set()
-#             while True:
-#                 time.sleep(0.1)
-#
-#         action = AbortableAction(self.aborter, infinite_function)
-#
-#         def inner_test_thread():
-#             with self.assertRaises(AbortedException) as context:
-#                 action.do()
-#
-#         thread = threading.Thread(target=inner_test_thread)
-#         thread.start()
-#         infinite_function_has_started.wait()
-#
-#         self.rpc_context.cancel()
-#         thread.join(5)
-#         self.assertFalse(thread.is_alive())
+def test_exceptions_can_be_raised_in_context(work_watcher, rpc_aborter):
+    """Exceptions work normally"""
+
+    with pytest.raises(ValueError, match="this is a test"):
+        with AbortableContext(rpc_aborter, work_watcher):
+            raise ValueError("this is a test")
+
+
+def test_many_threads_can_run_in_abortable_context_at_once(work_watcher):
+    """This test tries to replicate a multithreaded situation where many threads can complete
+    an AbortableContext and many others are aborted. We want to make sure only the contexts that
+    we canceled are actually aborted- i.e. the interrupter interrupts the correct contexts."""
+
+    @dataclasses.dataclass
+    class TestTask:
+
+        context: grpc.ServicerContext
+        wait_for_cancel: bool
+        future: Future = None
+
+        def run(self):
+            """Dummy task that either returns quickly or spins forever waiting to be interrupted"""
+            aborter = RpcAborter(self.context)
+            with AbortableContext(aborter=aborter, watcher=work_watcher):
+                if self.wait_for_cancel:
+                    while True:
+                        time.sleep(0.001)
+                else:
+                    time.sleep(0.001)
+
+    # Create a bunch of tasks, half of them need to be interrupted
+    tasks = []
+    for i in range(25):
+        tasks.append(
+            TestTask(
+                context=Fixtures.build_context(f"test-task-{i}"), wait_for_cancel=False
+            )
+        )
+    for i in range(25):
+        tasks.append(
+            TestTask(
+                context=Fixtures.build_context(f"test-cancel-task-{i}"),
+                wait_for_cancel=True,
+            )
+        )
+    random.shuffle(tasks)
+
+    # Submit them all and cancel the context of the ones that need interrupting
+    pool = ThreadPoolExecutor(max_workers=50)
+    for t in tasks:
+        t.future = pool.submit(t.run)
+    for t in tasks:
+        if t.wait_for_cancel:
+            t.context.cancel()
+
+    # Assert that the ones we canceled throw, and the rest don't
+    for t in tasks:
+        if t.wait_for_cancel:
+            with pytest.raises(AbortedException):
+                t.future.result()
+        else:
+            t.future.result()
