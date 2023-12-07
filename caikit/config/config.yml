@@ -87,10 +87,15 @@ data_streams:
 
 ### Runtime configurations
 runtime:
-    # The runtime library (or libraries) whose models we want to serve using Caikit Runtime. This should
-    # be a snake case string, e.g., caikit_nlp or caikit_cv.
-    library: sample_lib # TODO: replace with libraries below when runtime can support multiple libraries
+    # The runtime library (or libraries) whose models we want to serve using
+    # Caikit Runtime. This should be a snake case string, e.g., caikit_nlp or
+    # caikit_cv.
+    # TODO: replace with libraries below when runtime can support multiple libraries
+    library: sample_lib
     local_models_dir: models
+    # When loading models at boot, wait for the loads to complete before booting
+    # the server
+    wait_for_initial_model_loads: true
 
     # If enabled, the models in local_models_dir will be periodically sync'ed
     # with the in-memory models. New models that are not in-memory that are
@@ -103,9 +108,9 @@ runtime:
     # that fail due to partially uploaded model artifacts when the load is
     # initiated.
     lazy_load_retries: 2
-    # Amount of time to watch for file updates to detect if a model is being written.
-    # Models that are being written will not be prematurely loaded
-    # Use zero or a negative value or None to disable
+    # Amount of time to watch for file updates to detect if a model is being
+    # written. Models that are being written will not be prematurely loaded. Use
+    # zero or a negative value or None to disable.
     lazy_load_write_detection_period_seconds: 0.05
 
     # Number of threads to make available for load jobs (null => all)

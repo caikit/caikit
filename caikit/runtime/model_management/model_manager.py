@@ -148,8 +148,13 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
 
         # Do the initial local models load
         if self._local_models_dir:
-            log.info("<RUN44739400I>", "Loading local models into Caikit Runtime...")
-            self.sync_local_models(wait=True)
+            wait = runtime_cfg.wait_for_initial_model_loads
+            log.info(
+                "<RUN44739400I>",
+                "Loading local models into Caikit Runtime. Wait: %s",
+                wait,
+            )
+            self.sync_local_models(wait=wait)
 
     def shut_down(self):
         """Shut down cache purging"""
@@ -248,7 +253,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         be unloaded.
 
         Args:
-            wait (bool): Wait for loading to complete
+            wait (bool): After starting all loads, wait for them to complete
         """
         try:
             self._local_models_dir_sync(wait)
