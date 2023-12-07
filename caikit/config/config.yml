@@ -135,6 +135,8 @@ runtime:
         # Additional server options as key/value pairs
         # CITE: https://github.com/grpc/grpc/blob/master/include/grpc/impl/channel_arg_names.h#L22
         options: {}
+        # Legacy config for setting thread pool size. See runtime.server_thread_pool_size instead
+        server_thread_pool_size: null
 
     # Configuration for the http server
     http:

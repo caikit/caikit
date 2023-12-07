@@ -45,7 +45,7 @@ class ServerThreadPool:
         config = caikit.get_config()
         # Leave in backwards compatibility for the old runtime.grpc.server_thread_pool_size
         # parameter, which many users may have deployed with.
-        if pool_size := config.runtime.grpc.get("server_thread_pool_size", None):
+        if pool_size := config.runtime.grpc.server_thread_pool_size:
             log.info("Using legacy runtime.grpc.server_thread_pool_size configuration")
         else:
             pool_size = config.runtime.server_thread_pool_size
@@ -58,7 +58,8 @@ class ServerThreadPool:
 
         return pool
 
-    pool = _build_pool()
+    # py3.9 compatibility: Can't call @staticmethod on class attribute initialization
+    pool = _build_pool.__get__(object, None)()
 
 
 class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attributes
