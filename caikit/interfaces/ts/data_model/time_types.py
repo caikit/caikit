@@ -190,21 +190,6 @@ class ValueSequence(DataObjectBase):
 
         values: Annotated[List[str], FieldNumber(1)]
 
-        def to_dict(self):
-            result = []
-            for v in self.values:
-                result.append(v)
-            return {"values": result}
-
-        def fill_proto(self, proto):
-            subproto = proto.values
-            subproto.extend(list(self.values))
-            return proto
-
-        @classmethod
-        def from_proto(cls, proto):
-            return cls(**{"values": [str(v) for v in proto.values]})
-
     # todo we can have a construct for sequences that require serialization
     @dataobject(package=TS_PACKAGE)
     class AnyValueSequence(DataObjectBase):
