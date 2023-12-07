@@ -57,7 +57,7 @@ class InfoServicer:
             models_info: ModelInfoResponse
                 DataObject containing the model info
         """
-        return self.get_models_info_impl().to_proto()
+        return self._get_models_info().to_proto()
 
     def get_models_info(self) -> Dict[str, List[Dict[str, Union[str, int]]]]:
         """Get information on models for the HTTP server
@@ -66,9 +66,9 @@ class InfoServicer:
             model_info_dict: Dict[str, List[Dict[str, str]]]
                 Dict representation of ModelInfoResponse
         """
-        return self.get_models_info_impl().to_dict()
+        return self._get_models_info().to_dict()
 
-    def get_models_info_impl(self) -> ModelInfoResponse:
+    def _get_models_info(self) -> ModelInfoResponse:
         """Helper function to get the list of models
 
         Returns:
@@ -97,13 +97,13 @@ class InfoServicer:
         self, request, context  # pylint: disable=unused-argument
     ) -> RuntimeInfoResponse:
         """Get information on versions of libraries and server for GRPC"""
-        return self.get_runtime_info_impl().to_proto()
+        return self._get_runtime_info().to_proto()
 
     def get_version_dict(self) -> Dict[str, Union[str, Dict]]:
         """Get information on versions of libraries and server for HTTP"""
-        return self.get_runtime_info_impl().to_dict()
+        return self._get_runtime_info().to_dict()
 
-    def get_runtime_info_impl(self) -> RuntimeInfoResponse:
+    def _get_runtime_info(self) -> RuntimeInfoResponse:
         """Get information on versions of libraries and server from config"""
         config_version_info = get_config().runtime.version_info or {}
         python_packages = {
@@ -118,7 +118,7 @@ class InfoServicer:
         for lib, dist_names in importlib_metadata.packages_distributions().items():
             if (
                 all_packages or (len(lib.split(".")) == 1 and lib.startswith("caikit"))
-            ) and (version := self.try_lib_version(dist_names[0])):
+            ) and (version := self._try_lib_version(dist_names[0])):
                 python_packages[lib] = version
 
         runtime_image = config_version_info.get("runtime_image")
@@ -128,7 +128,7 @@ class InfoServicer:
             runtime_version=runtime_image,
         )
 
-    def try_lib_version(self, name) -> str:
+    def _try_lib_version(self, name) -> str:
         """Get version of python modules"""
         try:
             return importlib_metadata.version(name)
