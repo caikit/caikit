@@ -34,6 +34,7 @@ from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import get_dynamic_module
+from sample_lib.data_model import SampleInputType
 from tests.conftest import TempFailWrapper, random_test_id, temp_config
 from tests.core.helpers import TestFinder
 from tests.fixtures import Fixtures
@@ -151,7 +152,8 @@ def test_load_local_models():
         assert "model-does-not-exist.zip" not in MODEL_MANAGER.loaded_models.keys()
 
 
-def test_model_manager_loads_local_models_on_init():
+@pytest.mark.parametrize("wait", [True, False])
+def test_model_manager_loads_local_models_on_init(wait):
     with TemporaryDirectory() as tempdir:
         shutil.copytree(Fixtures.get_good_model_path(), os.path.join(tempdir, "model1"))
         shutil.copy(
@@ -160,7 +162,13 @@ def test_model_manager_loads_local_models_on_init():
         )
         ModelManager._ModelManager__instance = None
         with temp_config(
-            {"runtime": {"local_models_dir": tempdir}}, merge_strategy="merge"
+            {
+                "runtime": {
+                    "local_models_dir": tempdir,
+                    "wait_for_initial_model_loads": wait,
+                },
+            },
+            merge_strategy="merge",
         ):
             MODEL_MANAGER = ModelManager()
 
@@ -168,6 +176,11 @@ def test_model_manager_loads_local_models_on_init():
             assert "model1" in MODEL_MANAGER.loaded_models.keys()
             assert "model2.zip" in MODEL_MANAGER.loaded_models.keys()
             assert "model-does-not-exist.zip" not in MODEL_MANAGER.loaded_models.keys()
+
+            # Make sure that the loaded model can be retrieved and run
+            for model_name in ["model1", "model2.zip"]:
+                model = MODEL_MANAGER.retrieve_model(model_name)
+                model.run(SampleInputType("hello"))
 
 
 def test_load_model_error_response():
