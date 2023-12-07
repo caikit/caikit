@@ -1089,8 +1089,9 @@ def test_lazy_load_true_local_models_dir_invalid():
         with pytest.raises(
             ValueError,
             match=(
-                "runtime.local_models_dir must be a valid path if set with"
-                " runtime.lazy_load_local_models"
+                "runtime.local_models_dir must be a valid path"
+                " if set with runtime.lazy_load_local_models. "
+                "Provided path: invalid"
             ),
         ) as exec_info:
 
@@ -1098,7 +1099,7 @@ def test_lazy_load_true_local_models_dir_invalid():
             with temp_config(
                 {
                     "runtime": {
-                        "local_models_dir": "",
+                        "local_models_dir": "invalid",
                         "lazy_load_local_models": True,
                     }
                 },
