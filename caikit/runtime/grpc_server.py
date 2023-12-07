@@ -69,9 +69,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
         # Initialize basic server
         self.server = grpc.server(
-            futures.ThreadPoolExecutor(
-                max_workers=self.config.runtime.grpc.server_thread_pool_size
-            ),
+            thread_pool=self.thread_pool,
             interceptors=(PROMETHEUS_METRICS_INTERCEPTOR,),
             options=(self.config.runtime.grpc.options or {}).items(),
         )
@@ -231,9 +229,9 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
         log.info(
             "<RUN10001001I>",
-            "Caikit Runtime is serving on port: %s with thread pool size: %s",
+            "Caikit Runtime is serving grpc on port: %s with thread pool size: %s",
             self.port,
-            self.config.runtime.grpc.server_thread_pool_size,
+            self.thread_pool._max_workers,
         )
 
         if blocking:

@@ -111,6 +111,9 @@ runtime:
     # Number of threads to make available for load jobs (null => all)
     load_threads: null
 
+    # Number of threads for both the http and grpc server to share for servicing requests
+    server_thread_pool_size: 100
+
     # TLS configs
     tls:
         server:
@@ -123,8 +126,6 @@ runtime:
     grpc:
         enabled: true
         port: 8085
-        # Number of workers with which we will run the gRPC server
-        server_thread_pool_size: 5
         # gRPC Server shutdown grace period
         # the server shuts down immediately when stopped,
         # and all RPCs active at the end of the grace period are aborted

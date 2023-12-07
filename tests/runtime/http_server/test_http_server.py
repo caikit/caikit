@@ -1075,3 +1075,9 @@ def test_train_other_task(client, runtime_http_server):
     json_response = json.loads(response.content.decode(response.default_encoding))
     assert response.status_code == 200, json_response
     assert json_response["farewell"] == "goodbye: world 64 times"
+
+
+def test_http_and_grpc_server_share_threadpool(
+    runtime_http_server, runtime_grpc_server
+):
+    assert runtime_grpc_server.thread_pool is runtime_http_server.thread_pool
