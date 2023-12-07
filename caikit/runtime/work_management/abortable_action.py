@@ -13,7 +13,7 @@
 # limitations under the License.
 # Standard
 from queue import SimpleQueue
-from typing import Callable, Dict
+from typing import Dict
 import abc
 import ctypes
 import threading
@@ -23,7 +23,6 @@ import uuid
 import alog
 
 # Local
-from caikit.core.toolkit.concurrency.destroyable_thread import DestroyableThread
 from caikit.runtime.types.aborted_exception import AbortedException
 
 log = alog.use_channel("ABORT-ACTION")
@@ -58,89 +57,13 @@ class ActionAborter(abc.ABC):
         """Unset any abortable context already held. Do not notify it that work should abort"""
 
 
-class AbortableAction:
-    """A class for Abortable Actions. We want actions that are computationally heavy to be
-    abortable by Model Mesh! Currently, we use this for the following operations.
-
-    - Loading a model
-    - Predicting with a model
-    - Training a model
-
-    In the future, this may include getting the size of a model, depending on how that we choose
-    to implement that.
-
-    How it works:
-        Instances of this class create a threading.Event, which will be used to signal that either:
-        - The RPC was terminated
-        - The heavy work that we wanted to complete is done
-        This is done by using a RpcAborter and a DestroyableThread.
-        Registering the event with the RpcAborter will cause it to set when the RPC is
-        terminated, and creating a DestroyableThread with the event will cause it to set when
-        the thread terminates.
-
-        The action will start the DestroyableThread and then wait on the event. When it wakes, it
-        will check the reason and destroy the thread if it was woken by the RpcAborter or return
-        the result if it was woken by the thread completing.
-    """
-
-    def __init__(
-        self,
-        call_aborter: ActionAborter,
-        runnable_func: Callable,
-        *args,
-        **kwargs,
-    ):
-        """
-        Args:
-            call_aborter - call aborter capable of aborting the runnable_func
-            runnable_func - the function to be run as an abortable action
-            *args - nonkeyword arguments to runnable_func
-            **kwargs - keyword arguments to runnable_func"""
-
-        # Create new event to watch for both RPC termination and work completion
-        self.__done_or_aborted_event = threading.Event()
-
-        # Register the event with our call aborter so it fires if the RPC terminates
-        self.call_aborter = call_aborter
-        self.call_aborter.add_event(self.__done_or_aborted_event)
-
-        # Create a new thread to do the work, which will set the event if it finished
-        self.__runnable_func = runnable_func
-        self.__work_thread = DestroyableThread(
-            self.__runnable_func,
-            *args,
-            work_done_event=self.__done_or_aborted_event,
-            **kwargs,
-        )
-
-    def do(self):
-        # Start the work and wait
-        self.__work_thread.start()
-        self.__done_or_aborted_event.wait()
-
-        # Now, check the call aborter to see what happened.
-        # Option 1: The RPC was terminated. Kill the work thread and raise an exception
-        if self.call_aborter.must_abort():
-            log.info(
-                "<RUN14653271I>", "Aborting work in progress: %s", self.__runnable_func
-            )
-            self.__work_thread.destroy()
-            self.__work_thread.join()
-            raise AbortedException("Aborted work: {}".format(self.__runnable_func))
-
-        # Options 2: Work thread finished normally. Hooray!
-        log.debug("Work finished: %s", self.__runnable_func)
-        self.__work_thread.join()
-        return self.__work_thread.get_or_throw()
-
-
 class WorkWatcher:
     """This class implements a listener which will observe all ongoing work registered with
     ActionAborters and raise exceptions in the working threads if they need to be aborted.
 
-    This offers a performance advantage over using `AbortableActions`, since only one extra
+    This offers a performance advantage over the old `AbortableActions`, since only one extra
     listener thread is created that lives for the whole lifetime of the program. The caveat
-    is that all work to be aborted must be running in a thread that is safe to kill: this would
+    is that all work to be aborted must be running in a thread that is safe to kill: this may
     not be safe to use with asyncio tasks running in an event loop.
     """
 
