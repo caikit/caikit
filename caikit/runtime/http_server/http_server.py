@@ -21,7 +21,7 @@ from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from enum import Enum
 from functools import partial
-from typing import Annotated, Any, Dict, Iterable, List, Optional, Type, Union, get_args
+from typing import Any, Dict, Iterable, List, Optional, Type, Union, get_args
 import asyncio
 import inspect
 import io
@@ -46,7 +46,10 @@ import pydantic
 import uvicorn
 
 # First Party
-from py_to_proto.dataclass_to_proto import get_origin  # Imported here for 3.8 compat
+from py_to_proto.dataclass_to_proto import (  # Imported here for 3.8 compat
+    Annotated,
+    get_origin,
+)
 import aconfig
 import alog
 
