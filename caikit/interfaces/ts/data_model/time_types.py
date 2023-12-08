@@ -17,9 +17,19 @@ The core data model objects for primitive time types
 
 # Standard
 from datetime import datetime, timedelta, timezone
-from functools import cache
 from typing import List, Tuple, Union
 import json
+
+try:
+    # Standard
+    from functools import cache
+except ImportError:
+    # cache not available in Python 3.8
+    # Standard
+    from functools import lru_cache
+
+    cache = lru_cache(maxsize=None)
+
 
 # Third Party
 import numpy as np
