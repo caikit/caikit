@@ -263,6 +263,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
         Args:
             blocking (boolean): Whether to block until shutdown
         """
+        log.info(
+            "<RUN10001002I>",
+            "Caikit Runtime is serving http on port: %s with thread pool size: %s",
+            self.port,
+            self.thread_pool._max_workers,
+        )
+
         if blocking:
             self.server.run()
         else:
@@ -320,7 +327,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             elif isinstance(rpc, ModuleClassTrainRPC):
                 self._train_add_unary_input_unary_output_handler(rpc)
 
-    def _get_model_id(self, request: Type[pydantic.BaseModel]) -> Dict[str, Any]:
+    def _get_model_id(self, request: Type[pydantic.BaseModel]) -> str:
         """Get the model id from the payload"""
         request_kwargs = dict(request)
         model_id = request_kwargs.get(MODEL_ID, None)
@@ -482,7 +489,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         aborter=aborter,
                         **request_params,
                     )
-                    result = await loop.run_in_executor(None, call)
+                    result = await loop.run_in_executor(self.thread_pool, call)
                     log.debug4("Response from model %s is %s", model_id, result)
 
                 if response_data_object.supports_file_operations:
@@ -555,7 +562,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
                                 ).method_name,
                                 aborter=aborter,
                                 **request_params,
-                            )
+                            ),
+                            pool=self.thread_pool,
                         ):
                             yield ServerSentEvent(
                                 data=result.to_json(),

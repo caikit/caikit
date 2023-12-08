@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Base class with common functionality across all caikit servers"""
-
 # Standard
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 import abc
 import signal
@@ -27,12 +27,39 @@ import alog
 
 # Local
 from caikit.config import get_config
+from caikit.core.exceptions import error_handler
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit
 
 log = alog.use_channel("SERVR-BASE")
+error = error_handler.get(log)
+
+
+class ServerThreadPool:
+    """Simple wrapper for all servers to share a single thread pool"""
+
+    @staticmethod
+    def _build_pool() -> ThreadPoolExecutor:
+        config = caikit.get_config()
+        # Leave in backwards compatibility for the old runtime.grpc.server_thread_pool_size
+        # parameter, which many users may have deployed with.
+        if pool_size := config.runtime.grpc.server_thread_pool_size:
+            log.info("Using legacy runtime.grpc.server_thread_pool_size configuration")
+        else:
+            pool_size = config.runtime.server_thread_pool_size
+
+        error.type_check("<RUN92632238E>", int, pool_size=pool_size)
+
+        pool = ThreadPoolExecutor(
+            max_workers=pool_size, thread_name_prefix="caikit_runtime"
+        )
+
+        return pool
+
+    # py3.9 compatibility: Can't call @staticmethod on class attribute initialization
+    pool = _build_pool.__get__(object, None)()
 
 
 class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attributes
@@ -82,6 +109,8 @@ class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attribute
         ] = ServicePackageFactory.get_service_package(
             ServicePackageFactory.ServiceType.INFO,
         )
+
+        self.thread_pool: ThreadPoolExecutor = ServerThreadPool.pool
 
     @classmethod
     def _start_metrics_server(cls) -> None:
