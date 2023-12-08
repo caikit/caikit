@@ -44,13 +44,14 @@ model_management:
             type: REMOTE
             config:
                 connection:
-                    host: str <remote host>
+                    hostname: str <remote host>
                     port: int <remote port>
                     protocol: Optional[str]="grpc" <protocol the remote server is using (grpc or http)>
                     tls:
                         enabled: Optional[bool]=False <if ssl is enabled on the remote server>
-                        ca: Optional[str]=None <path to remote ca file>
-                        cert: Optional[str]=None <path to MTLS cert>
+                        ca_file: Optional[str]=None <path to remote ca file>
+                        cert_file: Optional[str]=None <path to MTLS cert>
+                        key_file: Optional[str]=None <path to MTLS key>
                     options:  Optional[Dict[str,str]]={} <optional dict of grpc or http configuration options>
                 discover_models: Optional[bool]=True <bool to automatically discover remote models via the /info/models endpoint> 
                 supported_models: Optional[Dict[str, str]]={} <mapping of model names to module_ids that this remote supports>
@@ -59,14 +60,15 @@ model_management:
 
 The proposed configuration for the RemoteModelFinder is above. The only required field is the 
 generic `connection` dictionary that supports a secure channel, mutual TLS, and custom GRPC/HTTP 
-options. The `connection.host` setting contains the remote's hostname, while `connection.port` determines the 
+options. The `connection.hostname` setting contains the remote's hostname, while `connection.port` determines the 
 runtime port. The optional `connection.protocol` config is used to select which protocol to send
 requests over, with the default being `grpc`. The `connection.tls` dictionary contains all information 
-related to TLS with `tls.enabled` controlling if the server is running SSL, `tls.ca` is the path to
-the CA file that the remote's certificate is signed by, and finally, `tls.cert` is the path to the
-MTLS client certificate, which will be sent with the request. The final connection config is `connection.options` 
-which defines a list of options to pass to either the HTTP or GRPC request; for an example of options,
-take a look at the [GRPC Channel options](https://grpc.github.io/grpc/core/group__grpc__arg__keys.html#details)
+related to TLS with `tls.enabled` controlling if the server is running SSL, `tls.ca_file` is the path to
+the CA file that the remote's certificate is signed by, `tls.cert_file` is the path to the
+MTLS client certificate to be sent with the request, and finally, `tls.key_file` which is the file 
+containing the MTLS client key. The final connection config is `connection.options` which defines a 
+list of options to pass to either the HTTP or GRPC request; for an example of options, take a look 
+at the [GRPC Channel options](https://grpc.github.io/grpc/core/group__grpc__arg__keys.html#details)
 
 
 Two additional optional fields help control what models this remote supports. The 
@@ -260,7 +262,7 @@ def generate_config_for_module(module: ModuleBase, connection_info: Dict[str, An
 
 ### Diagram
 
-<img width="1439" alt="image" src="https://github.com/HonakerM/MTConnect-Python-Agent/assets/37811263/70563a23-8439-4221-b81d-c242f638a579">
+<img width="1439" alt="image" src="https://github.com/caikit/caikit/assets/37811263/4e0d0573-04fa-42fa-bdce-fcd989b9bbd6">
 This is an updated block diagram of the various model loading components and their relationships. 
 
 
