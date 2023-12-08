@@ -17,7 +17,8 @@ The core data model objects for primitive time types
 
 # Standard
 from datetime import datetime, timedelta, timezone
-from typing import List, Union
+from functools import cache
+from typing import List, Tuple, Union
 import json
 
 # Third Party
@@ -197,16 +198,18 @@ class ValueSequence(DataObjectBase):
 
         values: Annotated[List[str], FieldNumber(1)]
 
+        @classmethod
+        @cache
+        def decode_values(cls, values: Tuple[str]):
+            """Cached class method to enable caching of decoded representations"""
+            return [json.loads(v) for v in values]
+
         def to_dict(self):
-            result = []
-            for v in self.values:
-                json_v = json.loads(v)
-                result.append(json_v)
-            return {"values": result}
+            return {"values": self.__class__.decode_values(tuple(self.values))}
 
         def fill_proto(self, proto):
             subproto = proto.values
-            subproto.extend([json.loads(v) for v in self.values])
+            subproto.extend(self.__class__.decode_values(tuple(self.values)))
             return proto
 
         @classmethod
