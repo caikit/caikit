@@ -79,6 +79,17 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             self._metadata = {}
         return self._metadata
 
+    def get_metadata(self) -> Dict[str, str]:
+        """Helper function to return public metadata about a Module. This is kept
+        separate from the metadata parameter to allow for fields to be excluded. This
+        function also requires a flat metadata structure without nested dictionaries
+
+        Returns:
+            Dict[str, str]: A dictionary of this module's public metadata
+        """
+
+        return {"name": self.MODULE_NAME, "version": self.MODULE_VERSION}
+
     def set_load_backend(self, load_backend):
         """Method used by the model manager to indicate the load backend that
         was used to load this module

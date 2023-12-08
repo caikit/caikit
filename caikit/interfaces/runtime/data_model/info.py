@@ -45,6 +45,8 @@ class RuntimeInfoResponse(DataObjectBase):
 class ModelInfoRequest(DataObjectBase):
     """Empty request for runtime server information"""
 
+    model_ids: Annotated[Optional[List[str]], FieldNumber(1)]
+
 
 @dataobject(RUNTIME_PACKAGE)
 class ModelInfo(DataObjectBase):
@@ -57,8 +59,7 @@ class ModelInfo(DataObjectBase):
 
     # Module Information
     module_id: Annotated[str, FieldNumber(4)]
-    module_name: Annotated[str, FieldNumber(5)]
-    version: Annotated[str, FieldNumber(6)]
+    module_metadata: Annotated[Dict[str, str], FieldNumber(5)]
 
 
 @dataobject(RUNTIME_PACKAGE)

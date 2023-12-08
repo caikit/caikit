@@ -19,9 +19,10 @@ library and services.
 # pylint: disable=E1101
 
 # Standard
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 # Third Party
+from grpc import StatusCode
 import importlib_metadata
 
 # First Party
@@ -36,6 +37,7 @@ from caikit.interfaces.runtime.data_model import (
     RuntimeInfoResponse,
 )
 from caikit.runtime.model_management.model_manager import ModelManager
+from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("RI-SERVICR-I")
 
@@ -57,18 +59,22 @@ class InfoServicer:
             models_info: ModelInfoResponse
                 DataObject containing the model info
         """
-        return self._get_models_info().to_proto()
+        return self._get_models_info(model_ids=request.model_ids).to_proto()
 
-    def get_models_info(self) -> Dict[str, List[Dict[str, Union[str, int]]]]:
+    def get_models_info(
+        self, model_ids: Optional[List[str]]
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """Get information on models for the HTTP server
 
         Returns:
             model_info_dict: Dict[str, List[Dict[str, str]]]
                 Dict representation of ModelInfoResponse
         """
-        return self._get_models_info().to_dict()
+        return self._get_models_info(model_ids=model_ids).to_dict()
 
-    def _get_models_info(self) -> ModelInfoResponse:
+    def _get_models_info(
+        self, model_ids: Optional[List[str]] = None
+    ) -> ModelInfoResponse:
         """Helper function to get the list of models
 
         Returns:
@@ -77,18 +83,31 @@ class InfoServicer:
         """
         model_manager = ModelManager.get_instance()
 
+        # Get list of models based on input list or all loaded models
+        loaded_model_list = []
+        if model_ids:
+            for model_name in model_ids:
+                loaded_model = model_manager.loaded_models.get(model_name)
+                if not loaded_model:
+                    raise CaikitRuntimeException(
+                        StatusCode.NOT_FOUND, f"Model {model_name} is not loaded"
+                    )
+
+                loaded_model_list.append((model_name, loaded_model))
+        else:
+            loaded_model_list = model_manager.loaded_models.items()
+
         # Get all loaded models
         response = ModelInfoResponse(models=[])
-        for name, loaded_module in model_manager.loaded_models.items():
+        for name, loaded_module in loaded_model_list:
             model_instance = loaded_module.model()
             response.models.append(
                 ModelInfo(
                     model_path=loaded_module.path(),
                     name=name,
                     size=loaded_module.size(),
-                    module_name=model_instance.MODULE_NAME,
                     module_id=model_instance.MODULE_ID,
-                    version=model_instance.MODULE_VERSION,
+                    module_metadata=model_instance.get_metadata(),
                 )
             )
         return response
