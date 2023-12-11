@@ -120,7 +120,6 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
                 (
                     "runtime.local_models_dir must be set"
                     " if using runtime.lazy_load_local_models. "
-                    "local_models_dir is unset in config file"
                 ),
             )
 

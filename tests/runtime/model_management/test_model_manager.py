@@ -1120,7 +1120,6 @@ def test_lazy_load_true_local_models_dir_none():
             match=(
                 "runtime.local_models_dir must be set"
                 " if using runtime.lazy_load_local_models. "
-                "local_models_dir is unset in config file"
             ),
         ):
 
