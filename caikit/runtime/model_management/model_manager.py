@@ -112,15 +112,20 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
 
         # Keep track of whether lazy loading is enabled
         self._lazy_load_local_models = runtime_cfg.lazy_load_local_models
+        error_message = (
+            "runtime.local_models_dir must be a valid path"
+            " if set with runtime.lazy_load_local_models. "
+        )
+        if runtime_cfg.local_models_dir is None:
+            error_message += "runtime.lazy_load_local_models is unset in config file"
+        elif not self._local_models_dir:
+            error_message += f"Provided path: {runtime_cfg.local_models_dir}"
+
         error.value_check(
             "<RUN44773514E>",
             # _lazy_load_local_models is set, and _local_models_dir is empty
             not self._lazy_load_local_models or self._local_models_dir,
-            (
-                "runtime.local_models_dir must be a valid path"
-                " if set with runtime.lazy_load_local_models. "
-                f"Provided path: {runtime_cfg.local_models_dir}"
-            ),
+            (error_message),
         )
 
         # Set up local model periodic sync
