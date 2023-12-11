@@ -773,7 +773,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
     ) -> Dict[str, Any]:
         """Create wrapper for get_models_info so model_ids can be marked as a query parameter"""
         try:
-            return self.info_servicer.get_models_info(model_ids)
+            return self.info_servicer.get_models_info_dict(model_ids)
         except HTTPException as err:
             raise err
         except CaikitRuntimeException as err:

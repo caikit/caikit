@@ -61,7 +61,7 @@ class InfoServicer:
         """
         return self._get_models_info(model_ids=request.model_ids).to_proto()
 
-    def get_models_info(
+    def get_models_info_dict(
         self, model_ids: Optional[List[str]]
     ) -> Dict[str, List[Dict[str, Any]]]:
         """Get information on models for the HTTP server
@@ -107,7 +107,7 @@ class InfoServicer:
                     name=name,
                     size=loaded_module.size(),
                     module_id=model_instance.MODULE_ID,
-                    module_metadata=model_instance.get_metadata(),
+                    module_metadata=model_instance.module_metadata,
                 )
             )
         return response

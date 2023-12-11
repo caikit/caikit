@@ -79,9 +79,10 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
             self._metadata = {}
         return self._metadata
 
-    def get_metadata(self) -> Dict[str, str]:
-        """Helper function to return public metadata about a Module. This is kept
-        separate from the metadata parameter to allow for fields to be excluded. This
+    @property
+    def module_metadata(self) -> Dict[str, Any]:
+        """Helper property to return public metadata about a Module. This function
+        is separate from `metdata` as this is specific for the root module. This
         function also requires a flat metadata structure without nested dictionaries
 
         Returns:
