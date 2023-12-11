@@ -1174,7 +1174,7 @@ def test_lazy_load_false_local_models_dir_invalid():
         with temp_config(
             {
                 "runtime": {
-                    # "local_models_dir": "",
+                    "local_models_dir": "",
                     "lazy_load_local_models": False,
                 }
             },
