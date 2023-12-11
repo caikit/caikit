@@ -28,6 +28,7 @@ import io
 import json
 import os
 import re
+import signal
 import ssl
 import tempfile
 import threading
@@ -237,17 +238,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
             # deleted if they're ephemeral
             config.load()
 
-        # Start the server with the loaded config
+        # Build the server with the loaded config
         self.server = uvicorn.Server(config=config)
-
-        # Patch the exit handler to call this server's stop
-        original_handler = self.server.handle_exit
-
-        def shutdown_wrapper(*args, **kwargs):
-            original_handler(*args, **kwargs)
-            self.stop()
-
-        self.server.handle_exit = shutdown_wrapper
 
         # Placeholder for thread when running without blocking
         self._uvicorn_server_thread = None
@@ -270,10 +262,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
             self.thread_pool._max_workers,
         )
 
+        # Patch the exit handler to retain correct signal handling behavior
+        self._patch_exit_handler()
+
         if blocking:
             self.server.run()
         else:
-            self.run_in_thread()
+            self._run_in_thread()
 
     def stop(self):
         """Stop the server, with an optional grace period.
@@ -282,11 +277,14 @@ class RuntimeHTTPServer(RuntimeServerBase):
             grace_period_seconds (Union[float, int]): Grace period for service shutdown.
                 Defaults to application config
         """
-        self.server.should_exit = True
+        log.info(f"Shutting down http server {self._uvicorn_server_thread}")
+
         if (
             self._uvicorn_server_thread is not None
             and self._uvicorn_server_thread.is_alive()
         ):
+            # This is required to notify the server in the thread to exit
+            self.server.should_exit = True
             self._uvicorn_server_thread.join()
 
         # Ensure we flush out any remaining billing metrics and stop metering
@@ -296,16 +294,17 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Shut down the model manager's model polling if enabled
         self._shut_down_model_manager()
 
-    def run_in_thread(self):
+    ##########
+    ## Impl ##
+    ##########
+
+    def _run_in_thread(self):
         self._uvicorn_server_thread = threading.Thread(target=self.server.run)
         self._uvicorn_server_thread.start()
         while not self.server.started:
             time.sleep(1e-3)
         log.info("HTTP Server is running in thread")
 
-    ##########
-    ## Impl ##
-    ##########
     def _bind_routes(self, service: ServicePackage):
         """Bind all rpcs as routes to the given app"""
         for rpc in service.caikit_rpcs.values():
@@ -823,10 +822,31 @@ class RuntimeHTTPServer(RuntimeServerBase):
             )
             raise ValueError() from err
 
+    def _patch_exit_handler(self):
+        """
+        🌶️🌶️🌶️ Here there are dragons! 🌶️🌶️🌶️
+        uvicorn will explicitly set the interrupt handler to `server.handle_exit` when
+        `server.run()` is called. That will override any other signal handlers that we
+        may have tried to set.
+
+        To work around this, we:
+        1. Register `server.handle_exit` as a SIGINT/SIGTERM signal handler ourselves, so that it
+          is invoked on interrupt and terminate
+        2. Set `server.handle_exit` to the existing SIGINT signal handler, so that when the uvicorn
+          server explicitly overrides the signal handler for SIGINT and SIGTERM to this, it has no
+          effect.
+
+        Since uvicorn overrides SIGINT and SIGTERM with a single common handler, any special
+            handlers added for SIGTERM but not SIGINT will not be invoked.
+        """
+        original_exit_handler = self.server.handle_exit
+        self._add_signal_handler(signal.SIGINT, original_exit_handler)
+        self._add_signal_handler(signal.SIGTERM, original_exit_handler)
+        self.server.handle_exit = signal.getsignal(signal.SIGINT)
+
 
 def main(blocking: bool = True):
     server = RuntimeHTTPServer()
-    server._intercept_interrupt_signal()
     server.start(blocking)
 
 

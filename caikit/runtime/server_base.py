@@ -112,6 +112,11 @@ class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attribute
 
         self.thread_pool: ThreadPoolExecutor = ServerThreadPool.pool
 
+        # Handle interrupts
+        # NB: This means that stop() methods will be called even if the process is interrupted
+        # before the start() method is called
+        self._intercept_interrupt_signal()
+
     @classmethod
     def _start_metrics_server(cls) -> None:
         """Start a single instance of the metrics server based on configuration"""
@@ -124,11 +129,6 @@ class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attribute
                 start_http_server(get_config().runtime.metrics.port)
             cls._metrics_server_started = True
 
-    def _intercept_interrupt_signal(self) -> None:
-        """intercept signal handler"""
-        signal.signal(signal.SIGINT, self.interrupt)
-        signal.signal(signal.SIGTERM, self.interrupt)
-
     def interrupt(self, signal_, _stack_frame):
         log.info(
             "<RUN87630120I>",
@@ -136,6 +136,43 @@ class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attribute
             signal_,
         )
         self.stop()
+
+    def _intercept_interrupt_signal(self) -> None:
+        """Intercept signal handlers to allow the server to stop on interrupt.
+        Calling this on a non-main thread has no effect.
+        This does not override any existing non-default signal handlers,
+        it will call them all in the reverse order they are registered.
+        """
+        self._add_signal_handler(signal.SIGINT, self.interrupt)
+        self._add_signal_handler(signal.SIGTERM, self.interrupt)
+
+    @staticmethod
+    def _add_signal_handler(sig, handler):
+        def nested_interrupt_builder(*handlers):
+            """Build and return an interrupt handler that calls all of *handlers"""
+
+            log.debug("Building interrupt handler: %s", handlers)
+
+            def interrupt(signal_, _stack_frame):
+                for handler in handlers:
+                    # Only call the handler if it is a callable fn that is _not_ a default handler
+                    log.debug("Running interrupt handler: %s", handler)
+                    if (
+                        handler
+                        and callable(handler)
+                        and handler != signal.SIG_DFL
+                        and handler is not signal.default_int_handler
+                    ):
+                        handler(signal_, _stack_frame)
+
+            return interrupt
+
+        try:
+            signal.signal(sig, nested_interrupt_builder(handler, signal.getsignal(sig)))
+        except ValueError:
+            log.warning(
+                "Unable to register signal handler. Server was started from a non-main thread."
+            )
 
     def _shut_down_model_manager(self):
         """Shared utility for shutting down the model manager"""
