@@ -277,7 +277,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             grace_period_seconds (Union[float, int]): Grace period for service shutdown.
                 Defaults to application config
         """
-        log.info(f"Shutting down http server {self._uvicorn_server_thread}")
+        log.info("Shutting down http server")
 
         if (
             self._uvicorn_server_thread is not None

@@ -170,7 +170,7 @@ class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attribute
         try:
             signal.signal(sig, nested_interrupt_builder(handler, signal.getsignal(sig)))
         except ValueError:
-            log.warning(
+            log.info(
                 "Unable to register signal handler. Server was started from a non-main thread."
             )
 
