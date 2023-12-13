@@ -405,7 +405,9 @@ class ModuleSubproc:
             self.proc.kill()
 
     def __enter__(self):
-        self.proc = subprocess.Popen(self._cmd, env=self._env)
+        self.proc = subprocess.Popen(
+            self._cmd, env=self._env, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         self._kill_timer.start()
         return self.proc
 
