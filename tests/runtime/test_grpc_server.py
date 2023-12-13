@@ -78,6 +78,7 @@ from tests.core.helpers import *
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import (
     ModuleSubproc,
+    _open_port,
     register_trained_model,
     runtime_grpc_test_server,
 )
@@ -1354,8 +1355,8 @@ def test_grpc_sever_shutdown_with_model_poll(open_port):
 def test_all_signal_handlers_invoked(open_port):
     """Test that a SIGINT successfully shuts down all running servers"""
 
-    # whoops, need 2 ports. Cannot use `_open_port()` again because it'll return the same port
-    other_open_port = open_port + 37
+    # whoops, need 2 ports. Try to find another open one that isn't the one we already have
+    other_open_port = _open_port(start=open_port + 1)
 
     with tempfile.TemporaryDirectory() as workdir:
         server_proc = ModuleSubproc(
