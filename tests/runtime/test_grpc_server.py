@@ -1369,13 +1369,13 @@ def test_all_signal_handlers_invoked(open_port):
             RUNTIME_METRICS_ENABLED="false",
             RUNTIME_GRPC_ENABLED="true",
             RUNTIME_HTTP_ENABLED="true",
+            LOG_LEVEL="info",
         )
         with server_proc as proc:
             # Wait for the grpc server to be up:
             _assert_connection(
                 grpc.insecure_channel(f"localhost:{open_port}"), max_failures=500
             )
-            print("grpc server is up!")
 
             # Then wait for the http server as well:
             http_failures = 0
@@ -1391,10 +1391,10 @@ def test_all_signal_handlers_invoked(open_port):
                     requests.HTTPError,
                     requests.ConnectionError,
                     requests.ConnectTimeout,
-                ) as e:
-                    print("http server still waiting:", e)
+                ):
                     http_failures += 1
-            print("http server up!")
+                    # tiny sleep because a connection refused won't hit the full `0.1`s timeout
+                    time.sleep(0.001)
 
             # Signal the server to shut down
             proc.send_signal(signal.SIGINT)
