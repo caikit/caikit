@@ -391,11 +391,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
             log.debug("In unary handler for %s", rpc.name)
             loop = asyncio.get_running_loop()
 
-            # build request DM object
-            request = await pydantic_from_request(pydantic_request, context)
-            http_request_dm_object = pydantic_to_dataobject(request)
-
             try:
+                # build request DM object
+                request = await pydantic_from_request(pydantic_request, context)
+                http_request_dm_object = pydantic_to_dataobject(request)
+
                 call = partial(
                     self.global_train_servicer.run_training_job,
                     request=http_request_dm_object.to_proto(),
@@ -409,6 +409,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     return self._format_file_response(result)
 
                 return Response(content=result.to_json(), media_type="application/json")
+            except RequestValidationError as err:
+                raise err
             except HTTPException as err:
                 raise err
             except CaikitRuntimeException as err:
@@ -449,10 +451,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
         async def _handler(
             context: Request,
         ) -> Response:
-            request = await pydantic_from_request(pydantic_request, context)
-            request_params = self._get_request_params(rpc, request)
 
             try:
+                request = await pydantic_from_request(pydantic_request, context)
+                request_params = self._get_request_params(rpc, request)
+
                 model_id = self._get_model_id(request)
                 log.debug4(
                     "Sending request %s to model id %s", request_params, model_id
@@ -497,6 +500,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 return Response(content=result.to_json(), media_type="application/json")
 
             except HTTPException as err:
+                raise err
+            except RequestValidationError as err:
                 raise err
             except CaikitRuntimeException as err:
                 error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
@@ -571,6 +576,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
                     return
                 except HTTPException as err:
+                    raise err
+                except RequestValidationError as err:
                     raise err
                 except (TypeError, ValueError) as err:
                     log_dict = {
