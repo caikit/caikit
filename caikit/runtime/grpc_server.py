@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 # Standard
 from concurrent import futures
 from typing import Optional, Union
@@ -244,6 +243,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
             grace_period_seconds (Union[float, int]): Grace period for service shutdown.
                 Defaults to application config
         """
+        log.info("Shutting down gRPC server")
         if grace_period_seconds is None:
             grace_period_seconds = (
                 self.config.runtime.grpc.server_shutdown_grace_period_seconds
@@ -296,7 +296,6 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
 def main(blocking: bool = True):
     server = RuntimeGRPCServer()
-    server._intercept_interrupt_signal()
     server.start(blocking)
 
 

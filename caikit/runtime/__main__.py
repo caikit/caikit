@@ -1,6 +1,16 @@
-# Standard
-import signal
-
+# Copyright The Caikit Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 # First Party
 import alog
 
@@ -13,25 +23,6 @@ log = alog.use_channel("RUNTIME-MAIN")
 def main():
     _grpc_server = None
     _http_server = None
-
-    def interrupt(signal_, _stack_frame):
-        log.info(
-            "<RUN87630120I>",
-            "Caikit Runtime received interrupt signal %s, shutting down",
-            signal_,
-        )
-        if _grpc_server:
-            _grpc_server.stop()
-        if _http_server:
-            _http_server.stop()
-
-    # NOTE: signal function can only be called from main thread of the main
-    # interpreter. If this function is called from a thread (like in tests)
-    # then signal handler cannot be used. Thus, we will only have real
-    # termination_handler when this is called from the __main__.
-
-    signal.signal(signal.SIGINT, interrupt)
-    signal.signal(signal.SIGTERM, interrupt)
 
     #####################
     # Start the servers

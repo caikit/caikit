@@ -69,10 +69,9 @@ def http_session_scoped_open_port():
     return _open_port()
 
 
-def _open_port():
+def _open_port(start=8888):
     # TODO: This has obvious problems where the port returned for use by a test is not immediately
     # put into use, so parallel tests could attempt to use the same port.
-    start = 8888
     end = start + 1000
     host = "localhost"
     for port in range(start, end):
@@ -405,7 +404,9 @@ class ModuleSubproc:
             self.proc.kill()
 
     def __enter__(self):
-        self.proc = subprocess.Popen(self._cmd, env=self._env)
+        self.proc = subprocess.Popen(
+            self._cmd, env=self._env, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         self._kill_timer.start()
         return self.proc
 

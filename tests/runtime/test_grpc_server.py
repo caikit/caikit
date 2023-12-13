@@ -17,14 +17,11 @@
 # Standard
 from dataclasses import dataclass
 from unittest import mock
-from unittest.mock import patch
 import json
-import os
 import signal
 import tempfile
 import threading
 import time
-import uuid
 
 # Third Party
 from google.protobuf.descriptor_pool import DescriptorPool
@@ -35,6 +32,7 @@ from grpc_reflection.v1alpha.proto_reflection_descriptor_database import (
 )
 import grpc
 import pytest
+import requests
 import tls_test_tools
 
 # First Party
@@ -42,17 +40,20 @@ import alog
 
 # Local
 from caikit import get_config
-from caikit.core import MODEL_MANAGER
 from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.runtime.data_model import (
     RuntimeInfoRequest,
     RuntimeInfoResponse,
     TrainingInfoRequest,
     TrainingJob,
-    TrainingStatus,
     TrainingStatusResponse,
 )
-from caikit.runtime import get_inference_request, get_train_params, get_train_request
+from caikit.runtime import (
+    get_inference_request,
+    get_train_params,
+    get_train_request,
+    http_server,
+)
 from caikit.runtime.grpc_server import RuntimeGRPCServer
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.protobufs import (
@@ -77,6 +78,7 @@ from tests.core.helpers import *
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import (
     ModuleSubproc,
+    _open_port,
     register_trained_model,
     runtime_grpc_test_server,
 )
@@ -1348,6 +1350,63 @@ def test_grpc_sever_shutdown_with_model_poll(open_port):
 
         # Make sure the process was not killed
         assert not server_proc.killed
+
+
+def test_all_signal_handlers_invoked(open_port):
+    """Test that a SIGINT successfully shuts down all running servers"""
+
+    # whoops, need 2 ports. Try to find another open one that isn't the one we already have
+    other_open_port = _open_port(start=open_port + 1)
+
+    with tempfile.TemporaryDirectory() as workdir:
+        server_proc = ModuleSubproc(
+            "caikit.runtime",
+            kill_timeout=30.0,
+            RUNTIME_GRPC_PORT=str(open_port),
+            RUNTIME_HTTP_PORT=str(other_open_port),
+            RUNTIME_LOCAL_MODELS_DIR=workdir,
+            RUNTIME_LAZY_LOAD_LOCAL_MODELS="true",
+            RUNTIME_LAZY_LOAD_POLL_PERIOD_SECONDS="0.1",
+            RUNTIME_METRICS_ENABLED="false",
+            RUNTIME_GRPC_ENABLED="true",
+            RUNTIME_HTTP_ENABLED="true",
+            LOG_LEVEL="info",
+        )
+        with server_proc as proc:
+            # Wait for the grpc server to be up:
+            _assert_connection(
+                grpc.insecure_channel(f"localhost:{open_port}"), max_failures=500
+            )
+
+            # Then wait for the http server as well:
+            http_failures = 0
+            while http_failures < 500:
+                try:
+                    resp = requests.get(
+                        f"http://localhost:{other_open_port}{http_server.HEALTH_ENDPOINT}",
+                        timeout=0.1,
+                    )
+                    resp.raise_for_status()
+                    break
+                except (
+                    requests.HTTPError,
+                    requests.ConnectionError,
+                    requests.ConnectTimeout,
+                ):
+                    http_failures += 1
+                    # tiny sleep because a connection refused won't hit the full `0.1`s timeout
+                    time.sleep(0.001)
+
+            # Signal the server to shut down
+            proc.send_signal(signal.SIGINT)
+
+        # Make sure the process was not killed
+        assert not server_proc.killed
+        # Check the logs (barf) to see if both grpc and http signal handlers called
+        # communicate returns (stdout, stderr) in bytes
+        logs = server_proc.proc.communicate()[1].decode("utf-8")
+        assert "Shutting down gRPC server" in logs
+        assert "Shutting down http server" in logs
 
 
 def test_construct_with_options(open_port, sample_train_service, sample_int_file):
