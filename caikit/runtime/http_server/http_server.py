@@ -423,7 +423,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     module=rpc.clz,
                     training_output_dir=None,  # pass None so that GTS picks up the config one # TODO: double-check? # noqa: E501
                     # context=context,
-                    wait=True,
+                    wait=False,
                 )
                 result = await loop.run_in_executor(None, call)
                 if response_data_object.supports_file_operations:
