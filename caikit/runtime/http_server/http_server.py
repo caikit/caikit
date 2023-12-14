@@ -487,9 +487,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 log.debug4(
                     "Sending request %s to model id %s", request_params, model_id
                 )
-                model = self.global_predict_servicer._model_manager.retrieve_model(
-                    model_id
-                )
 
                 aborter_context = (
                     HttpRequestAborter(context)
@@ -503,9 +500,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         self.global_predict_servicer.predict_model,
                         model_id=model_id,
                         request_name=rpc.request.name,
-                        inference_func_name=model.get_inference_signature(
-                            output_streaming=False, input_streaming=False, task=rpc.task
-                        ).method_name,
+                        input_streaming=False,
+                        output_streaming=False,
+                        task=rpc.task,
                         aborter=aborter,
                         **request_params,
                     )
@@ -561,9 +558,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     log.debug4(
                         "Sending request %s to model id %s", request_params, model_id
                     )
-                    model = self.global_predict_servicer._model_manager.retrieve_model(
-                        model_id
-                    )
 
                     aborter_context = (
                         HttpRequestAborter(context)
@@ -577,9 +571,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                             self.global_predict_servicer.predict_model(
                                 model_id=model_id,
                                 request_name=rpc.request.name,
-                                inference_func_name=model.get_inference_signature(
-                                    output_streaming=True, input_streaming=False
-                                ).method_name,
+                                input_streaming=False,
+                                output_streaming=True,
+                                task=rpc.task,
                                 aborter=aborter,
                                 **request_params,
                             ),
