@@ -1081,3 +1081,59 @@ def test_http_and_grpc_server_share_threadpool(
     runtime_http_server, runtime_grpc_server
 ):
     assert runtime_grpc_server.thread_pool is runtime_http_server.thread_pool
+
+
+def test_uvicorn_server_config_valid():
+    """Make sure that arbitrary uvicorn configs can be passed through from
+    runtime.http.server_config
+    """
+    timeout_keep_alive = 10
+    with temp_config(
+        {
+            "runtime": {
+                "http": {"server_config": {"timeout_keep_alive": timeout_keep_alive}}
+            }
+        },
+        "merge",
+    ):
+        server = http_server.RuntimeHTTPServer()
+        assert server.server.config.timeout_keep_alive == timeout_keep_alive
+
+
+def test_uvicorn_server_config_invalid_tls_overlap():
+    """Make sure uvicorn TLS arguments cannot be set if TLS is enabled in caikit
+    config
+    """
+    with temp_config(
+        {
+            "runtime": {
+                "http": {
+                    "server_config": {
+                        "ssl_keyfile": "/some/file.pem",
+                    }
+                }
+            }
+        },
+        "merge",
+    ):
+        with generate_tls_configs(port=1234, tls=True, mtls=True):
+            with pytest.raises(ValueError):
+                http_server.RuntimeHTTPServer()
+
+
+def test_uvicorn_server_config_invalid_kwarg_overlap():
+    """Make sure uvicorn config can't be set for configs that caikit manages"""
+    with temp_config(
+        {
+            "runtime": {
+                "http": {
+                    "server_config": {
+                        "log_level": "debug",
+                    }
+                }
+            }
+        },
+        "merge",
+    ):
+        with pytest.raises(ValueError):
+            http_server.RuntimeHTTPServer()

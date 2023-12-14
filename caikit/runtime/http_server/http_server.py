@@ -62,6 +62,7 @@ from .utils import convert_json_schema_to_multipart, flatten_json_schema
 from caikit.config import get_config
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
+from caikit.core.exceptions import error_handler
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
 from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage
@@ -78,6 +79,7 @@ from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 ## Globals #####################################################################
 
 log = alog.use_channel("SERVR-HTTP")
+error = error_handler.get(log)
 
 
 # Mapping from GRPC codes to their corresponding HTTP codes
@@ -221,18 +223,37 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 log.info("<RUN10539515I>", "Running INSECURE")
 
             # Start the server with a timeout_graceful_shutdown
-            # if not set in config, this is None and unvicorn accepts None or number of seconds
+            # if not set in config, this is None and unvicorn accepts None or
+            # number of seconds
             unvicorn_timeout_graceful_shutdown = (
                 get_config().runtime.http.server_shutdown_grace_period_seconds
             )
+            server_config = get_config().runtime.http.server_config
+            overlapping_tls_config = set(tls_kwargs).intersection(server_config)
+            error.value_check(
+                "<RUN30233180E>",
+                not overlapping_tls_config,
+                "Found overlapping config keys between TLS and server_config: %s",
+                overlapping_tls_config,
+            )
+            config_kwargs = {
+                "port": self.port,
+                "log_level": None,
+                "log_config": None,
+                "timeout_graceful_shutdown": unvicorn_timeout_graceful_shutdown,
+            }
+            overlapping_kwarg_config = set(config_kwargs).intersection(server_config)
+            error.value_check(
+                "<RUN99488934E>",
+                not overlapping_kwarg_config,
+                "Found caikit-managed uvicorn config in server_config: %s",
+                overlapping_kwarg_config,
+            )
             config = uvicorn.Config(
                 self.app,
-                host="0.0.0.0",
-                port=self.port,
-                log_level=None,
-                log_config=None,
-                timeout_graceful_shutdown=unvicorn_timeout_graceful_shutdown,
+                **config_kwargs,
                 **tls_kwargs,
+                **server_config,
             )
             # Make sure the config loads TLS files here so they can safely be
             # deleted if they're ephemeral
