@@ -1172,4 +1172,3 @@ def test_uvicorn_server_config_invalid_kwarg_overlap():
     ):
         with pytest.raises(ValueError):
             http_server.RuntimeHTTPServer()
-
