@@ -12,6 +12,10 @@ import zipfile
 from caikit.core import DataObjectBase, TaskBase, dataobject, task
 from caikit.core.data_model import ProducerId
 from caikit.core.data_model.json_dict import JsonDict
+from caikit.core.exceptions.caikit_core_exception import (
+    CaikitCoreException,
+    CaikitCoreStatusCode,
+)
 from caikit.interfaces.common.data_model import File
 
 
@@ -48,6 +52,13 @@ class FileInputType(DataObjectBase):
 
     file: File
     metadata: SampleInputType
+
+    def __post_init__(self):
+        if self.file.filename and ".exe" in self.file.filename:
+            raise CaikitCoreException(
+                status_code=CaikitCoreStatusCode.INVALID_ARGUMENT,
+                message="Executables are not a supported File type",
+            )
 
 
 @dataobject(package="caikit_data_model.sample_lib")

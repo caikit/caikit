@@ -530,6 +530,31 @@ def test_output_file_task(file_task_model_id, client):
             assert pdf_result.read() == b"bounding|pdfdata\xff\xff\x00|box"
 
 
+def test_invalid_input_exception(file_task_model_id, client):
+    """Simple check that the server catches caikit core exceptions"""
+    json_file_input = {
+        "model_id": file_task_model_id,
+        "inputs": {
+            "file": {
+                # cGRmZGF0Yf//AA== is b"pdfdata\xff\xff\x00" base64 encoded
+                "data": "cGRmZGF0Yf//AA==",
+                "filename": "unsupported_file.exe",
+            },
+            "metadata": {
+                "name": "agoodname",
+            },
+        },
+    }
+
+    response = client.post(
+        f"/api/v1/task/file",
+        json=json_file_input,
+    )
+    assert response.status_code == 400
+    json_response = json.loads(response.content.decode(response.default_encoding))
+    assert json_response["details"] == "Executables are not a supported File type"
+
+
 @pytest.mark.skip(
     "Skipping testing streaming cases with FastAPI's testclient, pending resolution https://github.com/tiangolo/fastapi/discussions/10518"
 )
