@@ -217,8 +217,9 @@ class GlobalPredictServicer:
         self,
         request_name: str,
         model_id: str,
-        input_streaming: bool = False,
-        output_streaming: bool = False,
+        inference_func_name: str = "run",
+        input_streaming: Optional[bool] = None,
+        output_streaming: Optional[bool] = None,
         task: Optional[TaskBase] = None,
         aborter: Optional[RpcAborter] = None,
         **kwargs,
@@ -231,9 +232,12 @@ class GlobalPredictServicer:
                 The name of the request message to validate the model's task
             model_id (str):
                 The ID of the loaded model
-            input_streaming (bool):
+            inference_func_name (str):
+                Explicit name of the inference function to predict (ignored if
+                input_streaming and output_streaming set)
+            input_streaming (Optional[bool]):
                 Use the task function with input streaming
-            output_streaming (bool):
+            output_streaming (Optional[bool]):
                 Use the task function with output streaming
             task (Optional[TaskBase])
                 The task to use for inference (if multitask model)
@@ -249,11 +253,13 @@ class GlobalPredictServicer:
         with self._handle_predict_exceptions(model_id, request_name):
             model = self._model_manager.retrieve_model(model_id)
             self._verify_model_task(model)
-            inference_func_name = model.get_inference_signature(
-                output_streaming=output_streaming,
-                input_streaming=input_streaming,
-                task=task,
-            ).method_name
+            if input_streaming is not None and output_streaming is not None:
+                inference_func_name = model.get_inference_signature(
+                    output_streaming=output_streaming,
+                    input_streaming=input_streaming,
+                    task=task,
+                ).method_name
+                log.debug2("Deduced inference function name: %s", inference_func_name)
 
             # NB: we previously recorded the size of the request, and timed this module to
             # provide a rudimentary throughput metric of size / time
