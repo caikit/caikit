@@ -16,7 +16,7 @@ from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 # Local
-from caikit.core.data_model import ProducerId
+from caikit.core.data_model import DataStream, ProducerId
 from caikit.runtime.service_factory import get_inference_request
 from sample_lib.data_model.sample import GeoSpatialTask
 from sample_lib.modules import MultiTaskModule, SecondTask
@@ -132,6 +132,24 @@ def test_global_predict_works_for_unary_rpcs(
         caikit_rpc=sample_task_unary_rpc,
     )
     assert response == HAPPY_PATH_RESPONSE
+
+
+def test_global_predict_explicit_inference_function(
+    sample_inference_service,
+    sample_predict_servicer,
+    sample_task_model_id,
+    sample_task_unary_rpc,
+):
+    """Calling predict_model can explicitly select the inference function"""
+    predict_class = get_inference_request(SampleTask)
+    request_name = sample_task_unary_rpc.request.name
+    response = sample_predict_servicer.predict_model(
+        request_name=request_name,
+        model_id=sample_task_model_id,
+        inference_func_name="run_stream_out",
+        sample_input=HAPPY_PATH_INPUT_DM,
+    )
+    assert isinstance(response, DataStream)
 
 
 def test_global_predict_works_on_bidirectional_streaming_rpcs(

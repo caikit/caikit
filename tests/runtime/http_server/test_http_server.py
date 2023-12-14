@@ -34,6 +34,7 @@ import tls_test_tools
 
 # Local
 from caikit.core import MODEL_MANAGER, DataObjectBase, dataobject
+from caikit.core.data_model import TrainingStatus
 from caikit.core.model_management.multi_model_finder import MultiModelFinder
 from caikit.runtime import http_server
 from caikit.runtime.http_server.http_server import StreamEventTypes
@@ -1106,3 +1107,93 @@ def test_http_and_grpc_server_share_threadpool(
     runtime_http_server, runtime_grpc_server
 ):
     assert runtime_grpc_server.thread_pool is runtime_http_server.thread_pool
+
+
+def test_train_long_running_sample_task(client, runtime_http_server):
+    """Test that with a long running training job, the request returns before the training completes"""
+    model_name = "sample_task_train"
+    json_input = {
+        "model_name": model_name,
+        "parameters": {
+            "training_data": {"data_stream": {"data": [{"number": 1}]}},
+            "batch_size": 42,
+            "sleep_time": 5,  # mimic long train time
+        },
+    }
+    training_response = client.post(
+        f"/api/v1/SampleTaskSampleModuleTrain",
+        json=json_input,
+    )
+
+    # assert training response received before training completed
+    training_json_response = json.loads(
+        training_response.content.decode(training_response.default_encoding)
+    )
+    assert training_response.status_code == 200, training_json_response
+    assert (training_id := training_json_response["training_id"])
+    assert training_json_response["model_name"] == model_name
+
+    # assert that the training is still running
+    model_future = MODEL_MANAGER.get_model_future(training_id)
+    assert model_future.get_info().status == TrainingStatus.RUNNING
+
+    # Cancel the training
+    model_future.cancel()
+    assert model_future.get_info().status == TrainingStatus.CANCELED
+    assert model_future.get_info().status.is_terminal
+
+
+def test_uvicorn_server_config_valid():
+    """Make sure that arbitrary uvicorn configs can be passed through from
+    runtime.http.server_config
+    """
+    timeout_keep_alive = 10
+    with temp_config(
+        {
+            "runtime": {
+                "http": {"server_config": {"timeout_keep_alive": timeout_keep_alive}}
+            }
+        },
+        "merge",
+    ):
+        server = http_server.RuntimeHTTPServer()
+        assert server.server.config.timeout_keep_alive == timeout_keep_alive
+
+
+def test_uvicorn_server_config_invalid_tls_overlap():
+    """Make sure uvicorn TLS arguments cannot be set if TLS is enabled in caikit
+    config
+    """
+    with temp_config(
+        {
+            "runtime": {
+                "http": {
+                    "server_config": {
+                        "ssl_keyfile": "/some/file.pem",
+                    }
+                }
+            }
+        },
+        "merge",
+    ):
+        with generate_tls_configs(port=1234, tls=True, mtls=True):
+            with pytest.raises(ValueError):
+                http_server.RuntimeHTTPServer()
+
+
+def test_uvicorn_server_config_invalid_kwarg_overlap():
+    """Make sure uvicorn config can't be set for configs that caikit manages"""
+    with temp_config(
+        {
+            "runtime": {
+                "http": {
+                    "server_config": {
+                        "log_level": "debug",
+                    }
+                }
+            }
+        },
+        "merge",
+    ):
+        with pytest.raises(ValueError):
+            http_server.RuntimeHTTPServer()

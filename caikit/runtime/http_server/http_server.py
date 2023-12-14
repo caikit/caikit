@@ -62,6 +62,7 @@ from .utils import convert_json_schema_to_multipart, flatten_json_schema
 from caikit.config import get_config
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
+from caikit.core.exceptions import error_handler
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
     CaikitCoreStatusCode,
@@ -82,6 +83,7 @@ from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 ## Globals #####################################################################
 
 log = alog.use_channel("SERVR-HTTP")
+error = error_handler.get(log)
 
 
 STATUS_CODE_TO_HTTP = {
@@ -233,18 +235,37 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 log.info("<RUN10539515I>", "Running INSECURE")
 
             # Start the server with a timeout_graceful_shutdown
-            # if not set in config, this is None and unvicorn accepts None or number of seconds
+            # if not set in config, this is None and unvicorn accepts None or
+            # number of seconds
             unvicorn_timeout_graceful_shutdown = (
                 get_config().runtime.http.server_shutdown_grace_period_seconds
             )
+            server_config = get_config().runtime.http.server_config
+            overlapping_tls_config = set(tls_kwargs).intersection(server_config)
+            error.value_check(
+                "<RUN30233180E>",
+                not overlapping_tls_config,
+                "Found overlapping config keys between TLS and server_config: %s",
+                overlapping_tls_config,
+            )
+            config_kwargs = {
+                "port": self.port,
+                "log_level": None,
+                "log_config": None,
+                "timeout_graceful_shutdown": unvicorn_timeout_graceful_shutdown,
+            }
+            overlapping_kwarg_config = set(config_kwargs).intersection(server_config)
+            error.value_check(
+                "<RUN99488934E>",
+                not overlapping_kwarg_config,
+                "Found caikit-managed uvicorn config in server_config: %s",
+                overlapping_kwarg_config,
+            )
             config = uvicorn.Config(
                 self.app,
-                host="0.0.0.0",
-                port=self.port,
-                log_level=None,
-                log_config=None,
-                timeout_graceful_shutdown=unvicorn_timeout_graceful_shutdown,
+                **config_kwargs,
                 **tls_kwargs,
+                **server_config,
             )
             # Make sure the config loads TLS files here so they can safely be
             # deleted if they're ephemeral
@@ -414,7 +435,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     module=rpc.clz,
                     training_output_dir=None,  # pass None so that GTS picks up the config one # TODO: double-check? # noqa: E501
                     # context=context,
-                    wait=True,
+                    wait=False,
                 )
                 result = await loop.run_in_executor(None, call)
                 if response_data_object.supports_file_operations:
@@ -480,9 +501,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 log.debug4(
                     "Sending request %s to model id %s", request_params, model_id
                 )
-                model = self.global_predict_servicer._model_manager.retrieve_model(
-                    model_id
-                )
 
                 aborter_context = (
                     HttpRequestAborter(context)
@@ -496,9 +514,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         self.global_predict_servicer.predict_model,
                         model_id=model_id,
                         request_name=rpc.request.name,
-                        inference_func_name=model.get_inference_signature(
-                            output_streaming=False, input_streaming=False, task=rpc.task
-                        ).method_name,
+                        input_streaming=False,
+                        output_streaming=False,
+                        task=rpc.task,
                         aborter=aborter,
                         **request_params,
                     )
@@ -556,9 +574,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     log.debug4(
                         "Sending request %s to model id %s", request_params, model_id
                     )
-                    model = self.global_predict_servicer._model_manager.retrieve_model(
-                        model_id
-                    )
 
                     aborter_context = (
                         HttpRequestAborter(context)
@@ -572,9 +587,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                             self.global_predict_servicer.predict_model(
                                 model_id=model_id,
                                 request_name=rpc.request.name,
-                                inference_func_name=model.get_inference_signature(
-                                    output_streaming=True, input_streaming=False
-                                ).method_name,
+                                input_streaming=False,
+                                output_streaming=True,
+                                task=rpc.task,
                                 aborter=aborter,
                                 **request_params,
                             ),
