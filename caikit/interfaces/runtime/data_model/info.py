@@ -56,10 +56,11 @@ class ModelInfo(DataObjectBase):
     model_path: Annotated[str, FieldNumber(1)]
     name: Annotated[str, FieldNumber(2)]
     size: Annotated[int, FieldNumber(3)]
+    metadata: Annotated[Dict[str, str], FieldNumber(4)]
 
     # Module Information
-    module_id: Annotated[str, FieldNumber(4)]
-    module_metadata: Annotated[Dict[str, str], FieldNumber(5)]
+    module_id: Annotated[str, FieldNumber(5)]
+    module_metadata: Annotated[Dict[str, str], FieldNumber(6)]
 
 
 @dataobject(RUNTIME_PACKAGE)

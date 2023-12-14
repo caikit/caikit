@@ -80,16 +80,31 @@ class ModuleBase(metaclass=_ModuleBaseMeta):
         return self._metadata
 
     @property
-    def module_metadata(self) -> Dict[str, Any]:
-        """Helper property to return public metadata about a Module. This function
-        is separate from `metdata` as this is specific for the root module. This
-        function also requires a flat metadata structure without nested dictionaries
+    def module_metadata(cls) -> Dict[str, Any]:
+        """Helper property to return metadata about a Module. This function
+        is separate from `metadata` as this is specific for the class module. This
+        function also requires a flat metadata structure without nested dictionaries.
+
+        NOTE: This should be a @classmethod but using @property/@classmethod together has
+        been deprecated
 
         Returns:
-            Dict[str, str]: A dictionary of this module's public metadata
+            Dict[str, str]: A dictionary of this ModuleBases's metadata
         """
 
-        return {"name": self.MODULE_NAME, "version": self.MODULE_VERSION}
+        return {"name": cls.MODULE_NAME, "version": cls.MODULE_VERSION}
+
+    @property
+    def public_model_info(cls) -> Dict[str, Any]:
+        """Helper property to return public metadata about a specific Model. This
+        function is separate from `metdata` as that contains the entire ModelConfig
+        which might not want to be shared/exposed.
+
+        Returns:
+            Dict[str, str]: A dictionary of this models's public metadata
+        """
+
+        return {}
 
     def set_load_backend(self, load_backend):
         """Method used by the model manager to indicate the load backend that

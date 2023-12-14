@@ -106,6 +106,7 @@ class InfoServicer:
                     model_path=loaded_module.path(),
                     name=name,
                     size=loaded_module.size(),
+                    metadata=model_instance.public_model_info,
                     module_id=model_instance.MODULE_ID,
                     module_metadata=model_instance.module_metadata,
                 )
