@@ -29,7 +29,7 @@ import alog
 
 # Local
 from caikit import get_config
-from caikit.core import ModuleBase
+from caikit.core import ModuleBase, TaskBase
 from caikit.core.data_model import DataBase, DataStream
 from caikit.core.signature_parsing import CaikitMethodSignature
 from caikit.runtime.metrics.rpc_meter import RPCMeter
@@ -196,7 +196,9 @@ class GlobalPredictServicer:
             response = self.predict_model(
                 request_name,
                 model_id,
-                inference_func_name=inference_signature.method_name,
+                input_streaming=caikit_rpc.input_streaming,
+                output_streaming=caikit_rpc.output_streaming,
+                task=caikit_rpc.task,
                 aborter=RpcAborter(context) if self.use_abortable_threads else None,
                 **caikit_library_request,
             )
@@ -215,7 +217,9 @@ class GlobalPredictServicer:
         self,
         request_name: str,
         model_id: str,
-        inference_func_name: str = "run",
+        input_streaming: bool = False,
+        output_streaming: bool = False,
+        task: Optional[TaskBase] = None,
         aborter: Optional[RpcAborter] = None,
         **kwargs,
     ) -> Union[DataBase, Iterable[DataBase]]:
@@ -227,8 +231,12 @@ class GlobalPredictServicer:
                 The name of the request message to validate the model's task
             model_id (str):
                 The ID of the loaded model
-            inference_func_name (str):
-                The name of the inference function to run
+            input_streaming (bool):
+                Use the task function with input streaming
+            output_streaming (bool):
+                Use the task function with output streaming
+            task (Optional[TaskBase])
+                The task to use for inference (if multitask model)
             aborter (Optional[RpcAborter]):
                 If using abortable calls, this is the aborter to use
             **kwargs: Keyword arguments to pass to the model's run function
@@ -241,6 +249,11 @@ class GlobalPredictServicer:
         with self._handle_predict_exceptions(model_id, request_name):
             model = self._model_manager.retrieve_model(model_id)
             self._verify_model_task(model)
+            inference_func_name = model.get_inference_signature(
+                output_streaming=output_streaming,
+                input_streaming=input_streaming,
+                task=task,
+            ).method_name
 
             # NB: we previously recorded the size of the request, and timed this module to
             # provide a rudimentary throughput metric of size / time

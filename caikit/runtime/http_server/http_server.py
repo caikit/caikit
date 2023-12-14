@@ -503,9 +503,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         self.global_predict_servicer.predict_model,
                         model_id=model_id,
                         request_name=rpc.request.name,
-                        inference_func_name=model.get_inference_signature(
-                            output_streaming=False, input_streaming=False, task=rpc.task
-                        ).method_name,
+                        input_streaming=False,
+                        output_streaming=False,
+                        task=rpc.task,
                         aborter=aborter,
                         **request_params,
                     )
@@ -577,9 +577,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                             self.global_predict_servicer.predict_model(
                                 model_id=model_id,
                                 request_name=rpc.request.name,
-                                inference_func_name=model.get_inference_signature(
-                                    output_streaming=True, input_streaming=False
-                                ).method_name,
+                                input_streaming=False,
+                                output_streaming=True,
+                                task=rpc.task,
                                 aborter=aborter,
                                 **request_params,
                             ),
