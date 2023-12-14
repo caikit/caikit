@@ -153,6 +153,9 @@ runtime:
         server_shutdown_grace_period_seconds: 5
         # Timeout for health probe to receive a response
         probe_timeout: 0.01
+        # Additional uvicorn server configuration
+        # CITE: https://github.com/encode/uvicorn/blob/master/uvicorn/config.py#L188
+        server_config: {}
 
     # Configuration for the metrics server
     metrics:

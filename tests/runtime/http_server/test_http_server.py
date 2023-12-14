@@ -1116,3 +1116,60 @@ def test_train_long_running_sample_task(client, runtime_http_server):
     model_future.cancel()
     assert model_future.get_info().status == TrainingStatus.CANCELED
     assert model_future.get_info().status.is_terminal
+
+
+def test_uvicorn_server_config_valid():
+    """Make sure that arbitrary uvicorn configs can be passed through from
+    runtime.http.server_config
+    """
+    timeout_keep_alive = 10
+    with temp_config(
+        {
+            "runtime": {
+                "http": {"server_config": {"timeout_keep_alive": timeout_keep_alive}}
+            }
+        },
+        "merge",
+    ):
+        server = http_server.RuntimeHTTPServer()
+        assert server.server.config.timeout_keep_alive == timeout_keep_alive
+
+
+def test_uvicorn_server_config_invalid_tls_overlap():
+    """Make sure uvicorn TLS arguments cannot be set if TLS is enabled in caikit
+    config
+    """
+    with temp_config(
+        {
+            "runtime": {
+                "http": {
+                    "server_config": {
+                        "ssl_keyfile": "/some/file.pem",
+                    }
+                }
+            }
+        },
+        "merge",
+    ):
+        with generate_tls_configs(port=1234, tls=True, mtls=True):
+            with pytest.raises(ValueError):
+                http_server.RuntimeHTTPServer()
+
+
+def test_uvicorn_server_config_invalid_kwarg_overlap():
+    """Make sure uvicorn config can't be set for configs that caikit manages"""
+    with temp_config(
+        {
+            "runtime": {
+                "http": {
+                    "server_config": {
+                        "log_level": "debug",
+                    }
+                }
+            }
+        },
+        "merge",
+    ):
+        with pytest.raises(ValueError):
+            http_server.RuntimeHTTPServer()
+
