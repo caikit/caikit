@@ -487,9 +487,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 log.debug4(
                     "Sending request %s to model id %s", request_params, model_id
                 )
-                model = self.global_predict_servicer._model_manager.retrieve_model(
-                    model_id
-                )
 
                 aborter_context = (
                     HttpRequestAborter(context)
@@ -560,9 +557,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     model_id = self._get_model_id(request)
                     log.debug4(
                         "Sending request %s to model id %s", request_params, model_id
-                    )
-                    model = self.global_predict_servicer._model_manager.retrieve_model(
-                        model_id
                     )
 
                     aborter_context = (
