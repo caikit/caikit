@@ -63,6 +63,10 @@ from caikit.config import get_config
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.exceptions import error_handler
+from caikit.core.exceptions.caikit_core_exception import (
+    CaikitCoreException,
+    CaikitCoreStatusCode,
+)
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
 from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage
@@ -82,10 +86,10 @@ log = alog.use_channel("SERVR-HTTP")
 error = error_handler.get(log)
 
 
-# Mapping from GRPC codes to their corresponding HTTP codes
-# pylint: disable=line-too-long
-# CITE: https://chromium.googlesource.com/external/github.com/grpc/grpc/+/refs/tags/v1.21.4-pre1/doc/statuscodes.md
-GRPC_CODE_TO_HTTP = {
+STATUS_CODE_TO_HTTP = {
+    # Mapping from GRPC codes to their corresponding HTTP codes
+    # pylint: disable=line-too-long
+    # CITE: https://chromium.googlesource.com/external/github.com/grpc/grpc/+/refs/tags/v1.21.4-pre1/doc/statuscodes.md
     StatusCode.OK: 200,
     StatusCode.INVALID_ARGUMENT: 400,
     StatusCode.FAILED_PRECONDITION: 400,
@@ -102,6 +106,14 @@ GRPC_CODE_TO_HTTP = {
     StatusCode.UNIMPLEMENTED: 501,
     StatusCode.UNAVAILABLE: 501,
     StatusCode.DEADLINE_EXCEEDED: 504,
+    # Mapping from CaikitCore StatusCodes codes to their corresponding HTTP codes
+    CaikitCoreStatusCode.INVALID_ARGUMENT: 400,
+    CaikitCoreStatusCode.UNAUTHORIZED: 401,
+    CaikitCoreStatusCode.FORBIDDEN: 403,
+    CaikitCoreStatusCode.NOT_FOUND: 404,
+    CaikitCoreStatusCode.CONNECTION_ERROR: 500,
+    CaikitCoreStatusCode.UNKNOWN: 500,
+    CaikitCoreStatusCode.FATAL: 500,
 }
 
 
@@ -412,11 +424,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
             log.debug("In unary handler for %s", rpc.name)
             loop = asyncio.get_running_loop()
 
-            # build request DM object
-            request = await pydantic_from_request(pydantic_request, context)
-            http_request_dm_object = pydantic_to_dataobject(request)
-
             try:
+                # build request DM object
+                request = await pydantic_from_request(pydantic_request, context)
+                http_request_dm_object = pydantic_to_dataobject(request)
+
                 call = partial(
                     self.global_train_servicer.run_training_job,
                     request=http_request_dm_object.to_proto(),
@@ -430,10 +442,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     return self._format_file_response(result)
 
                 return Response(content=result.to_json(), media_type="application/json")
+            except RequestValidationError as err:
+                raise err
             except HTTPException as err:
                 raise err
-            except CaikitRuntimeException as err:
-                error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
+            except (CaikitCoreException, CaikitRuntimeException) as err:
+                error_code = STATUS_CODE_TO_HTTP.get(err.status_code, 500)
                 error_content = {
                     "details": err.message,
                     "code": error_code,
@@ -470,10 +484,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
         async def _handler(
             context: Request,
         ) -> Response:
-            request = await pydantic_from_request(pydantic_request, context)
-            request_params = self._get_request_params(rpc, request)
-
             try:
+                request = await pydantic_from_request(pydantic_request, context)
+                request_params = self._get_request_params(rpc, request)
+
                 model_id = self._get_model_id(request)
                 log.debug4(
                     "Sending request %s to model id %s", request_params, model_id
@@ -516,8 +530,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
             except HTTPException as err:
                 raise err
-            except CaikitRuntimeException as err:
-                error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
+            except RequestValidationError as err:
+                raise err
+            except (CaikitCoreException, CaikitRuntimeException) as err:
+                error_code = STATUS_CODE_TO_HTTP.get(err.status_code, 500)
                 error_content = {
                     "details": err.message,
                     "code": error_code,
@@ -587,6 +603,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     return
                 except HTTPException as err:
                     raise err
+                except RequestValidationError as err:
+                    raise err
                 except (TypeError, ValueError) as err:
                     log_dict = {
                         "log_code": "<RUN76624264W>",
@@ -599,8 +617,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         "details": repr(err),
                         "code": error_code,
                     }
-                except CaikitRuntimeException as err:
-                    error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
+                except (CaikitCoreException, CaikitRuntimeException) as err:
+                    error_code = STATUS_CODE_TO_HTTP.get(err.status_code, 500)
                     error_content = {
                         "details": err.message,
                         "code": error_code,
