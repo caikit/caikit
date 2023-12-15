@@ -268,7 +268,7 @@ This is an updated block diagram of the various model loading components and the
 
 ## Status
 
-choose one: Proposed
+choose one: Accepted
 
 if deprecated, include a rationale.
 
