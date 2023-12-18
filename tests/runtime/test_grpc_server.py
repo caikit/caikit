@@ -79,8 +79,10 @@ from tests.conftest import ARM_ARCH, PROTOBUF_VERSION, random_test_id, temp_conf
 from tests.core.helpers import *
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import (
+    KeyPair,
     ModuleSubproc,
     _open_port,
+    TLSConfig,
     register_trained_model,
     runtime_grpc_test_server,
 )
@@ -1517,16 +1519,6 @@ def test_grpc_server_socket_listen():
 
 
 # Test implementation details #########################
-@dataclass
-class KeyPair:
-    cert: str
-    key: str
-
-
-@dataclass
-class TLSConfig:
-    server: KeyPair
-    client: KeyPair
 
 
 def _make_secure_channel(
