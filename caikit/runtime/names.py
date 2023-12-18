@@ -18,6 +18,7 @@ type.
 """
 
 # Standard
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Type, Union
 import re
@@ -28,6 +29,7 @@ import alog
 # Local
 from caikit.config import get_config
 from caikit.core.modules import ModuleBase
+from caikit.core.signature_parsing import CaikitMethodSignature
 from caikit.core.task import TaskBase
 from caikit.core.toolkit.name_tools import snake_to_upper_camel
 from caikit.interfaces.runtime.data_model import (

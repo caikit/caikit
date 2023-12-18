@@ -17,4 +17,5 @@ from .base import ModuleBase
 from .config import ModuleConfig
 from .decorator import module
 from .loader import ModuleLoader
+from .remote_config import RemoteModuleConfig
 from .saver import ModuleSaver
