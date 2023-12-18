@@ -19,7 +19,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from io import IOBase
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import base64
 import datetime
 import json
@@ -52,6 +52,8 @@ error = error_handler.get(log)
 
 
 class _DataBaseMetaClass(type):
+    fields: Tuple
+
     """Meta class for all structures in the data model."""
 
     # store a registry of all classes that use this metaclass, i.e.,
