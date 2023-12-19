@@ -76,10 +76,6 @@ class ThreadInterrupter:
 
         self._shutdown = True
 
-        self._total_rip_count = 0
-        self._total_registered = 0
-        self._total_unregistered = 0
-
     def start(self):
         if not self._shutdown:
             log.debug("ThreadInterrupter already started")
@@ -101,11 +97,9 @@ class ThreadInterrupter:
 
     def register(self, context_id: uuid, thread: int) -> None:
         self._context_thread_map[context_id] = thread
-        self._total_registered += 1
 
     def unregister(self, context_id: uuid) -> None:
         self._context_thread_map.pop(context_id, None)
-        self._total_unregistered += 1
 
     def kill(self, context_id: uuid) -> None:
         # Put this context onto the queue for abortion and immediately return
@@ -140,7 +134,6 @@ class ThreadInterrupter:
                 log.warning("Failed to abort thread")
                 return False
 
-            self._total_rip_count += 1
             return True
 
         else:
