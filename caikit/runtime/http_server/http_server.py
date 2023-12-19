@@ -249,6 +249,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 overlapping_tls_config,
             )
             config_kwargs = {
+                "host": "0.0.0.0",
                 "port": self.port,
                 "log_level": None,
                 "log_config": None,
