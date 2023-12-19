@@ -45,7 +45,7 @@ from caikit.runtime.utils.servicer_util import (
     get_metadata,
     validate_data_model,
 )
-from caikit.runtime.work_management.abortable_action import (
+from caikit.runtime.work_management.abortable_context import (
     AbortableContext,
     ThreadInterrupter,
 )

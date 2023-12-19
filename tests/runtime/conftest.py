@@ -37,7 +37,7 @@ from caikit.runtime.service_generation.rpcs import TaskPredictRPC
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.servicers.model_runtime_servicer import ModelRuntimeServicerImpl
-from caikit.runtime.work_management.abortable_action import ThreadInterrupter
+from caikit.runtime.work_management.abortable_context import ThreadInterrupter
 from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
 

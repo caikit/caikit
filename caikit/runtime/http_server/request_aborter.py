@@ -27,7 +27,7 @@ from fastapi import Request
 import alog
 
 # Local
-from caikit.runtime.work_management.abortable_action import (
+from caikit.runtime.work_management.abortable_context import (
     AbortableContextBase,
     ActionAborter,
 )

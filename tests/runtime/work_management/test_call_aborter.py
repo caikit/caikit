@@ -16,7 +16,7 @@ import threading
 import unittest
 
 # Local
-from caikit.runtime.work_management.abortable_action import AbortableContextBase
+from caikit.runtime.work_management.abortable_context import AbortableContextBase
 from caikit.runtime.work_management.rpc_aborter import RpcAborter
 from tests.fixtures import Fixtures
 

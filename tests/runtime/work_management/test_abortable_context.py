@@ -24,7 +24,7 @@ import pytest
 
 # Local
 from caikit.runtime.types.aborted_exception import AbortedException
-from caikit.runtime.work_management.abortable_action import (
+from caikit.runtime.work_management.abortable_context import (
     AbortableContext,
     ThreadInterrupter,
 )
