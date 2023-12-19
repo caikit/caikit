@@ -129,7 +129,7 @@ class DataObjectBase(DataBase, metaclass=_DataObjectBaseMetaClass):
     """
 
 
-_DataObjectBaseT = TypeVar("_DataObjectBaseT", bound=type[DataObjectBase])
+_DataObjectBaseT = TypeVar("_DataObjectBaseT", bound=Type[DataObjectBase])
 
 
 def dataobject(*args, **kwargs) -> Callable[[_DataObjectBaseT], _DataObjectBaseT]:
