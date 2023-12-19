@@ -186,8 +186,8 @@ def dataobject(*args, **kwargs) -> Callable[[_DataObjectBaseT], _DataObjectBaseT
         # If it's not an enum, fill in any missing field defaults as None
         # and make sure it's a dataclass
         if not issubclass(cls, Enum):
-            # alog needs a stub file or some method of typing the monkey-patched methods.  Meanwhile,
-            # disable the type-checker for those calls.
+            # alog needs a stub file or some method of typing the monkey-patched methods.
+            # Meanwhile, disable the type-checker for those calls.
             log.debug2("Wrapping data class %s", cls)  # type: ignore
             user_defined_defaults = {}
             for annotation in getattr(cls, "__annotations__", {}):
