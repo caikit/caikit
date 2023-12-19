@@ -45,10 +45,6 @@ class ActionAborter(abc.ABC):
         """Indicate whether or not the action must be aborted"""
 
     @abc.abstractmethod
-    def add_event(self, event: threading.Event):
-        """Add an event to notify when abort happens"""
-
-    @abc.abstractmethod
     def set_context(self, context: AbortableContextBase):
         """Set the abortable context that must be notified to abort work"""
 

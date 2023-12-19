@@ -26,6 +26,7 @@ import uvicorn
 
 # Local
 from caikit.runtime.http_server.request_aborter import HttpRequestAborter
+from tests.runtime.work_management.test_call_aborter import StubAbortableContext
 
 
 def get_time_remaining(start_time: datetime.datetime, timeout: int = 10) -> float:
@@ -41,7 +42,7 @@ def test_request_aborter(open_port):
     app = FastAPI()
 
     # Initialize synchronization variables for tracking request process
-    abort_event = threading.Event()
+    abort_context = StubAbortableContext()
     request_finished = threading.Event()
 
     # Define an endpoint that sleeps until the client disconnects.
@@ -49,14 +50,14 @@ def test_request_aborter(open_port):
     async def test_aborter(context: Request):
         # Create aborter and add parent event
         TEST_ABORTER = HttpRequestAborter(context, poll_time=0.001)
-        TEST_ABORTER.add_event(abort_event)
+        TEST_ABORTER.set_context(abort_context)
 
         # Assign TEST_ABORTER to the parent function. This allows the test to have
         # access to this object without using globals
         test_request_aborter.TEST_ABORTER = TEST_ABORTER
 
         # Wait for client to disconnect
-        while not abort_event.is_set() and get_time_remaining(start_time) > 0:
+        while not TEST_ABORTER.must_abort() and get_time_remaining(start_time) > 0:
             await asyncio.sleep(0.001)
 
         request_finished.set()
@@ -95,7 +96,7 @@ def test_request_aborter(open_port):
 
         # Assert the request aborter actually aborted
         assert test_request_aborter.TEST_ABORTER.must_abort()
-        assert abort_event.is_set()
+        assert abort_context.aborted
         assert request_finished.is_set()
 
     except Exception as exc:

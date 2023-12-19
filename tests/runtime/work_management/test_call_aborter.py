@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
-import threading
 import unittest
 
 # Local
@@ -29,36 +28,6 @@ class StubAbortableContext(AbortableContextBase):
 
     def abort(self):
         self.aborted = True
-
-
-class TestRpcAborter(unittest.TestCase):
-    """This test suite tests the call aborter utility"""
-
-    CHANNEL = None
-    GRPC_THREAD = None
-
-    def test_call_aborter_sets_event(self):
-        ctx = Fixtures.build_context("call_aborter_event_party")
-        # Create a new Call aborter
-        aborter = RpcAborter(ctx)
-        # Create a new threading event and add it to the call aborter
-        event = threading.Event()
-        aborter.add_event(event)
-        # Cancel the call & wait for the threading event to be set by __rpc_terminated
-        ctx.cancel()
-        event.wait()
-        self.assertTrue(aborter.must_abort())
-
-    def test_call_aborter_sets_event_added_after_termination(self):
-        ctx = Fixtures.build_context("call_aborter_event_party")
-        # Create a new call aborter
-        aborter = RpcAborter(ctx)
-        # Cancel the call before creating the threading event and adding to the aborter
-        ctx.cancel()
-        event = threading.Event()
-        aborter.add_event(event)
-        event.wait()
-        self.assertTrue(aborter.must_abort())
 
 
 def test_call_aborter_invokes_abortable_context():
