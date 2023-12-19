@@ -112,8 +112,12 @@ class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attribute
         )
 
         self.thread_pool: ThreadPoolExecutor = ServerThreadPool.pool
-        # Create a work watcher that can be used to handle request cancellations or timeouts
-        self.watcher = WorkWatcher()
+        # Create an interrupter that can be used to handle request cancellations or timeouts.
+        # A separate instance is held per-server so each server can handle the lifetime of their
+        # own interrupter.
+        self.watcher: Optional[WorkWatcher] = (
+            WorkWatcher() if self.config.runtime.use_abortable_threads else None
+        )
 
         # Handle interrupts
         # NB: This means that stop() methods will be called even if the process is interrupted

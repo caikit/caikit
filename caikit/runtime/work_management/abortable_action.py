@@ -70,23 +70,32 @@ class WorkWatcher:
     def __init__(self):
         # Using a SimpleQueue because we don't need the Queue's task api
         self._queue = SimpleQueue()
-        self._thread = threading.Thread(target=self._watch_loop)
+        self._thread = None
 
         self._context_thread_map: Dict[uuid.UUID, int] = {}
 
-        self._shutdown_event = threading.Event()
+        self._shutdown = True
 
         self._total_rip_count = 0
         self._total_registered = 0
         self._total_unregistered = 0
 
     def start(self):
-        log.debug4("Starting WorkWatcher")
+        if not self._shutdown:
+            log.info("WorkWatcher already started")
+            return
+        log.info("Starting WorkWatcher")
+        self._shutdown = False
+        self._thread = threading.Thread(target=self._watch_loop)
         self._thread.start()
 
     def stop(self):
-        log.debug4("Stopping WorkWatcher")
-        self._shutdown_event.set()
+        if self._shutdown:
+            log.info("WorkWatcher already shut down")
+            return
+
+        log.info("Stopping WorkWatcher")
+        self._shutdown = True
         self._queue.put(0)
         self._thread.join(timeout=1)
 
@@ -108,7 +117,7 @@ class WorkWatcher:
                 log.debug4("Waiting on any work to abort")
                 context_id = self._queue.get()
 
-                if self._shutdown_event.is_set():
+                if self._shutdown:
                     log.debug4("Ending abort watch loop")
                     return
 

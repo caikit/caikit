@@ -226,7 +226,8 @@ class RuntimeGRPCServer(RuntimeServerBase):
         # Start the server. This is non-blocking, so we need to wait after
         self.server.start()
         # Boot the work watcher
-        self.watcher.start()
+        if self.watcher:
+            self.watcher.start()
 
         log.info(
             "<RUN10001001I>",
@@ -258,7 +259,8 @@ class RuntimeGRPCServer(RuntimeServerBase):
         # Shut down the model manager's model polling if enabled
         self._shut_down_model_manager()
         # Shut down the work watcher
-        self.watcher.stop()
+        if self.watcher:
+            self.watcher.stop()
 
     def render_protos(self, proto_out_dir: str) -> None:
         """Renders all the necessary protos for this service into a directory
