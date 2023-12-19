@@ -26,20 +26,20 @@ import pytest
 from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.work_management.abortable_action import (
     AbortableContext,
-    WorkWatcher,
+    ThreadInterrupter,
 )
 from caikit.runtime.work_management.rpc_aborter import RpcAborter
 from tests.fixtures import Fixtures
 
 
 @pytest.fixture(scope="session")
-def work_watcher():
-    watcher = WorkWatcher()
-    watcher.start()
+def thread_interrupter():
+    interrupter = ThreadInterrupter()
+    interrupter.start()
 
-    yield watcher
+    yield interrupter
 
-    watcher.stop()
+    interrupter.stop()
 
 
 @pytest.fixture()
@@ -52,61 +52,61 @@ def rpc_aborter(grpc_context):
     return RpcAborter(grpc_context)
 
 
-def wait_for_watcher_to_run(work_watcher, timeout=1):
+def wait_for_interrupter_to_run(interrupter, timeout=1):
     """Helper to wait until the interrupter's queue is empty.
     This should only deadlock if the interrupter's polling thread exits.
     """
     start = datetime.datetime.now()
     while (datetime.datetime.now() - start).total_seconds() < timeout:
-        if work_watcher._queue.empty():
+        if interrupter._queue.empty():
             return
         time.sleep(0.001)
 
 
-def test_context_runs_stuff(work_watcher, rpc_aborter):
+def test_context_runs_stuff(thread_interrupter, rpc_aborter):
     """Just an ordinary context manager here"""
     one_plus_one = 0
-    with AbortableContext(rpc_aborter, work_watcher):
+    with AbortableContext(rpc_aborter, thread_interrupter):
         one_plus_one += 2
 
     assert one_plus_one == 2
 
 
-def test_context_can_be_canceled(work_watcher, rpc_aborter, grpc_context):
+def test_context_can_be_canceled(thread_interrupter, rpc_aborter, grpc_context):
     """An AbortedException is raised as soon as the rpc context is canceled"""
     result = 0
     with pytest.raises(AbortedException):
-        with AbortableContext(rpc_aborter, work_watcher):
+        with AbortableContext(rpc_aborter, thread_interrupter):
             result += 1
             grpc_context.cancel()
-            assert not work_watcher._queue.empty()
-            wait_for_watcher_to_run(work_watcher)
+            assert not thread_interrupter._queue.empty()
+            wait_for_interrupter_to_run(thread_interrupter)
             assert False
 
     assert result == 1
 
 
 def test_context_aborts_if_rpc_already_canceled(
-    work_watcher, rpc_aborter, grpc_context
+    thread_interrupter, rpc_aborter, grpc_context
 ):
     """The context will abort if the rpc context was previously canceled"""
     grpc_context.cancel()
 
     with pytest.raises(AbortedException):
-        with AbortableContext(rpc_aborter, work_watcher):
-            wait_for_watcher_to_run(work_watcher)
+        with AbortableContext(rpc_aborter, thread_interrupter):
+            wait_for_interrupter_to_run(thread_interrupter)
             assert False
 
 
-def test_exceptions_can_be_raised_in_context(work_watcher, rpc_aborter):
+def test_exceptions_can_be_raised_in_context(thread_interrupter, rpc_aborter):
     """Exceptions work normally"""
 
     with pytest.raises(ValueError, match="this is a test"):
-        with AbortableContext(rpc_aborter, work_watcher):
+        with AbortableContext(rpc_aborter, thread_interrupter):
             raise ValueError("this is a test")
 
 
-def test_many_threads_can_run_in_abortable_context_at_once(work_watcher):
+def test_many_threads_can_run_in_abortable_context_at_once(thread_interrupter):
     """This test tries to replicate a multithreaded situation where many threads can complete
     an AbortableContext and many others are aborted. We want to make sure only the contexts that
     we canceled are actually aborted- i.e. the interrupter interrupts the correct contexts."""
@@ -121,7 +121,7 @@ def test_many_threads_can_run_in_abortable_context_at_once(work_watcher):
         def run(self):
             """Dummy task that either returns quickly or spins forever waiting to be interrupted"""
             aborter = RpcAborter(self.context)
-            with AbortableContext(aborter=aborter, watcher=work_watcher):
+            with AbortableContext(aborter=aborter, interrupter=thread_interrupter):
                 if self.wait_for_cancel:
                     while True:
                         time.sleep(0.001)

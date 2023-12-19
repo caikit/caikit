@@ -84,7 +84,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
         if self.enable_inference:
             log.info("<RUN20247875I>", "Enabling gRPC inference service")
             self._global_predict_servicer = GlobalPredictServicer(
-                self.inference_service, watcher=self.watcher
+                self.inference_service, interrupter=self.interrupter
             )
             self.server = CaikitRuntimeServerWrapper(
                 server=self.server,
@@ -133,7 +133,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
         # Add model runtime servicer to the gRPC server
         model_runtime_pb2_grpc.add_ModelRuntimeServicer_to_server(
-            ModelRuntimeServicerImpl(interrupter=self.watcher), self.server
+            ModelRuntimeServicerImpl(interrupter=self.interrupter), self.server
         )
         service_names.append(
             model_runtime_pb2.DESCRIPTOR.services_by_name["ModelRuntime"].full_name
@@ -225,9 +225,9 @@ class RuntimeGRPCServer(RuntimeServerBase):
         """
         # Start the server. This is non-blocking, so we need to wait after
         self.server.start()
-        # Boot the work watcher
-        if self.watcher:
-            self.watcher.start()
+        # Boot the thread interrupter
+        if self.interrupter:
+            self.interrupter.start()
 
         log.info(
             "<RUN10001001I>",
@@ -258,9 +258,9 @@ class RuntimeGRPCServer(RuntimeServerBase):
             self._global_predict_servicer.stop_metering()
         # Shut down the model manager's model polling if enabled
         self._shut_down_model_manager()
-        # Shut down the work watcher
-        if self.watcher:
-            self.watcher.stop()
+        # Shut down the thread interrupter
+        if self.interrupter:
+            self.interrupter.stop()
 
     def render_protos(self, proto_out_dir: str) -> None:
         """Renders all the necessary protos for this service into a directory

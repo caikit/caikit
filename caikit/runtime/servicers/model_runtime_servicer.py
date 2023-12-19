@@ -26,7 +26,7 @@ from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.work_management.abortable_action import (
     AbortableContext,
-    WorkWatcher,
+    ThreadInterrupter,
 )
 from caikit.runtime.work_management.rpc_aborter import RpcAborter
 
@@ -37,7 +37,7 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
     """This class contains the implementation of all of the RPCs that are required to run a
     service in Model Mesh as a Model-Runtime."""
 
-    def __init__(self, interrupter: WorkWatcher = None):
+    def __init__(self, interrupter: ThreadInterrupter = None):
         self.model_manager = ModelManager.get_instance()
         self.interrupter = interrupter
 
@@ -62,7 +62,7 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
             caikit_config = get_config()
             if caikit_config.runtime.use_abortable_threads:
                 aborter = RpcAborter(context)
-                with AbortableContext(aborter=aborter, watcher=self.interrupter):
+                with AbortableContext(aborter=aborter, interrupter=self.interrupter):
                     loaded_model = self.model_manager.load_model(
                         request.modelId, request.modelPath, request.modelType
                     )

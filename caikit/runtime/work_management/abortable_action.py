@@ -57,9 +57,9 @@ class ActionAborter(abc.ABC):
         """Unset any abortable context already held. Do not notify it that work should abort"""
 
 
-class WorkWatcher:
-    """This class implements a listener which will observe all ongoing work registered with
-    ActionAborters and raise exceptions in the working threads if they need to be aborted.
+class ThreadInterrupter:
+    """This class implements a listener which will observe all ongoing work in `AbortableContexts`
+     and raise exceptions in the working threads if they need to be aborted.
 
     This offers a performance advantage over the old `AbortableActions`, since only one extra
     listener thread is created that lives for the whole lifetime of the program. The caveat
@@ -82,19 +82,19 @@ class WorkWatcher:
 
     def start(self):
         if not self._shutdown:
-            log.info("WorkWatcher already started")
+            log.debug("ThreadInterrupter already started")
             return
-        log.info("Starting WorkWatcher")
+        log.debug("Starting ThreadInterrupter")
         self._shutdown = False
         self._thread = threading.Thread(target=self._watch_loop)
         self._thread.start()
 
     def stop(self):
         if self._shutdown:
-            log.info("WorkWatcher already shut down")
+            log.debug("ThreadInterrupter already shut down")
             return
 
-        log.info("Stopping WorkWatcher")
+        log.info("Stopping ThreadInterrupter")
         self._shutdown = True
         self._queue.put(0)
         self._thread.join(timeout=1)
@@ -155,35 +155,35 @@ class AbortableContext(AbortableContextBase):
     happen on exception.
     """
 
-    def __init__(self, aborter: ActionAborter, watcher: WorkWatcher):
+    def __init__(self, aborter: ActionAborter, interrupter: ThreadInterrupter):
         """Setup the context.
         The aborter is responsible for notifying this context if the work needs to be aborted.
-        The watcher watches all such events, and kills the thread running in this context
+        The interrupter watches all such events, and kills the thread running in this context
         if the aborter notifies it to abort."""
         self.aborter = aborter
-        self.watcher = watcher
+        self.interrupter = interrupter
 
         self.id = uuid.uuid4()
 
     def __enter__(self):
-        if self.aborter and self.watcher:
+        if self.aborter and self.interrupter:
             log.debug4("Entering abortable context %s", self.id)
             # Set this context on the aborter so that it can notify us when work should be aborted
             self.aborter.set_context(self)
-            # Register this context with the watcher so that it knows which thread to kill
+            # Register this context with the interrupter so that it knows which thread to kill
             thread_id = threading.get_ident()
-            self.watcher.register(self.id, thread_id)
+            self.interrupter.register(self.id, thread_id)
         else:
             log.debug4("Aborter or Interrupter was None, no abortable context created.")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.aborter and self.watcher:
-            # On any exit, whether an exception or not, we unregister with the watcher
-            # This prevents the watcher from aborting this thread once this context has ended
-            self.watcher.unregister(self.id)
+        if self.aborter and self.interrupter:
+            # On any exit, whether an exception or not, we unregister with the interrupter
+            # This prevents the interrupter from aborting this thread once this context has ended
+            self.interrupter.unregister(self.id)
             self.aborter.unset_context()
 
     def abort(self):
         """Called by the aborter when this context needs to be aborted"""
-        if self.watcher:
-            self.watcher.kill(self.id)
+        if self.interrupter:
+            self.interrupter.kill(self.id)

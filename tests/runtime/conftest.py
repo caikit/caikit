@@ -37,7 +37,7 @@ from caikit.runtime.service_generation.rpcs import TaskPredictRPC
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.servicers.model_runtime_servicer import ModelRuntimeServicerImpl
-from caikit.runtime.work_management.abortable_action import WorkWatcher
+from caikit.runtime.work_management.abortable_action import ThreadInterrupter
 from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
 
@@ -100,10 +100,10 @@ def sample_inference_service(render_protos) -> ServicePackage:
 
 @pytest.fixture(scope="session")
 def sample_predict_servicer(sample_inference_service) -> GlobalPredictServicer:
-    watcher = WorkWatcher()
-    watcher.start()
+    interrupter = ThreadInterrupter()
+    interrupter.start()
     servicer = GlobalPredictServicer(
-        inference_service=sample_inference_service, watcher=watcher
+        inference_service=sample_inference_service, interrupter=interrupter
     )
     yield servicer
     # Make sure to not leave the rpc_meter hanging
@@ -111,7 +111,7 @@ def sample_predict_servicer(sample_inference_service) -> GlobalPredictServicer:
     rpc_meter = getattr(servicer, "rpc_meter", None)
     if rpc_meter:
         rpc_meter.end_writer_thread()
-    watcher.stop()
+    interrupter.stop()
 
 
 @pytest.fixture(scope="session")
@@ -169,7 +169,7 @@ def runtime_grpc_server(session_scoped_open_port) -> RuntimeGRPCServer:
 @pytest.fixture(scope="session")
 def model_runtime_servicer(runtime_grpc_server) -> ModelRuntimeServicerImpl:
     # Builds a new servicer, the one in the server is a bit hard to access
-    return ModelRuntimeServicerImpl(interrupter=runtime_grpc_server.watcher)
+    return ModelRuntimeServicerImpl(interrupter=runtime_grpc_server.interrupter)
 
 
 @contextmanager

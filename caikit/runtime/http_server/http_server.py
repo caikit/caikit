@@ -199,7 +199,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         if self.enable_inference:
             log.info("<RUN77183426I>", "Enabling HTTP inference service")
             self.global_predict_servicer = GlobalPredictServicer(
-                self.inference_service, watcher=self.watcher
+                self.inference_service, interrupter=self.interrupter
             )
             self._bind_routes(self.inference_service)
 
@@ -298,8 +298,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
             self.thread_pool._max_workers,
         )
 
-        if self.watcher:
-            self.watcher.start()
+        if self.interrupter:
+            self.interrupter.start()
 
         # Patch the exit handler to retain correct signal handling behavior
         self._patch_exit_handler()
@@ -333,8 +333,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Shut down the model manager's model polling if enabled
         self._shut_down_model_manager()
 
-        if self.watcher:
-            self.watcher.stop()
+        if self.interrupter:
+            self.interrupter.stop()
 
     ##########
     ## Impl ##
