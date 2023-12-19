@@ -276,12 +276,8 @@ class GlobalPredictServicer:
                 model_run_fn = getattr(model, inference_func_name)
                 with PREDICT_CAIKIT_LIBRARY_SUMMARY.labels(
                     grpc_request=request_name, model_id=model_id
-                ).time():
-                    if self.use_abortable_threads:
-                        with AbortableContext(aborter, self._interrupter):
-                            response = model_run_fn(**kwargs)
-                    else:
-                        response = model_run_fn(**kwargs)
+                ).time(), AbortableContext(aborter, self._interrupter):
+                    response = model_run_fn(**kwargs)
 
             # Update Prometheus metrics
             PREDICT_RPC_COUNTER.labels(
