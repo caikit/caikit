@@ -96,7 +96,7 @@ class _DataObjectBaseMetaClass(_DataBaseMetaClass):
         # Get the annotations that will go into the dataclass
         if name != "DataObjectBase":
             field_names = attrs.get("__annotations__")
-            parent_dataobjects: list[_DataBaseMetaClass] = [
+            parent_dataobjects: List[_DataBaseMetaClass] = [
                 base for base in bases if isinstance(base, _DataBaseMetaClass)
             ]
             field_name_sets = [base.fields for base in parent_dataobjects]
