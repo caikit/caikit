@@ -28,7 +28,7 @@ import alog
 
 # Local
 from caikit.runtime.work_management.abortable_context import (
-    AbortableContextBase,
+    AbortableContext,
     ActionAborter,
 )
 
@@ -110,7 +110,7 @@ class HttpRequestAborter(ActionAborter):
     def must_abort(self):
         return self.is_terminated.is_set()
 
-    def set_context(self, context: AbortableContextBase):
+    def set_context(self, context: AbortableContext):
         self.abortable_context = context
         if self.must_abort():
             self.abortable_context.abort()

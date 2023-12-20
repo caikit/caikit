@@ -13,7 +13,7 @@
 # limitations under the License.
 # Standard
 from queue import SimpleQueue
-from typing import Dict
+from typing import Dict, Optional
 import abc
 import ctypes
 import threading
@@ -28,12 +28,6 @@ from caikit.runtime.types.aborted_exception import AbortedException
 log = alog.use_channel("ABORT-ACTION")
 
 
-class AbortableContextBase(abc.ABC):
-    @abc.abstractmethod
-    def abort(self):
-        """Called to abort work in progress"""
-
-
 class ActionAborter(abc.ABC):
     """Simple interface to wrap up a notification that an action must abort.
 
@@ -45,7 +39,7 @@ class ActionAborter(abc.ABC):
         """Indicate whether or not the action must be aborted"""
 
     @abc.abstractmethod
-    def set_context(self, context: AbortableContextBase):
+    def set_context(self, context: "AbortableContext"):
         """Set the abortable context that must be notified to abort work"""
 
     @abc.abstractmethod
@@ -55,41 +49,42 @@ class ActionAborter(abc.ABC):
 
 class ThreadInterrupter:
     """This class implements a listener which will observe all ongoing work in `AbortableContexts`
-     and raise exceptions in the working threads if they need to be aborted.
+    and raise exceptions in the working threads if they need to be aborted.
 
-    This offers a performance advantage over the old `AbortableActions`, since only one extra
-    listener thread is created that lives for the whole lifetime of the program. The caveat
-    is that all work to be aborted must be running in a thread that is safe to kill: this may
-    not be safe to use with asyncio tasks running in an event loop.
+    The implementation spawns a single extra thread to wait on any contexts to abort, and
+    interrupt the thread that the context is running in. This keeps the total number of running
+    threads much smaller than using a new thread to monitor each AbortableContext.
     """
+
+    _SHUTDOWN_SIGNAL = -1
 
     def __init__(self):
         # Using a SimpleQueue because we don't need the Queue's task api
         self._queue = SimpleQueue()
-        self._thread = None
-
+        self._thread: Optional[threading.Thread] = None
         self._context_thread_map: Dict[uuid.UUID, int] = {}
-
-        self._shutdown = True
+        self._start_stop_lock = threading.Lock()
 
     def start(self):
-        if not self._shutdown:
-            log.debug("ThreadInterrupter already started")
-            return
-        log.debug("Starting ThreadInterrupter")
-        self._shutdown = False
-        self._thread = threading.Thread(target=self._watch_loop)
-        self._thread.start()
+        """Start the watch loop that will abort any registered contexts passed to .kill()"""
+        with self._start_stop_lock:
+            if self._thread and self._thread.is_alive():
+                log.debug("ThreadInterrupter already started")
+                return
+            log.debug("Starting ThreadInterrupter")
+            self._thread = threading.Thread(target=self._watch_loop)
+            self._thread.start()
 
     def stop(self):
-        if self._shutdown:
-            log.debug("ThreadInterrupter already shut down")
-            return
+        """Stop the watch loop"""
+        with self._start_stop_lock:
+            if self._thread and not self._thread.is_alive():
+                log.debug("ThreadInterrupter already shut down")
+                return
 
-        log.info("Stopping ThreadInterrupter")
-        self._shutdown = True
-        self._queue.put(0)
-        self._thread.join(timeout=1)
+            log.info("Stopping ThreadInterrupter")
+            self._queue.put(self._SHUTDOWN_SIGNAL)
+            self._thread.join(timeout=1)
 
     def register(self, context_id: uuid, thread: int) -> None:
         self._context_thread_map[context_id] = thread
@@ -103,26 +98,27 @@ class ThreadInterrupter:
 
     def _watch_loop(self):
         while True:
-            try:
-                log.debug4("Waiting on any work to abort")
-                context_id = self._queue.get()
+            log.debug4("Waiting on any work to abort")
+            context_id = self._queue.get()
 
-                if self._shutdown:
-                    log.debug4("Ending abort watch loop")
-                    return
+            if context_id == self._SHUTDOWN_SIGNAL:
+                log.debug4("Ending abort watch loop")
+                return
 
-                self._kill_thread(context_id)
+            self._kill_thread(context_id)
 
-                # Ensure this context/thread pair is unregistered
-                self.unregister(context_id)
-
-            except Exception:
-                log.warning("Caught exception while running abort loop", exc_info=True)
+            # Ensure this context/thread pair is unregistered
+            self.unregister(context_id)
 
     def _kill_thread(self, context_id: uuid.UUID) -> bool:
         thread_id = self._context_thread_map.get(context_id, None)
 
         if thread_id:
+            # This raises an AbortedException asynchronously in the target thread. (We can't just
+            # use raise, because this thread is the ThreadInterrupter's watch thread).
+            # The exception will only be raised once the target thread regains control of the
+            # python interpreter. This means that statements like `time.sleep(9999999)` cannot be
+            # interrupted in this manner.
             async_exception_result = ctypes.pythonapi.PyThreadState_SetAsyncExc(
                 ctypes.c_long(thread_id), ctypes.py_object(AbortedException)
             )
@@ -137,7 +133,7 @@ class ThreadInterrupter:
             return False
 
 
-class AbortableContext(AbortableContextBase):
+class AbortableContext:
     """Context manager for running work inside a context where it's safe to abort.
 
     This is a class instead of a `@contextmanager` function because __exit__ needs to

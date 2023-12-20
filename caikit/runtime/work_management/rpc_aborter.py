@@ -23,7 +23,7 @@ import alog
 
 # Local
 from caikit.runtime.work_management.abortable_context import (
-    AbortableContextBase,
+    AbortableContext,
     ActionAborter,
 )
 
@@ -61,7 +61,7 @@ class RpcAborter(ActionAborter):
     def must_abort(self):
         return self.is_terminated
 
-    def set_context(self, context: AbortableContextBase):
+    def set_context(self, context: AbortableContext):
         self.context = context
         if self.must_abort():
             self.context.abort()
