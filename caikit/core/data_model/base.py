@@ -76,6 +76,7 @@ class _DataBaseMetaClass(type):
     _fields_enum_repeated: Tuple  # ()
     _fields_primitive: Tuple  # ()
     _fields_primitive_repeated: Tuple  # ()
+    _proto_class: ClassVar[Type[ProtoMessageType]]
 
     """Meta class for all structures in the data model."""
 
@@ -495,8 +496,6 @@ class DataBase(metaclass=_DataBaseMetaClass):
         All leaves in the hierarchy of derived classes should have a corresponding protobufs class
         defined in the interface definitions.  If not, an exception will be thrown at runtime.
     """
-
-    _proto_class: ClassVar[Type[ProtoMessageType]]
 
     @dataclass
     class OneofFieldVal:
