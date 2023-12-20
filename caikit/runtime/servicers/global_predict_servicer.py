@@ -253,7 +253,7 @@ class GlobalPredictServicer:
                 inference request
         """
 
-        with (self._handle_predict_exceptions(model_id, request_name)):
+        with self._handle_predict_exceptions(model_id, request_name):
             model = self._model_manager.retrieve_model(model_id)
             self._verify_model_task(model)
             if input_streaming is not None and output_streaming is not None:
