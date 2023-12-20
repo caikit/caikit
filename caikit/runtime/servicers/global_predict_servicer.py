@@ -96,7 +96,6 @@ class GlobalPredictServicer:
     def __init__(
         self,
         inference_service: ServicePackage,
-        use_abortable_threads: bool = get_config().runtime.use_abortable_threads,
         interrupter: ThreadInterrupter = None,
     ):
         self._started_metering = False
@@ -115,7 +114,6 @@ class GlobalPredictServicer:
                 "Metering is disabled, to enable set `metering.enabled` in config to true",
             )
 
-        self.use_abortable_threads = use_abortable_threads
         self._interrupter = interrupter
         self._inference_service = inference_service
         # Validate that the Caikit Library CDM is compatible with our service descriptor
@@ -204,7 +202,7 @@ class GlobalPredictServicer:
                 input_streaming=caikit_rpc.input_streaming,
                 output_streaming=caikit_rpc.output_streaming,
                 task=caikit_rpc.task,
-                aborter=RpcAborter(context) if self.use_abortable_threads else None,
+                aborter=RpcAborter(context) if self._interrupter else None,
                 **caikit_library_request,
             )
 
@@ -255,7 +253,7 @@ class GlobalPredictServicer:
                 inference request
         """
 
-        with self._handle_predict_exceptions(model_id, request_name):
+        with (self._handle_predict_exceptions(model_id, request_name)):
             model = self._model_manager.retrieve_model(model_id)
             self._verify_model_task(model)
             if input_streaming is not None and output_streaming is not None:
@@ -266,18 +264,21 @@ class GlobalPredictServicer:
                 ).method_name
                 log.debug2("Deduced inference function name: %s", inference_func_name)
 
+            model_run_fn = getattr(model, inference_func_name)
             # NB: we previously recorded the size of the request, and timed this module to
             # provide a rudimentary throughput metric of size / time
+            # 🌶️🌶️🌶️ The `AbortableContext` will only abort if both `self._interrupter` and
+            # `aborter` are set
             with alog.ContextLog(
                 log.debug,
                 "GlobalPredictServicer.Predict.caikit_library_run:%s",
                 request_name,
+            ), PREDICT_CAIKIT_LIBRARY_SUMMARY.labels(
+                grpc_request=request_name, model_id=model_id
+            ).time(), AbortableContext(
+                aborter, self._interrupter
             ):
-                model_run_fn = getattr(model, inference_func_name)
-                with PREDICT_CAIKIT_LIBRARY_SUMMARY.labels(
-                    grpc_request=request_name, model_id=model_id
-                ).time(), AbortableContext(aborter, self._interrupter):
-                    response = model_run_fn(**kwargs)
+                response = model_run_fn(**kwargs)
 
             # Update Prometheus metrics
             PREDICT_RPC_COUNTER.labels(

@@ -486,20 +486,6 @@ def test_inference_other_task(other_task_model_id, client):
     assert json_response["farewell"] == "goodbye: world 42 times"
 
 
-def test_inference_no_aborter(other_task_model_id, client):
-    """Simple check that we can ping a model"""
-    with temp_config(
-        {"runtime": {"use_abortable_threads": False}}, merge_strategy="merge"
-    ):
-        json_input = {"model_id": other_task_model_id, "inputs": {"name": "world"}}
-        response = client.post(
-            f"/api/v1/task/other",
-            json=json_input,
-        )
-        json_response = json.loads(response.content.decode(response.default_encoding))
-        assert response.status_code == 200, json_response
-
-
 def test_output_file_task(file_task_model_id, client):
     """Simple check that we can get a file output"""
     # cGRmZGF0Yf//AA== is b"pdfdata\xff\xff\x00" base64 encoded

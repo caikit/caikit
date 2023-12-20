@@ -512,9 +512,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 )
 
                 aborter_context = (
-                    HttpRequestAborter(context)
-                    if get_config().runtime.use_abortable_threads
-                    else nullcontext()
+                    HttpRequestAborter(context) if self.interrupter else nullcontext()
                 )
 
                 with aborter_context as aborter:
@@ -586,7 +584,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
                     aborter_context = (
                         HttpRequestAborter(context)
-                        if get_config().runtime.use_abortable_threads
+                        if self.interrupter
                         else nullcontext()
                     )
 

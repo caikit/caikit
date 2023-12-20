@@ -59,12 +59,7 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
                     "model_id": request.modelId,
                 }
             )
-            caikit_config = get_config()
-            aborter = (
-                RpcAborter(context)
-                if caikit_config.runtime.use_abortable_threads
-                else None
-            )
+            aborter = RpcAborter(context) if self.interrupter else None
             with AbortableContext(aborter=aborter, interrupter=self.interrupter):
                 loaded_model = self.model_manager.load_model(
                     request.modelId, request.modelPath, request.modelType
