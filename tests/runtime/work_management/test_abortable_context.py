@@ -31,6 +31,8 @@ from caikit.runtime.work_management.abortable_context import (
 from caikit.runtime.work_management.rpc_aborter import RpcAborter
 from tests.fixtures import Fixtures
 
+## Helpers #####################################################################
+
 
 @pytest.fixture(scope="session")
 def thread_interrupter():
@@ -61,6 +63,9 @@ def wait_for_interrupter_to_run(interrupter, timeout=1):
         if interrupter._queue.empty():
             return
         time.sleep(0.001)
+
+
+## Tests #######################################################################
 
 
 def test_context_runs_stuff(thread_interrupter, rpc_aborter):
