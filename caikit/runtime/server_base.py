@@ -31,6 +31,7 @@ from caikit.core.exceptions import error_handler
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from caikit.runtime.work_management.abortable_context import ThreadInterrupter
 import caikit
 
 log = alog.use_channel("SERVR-BASE")
@@ -111,6 +112,12 @@ class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attribute
         )
 
         self.thread_pool: ThreadPoolExecutor = ServerThreadPool.pool
+        # Create an interrupter that can be used to handle request cancellations or timeouts.
+        # A separate instance is held per-server so each server can handle the lifetime of their
+        # own interrupter.
+        self.interrupter: Optional[ThreadInterrupter] = (
+            ThreadInterrupter() if self.config.runtime.use_abortable_threads else None
+        )
 
         # Handle interrupts
         # NB: This means that stop() methods will be called even if the process is interrupted

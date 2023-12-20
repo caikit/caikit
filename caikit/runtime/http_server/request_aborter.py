@@ -27,16 +27,19 @@ from fastapi import Request
 import alog
 
 # Local
-from caikit.runtime.work_management.abortable_action import ActionAborter
+from caikit.runtime.work_management.abortable_context import (
+    AbortableContext,
+    ActionAborter,
+)
 
 log = alog.use_channel("REQUEST-ABORTER")
 
 
 class HttpRequestAborter(ActionAborter):
     """
-    In order to actually interrupt threads doing the work, events can be registered with an
-    instance of this class in order ton receive notification on request disconnection. This allows
-    work to be terminated when a client time's out or stops listening.
+    In order to actually interrupt threads doing the work, abortable contexts can be registered
+    with an instance of this class in order to receive notification on request disconnection.
+    This allows work to be terminated when a client time's out or stops listening.
 
     IFF the client request has been terminated, `must_abort` will return True.
     """
@@ -64,8 +67,7 @@ class HttpRequestAborter(ActionAborter):
 
         # Set initial
         self.is_terminated = threading.Event()
-        # Add an empty list for event variables that will be notified on termination
-        self.events: list[threading.Event] = []
+        self.abortable_context = None
 
         # Start request aborter task. Hold onto a reference of the task to ensure
         # it isn't garbage collected
@@ -95,8 +97,8 @@ class HttpRequestAborter(ActionAborter):
             if is_disconnected:
                 log.debug("<RUN81824293>", "Client disconnected, terminating action")
                 self.is_terminated.set()
-                for event in self.events:
-                    event.set()
+                if self.abortable_context:
+                    self.abortable_context.abort()
                 return
             log.debug4("<RUN81824293>", "Client still connected, sleeping aborter")
             await asyncio.sleep(self.poll_time)
@@ -108,9 +110,10 @@ class HttpRequestAborter(ActionAborter):
     def must_abort(self):
         return self.is_terminated.is_set()
 
-    def add_event(self, event: threading.Event):
-        self.events.append(event)
-
-        # Sanity check: If we have already terminated, notify anything waiting on this condition
+    def set_context(self, context: AbortableContext):
+        self.abortable_context = context
         if self.must_abort():
-            event.set()
+            self.abortable_context.abort()
+
+    def unset_context(self):
+        self.abortable_context = None

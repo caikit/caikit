@@ -24,7 +24,10 @@ from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.protobufs import model_runtime_pb2, model_runtime_pb2_grpc
 from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.work_management.abortable_action import AbortableAction
+from caikit.runtime.work_management.abortable_context import (
+    AbortableContext,
+    ThreadInterrupter,
+)
 from caikit.runtime.work_management.rpc_aborter import RpcAborter
 
 log = alog.use_channel("MR-SERVICR-I")
@@ -34,8 +37,9 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
     """This class contains the implementation of all of the RPCs that are required to run a
     service in Model Mesh as a Model-Runtime."""
 
-    def __init__(self):
+    def __init__(self, interrupter: ThreadInterrupter = None):
         self.model_manager = ModelManager.get_instance()
+        self.interrupter = interrupter
 
     def loadModel(self, request, context):
         """Model loading .
@@ -55,19 +59,8 @@ class ModelRuntimeServicerImpl(model_runtime_pb2_grpc.ModelRuntimeServicer):
                     "model_id": request.modelId,
                 }
             )
-            caikit_config = get_config()
-            if caikit_config.runtime.use_abortable_threads:
-                aborter = RpcAborter(context)
-                work = AbortableAction(
-                    aborter,
-                    self.model_manager.load_model,
-                    request.modelId,
-                    request.modelPath,
-                    request.modelType,
-                    aborter=aborter,
-                )
-                loaded_model = work.do()
-            else:
+            aborter = RpcAborter(context) if self.interrupter else None
+            with AbortableContext(aborter=aborter, interrupter=self.interrupter):
                 loaded_model = self.model_manager.load_model(
                     request.modelId, request.modelPath, request.modelType
                 )

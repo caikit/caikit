@@ -29,10 +29,6 @@ from caikit.core import MODEL_MANAGER, ModuleBase
 from caikit.runtime.model_management.batcher import Batcher
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.work_management.abortable_action import (
-    AbortableAction,
-    ActionAborter,
-)
 
 log = alog.use_channel("MODEL-LOADER")
 
@@ -63,7 +59,6 @@ class ModelLoader:
         model_id: str,
         local_model_path: str,
         model_type: str,
-        aborter: Optional[ActionAborter] = None,
         fail_callback: Optional[Callable] = None,
         retries: int = 0,
     ) -> LoadedModel:
@@ -73,8 +68,6 @@ class ModelLoader:
             model_id (str): Model ID string for the model to load.
             local_model_path (str): Local filesystem path to load the model from.
             model_type (str): Type of the model to load.
-            aborter (Optional[ActionAborter]): An aborter to use that will allow
-                the call's parent to abort the load
             fail_callback (Optional[Callable]): Optional no-arg callback to call
                 on load failure
             retries (int): Number of times to retry loading
@@ -94,14 +87,9 @@ class ModelLoader:
         # Set up the async loading
         args = (local_model_path, model_id, model_type)
         log.debug2("Loading model %s async", model_id)
-        if aborter is not None:
-            log.debug3("Using abortable action to load %s", model_id)
-            action = AbortableAction(aborter, self._load_module, *args)
-            future_factory = partial(self._load_thread_pool.submit, action.do)
-        else:
-            future_factory = partial(
-                self._load_thread_pool.submit, self._load_module, *args
-            )
+        future_factory = partial(
+            self._load_thread_pool.submit, self._load_module, *args
+        )
         model_builder.model_future_factory(future_factory)
 
         # Return the built model with the future handle

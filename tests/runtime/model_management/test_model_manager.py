@@ -748,7 +748,6 @@ def test_load_model():
                 ANY_MODEL_PATH,
                 ANY_MODEL_TYPE,
             )
-            assert call_args.kwargs["aborter"] is None
             assert "fail_callback" in call_args.kwargs
             mock_sizer.get_model_size.assert_called_once_with(
                 model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE

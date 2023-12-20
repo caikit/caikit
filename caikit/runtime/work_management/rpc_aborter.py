@@ -15,9 +15,6 @@
 """
 This module helps us know when an rpc call is cancelled, and we need to stop or undo work
 """
-# Standard
-import threading
-
 # Third Party
 import grpc
 
@@ -25,8 +22,10 @@ import grpc
 import alog
 
 # Local
-from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.work_management.abortable_action import ActionAborter
+from caikit.runtime.work_management.abortable_context import (
+    AbortableContext,
+    ActionAborter,
+)
 
 log = alog.use_channel("CALL-ABORTER")
 
@@ -38,17 +37,15 @@ class RpcAborter(ActionAborter):
     relinquished control anyway. The interesting case is when a client cancels a call or a deadline
     is hit, which could trigger this callback but will not interrupt the thread doing work.
 
-    In order to actually interrupt threads doing the work, events can be registered with an
-    instance of this class in order ton receive notification on RPC termination.
+    In order to actually interrupt threads doing the work, abortable contexts can be registered
+    with an instance of this class in order ton receive notification on RPC termination.
 
     IFF the RPC has been terminated, `must_abort` will return True.
     """
 
     def __init__(self, context: grpc.ServicerContext):
-        # Create an event that we can use to check RPC termination
         self.is_terminated = False
-        # Add an empty list for condition variables that will be notified on termination
-        self.events = []
+        self.context = None
 
         callback_registered = context.add_callback(self.__rpc_terminated)
 
@@ -57,27 +54,22 @@ class RpcAborter(ActionAborter):
         if not callback_registered:
             log.warning(
                 "<RUN65620101W>",
-                "Failed to register rpc termination callback, aborting rpc",
+                "Failed to register rpc termination callback, call has likely terminated",
             )
-            raise CaikitRuntimeException(
-                grpc.StatusCode.ABORTED,
-                "Could not register RPC callback, call has likely terminated.",
-            )
+            self.is_terminated = True
 
     def must_abort(self):
         return self.is_terminated
 
-    def add_event(self, event: threading.Event):
-        self.events.append(event)
-
-        # Sanity check: If we have already terminated, notify anything waiting on this condition
+    def set_context(self, context: AbortableContext):
+        self.context = context
         if self.must_abort():
-            event.set()
+            self.context.abort()
+
+    def unset_context(self):
+        self.context = None
 
     def __rpc_terminated(self):
-        # First set the flag so anybody waiting on us knows that gRPC wants us to abort work
         self.is_terminated = True
-
-        # Then notify everybody waiting on us
-        for event in self.events:
-            event.set()
+        if self.context:
+            self.context.abort()

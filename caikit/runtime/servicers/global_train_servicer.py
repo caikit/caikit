@@ -297,12 +297,3 @@ class GlobalTrainServicer:
             model_name=request.model_name,
             training_id=model_future.id,
         )
-
-    def _load_trained_model(self, model_name: str, model_path: str):
-        log.debug("Autoloading trained model %s", model_name)
-        self._model_manager.load_model(
-            model_id=model_name,
-            local_model_path=model_path,
-            model_type="standalone",
-        )
-        return self._model_manager.retrieve_model(model_name)

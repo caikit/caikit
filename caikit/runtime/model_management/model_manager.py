@@ -37,7 +37,6 @@ from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.model_management.model_sizer import ModelSizer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from caikit.runtime.work_management.abortable_action import ActionAborter
 
 log = alog.use_channel("MODEL-MANAGR")
 error = error_handler.get(log)
@@ -173,7 +172,6 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         local_model_path: str,
         model_type: str,
         wait: bool = True,
-        aborter: Optional[ActionAborter] = None,
         retries: Optional[int] = None,
     ) -> LoadedModel:
         """Load a model using model_path (in Cloud Object Storage) & give it a model ID
@@ -182,10 +180,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             local_model_path (str): Local path to load the model from.
             model_type (str): Type of the model to load.
             wait (bool): Wait for the model to finish loading
-            aborter (Optional[ActionAborter]): The aborter to use for this load
             retries (Optional[int]): Number of times to retry on load failure
-            return_loaded_model (bool): Return the LoadedModel instance instead
-                of the size
         Returns:
             model (LoadedModel): The LoadedModel instance
         """
@@ -211,7 +206,6 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
                             model_id,
                             local_model_path,
                             model_type,
-                            aborter=aborter,
                             fail_callback=partial(self.unload_model, model_id),
                             retries=retries,
                         )

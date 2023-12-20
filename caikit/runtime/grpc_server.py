@@ -84,7 +84,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
         if self.enable_inference:
             log.info("<RUN20247875I>", "Enabling gRPC inference service")
             self._global_predict_servicer = GlobalPredictServicer(
-                self.inference_service
+                self.inference_service, interrupter=self.interrupter
             )
             self.server = CaikitRuntimeServerWrapper(
                 server=self.server,
@@ -133,7 +133,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
         # Add model runtime servicer to the gRPC server
         model_runtime_pb2_grpc.add_ModelRuntimeServicer_to_server(
-            ModelRuntimeServicerImpl(), self.server
+            ModelRuntimeServicerImpl(interrupter=self.interrupter), self.server
         )
         service_names.append(
             model_runtime_pb2.DESCRIPTOR.services_by_name["ModelRuntime"].full_name
@@ -223,6 +223,10 @@ class RuntimeGRPCServer(RuntimeServerBase):
         Args:
             blocking (boolean): Whether to block until shutdown
         """
+        # Boot the thread interrupter
+        if self.interrupter:
+            self.interrupter.start()
+
         # Start the server. This is non-blocking, so we need to wait after
         self.server.start()
 
@@ -248,12 +252,16 @@ class RuntimeGRPCServer(RuntimeServerBase):
             grace_period_seconds = (
                 self.config.runtime.grpc.server_shutdown_grace_period_seconds
             )
+        log.debug4("Stopping grpc server with %s grace seconds", grace_period_seconds)
         self.server.stop(grace_period_seconds)
         # Ensure we flush out any remaining billing metrics and stop metering
         if self.config.runtime.metering.enabled and self._global_predict_servicer:
             self._global_predict_servicer.stop_metering()
         # Shut down the model manager's model polling if enabled
         self._shut_down_model_manager()
+        # Shut down the thread interrupter
+        if self.interrupter:
+            self.interrupter.stop()
 
     def render_protos(self, proto_out_dir: str) -> None:
         """Renders all the necessary protos for this service into a directory

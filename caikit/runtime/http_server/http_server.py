@@ -198,7 +198,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Set up inference if enabled
         if self.enable_inference:
             log.info("<RUN77183426I>", "Enabling HTTP inference service")
-            self.global_predict_servicer = GlobalPredictServicer(self.inference_service)
+            self.global_predict_servicer = GlobalPredictServicer(
+                self.inference_service, interrupter=self.interrupter
+            )
             self._bind_routes(self.inference_service)
 
         # Set up training if enabled
@@ -296,6 +298,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
             self.thread_pool._max_workers,
         )
 
+        if self.interrupter:
+            self.interrupter.start()
+
         # Patch the exit handler to retain correct signal handling behavior
         self._patch_exit_handler()
 
@@ -327,6 +332,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         # Shut down the model manager's model polling if enabled
         self._shut_down_model_manager()
+
+        if self.interrupter:
+            self.interrupter.stop()
 
     ##########
     ## Impl ##
@@ -504,9 +512,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 )
 
                 aborter_context = (
-                    HttpRequestAborter(context)
-                    if get_config().runtime.use_abortable_threads
-                    else nullcontext()
+                    HttpRequestAborter(context) if self.interrupter else nullcontext()
                 )
 
                 with aborter_context as aborter:
@@ -578,7 +584,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
                     aborter_context = (
                         HttpRequestAborter(context)
-                        if get_config().runtime.use_abortable_threads
+                        if self.interrupter
                         else nullcontext()
                     )
 

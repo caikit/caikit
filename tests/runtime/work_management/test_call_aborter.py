@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
-import threading
 import unittest
 
 # Local
@@ -20,34 +19,50 @@ from caikit.runtime.work_management.rpc_aborter import RpcAborter
 from tests.fixtures import Fixtures
 
 
-class TestRpcAborter(unittest.TestCase):
-    """This test suite tests the call aborter utility"""
+class StubAbortableContext:
+    """Test context, simply sets flag if `abort` was called"""
 
-    CHANNEL = None
-    GRPC_THREAD = None
+    def __init__(self):
+        self.aborted = False
 
-    def test_call_aborter_sets_event(self):
-        ctx = Fixtures.build_context("call_aborter_event_party")
-        # Create a new Call aborter
-        aborter = RpcAborter(ctx)
-        # Create a new threading event and add it to the call aborter
-        event = threading.Event()
-        aborter.add_event(event)
-        # Cancel the call & wait for the threading event to be set by __rpc_terminated
-        ctx.cancel()
-        event.wait()
-        self.assertTrue(aborter.must_abort())
+    def abort(self):
+        self.aborted = True
 
-    def test_call_aborter_sets_event_added_after_termination(self):
-        ctx = Fixtures.build_context("call_aborter_event_party")
-        # Create a new call aborter
-        aborter = RpcAborter(ctx)
-        # Cancel the call before creating the threading event and adding to the aborter
-        ctx.cancel()
-        event = threading.Event()
-        aborter.add_event(event)
-        event.wait()
-        self.assertTrue(aborter.must_abort())
+
+def test_call_aborter_invokes_abortable_context():
+    """The whole reason this class exists:
+    If the grpc context is canceled, the abortable context should be aborted
+    """
+    grpc_ctx = Fixtures.build_context("call_aborter_event_party")
+    abort_ctx = StubAbortableContext()
+
+    # Create a new Call aborter
+    aborter = RpcAborter(grpc_ctx)
+    # Set its abort context
+    aborter.set_context(abort_ctx)
+
+    assert not abort_ctx.aborted
+
+    # Cancel the call and check that context was aborted
+    grpc_ctx.cancel()
+
+    assert abort_ctx.aborted
+
+
+def test_call_aborter_invokes_abortable_context_when_grpc_context_is_already_canceled():
+    """Edge case: if the grpc context has already been canceled, the abortable context is immediately aborted as well"""
+    grpc_ctx = Fixtures.build_context("call_aborter_event_party")
+    abort_ctx = StubAbortableContext()
+
+    # Prematurely cancel grpc context
+    grpc_ctx.cancel()
+
+    # Create a new Call aborter
+    aborter = RpcAborter(grpc_ctx)
+    # Set its abort context
+    aborter.set_context(abort_ctx)
+    # And it should immediately abort
+    assert abort_ctx.aborted
 
 
 if __name__ == "__main__":
