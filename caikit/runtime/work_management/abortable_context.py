@@ -98,11 +98,11 @@ class ThreadInterrupter:
 
     def _watch_loop(self):
         while True:
-            log.debug4("Waiting on any work to abort")
+            log.debug("Waiting on any work to abort")
             context_id = self._queue.get()
 
             if context_id == self._SHUTDOWN_SIGNAL:
-                log.debug4("Ending abort watch loop")
+                log.debug("Ending abort watch loop")
                 return
 
             self._kill_thread(context_id)
@@ -114,6 +114,7 @@ class ThreadInterrupter:
         thread_id = self._context_thread_map.get(context_id, None)
 
         if thread_id:
+            log.debug("Interrupting thread id: ", thread_id)
             # This raises an AbortedException asynchronously in the target thread. (We can't just
             # use raise, because this thread is the ThreadInterrupter's watch thread).
             # The exception will only be raised once the target thread regains control of the
