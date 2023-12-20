@@ -223,11 +223,12 @@ class RuntimeGRPCServer(RuntimeServerBase):
         Args:
             blocking (boolean): Whether to block until shutdown
         """
-        # Start the server. This is non-blocking, so we need to wait after
-        self.server.start()
         # Boot the thread interrupter
         if self.interrupter:
             self.interrupter.start()
+
+        # Start the server. This is non-blocking, so we need to wait after
+        self.server.start()
 
         log.info(
             "<RUN10001001I>",
