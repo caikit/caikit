@@ -226,6 +226,17 @@ def runtime_http_server(
         yield server
 
 
+@contextmanager
+def runtime_test_server(*args, protocol: str = "grpc", **kwargs):
+    """Helper function to yield either server"""
+    if protocol == "http":
+        with runtime_http_test_server(*args, **kwargs) as server:
+            yield server
+    elif protocol == "grpc":
+        with runtime_grpc_test_server(*args, **kwargs) as server:
+            yield server
+
+
 @pytest.fixture(scope="session")
 def inference_stub(sample_inference_service, runtime_grpc_server) -> Type:
     inference_stub = sample_inference_service.stub_class(

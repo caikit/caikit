@@ -99,6 +99,22 @@ class SampleModule(caikit.core.ModuleBase):
         )
         return stream
 
+    @SampleTask.taskmethod(input_streaming=True)
+    def run_stream_in(
+        self, sample_inputs: DataStream[SampleInputType]
+    ) -> SampleOutputType:
+        """
+        Args:
+            sample_inputs (caikit.core.data_model.DataStream[sample_lib.data_model.SampleInputType]): the input
+
+        Returns:
+            sample_lib.data_model.SampleOutputType]: The combination of inputs
+                stream
+        """
+        return SampleOutputType(
+            greeting=f"Hello {','.join([sample.name for sample in sample_inputs])}"
+        )
+
     @SampleTask.taskmethod(input_streaming=True, output_streaming=True)
     def run_bidi_stream(
         self, sample_inputs: DataStream[SampleInputType]

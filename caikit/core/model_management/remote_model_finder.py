@@ -39,11 +39,9 @@ model_management:
 
 """
 # Standard
-from http.client import HTTP_PORT, HTTPS_PORT, HTTPConnection, HTTPSConnection
+from http.client import HTTP_PORT, HTTPS_PORT
 from pathlib import Path
-from typing import Dict, Optional, Type
-import json
-import ssl
+from typing import Dict, Optional
 
 # Third Party
 import grpc
@@ -85,7 +83,7 @@ class RemoteModelFinder(ModelFinderBase):
 
         # Type/Value check connection parameters
         self._connection = config.connection
-        self._hostname = self._connection.hostname
+        self._hostname = self._connection.get("hostname")
         self._port = self._connection.get("port")
         self._protocol = self._connection.get("protocol", "grpc")
         self._timeout = self._connection.get("timeout")
@@ -149,10 +147,7 @@ class RemoteModelFinder(ModelFinderBase):
 
         # Discover remote models
         if self._discover_models:
-            if self._protocol == "grpc":
-                self._supported_models.update(self._discover_grpc_models())
-            elif self._protocol == "http":
-                self._supported_models.update(self._discover_http_models())
+            self._supported_models.update(self.discover_models())
 
     def find_model(
         self,
@@ -172,6 +167,19 @@ class RemoteModelFinder(ModelFinderBase):
             connection_info=self._connection,
             model_path=model_path,
         )
+
+    def discover_models(self) -> Dict[str, str]:
+        """Helper method to discover models from a remote
+        runtime. This is a separate function to help with subclassing
+
+        Returns:
+            model_map: Dict[str, str]
+                The map of models to modules
+        """
+        if self._protocol == "grpc":
+            return self._discover_grpc_models()
+        elif self._protocol == "http":
+            return self._discover_http_models()
 
     ### Discovery Helper Functions
 

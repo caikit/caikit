@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
-from typing import Any, Dict, Type, Union
+from typing import Any, Dict, List, Tuple, Type, Union, get_args
 import inspect
 
 # First Party
 import alog
 
 # Local
-from ..exceptions import error_handler
-from ..registries import module_registry
-from .base import ModuleBase
-from .config import ModuleConfig
+from caikit.core.exceptions import error_handler
+from caikit.core.modules.base import ModuleBase
+from caikit.core.modules.config import ModuleConfig
+from caikit.core.modules.meta import _ModuleBaseMeta
+from caikit.core.registries import module_registry
+from caikit.core.task import TaskBase
 from caikit.interfaces.runtime.service import (
     CaikitRPCDescriptor,
     get_task_predict_request_name,
@@ -40,23 +42,21 @@ error = error_handler.get(log)
 
 class RemoteModuleConfig(ModuleConfig):
     """Helper class to differentiate a local ModuleConfig and a RemoteModuleConfig. The structure
-    should be as follows:
-    {
-        # Remote information for how to access the server. Should match the format provided
-        by RemoteModelFinder
-        connection: Dict[str, Any]
+    should contain the following fields/structure"""
 
-        # Method information
-        # use list and tuples instead of a dictionary to avoid aconfig.Config error
-        task_methods: List[Tuple[type[TaskBase], List[RemoteMethodRpc]]]
-        train_method: RemoteMethodRpc
+    # Remote information for how to access the server. Should match the format provided
+    # by RemoteModelFinder
+    connection: Dict[str, Any]
 
-        # Target Module Information
-        module_id: str
-        module_name: str
-        model_path: str
-    }
-    """
+    # Method Information
+    # use list and tuples instead of a dictionary to avoid aconfig.Config error
+    task_methods: List[Tuple[Type[TaskBase], List[CaikitRPCDescriptor]]]
+    train_method: CaikitRPCDescriptor
+
+    # Target Module Information
+    module_id: str
+    module_name: str
+    model_path: str
 
     # Reset reserved_keys, so we can manually add module_path
     reserved_keys = []
@@ -64,7 +64,7 @@ class RemoteModuleConfig(ModuleConfig):
     @classmethod
     def load_from_module(
         cls,
-        module_reference: Union[str, Type[ModuleBase]],
+        module_reference: Union[str, Type[ModuleBase], ModuleBase],
         connection_info: Dict[str, Any],
         model_path: str,
     ) -> "RemoteModuleConfig":
@@ -87,16 +87,19 @@ class RemoteModuleConfig(ModuleConfig):
         """
 
         # Validate model path arg
-        error.type_check("<COR71170339E>", str, cls, model_path=model_path)
-        if isinstance(model_path, cls):
-            return model_path
+        error.type_check("<COR71170339E>", str, model_path=model_path)
 
-        # Get local module reference. If it is a class assume its a module base
+        # Get local module reference
         error.type_check(
-            "<COR71270339E>", str, ModuleBase, module_reference=module_reference
+            "<COR71270339E>",
+            str,
+            ModuleBase,
+            _ModuleBaseMeta,
+            module_reference=module_reference,
         )
-        if inspect.isclass(module_reference) and isinstance(
-            module_reference, ModuleBase
+        if isinstance(module_reference, ModuleBase) or (
+            inspect.isclass(module_reference)
+            and issubclass(module_reference, ModuleBase)
         ):
             local_module_class = module_reference
         else:
@@ -132,12 +135,18 @@ class RemoteModuleConfig(ModuleConfig):
                 )
                 task_request_name = get_task_predict_rpc_name(task_class, input, output)
 
+                task_return_type = signature.return_type.__name__
+
+                # Get the underlying DataBaseObject for stream types
+                if output and get_args(signature.return_type) != ():
+                    task_return_type = get_args(signature.return_type)[0].__name__
+
                 # Generate the rpc name and task type
                 task_methods.append(
                     CaikitRPCDescriptor(
                         signature=signature,
                         request_dm_name=request_class_name,
-                        response_dm_name=signature.return_type.__name__,
+                        response_dm_name=task_return_type,
                         rpc_name=task_request_name,
                         input_streaming=input,
                         output_streaming=output,
