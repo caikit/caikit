@@ -23,12 +23,14 @@ model_management:
             type: REMOTE
 """
 # Standard
+from collections import OrderedDict
 from contextlib import contextmanager
 from functools import cached_property
 from inspect import signature
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type
 import atexit
+import copy
 import json
 
 # Third Party
@@ -364,13 +366,11 @@ class _RemoteModelBaseClass(ModuleBase):
     ) -> Any:
         """Helper function to send a grpc request"""
 
-        # Construct the request object
-        request_dm = DataBase.get_class_for_name(method.request_dm_name)(
-            *args, **kwargs
-        )
-        request_protobuf_class = request_dm.get_proto_class()
+        # Get the request types
+        request_dm_class = DataBase.get_class_for_name(method.request_dm_name)
+        request_protobuf_class = request_dm_class.get_proto_class()
 
-        # Construct the response types
+        # Get the response types
         response_dm_class = DataBase.get_class_for_name(method.response_dm_name)
         response_protobuf_class = response_dm_class.get_proto_class()
 
@@ -403,19 +403,47 @@ class _RemoteModelBaseClass(ModuleBase):
                 response_deserializer=response_protobuf_class.FromString,
             )
 
-        # Send RPC request and close channel once completed
+        # Construct request object
+        if method.input_streaming:
+            # Bind the args and kwargs to the signature for parsing. Use None for the self argument
+            bound_args = method.signature.method_signature.bind(None, *args, **kwargs)
+            bound_args.arguments.pop("self")
+
+            # Gather all iterable parameters as these should be streamed
+            streaming_kwargs = OrderedDict()
+            for name in list(bound_args.arguments.keys()):
+                if isinstance(bound_args.arguments.get(name), DataStream):
+                    streaming_kwargs[name] = bound_args.arguments.pop(name)
+
+            def input_stream_parser():
+                for stream_tuple in DataStream.zip(*streaming_kwargs.values()):
+                    stream_arguments = copy.deepcopy(bound_args)
+                    for streaming_key, sub_value in zip(
+                        streaming_kwargs.keys(), stream_tuple
+                    ):
+                        stream_arguments.arguments[streaming_key] = sub_value
+
+                    yield request_dm_class(
+                        *stream_arguments.args, **stream_arguments.kwargs
+                    ).to_proto()
+
+            grpc_request = input_stream_parser()
+        else:
+            grpc_request = request_dm_class(*args, **kwargs).to_proto()
+
+        # Send RPC request with or without streaming
         if method.output_streaming:
 
-            def stream_parser():
+            def output_stream_parser():
                 for proto in service_rpc(
-                    request_dm.to_proto(), metadata=[("mm-model-id", self._model_name)]
+                    grpc_request, metadata=[("mm-model-id", self._model_name)]
                 ):
                     yield response_dm_class.from_proto(proto)
 
-            return DataStream(stream_parser)
+            return DataStream(output_stream_parser)
         else:
             response = service_rpc(
-                request_dm.to_proto(), metadata=[("mm-model-id", self._model_name)]
+                grpc_request, metadata=[("mm-model-id", self._model_name)]
             )
             return response_dm_class.from_proto(response)
 

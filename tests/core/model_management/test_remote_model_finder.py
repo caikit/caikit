@@ -95,7 +95,7 @@ def test_remote_finder_static_model(sample_module_id):
         assert "sample" == config.model_path
         assert len(config.task_methods) == 1
         # Assert how many SampleTask methods there are
-        assert len(config.task_methods[0][1]) == 3
+        assert len(config.task_methods[0][1]) == 4
 
 
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
@@ -131,7 +131,7 @@ def test_remote_finder_discover_models(sample_task_model_id, open_port, protocol
             assert sample_task_model_id == config.model_path
             assert len(config.task_methods) == 1
             # Assert how many SampleTask methods there are
-            assert len(config.task_methods[0][1]) == 3
+            assert len(config.task_methods[0][1]) == 4
 
 
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
@@ -161,7 +161,7 @@ def test_remote_finder_discover_mtls_models(sample_task_model_id, open_port, pro
                 assert sample_task_model_id == config.model_path
                 assert len(config.task_methods) == 1
                 # Assert how many SampleTask methods there are
-                assert len(config.task_methods[0][1]) == 3
+                assert len(config.task_methods[0][1]) == 4
 
 
 def test_remote_finder_discover_https_insecure_models(sample_task_model_id, open_port):
@@ -185,7 +185,7 @@ def test_remote_finder_discover_https_insecure_models(sample_task_model_id, open
                 assert sample_task_model_id == config.model_path
                 assert len(config.task_methods) == 1
                 # Assert how many SampleTask methods there are
-                assert len(config.task_methods[0][1]) == 3
+                assert len(config.task_methods[0][1]) == 4
 
 
 def test_remote_finder_discover_grpc_insecure_models():

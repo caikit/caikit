@@ -32,7 +32,9 @@ from caikit.core.model_management.remote_model_finder import RemoteModelFinder
 from caikit.core.model_management.remote_model_initializer import RemoteModelInitializer
 from caikit.core.modules import ModuleBase, RemoteModuleConfig
 from caikit.runtime.model_management.model_manager import ModelManager
-from sample_lib.data_model import SampleInputType, SampleOutputType
+from caikit.runtime.service_factory import get_train_request
+from sample_lib.data_model import SampleInputType, SampleOutputType, SampleTrainingType
+from sample_lib.modules.sample_task.sample_implementation import SampleModule
 from tests.conftest import random_test_id
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import (
@@ -68,7 +70,7 @@ def test_remote_initializer_insecure_predict(sample_task_model_id, open_port, pr
         remote_model = remote_initializer.init(remote_config)
         assert isinstance(remote_model, ModuleBase)
 
-        model_result = remote_model.run(SampleInputType(name="Test"))
+        model_result = remote_model.run(SampleInputType(name="Test"), throw=False)
         assert isinstance(model_result, SampleOutputType)
         assert "Hello Test" == model_result.greeting
 
@@ -105,9 +107,9 @@ def test_remote_initializer_input_streaming(sample_task_model_id, open_port, pro
                 SampleInputType(name="Test3"),
             ]
         )
-        model_result = remote_model.run_stream_in(stream_input)
+        model_result = remote_model.run_stream_in(stream_input, greeting="Hello Tests ")
         assert isinstance(model_result, SampleOutputType)
-        assert SampleOutputType.greeting == "Hello Test1,Test2,Test3"
+        assert model_result.greeting == "Hello Tests Test1,Test2,Test3"
 
 
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
@@ -136,12 +138,59 @@ def test_remote_initializer_predict_output_streaming(
         remote_model = remote_initializer.init(remote_config)
         assert isinstance(remote_model, ModuleBase)
 
-        model_result = remote_model.run_stream_out(SampleInputType(name="Test"))
+        model_result = remote_model.run_stream_out(
+            SampleInputType(name="Test"), err_stream=False
+        )
         assert isinstance(model_result, DataStream)
         stream_results = [item for item in model_result]
         assert len(stream_results) == 10
         for item in stream_results:
             assert item.greeting == "Hello Test stream"
+
+
+# Only GRPC Supports bidi streams
+@pytest.mark.parametrize("protocol", ["grpc"])
+def test_remote_initializer_predict_input_output_streaming(
+    sample_task_model_id, open_port, protocol
+):
+    """Test to ensure Remote Initializer works when streaming outputs"""
+    local_module_class = (
+        ModelManager.get_instance().retrieve_model(sample_task_model_id).__class__
+    )
+    remote_initializer = RemoteModelInitializer(Config({}), "test")
+
+    with runtime_test_server(open_port, protocol=protocol):
+        # Construct Remote Module Config
+        connection_info = {
+            "hostname": "localhost",
+            "port": open_port,
+            "protocol": protocol,
+        }
+        remote_config = RemoteModuleConfig.load_from_module(
+            local_module_class, connection_info, sample_task_model_id
+        )
+        # Set random module_id so tests don't conflict
+        remote_config.module_id = str(uuid.uuid4())
+
+        remote_model = remote_initializer.init(remote_config)
+        assert isinstance(remote_model, ModuleBase)
+
+        stream_input = DataStream.from_iterable(
+            [
+                SampleInputType(name="Test1"),
+                SampleInputType(name="Test2"),
+                SampleInputType(name="Test3"),
+            ]
+        )
+        model_result = remote_model.run_bidi_stream(stream_input)
+        assert isinstance(model_result, DataStream)
+        stream_results = [item.greeting for item in model_result]
+        assert len(stream_results) == 3
+        assert stream_results == [
+            "Hello Test1",
+            "Hello Test2",
+            "Hello Test3",
+        ]
 
 
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
