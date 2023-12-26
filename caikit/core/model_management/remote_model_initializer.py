@@ -28,10 +28,12 @@ from contextlib import contextmanager
 from functools import cached_property
 from inspect import signature
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Generator
 import atexit
 import copy
 import json
+import uuid
+
 
 # Third Party
 import grpc
@@ -131,14 +133,13 @@ class _RemoteModelBaseClass(ModuleBase):
             "Unknown protocol: %s",
             self._protocol,
         )
+        error.type_check("<COR73221567E>", str, int, hostname=self._hostname, port=self._port)
         error.type_check(
             "<COR7331567E>",
             int,
             allow_none=True,
-            port=self._port,
             timeout=self._timeout,
         )
-        error.type_check("<COR73221567E>", str, hostname=self._hostname)
 
         # Load TLS files on startup to stop unneeded reads
         tls_info = self._connection.get("tls", {})
@@ -207,16 +208,28 @@ class _RemoteModelBaseClass(ModuleBase):
                 "GRPC does not support insecure TLS connections. Please provide a valid CA certificate",
             )
 
-    ### Method Generation Helpers
+    ### Method Factories
 
     @classmethod
     def generate_train_function(cls, method: CaikitRPCDescriptor) -> Callable:
-        """Helper function to construct a train function that will then be set as an attribute"""
+        """Factory function to construct a train function that will then be set as an attribute"""
 
         def train_func(self, *args, **kwargs) -> method.signature.return_type:
-            return self.remote_method_request(
-                method, ServiceType.TRAINING, *args, **kwargs
+            train_kwargs = {}
+            if "_output_path" in kwargs:
+                train_kwargs["output_path"] = kwargs.pop("_output_path")
+            train_kwargs["model_name"] = kwargs.pop("_model_name", f"{self._model_name}-{uuid.uuid4()}")
+
+            bound_args = method.signature.method_signature.bind(*args, **kwargs)
+            train_kwargs["parameters"] = DataBase.get_class_for_name(method.request_dm_name.replace("Request","Parameters"))(**bound_args.arguments)
+
+            # Set return type to TrainType
+            method.response_dm_name = "TrainingJob"
+            training_response = self.remote_method_request(
+                method, ServiceType.TRAINING, **train_kwargs
             )
+            return cls(self._connection, training_response.model_name)
+
 
         # Override infer function name attributes and signature
         train_func.__name__ = method.signature.method_name
@@ -228,7 +241,7 @@ class _RemoteModelBaseClass(ModuleBase):
     def generate_inference_function(
         cls, task: Type[TaskBase], method: CaikitRPCDescriptor
     ) -> Callable:
-        """Helper function to construct inference functions that will be set as an attribute."""
+        """Factory function to construct inference functions that will be set as an attribute."""
 
         def infer_func(self, *args, **kwargs) -> method.signature.return_type:
             return self.remote_method_request(
@@ -259,7 +272,7 @@ class _RemoteModelBaseClass(ModuleBase):
         if self._protocol == "grpc":
             return self._request_via_grpc(method, service_type, *args, **kwargs)
         elif self._protocol == "http":
-            return self._request_via_http(method, *args, **kwargs)
+            return self._request_via_http(method, service_type, *args, **kwargs)
 
         raise NotImplementedError(f"Unknown protocol {self._protocol}")
 
@@ -267,6 +280,7 @@ class _RemoteModelBaseClass(ModuleBase):
     def _request_via_http(
         self,
         method: CaikitRPCDescriptor,
+        service_type: ServiceType,
         *args,
         **kwargs,
     ) -> Any:
@@ -279,27 +293,31 @@ class _RemoteModelBaseClass(ModuleBase):
         request_dm_dict = json.loads(request_dm.to_json())
 
         # Parse generic Request type into HttpRequest format
-        http_request_dict = {
-            REQUIRED_INPUTS_KEY: {},
-            OPTIONAL_INPUTS_KEY: {},
-            MODEL_ID: self._model_name,
-        }
-        for param in method.signature.parameters:
-            value = request_dm_dict.get(param)
+        if service_type == ServiceType.INFERENCE:
+            http_request_dict = {
+                REQUIRED_INPUTS_KEY: {},
+                OPTIONAL_INPUTS_KEY: {},
+                MODEL_ID: self._model_name,
+            }
+            for param in method.signature.parameters:
+                value = request_dm_dict.get(param)
 
-            # If param doesn't have a default then add it to inputs
-            if param not in method.signature.default_parameters:
-                http_request_dict[REQUIRED_INPUTS_KEY][param] = value
+                # If param doesn't have a default then add it to inputs
+                if param not in method.signature.default_parameters:
+                    http_request_dict[REQUIRED_INPUTS_KEY][param] = value
 
-            # If the parameter value is different then the default then add it
-            elif value != method.signature.default_parameters.get(param):
-                http_request_dict[OPTIONAL_INPUTS_KEY][param] = value
+                # If the parameter value is different then the default then add it
+                elif value != method.signature.default_parameters.get(param):
+                    http_request_dict[OPTIONAL_INPUTS_KEY][param] = value
 
-        # If there is only one input then collapse down the value
-        if len(http_request_dict[REQUIRED_INPUTS_KEY]) == 1:
-            http_request_dict[REQUIRED_INPUTS_KEY] = list(
-                http_request_dict[REQUIRED_INPUTS_KEY].values()
-            )[0]
+            # If there is only one input then collapse down the value
+            if len(http_request_dict[REQUIRED_INPUTS_KEY]) == 1:
+                http_request_dict[REQUIRED_INPUTS_KEY] = list(
+                    http_request_dict[REQUIRED_INPUTS_KEY].values()
+                )[0]
+        elif service_type == ServiceType.TRAINING:
+            # Get all none null values
+            http_request_dict = {k: v for k, v in request_dm_dict.items() if v}
 
         # Get request options and target
         request_kwargs = {"headers": {"Content-type": "application/json"}}
@@ -327,7 +345,7 @@ class _RemoteModelBaseClass(ModuleBase):
         if response.status_code != 200:
             raise CaikitCoreException(
                 CaikitCoreStatusCode.UNKNOWN,
-                f"Receieved status {response.status_code} from remote server: {response.text}",
+                f"Received status {response.status_code} from remote server: {response.text}",
             )
 
         # Parse response data model either as file or json
@@ -411,11 +429,11 @@ class _RemoteModelBaseClass(ModuleBase):
 
             # Gather all iterable parameters as these should be streamed
             streaming_kwargs = OrderedDict()
-            for name in list(bound_args.arguments.keys()):
-                if isinstance(bound_args.arguments.get(name), DataStream):
-                    streaming_kwargs[name] = bound_args.arguments.pop(name)
+            for name in self._get_streaming_arguments(**bound_args.arguments):
+                streaming_kwargs[name] = bound_args.arguments.pop(name)
 
             def input_stream_parser():
+                """Helper function to iterate over a datastream and stream requests"""
                 for stream_tuple in DataStream.zip(*streaming_kwargs.values()):
                     stream_arguments = copy.deepcopy(bound_args)
                     for streaming_key, sub_value in zip(
@@ -435,6 +453,7 @@ class _RemoteModelBaseClass(ModuleBase):
         if method.output_streaming:
 
             def output_stream_parser():
+                """Helper function to stream result objects"""
                 for proto in service_rpc(
                     grpc_request, metadata=[("mm-model-id", self._model_name)]
                 ):
@@ -494,12 +513,20 @@ class _RemoteModelBaseClass(ModuleBase):
             else:
                 return f"http://{target_string}"
 
+    @staticmethod
+    def _get_streaming_arguments(**kwargs: Dict[str, Any])->List[str]:
+        """Helper function to detect which kwargs are streaming"""
+        streaming_arguments = []
+        for name, value in kwargs.items():
+            if isinstance(value, (DataStream,Generator)):
+                streaming_arguments.append(name)
+        return streaming_arguments
 
 def construct_remote_module_class(
     model_config: RemoteModuleConfig,
     model_class: Type[_RemoteModelBaseClass] = _RemoteModelBaseClass,
 ) -> Type[ModuleBase]:
-    """Helper function to construct unique Remote Module Class."""
+    """Factory function to construct unique Remote Module Class."""
 
     # Construct unique class which will have functions attached to it
     RemoteModelClass: Type[_RemoteModelBaseClass] = type(

@@ -15,36 +15,29 @@
 Tests for the RemoteModelInitializer
 """
 
-# Standard
-from contextlib import contextmanager
-import uuid
-
 # Third Party
-import grpc
 import pytest
 
 # First Party
 from aconfig import Config
 
 # Local
+import caikit
 from caikit.core.data_model.streams.data_stream import DataStream
-from caikit.core.model_management.remote_model_finder import RemoteModelFinder
 from caikit.core.model_management.remote_model_initializer import RemoteModelInitializer
 from caikit.core.modules import ModuleBase, RemoteModuleConfig
 from caikit.runtime.model_management.model_manager import ModelManager
-from caikit.runtime.service_factory import get_train_request
+from caikit.runtime.service_factory import get_train_request, get_train_params
 from sample_lib.data_model import SampleInputType, SampleOutputType, SampleTrainingType
 from sample_lib.modules.sample_task.sample_implementation import SampleModule
 from tests.conftest import random_test_id
-from tests.fixtures import Fixtures
+from tests.fixtures import Fixtures  # noqa: F401
 from tests.runtime.conftest import (
     generate_tls_configs,
-    multi_task_model_id,
-    open_port,
-    runtime_grpc_test_server,
-    runtime_http_test_server,
     runtime_test_server,
-    sample_task_model_id,
+    multi_task_model_id, # noqa: F401
+    open_port, # noqa: F401
+    sample_task_model_id,  # noqa: F401
 )
 
 ## Tests #######################################################################
@@ -52,7 +45,7 @@ from tests.runtime.conftest import (
 
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
 def test_remote_initializer_insecure_predict(sample_task_model_id, open_port, protocol):
-    """Test to ensure RemoteModule Initializer works for inseecure connections"""
+    """Test to ensure RemoteModule Initializer works for insecure connections"""
     local_module_class = (
         ModelManager.get_instance().retrieve_model(sample_task_model_id).__class__
     )
@@ -63,7 +56,7 @@ def test_remote_initializer_insecure_predict(sample_task_model_id, open_port, pr
         local_module_class, connection_info, sample_task_model_id
     )
     # Set random module_id so tests don't conflict
-    remote_config.module_id = str(uuid.uuid4())
+    remote_config.module_id = random_test_id()
 
     with runtime_test_server(open_port, protocol=protocol):
         remote_initializer = RemoteModelInitializer(Config({}), "test")
@@ -95,7 +88,7 @@ def test_remote_initializer_input_streaming(sample_task_model_id, open_port, pro
             local_module_class, connection_info, sample_task_model_id
         )
         # Set random module_id so tests don't conflict
-        remote_config.module_id = str(uuid.uuid4())
+        remote_config.module_id = random_test_id()
 
         remote_model = remote_initializer.init(remote_config)
         assert isinstance(remote_model, ModuleBase)
@@ -113,7 +106,7 @@ def test_remote_initializer_input_streaming(sample_task_model_id, open_port, pro
 
 
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
-def test_remote_initializer_predict_output_streaming(
+def test_remote_initializer_output_streaming(
     sample_task_model_id, open_port, protocol
 ):
     """Test to ensure Remote Initializer works when streaming outputs"""
@@ -133,7 +126,7 @@ def test_remote_initializer_predict_output_streaming(
             local_module_class, connection_info, sample_task_model_id
         )
         # Set random module_id so tests don't conflict
-        remote_config.module_id = str(uuid.uuid4())
+        remote_config.module_id = random_test_id()
 
         remote_model = remote_initializer.init(remote_config)
         assert isinstance(remote_model, ModuleBase)
@@ -150,7 +143,7 @@ def test_remote_initializer_predict_output_streaming(
 
 # Only GRPC Supports bidi streams
 @pytest.mark.parametrize("protocol", ["grpc"])
-def test_remote_initializer_predict_input_output_streaming(
+def test_remote_initializer_input_output_streaming(
     sample_task_model_id, open_port, protocol
 ):
     """Test to ensure Remote Initializer works when streaming outputs"""
@@ -170,7 +163,7 @@ def test_remote_initializer_predict_input_output_streaming(
             local_module_class, connection_info, sample_task_model_id
         )
         # Set random module_id so tests don't conflict
-        remote_config.module_id = str(uuid.uuid4())
+        remote_config.module_id = random_test_id()
 
         remote_model = remote_initializer.init(remote_config)
         assert isinstance(remote_model, ModuleBase)
@@ -192,6 +185,45 @@ def test_remote_initializer_predict_input_output_streaming(
             "Hello Test3",
         ]
 
+
+
+@pytest.mark.parametrize("protocol", ["grpc", "http"])
+def test_remote_initializer_train(
+    sample_task_model_id, open_port, protocol
+):
+    """Test to ensure Remote Initializer works when streaming outputs"""
+    local_module_class = (
+        ModelManager.get_instance().retrieve_model(sample_task_model_id).__class__
+    )
+    remote_initializer = RemoteModelInitializer(Config({}), "test")
+
+    with runtime_test_server(open_port, protocol=protocol):
+        # Construct Remote Module Config
+        connection_info = {
+            "hostname": "localhost",
+            "port": open_port,
+            "protocol": protocol,
+        }
+        remote_config = RemoteModuleConfig.load_from_module(
+            local_module_class, connection_info, sample_task_model_id
+        )
+        # Set random module_id so tests don't conflict
+        remote_config.module_id = random_test_id()
+
+        remote_model = remote_initializer.init(remote_config)
+        assert isinstance(remote_model, ModuleBase)
+
+        stream_type = caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
+        training_data = stream_type(
+            data_stream=stream_type.JsonData(
+                data=[SampleTrainingType(1), SampleTrainingType(2)]
+            )
+        )
+
+        model_result = remote_model.train(
+            training_data=training_data,union_list=["str","sequence"]
+        )
+        assert isinstance(model_result, ModuleBase)
 
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
 def test_remote_initializer_mtls_predict(sample_task_model_id, open_port, protocol):
@@ -223,7 +255,7 @@ def test_remote_initializer_mtls_predict(sample_task_model_id, open_port, protoc
                 local_module_class, connection_info, sample_task_model_id
             )
             # Set random module_id so tests don't conflict
-            remote_config.module_id = str(uuid.uuid4())
+            remote_config.module_id = random_test_id()
 
             remote_model = remote_initializer.init(remote_config)
             assert isinstance(remote_model, ModuleBase)
@@ -260,7 +292,7 @@ def test_remote_initializer_https_unverified_predict(sample_task_model_id, open_
                 local_module_class, connection_info, sample_task_model_id
             )
             # Set random module_id so tests don't conflict
-            remote_config.module_id = str(uuid.uuid4())
+            remote_config.module_id = random_test_id()
 
             remote_model = remote_initializer.init(remote_config)
             assert isinstance(remote_model, ModuleBase)
@@ -293,7 +325,7 @@ def test_remote_initializer_grpc_unverified_predict(sample_task_model_id, open_p
                 local_module_class, connection_info, sample_task_model_id
             )
             # Set random module_id so tests don't conflict
-            remote_config.module_id = str(uuid.uuid4())
+            remote_config.module_id = random_test_id()
 
             with pytest.raises(ValueError):
                 remote_initializer.init(remote_config)
