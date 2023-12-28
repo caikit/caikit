@@ -28,6 +28,7 @@ from contextlib import contextmanager
 from functools import cached_property
 from inspect import signature
 from pathlib import Path
+from threading import Lock
 from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Tuple, Type
 import atexit
 import copy
@@ -214,6 +215,15 @@ class _RemoteModelBaseClass(ModuleBase):
                 not self._tls_insecure_verify,
                 "GRPC does not support insecure TLS connections. Please provide a valid CA certificate",
             )
+
+        # Configure GRPC variables and threading lock
+        self._channel_lock = Lock()
+        self.__grpc_channel = None
+
+    def __del__(self):
+        """Destructor to ensure channel is cleaned up on deletion"""
+        if self.__grpc_channel:
+            self._close_grpc_channel(self._grpc_channel)
 
     ### Method Factories
 
@@ -499,33 +509,38 @@ class _RemoteModelBaseClass(ModuleBase):
             )
             return response_dm_class.from_proto(response)
 
-    @cached_property
+    @property
     def _grpc_channel(self) -> grpc.Channel:
         """Helper function to construct a GRPC channel
         with correct credentials and TLS settings."""
-        # Gather grpc configuration
-        target = self._get_remote_target()
-        options = list(self._options.items())
+        # Short circuit if channel has already been set
+        if self.__grpc_channel:
+            return self.__grpc_channel
 
-        # Generate secure channel
-        if self._tls_enabled:
-            grpc_credentials = grpc.ssl_channel_credentials(
-                root_certificates=self._ca_data,
-                private_key=self._mtls_key_data,
-                certificate_chain=self._mtls_cert_data,
-            )
-            channel = grpc.secure_channel(
-                target, credentials=grpc_credentials, options=options
-            )
-        else:
-            channel = grpc.insecure_channel(target, options=options)
+        with self._channel_lock:
+            # Check for the channel again incase it was created during lock acquisition
+            if self.__grpc_channel:
+                return self.__grpc_channel
 
-        # Use atexit to ensure Channel is closed before process termination.
-        # atexit is required instead of __del__ as streaming methods might still be using this Channel
-        # after all references to the Module have been lost.
-        atexit.register(_RemoteModelBaseClass._close_grpc_channel, channel)
+            # Gather grpc configuration
+            target = self._get_remote_target()
+            options = list(self._options.items())
 
-        return channel
+            # Generate secure channel
+            if self._tls_enabled:
+                grpc_credentials = grpc.ssl_channel_credentials(
+                    root_certificates=self._ca_data,
+                    private_key=self._mtls_key_data,
+                    certificate_chain=self._mtls_cert_data,
+                )
+                channel = grpc.secure_channel(
+                    target, credentials=grpc_credentials, options=options
+                )
+            else:
+                channel = grpc.insecure_channel(target, options=options)
+
+            self.__grpc_channel = channel
+            return self.__grpc_channel
 
     @staticmethod
     def _close_grpc_channel(channel: grpc.Channel):

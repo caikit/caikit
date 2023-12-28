@@ -136,6 +136,48 @@ def test_remote_initializer_output_streaming(sample_task_model_id, open_port, pr
             assert item.greeting == "Hello Test stream"
 
 
+@pytest.mark.parametrize("protocol", ["grpc", "http"])
+def test_remote_initializer_streaming_deleted_model(
+    sample_task_model_id, open_port, protocol
+):
+    """Test to ensure Remote Initializer is still able to stream outputs after the RemoteModelBase
+    has been deleted/out of scope"""
+    local_module_class = (
+        ModelManager.get_instance().retrieve_model(sample_task_model_id).__class__
+    )
+    remote_initializer = RemoteModelInitializer(Config({}), "test")
+
+    with runtime_test_server(open_port, protocol=protocol):
+        # Construct Remote Module Config
+        connection_info = {
+            "hostname": "localhost",
+            "port": open_port,
+            "protocol": protocol,
+        }
+        remote_config = RemoteModuleConfig.load_from_module(
+            local_module_class, connection_info, sample_task_model_id
+        )
+        # Set random module_id so tests don't conflict
+        remote_config.module_id = random_test_id()
+
+        remote_model = remote_initializer.init(remote_config)
+        assert isinstance(remote_model, ModuleBase)
+
+        model_result = remote_model.run_stream_out(
+            SampleInputType(name="Test"), err_stream=False
+        )
+        assert isinstance(model_result, DataStream)
+
+        # Delete Model Object
+        del remote_model
+
+        # Assert stream can still be read
+        stream_results = [item for item in model_result]
+        assert len(stream_results) == 10
+        for item in stream_results:
+            assert item.greeting == "Hello Test stream"
+
+
 # Only GRPC Supports bidi streams
 @pytest.mark.parametrize("protocol", ["grpc"])
 def test_remote_initializer_input_output_streaming(
