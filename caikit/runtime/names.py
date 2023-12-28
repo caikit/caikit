@@ -250,6 +250,9 @@ INFO_SERVICE_SPEC = {
     }
 }
 
+## Service Constants
+# Invocation metadata key for the model ID, provided by Model Mesh
+MODEL_MESH_MODEL_ID_KEY = "mm-model-id"
 
 ############### Server Names #############
 

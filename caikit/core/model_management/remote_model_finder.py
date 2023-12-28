@@ -33,6 +33,7 @@ model_management:
                         insecure_verify: Optional[bool]=False <If client should validate server remote CA>
                     options:  Optional[Dict[str,str]]={} <optional dict of grpc or http configuration options>
                     timeout: Optional[int]=None <Optional timeout setting for remote connections>
+                    model_key: Optional[str]=MODEL_MESH_MODEL_ID_KEY <Optional setting to override the grpc model name>
                 discover_models: Optional[bool]=True <bool to automatically discover remote models via the /info/models endpoint>
                 supported_models: Optional[Dict[str, str]]={} <mapping of model names to module_ids that this remote supports>
                     <model_path>: <module_id>
@@ -61,6 +62,7 @@ from caikit.interfaces.runtime.server import (
     ServiceType,
     get_grpc_route_name,
 )
+from caikit.interfaces.runtime.service import MODEL_MESH_MODEL_ID_KEY
 
 log = alog.use_channel("RFIND")
 error = error_handler.get(log)
@@ -87,6 +89,7 @@ class RemoteModelFinder(ModelFinderBase):
         self._port = self._connection.get("port")
         self._protocol = self._connection.get("protocol", "grpc")
         self._timeout = self._connection.get("timeout")
+        self._model_key = self._connection.get("model_key", MODEL_MESH_MODEL_ID_KEY)
         self._options = self._connection.get("options", {})
         error.value_check(
             "<COR72281545E>",
@@ -100,7 +103,9 @@ class RemoteModelFinder(ModelFinderBase):
             supported_models=self._supported_models,
             options=self._options,
         )
-        error.type_check("<COR72281587E>", str, host=self._hostname)
+        error.type_check(
+            "<COR72281587E>", str, host=self._hostname, model_key=self._model_key
+        )
         error.type_check(
             "<COR73381567E>",
             int,
