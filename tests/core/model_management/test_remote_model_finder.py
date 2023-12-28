@@ -30,13 +30,10 @@ from caikit.core.modules import RemoteModuleConfig
 from caikit.runtime.model_management.model_manager import ModelManager
 from tests.conftest import random_test_id
 from tests.fixtures import Fixtures
-from tests.runtime.conftest import (
-    generate_tls_configs,
-    multi_task_model_id, # noqa: F401
-    open_port, # noqa: F401
-    runtime_test_server,
-    sample_task_model_id,  # noqa: F401
-)
+from tests.runtime.conftest import multi_task_model_id  # noqa: F401
+from tests.runtime.conftest import open_port  # noqa: F401
+from tests.runtime.conftest import sample_task_model_id  # noqa: F401
+from tests.runtime.conftest import generate_tls_configs, runtime_test_server
 
 ## Test Helpers #######################################################################
 

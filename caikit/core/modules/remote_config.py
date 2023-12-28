@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
-from typing import Any, Dict, List, Tuple, Type, Union, get_args
+from typing import Any, Dict, List, Tuple, Type, Union, get_args, get_origin
 import inspect
 
 # First Party
@@ -135,7 +135,10 @@ class RemoteModuleConfig(ModuleConfig):
                 )
                 task_request_name = get_task_predict_rpc_name(task_class, input, output)
 
-                task_return_type = signature.return_type.__name__
+                if hasattr(signature.return_type, "__name__"):
+                    task_return_type = signature.return_type.__name__
+                else:
+                    task_return_type = get_origin(signature.return_type).__name__
 
                 # Get the underlying DataBaseObject for stream types
                 if output and get_args(signature.return_type) != ():
