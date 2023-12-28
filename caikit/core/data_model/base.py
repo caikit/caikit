@@ -963,7 +963,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
         return proto
 
-    def to_dict(self) -> dict:
+    def to_dict(self, use_oneof: bool = False) -> dict:
         """Convert to a dictionary representation."""
         # maintain a list of fields to convert to dict, special handling for oneofs
         fields_to_dict = []
@@ -972,11 +972,15 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 field not in self._fields_to_oneof
                 or self.which_oneof(self._fields_to_oneof[field]) == field
             ):
-                fields_to_dict.append(field)
+                # Data streams should use the common stream not the specific
+                if use_oneof and field in self._fields_to_oneof:
+                    fields_to_dict.append(self._fields_to_oneof[field])
+                else:
+                    fields_to_dict.append(field)
 
         to_dict = {}
         for field in fields_to_dict:
-            dict_value = self._field_to_dict_element(field)
+            dict_value = self._field_to_dict_element(field, use_oneof=use_oneof)
             if (
                 field in self._fields_to_oneof
                 and not hasattr(dict_value, "values")
@@ -999,7 +1003,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 fields_to_dict.append(self._fields_to_oneof[field])
         return {field: getattr(self, field) for field in fields_to_dict}
 
-    def to_json(self, **kwargs) -> str:
+    def to_json(self, use_oneof: bool = False, **kwargs) -> str:
         """Convert to a json representation."""
 
         def _default_serialization_overrides(obj):
@@ -1017,7 +1021,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
         if "default" not in kwargs:
             kwargs["default"] = _default_serialization_overrides
 
-        return json.dumps(self.to_dict(), **kwargs)
+        return json.dumps(self.to_dict(use_oneof), **kwargs)
 
     def to_file(
         self, file_obj: IOBase
@@ -1038,7 +1042,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
         """Human-friendly representation."""
         return self.to_json(indent=2, ensure_ascii=False)
 
-    def _field_to_dict_element(self, field):
+    def _field_to_dict_element(self, field, use_oneof: bool = False):
         """Convert field into a representation that can be placed into a dictionary.  Recursively
         calls to_dict on other data model objects.
         """
@@ -1083,15 +1087,20 @@ class DataBase(metaclass=_DataBaseMetaClass):
             if isinstance(_attr, list):
                 return [_recursive_to_dict(listitem) for listitem in _attr]
             if isinstance(_attr, DataBase):
-                return _attr.to_dict()
+                return _attr.to_dict(use_oneof)
 
             return _attr
 
         # If field is an object in out data model/map/list call to_dict recursively on each element
+        target_field = (
+            self._get_which_oneof_dict().get(field)
+            if field in self._get_which_oneof_dict()
+            else field
+        )
         if (
-            field in self._fields_map
-            or field in self._fields_message
-            or field in self._fields_message_repeated
+            target_field in self._fields_map
+            or target_field in self._fields_message
+            or target_field in self._fields_message_repeated
         ):
             return _recursive_to_dict(attr)
 

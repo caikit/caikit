@@ -28,12 +28,11 @@ from contextlib import contextmanager
 from functools import cached_property
 from inspect import signature
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Generator
+from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, Tuple, Type
 import atexit
 import copy
 import json
 import uuid
-
 
 # Third Party
 import grpc
@@ -44,6 +43,7 @@ import aconfig
 import alog
 
 # Local
+from caikit.config.config import merge_configs
 from caikit.core.data_model import DataBase, DataStream
 from caikit.core.exceptions import error_handler
 from caikit.core.exceptions.caikit_core_exception import (
@@ -61,7 +61,11 @@ from caikit.interfaces.runtime.server import (
     get_grpc_route_name,
     get_http_route_name,
 )
-from caikit.interfaces.runtime.service import CaikitRPCDescriptor, ServiceType
+from caikit.interfaces.runtime.service import (
+    MODEL_MESH_MODEL_ID_KEY,
+    CaikitRPCDescriptor,
+    ServiceType,
+)
 
 log = alog.use_channel("RINIT")
 error = error_handler.get(log)
@@ -123,9 +127,10 @@ class _RemoteModelBaseClass(ModuleBase):
         # Load connection parameters and assert types
         self._hostname = self._connection.get("hostname")
         self._port = self._connection.get("port")
-        self._protocol = self._connection.get("protocol", "grpc")
+        self._protocol = self._connection.get("protocol")
         self._timeout = self._connection.get("timeout")
         self._options = self._connection.get("options", {})
+        self._model_key = self._connection.get("model_key", MODEL_MESH_MODEL_ID_KEY)
 
         error.value_check(
             "<COR72284545E>",
@@ -133,7 +138,9 @@ class _RemoteModelBaseClass(ModuleBase):
             "Unknown protocol: %s",
             self._protocol,
         )
-        error.type_check("<COR73221567E>", str, int, hostname=self._hostname, port=self._port)
+        error.type_check(
+            "<COR73221567E>", str, int, hostname=self._hostname, port=self._port
+        )
         error.type_check(
             "<COR7331567E>",
             int,
@@ -218,10 +225,14 @@ class _RemoteModelBaseClass(ModuleBase):
             train_kwargs = {}
             if "_output_path" in kwargs:
                 train_kwargs["output_path"] = kwargs.pop("_output_path")
-            train_kwargs["model_name"] = kwargs.pop("_model_name", f"{self._model_name}-{uuid.uuid4()}")
+            train_kwargs["model_name"] = kwargs.pop(
+                "_model_name", f"{self._model_name}-{uuid.uuid4()}"
+            )
 
             bound_args = method.signature.method_signature.bind(*args, **kwargs)
-            train_kwargs["parameters"] = DataBase.get_class_for_name(method.request_dm_name.replace("Request","Parameters"))(**bound_args.arguments)
+            train_kwargs["parameters"] = DataBase.get_class_for_name(
+                method.request_dm_name.replace("Request", "Parameters")
+            )(**bound_args.arguments)
 
             # Set return type to TrainType
             method.response_dm_name = "TrainingJob"
@@ -229,7 +240,6 @@ class _RemoteModelBaseClass(ModuleBase):
                 method, ServiceType.TRAINING, **train_kwargs
             )
             return cls(self._connection, training_response.model_name)
-
 
         # Override infer function name attributes and signature
         train_func.__name__ = method.signature.method_name
@@ -289,8 +299,8 @@ class _RemoteModelBaseClass(ModuleBase):
             *args, **kwargs
         )
 
-        # ! This is a hack to ensure all fields/types have been json encoded (bytes/etc)
-        request_dm_dict = json.loads(request_dm.to_json())
+        # ! This is a hack to ensure all fields/types have been json encoded (bytes/datetime/etc)
+        request_dm_dict = json.loads(request_dm.to_json(use_oneof=True))
 
         # Parse generic Request type into HttpRequest format
         if service_type == ServiceType.INFERENCE:
@@ -306,7 +316,7 @@ class _RemoteModelBaseClass(ModuleBase):
                 if param not in method.signature.default_parameters:
                     http_request_dict[REQUIRED_INPUTS_KEY][param] = value
 
-                # If the parameter value is different then the default then add it
+                # If the param is different then the default then add it to parameters
                 elif value != method.signature.default_parameters.get(param):
                     http_request_dict[OPTIONAL_INPUTS_KEY][param] = value
 
@@ -316,8 +326,22 @@ class _RemoteModelBaseClass(ModuleBase):
                     http_request_dict[REQUIRED_INPUTS_KEY].values()
                 )[0]
         elif service_type == ServiceType.TRAINING:
-            # Get all none null values
-            http_request_dict = {k: v for k, v in request_dm_dict.items() if v}
+            # Strip all null values
+            def _remove_null_values(_attr):
+                if isinstance(_attr, dict):
+                    return {
+                        key: _remove_null_values(value)
+                        for key, value in _attr.items()
+                        if value
+                    }
+                if isinstance(_attr, list):
+                    return [
+                        _remove_null_values(listitem) for listitem in _attr if listitem
+                    ]
+
+                return _attr
+
+            http_request_dict = _remove_null_values(request_dm_dict)
 
         # Get request options and target
         request_kwargs = {"headers": {"Content-type": "application/json"}}
@@ -335,6 +359,11 @@ class _RemoteModelBaseClass(ModuleBase):
 
         if method.output_streaming:
             request_kwargs["stream"] = True
+
+        if self._timeout:
+            request_kwargs["timeout"] = self._timeout
+
+        request_kwargs = merge_configs(request_kwargs, self._options)
 
         request_url = (
             f"{self._get_remote_target()}{get_http_route_name(method.rpc_name)}"
@@ -455,14 +484,18 @@ class _RemoteModelBaseClass(ModuleBase):
             def output_stream_parser():
                 """Helper function to stream result objects"""
                 for proto in service_rpc(
-                    grpc_request, metadata=[("mm-model-id", self._model_name)]
+                    grpc_request,
+                    metadata=[(self._model_key, self._model_name)],
+                    timeout=self._timeout,
                 ):
                     yield response_dm_class.from_proto(proto)
 
             return DataStream(output_stream_parser)
         else:
             response = service_rpc(
-                grpc_request, metadata=[("mm-model-id", self._model_name)]
+                grpc_request,
+                metadata=[(self._model_key, self._model_name)],
+                timeout=self._timeout,
             )
             return response_dm_class.from_proto(response)
 
@@ -514,13 +547,14 @@ class _RemoteModelBaseClass(ModuleBase):
                 return f"http://{target_string}"
 
     @staticmethod
-    def _get_streaming_arguments(**kwargs: Dict[str, Any])->List[str]:
+    def _get_streaming_arguments(**kwargs: Dict[str, Any]) -> List[str]:
         """Helper function to detect which kwargs are streaming"""
         streaming_arguments = []
         for name, value in kwargs.items():
-            if isinstance(value, (DataStream,Generator)):
+            if isinstance(value, (DataStream, Generator)):
                 streaming_arguments.append(name)
         return streaming_arguments
+
 
 def construct_remote_module_class(
     model_config: RemoteModuleConfig,
