@@ -1081,7 +1081,7 @@ class NoModelFinder(ModelFinderBase):
     def __init__(self, config: Config, instance_name: str):
         super().__init__(config, instance_name)
 
-    def find_model(self, model_path: str, **kwargs) -> ModuleConfig | None:
+    def find_model(self, model_path: str, **kwargs) -> ModuleConfig:
         raise FileNotFoundError(f"Unable to find model {model_path}")
 
 
@@ -1103,7 +1103,7 @@ def test_load_model_custom_finder():
 class CustomParamInitializer(LocalModelInitializer):
     name = "CUSTOMPARAM"
 
-    def init(self, model_config: ModuleConfig, **kwargs) -> ModuleBase | None:
+    def init(self, model_config: ModuleConfig, **kwargs) -> ModuleBase:
         module = super().init(model_config, **kwargs)
         module.custom_param = True
         return module
