@@ -150,6 +150,11 @@ class RemoteModelFinder(ModelFinderBase):
             else:
                 self._port = HTTP_PORT
 
+        # Ensure connection dict is updated with class defaults
+        self._connection["port"] = self._port
+        self._connection["protocol"] = self._protocol
+        self._connection["model_key"] = self._model_key
+
         # Discover remote models
         if self._discover_models:
             self._supported_models.update(self.discover_models())

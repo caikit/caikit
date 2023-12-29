@@ -972,7 +972,8 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 field not in self._fields_to_oneof
                 or self.which_oneof(self._fields_to_oneof[field]) == field
             ):
-                # Data streams should use the common stream not the specific
+                # If use_oneof is True then use the generic oneOf field name and not the specific
+                # field
                 if use_oneof and field in self._fields_to_oneof:
                     fields_to_dict.append(self._fields_to_oneof[field])
                 else:
