@@ -16,6 +16,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import contextmanager
 from functools import partial
 from tempfile import TemporaryDirectory
+from typing import Optional
 from unittest.mock import MagicMock, patch
 import os
 import shutil
@@ -26,10 +27,16 @@ import time
 import grpc
 import pytest
 
+# First Party
+from aconfig.aconfig import Config
+import aconfig
+
 # Local
 from caikit import get_config
+from caikit.core.model_management import ModelFinderBase
+from caikit.core.model_management.local_model_initializer import LocalModelInitializer
 from caikit.core.model_manager import ModelManager as CoreModelManager
-from caikit.core.modules import ModuleBase
+from caikit.core.modules import ModuleBase, ModuleConfig
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -1066,3 +1073,54 @@ def test_lazy_load_handles_temporary_errors():
                 assert manager._lazy_sync_timer is None
                 model = manager.retrieve_model(model_name)
                 assert model
+
+
+class NoModelFinder(ModelFinderBase):
+    name = "NOMODEL"
+
+    def __init__(self, config: Config, instance_name: str):
+        super().__init__(config, instance_name)
+
+    def find_model(self, model_path: str, **kwargs) -> ModuleConfig | None:
+        raise FileNotFoundError(f"Unable to find model {model_path}")
+
+
+def test_load_model_custom_finder():
+    """Test to ensure loading model works with custom finder"""
+    bad_finder = NoModelFinder(aconfig.Config({}), "bad_instance")
+
+    model_id = random_test_id()
+    with pytest.raises(CaikitRuntimeException) as exp:
+        MODEL_MANAGER.load_model(
+            model_id=model_id,
+            local_model_path=Fixtures.get_good_model_path(),
+            model_type=Fixtures.get_good_model_type(),
+            finder=bad_finder,
+        )
+    assert exp.value.status_code == grpc.StatusCode.NOT_FOUND
+
+
+class CustomParamInitializer(LocalModelInitializer):
+    name = "CUSTOMPARAM"
+
+    def init(self, model_config: ModuleConfig, **kwargs) -> ModuleBase | None:
+        module = super().init(model_config, **kwargs)
+        module.custom_param = True
+        return module
+
+
+def test_load_model_custom_initializer():
+    """Test to ensure loading model works with custom initializer"""
+
+    custom_param_initializer = CustomParamInitializer(
+        aconfig.Config({}), "custom_param"
+    )
+    model_id = random_test_id()
+    model = MODEL_MANAGER.load_model(
+        model_id=model_id,
+        local_model_path=Fixtures.get_good_model_path(),
+        model_type=Fixtures.get_good_model_type(),
+        initializer=custom_param_initializer,
+    ).model()
+    assert model
+    assert model.custom_param

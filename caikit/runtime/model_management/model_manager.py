@@ -15,7 +15,7 @@
 from collections import Counter as DictCounter
 from functools import partial
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 import atexit
 import gc
 import os
@@ -33,6 +33,7 @@ import alog
 from caikit import get_config
 from caikit.core import ModuleBase
 from caikit.core.exceptions import error_handler
+from caikit.core.model_management import ModelFinderBase, ModelInitializerBase
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.model_management.model_sizer import ModelSizer
@@ -173,6 +174,8 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         model_type: str,
         wait: bool = True,
         retries: Optional[int] = None,
+        finder: Optional[Union[str, ModelFinderBase]] = None,
+        initializer: Optional[Union[str, ModelInitializerBase]] = None,
     ) -> LoadedModel:
         """Load a model using model_path (in Cloud Object Storage) & give it a model ID
         Args:
@@ -208,6 +211,8 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
                             model_type,
                             fail_callback=partial(self.unload_model, model_id),
                             retries=retries,
+                            finder=finder,
+                            initializer=initializer,
                         )
                     except Exception as ex:
                         self.__increment_load_model_exception_count_metric(model_type)
