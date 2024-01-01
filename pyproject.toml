@@ -62,7 +62,7 @@ interfaces-ts = [
 ]
 
 interfaces-ts-pyspark = [
-    "pandas>=1.4.3,<2",
+    "caikit[interfaces-ts]",
     "pyspark>=3.3,<3.5",
     "pyarrow"
 ]
