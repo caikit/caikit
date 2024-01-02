@@ -34,7 +34,7 @@ def iteritems_workaround(series: Any, force_list: bool = False) -> Iterable:
 
     """
 
-    # python just stinks!
+    # check that we can convert
     if not hasattr(series, "to_list") and not hasattr(series, "to_numpy"):
         raise NotImplementedError(
             f"invalid typed {type(series)} passed for parameter series"
