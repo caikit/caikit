@@ -57,9 +57,19 @@ interfaces-vision = [
     "pillow>=6.2.1,<11.0"
 ]
 
+interfaces-ts = [
+    "pandas>=1.4.3,<2",
+]
+
+interfaces-ts-pyspark = [
+    "caikit[interfaces-ts]",
+    "pyspark>=3.3,<3.5",
+    "pyarrow>=8.0.0,<15"
+]
+
 # NOTE: This is "all" from the user perspective, not the dev perspective
 all = [
-    "caikit[runtime-grpc, runtime-http, interfaces-vision]",
+    "caikit[runtime-grpc, runtime-http, interfaces-vision, interfaces-ts]",
 ]
 
 ## Dev Extra Sets ##
@@ -73,7 +83,7 @@ dev-test = [
     "pytest>=6.2.5,<8.0",
     "tls_test_tools>=0.1.1",
     "wheel>=0.38.4",
-    "caikit[interfaces-vision]",
+    "caikit[interfaces-vision, interfaces-ts-pyspark]",
 ]
 
 dev-docs = [
@@ -118,8 +128,13 @@ Source = "https://github.com/caikit/caikit"
 [tool.pytest.ini_options]
 markers = [
     "examples: marks tests as e2e examples (deselect with '-m \"not examples\"')",
+    "slow: marks tests requiring pyspark be installed (deselect with '-m \"not slow\"')"
 ]
-
+filterwarnings = [
+    "ignore:distutils Version classes are deprecated.*:DeprecationWarning",
+    "ignore:np.find_common_type is deprecated.*:DeprecationWarning",
+    "ignore:Converting `np.character` to a dtype is deprecated.*:DeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 100
