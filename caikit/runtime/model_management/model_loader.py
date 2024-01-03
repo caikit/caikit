@@ -103,8 +103,8 @@ class ModelLoader:
         model_path: str,
         model_id: str,
         model_type: str,
-        finder: Union[None, str, ModelFinderBase],
-        initializer: Union[None, str, ModelInitializerBase],
+        finder: Optional[Union[str, ModelFinderBase]] = None,
+        initializer: Optional[Union[str, ModelInitializerBase]] = None,
     ) -> LoadedModel:
         try:
             log.info("<RUN89711114I>", "Loading model '%s'", model_id)
