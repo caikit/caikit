@@ -4,7 +4,7 @@ Up until now, caikit has primarily managed its server runtime using gRPC. This d
 
 As caikit moves to being a general-purpose framework for managing production-grade model definitions and operations, supporting a native REST server has become increasingly critical to enable the "15-minutes to value" experience. Prior to this ADR, REST has been supported using grpc-gateway-wrapper which has not been sufficiently flexible for all usecases (including streaming).
 
-Finally, the most popular open model hosting framework at the time of this ADR is huggingface (https://huggingface.co/). HF offers a [REST API](huggingface.co/docs/api-inference/detailed_parameters) for its task-specific inference endpoints. The current consumers of caikit are strategically aligned with HF for open-model collaboration, and therefore caikit needs to provide aligned APIs with the HF task inference endpoints.
+Finally, the most popular open model hosting framework at the time of this ADR is huggingface (https://huggingface.co/). HF offers a [REST API](https://huggingface.co/docs/api-inference/detailed_parameters) for its task-specific inference endpoints. The current consumers of caikit are strategically aligned with HF for open-model collaboration, and therefore caikit needs to provide aligned APIs with the HF task inference endpoints.
 
 ## Decision
 
