@@ -827,7 +827,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         except HTTPException as err:
             raise err
         except CaikitRuntimeException as err:
-            error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
+            error_code = STATUS_CODE_TO_HTTP.get(err.status_code, 500)
             error_content = {
                 "details": err.message,
                 "code": error_code,
