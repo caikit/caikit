@@ -21,7 +21,7 @@ from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from enum import Enum
 from functools import partial
-from typing import Any, Dict, Iterable, Optional, Type, Union, get_args
+from typing import Any, Dict, Iterable, List, Optional, Type, Union, get_args
 import asyncio
 import inspect
 import io
@@ -37,7 +37,7 @@ import traceback
 import uuid
 
 # Third Party
-from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi import FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -47,7 +47,10 @@ import pydantic
 import uvicorn
 
 # First Party
-from py_to_proto.dataclass_to_proto import get_origin  # Imported here for 3.8 compat
+from py_to_proto.dataclass_to_proto import (  # Imported here for 3.8 compat
+    Annotated,
+    get_origin,
+)
 import aconfig
 import alog
 
@@ -128,6 +131,7 @@ HEALTH_ENDPOINT = "/health"
 
 # Endpoint to use for server info
 RUNTIME_INFO_ENDPOINT = "/info/version"
+MODELS_INFO_ENDPOINT = "/info/models"
 
 
 # Stream event types enum
@@ -214,9 +218,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
             self._health_check
         )
 
-        # Add runtime info endpoint
+        # Add runtime info endpoints
         self.app.get(RUNTIME_INFO_ENDPOINT, response_class=JSONResponse)(
             self.info_servicer.get_version_dict
+        )
+
+        self.app.get(MODELS_INFO_ENDPOINT, response_class=JSONResponse)(
+            self._model_info
         )
 
         # Parse TLS configuration
@@ -809,6 +817,33 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         output = {200: {"content": response_schema}}
         return output
+
+    def _model_info(
+        self, model_ids: Annotated[List[str], Query(default_factory=list)]
+    ) -> Dict[str, Any]:
+        """Create wrapper for get_models_info so model_ids can be marked as a query parameter"""
+        try:
+            return self.info_servicer.get_models_info_dict(model_ids)
+        except HTTPException as err:
+            raise err
+        except CaikitRuntimeException as err:
+            error_code = GRPC_CODE_TO_HTTP.get(err.status_code, 500)
+            error_content = {
+                "details": err.message,
+                "code": error_code,
+                "id": err.id,
+            }
+            log.error("<RUN87691106E>", error_content, exc_info=True)
+            return error_content
+        except Exception as err:  # pylint: disable=broad-exception-caught
+            error_code = 500
+            error_content = {
+                "details": f"Unhandled exception: {str(err)}",
+                "code": error_code,
+                "id": uuid.uuid4().hex,
+            }
+            log.error("<RUN51231106E>", error_content, exc_info=True)
+            return error_content
 
     @staticmethod
     def _health_check() -> str:

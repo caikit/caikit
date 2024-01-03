@@ -872,6 +872,42 @@ def test_runtime_info_ok_custom_python_packages(runtime_http_server):
             assert "py_to_proto" not in json_response["python_packages"]
 
 
+def test_all_models_info_ok(client, sample_task_model_id):
+    """Make sure the runtime info returns version data"""
+    response = client.get(http_server.MODELS_INFO_ENDPOINT)
+    assert response.status_code == 200
+
+    json_response = json.loads(response.content.decode(response.default_encoding))
+    # Assert some models are loaded
+    assert len(json_response["models"]) > 0
+
+    found_sample_task = False
+    for model in json_response["models"]:
+        # Assert name and id exist
+        assert model["name"] and model["module_id"]
+        if model["name"] == sample_task_model_id:
+            assert model["module_metadata"]["name"] == "SampleModule"
+            found_sample_task = True
+
+    assert found_sample_task, "Unable to find sample_task model in models list"
+
+
+def test_single_models_info_ok(client, sample_task_model_id):
+    """Make sure the runtime info returns version data"""
+    response = client.get(
+        http_server.MODELS_INFO_ENDPOINT, params={"model_ids": sample_task_model_id}
+    )
+    assert response.status_code == 200
+
+    json_response = json.loads(response.content.decode(response.default_encoding))
+    # Assert some models are loaded
+    assert len(json_response["models"]) == 1
+
+    model = json_response["models"][0]
+    assert model["name"] == sample_task_model_id
+    assert model["module_metadata"]["name"] == "SampleModule"
+
+
 def test_http_server_shutdown_with_model_poll(open_port):
     """Test that a SIGINT successfully shuts down the running server"""
     with tempfile.TemporaryDirectory() as workdir:
