@@ -1197,6 +1197,8 @@ def test_lazy_load_false_local_models_dir_invalid():
             MODEL_MANAGER = ModelManager()
             assert len(MODEL_MANAGER.loaded_models) == 0
             assert not MODEL_MANAGER._local_models_dir
+
+
 class NoModelFinder(ModelFinderBase):
     name = "NOMODEL"
 
