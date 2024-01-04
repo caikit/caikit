@@ -16,8 +16,8 @@ This file contains interfaces and descriptor functions for the runtime servers
 """
 
 # Standard
-import re
 from enum import Enum
+import re
 
 # Local
 from caikit.config import get_config
@@ -46,13 +46,13 @@ MODEL_ID = "model_id"
 class StreamEventTypes(Enum):
     MESSAGE = "message"
     ERROR = "error"
-    
-    
+
+
 def get_http_route_name(rpc_name: str) -> str:
     """Function to get the http route for a given rpc name
 
     Args:
-        rpc_name (str): The name of the Caikit RPC 
+        rpc_name (str): The name of the Caikit RPC
 
     Raises:
         NotImplementedError: If the RPC is not a Train or Predict RPC
@@ -85,7 +85,7 @@ def get_grpc_route_name(service_type: ServiceType, rpc_name: str) -> str:
     """Function to get GRPC name for a given service type and rpc name
 
     Args:
-        rpc_name (str): The name of the Caikit RPC 
+        rpc_name (str): The name of the Caikit RPC
 
     Returns:
         str: The name of the GRPC route for RPC

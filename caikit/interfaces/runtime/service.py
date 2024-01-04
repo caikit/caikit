@@ -17,7 +17,7 @@ This file contains interfaces and descriptor functions for service generation
 
 # Standard
 from enum import Enum
-from typing import Type, Optional, Union
+from typing import Optional, Type, Union
 
 # First Party
 import alog
@@ -25,7 +25,6 @@ import alog
 # Local
 from caikit.config import get_config
 from caikit.core.modules import ModuleBase
-from caikit.core.signature_parsing import CaikitMethodSignature
 from caikit.core.task import TaskBase
 from caikit.interfaces.runtime.data_model import (
     ModelInfoRequest,
@@ -51,7 +50,7 @@ class ServiceType(Enum):
 
 def get_ai_domain() -> str:
     """Get the string name for the AI domain
-    
+
     Returns:
         domain(str): The domain for this service
     """
@@ -68,11 +67,11 @@ def get_service_package_name(service_type: Optional[ServiceType] = None) -> str:
     """This helper will get the name of service package
 
     Args:
-        service_type Optional[ServiceType]: The Service Type's package name to fetch defaults 
+        service_type Optional[ServiceType]: The Service Type's package name to fetch defaults
             to runtime
 
     Returns:
-        str: The name of the service package 
+        str: The name of the service package
     """
 
     # If specific service_type was provided then return their packages
@@ -92,7 +91,7 @@ def get_service_package_name(service_type: Optional[ServiceType] = None) -> str:
 
 def get_service_name(service_type: ServiceType) -> str:
     """This helper will get the name of the service
-    
+
     Args:
         service_type ServiceType: The Service Type whose name to fetch
 
@@ -160,7 +159,7 @@ def get_task_predict_rpc_name(
         if issubclass(task_or_module_class, ModuleBase)
         else task_or_module_class
     )
-        
+
     if input_streaming and output_streaming:
         return snake_to_upper_camel(f"BidiStreaming{task_class.__name__}_Predict")
     if output_streaming:
@@ -176,7 +175,7 @@ def get_task_predict_request_name(
     output_streaming: bool = False,
 ) -> str:
     """Helper function to get the name of an RPC's request data type"""
-    
+
     task_class = (
         next(iter(task_or_module_class.tasks))
         if issubclass(task_or_module_class, ModuleBase)

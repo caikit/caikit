@@ -13,7 +13,6 @@
 # limitations under the License.
 """This module is responsible for creating service objects for the runtime to consume"""
 # Standard
-from enum import Enum
 from types import ModuleType
 from typing import Callable, Dict, Set, Type, Union
 import dataclasses
