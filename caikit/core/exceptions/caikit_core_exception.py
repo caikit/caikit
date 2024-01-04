@@ -17,6 +17,7 @@ Caikit Core Exception enum used for reporting Exception status raised in caikit 
 
 # Standard
 from enum import Enum
+import uuid
 
 
 class CaikitCoreStatusCode(Enum):
@@ -36,3 +37,4 @@ class CaikitCoreException(Exception):
     def __init__(self, status_code: CaikitCoreStatusCode, message: str) -> None:
         self.status_code = status_code
         self.message = message
+        self.id = uuid.uuid4().hex

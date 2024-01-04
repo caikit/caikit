@@ -17,6 +17,7 @@ from contextlib import contextmanager
 from functools import partial
 from os import path
 from tempfile import TemporaryDirectory
+from typing import Optional
 from unittest.mock import MagicMock, patch
 import os
 import shutil
@@ -27,14 +28,21 @@ import time
 import grpc
 import pytest
 
+# First Party
+from aconfig.aconfig import Config
+import aconfig
+
 # Local
 from caikit import get_config
+from caikit.core.model_management import ModelFinderBase
+from caikit.core.model_management.local_model_initializer import LocalModelInitializer
 from caikit.core.model_manager import ModelManager as CoreModelManager
-from caikit.core.modules import ModuleBase
+from caikit.core.modules import ModuleBase, ModuleConfig
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import get_dynamic_module
+from sample_lib.data_model import SampleInputType
 from tests.conftest import TempFailWrapper, random_test_id, temp_config
 from tests.core.helpers import TestFinder
 from tests.fixtures import Fixtures
@@ -152,7 +160,8 @@ def test_load_local_models():
         assert "model-does-not-exist.zip" not in MODEL_MANAGER.loaded_models.keys()
 
 
-def test_model_manager_loads_local_models_on_init():
+@pytest.mark.parametrize("wait", [True, False])
+def test_model_manager_loads_local_models_on_init(wait):
     with TemporaryDirectory() as tempdir:
         shutil.copytree(Fixtures.get_good_model_path(), os.path.join(tempdir, "model1"))
         shutil.copy(
@@ -161,7 +170,13 @@ def test_model_manager_loads_local_models_on_init():
         )
         ModelManager._ModelManager__instance = None
         with temp_config(
-            {"runtime": {"local_models_dir": tempdir}}, merge_strategy="merge"
+            {
+                "runtime": {
+                    "local_models_dir": tempdir,
+                    "wait_for_initial_model_loads": wait,
+                },
+            },
+            merge_strategy="merge",
         ):
             MODEL_MANAGER = ModelManager()
 
@@ -169,6 +184,11 @@ def test_model_manager_loads_local_models_on_init():
             assert "model1" in MODEL_MANAGER.loaded_models.keys()
             assert "model2.zip" in MODEL_MANAGER.loaded_models.keys()
             assert "model-does-not-exist.zip" not in MODEL_MANAGER.loaded_models.keys()
+
+            # Make sure that the loaded model can be retrieved and run
+            for model_name in ["model1", "model2.zip"]:
+                model = MODEL_MANAGER.retrieve_model(model_name)
+                model.run(SampleInputType("hello"))
 
 
 def test_load_model_error_response():
@@ -435,7 +455,7 @@ def test_model_manager_disk_caching_periodic_sync(good_model_path):
     """Make sure that when using disk caching, the manager periodically syncs
     its loaded models based on their presence in the cache
     """
-    purge_period = 0.001
+    purge_period = 0.002
     with TemporaryDirectory() as cache_dir:
         with non_singleton_model_managers(
             2,
@@ -736,7 +756,6 @@ def test_load_model():
                 ANY_MODEL_PATH,
                 ANY_MODEL_TYPE,
             )
-            assert call_args.kwargs["aborter"] is None
             assert "fail_callback" in call_args.kwargs
             mock_sizer.get_model_size.assert_called_once_with(
                 model_id, ANY_MODEL_PATH, ANY_MODEL_TYPE
@@ -1178,3 +1197,52 @@ def test_lazy_load_false_local_models_dir_invalid():
             MODEL_MANAGER = ModelManager()
             assert len(MODEL_MANAGER.loaded_models) == 0
             assert not MODEL_MANAGER._local_models_dir
+class NoModelFinder(ModelFinderBase):
+    name = "NOMODEL"
+
+    def __init__(self, config: Config, instance_name: str):
+        super().__init__(config, instance_name)
+
+    def find_model(self, model_path: str, **kwargs) -> ModuleConfig:
+        raise FileNotFoundError(f"Unable to find model {model_path}")
+
+
+def test_load_model_custom_finder():
+    """Test to ensure loading model works with custom finder"""
+    bad_finder = NoModelFinder(aconfig.Config({}), "bad_instance")
+
+    model_id = random_test_id()
+    with pytest.raises(CaikitRuntimeException) as exp:
+        MODEL_MANAGER.load_model(
+            model_id=model_id,
+            local_model_path=Fixtures.get_good_model_path(),
+            model_type=Fixtures.get_good_model_type(),
+            finder=bad_finder,
+        )
+    assert exp.value.status_code == grpc.StatusCode.NOT_FOUND
+
+
+class CustomParamInitializer(LocalModelInitializer):
+    name = "CUSTOMPARAM"
+
+    def init(self, model_config: ModuleConfig, **kwargs) -> ModuleBase:
+        module = super().init(model_config, **kwargs)
+        module.custom_param = True
+        return module
+
+
+def test_load_model_custom_initializer():
+    """Test to ensure loading model works with custom initializer"""
+
+    custom_param_initializer = CustomParamInitializer(
+        aconfig.Config({}), "custom_param"
+    )
+    model_id = random_test_id()
+    model = MODEL_MANAGER.load_model(
+        model_id=model_id,
+        local_model_path=Fixtures.get_good_model_path(),
+        model_type=Fixtures.get_good_model_type(),
+        initializer=custom_param_initializer,
+    ).model()
+    assert model
+    assert model.custom_param

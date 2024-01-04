@@ -36,6 +36,8 @@ from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
+from caikit.runtime.servicers.model_runtime_servicer import ModelRuntimeServicerImpl
+from caikit.runtime.work_management.abortable_context import ThreadInterrupter
 from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
 
@@ -69,10 +71,9 @@ def http_session_scoped_open_port():
     return _open_port()
 
 
-def _open_port():
+def _open_port(start=8888):
     # TODO: This has obvious problems where the port returned for use by a test is not immediately
     # put into use, so parallel tests could attempt to use the same port.
-    start = 8888
     end = start + 1000
     host = "localhost"
     for port in range(start, end):
@@ -99,13 +100,18 @@ def sample_inference_service(render_protos) -> ServicePackage:
 
 @pytest.fixture(scope="session")
 def sample_predict_servicer(sample_inference_service) -> GlobalPredictServicer:
-    servicer = GlobalPredictServicer(inference_service=sample_inference_service)
+    interrupter = ThreadInterrupter()
+    interrupter.start()
+    servicer = GlobalPredictServicer(
+        inference_service=sample_inference_service, interrupter=interrupter
+    )
     yield servicer
     # Make sure to not leave the rpc_meter hanging
     # (It does try to clean itself up on destruction, but just to be sure)
     rpc_meter = getattr(servicer, "rpc_meter", None)
     if rpc_meter:
         rpc_meter.end_writer_thread()
+    interrupter.stop()
 
 
 @pytest.fixture(scope="session")
@@ -158,6 +164,12 @@ def runtime_grpc_server(session_scoped_open_port) -> RuntimeGRPCServer:
     ) as server:
         _check_server_readiness(server)
         yield server
+
+
+@pytest.fixture(scope="session")
+def model_runtime_servicer(runtime_grpc_server) -> ModelRuntimeServicerImpl:
+    # Builds a new servicer, the one in the server is a bit hard to access
+    return ModelRuntimeServicerImpl(interrupter=runtime_grpc_server.interrupter)
 
 
 @contextmanager
@@ -405,7 +417,9 @@ class ModuleSubproc:
             self.proc.kill()
 
     def __enter__(self):
-        self.proc = subprocess.Popen(self._cmd, env=self._env)
+        self.proc = subprocess.Popen(
+            self._cmd, env=self._env, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         self._kill_timer.start()
         return self.proc
 

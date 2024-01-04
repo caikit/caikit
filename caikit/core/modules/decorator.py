@@ -227,7 +227,7 @@ def module(
         tasks_in_hierarchy = []
 
         for class_ in cls_.mro():
-            if hasattr(class_, "_TASK_CLASSES"):
+            if hasattr(class_, "_TASK_CLASSES") and class_ is not cls_:
                 tasks_in_hierarchy.extend(class_._TASK_CLASSES)
 
         if tasks_in_hierarchy:

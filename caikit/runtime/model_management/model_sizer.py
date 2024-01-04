@@ -108,7 +108,7 @@ class ModelSizer:
         except FileNotFoundError as ex:
             message = (
                 f"Failed to estimate size of model '{model_id}',"
-                "file '{local_model_path}' not found"
+                f"file '{local_model_path}' not found"
             )
             log.error("<RUN62168924E>", message)
             raise CaikitRuntimeException(grpc.StatusCode.NOT_FOUND, message) from ex

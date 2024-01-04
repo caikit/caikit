@@ -162,6 +162,9 @@ def test_tasks_added_from_parent_and_child_module():
     for t in [FirstTask, SecondTask, ThirdTask]:
         assert t in MultiTaskChildModule.tasks
 
+    # Make sure no tasks are double-counted
+    assert len(MultiTaskChildModule.tasks) == len(MultiTaskChildModule._TASK_CLASSES)
+
 
 def test_task_is_not_required_for_modules():
     @caikit.core.modules.module(id=str(uuid.uuid4()), name="Stuff", version="0.0.1")

@@ -18,7 +18,7 @@ dependencies = [
     "docstring-parser>=0.14.1,<0.16.0",
     "grpcio>=1.35.0,<2.0,!=1.55.0",
     "ijson>=3.1.4,<3.3.0",
-    "importlib-metadata>=6.8.0,<7.0.0",
+    "importlib-metadata>=6.8.0,<8.0.0",
     "munch>=2.5.0,<5.0",
     "numpy>=1.22.2,<2",
     "protobuf>=3.19.0,<5",
@@ -57,9 +57,19 @@ interfaces-vision = [
     "pillow>=6.2.1,<11.0"
 ]
 
+interfaces-ts = [
+    "pandas>=1.4.3,<2",
+]
+
+interfaces-ts-pyspark = [
+    "caikit[interfaces-ts]",
+    "pyspark>=3.3,<3.6",
+    "pyarrow>=8.0.0,<15"
+]
+
 # NOTE: This is "all" from the user perspective, not the dev perspective
 all = [
-    "caikit[runtime-grpc, runtime-http, interfaces-vision]",
+    "caikit[runtime-grpc, runtime-http, interfaces-vision, interfaces-ts]",
 ]
 
 ## Dev Extra Sets ##
@@ -73,17 +83,17 @@ dev-test = [
     "pytest>=6.2.5,<8.0",
     "tls_test_tools>=0.1.1",
     "wheel>=0.38.4",
-    "caikit[interfaces-vision]",
+    "caikit[interfaces-vision, interfaces-ts-pyspark]",
 ]
 
 dev-docs = [
     "sphinx>=4.0.2,<8.0",
     "sphinx-autoapi>=2.1.0",
-    "sphinx-rtd-theme>=1.2.1,<1.4.0",
+    "sphinx-rtd-theme>=1.2.1,<2.1.0",
 ]
 
 dev-fmt = [
-    "ruff==0.1.6",
+    "ruff==0.1.11",
     "pre-commit>=3.0.4,<4.0",
     "pydeps>=1.12.12,<2",
 ]
@@ -118,8 +128,13 @@ Source = "https://github.com/caikit/caikit"
 [tool.pytest.ini_options]
 markers = [
     "examples: marks tests as e2e examples (deselect with '-m \"not examples\"')",
+    "slow: marks tests requiring pyspark be installed (deselect with '-m \"not slow\"')"
 ]
-
+filterwarnings = [
+    "ignore:distutils Version classes are deprecated.*:DeprecationWarning",
+    "ignore:np.find_common_type is deprecated.*:DeprecationWarning",
+    "ignore:Converting `np.character` to a dtype is deprecated.*:DeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 100

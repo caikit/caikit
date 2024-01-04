@@ -19,7 +19,18 @@
 from dataclasses import dataclass
 from enum import Enum
 from io import IOBase
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    List,
+    NoReturn,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 import base64
 import datetime
 import json
@@ -48,10 +59,25 @@ from . import enums, json_dict, timestamp
 
 
 log = alog.use_channel("DATAM")
-error = error_handler.get(log)
+error: Callable[..., NoReturn] = error_handler.get(log)
 
 
 class _DataBaseMetaClass(type):
+    fields: Tuple
+    full_name: str
+    fields_enum_map: Dict  # {}
+    fields_enum_rev: Dict  # {}
+    _fields_oneofs_map: Dict  # {}
+    _fields_to_oneof: Dict  # {}
+    _fields_map: Tuple  # ()
+    _fields_message: Tuple  # ()
+    _fields_message_repeated: Tuple  # ()
+    _fields_enum: Tuple  # ()
+    _fields_enum_repeated: Tuple  # ()
+    _fields_primitive: Tuple  # ()
+    _fields_primitive_repeated: Tuple  # ()
+    _proto_class: ClassVar[Type[ProtoMessageType]]
+
     """Meta class for all structures in the data model."""
 
     # store a registry of all classes that use this metaclass, i.e.,
@@ -141,7 +167,7 @@ class _DataBaseMetaClass(type):
             # Otherwise, we need to get the fields from a "special" attribute
             else:
                 fields = attrs.pop(mcs._FWD_DECL_FIELDS, None)
-                log.debug4(
+                log.debug4(  # type: ignore
                     "Using dataclass forward declaration fields %s for %s", fields, name
                 )
                 error.value_check(
@@ -175,7 +201,7 @@ class _DataBaseMetaClass(type):
         return instance
 
     @classmethod
-    def parse_proto_descriptor(mcs, cls):
+    def parse_proto_descriptor(mcs, cls):  # pyright: ignore[reportSelfClsParameterName]
         """Encapsulate the logic for parsing the protobuf descriptor here. This
         allows the parsing to be done as a post-process after metaclass
         initialization
@@ -317,7 +343,9 @@ class _DataBaseMetaClass(type):
         )
 
     @classmethod
-    def _make_property_getter(mcs, field, oneof_name=None):
+    def _make_property_getter(
+        mcs, field, oneof_name=None  # pyright: ignore[reportSelfClsParameterName]
+    ):
         """This helper creates an @property attribute getter for the given field
 
         NOTE: This needs to live as a standalone function in order for the given
@@ -343,7 +371,7 @@ class _DataBaseMetaClass(type):
                 )
             attr_val = backend.get_attribute(self.__class__, field)
             if isinstance(attr_val, self.__class__.OneofFieldVal):
-                log.debug2("Got a OneofFieldVal from the backend")
+                log.debug2("Got a OneofFieldVal from the backend")  # type: ignore
                 assert field in self.__class__._fields_oneofs_map
                 self._get_which_oneof_dict()[field] = attr_val.which_oneof
                 attr_val = attr_val.val
@@ -442,7 +470,9 @@ class _DataBaseMetaClass(type):
         return __init__
 
     @classmethod
-    def _sorted_oneof_field_names(mcs, oneof: OneofDescriptor) -> List[str]:
+    def _sorted_oneof_field_names(
+        mcs, oneof: OneofDescriptor  # pyright: ignore[reportSelfClsParameterName]
+    ) -> List[str]:
         """Helper to get the list of oneof fields while ensuring field names are
         sorted such that bool < int < float. This ensures that when iterating
         fields for which_oneof inference, lower-precedence types take
@@ -609,7 +639,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
             and field_descriptor.message_type == val.get_proto_class().DESCRIPTOR
         ) or (
             isinstance(val, Enum)
-            and field_descriptor.enum_type == val.get_proto_class().DESCRIPTOR
+            and field_descriptor.enum_type == val.get_proto_class().DESCRIPTOR  # type: ignore
         ):
             return True
 
@@ -631,7 +661,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
             return isinstance(val, bytes)
 
         # If it's a primitive, use protobuf type checkers
-        checker = proto_type_checkers.GetTypeChecker(field_descriptor)
+        checker = proto_type_checkers.GetTypeChecker(field_descriptor)  # type: ignore
         try:
             checker.CheckValue(val)
             return True
@@ -733,7 +763,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
                                 "caikit.interfaces.common.data_model"
                             )
                         ):
-                            kwargs[oneof] = contained_obj.values
+                            kwargs[oneof] = contained_obj.values  # type: ignore
                         else:
                             kwargs[oneof] = contained_obj
                     else:
@@ -903,9 +933,9 @@ class DataBase(metaclass=_DataBaseMetaClass):
                     seq_dm = subproto.__class__
                     try:
                         subproto.CopyFrom(seq_dm(values=attr))
-                        log.debug4("Successfully fill proto for %s", field)
+                        log.debug4("Successfully fill proto for %s", field)  # type: ignore
                     except TypeError:
-                        log.debug4("not the correct union list type")
+                        log.debug4("not the correct union list type")  # type: ignore
                 else:
                     attr.fill_proto(subproto)
 
@@ -973,7 +1003,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
         """Convert to a json representation."""
 
         def _default_serialization_overrides(obj):
-            """Default handler for nonserializable objects; currently this only handles
+            """Default handler for non-serializable objects; currently this only handles
             - bytes
             - datetime.datetime
             """

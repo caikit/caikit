@@ -55,6 +55,7 @@ class Fixtures:
             def __init__(self, model_id):
                 self.model_id = model_id
                 self.callbacks = []
+                self.canceled = False
 
             def invocation_metadata(self):
                 return [("mm-model-id", self.model_id)]
@@ -63,9 +64,11 @@ class Fixtures:
                 self.callbacks.append(
                     {"func": some_function, "args": args, "kwargs": kwargs}
                 )
-                return True
+                # Only return true if the call has not yet canceled
+                return not self.canceled
 
             def cancel(self):
+                self.canceled = True
                 [f["func"](*f["args"], **f["kwargs"]) for f in self.callbacks]
 
         return TestContext(model_id)

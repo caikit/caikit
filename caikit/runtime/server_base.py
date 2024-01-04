@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Base class with common functionality across all caikit servers"""
-
 # Standard
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 import abc
 import signal
@@ -27,12 +27,40 @@ import alog
 
 # Local
 from caikit.config import get_config
+from caikit.core.exceptions import error_handler
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from caikit.runtime.work_management.abortable_context import ThreadInterrupter
 import caikit
 
 log = alog.use_channel("SERVR-BASE")
+error = error_handler.get(log)
+
+
+class ServerThreadPool:
+    """Simple wrapper for all servers to share a single thread pool"""
+
+    @staticmethod
+    def _build_pool() -> ThreadPoolExecutor:
+        config = caikit.get_config()
+        # Leave in backwards compatibility for the old runtime.grpc.server_thread_pool_size
+        # parameter, which many users may have deployed with.
+        if pool_size := config.runtime.grpc.server_thread_pool_size:
+            log.info("Using legacy runtime.grpc.server_thread_pool_size configuration")
+        else:
+            pool_size = config.runtime.server_thread_pool_size
+
+        error.type_check("<RUN92632238E>", int, pool_size=pool_size)
+
+        pool = ThreadPoolExecutor(
+            max_workers=pool_size, thread_name_prefix="caikit_runtime"
+        )
+
+        return pool
+
+    # py3.9 compatibility: Can't call @staticmethod on class attribute initialization
+    pool = _build_pool.__get__(object, None)()
 
 
 class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attributes
@@ -83,6 +111,19 @@ class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attribute
             ServicePackageFactory.ServiceType.INFO,
         )
 
+        self.thread_pool: ThreadPoolExecutor = ServerThreadPool.pool
+        # Create an interrupter that can be used to handle request cancellations or timeouts.
+        # A separate instance is held per-server so each server can handle the lifetime of their
+        # own interrupter.
+        self.interrupter: Optional[ThreadInterrupter] = (
+            ThreadInterrupter() if self.config.runtime.use_abortable_threads else None
+        )
+
+        # Handle interrupts
+        # NB: This means that stop() methods will be called even if the process is interrupted
+        # before the start() method is called
+        self._intercept_interrupt_signal()
+
     @classmethod
     def _start_metrics_server(cls) -> None:
         """Start a single instance of the metrics server based on configuration"""
@@ -95,11 +136,6 @@ class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attribute
                 start_http_server(get_config().runtime.metrics.port)
             cls._metrics_server_started = True
 
-    def _intercept_interrupt_signal(self) -> None:
-        """intercept signal handler"""
-        signal.signal(signal.SIGINT, self.interrupt)
-        signal.signal(signal.SIGTERM, self.interrupt)
-
     def interrupt(self, signal_, _stack_frame):
         log.info(
             "<RUN87630120I>",
@@ -107,6 +143,43 @@ class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attribute
             signal_,
         )
         self.stop()
+
+    def _intercept_interrupt_signal(self) -> None:
+        """Intercept signal handlers to allow the server to stop on interrupt.
+        Calling this on a non-main thread has no effect.
+        This does not override any existing non-default signal handlers,
+        it will call them all in the reverse order they are registered.
+        """
+        self._add_signal_handler(signal.SIGINT, self.interrupt)
+        self._add_signal_handler(signal.SIGTERM, self.interrupt)
+
+    @staticmethod
+    def _add_signal_handler(sig, handler):
+        def nested_interrupt_builder(*handlers):
+            """Build and return an interrupt handler that calls all of *handlers"""
+
+            log.debug("Building interrupt handler: %s", handlers)
+
+            def interrupt(signal_, _stack_frame):
+                for handler in handlers:
+                    # Only call the handler if it is a callable fn that is _not_ a default handler
+                    log.debug("Running interrupt handler: %s", handler)
+                    if (
+                        handler
+                        and callable(handler)
+                        and handler != signal.SIG_DFL
+                        and handler is not signal.default_int_handler
+                    ):
+                        handler(signal_, _stack_frame)
+
+            return interrupt
+
+        try:
+            signal.signal(sig, nested_interrupt_builder(handler, signal.getsignal(sig)))
+        except ValueError:
+            log.info(
+                "Unable to register signal handler. Server was started from a non-main thread."
+            )
 
     def _shut_down_model_manager(self):
         """Shared utility for shutting down the model manager"""
