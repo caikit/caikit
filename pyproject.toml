@@ -58,7 +58,7 @@ interfaces-vision = [
 ]
 
 interfaces-ts = [
-    "pandas>=1.4.3,<2",
+    "pandas>=1.4.3,<3",
 ]
 
 interfaces-ts-pyspark = [
