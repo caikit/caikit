@@ -71,6 +71,16 @@ from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreStatusCode,
 )
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
+from caikit.interfaces.runtime.server import (
+    HEALTH_ENDPOINT,
+    MODEL_ID,
+    MODELS_INFO_ENDPOINT,
+    OPTIONAL_INPUTS_KEY,
+    REQUIRED_INPUTS_KEY,
+    RUNTIME_INFO_ENDPOINT,
+    StreamEventTypes,
+    get_http_route_name,
+)
 from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.rpcs import (
@@ -118,26 +128,6 @@ STATUS_CODE_TO_HTTP = {
     CaikitCoreStatusCode.UNKNOWN: 500,
     CaikitCoreStatusCode.FATAL: 500,
 }
-
-
-# These keys are used to define the logical sections of the request and response
-# data structures.
-REQUIRED_INPUTS_KEY = "inputs"
-OPTIONAL_INPUTS_KEY = "parameters"
-MODEL_ID = "model_id"
-
-# Endpoint to use for health checks
-HEALTH_ENDPOINT = "/health"
-
-# Endpoint to use for server info
-RUNTIME_INFO_ENDPOINT = "/info/version"
-MODELS_INFO_ENDPOINT = "/info/models"
-
-
-# Stream event types enum
-class StreamEventTypes(Enum):
-    MESSAGE = "message"
-    ERROR = "error"
 
 
 # Small dataclass for consolidating TLS files
@@ -429,7 +419,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         pydantic_response = dataobject_to_pydantic(response_data_object)
 
         @self.app.post(
-            self._get_route(rpc),
+            get_http_route_name(rpc.name),
             responses=self._get_response_openapi(
                 response_data_object, pydantic_response
             ),
@@ -490,7 +480,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         pydantic_response = dataobject_to_pydantic(response_data_object)
 
         @self.app.post(
-            self._get_route(rpc),
+            get_http_route_name(rpc.name),
             responses=self._get_response_openapi(
                 response_data_object, pydantic_response
             ),
@@ -573,7 +563,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         # pylint: disable=unused-argument
         @self.app.post(
-            self._get_route(rpc),
+            get_http_route_name(rpc.name),
             response_model=pydantic_response,
             openapi_extra=self._get_request_openapi(pydantic_request),
         )
@@ -655,25 +645,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 )
 
             return EventSourceResponse(_generator())
-
-    def _get_route(self, rpc: CaikitRPCBase) -> str:
-        """Get the REST route for this rpc"""
-        if rpc.name.endswith("Predict"):
-            task_name = re.sub(
-                r"(?<!^)(?=[A-Z])",
-                "-",
-                re.sub("Task$", "", re.sub("Predict$", "", rpc.name)),
-            ).lower()
-            route = "/".join([self.config.runtime.http.route_prefix, "task", task_name])
-            if route[0] != "/":
-                route = "/" + route
-            return route
-        if rpc.name.endswith("Train"):
-            route = "/".join([self.config.runtime.http.route_prefix, rpc.name])
-            if route[0] != "/":
-                route = "/" + route
-            return route
-        raise NotImplementedError("No support for train rpcs yet!")
 
     def _get_request_dataobject(self, rpc: CaikitRPCBase) -> Type[DataBase]:
         """Get the dataobject request for the given rpc"""

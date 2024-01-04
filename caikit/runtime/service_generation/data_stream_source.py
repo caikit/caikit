@@ -41,7 +41,7 @@ from caikit.interfaces.common.data_model.stream_sources import (
     ListOfFileReferences,
     S3Files,
 )
-from caikit.runtime.service_generation.proto_package import get_runtime_service_package
+from caikit.interfaces.runtime.service import get_service_package_name
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit
 
@@ -321,7 +321,7 @@ class JsonDataStreamSourcePlugin(DataStreamSourcePlugin):
         if stream_message_type:
             return stream_message_type
 
-        package = get_runtime_service_package()
+        package = get_service_package_name()
         cls_name = _make_data_stream_source_type_name(element_type)
         JsonData = make_dataobject(
             package=package,
@@ -506,7 +506,7 @@ def make_data_stream_source(
     log.debug2("Looking for DataStreamSource[%s]", data_element_type)
     if data_element_type not in _DATA_STREAM_SOURCE_TYPES:
         cls_name = _make_data_stream_source_type_name(data_element_type)
-        package = get_runtime_service_package()
+        package = get_service_package_name()
 
         log.debug("Creating DataStreamSource[%s] -> %s", data_element_type, cls_name)
 

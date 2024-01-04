@@ -34,12 +34,18 @@ from ...interfaces.common.data_model.stream_sources import S3Path
 from . import protoable, type_helpers
 from .compatibility_checker import ApiFieldNames
 from .data_stream_source import make_data_stream_source
-from .proto_package import snake_to_upper_camel
 from caikit.core import ModuleBase, TaskBase
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.signature_parsing import CaikitMethodSignature, CustomSignature
 from caikit.interfaces.runtime.data_model import ModelPointer, TrainingJob
+from caikit.interfaces.runtime.service import (
+    get_task_predict_request_name,
+    get_task_predict_rpc_name,
+    get_train_parameter_name,
+    get_train_request_name,
+    get_train_rpc_name,
+)
 
 log = alog.use_channel("RPC-SERIALIZERS")
 
@@ -152,28 +158,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         """Helper function to convert from the name of a module to the name of the
         request RPC function
         """
-        # 🌶️🌶️🌶️ The naming scheme for training RPCs probably needs to change.
-        # This uses the first task from the `tasks` kwarg in the `@caikit.module` decorator.
-        # This is both:
-        # - Flaky, since re-ordering that list would be perfectly reasonable and valid to do except
-        #   for the side effect of breaking the training service api
-        # - Not very intuitive, since a module supporting multiple tasks will have a training
-        #   endpoint that lists only one of them
-        rpc_name = snake_to_upper_camel(
-            f"{next(iter(module_class.tasks)).__name__}_{module_class.__name__}_Train"
-        )
-
-        if len(module_class.tasks) > 1:
-            log.warning(
-                "<RUN35134050W>",
-                "Multiple tasks detected for training rpc. "
-                "Module: [%s], Tasks: [%s], RPC name: %s ",
-                module_class,
-                module_class.tasks,
-                rpc_name,
-            )
-
-        return rpc_name
+        return get_train_rpc_name(module_class)
 
     @staticmethod
     def module_class_to_req_name(module_class: Type[ModuleBase]) -> str:
@@ -185,7 +170,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
         return: SampleTaskSampleModuleTrainRequest
 
         """
-        return f"{ModuleClassTrainRPC.module_class_to_rpc_name(module_class)}Request"
+        return get_train_request_name(module_class)
 
     @staticmethod
     def module_class_to_inner_request_name(module_class: Type[ModuleBase]) -> str:
@@ -196,7 +181,7 @@ class ModuleClassTrainRPC(CaikitRPCBase):
 
         return: SampleTaskSampleModuleTrainParameters
         """
-        return f"{ModuleClassTrainRPC.module_class_to_rpc_name(module_class)}Parameters"
+        return get_train_parameter_name(module_class)
 
     @staticmethod
     def _mutate_method_signature_for_training(
@@ -355,13 +340,9 @@ class TaskPredictRPC(CaikitRPCBase):
         """Helper function to convert the pair of library name and task name to
         a request message name
         """
-        if self._input_streaming and self._output_streaming:
-            return snake_to_upper_camel(f"BidiStreaming{self.task.__name__}_Request")
-        if self._output_streaming:
-            return snake_to_upper_camel(f"ServerStreaming{self.task.__name__}_Request")
-        if self._input_streaming:
-            return snake_to_upper_camel(f"ClientStreaming{self.task.__name__}_Request")
-        return snake_to_upper_camel(f"{self.task.__name__}_Request")
+        return get_task_predict_request_name(
+            self.task, self._input_streaming, self._output_streaming
+        )
 
     def _task_to_rpc_name(self) -> str:
         """Helper function to convert the pair of library name and task name
@@ -371,13 +352,9 @@ class TaskPredictRPC(CaikitRPCBase):
 
         return: SampleTaskPredict
         """
-        if self._input_streaming and self._output_streaming:
-            return snake_to_upper_camel(f"BidiStreaming{self.task.__name__}_Predict")
-        if self._output_streaming:
-            return snake_to_upper_camel(f"ServerStreaming{self.task.__name__}_Predict")
-        if self._input_streaming:
-            return snake_to_upper_camel(f"ClientStreaming{self.task.__name__}_Predict")
-        return snake_to_upper_camel(f"{self.task.__name__}_Predict")
+        return get_task_predict_rpc_name(
+            self.task, self._input_streaming, self._output_streaming
+        )
 
 
 class _RequestMessage:
