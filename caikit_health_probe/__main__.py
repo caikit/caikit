@@ -241,7 +241,10 @@ def _grpc_health_probe(
 
     client = health_pb2_grpc.HealthStub(channel)
     try:
-        client.Check(health_pb2.HealthCheckRequest())
+        client.Check(
+            health_pb2.HealthCheckRequest(),
+            timeout=get_config().runtime.grpc.probe_timeout,
+        )
         return True
     except Exception as err:  # pylint: disable=broad-exception-caught
         log.debug2("Caught unexpected error: %s", err, exc_info=True)
