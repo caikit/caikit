@@ -12,16 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This module implements a common health probe for all running runtime servers.
+This module implements common health probes (liveness and readiness) for all
+running runtime servers.
 """
 # Standard
 from contextlib import contextmanager
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 import importlib.util
 import os
 import sys
 import tempfile
 import warnings
+
+# Third Party
+import psutil
 
 # First Party
 import alog
@@ -42,15 +46,16 @@ log = alog.use_channel("PROBE")
 
 
 @alog.timed_function(log.debug)
-def health_probe() -> bool:
-    """Run a health probe against all running runtime servers.
+def readiness_probe() -> bool:
+    """Run a readiness probe against all running runtime servers.
 
     This function is intended to be run from an environment where the config is
     identical to the config that the server is running such as from inside a
     kubernetes pod where the server is also running.
 
     Returns:
-        healthy (bool): True if all servers are healthy, False otherwise
+        ready (bool): True if all servers are ready to take requests, False
+            otherwise
     """
 
     # Get TLS key/cert files if possible
@@ -58,35 +63,64 @@ def health_probe() -> bool:
     tls_key = config.runtime.tls.server.key
     tls_cert = config.runtime.tls.server.cert
     client_ca = config.runtime.tls.client.cert
-    http_healthy, grpc_healthy = None, None
+    http_ready, grpc_ready = None, None
 
     if config.runtime.http.enabled:
         log.debug("Checking HTTP server health")
-        http_healthy = _http_health_probe(
+        http_ready = _http_readiness_probe(
             config.runtime.http.port, tls_key, tls_cert, client_ca
         )
 
     if config.runtime.grpc.enabled:
         log.debug("Checking gRPC server health")
-        grpc_healthy = _grpc_health_probe(
+        grpc_ready = _grpc_readiness_probe(
             config.runtime.grpc.port, tls_key, tls_cert, client_ca
         )
 
-    if False in [http_healthy, grpc_healthy]:
+    if False in [http_ready, grpc_ready]:
         log.info(
             "<RUN64273066I>",
-            "Server not healthy. HTTP: %s, gRPC: %s",
-            http_healthy,
-            grpc_healthy,
+            "Runtime server(s) not ready. HTTP: %s, gRPC: %s",
+            http_ready,
+            grpc_ready,
         )
         return False
     return True
 
 
+@alog.timed_function(log.debug)
+def liveness_probe(runtime_proc_identifier: str = "caikit.runtime") -> bool:
+    # Get all running processes that we have access to
+    this_proc = psutil.Process()
+    this_exe = this_proc.exe()
+    procs = [_get_proc_info(pid) for pid in psutil.pids() if pid != this_proc.pid]
+
+    # Filter down to caikit runtime processes
+    caikit_procs = [
+        proc_info
+        for proc_info in procs
+        if proc_info is not None
+        and proc_info[0] == this_exe
+        and any(runtime_proc_identifier in arg for arg in proc_info[1])
+    ]
+
+    # If we have running caikit processes, we consider the server to be alive
+    return bool(caikit_procs)
+
+
 ## Implementation ##############################################################
 
 
-def _http_health_probe(
+def _get_proc_info(pid: int) -> Optional[Tuple[str, List[str]]]:
+    """Attempt to get the given pid's information (exe and cmdline)"""
+    try:
+        proc = psutil.Process(pid)
+        return (proc.exe(), proc.cmdline())
+    except psutil.Error:
+        return None
+
+
+def _http_readiness_probe(
     port: int,
     tls_key: Optional[str],
     tls_cert: Optional[str],
@@ -95,15 +129,15 @@ def _http_health_probe(
     """Probe the http server
 
     The implementation of this utility is a bit tricky because mTLS makes this
-    quite challenging. For insecure or TLS servers, we expect a valid healthy
+    quite challenging. For insecure or TLS servers, we expect a valid ready
     response, but for mTLS servers, we may not have a valid key/cert pair that
     the client can present to the server that is signed by the expected CA if
     the trusted client CA does not match the one that signed the server's
     key/cert pair.
 
     The workaround for this is to detect SSLError and consider that to be a
-    passing health check. If the server is healthy enough to _reject_ bad SSL
-    requests, it's healthy enough to server good ones!
+    passing readiness check. If the server is ready enough to _reject_ bad SSL
+    requests, it's ready enough to server good ones!
 
     Args:
         port (int): The port that the HTTP server is serving on
@@ -115,7 +149,8 @@ def _http_health_probe(
             for mutual client auth
 
     Returns:
-        healthy (bool): True if all servers are healthy, False otherwise
+        ready (bool): True if the http server is ready to take requests, False
+            otherwise
     """
     # NOTE: Local imports for optional dependency
     with alog.ContextTimer(log.debug2, "Done with local grpc imports: "):
@@ -167,7 +202,7 @@ def _http_health_probe(
         return False
 
 
-def _grpc_health_probe(
+def _grpc_readiness_probe(
     port: int,
     tls_key: Optional[str],
     tls_cert: Optional[str],
@@ -176,7 +211,7 @@ def _grpc_health_probe(
     """Probe the grpc server
 
     Since the gRPC server trusts its own cert for client verification, we can
-    make a valid health probe against the running server regardless of (m)TLS
+    make a valid readiness probe against the running server regardless of (m)TLS
     config.
 
     Args:
@@ -189,7 +224,8 @@ def _grpc_health_probe(
             for mutual client auth
 
     Returns:
-        healthy (bool): True if all servers are healthy, False otherwise
+        ready (bool): True if the grpc server is ready to take requests, False
+            otherwise
     """
     # NOTE: Local imports for optional dependency
     with alog.ContextTimer(log.debug2, "Done with local grpc imports: "):
@@ -297,7 +333,24 @@ def main():
         thread_id=caikit_config.log.thread_id,
         formatter=caikit_config.log.formatter,
     )
-    if not health_probe():
+
+    # Pull the probe type from the command line, defaulting to readiness
+    probe_type_map = {
+        "readiness": readiness_probe,
+        "liveness": liveness_probe,
+    }
+    probe_type = "readiness"
+    probe_args = []
+    if len(sys.argv) > 1:
+        probe_type = sys.argv[1]
+        if len(sys.argv) > 2:
+            probe_args = sys.argv[2:]
+    log.debug("Probe type: %s", probe_type)
+    log.debug("Probe args: %s", probe_args)
+    probe_fn = probe_type_map.get(probe_type.lower())
+    assert probe_fn is not None, f"Invalid probe type: {probe_type}"
+
+    if not probe_fn(*probe_args):
         sys.exit(1)
 
 
