@@ -1075,6 +1075,129 @@ def test_lazy_load_handles_temporary_errors():
                 assert model
 
 
+def test_lazy_load_true_local_models_dir_valid():
+    """When lazy_load_local_models is True and local_models_dir exists.
+    Check that the local_models_dir is pointing to the correct location
+    """
+
+    with TemporaryDirectory() as cache_dir:
+
+        ModelManager._ModelManager__instance = None
+        with temp_config(
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                }
+            },
+            merge_strategy="merge",
+        ):
+            MODEL_MANAGER = ModelManager()
+            assert len(MODEL_MANAGER.loaded_models) == 0
+            assert MODEL_MANAGER._local_models_dir == cache_dir
+
+
+def test_lazy_load_true_local_models_dir_invalid():
+    """When lazy_load_local_models is True and local_models_dir does not exist.
+    Raise ValueError with an appropriate message
+    """
+
+    with TemporaryDirectory() as cache_dir:
+
+        with pytest.raises(
+            ValueError,
+            match=(
+                "runtime.local_models_dir must be a valid path"
+                " if set with runtime.lazy_load_local_models. "
+                "Provided path: invalid"
+            ),
+        ):
+
+            ModelManager._ModelManager__instance = None
+            with temp_config(
+                {
+                    "runtime": {
+                        "local_models_dir": "invalid",
+                        "lazy_load_local_models": True,
+                    }
+                },
+                merge_strategy="merge",
+            ):
+                MODEL_MANAGER = ModelManager()
+
+
+def test_lazy_load_true_local_models_dir_none():
+    """When lazy_load_local_models is True and local_models_dir is not set in the config.
+    Raise ValueError with an appropriate message
+    """
+
+    with TemporaryDirectory() as cache_dir:
+
+        with pytest.raises(
+            ValueError,
+            match=(
+                "runtime.local_models_dir must be set"
+                " if using runtime.lazy_load_local_models. "
+            ),
+        ):
+
+            ModelManager._ModelManager__instance = None
+            with temp_config(
+                {
+                    "runtime": {
+                        "local_models_dir": None,
+                        "lazy_load_local_models": True,
+                    }
+                },
+                merge_strategy="merge",
+            ):
+                MODEL_MANAGER = ModelManager()
+
+
+def test_lazy_load_false_local_models_dir_valid():
+    """When lazy_load_local_models is False and local_models_dir exists.
+    Check that the local_models_dir is pointing to the correct location
+    """
+
+    with TemporaryDirectory() as cache_dir:
+
+        ModelManager._ModelManager__instance = None
+        with temp_config(
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": False,
+                }
+            },
+            merge_strategy="merge",
+        ):
+            MODEL_MANAGER = ModelManager()
+            assert len(MODEL_MANAGER.loaded_models) == 0
+            assert MODEL_MANAGER._local_models_dir == cache_dir
+
+
+def test_lazy_load_false_local_models_dir_invalid():
+    """When lazy_load_local_models is False and local_models_dir does not exist.
+    Check that the local_models_dir is False / Empty
+    """
+
+    with TemporaryDirectory() as cache_dir:
+
+        ModelManager._ModelManager__instance = None
+        with temp_config(
+            {
+                "runtime": {
+                    "local_models_dir": "",
+                    "lazy_load_local_models": False,
+                }
+            },
+            merge_strategy="merge",
+        ):
+            MODEL_MANAGER = ModelManager()
+            assert len(MODEL_MANAGER.loaded_models) == 0
+            assert not MODEL_MANAGER._local_models_dir
+
+
 class NoModelFinder(ModelFinderBase):
     name = "NOMODEL"
 

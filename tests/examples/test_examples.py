@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Standard
-from os import getenv, path
+from os import path
 import asyncio
 import subprocess
 
