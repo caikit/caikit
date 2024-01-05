@@ -39,7 +39,7 @@ from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.signature_parsing import CaikitMethodSignature, CustomSignature
 from caikit.interfaces.runtime.data_model import ModelPointer, TrainingJob
-from caikit.interfaces.runtime.service import (
+from caikit.runtime.names import (
     get_task_predict_request_name,
     get_task_predict_rpc_name,
     get_train_parameter_name,

@@ -19,3 +19,7 @@ def test_caikit_core_has_DataValidationError():
 
 def test_caikit_core_has_error_handler():
     assert hasattr(caikit.core, "error_handler")
+    
+def test_caikit_core_has_runtime_anmes():
+    import caikit.runtime
+    assert hasattr(caikit.runtime, "names")

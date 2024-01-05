@@ -44,15 +44,15 @@ from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingStatusResponse,
 )
-from caikit.interfaces.runtime.service import ServiceType as InterfaceServiceType
-from caikit.interfaces.runtime.service import (
+from caikit.runtime import service_generation
+from caikit.runtime.names import ServiceType as InterfaceServiceType
+from caikit.runtime.names import (
     get_service_name,
     get_service_package_name,
     get_task_predict_request_name,
     get_train_parameter_name,
     get_train_request_name,
 )
-from caikit.runtime import service_generation
 from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.utils import import_util
 

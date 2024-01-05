@@ -41,7 +41,7 @@ from caikit.interfaces.common.data_model.stream_sources import (
     ListOfFileReferences,
     S3Files,
 )
-from caikit.interfaces.runtime.service import get_service_package_name
+from caikit.runtime.names import get_service_package_name
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 import caikit
 

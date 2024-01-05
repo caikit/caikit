@@ -69,7 +69,7 @@ from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreStatusCode,
 )
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
-from caikit.interfaces.runtime.server import (
+from caikit.runtime.names import (
     HEALTH_ENDPOINT,
     MODEL_ID,
     MODELS_INFO_ENDPOINT,

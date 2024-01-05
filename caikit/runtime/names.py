@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-This file contains interfaces and descriptor functions for service generation
-"""
+""" ! NOTE ! This file should not import any extra dependencies. It is used be non runtime 
+libraries"""
 
 # Standard
 from enum import Enum
 from typing import Optional, Type, Union
+import re
 
 # First Party
 import alog
@@ -26,6 +26,7 @@ import alog
 from caikit.config import get_config
 from caikit.core.modules import ModuleBase
 from caikit.core.task import TaskBase
+from caikit.core.toolkit.string import snake_to_upper_camel
 from caikit.interfaces.runtime.data_model import (
     ModelInfoRequest,
     ModelInfoResponse,
@@ -35,17 +36,25 @@ from caikit.interfaces.runtime.data_model import (
     TrainingStatusResponse,
 )
 
-log = alog.use_channel("SERVICE-INTERFACE")
+log = alog.use_channel("RNTM-NAMES")
 
 
-# Common Service Package Descriptors
+############# Serice Names ##############
+
+
 class ServiceType(Enum):
-    """Common class for different service types"""
+    """Common class for describing service types"""
 
     INFERENCE = 1  # Inference service for the GlobalPredictServicer
     TRAINING = 2  # Training service for the GlobalTrainServicer
     TRAINING_MANAGEMENT = 3
     INFO = 4
+
+
+############# Serice Name Generation ##############
+
+
+##  Service Package Descriptors
 
 
 def get_ai_domain() -> str:
@@ -108,7 +117,9 @@ def get_service_name(service_type: ServiceType) -> str:
         return INFO_SERVICE_NAME
 
 
-# RPC Descriptors
+##  Service RPC Descriptors
+
+
 def get_train_rpc_name(module_class: Type[ModuleBase]) -> str:
     """Helper function to convert from the name of a module to the name of the
     request RPC function
@@ -138,16 +149,6 @@ def get_train_rpc_name(module_class: Type[ModuleBase]) -> str:
     return rpc_name
 
 
-def get_train_request_name(module_class: Type[ModuleBase]) -> str:
-    """Helper function to get the request name of a Train Service"""
-    return f"{get_train_rpc_name(module_class)}Request"
-
-
-def get_train_parameter_name(module_class: Type[ModuleBase]) -> str:
-    """Helper function to get the inner request parameter  name of a Train Service"""
-    return f"{get_train_rpc_name(module_class)}Parameters"
-
-
 def get_task_predict_rpc_name(
     task_or_module_class: Type[Union[ModuleBase, TaskBase]],
     input_streaming: bool = False,
@@ -167,6 +168,19 @@ def get_task_predict_rpc_name(
     if input_streaming:
         return snake_to_upper_camel(f"ClientStreaming{task_class.__name__}_Predict")
     return snake_to_upper_camel(f"{task_class.__name__}_Predict")
+
+
+##  Service DataModel Name Descriptors
+
+
+def get_train_request_name(module_class: Type[ModuleBase]) -> str:
+    """Helper function to get the request name of a Train Service"""
+    return f"{get_train_rpc_name(module_class)}Request"
+
+
+def get_train_parameter_name(module_class: Type[ModuleBase]) -> str:
+    """Helper function to get the inner request parameter  name of a Train Service"""
+    return f"{get_train_rpc_name(module_class)}Parameters"
 
 
 def get_task_predict_request_name(
@@ -191,7 +205,8 @@ def get_task_predict_request_name(
     return snake_to_upper_camel(f"{task_class.__name__}_Request")
 
 
-# Service Definitions
+##  Service Definitions
+
 TRAINING_MANAGEMENT_SERVICE_NAME = "TrainingManagement"
 TRAINING_MANAGEMENT_PACKAGE = "caikit.runtime.training"
 TRAINING_MANAGEMENT_SERVICE_SPEC = {
@@ -230,13 +245,74 @@ INFO_SERVICE_SPEC = {
     }
 }
 
-## Service Constants
+
+############### Server Names #############
+
 # Invocation metadata key for the model ID, provided by Model Mesh
 MODEL_MESH_MODEL_ID_KEY = "mm-model-id"
 
-### Helper Functions
+
+## HTTP Server
+
+# Endpoint to use for health checks
+HEALTH_ENDPOINT = "/health"
+
+# Endpoint to use for server info
+RUNTIME_INFO_ENDPOINT = "/info/version"
+MODELS_INFO_ENDPOINT = "/info/models"
+
+# These keys are used to define the logical sections of the request and response
+# data structures.
+REQUIRED_INPUTS_KEY = "inputs"
+OPTIONAL_INPUTS_KEY = "parameters"
+MODEL_ID = "model_id"
+
+# Stream event types enum
+class StreamEventTypes(Enum):
+    MESSAGE = "message"
+    ERROR = "error"
 
 
-def snake_to_upper_camel(string: str) -> str:
-    """Simple snake -> upper camel conversion for descriptors"""
-    return "".join([part[0].upper() + part[1:] for part in string.split("_")])
+def get_http_route_name(rpc_name: str) -> str:
+    """Function to get the http route for a given rpc name
+
+    Args:
+        rpc_name (str): The name of the Caikit RPC
+
+    Raises:
+        NotImplementedError: If the RPC is not a Train or Predict RPC
+
+    Returns:
+        str: The name of the http route for RPC
+    """
+    if rpc_name.endswith("Predict"):
+        task_name = re.sub(
+            r"(?<!^)(?=[A-Z])",
+            "-",
+            re.sub("Task$", "", re.sub("Predict$", "", rpc_name)),
+        ).lower()
+        route = "/".join([get_config().runtime.http.route_prefix, "task", task_name])
+        if route[0] != "/":
+            route = "/" + route
+        return route
+    if rpc_name.endswith("Train"):
+        route = "/".join([get_config().runtime.http.route_prefix, rpc_name])
+        if route[0] != "/":
+            route = "/" + route
+        return route
+    raise NotImplementedError(f"Unknown RPC type for rpc name {rpc_name}")
+
+
+### GRPC Server
+
+
+def get_grpc_route_name(service_type: ServiceType, rpc_name: str) -> str:
+    """Function to get GRPC name for a given service type and rpc name
+
+    Args:
+        rpc_name (str): The name of the Caikit RPC
+
+    Returns:
+        str: The name of the GRPC route for RPC
+    """
+    return f"/{get_service_package_name(service_type)}.{get_service_name(service_type)}/{rpc_name}"
