@@ -15,7 +15,6 @@
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import contextmanager
 from functools import partial
-from os import path
 from tempfile import TemporaryDirectory
 from typing import Optional
 from unittest.mock import MagicMock, patch
