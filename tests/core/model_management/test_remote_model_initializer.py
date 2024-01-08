@@ -26,8 +26,8 @@ from caikit.core.data_model.streams.data_stream import DataStream
 from caikit.core.model_management.remote_model_initializer import RemoteModelInitializer
 from caikit.core.modules import ModuleBase, RemoteModuleConfig
 from caikit.interfaces.common.data_model.remote import ConnectionInfo, ConnectionTlsInfo
-from caikit.interfaces.runtime.service import MODEL_MESH_MODEL_ID_KEY
 from caikit.runtime.model_management.model_manager import ModelManager
+from caikit.runtime.names import MODEL_MESH_MODEL_ID_KEY
 from sample_lib.data_model import SampleInputType, SampleOutputType, SampleTrainingType
 from tests.conftest import random_test_id
 from tests.fixtures import Fixtures  # noqa: F401

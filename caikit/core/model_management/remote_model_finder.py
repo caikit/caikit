@@ -47,12 +47,12 @@ from caikit.core.model_management.model_finder_base import ModelFinderBase
 from caikit.core.modules import RemoteModuleConfig
 from caikit.interfaces.common.data_model.remote import ConnectionInfo, ConnectionTlsInfo
 from caikit.interfaces.runtime.data_model import ModelInfoRequest, ModelInfoResponse
-from caikit.interfaces.runtime.server import (
+from caikit.runtime.names import (
+    MODEL_MESH_MODEL_ID_KEY,
     MODELS_INFO_ENDPOINT,
     ServiceType,
     get_grpc_route_name,
 )
-from caikit.interfaces.runtime.service import MODEL_MESH_MODEL_ID_KEY
 
 log = alog.use_channel("RFIND")
 error = error_handler.get(log)

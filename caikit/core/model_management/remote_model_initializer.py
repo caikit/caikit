@@ -53,20 +53,16 @@ from caikit.core.exceptions.caikit_core_exception import (
 )
 from caikit.core.model_management.model_initializer_base import ModelInitializerBase
 from caikit.core.modules import ModuleBase, module
-from caikit.core.modules.remote_config import RemoteModuleConfig
+from caikit.core.modules.remote_config import RemoteModuleConfig, RemoteRPCDescriptor
 from caikit.core.task import TaskBase
 from caikit.interfaces.common.data_model.remote import ConnectionInfo
-from caikit.interfaces.runtime.server import (
+from caikit.runtime.names import (
     MODEL_ID,
     OPTIONAL_INPUTS_KEY,
     REQUIRED_INPUTS_KEY,
+    ServiceType,
     get_grpc_route_name,
     get_http_route_name,
-)
-from caikit.interfaces.runtime.service import (
-    MODEL_MESH_MODEL_ID_KEY,
-    CaikitRPCDescriptor,
-    ServiceType,
 )
 
 log = alog.use_channel("RINIT")
@@ -155,7 +151,7 @@ class _RemoteModelBaseClass(ModuleBase):
     ### Method Factories
 
     @classmethod
-    def generate_train_function(cls, method: CaikitRPCDescriptor) -> Callable:
+    def generate_train_function(cls, method: RemoteRPCDescriptor) -> Callable:
         """Factory function to construct a train function that will then be set as an attribute"""
 
         def train_func(self, *args, **kwargs) -> method.signature.return_type:
@@ -191,7 +187,7 @@ class _RemoteModelBaseClass(ModuleBase):
 
     @classmethod
     def generate_inference_function(
-        cls, task: Type[TaskBase], method: CaikitRPCDescriptor
+        cls, task: Type[TaskBase], method: RemoteRPCDescriptor
     ) -> Callable:
         """Factory function to construct inference functions that will be set as an attribute."""
 
@@ -218,9 +214,9 @@ class _RemoteModelBaseClass(ModuleBase):
     ### Remote Interface
 
     def remote_method_request(
-        self, method: CaikitRPCDescriptor, service_type: ServiceType, *args, **kwargs
+        self, method: RemoteRPCDescriptor, service_type: ServiceType, *args, **kwargs
     ) -> Any:
-        """Function to run a remote request based on the data stored in CaikitRPCDescriptor"""
+        """Function to run a remote request based on the data stored in RemoteRPCDescriptor"""
         if self._protocol == "grpc":
             return self._request_via_grpc(method, service_type, *args, **kwargs)
         elif self._protocol == "http":
@@ -231,7 +227,7 @@ class _RemoteModelBaseClass(ModuleBase):
     ### HTTP Helper Functions
     def _request_via_http(
         self,
-        method: CaikitRPCDescriptor,
+        method: RemoteRPCDescriptor,
         service_type: ServiceType,
         *args,
         **kwargs,
@@ -354,7 +350,7 @@ class _RemoteModelBaseClass(ModuleBase):
 
     def _request_via_grpc(
         self,
-        method: CaikitRPCDescriptor,
+        method: RemoteRPCDescriptor,
         service_type: ServiceType,
         *args,
         **kwargs,

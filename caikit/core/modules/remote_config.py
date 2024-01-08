@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
-from typing import Any, Dict, List, Tuple, Type, Union, get_args, get_origin
+from dataclasses import dataclass
+from typing import List, Tuple, Type, Union, get_args, get_origin
 import inspect
 
 # First Party
@@ -24,10 +25,10 @@ from caikit.core.modules.base import ModuleBase
 from caikit.core.modules.config import ModuleConfig
 from caikit.core.modules.meta import _ModuleBaseMeta
 from caikit.core.registries import module_registry
+from caikit.core.signature_parsing.module_signature import CaikitMethodSignature
 from caikit.core.task import TaskBase
 from caikit.interfaces.common.data_model.remote import ConnectionInfo
-from caikit.interfaces.runtime.service import (
-    CaikitRPCDescriptor,
+from caikit.runtime.names import (
     get_task_predict_request_name,
     get_task_predict_rpc_name,
     get_train_request_name,
@@ -36,6 +37,29 @@ from caikit.interfaces.runtime.service import (
 
 log = alog.use_channel("REM_MODULE_CFG")
 error = error_handler.get(log)
+
+
+### RemoteRPC Descriptor
+
+
+@dataclass
+class RemoteRPCDescriptor:
+    """Helper dataclass to store information about an RPC. This includes the method signature, request&response
+    data objects and the RPC name"""
+
+    # full signature for this RPC
+    signature: CaikitMethodSignature
+
+    # Request and response objects for this RPC
+    request_dm_name: str
+    response_dm_name: str
+
+    # The name of the RPC
+    rpc_name: str
+
+    # Only used for infer RPC types
+    input_streaming: bool = False
+    output_streaming: bool = False
 
 
 ### Remote Module Config
@@ -52,8 +76,8 @@ class RemoteModuleConfig(ModuleConfig):
 
     # Method Information
     # use list and tuples instead of a dictionary to avoid aconfig.Config error
-    task_methods: List[Tuple[Type[TaskBase], List[CaikitRPCDescriptor]]]
-    train_method: CaikitRPCDescriptor
+    task_methods: List[Tuple[Type[TaskBase], List[RemoteRPCDescriptor]]]
+    train_method: RemoteRPCDescriptor
 
     # Target Module Information
     module_id: str
@@ -95,7 +119,6 @@ class RemoteModuleConfig(ModuleConfig):
                model_config (RemoteModuleConfig): Instantiated RemoteModuleConfig for
                model given model_path.
         """
-
         # Validate model path arg
         error.type_check("<COR71170339E>", str, model_path=model_path)
 
@@ -158,7 +181,7 @@ class RemoteModuleConfig(ModuleConfig):
 
                 # Generate the rpc name and task type
                 task_methods.append(
-                    CaikitRPCDescriptor(
+                    RemoteRPCDescriptor(
                         signature=signature,
                         request_dm_name=request_class_name,
                         response_dm_name=task_return_type,
@@ -178,7 +201,7 @@ class RemoteModuleConfig(ModuleConfig):
             train_request_name = get_train_request_name(local_module_class)
             train_rpc_name = get_train_rpc_name(local_module_class)
 
-            remote_config_dict["train_method"] = CaikitRPCDescriptor(
+            remote_config_dict["train_method"] = RemoteRPCDescriptor(
                 signature=local_module_class.TRAIN_SIGNATURE,
                 request_dm_name=train_request_name,
                 response_dm_name=local_module_class.TRAIN_SIGNATURE.return_type.__name__,

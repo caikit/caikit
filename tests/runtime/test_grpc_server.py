@@ -81,8 +81,8 @@ from tests.fixtures import Fixtures
 from tests.runtime.conftest import (
     KeyPair,
     ModuleSubproc,
-    _open_port,
     TLSConfig,
+    _open_port,
     register_trained_model,
     runtime_grpc_test_server,
 )

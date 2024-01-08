@@ -32,7 +32,6 @@ from caikit import get_config
 from caikit.core import ModuleBase, TaskBase
 from caikit.core.data_model import DataBase, DataStream
 from caikit.core.signature_parsing import CaikitMethodSignature
-from caikit.interfaces.runtime.service import MODEL_MESH_MODEL_ID_KEY
 from caikit.runtime.metrics.rpc_meter import RPCMeter
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.names import MODEL_MESH_MODEL_ID_KEY
