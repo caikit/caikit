@@ -25,6 +25,9 @@ from dataclasses import dataclass
 from enum import Enum
 from unittest import mock
 import os
+import shlex
+import subprocess
+import sys
 
 # Third Party
 import pytest
@@ -146,7 +149,7 @@ class ProbeTestConfig:
         ),
     ],
 )
-def test_health_probe(test_config: ProbeTestConfig):
+def test_readiness_probe(test_config: ProbeTestConfig):
     """Test all of the different ways that the servers could be running"""
     with alog.ContextLog(log.info, "---LOG CONFIG: %s---", test_config):
         # Get ports for both servers
@@ -192,11 +195,11 @@ def test_health_probe(test_config: ProbeTestConfig):
                 "merge",
             ):
                 # Health probe fails with no servers booted
-                assert not caikit_health_probe.health_probe()
+                assert not caikit_health_probe.readiness_probe()
                 # If booting the gRPC server, do so
                 with maybe_runtime_grpc_test_server(grpc_port):
                     # If only running gRPC, health probe should pass
-                    assert caikit_health_probe.health_probe() == (
+                    assert caikit_health_probe.readiness_probe() == (
                         test_config.should_become_healthy
                         and test_config.server_mode == ServerMode.GRPC
                     )
@@ -208,6 +211,32 @@ def test_health_probe(test_config: ProbeTestConfig):
                     ):
                         # Probe should always pass with both possible servers up
                         assert (
-                            caikit_health_probe.health_probe()
+                            caikit_health_probe.readiness_probe()
                             == test_config.should_become_healthy
                         )
+
+
+@pytest.mark.parametrize(
+    ["proc_identifier", "expected"],
+    [(None, True), ("caikit.runt", True), ("foobar", False)],
+)
+def test_liveness_probe(proc_identifier, expected):
+    """Test the logic for determining if the server process is alive"""
+    cmd = f"{sys.executable} -m caikit.runtime"
+    args = [] if proc_identifier is None else [proc_identifier]
+
+    # Liveness should fail if process is not booted
+    assert not caikit_health_probe.liveness_probe(*args)
+
+    proc = None
+    try:
+        # Start the process
+        proc = subprocess.Popen(shlex.split(cmd))
+
+        # Liveness should pass/fail as expected
+        assert caikit_health_probe.liveness_probe(*args) == expected
+
+    finally:
+        # Kill the process if it started
+        if proc is not None and proc.poll() is None:
+            proc.kill()

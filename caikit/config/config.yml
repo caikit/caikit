@@ -142,6 +142,8 @@ runtime:
         options: {}
         # Legacy config for setting thread pool size. See runtime.server_thread_pool_size instead
         server_thread_pool_size: null
+        # Timeout for health probe to receive a response
+        probe_timeout: null
 
     # Configuration for the http server
     http:
