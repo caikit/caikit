@@ -34,6 +34,7 @@ from caikit.core.data_model import DataBase, DataStream
 from caikit.core.signature_parsing import CaikitMethodSignature
 from caikit.runtime.metrics.rpc_meter import RPCMeter
 from caikit.runtime.model_management.model_manager import ModelManager
+from caikit.runtime.names import MODEL_MESH_MODEL_ID_KEY
 from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -86,9 +87,6 @@ class GlobalPredictServicer:
     CaikitRuntimeServicerMock to return the appropriate mock response for a
     given request
     """
-
-    # Invocation metadata key for the model ID, provided by Model Mesh
-    MODEL_MESH_MODEL_ID_KEY = "mm-model-id"
 
     # Input size in code points, provided by orchestrator
     INPUT_SIZE_KEY = "input-length"
@@ -158,7 +156,7 @@ class GlobalPredictServicer:
                 A Caikit Library data model response object
         """
         # Make sure the request has a model before doing anything
-        model_id = get_metadata(context, self.MODEL_MESH_MODEL_ID_KEY)
+        model_id = get_metadata(context, MODEL_MESH_MODEL_ID_KEY)
         request_name = caikit_rpc.request.name
 
         with self._handle_predict_exceptions(model_id, request_name), alog.ContextLog(
