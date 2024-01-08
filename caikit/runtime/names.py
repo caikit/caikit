@@ -29,7 +29,7 @@ import alog
 from caikit.config import get_config
 from caikit.core.modules import ModuleBase
 from caikit.core.task import TaskBase
-from caikit.core.toolkit.string import snake_to_upper_camel
+from caikit.core.toolkit.name_tools import snake_to_upper_camel
 from caikit.interfaces.runtime.data_model import (
     ModelInfoRequest,
     ModelInfoResponse,
