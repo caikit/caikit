@@ -11,8 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" ! NOTE ! This file should not import any extra dependencies. It is used be non runtime 
-libraries"""
+"""
+! NOTE ! This file should not import any extra dependencies. It is intended for
+use by client libraries that do not necessarily use a specific runtime server
+type.
+"""
 
 # Standard
 from enum import Enum
