@@ -21,26 +21,15 @@ model_management:
         <finder name>:
             type: REMOTE
             config:
-                connection:
-                    hostname: str <remote host>
-                    port: Optional[int]=80/443 <remote port>
-                    protocol: Optional[str]="grpc" <protocol the remote server is using (grpc or http)>
-                    tls:
-                        enabled: Optional[bool]=False <if ssl is enabled on the remote server>
-                        ca_file: Optional[str]=None <path to remote ca file>
-                        cert_file: Optional[str]=None <path to MTLS cert>
-                        key_file: Optional[str]=None <path to MTLS key>
-                        insecure_verify: Optional[bool]=False <If client should validate server remote CA>
-                    options:  Optional[Dict[str,str]]={} <optional dict of grpc or http configuration options>
-                    timeout: Optional[int]=None <Optional timeout setting for remote connections>
-                    model_key: Optional[str]=MODEL_MESH_MODEL_ID_KEY <Optional setting to override the grpc model name>
+                connection: ConnectionInfo
+                model_key: Optional[str]=MODEL_MESH_MODEL_ID_KEY <Optional setting to override the grpc model name>
+                protocol: Optional[str]="grpc" <protocol the remote server is using (grpc or http)>
                 discover_models: Optional[bool]=True <bool to automatically discover remote models via the /info/models endpoint>
                 supported_models: Optional[Dict[str, str]]={} <mapping of model names to module_ids that this remote supports>
                     <model_path>: <module_id>
 
 """
 # Standard
-from http.client import HTTP_PORT, HTTPS_PORT
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -56,6 +45,7 @@ import alog
 from caikit.core.exceptions import error_handler
 from caikit.core.model_management.model_finder_base import ModelFinderBase
 from caikit.core.modules import RemoteModuleConfig
+from caikit.interfaces.common.data_model.remote import ConnectionInfo, ConnectionTlsInfo
 from caikit.interfaces.runtime.data_model import ModelInfoRequest, ModelInfoResponse
 from caikit.interfaces.runtime.server import (
     MODELS_INFO_ENDPOINT,
@@ -80,80 +70,45 @@ class RemoteModelFinder(ModelFinderBase):
         """Initialize with an optional path prefix"""
 
         self._instance_name = instance_name
-        self._discover_models = config.get("discover_models", True)
-        self._supported_models = config.get("supported_models", {})
 
         # Type/Value check connection parameters
-        self._connection = config.connection
-        self._hostname = self._connection.get("hostname")
-        self._port = self._connection.get("port")
-        self._protocol = self._connection.get("protocol", "grpc")
-        self._timeout = self._connection.get("timeout")
-        self._model_key = self._connection.get("model_key", MODEL_MESH_MODEL_ID_KEY)
-        self._options = self._connection.get("options", {})
+        self._tls = config.connection["tls"] = ConnectionTlsInfo(
+            **config.connection.get("tls", {})
+        )
+        self._connection = ConnectionInfo(**config.connection)
+
+        # Type/Value check default parameters
+        self._model_key = config.get("model_key", MODEL_MESH_MODEL_ID_KEY)
+        error.type_check("<COR72281587E>", str, model_key=self._model_key)
+
+        self._protocol = config.get("protocol", "grpc")
         error.value_check(
             "<COR72281545E>",
             self._protocol in ["grpc", "http"],
             "Unknown protocol: %s",
             self._protocol,
         )
+
+        if self._protocol == "grpc" and self._tls.enabled:
+            error.value_check(
+                "<COR74451567E>",
+                not self._tls.insecure_verify,
+                "GRPC does not support insecure TLS connections. Please provide a valid CA certificate",
+            )
+
+        # Type/Value check model parameters
+        self._discover_models = config.get("discover_models", True)
+        self._supported_models = config.get("supported_models", {})
         error.type_check(
             "<COR74343245E>",
             dict,
             supported_models=self._supported_models,
-            options=self._options,
         )
         error.type_check(
-            "<COR72281587E>", str, host=self._hostname, model_key=self._model_key
-        )
-        error.type_check(
-            "<COR73381567E>",
-            int,
-            allow_none=True,
-            port=self._port,
-            timeout=self._timeout,
-        )
-
-        # Type/Value check TLS parameters
-        self._tls_info = self._connection.get("tls", {})
-        self._tls_enabled = self._tls_info.get("enabled", False)
-        self._tls_ca_file = self._tls_info.get("ca_file")
-        self._tls_cert_file = self._tls_info.get("cert_file")
-        self._tls_key_file = self._tls_info.get("key_file")
-        self._tls_insecure_verify = self._tls_info.get("insecure_verify", False)
-        error.type_check(
-            "<COR74321567E>",
-            str,
-            allow_none=True,
-            tls_ca=self._tls_ca_file,
-            tls_cert=self._tls_cert_file,
-            key_file=self._tls_key_file,
-        )
-        error.type_check(
-            "COR74322567E",
+            "<COR74342245E>",
             bool,
-            tls_enabled=self._tls_enabled,
-            insecure_verify=self._tls_insecure_verify,
+            discover_models=self._discover_models,
         )
-
-        if self._protocol == "grpc" and self._tls_enabled:
-            error.value_check(
-                "<COR74451567E>",
-                not self._tls_insecure_verify,
-                "GRPC does not support insecure TLS connections. Please provide a valid CA certificate",
-            )
-
-        # Set default port
-        if not self._port:
-            if self._tls_enabled:
-                self._port = HTTPS_PORT
-            else:
-                self._port = HTTP_PORT
-
-        # Ensure connection dict is updated with class defaults
-        self._connection["port"] = self._port
-        self._connection["protocol"] = self._protocol
-        self._connection["model_key"] = self._model_key
 
         # Discover remote models
         if self._discover_models:
@@ -175,6 +130,8 @@ class RemoteModelFinder(ModelFinderBase):
         return RemoteModuleConfig.load_from_module(
             module_reference=self._supported_models.get(model_path),
             connection_info=self._connection,
+            protocol=self._protocol,
+            model_key=self._model_key,
             model_path=model_path,
         )
 
@@ -202,28 +159,30 @@ class RemoteModelFinder(ModelFinderBase):
                Mapping of remote model names to module ids
         """
 
-        target = f"{self._hostname}:{self._port}"
-        options = tuple(self._options.items())
+        target = f"{self._connection.hostname}:{self._connection.port}"
+        options = tuple(self._connection._options.items())
 
         # Generate GRPC Channel
-        if self._tls_enabled:
+        if self._tls.enabled:
+            # Assert that TLS files exists
+            if self._tls.ca_file and not self._tls.ca_file_data:
+                raise FileNotFoundError(
+                    f"Unable to find TLS CA File {self._tls.ca_file}"
+                )
+            if self._tls.key_file and not self._tls.key_file_data:
+                raise FileNotFoundError(
+                    f"Unable to find TLS Key File {self._tls.key_file}"
+                )
+            if self._tls.cert_file and not self._tls.cert_file_data:
+                raise FileNotFoundError(
+                    f"Unable to find TLS Cert File {self._tls.cert_file}"
+                )
+
             # Gather CA and MTLS data
-            ca_data = None
-            if self._tls_ca_file and Path(self._tls_ca_file).exists():
-                ca_data = Path(self._tls_ca_file).read_bytes()
-
-            mtls_key_data = None
-            if self._tls_key_file and Path(self._tls_key_file).exists():
-                mtls_key_data = Path(self._tls_key_file).read_bytes()
-
-            mtls_cert_data = None
-            if self._tls_cert_file and Path(self._tls_cert_file).exists():
-                mtls_cert_data = Path(self._tls_cert_file).read_bytes()
-
             grpc_credentials = grpc.ssl_channel_credentials(
-                root_certificates=ca_data,
-                private_key=mtls_key_data,
-                certificate_chain=mtls_cert_data,
+                root_certificates=self._tls.ca_file_data,
+                private_key=self._tls.key_file_data,
+                certificate_chain=self._tls.cert_file_data,
             )
 
             # Construct secure channel
@@ -247,12 +206,12 @@ class RemoteModelFinder(ModelFinderBase):
             )
             try:
                 model_info_proto = info_service_rpc(
-                    ModelInfoRequest().to_proto(), timeout=self._timeout
+                    ModelInfoRequest().to_proto(), timeout=self._connection.timeout
                 )
             except grpc.RpcError as exc:
                 log.warning(
                     "Unable to discover modules from remote: %s. Error: %s",
-                    self._hostname,
+                    self._connection.hostname,
                     str(exc),
                 )
                 return {}
@@ -284,28 +243,39 @@ class RemoteModelFinder(ModelFinderBase):
         """
 
         # Configure HTTP Client object
-        target = f"{self._hostname}:{self._port}{MODELS_INFO_ENDPOINT}"
+        target = (
+            f"{self._connection.hostname}:{self._connection.port}{MODELS_INFO_ENDPOINT}"
+        )
         request_kwargs = {}
-        if self._tls_enabled:
+        if self._tls.enabled:
             target = f"https://{target}"
 
             # Configure the TLS CA settings
-            if self._tls_insecure_verify:
+            if self._tls.insecure_verify:
                 request_kwargs["verify"] = False
             else:
-                if self._tls_ca_file:
-                    request_kwargs["verify"] = self._tls_ca_file
+                if self._tls.ca_file:
+                    request_kwargs["verify"] = self._tls.ca_file
                 else:
                     request_kwargs["verify"] = True
 
-            if self._tls_cert_file and self._tls_key_file:
-                request_kwargs["cert"] = (self._tls_cert_file, self._tls_key_file)
+            if self._tls.cert_file and self._tls.key_file:
+                request_kwargs["cert"] = (self._tls.cert_file, self._tls.key_file)
 
         else:
             target = f"http://{target}"
 
         # Send HTTP Request
-        resp = requests.get(target, **request_kwargs)
+        try:
+            resp = requests.get(target, **request_kwargs)
+        except requests.exceptions.RequestException as exc:
+            log.warning(
+                "Unable to discover modules from remote: %s. Error: %s",
+                self._connection.hostname,
+                str(exc),
+            )
+            return {}
+
         if resp.status_code != 200:
             log.warning(
                 "Unable to discover modules from remote: %s. Error: %s",

@@ -25,6 +25,7 @@ from caikit.core.modules.config import ModuleConfig
 from caikit.core.modules.meta import _ModuleBaseMeta
 from caikit.core.registries import module_registry
 from caikit.core.task import TaskBase
+from caikit.interfaces.common.data_model.remote import ConnectionInfo
 from caikit.interfaces.runtime.service import (
     CaikitRPCDescriptor,
     get_task_predict_request_name,
@@ -44,9 +45,10 @@ class RemoteModuleConfig(ModuleConfig):
     """Helper class to differentiate a local ModuleConfig and a RemoteModuleConfig. The structure
     should contain the following fields/structure"""
 
-    # Remote information for how to access the server. Should match the format provided
-    # by RemoteModelFinder
-    connection: Dict[str, Any]
+    # Remote information for how to access the server.
+    connection: ConnectionInfo
+    protocol: str
+    model_key: str
 
     # Method Information
     # use list and tuples instead of a dictionary to avoid aconfig.Config error
@@ -65,7 +67,9 @@ class RemoteModuleConfig(ModuleConfig):
     def load_from_module(
         cls,
         module_reference: Union[str, Type[ModuleBase], ModuleBase],
-        connection_info: Dict[str, Any],
+        connection_info: ConnectionInfo,
+        protocol: str,
+        model_key: str,
         model_path: str,
     ) -> "RemoteModuleConfig":
         """Construct a new remote module configuration from an existing local Module
@@ -78,8 +82,14 @@ class RemoteModuleConfig(ModuleConfig):
             model_path (str):
                 The path used to load this module
 
-            connection_info Dict[str, Any]:
+            connection_info ConnectionInfo:
                 The connection information of the remote to use
+
+            protocol: str
+                The protocol to connect with
+
+            model_key: str
+                The model key to use when sending GRPC requests. An example is mm-model-id
 
            Returns:
                model_config (RemoteModuleConfig): Instantiated RemoteModuleConfig for
@@ -112,6 +122,8 @@ class RemoteModuleConfig(ModuleConfig):
         remote_config_dict = {
             # Connection info
             "connection": connection_info,
+            "protocol": protocol,
+            "model_key": model_key,
             # Method info
             "task_methods": [],
             "train_method": None,

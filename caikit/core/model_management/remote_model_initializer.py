@@ -55,6 +55,7 @@ from caikit.core.model_management.model_initializer_base import ModelInitializer
 from caikit.core.modules import ModuleBase, module
 from caikit.core.modules.remote_config import RemoteModuleConfig
 from caikit.core.task import TaskBase
+from caikit.interfaces.common.data_model.remote import ConnectionInfo
 from caikit.interfaces.runtime.server import (
     MODEL_ID,
     OPTIONAL_INPUTS_KEY,
@@ -93,10 +94,15 @@ class RemoteModelInitializer(ModelInitializerBase):
         if model_config.module_id not in self._module_class_map:
             self._module_class_map[
                 model_config.module_id
-            ] = self.construct_module_class(model_config)
+            ] = self.construct_module_class(model_config=model_config)
 
         remote_module_class = self._module_class_map[model_config.module_id]
-        return remote_module_class(model_config.connection, model_config.model_path)
+        return remote_module_class(
+            model_config.connection,
+            model_config.protocol,
+            model_config.model_key,
+            model_config.model_path,
+        )
 
     def construct_module_class(
         self, model_config: RemoteModuleConfig
@@ -118,103 +124,23 @@ class _RemoteModelBaseClass(ModuleBase):
     """Private class to act as the base for remote modules. This class will be subclassed and mutated by
     construct_remote_module_class to make it have the same functions and parameters as the source module."""
 
-    def __init__(self, connection_info: Dict[str, Any], model_name: str):
+    def __init__(
+        self,
+        connection_info: ConnectionInfo,
+        protocol: str,
+        model_key: str,
+        model_name: str,
+    ):
         # Initialize module base
         super().__init__()
 
         self._model_name = model_name
-        self._connection = connection_info
 
         # Load connection parameters and assert types
-        self._hostname = self._connection.get("hostname")
-        self._port = self._connection.get("port")
-        self._protocol = self._connection.get("protocol")
-        self._timeout = self._connection.get("timeout")
-        self._options = self._connection.get("options", {})
-        self._model_key = self._connection.get("model_key", MODEL_MESH_MODEL_ID_KEY)
-
-        error.value_check(
-            "<COR72284545E>",
-            self._protocol in ["grpc", "http"],
-            "Unknown protocol: %s",
-            self._protocol,
-        )
-        error.type_check(
-            "<COR73221567E>", str, int, hostname=self._hostname, port=self._port
-        )
-        error.type_check(
-            "<COR7331567E>",
-            int,
-            allow_none=True,
-            timeout=self._timeout,
-        )
-
-        # Load TLS files on startup to stop unneeded reads
-        tls_info = self._connection.get("tls", {})
-        self._tls_enabled = tls_info.get("enabled", False)
-        self._tls_insecure_verify = tls_info.get("insecure_verify", False)
-
-        # Gather CA file info and data
-        self._ca_data = None
-        self._ca_file_name = tls_info.get("ca_file")
-        if self._ca_file_name:
-            ca_file = Path(self._ca_file_name)
-            if not ca_file.exists():
-                raise FileNotFoundError(
-                    f"Unable to find TLS CA file at {self._ca_file_name}"
-                )
-            self._ca_data = ca_file.read_bytes()
-
-        # Gather MTLS Cert
-        self._mtls_cert_data = None
-        self._mtls_cert_file_name = tls_info.get("cert_file")
-        if self._mtls_cert_file_name:
-            mtls_cert_file = Path(self._mtls_cert_file_name)
-            if not mtls_cert_file.exists():
-                raise FileNotFoundError(
-                    f"Unable to find TLS CA file at {self._mtls_cert_file_name}"
-                )
-            self._mtls_cert_data = mtls_cert_file.read_bytes()
-
-        # Gather MTLS Key
-        self._mtls_key_data = None
-        self._mtls_key_file_name = tls_info.get("key_file")
-        if self._mtls_key_file_name:
-            mtls_cert_file = Path(self._mtls_key_file_name)
-            if not mtls_cert_file.exists():
-                raise FileNotFoundError(
-                    f"Unable to find TLS CA file at {self._mtls_key_file_name}"
-                )
-            self._mtls_key_data = mtls_cert_file.read_bytes()
-
-        # Assert inputs are valid types
-        error.type_check(
-            "<COR74343245E>",
-            bool,
-            tls_enabled=self._tls_enabled,
-            tls_insecure_verify=self._tls_insecure_verify,
-        )
-        error.type_check(
-            "<COR74353245E>",
-            str,
-            allow_none=True,
-            mtls_key_file_name=self._mtls_key_file_name,
-            mtls_cert_file_name=self._mtls_cert_file_name,
-        )
-        error.type_check(
-            "<COR74352245E>",
-            bytes,
-            allow_none=True,
-            mtls_key_data=self._mtls_key_data,
-            mtls_cert_data=self._mtls_cert_data,
-        )
-
-        if self._protocol == "grpc" and self._tls_enabled:
-            error.value_check(
-                "<COR74252245E>",
-                not self._tls_insecure_verify,
-                "GRPC does not support insecure TLS connections. Please provide a valid CA certificate",
-            )
+        self._connection = connection_info
+        self._tls = self._connection.tls
+        self._protocol = protocol
+        self._model_key = model_key
 
         # Configure GRPC variables and threading lock
         self._channel_lock = Lock()
@@ -222,8 +148,9 @@ class _RemoteModelBaseClass(ModuleBase):
 
     def __del__(self):
         """Destructor to ensure channel is cleaned up on deletion"""
-        if self.__grpc_channel:
-            self._close_grpc_channel(self._grpc_channel)
+        with self._channel_lock:
+            if self.__grpc_channel:
+                self._close_grpc_channel(self._grpc_channel)
 
     ### Method Factories
 
@@ -249,7 +176,12 @@ class _RemoteModelBaseClass(ModuleBase):
             training_response = self.remote_method_request(
                 method, ServiceType.TRAINING, **train_kwargs
             )
-            return cls(self._connection, training_response.model_name)
+            return cls(
+                self._connection,
+                self._protocol,
+                self._model_key,
+                training_response.model_name,
+            )
 
         # Override infer function name attributes and signature
         train_func.__name__ = method.signature.method_name
@@ -309,7 +241,7 @@ class _RemoteModelBaseClass(ModuleBase):
             *args, **kwargs
         )
 
-        # ! This is a hack to ensure all fields/types have been json encoded (bytes/datetime/etc)
+        # ! This is a hack to ensure all fields/types have been json encoded (bytes/datetime/etc).
         request_dm_dict = json.loads(request_dm.to_json(use_oneof=True))
 
         # Parse generic Request type into HttpRequest format
@@ -355,25 +287,27 @@ class _RemoteModelBaseClass(ModuleBase):
 
         # Get request options and target
         request_kwargs = {"headers": {"Content-type": "application/json"}}
-        if self._tls_enabled:
-            if self._mtls_cert_file_name and self._mtls_key_file_name:
+        if self._tls.enabled:
+            if self._tls.cert_file and self._tls.key_file:
                 request_kwargs["cert"] = (
-                    self._mtls_cert_file_name,
-                    self._mtls_key_file_name,
+                    self._tls.cert_file,
+                    self._tls.key_file,
                 )
 
-            if self._tls_insecure_verify:
+            if self._tls.insecure_verify:
                 request_kwargs["verify"] = False
             else:
-                request_kwargs["verify"] = self._ca_file_name or True
+                request_kwargs["verify"] = self._tls.ca_file or True
 
         if method.output_streaming:
             request_kwargs["stream"] = True
 
-        if self._timeout:
-            request_kwargs["timeout"] = self._timeout
+        if self._connection.timeout:
+            request_kwargs["timeout"] = self._connection.timeout
 
-        request_kwargs = merge_configs(request_kwargs, self._options)
+        request_kwargs = merge_configs(
+            request_kwargs, overrides=self._connection.options
+        )
 
         request_url = (
             f"{self._get_remote_target()}{get_http_route_name(method.rpc_name)}"
@@ -405,7 +339,11 @@ class _RemoteModelBaseClass(ModuleBase):
                     )
                     yield response_dm_class.from_json(decoded_response)
 
-            return DataStream(stream_parser)
+            # Attach reference of this RemoteModuleClass to the returned DataStream. This ensures
+            # the GRPC Channel won't get closed until after the DataStream has been cleaned up
+            return_stream = DataStream(stream_parser)
+            return_stream._source = response.content
+            return return_stream
 
         if response_dm_class.supports_file_operations:
             return response_dm_class.from_file(response.text)
@@ -486,27 +424,28 @@ class _RemoteModelBaseClass(ModuleBase):
 
             grpc_request = input_stream_parser()
         else:
+            # If not streaming then construct a simple request
             grpc_request = request_dm_class(*args, **kwargs).to_proto()
 
+        request_kwargs = {
+            "metadata": [(self._model_key, self._model_name)],
+            "timeout": self._connection.timeout,
+        }
         # Send RPC request with or without streaming
         if method.output_streaming:
 
             def output_stream_parser():
                 """Helper function to stream result objects"""
-                for proto in service_rpc(
-                    grpc_request,
-                    metadata=[(self._model_key, self._model_name)],
-                    timeout=self._timeout,
-                ):
+                for proto in service_rpc(grpc_request, **request_kwargs):
                     yield response_dm_class.from_proto(proto)
 
-            return DataStream(output_stream_parser)
+            # Attach reference of this RemoteModuleClass to the returned DataStream. This ensures
+            # the GRPC Channel won't get closed until after the DataStream has been cleaned up
+            return_stream = DataStream(output_stream_parser)
+            return_stream._source = self
+            return return_stream
         else:
-            response = service_rpc(
-                grpc_request,
-                metadata=[(self._model_key, self._model_name)],
-                timeout=self._timeout,
-            )
+            response = service_rpc(grpc_request, **request_kwargs)
             return response_dm_class.from_proto(response)
 
     @property
@@ -524,14 +463,14 @@ class _RemoteModelBaseClass(ModuleBase):
 
             # Gather grpc configuration
             target = self._get_remote_target()
-            options = list(self._options.items())
+            options = list(self._connection.options.items())
 
             # Generate secure channel
-            if self._tls_enabled:
+            if self._tls.enabled:
                 grpc_credentials = grpc.ssl_channel_credentials(
-                    root_certificates=self._ca_data,
-                    private_key=self._mtls_key_data,
-                    certificate_chain=self._mtls_cert_data,
+                    root_certificates=self._tls.ca_file_data,
+                    private_key=self._tls.key_file_data,
+                    certificate_chain=self._tls.cert_file_data,
                 )
                 channel = grpc.secure_channel(
                     target, credentials=grpc_credentials, options=options
@@ -545,18 +484,18 @@ class _RemoteModelBaseClass(ModuleBase):
     @staticmethod
     def _close_grpc_channel(channel: grpc.Channel):
         """Helper function to close a grpc channel. This should
-        be call at program exit."""
+        be called on class deletion."""
         channel.close()
 
     ### Generic Helper Functions
 
     def _get_remote_target(self) -> str:
         """Get the current remote target"""
-        target_string = f"{self._hostname}:{self._port}"
+        target_string = f"{self._connection.hostname}:{self._connection.port}"
         if self._protocol == "grpc":
             return target_string
         else:
-            if self._tls_enabled:
+            if self._tls.enabled:
                 return f"https://{target_string}"
             else:
                 return f"http://{target_string}"

@@ -57,6 +57,7 @@ def temp_finder(
     multi_finder_name="remote",
     multi_finder_cfg=None,
     connection_cfg=None,
+    protocol="grpc",
 ):
     # Provide defaults
     if not multi_finder_cfg:
@@ -65,10 +66,12 @@ def temp_finder(
     if connection_cfg:
         multi_finder_cfg["connection"] = connection_cfg
 
+    if "protocol" not in multi_finder_cfg:
+        multi_finder_cfg["protocol"] = protocol
+
     if "connection" not in multi_finder_cfg:
         multi_finder_cfg["connection"] = {
             "hostname": "localhost",
-            "protocol": "grpc",
         }
 
     yield RemoteModelFinder(Config(multi_finder_cfg), multi_finder_name)
@@ -89,7 +92,7 @@ def test_remote_finder_static_model(sample_module_id):
         # Check RemoteModuleConfig has the right type, name, and task methods
         assert isinstance(config, RemoteModuleConfig)
         assert sample_module_id in config.module_id
-        assert "sample" == config.model_path
+        assert config.model_path == "sample"
         assert len(config.task_methods) == 1
         # Assert how many SampleTask methods there are
         assert len(config.task_methods[0][1]) == 4
@@ -98,30 +101,59 @@ def test_remote_finder_static_model(sample_module_id):
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
 def test_remote_finder_multi_task_model(multi_task_model_id, open_port, protocol):
     """Test to ensure model finder works for models with multiple tasks"""
-    with runtime_test_server(open_port, protocol=protocol) as server:
-        with temp_finder(
-            connection_cfg={
-                "hostname": "localhost",
-                "port": server.port,
-                "protocol": protocol,
-            }
-        ) as finder:
-            config = finder.find_model(multi_task_model_id)
-            # Check RemoteModuleConfig has the right type, name, and task methods
-            assert isinstance(config, RemoteModuleConfig)
-            assert len(config.task_methods) == 2
+    with runtime_test_server(open_port, protocol=protocol) as server, temp_finder(
+        connection_cfg={
+            "hostname": "localhost",
+            "port": server.port,
+        },
+        protocol=protocol,
+    ) as finder:
+        config = finder.find_model(multi_task_model_id)
+        # Check RemoteModuleConfig has the right type, name, and task methods
+        assert isinstance(config, RemoteModuleConfig)
+        assert len(config.task_methods) == 2
 
 
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
 def test_remote_finder_discover_models(sample_task_model_id, open_port, protocol):
     """Test to ensure discovering models works for http"""
-    with runtime_test_server(open_port, protocol=protocol) as server:
-        with temp_finder(
+    with runtime_test_server(open_port, protocol=protocol) as server, temp_finder(
+        connection_cfg={
+            "hostname": "localhost",
+            "port": server.port,
+        },
+        protocol=protocol,
+    ) as finder:
+        config = finder.find_model(sample_task_model_id)
+        assert isinstance(config, RemoteModuleConfig)
+        assert sample_task_model_id == config.model_path
+        assert len(config.task_methods) == 1
+        # Assert how many SampleTask methods there are
+        assert len(config.task_methods[0][1]) == 4
+
+
+@pytest.mark.parametrize("protocol", ["grpc", "http"])
+def test_remote_finder_discover_mtls_models(sample_task_model_id, open_port, protocol):
+    """Test to ensure discovering models works for https with MTLS and secure CA"""
+    with generate_tls_configs(
+        open_port, tls=True, mtls=True
+    ) as config_overrides:  # noqa: SIM117
+        with runtime_test_server(
+            open_port,
+            protocol=protocol,
+            tls_config_override=config_overrides if protocol == "http" else None,
+        ) as server_with_tls, temp_finder(
             connection_cfg={
                 "hostname": "localhost",
-                "port": server.port,
-                "protocol": protocol,
-            }
+                "port": server_with_tls.port,
+                "tls": {
+                    "enabled": True,
+                    "ca_file": config_overrides["use_in_test"]["ca_cert"],
+                    "cert_file": config_overrides["use_in_test"]["client_cert"],
+                    "key_file": config_overrides["use_in_test"]["client_key"],
+                },
+            },
+            protocol=protocol,
         ) as finder:
             config = finder.find_model(sample_task_model_id)
             assert isinstance(config, RemoteModuleConfig)
@@ -132,57 +164,53 @@ def test_remote_finder_discover_models(sample_task_model_id, open_port, protocol
 
 
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
-def test_remote_finder_discover_mtls_models(sample_task_model_id, open_port, protocol):
-    """Test to ensure discovering models works for https with MTLS and secure CA"""
-    with generate_tls_configs(open_port, tls=True, mtls=True) as config_overrides:
+def test_remote_finder_fail_ca_check(sample_task_model_id, open_port, protocol):
+    """Test to ensure discovering models fails when the client doesn't trust the CA"""
+    with generate_tls_configs(
+        open_port, tls=True, mtls=False
+    ) as config_overrides:  # noqa: SIM117
         with runtime_test_server(
             open_port,
             protocol=protocol,
             tls_config_override=config_overrides if protocol == "http" else None,
-        ) as server_with_tls:
-            with temp_finder(
-                connection_cfg={
-                    "hostname": "localhost",
-                    "port": server_with_tls.port,
-                    "protocol": protocol,
-                    "tls": {
-                        "enabled": True,
-                        "ca_file": config_overrides["use_in_test"]["ca_cert"],
-                        "cert_file": config_overrides["use_in_test"]["client_cert"],
-                        "key_file": config_overrides["use_in_test"]["client_key"],
-                    },
-                }
-            ) as finder:
-                config = finder.find_model(sample_task_model_id)
-                assert isinstance(config, RemoteModuleConfig)
-                assert sample_task_model_id == config.model_path
-                assert len(config.task_methods) == 1
-                # Assert how many SampleTask methods there are
-                assert len(config.task_methods[0][1]) == 4
+        ) as server_with_tls, temp_finder(
+            connection_cfg={
+                "hostname": "localhost",
+                "port": server_with_tls.port,
+                "tls": {
+                    "enabled": True,
+                    "insecure_verify": False,
+                },
+            },
+            protocol=protocol,
+        ) as finder:
+            with pytest.raises(KeyError):
+                finder.find_model(sample_task_model_id)
 
 
 def test_remote_finder_discover_https_insecure_models(sample_task_model_id, open_port):
     """Test to ensure discovering models works for https without checking certs"""
-    with generate_tls_configs(open_port, tls=True, mtls=False) as config_overrides:
+    with generate_tls_configs(
+        open_port, tls=True, mtls=False
+    ) as config_overrides:  # noqa: SIM117
         with runtime_test_server(
             open_port,
             protocol="http",
             tls_config_override=config_overrides,
-        ) as server_with_tls:
-            with temp_finder(
-                connection_cfg={
-                    "hostname": "localhost",
-                    "port": server_with_tls.port,
-                    "protocol": "http",
-                    "tls": {"enabled": True, "insecure_verify": True},
-                }
-            ) as finder:
-                config = finder.find_model(sample_task_model_id)
-                assert isinstance(config, RemoteModuleConfig)
-                assert sample_task_model_id == config.model_path
-                assert len(config.task_methods) == 1
-                # Assert how many SampleTask methods there are
-                assert len(config.task_methods[0][1]) == 4
+        ) as server_with_tls, temp_finder(
+            connection_cfg={
+                "hostname": "localhost",
+                "port": server_with_tls.port,
+                "tls": {"enabled": True, "insecure_verify": True},
+            },
+            protocol="http",
+        ) as finder:
+            config = finder.find_model(sample_task_model_id)
+            assert isinstance(config, RemoteModuleConfig)
+            assert sample_task_model_id == config.model_path
+            assert len(config.task_methods) == 1
+            # Assert how many SampleTask methods there are
+            assert len(config.task_methods[0][1]) == 4
 
 
 def test_remote_finder_discover_grpc_insecure_models():
@@ -194,9 +222,9 @@ def test_remote_finder_discover_grpc_insecure_models():
                     "connection": {
                         "hostname": "localhost",
                         "port": 80,
-                        "protocol": "grpc",
                         "tls": {"enabled": True, "insecure_verify": True},
-                    }
+                    },
+                    "protocol": "grpc",
                 }
             ),
             "remote_finder",
@@ -205,7 +233,7 @@ def test_remote_finder_discover_grpc_insecure_models():
 
 def test_remote_finder_not_found():
     """Test to ensure error is raised when no model is found"""
-    with temp_finder(
+    with temp_finder(  # noqa: SIM117
         multi_finder_cfg={"discover_models": False, "supported_models": {"wrong": "id"}}
     ) as finder:
         with pytest.raises(KeyError):

@@ -25,10 +25,10 @@ from aconfig import Config
 from caikit.core.data_model.streams.data_stream import DataStream
 from caikit.core.model_management.remote_model_initializer import RemoteModelInitializer
 from caikit.core.modules import ModuleBase, RemoteModuleConfig
+from caikit.interfaces.common.data_model.remote import ConnectionInfo, ConnectionTlsInfo
+from caikit.interfaces.runtime.service import MODEL_MESH_MODEL_ID_KEY
 from caikit.runtime.model_management.model_manager import ModelManager
-from caikit.runtime.service_factory import get_train_params, get_train_request
 from sample_lib.data_model import SampleInputType, SampleOutputType, SampleTrainingType
-from sample_lib.modules.sample_task.sample_implementation import SampleModule
 from tests.conftest import random_test_id
 from tests.fixtures import Fixtures  # noqa: F401
 from tests.runtime.conftest import multi_task_model_id  # noqa: F401
@@ -48,18 +48,24 @@ def test_remote_initializer_insecure_predict(sample_task_model_id, open_port, pr
     )
 
     # Construct Remote Module Config
-    connection_info = {"hostname": "localhost", "port": open_port, "protocol": protocol}
+    connection_info = ConnectionInfo(hostname="localhost", port=open_port)
     remote_config = RemoteModuleConfig.load_from_module(
-        local_module_class, connection_info, sample_task_model_id
+        local_module_class,
+        connection_info,
+        protocol,
+        MODEL_MESH_MODEL_ID_KEY,
+        sample_task_model_id,
     )
     # Set random module_id so tests don't conflict
     remote_config.module_id = random_test_id()
 
     with runtime_test_server(open_port, protocol=protocol):
+        # Construct initializer and RemoteModule
         remote_initializer = RemoteModelInitializer(Config({}), "test")
         remote_model = remote_initializer.init(remote_config)
         assert isinstance(remote_model, ModuleBase)
 
+        # Run RemoteModule Request
         model_result = remote_model.run(SampleInputType(name="Test"), throw=False)
         assert isinstance(model_result, SampleOutputType)
         assert model_result.greeting == "Hello Test"
@@ -72,24 +78,26 @@ def test_remote_initializer_input_streaming(sample_task_model_id, open_port, pro
     local_module_class = (
         ModelManager.get_instance().retrieve_model(sample_task_model_id).__class__
     )
-    remote_initializer = RemoteModelInitializer(Config({}), "test")
+
+    # Construct Remote Module Config
+    connection_info = ConnectionInfo(hostname="localhost", port=open_port)
+    remote_config = RemoteModuleConfig.load_from_module(
+        local_module_class,
+        connection_info,
+        protocol,
+        MODEL_MESH_MODEL_ID_KEY,
+        sample_task_model_id,
+    )
+    # Set random module_id so tests don't conflict
+    remote_config.module_id = random_test_id()
 
     with runtime_test_server(open_port, protocol=protocol):
-        # Construct Remote Module Config
-        connection_info = {
-            "hostname": "localhost",
-            "port": open_port,
-            "protocol": protocol,
-        }
-        remote_config = RemoteModuleConfig.load_from_module(
-            local_module_class, connection_info, sample_task_model_id
-        )
-        # Set random module_id so tests don't conflict
-        remote_config.module_id = random_test_id()
-
+        # Construct remote initializer and RemoteModule class
+        remote_initializer = RemoteModelInitializer(Config({}), "test")
         remote_model = remote_initializer.init(remote_config)
         assert isinstance(remote_model, ModuleBase)
 
+        # Construct input data stream
         stream_input = DataStream.from_iterable(
             [
                 SampleInputType(name="Test1"),
@@ -97,6 +105,8 @@ def test_remote_initializer_input_streaming(sample_task_model_id, open_port, pro
                 SampleInputType(name="Test3"),
             ]
         )
+
+        # Run inference and assert results
         model_result = remote_model.run_stream_in(stream_input, greeting="Hello Tests ")
         assert isinstance(model_result, SampleOutputType)
         assert model_result.greeting == "Hello Tests Test1,Test2,Test3"
@@ -108,24 +118,25 @@ def test_remote_initializer_output_streaming(sample_task_model_id, open_port, pr
     local_module_class = (
         ModelManager.get_instance().retrieve_model(sample_task_model_id).__class__
     )
-    remote_initializer = RemoteModelInitializer(Config({}), "test")
+    # Construct Remote Module Config
+    connection_info = ConnectionInfo(hostname="localhost", port=open_port)
+    remote_config = RemoteModuleConfig.load_from_module(
+        local_module_class,
+        connection_info,
+        protocol,
+        MODEL_MESH_MODEL_ID_KEY,
+        sample_task_model_id,
+    )
+    # Set random module_id so tests don't conflict
+    remote_config.module_id = random_test_id()
 
     with runtime_test_server(open_port, protocol=protocol):
-        # Construct Remote Module Config
-        connection_info = {
-            "hostname": "localhost",
-            "port": open_port,
-            "protocol": protocol,
-        }
-        remote_config = RemoteModuleConfig.load_from_module(
-            local_module_class, connection_info, sample_task_model_id
-        )
-        # Set random module_id so tests don't conflict
-        remote_config.module_id = random_test_id()
-
+        # Construct remote initializer and RemoteModule class
+        remote_initializer = RemoteModelInitializer(Config({}), "test")
         remote_model = remote_initializer.init(remote_config)
         assert isinstance(remote_model, ModuleBase)
 
+        # Run output streaming inference and assert all results work as expected
         model_result = remote_model.run_stream_out(
             SampleInputType(name="Test"), err_stream=False
         )
@@ -141,32 +152,38 @@ def test_remote_initializer_streaming_deleted_model(
     sample_task_model_id, open_port, protocol
 ):
     """Test to ensure Remote Initializer is still able to stream outputs after the RemoteModelBase
-    has been deleted/out of scope"""
+    has been deleted or moved out of scope"""
     local_module_class = (
         ModelManager.get_instance().retrieve_model(sample_task_model_id).__class__
     )
-    remote_initializer = RemoteModelInitializer(Config({}), "test")
+    # Construct Remote Module Config
+    connection_info = ConnectionInfo(hostname="localhost", port=open_port)
+    remote_config = RemoteModuleConfig.load_from_module(
+        local_module_class,
+        connection_info,
+        protocol,
+        MODEL_MESH_MODEL_ID_KEY,
+        sample_task_model_id,
+    )
+    # Set random module_id so tests don't conflict
+    remote_config.module_id = random_test_id()
 
     with runtime_test_server(open_port, protocol=protocol):
-        # Construct Remote Module Config
-        connection_info = {
-            "hostname": "localhost",
-            "port": open_port,
-            "protocol": protocol,
-        }
-        remote_config = RemoteModuleConfig.load_from_module(
-            local_module_class, connection_info, sample_task_model_id
-        )
-        # Set random module_id so tests don't conflict
-        remote_config.module_id = random_test_id()
-
+        # Initialize Remote Initializer and RemoteModuleBase
+        remote_initializer = RemoteModelInitializer(Config({}), "test")
         remote_model = remote_initializer.init(remote_config)
         assert isinstance(remote_model, ModuleBase)
 
+        # Run output stream
         model_result = remote_model.run_stream_out(
             SampleInputType(name="Test"), err_stream=False
         )
         assert isinstance(model_result, DataStream)
+
+        # Get channel ref if in grpc
+        _channel_ref = None
+        if protocol == "grpc":
+            _channel_ref = remote_model._grpc_channel
 
         # Delete Model Object
         del remote_model
@@ -176,6 +193,15 @@ def test_remote_initializer_streaming_deleted_model(
         assert len(stream_results) == 10
         for item in stream_results:
             assert item.greeting == "Hello Test stream"
+
+        # Delete ref to Data Stream
+        del model_result
+
+        # Assert grpc channel has been closed
+        if protocol == "grpc":
+            with pytest.raises(ValueError) as exp:
+                _channel_ref._channel.check_connectivity_state(False)
+            assert "Channel closed!" in str(exp)
 
 
 # Only GRPC Supports bidi streams
@@ -187,24 +213,25 @@ def test_remote_initializer_input_output_streaming(
     local_module_class = (
         ModelManager.get_instance().retrieve_model(sample_task_model_id).__class__
     )
-    remote_initializer = RemoteModelInitializer(Config({}), "test")
+    # Construct Remote Module Config
+    connection_info = ConnectionInfo(hostname="localhost", port=open_port)
+    remote_config = RemoteModuleConfig.load_from_module(
+        local_module_class,
+        connection_info,
+        protocol,
+        MODEL_MESH_MODEL_ID_KEY,
+        sample_task_model_id,
+    )
+    # Set random module_id so tests don't conflict
+    remote_config.module_id = random_test_id()
 
     with runtime_test_server(open_port, protocol=protocol):
-        # Construct Remote Module Config
-        connection_info = {
-            "hostname": "localhost",
-            "port": open_port,
-            "protocol": protocol,
-        }
-        remote_config = RemoteModuleConfig.load_from_module(
-            local_module_class, connection_info, sample_task_model_id
-        )
-        # Set random module_id so tests don't conflict
-        remote_config.module_id = random_test_id()
-
+        # Construct Remote Initializer and RemoteModuleBase
+        remote_initializer = RemoteModelInitializer(Config({}), "test")
         remote_model = remote_initializer.init(remote_config)
         assert isinstance(remote_model, ModuleBase)
 
+        # Construct input stream
         stream_input = DataStream.from_iterable(
             [
                 SampleInputType(name="Test1"),
@@ -212,7 +239,11 @@ def test_remote_initializer_input_output_streaming(
                 SampleInputType(name="Test3"),
             ]
         )
+
+        # Send inference request
         model_result = remote_model.run_bidi_stream(stream_input)
+
+        # Assert output stream can be read
         assert isinstance(model_result, DataStream)
         stream_results = [item.greeting for item in model_result]
         assert len(stream_results) == 3
@@ -225,28 +256,29 @@ def test_remote_initializer_input_output_streaming(
 
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
 def test_remote_initializer_train(sample_task_model_id, open_port, protocol):
-    """Test to ensure Remote Initializer works when streaming outputs"""
+    """Test to ensure Remote Initializer works when training with streaming inputs"""
     local_module_class = (
         ModelManager.get_instance().retrieve_model(sample_task_model_id).__class__
     )
-    remote_initializer = RemoteModelInitializer(Config({}), "test")
+    # Construct Remote Module Config
+    connection_info = ConnectionInfo(hostname="localhost", port=open_port)
+    remote_config = RemoteModuleConfig.load_from_module(
+        local_module_class,
+        connection_info,
+        protocol,
+        MODEL_MESH_MODEL_ID_KEY,
+        sample_task_model_id,
+    )
+    # Set random module_id so tests don't conflict
+    remote_config.module_id = random_test_id()
 
     with runtime_test_server(open_port, protocol=protocol):
-        # Construct Remote Module Config
-        connection_info = {
-            "hostname": "localhost",
-            "port": open_port,
-            "protocol": protocol,
-        }
-        remote_config = RemoteModuleConfig.load_from_module(
-            local_module_class, connection_info, sample_task_model_id
-        )
-        # Set random module_id so tests don't conflict
-        remote_config.module_id = random_test_id()
-
+        # Construct Remote Initializer and RemoteModuleBase
+        remote_initializer = RemoteModelInitializer(Config({}), "test")
         remote_model = remote_initializer.init(remote_config)
         assert isinstance(remote_model, ModuleBase)
 
+        # Construct Train request with stream types
         stream_type = (
             caikit.interfaces.common.data_model.DataStreamSourceSampleTrainingType
         )
@@ -256,6 +288,7 @@ def test_remote_initializer_train(sample_task_model_id, open_port, protocol):
             )
         )
 
+        # Train module
         model_result = remote_model.train(
             training_data=training_data, union_list=["str", "sequence"]
         )
@@ -268,38 +301,43 @@ def test_remote_initializer_mtls_predict(sample_task_model_id, open_port, protoc
     local_module_class = (
         ModelManager.get_instance().retrieve_model(sample_task_model_id).__class__
     )
-    remote_initializer = RemoteModelInitializer(Config({}), "test")
 
     with generate_tls_configs(open_port, tls=True, mtls=True) as config_overrides:
+        # Construct Remote Module Config with TLS
+        connection_info = ConnectionInfo(
+            hostname="localhost",
+            port=open_port,
+            tls=ConnectionTlsInfo(
+                enabled=True,
+                ca_file=config_overrides["use_in_test"]["ca_cert"],
+                cert_file=config_overrides["use_in_test"]["client_cert"],
+                key_file=config_overrides["use_in_test"]["client_key"],
+            ),
+        )
+        remote_config = RemoteModuleConfig.load_from_module(
+            local_module_class,
+            connection_info,
+            protocol,
+            MODEL_MESH_MODEL_ID_KEY,
+            sample_task_model_id,
+        )
+        # Set random module_id so tests don't conflict
+        remote_config.module_id = random_test_id()
+
         with runtime_test_server(
             open_port,
             protocol=protocol,
             tls_config_override=config_overrides if protocol == "http" else None,
         ):
-            # Construct Remote Module Config
-            connection_info = {
-                "hostname": "localhost",
-                "port": open_port,
-                "protocol": protocol,
-                "tls": {
-                    "enabled": True,
-                    "ca_file": config_overrides["use_in_test"]["ca_cert"],
-                    "cert_file": config_overrides["use_in_test"]["client_cert"],
-                    "key_file": config_overrides["use_in_test"]["client_key"],
-                },
-            }
-            remote_config = RemoteModuleConfig.load_from_module(
-                local_module_class, connection_info, sample_task_model_id
-            )
-            # Set random module_id so tests don't conflict
-            remote_config.module_id = random_test_id()
-
+            # Construct Remote Initializer and RemoteModuleBase
+            remote_initializer = RemoteModelInitializer(Config({}), "test")
             remote_model = remote_initializer.init(remote_config)
             assert isinstance(remote_model, ModuleBase)
 
+            # Run inference and assert response is correct
             model_result = remote_model.run(SampleInputType(name="Test"))
             assert isinstance(model_result, SampleOutputType)
-            assert "Hello Test" == model_result.greeting
+            assert model_result.greeting == "Hello Test"
 
 
 def test_remote_initializer_https_unverified_predict(sample_task_model_id, open_port):
@@ -307,33 +345,35 @@ def test_remote_initializer_https_unverified_predict(sample_task_model_id, open_
     local_module_class = (
         ModelManager.get_instance().retrieve_model(sample_task_model_id).__class__
     )
-    remote_initializer = RemoteModelInitializer(Config({}), "test")
 
     with generate_tls_configs(open_port, tls=True, mtls=False) as config_overrides:
+        # Construct Remote Module Config
+        connection_info = ConnectionInfo(
+            hostname="localhost",
+            port=open_port,
+            tls=ConnectionTlsInfo(enabled=True, insecure_verify=True),
+        )
+        remote_config = RemoteModuleConfig.load_from_module(
+            local_module_class,
+            connection_info,
+            "http",
+            MODEL_MESH_MODEL_ID_KEY,
+            sample_task_model_id,
+        )
+        # Set random module_id so tests don't conflict
+        remote_config.module_id = random_test_id()
+
         with runtime_test_server(
             open_port,
             protocol="http",
             tls_config_override=config_overrides,
         ):
-            # Construct Remote Module Config
-            connection_info = {
-                "hostname": "localhost",
-                "port": open_port,
-                "protocol": "http",
-                "tls": {
-                    "enabled": True,
-                    "insecure_verify": True,
-                },
-            }
-            remote_config = RemoteModuleConfig.load_from_module(
-                local_module_class, connection_info, sample_task_model_id
-            )
-            # Set random module_id so tests don't conflict
-            remote_config.module_id = random_test_id()
-
+            # Construct Remote Initializer and RemoteModuleBase
+            remote_initializer = RemoteModelInitializer(Config({}), "test")
             remote_model = remote_initializer.init(remote_config)
             assert isinstance(remote_model, ModuleBase)
 
+            # Assert running inference works as expected
             model_result = remote_model.run(SampleInputType(name="Test"))
             assert isinstance(model_result, SampleOutputType)
             assert model_result.greeting == "Hello Test"
@@ -344,25 +384,26 @@ def test_remote_initializer_grpc_unverified_predict(sample_task_model_id, open_p
     local_module_class = (
         ModelManager.get_instance().retrieve_model(sample_task_model_id).__class__
     )
-    remote_initializer = RemoteModelInitializer(Config({}), "test")
 
-    with generate_tls_configs(open_port, tls=True, mtls=False):
-        with runtime_test_server(open_port, protocol="grpc"):
-            # Construct Remote Module Config
-            connection_info = {
-                "hostname": "localhost",
-                "port": open_port,
-                "protocol": "grpc",
-                "tls": {
-                    "enabled": True,
-                    "insecure_verify": True,
-                },
-            }
-            remote_config = RemoteModuleConfig.load_from_module(
-                local_module_class, connection_info, sample_task_model_id
-            )
-            # Set random module_id so tests don't conflict
-            remote_config.module_id = random_test_id()
+    with generate_tls_configs(open_port, tls=True, mtls=False), runtime_test_server(
+        open_port, protocol="grpc"
+    ):
+        # Construct Remote Module Config
+        connection_info = ConnectionInfo(
+            hostname="localhost",
+            port=open_port,
+            tls=ConnectionTlsInfo(enabled=True, insecure_verify=True),
+        )
+        remote_config = RemoteModuleConfig.load_from_module(
+            local_module_class,
+            connection_info,
+            "grpc",
+            MODEL_MESH_MODEL_ID_KEY,
+            sample_task_model_id,
+        )
+        # Set random module_id so tests don't conflict
+        remote_config.module_id = random_test_id()
 
-            with pytest.raises(ValueError):
-                remote_initializer.init(remote_config)
+        with pytest.raises(ValueError):
+            remote_initializer = RemoteModelInitializer(Config({}), "test")
+            remote_initializer.init(remote_config)
