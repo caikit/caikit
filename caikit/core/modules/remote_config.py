@@ -44,8 +44,7 @@ error = error_handler.get(log)
 
 @dataclass
 class RemoteRPCDescriptor:
-    """Helper dataclass to store information about an RPC. This includes the method signature, request&response
-    data objects and the RPC name"""
+    """Helper dataclass to store information about a Remote RPC."""
 
     # full signature for this RPC
     signature: CaikitMethodSignature
@@ -100,8 +99,8 @@ class RemoteModuleConfig(ModuleConfig):
 
         Args:
             module_reference: Union[str, Type[ModuleBase]]:
-                Module_reference should be one of the following: the id of the locally loaded module,
-                ,or a module class
+                Module_reference should either be the id of the locally loaded module,
+                or a module class
 
             model_path (str):
                 The path used to load this module

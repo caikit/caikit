@@ -112,8 +112,9 @@ class RemoteModelInitializer(ModelInitializerBase):
 
 
 class _RemoteModelBaseClass(ModuleBase):
-    """Private class to act as the base for remote modules. This class will be subclassed and mutated by
-    construct_remote_module_class to make it have the same functions and parameters as the source module."""
+    """Private class to act as the base for remote modules. This class will be subclassed and
+    mutated by construct_remote_module_class to make it have the same functions and parameters
+    as the source module."""
 
     def __init__(
         self,

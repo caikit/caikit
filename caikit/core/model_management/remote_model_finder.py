@@ -21,11 +21,14 @@ model_management:
         <finder name>:
             type: REMOTE
             config:
-                connection: ConnectionInfo
-                model_key: Optional[str]=MODEL_MESH_MODEL_ID_KEY <Optional setting to override the grpc model name>
+                connection: ConnectionInfo <Required Connection Information>
+                model_key: Optional[str]=MODEL_MESH_MODEL_ID_KEY <Optional setting to override the 
+                    grpc model name>
                 protocol: Optional[str]="grpc" <protocol the remote server is using (grpc or http)>
-                discover_models: Optional[bool]=True <bool to automatically discover remote models via the /info/models endpoint>
-                supported_models: Optional[Dict[str, str]]={} <mapping of model names to module_ids that this remote supports>
+                discover_models: Optional[bool]=True <bool to automatically discover remote models
+                    via the /info/models endpoint>
+                supported_models: Optional[Dict[str, str]]={} <mapping of model names to module_ids 
+                    that this remote supports. This is automatically populated by discovery_models>
                     <model_path>: <module_id>
 
 """
@@ -92,7 +95,8 @@ class RemoteModelFinder(ModelFinderBase):
             error.value_check(
                 "<COR74451567E>",
                 not self._tls.insecure_verify,
-                "GRPC does not support insecure TLS connections. Please provide a valid CA certificate",
+                "GRPC does not support insecure TLS connections."
+                "Please provide a valid CA certificate",
             )
 
         # Type/Value check model parameters
