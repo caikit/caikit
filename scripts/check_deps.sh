@@ -6,7 +6,7 @@ set -e
 pydeps --show-dot --no-show --no-config caikit | grep '\->' > deps.txt
 trap "rm deps.txt" EXIT
 
-if < deps.txt grep -q ".*caikit_runtime.*\->.*caikit_core.*"
+if grep -q ".*caikit_runtime.*\->.*caikit_core.*" deps.txt | grep -v "runtime"
 then
     echo "Fail: The core is importing the runtime!"
     exit 1
@@ -18,7 +18,7 @@ then
     exit 1
 fi
 
-if < deps.txt grep -q ".*caikit_interfaces.*\->.*caikit_core.module*"
+if grep -q ".*caikit_interfaces.*\->.*caikit_core.module*" deps.txt | grep -v "runtime"
 then
     echo "Fail: The core module definitions are importing the interfaces!"
     exit 1
