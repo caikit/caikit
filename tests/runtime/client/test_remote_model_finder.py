@@ -25,8 +25,7 @@ import pytest
 from aconfig import Config
 
 # Local
-from caikit.core.model_management.remote_model_finder import RemoteModelFinder
-from caikit.core.modules import RemoteModuleConfig
+from caikit.runtime.client import RemoteModelFinder, RemoteModuleConfig
 from caikit.runtime.model_management.model_manager import ModelManager
 from tests.conftest import random_test_id
 from tests.fixtures import Fixtures

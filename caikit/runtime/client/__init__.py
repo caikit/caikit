@@ -11,10 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 # Local
-from .base import ModuleBase
-from .config import ModuleConfig
-from .decorator import module
-from .loader import ModuleLoader
-from .saver import ModuleSaver
+from .remote_config import RemoteModuleConfig
+from .remote_model_finder import RemoteModelFinder
+from .remote_model_initializer import RemoteModelInitializer
+from .remote_module_base import RemoteModelBaseClass

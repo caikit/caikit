@@ -46,9 +46,9 @@ import alog
 # Local
 from caikit.core.exceptions import error_handler
 from caikit.core.model_management.model_finder_base import ModelFinderBase
-from caikit.core.modules import RemoteModuleConfig
 from caikit.interfaces.common.data_model.remote import ConnectionInfo, ConnectionTlsInfo
 from caikit.interfaces.runtime.data_model import ModelInfoRequest, ModelInfoResponse
+from caikit.runtime.client.remote_config import RemoteModuleConfig
 from caikit.runtime.names import (
     MODEL_MESH_MODEL_ID_KEY,
     MODELS_INFO_ENDPOINT,

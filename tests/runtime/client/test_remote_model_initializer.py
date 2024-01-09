@@ -23,9 +23,9 @@ from aconfig import Config
 
 # Local
 from caikit.core.data_model.streams.data_stream import DataStream
-from caikit.core.model_management.remote_model_initializer import RemoteModelInitializer
-from caikit.core.modules import ModuleBase, RemoteModuleConfig
+from caikit.core.modules import ModuleBase
 from caikit.interfaces.common.data_model.remote import ConnectionInfo, ConnectionTlsInfo
+from caikit.runtime.client import RemoteModelInitializer, RemoteModuleConfig
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.names import MODEL_MESH_MODEL_ID_KEY
 from sample_lib.data_model import SampleInputType, SampleOutputType, SampleTrainingType
@@ -394,16 +394,17 @@ def test_remote_initializer_grpc_unverified_predict(sample_task_model_id, open_p
             port=open_port,
             tls=ConnectionTlsInfo(enabled=True, insecure_verify=True),
         )
-        remote_config = RemoteModuleConfig.load_from_module(
-            local_module_class,
-            connection_info,
-            "grpc",
-            MODEL_MESH_MODEL_ID_KEY,
-            sample_task_model_id,
-        )
-        # Set random module_id so tests don't conflict
-        remote_config.module_id = random_test_id()
 
         with pytest.raises(ValueError):
+            remote_config = RemoteModuleConfig.load_from_module(
+                local_module_class,
+                connection_info,
+                "grpc",
+                MODEL_MESH_MODEL_ID_KEY,
+                sample_task_model_id,
+            )
+            # Set random module_id so tests don't conflict
+            remote_config.module_id = random_test_id()
+
             remote_initializer = RemoteModelInitializer(Config({}), "test")
             remote_initializer.init(remote_config)

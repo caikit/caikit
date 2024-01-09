@@ -25,7 +25,7 @@ model_management:
 # Standard
 from collections import OrderedDict
 from threading import Lock
-from typing import Any, Callable, Dict, Generator, List, Optional, Type
+from typing import Any, Callable, Dict, Generator, List, Type
 import copy
 import json
 import uuid
@@ -35,7 +35,6 @@ import grpc
 import requests
 
 # First Party
-import aconfig
 import alog
 
 # Local
@@ -46,11 +45,10 @@ from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
     CaikitCoreStatusCode,
 )
-from caikit.core.model_management.model_initializer_base import ModelInitializerBase
 from caikit.core.modules import ModuleBase, module
-from caikit.core.modules.remote_config import RemoteModuleConfig, RemoteRPCDescriptor
 from caikit.core.task import TaskBase
 from caikit.interfaces.common.data_model.remote import ConnectionInfo
+from caikit.runtime.client.remote_config import RemoteModuleConfig, RemoteRPCDescriptor
 from caikit.runtime.names import (
     MODEL_ID,
     OPTIONAL_INPUTS_KEY,
@@ -60,58 +58,11 @@ from caikit.runtime.names import (
     get_http_route_name,
 )
 
-log = alog.use_channel("RINIT")
+log = alog.use_channel("RMBASE")
 error = error_handler.get(log)
 
 
-class RemoteModelInitializer(ModelInitializerBase):
-    __doc__ = __doc__
-    name = "REMOTE"
-
-    def __init__(self, config: aconfig.Config, instance_name: str):
-        """Construct with the config"""
-        self._instance_name = instance_name
-        self._module_class_map = {}
-
-    def init(self, model_config: RemoteModuleConfig, **kwargs) -> Optional[ModuleBase]:
-        """Given a RemoteModuleConfig, initialize a RemoteModule instance"""
-
-        # Ensure the module config was produced by a RemoteModelFinder
-        error.type_check(
-            "<COR47750753E>", RemoteModuleConfig, model_config=model_config
-        )
-
-        # Construct remote module class if one has not already been created
-        if model_config.module_id not in self._module_class_map:
-            self._module_class_map[
-                model_config.module_id
-            ] = self.construct_module_class(model_config=model_config)
-
-        remote_module_class = self._module_class_map[model_config.module_id]
-        return remote_module_class(
-            model_config.connection,
-            model_config.protocol,
-            model_config.model_key,
-            model_config.model_path,
-        )
-
-    def construct_module_class(
-        self, model_config: RemoteModuleConfig
-    ) -> Type[ModuleBase]:
-        """Helper function to construct a ModuleClass. This is a separate function to allow
-         for easy overloading
-
-         Args:
-             model_config: RemoteModuleConfig
-                The model config to construct the module from
-
-        Returns:
-            module: Type[ModuleBase]
-                The constructed module"""
-        return construct_remote_module_class(model_config)
-
-
-class _RemoteModelBaseClass(ModuleBase):
+class RemoteModelBaseClass(ModuleBase):
     """Private class to act as the base for remote modules. This class will be subclassed and
     mutated by construct_remote_module_class to make it have the same functions and parameters
     as the source module."""
@@ -128,7 +79,7 @@ class _RemoteModelBaseClass(ModuleBase):
 
         self._model_name = model_name
 
-        # Load connection parameters and assert types
+        # Load connection parameters
         self._connection = connection_info
         self._tls = self._connection.tls
         self._protocol = protocol
@@ -137,6 +88,15 @@ class _RemoteModelBaseClass(ModuleBase):
         # Configure GRPC variables and threading lock
         self._channel_lock = Lock()
         self.__grpc_channel = None
+
+        # Assert parameter values
+        if self._protocol == "grpc" and self._tls.enabled:
+            error.value_check(
+                "<COR74451567E>",
+                not self._tls.insecure_verify,
+                "GRPC does not support insecure TLS connections."
+                "Please provide a valid CA certificate",
+            )
 
     def __del__(self):
         """Destructor to ensure channel is cleaned up on deletion"""
@@ -504,12 +464,12 @@ class _RemoteModelBaseClass(ModuleBase):
 
 def construct_remote_module_class(
     model_config: RemoteModuleConfig,
-    model_class: Type[_RemoteModelBaseClass] = _RemoteModelBaseClass,
+    model_class: Type[RemoteModelBaseClass] = RemoteModelBaseClass,
 ) -> Type[ModuleBase]:
     """Factory function to construct unique Remote Module Class."""
 
     # Construct unique class which will have functions attached to it
-    RemoteModelClass: Type[_RemoteModelBaseClass] = type(
+    RemoteModelClass: Type[RemoteModelBaseClass] = type(
         "RemoteModelClass", (model_class,), {}
     )
 

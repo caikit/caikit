@@ -15,6 +15,9 @@
 Global factories for model management
 """
 
+# First Party
+import alog
+
 # Local
 from ..toolkit.factory import ImportableFactory
 from .local_model_finder import LocalModelFinder
@@ -22,8 +25,9 @@ from .local_model_initializer import LocalModelInitializer
 from .local_model_trainer import LocalModelTrainer
 from .multi_model_finder import MultiModelFinder
 from .multi_model_initializer import MultiModelInitializer
-from .remote_model_finder import RemoteModelFinder
-from .remote_model_initializer import RemoteModelInitializer
+
+log = alog.use_channel("MMFACT")
+
 
 # Model trainer factory. A trainer is responsible for performing the train
 # operation against a configured framework connection.
@@ -35,7 +39,14 @@ model_trainer_factory.register(LocalModelTrainer)
 model_finder_factory = ImportableFactory("ModelFinder")
 model_finder_factory.register(LocalModelFinder)
 model_finder_factory.register(MultiModelFinder)
-model_finder_factory.register(RemoteModelFinder)
+try:
+    # Local
+    from caikit.runtime.client import RemoteModelFinder
+
+    model_finder_factory.register(RemoteModelFinder)
+except ImportError:
+    log.debug("Unable to import RemoteModelFinder. Skipping registration")
+
 
 # Model initializer factory. An initializer is responsible for taking a model
 # configuration and preparing the model to be run in a configured runtime
@@ -43,4 +54,10 @@ model_finder_factory.register(RemoteModelFinder)
 model_initializer_factory = ImportableFactory("ModelInitializer")
 model_initializer_factory.register(LocalModelInitializer)
 model_initializer_factory.register(MultiModelInitializer)
-model_initializer_factory.register(RemoteModelInitializer)
+try:
+    # Local
+    from caikit.runtime.client import RemoteModelInitializer
+
+    model_initializer_factory.register(RemoteModelInitializer)
+except ImportError:
+    log.debug("Unable to import RemoteModelInitializer. Skipping registration")
