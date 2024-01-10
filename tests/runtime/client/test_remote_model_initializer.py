@@ -112,7 +112,14 @@ def test_remote_initializer_input_streaming(sample_task_model_id, open_port, pro
         assert model_result.greeting == "Hello Tests Test1,Test2,Test3"
 
 
-@pytest.mark.parametrize("protocol", ["grpc", "http"])
+@pytest.mark.parametrize(
+    "protocol",
+    [
+        "grpc",
+        # Skipping HTTP streaming cases with FastAPI's testclient, pending resolution https://github.com/tiangolo/fastapi/discussions/10518
+        # "http"
+    ],
+)
 def test_remote_initializer_output_streaming(sample_task_model_id, open_port, protocol):
     """Test to ensure Remote Initializer works when streaming outputs"""
     local_module_class = (
@@ -147,7 +154,14 @@ def test_remote_initializer_output_streaming(sample_task_model_id, open_port, pr
             assert item.greeting == "Hello Test stream"
 
 
-@pytest.mark.parametrize("protocol", ["grpc", "http"])
+@pytest.mark.parametrize(
+    "protocol",
+    [
+        "grpc",
+        # Skipping HTTP streaming cases with FastAPI's testclient, pending resolution https://github.com/tiangolo/fastapi/discussions/10518
+        # "http"
+    ],
+)
 def test_remote_initializer_streaming_deleted_model(
     sample_task_model_id, open_port, protocol
 ):
