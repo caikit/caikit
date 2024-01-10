@@ -36,7 +36,7 @@ error = error_handler.get(log)
 
 
 @classmethod
-def to_dict(cls) -> Dict[str, int]:
+def to_dict(cls, use_oneof: bool = False) -> Dict[str, int]:
     """Return a dict representation of the keys and values"""
     if not hasattr(cls, "__dict_repr__"):
         cls.__dict_repr__ = {

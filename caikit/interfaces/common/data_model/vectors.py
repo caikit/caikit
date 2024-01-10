@@ -119,7 +119,7 @@ class Vector1D(DataObjectBase):
         except json_format.ParseError as ex:
             error("<NLP39795399E>", ValueError(ex))
 
-    def to_dict(self) -> dict:
+    def to_dict(self, use_oneof: bool = False) -> dict:
         """to_dict is needed to make things serializable"""
         values = self.data.values if self.data.values is not None else []
         return {

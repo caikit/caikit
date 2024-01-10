@@ -159,7 +159,7 @@ class ValueSequence(DataObjectBase):
         def _convert_np_to_list(self, v):
             return v.tolist()
 
-        def to_dict(self):
+        def to_dict(self, use_oneof: bool = False):
             result = []
             for v in self.values:
                 v_in = self._convert_np_to_list(v) if isinstance(v, np.ndarray) else v
@@ -204,7 +204,7 @@ class ValueSequence(DataObjectBase):
             """Cached class method to enable caching of decoded representations"""
             return [json.loads(v) for v in values]
 
-        def to_dict(self):
+        def to_dict(self, use_oneof: bool = False):
             return {"values": self.__class__.decode_values(tuple(self.values))}
 
         def fill_proto(self, proto):
