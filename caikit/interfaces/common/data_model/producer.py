@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # Standard
+from dataclasses import dataclass
 from typing import List
 
 # First Party
@@ -32,6 +33,7 @@ error = error_handler.get(log)
 
 
 @dataobject(PACKAGE_COMMON)
+@dataclass
 class ProducerPriority(DataObjectBase):
     """An ordered list of ProducerId structures in descending order of priority.
     This is used when handling conflicts between multiple producers of the same
