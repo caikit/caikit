@@ -50,6 +50,7 @@ runtime-grpc = [
 
 runtime-http = [
     "fastapi[all]>=0.100,<1",
+    "requests>=2.28.2,<3",
     "sse-starlette>=1.6.1,<2",
 ]
 
