@@ -45,14 +45,17 @@ model_management:
             config:
                 connection:
                     hostname: str <remote host>
-                    port: int <remote port>
-                    protocol: Optional[str]="grpc" <protocol the remote server is using (grpc or http)>
+                    port: Optional[int]=80/443 <remote port>
                     tls:
                         enabled: Optional[bool]=False <if ssl is enabled on the remote server>
                         ca_file: Optional[str]=None <path to remote ca file>
                         cert_file: Optional[str]=None <path to MTLS cert>
                         key_file: Optional[str]=None <path to MTLS key>
+                        insecure_verify: Optional[bool] = False <if server's cert should be verified>
                     options:  Optional[Dict[str,str]]={} <optional dict of grpc or http configuration options>
+                    timeout: Optional[int]=60 <optional client timeout setting>
+                protocol: Optional[str]="grpc" <protocol the remote server is using (grpc or http)>
+                model_key: Optional[str]=MODEL_MESH_MODEL_ID_KEY <Optional setting to override the grpc model name>
                 discover_models: Optional[bool]=True <bool to automatically discover remote models via the /info/models endpoint> 
                 supported_models: Optional[Dict[str, str]]={} <mapping of model names to module_ids that this remote supports>
                     <model_path>: <module_id>

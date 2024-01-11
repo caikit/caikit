@@ -83,7 +83,7 @@ class RemoteModuleConfig(ModuleConfig):
     module_name: str
     model_path: str
 
-    # Reset reserved_keys, so we can manually add module_path
+    # Reset reserved_keys, so we can manually add model_path
     reserved_keys = []
 
     @classmethod

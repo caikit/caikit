@@ -167,20 +167,6 @@ class RemoteModelFinder(ModelFinderBase):
 
         # Generate GRPC Channel
         if self._tls.enabled:
-            # Assert that TLS files exists
-            if self._tls.ca_file and not self._tls.ca_file_data:
-                raise FileNotFoundError(
-                    f"Unable to find TLS CA File {self._tls.ca_file}"
-                )
-            if self._tls.key_file and not self._tls.key_file_data:
-                raise FileNotFoundError(
-                    f"Unable to find TLS Key File {self._tls.key_file}"
-                )
-            if self._tls.cert_file and not self._tls.cert_file_data:
-                raise FileNotFoundError(
-                    f"Unable to find TLS Cert File {self._tls.cert_file}"
-                )
-
             # Gather CA and MTLS data
             grpc_credentials = grpc.ssl_channel_credentials(
                 root_certificates=self._tls.ca_file_data,

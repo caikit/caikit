@@ -76,6 +76,22 @@ class ConnectionTlsInfo(DataObjectBase):
         if self.key_file and Path(self.key_file).exists():
             self.key_file_data = Path(self.key_file).read_bytes()
 
+        if self.enabled:
+            self.verify_ssl_data()
+
+    def verify_ssl_data(self):
+        """Helper function to verify all TLS data was read correctly.
+
+        Raises:
+            FileNotFoundError: If any of the tls files were provided but could not be found
+        """
+        if self.ca_file and not self.ca_file_data:
+            raise FileNotFoundError(f"Unable to find TLS CA File {self.ca_file}")
+        if self.key_file and not self.key_file_data:
+            raise FileNotFoundError(f"Unable to find TLS Key File {self.key_file}")
+        if self.cert_file and not self.cert_file_data:
+            raise FileNotFoundError(f"Unable to find TLS Cert File {self.cert_file}")
+
 
 @dataobject(PACKAGE_COMMON)
 class ConnectionInfo(DataObjectBase):

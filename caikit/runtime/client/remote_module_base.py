@@ -12,15 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-The RemoteModelInitializer loads a RemoteModuleConfig as an empty Module that
-sends all requests to an external runtime server
-
-Configuration for RemoteModelInitializer lives under the config as follows:
-
-model_management:
-    initializers:
-        <initializer name>:
-            type: REMOTE
+The RemoteModuleBase is a base class that can be mutated to have the same task methods
+as a ModuleBase but submit requests to a remote runtime instead of loading locally. By 
+design this class/factory does not use any references to the original Module class.
 """
 # Standard
 from collections import OrderedDict
@@ -470,7 +464,7 @@ def construct_remote_module_class(
 
     # Construct unique class which will have functions attached to it
     RemoteModelClass: Type[RemoteModelBaseClass] = type(
-        "RemoteModelClass", (model_class,), {}
+        "RemoteModelClass", (model_class,), dict(model_class.__dict__)
     )
 
     # Add the method signatures for train and each task

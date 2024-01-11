@@ -964,7 +964,12 @@ class DataBase(metaclass=_DataBaseMetaClass):
         return proto
 
     def to_dict(self, use_oneof: bool = False) -> dict:
-        """Convert to a dictionary representation."""
+        """Convert to a dictionary representation.
+
+        Args:
+            use_oneof: bool=False
+                Whether to use the fields actual name or its oneOf's name
+        """
         # maintain a list of fields to convert to dict, special handling for oneofs
         fields_to_dict = []
         for field in self.fields:
