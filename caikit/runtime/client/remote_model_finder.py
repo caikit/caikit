@@ -45,6 +45,7 @@ import alog
 
 # Local
 from caikit.core.exceptions import error_handler
+from caikit.core.model_management.factories import model_finder_factory
 from caikit.core.model_management.model_finder_base import ModelFinderBase
 from caikit.interfaces.common.data_model.remote import ConnectionInfo
 from caikit.interfaces.runtime.data_model import ModelInfoRequest, ModelInfoResponse
@@ -288,3 +289,7 @@ class RemoteModelFinder(ModelFinderBase):
             supported_modules[model_name] = module_id
 
         return supported_modules
+
+
+# Register the remote finder once it has been constructed
+model_finder_factory.register(RemoteModelFinder)

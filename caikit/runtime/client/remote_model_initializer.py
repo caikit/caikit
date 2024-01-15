@@ -31,6 +31,7 @@ import alog
 
 # Local
 from caikit.core.exceptions import error_handler
+from caikit.core.model_management.factories import model_initializer_factory
 from caikit.core.model_management.model_initializer_base import ModelInitializerBase
 from caikit.core.modules import ModuleBase
 from caikit.runtime.client.remote_config import RemoteModuleConfig
@@ -85,3 +86,7 @@ class RemoteModelInitializer(ModelInitializerBase):
             module: Type[ModuleBase]
                 The constructed module"""
         return construct_remote_module_class(model_config)
+
+
+# Register the remote finder once it has been constructed
+model_initializer_factory.register(RemoteModelInitializer)

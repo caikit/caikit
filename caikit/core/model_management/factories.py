@@ -39,14 +39,6 @@ model_trainer_factory.register(LocalModelTrainer)
 model_finder_factory = ImportableFactory("ModelFinder")
 model_finder_factory.register(LocalModelFinder)
 model_finder_factory.register(MultiModelFinder)
-try:
-    # Local
-    from caikit.runtime.client import RemoteModelFinder
-
-    model_finder_factory.register(RemoteModelFinder)
-except ImportError:
-    log.debug("Unable to import RemoteModelFinder. Skipping registration")
-
 
 # Model initializer factory. An initializer is responsible for taking a model
 # configuration and preparing the model to be run in a configured runtime
@@ -54,10 +46,3 @@ except ImportError:
 model_initializer_factory = ImportableFactory("ModelInitializer")
 model_initializer_factory.register(LocalModelInitializer)
 model_initializer_factory.register(MultiModelInitializer)
-try:
-    # Local
-    from caikit.runtime.client import RemoteModelInitializer
-
-    model_initializer_factory.register(RemoteModelInitializer)
-except ImportError:
-    log.debug("Unable to import RemoteModelInitializer. Skipping registration")
