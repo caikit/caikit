@@ -94,7 +94,7 @@ dev-docs = [
 ]
 
 dev-fmt = [
-    "ruff==0.1.11",
+    "ruff==0.1.13",
     "pre-commit>=3.0.4,<4.0",
     "pydeps>=1.12.12,<2",
 ]
