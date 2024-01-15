@@ -118,6 +118,10 @@ class ConnectionInfo(DataObjectBase):
     def __post_init__(self):
         """Post init function to verify field types and set defaults"""
 
+        # If tls is attribute dict then manually convert it to tls
+        if isinstance(self.tls, dict):
+            self.tls = ConnectionTlsInfo(**self.tls)
+
         # Set default port
         if not self.port:
             self.port = HTTPS_PORT if self.tls.enabled else HTTP_PORT

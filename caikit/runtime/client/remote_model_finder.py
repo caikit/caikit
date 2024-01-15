@@ -46,7 +46,7 @@ import alog
 # Local
 from caikit.core.exceptions import error_handler
 from caikit.core.model_management.model_finder_base import ModelFinderBase
-from caikit.interfaces.common.data_model.remote import ConnectionInfo, ConnectionTlsInfo
+from caikit.interfaces.common.data_model.remote import ConnectionInfo
 from caikit.interfaces.runtime.data_model import ModelInfoRequest, ModelInfoResponse
 from caikit.runtime.client.remote_config import RemoteModuleConfig
 from caikit.runtime.names import (
@@ -74,10 +74,8 @@ class RemoteModelFinder(ModelFinderBase):
         self._instance_name = instance_name
 
         # Type/Value check connection parameters
-        self._tls = config.connection["tls"] = ConnectionTlsInfo(
-            **config.connection.get("tls", {})
-        )
         self._connection = ConnectionInfo(**config.connection)
+        self._tls = self._connection.tls
 
         # Type/Value check default parameters
         self._model_key = config.get("model_key", MODEL_MESH_MODEL_ID_KEY)

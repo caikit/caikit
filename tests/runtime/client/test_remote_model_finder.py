@@ -22,7 +22,7 @@ from contextlib import contextmanager
 import pytest
 
 # First Party
-from aconfig import Config
+from aconfig import Config, ImmutableConfig
 
 # Local
 from caikit.runtime.client import RemoteModelFinder, RemoteModuleConfig
@@ -73,7 +73,7 @@ def temp_finder(
             "hostname": "localhost",
         }
 
-    yield RemoteModelFinder(Config(multi_finder_cfg), multi_finder_name)
+    yield RemoteModelFinder(ImmutableConfig(multi_finder_cfg), multi_finder_name)
 
 
 ## Tests #######################################################################
