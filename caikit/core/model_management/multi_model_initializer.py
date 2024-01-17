@@ -86,7 +86,7 @@ class MultiModelInitializer(ModelInitializerBase):
         )
         error.value_check(
             "<COR54613971E>",
-            self._instance_name not in config_initializers,
+            self._instance_name not in initializer_priority,
             "Cannot include self in multi initializer priority",
         )
         model_manager = config.model_manager or caikit.core.MODEL_MANAGER
