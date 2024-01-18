@@ -259,7 +259,7 @@ class RemoteModelFinder(ModelFinderBase):
         # Send HTTP Request
         try:
             resp = requests.get(target, **request_kwargs)
-        except requests.exceptions.RequestException as exc:
+        except requests.RequestException as exc:
             log.warning(
                 "Unable to discover modules from remote: %s. Error: %s",
                 self._connection.hostname,

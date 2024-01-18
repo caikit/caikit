@@ -28,6 +28,7 @@ from caikit.interfaces.common.data_model.remote import ConnectionInfo, Connectio
 from caikit.runtime.client import RemoteModelInitializer, RemoteModuleConfig
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.names import MODEL_MESH_MODEL_ID_KEY
+from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model import SampleInputType, SampleOutputType, SampleTrainingType
 from tests.conftest import random_test_id
 from tests.fixtures import Fixtures  # noqa: F401
@@ -422,3 +423,51 @@ def test_remote_initializer_grpc_unverified_predict(sample_task_model_id, open_p
 
             remote_initializer = RemoteModelInitializer(Config({}), "test")
             remote_initializer.init(remote_config)
+
+
+@pytest.mark.parametrize("protocol", ["grpc", "http"])
+def test_remote_initializer_exception_handling(
+    sample_task_model_id, open_port, protocol
+):
+    """Test to ensure RemoteModule Initializer works for insecure connections"""
+    local_module_class = (
+        ModelManager.get_instance().retrieve_model(sample_task_model_id).__class__
+    )
+
+    # Construct Remote Module Config
+    connection_info = ConnectionInfo(hostname="localhost", port=80)
+    remote_config = RemoteModuleConfig.load_from_module(
+        local_module_class,
+        connection_info,
+        protocol,
+        MODEL_MESH_MODEL_ID_KEY,
+        "bad_model_id",
+    )
+    # Set random module_id so tests don't conflict
+    remote_config.module_id = random_test_id()
+
+    # Start runtime server even if its not used so all required DataBases are created
+    with runtime_test_server(open_port, protocol=protocol):
+        # Construct initializer and RemoteModule
+        remote_initializer = RemoteModelInitializer(Config({}), "test")
+        remote_model = remote_initializer.init(remote_config)
+        assert isinstance(remote_model, ModuleBase)
+
+        with pytest.raises(CaikitRuntimeException):
+            remote_model.run(SampleInputType(name="Test"), throw=False)
+
+        with pytest.raises(CaikitRuntimeException):
+            data_stream = remote_model.run_stream_out(
+                SampleInputType(name="Test"), err_stream=False
+            )
+            # This line forces the connection to be read which raises the error
+            [item for item in data_stream]
+
+        # Only GRPC supports input streaming
+        if protocol == "grpc":
+            with pytest.raises(CaikitRuntimeException):
+                remote_model.run_stream_in(
+                    sample_inputs=DataStream.from_iterable(
+                        [SampleInputType(name="Test")]
+                    )
+                )

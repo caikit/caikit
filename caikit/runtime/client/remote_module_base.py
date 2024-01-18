@@ -263,9 +263,18 @@ class RemoteModelBaseClass(ModuleBase):
             f"{self._get_remote_target()}{get_http_route_name(method.rpc_name)}"
         )
 
-        # Send request
-        response = requests.post(request_url, json=http_request_dict, **request_kwargs)
+        # Send request while capturing any errors and reporting them as CaikitRuntimeExceptions
+        try:
+            response = requests.post(
+                request_url, json=http_request_dict, **request_kwargs
+            )
+        except requests.RequestException as err:
+            raise CaikitRuntimeException(
+                grpc.StatusCode.UNKNOWN, "Unknown exception while connecting to runtime"
+            ) from err
+
         if response.status_code != 200:
+            # Capture any HTTP errors and return them with the proper Caikit Status mapping
             try:
                 response.raise_for_status()
             except requests.HTTPError as err:
@@ -293,7 +302,7 @@ class RemoteModelBaseClass(ModuleBase):
                             )
                             yield response_dm_class.from_json(decoded_response)
 
-                except requests.HTTPError as err:
+                except grpc.RpcError as err:
                     raise CaikitRuntimeException(
                         grpc.StatusCode.UNKNOWN,
                         "Received unknown exception from remote server while streaming results",
