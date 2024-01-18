@@ -72,6 +72,7 @@ class RemoteModuleConfig(ModuleConfig):
     """Helper class to differentiate a local ModuleConfig and a RemoteModuleConfig. The structure
     should contain the following fields/structure"""
 
+    ## Connection Info
     # Remote information for how to access the server.
     connection: ConnectionInfo
     protocol: str
@@ -80,15 +81,18 @@ class RemoteModuleConfig(ModuleConfig):
     # default is defined in runtime.names and is mm-model-id
     model_key: str
 
-    # Method Information
+    ## Method Information
     # use list and tuples instead of a dictionary to avoid aconfig.Config error
     task_methods: List[Tuple[Type[TaskBase], List[RemoteRPCDescriptor]]]
     train_method: RemoteRPCDescriptor
 
-    # Target Module Information
+    ## Target Module Information
+    # Model_path is repurposed in RemoteConfig to be the name of the
+    # model running on the remote
+    model_path: str
+    # Module id and name are passed directly to the @module() decorator
     module_id: str
     module_name: str
-    model_path: str
 
     # Reset reserved_keys, so we can manually add model_path
     reserved_keys = []
