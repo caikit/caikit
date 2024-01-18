@@ -171,9 +171,9 @@ class RemoteModelFinder(ModelFinderBase):
         if self._tls.enabled:
             # Gather CA and MTLS data
             grpc_credentials = grpc.ssl_channel_credentials(
-                root_certificates=self._tls.ca_file_data,
-                private_key=self._tls.key_file_data,
-                certificate_chain=self._tls.cert_file_data,
+                root_certificates=self._tls.ca_data,
+                private_key=self._tls.key_data,
+                certificate_chain=self._tls.cert_data,
             )
 
             # Construct secure channel
@@ -245,13 +245,14 @@ class RemoteModelFinder(ModelFinderBase):
             if self._tls.insecure_verify:
                 request_kwargs["verify"] = False
             else:
-                if self._tls.ca_file:
-                    request_kwargs["verify"] = self._tls.ca_file
-                else:
-                    request_kwargs["verify"] = True
+                request_kwargs["verify"] = self._tls.ca_file or True
 
-            if self._tls.cert_file and self._tls.key_file:
-                request_kwargs["cert"] = (self._tls.cert_file, self._tls.key_file)
+            # Configure MTLS if its enabled
+            if self._tls.mtls_enabled:
+                request_kwargs["cert"] = (
+                    self._tls.cert_file,
+                    self._tls.key_file,
+                )
 
         else:
             target = f"http://{target}"

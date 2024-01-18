@@ -237,7 +237,7 @@ class RemoteModelBaseClass(ModuleBase):
         # Get request options and target
         request_kwargs = {"headers": {"Content-type": "application/json"}}
         if self._tls.enabled:
-            if self._tls.cert_file and self._tls.key_file:
+            if self._tls.mtls_enabled:
                 request_kwargs["cert"] = (
                     self._tls.cert_file,
                     self._tls.key_file,
@@ -454,9 +454,9 @@ class RemoteModelBaseClass(ModuleBase):
             # Generate secure channel
             if self._tls.enabled:
                 grpc_credentials = grpc.ssl_channel_credentials(
-                    root_certificates=self._tls.ca_file_data,
-                    private_key=self._tls.key_file_data,
-                    certificate_chain=self._tls.cert_file_data,
+                    root_certificates=self._tls.ca_data,
+                    private_key=self._tls.key_data,
+                    certificate_chain=self._tls.cert_data,
                 )
                 channel = grpc.secure_channel(
                     target, credentials=grpc_credentials, options=options

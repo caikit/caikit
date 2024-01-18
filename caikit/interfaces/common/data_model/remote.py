@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Optional
 
 # First Party
-from py_to_proto.dataclass_to_proto import Annotated, Dict, FieldNumber
+from py_to_proto.dataclass_to_proto import Dict
 import alog
 
 # Local
@@ -37,22 +37,59 @@ error = error_handler.get(log)
 class ConnectionTlsInfo(DataObjectBase):
     """Helper dataclass to store information regarding TLS information."""
 
-    enabled: Annotated[bool, FieldNumber(1)] = False
-    ca_file: Annotated[Optional[str], FieldNumber(2)]
-    cert_file: Annotated[Optional[str], FieldNumber(3)]
-    key_file: Annotated[Optional[str], FieldNumber(4)]
-    insecure_verify: Annotated[bool, FieldNumber(5)] = False
+    enabled: bool = False
+    insecure_verify: bool = False
+    ca_file: Optional[str]
+    cert_file: Optional[str]
+    key_file: Optional[str]
 
-    # Helper variables to store the read data from TLS files
-    ca_file_data: Optional[bytes] = None
-    cert_file_data: Optional[bytes] = None
-    key_file_data: Optional[bytes] = None
+    @property
+    def mtls_enabled(self) -> bool:
+        """Helper property to identify mtls"""
+        return self.cert_file and self.key_file
+
+    _private_slots = ("_ca_data", "_cert_data", "_key_data")
+
+    # Don't use cached_property as DataBase does not contain a __dict__ object
+    @property
+    def ca_data(self) -> Optional[bytes]:
+        if self._ca_data:
+            return self._ca_data
+
+        if self.ca_file and Path(self.ca_file).exists():
+            self._ca_data = Path(self.ca_file).read_bytes()
+            return self._ca_data
+
+        return
+
+    @property
+    def key_data(self) -> Optional[bytes]:
+        if self._key_data:
+            return self._key_data
+
+        if self.key_file and Path(self.key_file).exists():
+            self._key_data = Path(self.key_file).read_bytes()
+            return self._key_data
+
+        return
+
+    @property
+    def cert_data(self) -> Optional[bytes]:
+        if self._cert_data:
+            return self._cert_data
+
+        if self.cert_file and Path(self.cert_file).exists():
+            self._cert_data = Path(self.cert_file).read_bytes()
+            return self._cert_data
+
+        return
 
     def __post_init__(self):
         """Post init function to verify field types and arguments"""
         error.type_check(
             "<COR734221567E>",
             str,
+            bytes,
             allow_none=True,
             tls_ca=self.ca_file,
             tls_cert=self.cert_file,
@@ -66,16 +103,12 @@ class ConnectionTlsInfo(DataObjectBase):
             insecure_verify=self.insecure_verify,
         )
 
+        # initialize cached properties
+        self._ca_data = None
+        self._cert_data = None
+        self._key_data = None
+
         # Read file data if it exists
-        if self.ca_file and Path(self.ca_file).exists():
-            self.ca_file_data = Path(self.ca_file).read_bytes()
-
-        if self.cert_file and Path(self.cert_file).exists():
-            self.cert_file_data = Path(self.cert_file).read_bytes()
-
-        if self.key_file and Path(self.key_file).exists():
-            self.key_file_data = Path(self.key_file).read_bytes()
-
         if self.enabled:
             self.verify_ssl_data()
 
@@ -85,12 +118,19 @@ class ConnectionTlsInfo(DataObjectBase):
         Raises:
             FileNotFoundError: If any of the tls files were provided but could not be found
         """
-        if self.ca_file and not self.ca_file_data:
+        if self.ca_file and not self.ca_data:
             raise FileNotFoundError(f"Unable to find TLS CA File {self.ca_file}")
-        if self.key_file and not self.key_file_data:
+        if self.key_file and not self.key_data:
             raise FileNotFoundError(f"Unable to find TLS Key File {self.key_file}")
-        if self.cert_file and not self.cert_file_data:
+        if self.cert_file and not self.cert_data:
             raise FileNotFoundError(f"Unable to find TLS Cert File {self.cert_file}")
+
+        # Logical XOR to ensure if one is provided so is the other
+        if bool(self.cert_file) != bool(self.key_file):
+            raise ValueError(
+                "Invalid TLS values. Both cert and key must be provided:"
+                f"{self.cert_file=}, {self.key_file=}"
+            )
 
 
 @dataobject(PACKAGE_COMMON)
@@ -99,21 +139,17 @@ class ConnectionInfo(DataObjectBase):
     port, tls, and timeout settings"""
 
     # Generic Host settings
-    hostname: Annotated[str, FieldNumber(1)]
-    port: Annotated[Optional[int], FieldNumber(2)] = None
+    hostname: str
+    port: Optional[int] = None
 
     # TLS Settings
-    tls: Annotated[Optional[ConnectionTlsInfo], FieldNumber(3)] = field(
-        default_factory=ConnectionTlsInfo
-    )
+    tls: Optional[ConnectionTlsInfo] = field(default_factory=ConnectionTlsInfo)
 
     # Connection timeout settings (in seconds)
-    timeout: Annotated[Optional[int], FieldNumber(4)] = 60
+    timeout: Optional[int] = 60
 
     # Any extra options for the connection
-    options: Annotated[Optional[Dict[str, str]], FieldNumber(5)] = field(
-        default_factory=dict
-    )
+    options: Optional[Dict[str, str]] = field(default_factory=dict)
 
     def __post_init__(self):
         """Post init function to verify field types and set defaults"""
