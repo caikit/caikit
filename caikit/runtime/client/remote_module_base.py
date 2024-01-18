@@ -35,15 +35,12 @@ import alog
 from caikit.config.config import merge_configs
 from caikit.core.data_model import DataBase, DataStream
 from caikit.core.exceptions import error_handler
-from caikit.core.exceptions.caikit_core_exception import (
-    CaikitCoreException,
-    CaikitCoreStatusCode,
-)
 from caikit.core.modules import ModuleBase, module
 from caikit.core.task import TaskBase
 from caikit.interfaces.common.data_model.remote import ConnectionInfo
 from caikit.runtime.client.remote_config import RemoteModuleConfig, RemoteRPCDescriptor
 from caikit.runtime.names import (
+    HTTP_TO_STATUS_CODE,
     MODEL_ID,
     OPTIONAL_INPUTS_KEY,
     REQUIRED_INPUTS_KEY,
@@ -51,13 +48,14 @@ from caikit.runtime.names import (
     get_grpc_route_name,
     get_http_route_name,
 )
+from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("RMBASE")
 error = error_handler.get(log)
 
 
 class RemoteModelBaseClass(ModuleBase):
-    """Private class to act as the base for remote modules. This class will be subclassed and
+    """Class to act as the base for remote modules. This class will be subclassed and
     mutated by construct_remote_module_class to make it have the same functions and parameters
     as the source module."""
 
@@ -96,7 +94,7 @@ class RemoteModelBaseClass(ModuleBase):
         """Destructor to ensure channel is cleaned up on deletion"""
         with self._channel_lock:
             if self.__grpc_channel:
-                self._close_grpc_channel(self._grpc_channel)
+                self._grpc_channel.close()
 
     ### Method Factories
 
@@ -112,10 +110,15 @@ class RemoteModelBaseClass(ModuleBase):
                 "_model_name", f"{self._model_name}-{uuid.uuid4()}"
             )
 
+            # 🌶️🌶️🌶️ This code martials the train function arguments/kwargs into the desired
+            # TrainParameters dataobject. Use signature parsing to ensure all args are mapped to
+            # the correct name. Also use string replacement as names.get_train_parameter_name
+            # requires a ref to the Module
             bound_args = method.signature.method_signature.bind(*args, **kwargs)
-            train_kwargs["parameters"] = DataBase.get_class_for_name(
+            train_parameter_class = DataBase.get_class_for_name(
                 method.request_dm_name.replace("Request", "Parameters")
-            )(**bound_args.arguments)
+            )
+            train_kwargs["parameters"] = train_parameter_class(**bound_args.arguments)
 
             # Set return type to TrainType
             method.response_dm_name = "TrainingJob"
@@ -245,6 +248,7 @@ class RemoteModelBaseClass(ModuleBase):
             else:
                 request_kwargs["verify"] = self._tls.ca_file or True
 
+        # TODO input_streaming when HTTP supports it.
         if method.output_streaming:
             request_kwargs["stream"] = True
 
@@ -262,10 +266,15 @@ class RemoteModelBaseClass(ModuleBase):
         # Send request
         response = requests.post(request_url, json=http_request_dict, **request_kwargs)
         if response.status_code != 200:
-            raise CaikitCoreException(
-                CaikitCoreStatusCode.UNKNOWN,
-                f"Received status {response.status_code} from remote server: {response.text}",
-            )
+            try:
+                response.raise_for_status()
+            except requests.HTTPError as err:
+                raise CaikitRuntimeException(
+                    HTTP_TO_STATUS_CODE.get(
+                        response.status_code, grpc.StatusCode.UNKNOWN
+                    ),
+                    f"Received status {response.status_code} from remote server: {response.text}",
+                ) from err
 
         # Parse response data model either as file or json
         response_dm_class = DataBase.get_class_for_name(method.response_dm_name)
@@ -274,23 +283,31 @@ class RemoteModelBaseClass(ModuleBase):
 
             def stream_parser():
                 """Helper Generator to parse SSE events"""
-                for line in response.iter_lines():
-                    # Skip empty or event lines as they're constant
-                    if not line or b"event" in line:
-                        continue
+                try:
+                    for line in response.iter_lines():
+                        # Skip empty or event lines as they're constant
+                        if "data:" in line:
+                            # Split data lines and remove data: tags before parsing by DM
+                            decoded_response = line.decode(response.encoding).replace(
+                                "data: ", ""
+                            )
+                            yield response_dm_class.from_json(decoded_response)
 
-                    # Split data lines and remove data: tags before parsing by DM
-                    decoded_response = line.decode(response.encoding).replace(
-                        "data: ", ""
-                    )
-                    yield response_dm_class.from_json(decoded_response)
+                except requests.HTTPError as err:
+                    raise CaikitRuntimeException(
+                        grpc.StatusCode.UNKNOWN,
+                        "Received unknown exception from remote server while streaming results",
+                    ) from err
 
-            # Attach reference of this RemoteModuleClass to the returned DataStream. This ensures
-            # the GRPC Channel won't get closed until after the DataStream has been cleaned up
+            # Attach reference of this response to the returned DataStream. This ensures
+            # that requests stream won't get closed until after the DataStream has been cleaned up
             return_stream = DataStream(stream_parser)
             return_stream._source = response.content
             return return_stream
 
+        # If the response_dm_class supports file operations than the HTTP server would've returned
+        # with to_file instead of to_json. Thus for the client we need to return from_file instead
+        # of from_json
         if response_dm_class.supports_file_operations:
             return response_dm_class.from_file(response.text)
 
@@ -382,8 +399,15 @@ class RemoteModelBaseClass(ModuleBase):
 
             def output_stream_parser():
                 """Helper function to stream result objects"""
-                for proto in service_rpc(grpc_request, **request_kwargs):
-                    yield response_dm_class.from_proto(proto)
+                try:
+                    for proto in service_rpc(grpc_request, **request_kwargs):
+                        yield response_dm_class.from_proto(proto)
+
+                except grpc.RpcError as err:
+                    raise CaikitRuntimeException(
+                        err.code() if hasattr(err, "code") else grpc.StatusCode.UNKNOWN,
+                        "Error received while streaming GRPC result",
+                    ) from err
 
             # Attach reference of this RemoteModuleClass to the returned DataStream. This ensures
             # the GRPC Channel won't get closed until after the DataStream has been cleaned up
@@ -391,7 +415,14 @@ class RemoteModelBaseClass(ModuleBase):
             return_stream._source = self
             return return_stream
         else:
-            response = service_rpc(grpc_request, **request_kwargs)
+            try:
+                response = service_rpc(grpc_request, **request_kwargs)
+            except grpc.RpcError as err:
+                raise CaikitRuntimeException(
+                    err.code() if hasattr(err, "code") else grpc.StatusCode.UNKNOWN,
+                    "Error received while streaming GRPC result",
+                ) from err
+
             return response_dm_class.from_proto(response)
 
     @property
@@ -426,12 +457,6 @@ class RemoteModelBaseClass(ModuleBase):
 
             self.__grpc_channel = channel
             return self.__grpc_channel
-
-    @staticmethod
-    def _close_grpc_channel(channel: grpc.Channel):
-        """Helper function to close a grpc channel. This should
-        be called on class deletion."""
-        channel.close()
 
     ### Generic Helper Functions
 

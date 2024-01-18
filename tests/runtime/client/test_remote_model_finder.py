@@ -183,8 +183,7 @@ def test_remote_finder_fail_ca_check(sample_task_model_id, open_port, protocol):
             },
             protocol=protocol,
         ) as finder:
-            with pytest.raises(KeyError):
-                finder.find_model(sample_task_model_id)
+            assert not finder.find_model(sample_task_model_id)
 
 
 def test_remote_finder_discover_https_insecure_models(sample_task_model_id, open_port):
@@ -235,5 +234,4 @@ def test_remote_finder_not_found():
     with temp_finder(  # noqa: SIM117
         multi_finder_cfg={"discover_models": False, "supported_models": {"wrong": "id"}}
     ) as finder:
-        with pytest.raises(KeyError):
-            finder.find_model("sample")
+        assert not finder.find_model("sample")

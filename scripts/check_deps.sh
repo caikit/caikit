@@ -6,7 +6,7 @@ set -e
 pydeps --show-dot --no-show --no-config caikit | grep '\->' > deps.txt
 trap "rm deps.txt" EXIT
 
-if grep -q ".*caikit_runtime.*\->.*caikit_core.*" deps.txt | grep -v  factories
+if < deps.txt grep -q ".*caikit_runtime.*\->.*caikit_core.*"
 then
     echo "Fail: The core is importing the runtime!"
     exit 1

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-The RemoteModelFinder locates models that loaded by a remote runtime.
+The RemoteModelFinder locates models that are loaded in a remote runtime.
 
 Configuration for RemoteModelFinder lives under the config as follows:
 
@@ -28,7 +28,7 @@ model_management:
                 discover_models: Optional[bool]=True <bool to automatically discover remote models
                     via the /info/models endpoint>
                 supported_models: Optional[Dict[str, str]]={} <mapping of model names to module_ids 
-                    that this remote supports. This is automatically populated by discovery_models>
+                    that this remote supports. This is automatically populated by discover_models>
                     <model_path>: <module_id>
 
 """
@@ -70,7 +70,7 @@ class RemoteModelFinder(ModelFinderBase):
     name = "REMOTE"
 
     def __init__(self, config: aconfig.Config, instance_name: str):
-        """Initialize with an optional path prefix"""
+        """Initialize with a config and instance name"""
 
         self._instance_name = instance_name
 
@@ -100,7 +100,7 @@ class RemoteModelFinder(ModelFinderBase):
 
         # Type/Value check model parameters
         self._discover_models = config.get("discover_models", True)
-        self._supported_models = config.get("supported_models", {})
+        self._supported_models = config.get("supported_models") or {}
         error.type_check(
             "<COR74343245E>",
             dict,
@@ -125,9 +125,12 @@ class RemoteModelFinder(ModelFinderBase):
 
         # If model_path is not one of the supported models then raise an error
         if model_path not in self._supported_models:
-            raise KeyError(
-                f"Model {model_path} is not supported by finder {self._instance_name}"
+            log.debug(
+                "Model %s is not supported by finder %s",
+                model_path,
+                self._instance_name,
             )
+            return
 
         return RemoteModuleConfig.load_from_module(
             module_reference=self._supported_models.get(model_path),

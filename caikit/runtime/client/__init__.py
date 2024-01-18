@@ -11,6 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+This module holds common utilities for connecting to caikit.runtime servers from
+client code
+"""
+
 # Local
 from .remote_config import RemoteModuleConfig
 from .remote_model_finder import RemoteModelFinder

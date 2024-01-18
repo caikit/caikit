@@ -54,15 +54,17 @@ class RemoteModelInitializer(ModelInitializerBase):
         """Given a RemoteModuleConfig, initialize a RemoteModule instance"""
 
         # Ensure the module config was produced by a RemoteModelFinder
-        error.type_check(
-            "<COR47750753E>", RemoteModuleConfig, model_config=model_config
-        )
+        if not isinstance(model_config, RemoteModuleConfig):
+            log.debug(
+                "Initializer %s only supports RemoteModuleConfigs", self._instance_name
+            )
+            return
 
         # Construct remote module class if one has not already been created
-        if model_config.module_id not in self._module_class_map:
-            self._module_class_map[
-                model_config.module_id
-            ] = self.construct_module_class(model_config=model_config)
+        self._module_class_map.setdefault(
+            model_config.module_id,
+            self.construct_module_class(model_config=model_config),
+        )
 
         remote_module_class = self._module_class_map[model_config.module_id]
         return remote_module_class(

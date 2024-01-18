@@ -88,8 +88,6 @@ class GlobalPredictServicer:
     given request
     """
 
-    MODEL_MESH_MODEL_ID_KEY = MODEL_MESH_MODEL_ID_KEY
-
     # Input size in code points, provided by orchestrator
     INPUT_SIZE_KEY = "input-length"
 

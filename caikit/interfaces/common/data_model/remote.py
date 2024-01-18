@@ -107,7 +107,7 @@ class ConnectionInfo(DataObjectBase):
         default_factory=ConnectionTlsInfo
     )
 
-    # Connection timeout settings
+    # Connection timeout settings (in seconds)
     timeout: Annotated[Optional[int], FieldNumber(4)] = 60
 
     # Any extra options for the connection

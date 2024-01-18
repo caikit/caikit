@@ -15,9 +15,6 @@
 Global factories for model management
 """
 
-# First Party
-import alog
-
 # Local
 from ..toolkit.factory import ImportableFactory
 from .local_model_finder import LocalModelFinder
@@ -25,9 +22,6 @@ from .local_model_initializer import LocalModelInitializer
 from .local_model_trainer import LocalModelTrainer
 from .multi_model_finder import MultiModelFinder
 from .multi_model_initializer import MultiModelInitializer
-
-log = alog.use_channel("MMFACT")
-
 
 # Model trainer factory. A trainer is responsible for performing the train
 # operation against a configured framework connection.

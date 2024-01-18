@@ -11,6 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+The RemoteModuleConfig is a ModuleConfig subclass used to describe a Module's
+interface without referencing the source ModuleBase. 
+"""
 # Standard
 from dataclasses import dataclass
 from typing import List, Tuple, Type, Union, get_args, get_origin
@@ -39,14 +43,14 @@ log = alog.use_channel("REM_MODULE_CFG")
 error = error_handler.get(log)
 
 
-### RemoteRPC Descriptor
+## RemoteRPC Descriptor ########################################################
 
 
 @dataclass
 class RemoteRPCDescriptor:
     """Helper dataclass to store information about a Remote RPC."""
 
-    # full signature for this RPC
+    # Full signature for this RPC
     signature: CaikitMethodSignature
 
     # Request and response objects for this RPC
@@ -71,6 +75,9 @@ class RemoteModuleConfig(ModuleConfig):
     # Remote information for how to access the server.
     connection: ConnectionInfo
     protocol: str
+
+    # The name of the metadata field to use for model information
+    # default is defined in runtime.names and is mm-model-id
     model_key: str
 
     # Method Information
@@ -129,9 +136,10 @@ class RemoteModuleConfig(ModuleConfig):
             _ModuleBaseMeta,
             module_reference=module_reference,
         )
-        if isinstance(module_reference, ModuleBase) or (
-            inspect.isclass(module_reference)
-            and issubclass(module_reference, ModuleBase)
+        if isinstance(module_reference, ModuleBase):
+            local_module_class = module_reference.__class__
+        elif inspect.isclass(module_reference) and issubclass(
+            module_reference, ModuleBase
         ):
             local_module_class = module_reference
         else:
@@ -158,16 +166,20 @@ class RemoteModuleConfig(ModuleConfig):
         # Parse inference methods signatures
         for task_class in local_module_class.tasks:
             task_methods = []
-            for input, output, signature in local_module_class.get_inference_signatures(
-                task_class
-            ):
+            for (
+                input_streaming,
+                output_streaming,
+                signature,
+            ) in local_module_class.get_inference_signatures(task_class):
 
                 # Don't get the actual DataBaseObject as the ServicePackage might not have
                 # been generated
                 request_class_name = get_task_predict_request_name(
-                    task_class, input, output
+                    task_class, input_streaming, output_streaming
                 )
-                task_request_name = get_task_predict_rpc_name(task_class, input, output)
+                task_request_name = get_task_predict_rpc_name(
+                    task_class, input_streaming, output_streaming
+                )
 
                 if hasattr(signature.return_type, "__name__"):
                     task_return_type = signature.return_type.__name__
@@ -175,7 +187,8 @@ class RemoteModuleConfig(ModuleConfig):
                     task_return_type = get_origin(signature.return_type).__name__
 
                 # Get the underlying DataBaseObject for stream types
-                if output and get_args(signature.return_type) != ():
+                if output_streaming and get_args(signature.return_type):
+                    # Use [0] as there will only be one internal type for DataStreams
                     task_return_type = get_args(signature.return_type)[0].__name__
 
                 # Generate the rpc name and task type
@@ -185,8 +198,8 @@ class RemoteModuleConfig(ModuleConfig):
                         request_dm_name=request_class_name,
                         response_dm_name=task_return_type,
                         rpc_name=task_request_name,
-                        input_streaming=input,
-                        output_streaming=output,
+                        input_streaming=input_streaming,
+                        output_streaming=output_streaming,
                     )
                 )
 
