@@ -36,8 +36,8 @@ model_management:
 from typing import Dict, Optional
 
 # Third Party
+from requests import RequestException, Session
 import grpc
-import requests
 
 # First Party
 import aconfig
@@ -237,19 +237,20 @@ class RemoteModelFinder(ModelFinderBase):
         target = (
             f"{self._connection.hostname}:{self._connection.port}{MODELS_INFO_ENDPOINT}"
         )
-        request_kwargs = {}
+
+        session = Session()
         if self._tls.enabled:
             target = f"https://{target}"
 
             # Configure the TLS CA settings
             if self._tls.insecure_verify:
-                request_kwargs["verify"] = False
+                session.verify = False
             else:
-                request_kwargs["verify"] = self._tls.ca_file or True
+                session.verify = self._tls.ca_file or True
 
             # Configure MTLS if its enabled
             if self._tls.mtls_enabled:
-                request_kwargs["cert"] = (
+                session.cert = (
                     self._tls.cert_file,
                     self._tls.key_file,
                 )
@@ -257,10 +258,18 @@ class RemoteModelFinder(ModelFinderBase):
         else:
             target = f"http://{target}"
 
+        # Add any supplied options
+        if self._connection.options:
+            session.params.update(self._connection.options)
+
+        # Update the connection timeout setting
+        if self._connection.timeout:
+            session.params["timeout"] = self._connection.timeout
+
         # Send HTTP Request
         try:
-            resp = requests.get(target, **request_kwargs)
-        except requests.RequestException as exc:
+            resp = session.get(target)
+        except RequestException as exc:
             log.warning(
                 "Unable to discover modules from remote: %s. Error: %s",
                 self._connection.hostname,

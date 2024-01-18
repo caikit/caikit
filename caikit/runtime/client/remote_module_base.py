@@ -19,20 +19,19 @@ design this class/factory does not use any references to the original Module cla
 # Standard
 from collections import OrderedDict
 from threading import Lock
-from typing import Any, Callable, Dict, Generator, List, Type
+from typing import Any, Callable, Dict, Generator, List, Type, Union
 import copy
 import json
 import uuid
 
 # Third Party
+from requests import HTTPError, RequestException, Session
 import grpc
-import requests
 
 # First Party
 import alog
 
 # Local
-from caikit.config.config import merge_configs
 from caikit.core.data_model import DataBase, DataStream
 from caikit.core.exceptions import error_handler
 from caikit.core.modules import ModuleBase, module
@@ -79,7 +78,7 @@ class RemoteModelBaseClass(ModuleBase):
 
         # Configure GRPC variables and threading lock
         self._channel_lock = Lock()
-        self.__grpc_channel = None
+        self._conn_channel: Union[grpc.Channel, Session] = None
 
         # Assert parameter values
         if self._protocol == "grpc" and self._tls.enabled:
@@ -91,10 +90,10 @@ class RemoteModelBaseClass(ModuleBase):
             )
 
     def __del__(self):
-        """Destructor to ensure channel is cleaned up on deletion"""
+        """Destructor to ensure channel/session is cleaned up on deletion"""
         with self._channel_lock:
-            if self.__grpc_channel:
-                self._grpc_channel.close()
+            if self._conn_channel:
+                self._conn_channel.close()
 
     ### Method Factories
 
@@ -234,41 +233,16 @@ class RemoteModelBaseClass(ModuleBase):
 
             http_request_dict = _remove_null_values(request_dm_dict)
 
-        # Get request options and target
-        request_kwargs = {"headers": {"Content-type": "application/json"}}
-        if self._tls.enabled:
-            if self._tls.mtls_enabled:
-                request_kwargs["cert"] = (
-                    self._tls.cert_file,
-                    self._tls.key_file,
-                )
-
-            if self._tls.insecure_verify:
-                request_kwargs["verify"] = False
-            else:
-                request_kwargs["verify"] = self._tls.ca_file or True
-
-        # TODO input_streaming when HTTP supports it.
-        if method.output_streaming:
-            request_kwargs["stream"] = True
-
-        if self._connection.timeout:
-            request_kwargs["timeout"] = self._connection.timeout
-
-        request_kwargs = merge_configs(
-            request_kwargs, overrides=self._connection.options
-        )
-
         request_url = (
             f"{self._get_remote_target()}{get_http_route_name(method.rpc_name)}"
         )
 
         # Send request while capturing any errors and reporting them as CaikitRuntimeExceptions
         try:
-            response = requests.post(
-                request_url, json=http_request_dict, **request_kwargs
+            response = self._http_session.post(
+                request_url, json=http_request_dict, stream=method.output_streaming
             )
-        except requests.RequestException as err:
+        except RequestException as err:
             raise CaikitRuntimeException(
                 grpc.StatusCode.UNKNOWN, "Unknown exception while connecting to runtime"
             ) from err
@@ -277,7 +251,7 @@ class RemoteModelBaseClass(ModuleBase):
             # Capture any HTTP errors and return them with the proper Caikit Status mapping
             try:
                 response.raise_for_status()
-            except requests.HTTPError as err:
+            except HTTPError as err:
                 raise CaikitRuntimeException(
                     HTTP_TO_STATUS_CODE.get(
                         response.status_code, grpc.StatusCode.UNKNOWN
@@ -302,7 +276,7 @@ class RemoteModelBaseClass(ModuleBase):
                             )
                             yield response_dm_class.from_json(decoded_response)
 
-                except grpc.RpcError as err:
+                except RequestException as err:
                     raise CaikitRuntimeException(
                         grpc.StatusCode.UNKNOWN,
                         "Received unknown exception from remote server while streaming results",
@@ -401,8 +375,10 @@ class RemoteModelBaseClass(ModuleBase):
 
         request_kwargs = {
             "metadata": [(self._model_key, self._model_name)],
-            "timeout": self._connection.timeout,
         }
+        if self._connection.timeout:
+            request_kwargs["timeout"] = self._connection.timeout
+
         # Send RPC request with or without streaming
         if method.output_streaming:
 
@@ -439,13 +415,13 @@ class RemoteModelBaseClass(ModuleBase):
         """Helper function to construct a GRPC channel
         with correct credentials and TLS settings."""
         # Short circuit if channel has already been set
-        if self.__grpc_channel:
-            return self.__grpc_channel
+        if self._conn_channel:
+            return self._conn_channel
 
         with self._channel_lock:
             # Check for the channel again incase it was created during lock acquisition
-            if self.__grpc_channel:
-                return self.__grpc_channel
+            if self._conn_channel:
+                return self._conn_channel
 
             # Gather grpc configuration
             target = self._get_remote_target()
@@ -464,8 +440,50 @@ class RemoteModelBaseClass(ModuleBase):
             else:
                 channel = grpc.insecure_channel(target, options=options)
 
-            self.__grpc_channel = channel
-            return self.__grpc_channel
+            self._conn_channel = channel
+            return self._conn_channel
+
+    @property
+    def _http_session(self) -> Session:
+        """Helper function to construct a requests Session with
+        with correct credentials and TLS settings."""
+        # Short circuit if session has already been set
+        if self._conn_channel:
+            return self._conn_channel
+
+        with self._channel_lock:
+            # Check for the channel again incase it was created during lock acquisition
+            if self._conn_channel:
+                return self._conn_channel
+
+            # Construct session with defaults
+            session = Session()
+            session.headers["Content-type"] = "application/json"
+
+            # Gather request SSL configuration
+            if self._tls.enabled:
+                # Configure the TLS CA settings
+                if self._tls.insecure_verify:
+                    session.verify = False
+                else:
+                    session.verify = self._tls.ca_file or True
+
+                # Configure MTLS if its enabled
+                if self._tls.mtls_enabled:
+                    session.cert = (
+                        self._tls.cert_file,
+                        self._tls.key_file,
+                    )
+
+            # Update request options and timeout variables
+            if self._connection.options:
+                session.params.update(self._connection.options)
+
+            if self._connection.timeout:
+                session.params["timeout"] = self._connection.timeout
+
+            self._conn_channel = session
+            return self._conn_channel
 
     ### Generic Helper Functions
 
