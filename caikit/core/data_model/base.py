@@ -30,6 +30,7 @@ from typing import (
     Tuple,
     Type,
     Union,
+    get_type_hints,
 )
 import base64
 import datetime
@@ -37,11 +38,18 @@ import json
 
 # Third Party
 from google.protobuf import json_format
-from google.protobuf.descriptor import Descriptor, FieldDescriptor, OneofDescriptor
+from google.protobuf.descriptor import (
+    Descriptor,
+    EnumDescriptor,
+    FieldDescriptor,
+    OneofDescriptor,
+)
 from google.protobuf.internal import type_checkers as proto_type_checkers
 from google.protobuf.message import Message as ProtoMessageType
+import typing_extensions
 
 # First Party
+from py_to_proto.compat_annotated import get_args, get_origin
 import alog
 
 # Local
@@ -611,6 +619,65 @@ class DataBase(metaclass=_DataBaseMetaClass):
         return which_oneof
 
     @classmethod
+    def _get_type_for_field(cls, field_name: str) -> type:
+        """Class method to return the type hint for a particular field"""
+        cls_type_hints = get_type_hints(cls)
+        if field_name in cls_type_hints:
+            type_hint = cls_type_hints[field_name]
+
+            # If type is optional or a list then return internal type
+            type_args = get_args(type_hint)
+            if (
+                get_origin(type_hint) == Union
+                and type_args
+                == (
+                    type_args[0],
+                    type(None),
+                )
+                or get_origin(type_hint) in [list, List]
+            ):
+                type_hint = type_args[0]
+
+            # If type is Annotated then get the actual type
+            if get_origin(type_hint) == typing_extensions.Annotated:
+                type_hint = get_args(type_hint)[0]
+
+            return type_hint
+
+        fd = cls._proto_class.DESCRIPTOR.fields_by_name.get(field_name)
+        if not fd:
+            raise ValueError(f"Unknown field: {field_name}")
+
+        # Convert the fd type into python
+        if fd.type == fd.TYPE_MESSAGE:
+            return cls.get_class_for_proto(fd.message_type)
+        elif fd.type == fd.TYPE_ENUM:
+            return cls.get_class_for_proto(fd.enum_type)
+        elif fd.type == fd.TYPE_BOOL:
+            return bool
+        elif fd.type == fd.TYPE_BYTES:
+            return bytes
+        elif fd.type == fd.TYPE_STRING:
+            return str
+        elif fd.type in [
+            fd.TYPE_FIXED32,
+            fd.TYPE_FIXED64,
+            fd.TYPE_INT32,
+            fd.TYPE_INT64,
+            fd.TYPE_SFIXED32,
+            fd.TYPE_SFIXED64,
+            fd.TYPE_SINT32,
+            fd.TYPE_SINT64,
+            fd.TYPE_UINT32,
+            fd.TYPE_UINT64,
+        ]:
+            return int
+        elif fd.type in [fd.TYPE_FLOAT, fd.TYPE_DOUBLE]:
+            return float
+
+        raise ValueError(f"Unknown proto type: {fd.type}")
+
+    @classmethod
     def _is_valid_type_for_field(cls, field_name: str, val: Any) -> bool:
         """Check whether the given value is valid for the given field"""
         # pylint: disable=too-many-return-statements
@@ -963,13 +1030,8 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
         return proto
 
-    def to_dict(self, use_oneof: bool = False) -> dict:
-        """Convert to a dictionary representation.
-
-        Args:
-            use_oneof: bool=False
-                Whether to use the fields actual name or its oneOf's name
-        """
+    def to_dict(self) -> dict:
+        """Convert to a dictionary representation."""
         # maintain a list of fields to convert to dict, special handling for oneofs
         fields_to_dict = []
         for field in self.fields:
@@ -977,16 +1039,11 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 field not in self._fields_to_oneof
                 or self.which_oneof(self._fields_to_oneof[field]) == field
             ):
-                # If use_oneof is True then use the generic oneOf field name and not the specific
-                # field
-                if use_oneof and field in self._fields_to_oneof:
-                    fields_to_dict.append(self._fields_to_oneof[field])
-                else:
-                    fields_to_dict.append(field)
+                fields_to_dict.append(field)
 
         to_dict = {}
         for field in fields_to_dict:
-            dict_value = self._field_to_dict_element(field, use_oneof=use_oneof)
+            dict_value = self._field_to_dict_element(field)
             if (
                 field in self._fields_to_oneof
                 and not hasattr(dict_value, "values")
@@ -1009,7 +1066,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 fields_to_dict.append(self._fields_to_oneof[field])
         return {field: getattr(self, field) for field in fields_to_dict}
 
-    def to_json(self, use_oneof: bool = False, **kwargs) -> str:
+    def to_json(self, **kwargs) -> str:
         """Convert to a json representation."""
 
         def _default_serialization_overrides(obj):
@@ -1027,7 +1084,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
         if "default" not in kwargs:
             kwargs["default"] = _default_serialization_overrides
 
-        return json.dumps(self.to_dict(use_oneof), **kwargs)
+        return json.dumps(self.to_dict(), **kwargs)
 
     def to_file(
         self, file_obj: IOBase
@@ -1048,7 +1105,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
         """Human-friendly representation."""
         return self.to_json(indent=2, ensure_ascii=False)
 
-    def _field_to_dict_element(self, field, use_oneof: bool = False):
+    def _field_to_dict_element(self, field):
         """Convert field into a representation that can be placed into a dictionary.  Recursively
         calls to_dict on other data model objects.
         """
@@ -1093,20 +1150,15 @@ class DataBase(metaclass=_DataBaseMetaClass):
             if isinstance(_attr, list):
                 return [_recursive_to_dict(listitem) for listitem in _attr]
             if isinstance(_attr, DataBase):
-                return _attr.to_dict(use_oneof)
+                return _attr.to_dict()
 
             return _attr
 
         # If field is an object in out data model/map/list call to_dict recursively on each element
-        target_field = (
-            self._get_which_oneof_dict().get(field)
-            if field in self._get_which_oneof_dict()
-            else field
-        )
         if (
-            target_field in self._fields_map
-            or target_field in self._fields_message
-            or target_field in self._fields_message_repeated
+            field in self._fields_map
+            or field in self._fields_message
+            or field in self._fields_message_repeated
         ):
             return _recursive_to_dict(attr)
 
@@ -1115,7 +1167,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
     @staticmethod
     def get_class_for_proto(
-        proto: Union[Descriptor, ProtoMessageType]
+        proto: Union[Descriptor, FieldDescriptor, EnumDescriptor, ProtoMessageType]
     ) -> Type["DataBase"]:
         """Look up the data model class corresponding to the given protobuf
 
@@ -1132,12 +1184,14 @@ class DataBase(metaclass=_DataBaseMetaClass):
         error.type_check(
             "<COR46446770E>",
             Descriptor,
+            FieldDescriptor,
+            EnumDescriptor,
             ProtoMessageType,
             proto=proto,
         )
         proto_full_name = (
             proto.full_name
-            if isinstance(proto, Descriptor)
+            if isinstance(proto, (Descriptor, FieldDescriptor, EnumDescriptor))
             else proto.DESCRIPTOR.full_name
         )
         cls = _DataBaseMetaClass.class_registry.get(proto_full_name)
