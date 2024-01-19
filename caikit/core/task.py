@@ -169,9 +169,17 @@ class TaskBase:
         ).items():
             signature_type = signature.parameters[parameter_name]
             if parameter_type != signature_type:
-                if typing.get_origin(
-                    signature_type
-                ) == typing.Union and parameter_type in typing.get_args(signature_type):
+                if typing.get_origin(signature_type) == typing.Union and (
+                    # Either our parameter type is not a union & is part of the union signature
+                    parameter_type in typing.get_args(signature_type)
+                    # Or our parameter type is a union that's a subset of the union signature
+                    or (
+                        typing.get_origin(parameter_type) == typing.Union
+                        and set(typing.get_args(parameter_type)).issubset(
+                            set(typing.get_args(signature_type))
+                        )
+                    )
+                ):
                     continue
                 if input_streaming and cls._is_iterable_type(parameter_type):
                     streaming_type = typing.get_args(parameter_type)[0]
