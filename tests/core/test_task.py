@@ -563,6 +563,54 @@ def test_decorator_adds_default_run_method_to_modules():
     )
 
 
+def test_validation_allows_union_subsets():
+    """Validate that a task can take a union type that is a subset of implementing module types."""
+    # Task param types need to correctly map to proto types since they're used by runtime
+    @task(
+        unary_parameters={"sample_input": Union[str, int]},
+        unary_output_type=SampleOutputType,
+        streaming_output_type=Iterable[SampleOutputType],
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    # But a module may consume types that are not backed by proto, e.g., PIL images
+    @caikit.core.module(
+        id=str(uuid.uuid4()),
+        name="SomeModule",
+        version="0.0.1",
+        task=SomeTask,
+    )
+    class SomeModule(caikit.core.ModuleBase):
+        def run(self, sample_input: Union[str, int, bytes]) -> SampleOutputType:
+            pass
+
+
+def test_validation_does_not_allow_union_supersets():
+    """Ensure that an implementing module cannot take a subset of param types of the task."""
+
+    @task(
+        unary_parameters={"sample_input": Union[str, int, bytes]},
+        unary_output_type=SampleOutputType,
+        streaming_output_type=Iterable[SampleOutputType],
+    )
+    class SomeTask(TaskBase):
+        pass
+
+    # If the task says bytes are okay, the module needs to be able to handle bytes also
+    with pytest.raises(TypeError):
+
+        @caikit.core.module(
+            id=str(uuid.uuid4()),
+            name="SomeModule",
+            version="0.0.1",
+            task=SomeTask,
+        )
+        class SomeModule(caikit.core.ModuleBase):
+            def run(self, sample_input: Union[str, int]) -> SampleOutputType:
+                pass
+
+
 # ----------- BACKWARDS COMPATIBILITY ------------------------------------------- ##
 
 
