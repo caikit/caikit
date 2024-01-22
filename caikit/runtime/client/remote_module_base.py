@@ -54,7 +54,7 @@ log = alog.use_channel("RMBASE")
 error = error_handler.get(log)
 
 
-class RemoteModelBaseClass(ModuleBase):
+class RemoteModuleBase(ModuleBase):
     """Class to act as the base for remote modules. This class will be subclassed and
     mutated by construct_remote_module_class to make it have the same functions and parameters
     as the source module."""
@@ -539,7 +539,7 @@ class RemoteModelBaseClass(ModuleBase):
             # If list contains DataObjects then recurse. Else return primitive list
             if inspect.isclass(dm_type) and issubclass(dm_type, DataBase):
                 return [
-                    RemoteModelBaseClass._rename_union_sequence_types(sub_obj, dm_type)
+                    RemoteModuleBase._rename_union_sequence_types(sub_obj, dm_type)
                     for sub_obj in obj
                 ]
 
@@ -563,9 +563,9 @@ class RemoteModelBaseClass(ModuleBase):
                     dest_key = dm_type._fields_to_oneof[key]
 
                 val_type = dm_type._get_type_for_field(key)
-                output_dict[
-                    dest_key
-                ] = RemoteModelBaseClass._rename_union_sequence_types(val, val_type)
+                output_dict[dest_key] = RemoteModuleBase._rename_union_sequence_types(
+                    val, val_type
+                )
 
             return output_dict
 
@@ -576,12 +576,12 @@ class RemoteModelBaseClass(ModuleBase):
 
 def construct_remote_module_class(
     model_config: RemoteModuleConfig,
-    model_class: Type[RemoteModelBaseClass] = RemoteModelBaseClass,
+    model_class: Type[RemoteModuleBase] = RemoteModuleBase,
 ) -> Type[ModuleBase]:
     """Factory function to construct unique Remote Module Class."""
 
     # Construct unique class which will have functions attached to it
-    RemoteModelClass: Type[RemoteModelBaseClass] = type(
+    RemoteModelClass: Type[RemoteModuleBase] = type(
         "RemoteModelClass", (model_class,), dict(model_class.__dict__)
     )
 

@@ -37,20 +37,26 @@ error = error_handler.get(log)
 class ConnectionTlsInfo(DataObjectBase):
     """Helper dataclass to store information regarding TLS information."""
 
+    # If TLS is enabled
     enabled: bool = False
+
+    # Whether to verify server CA bundle
     insecure_verify: bool = False
+
+    # TLS Key information
     ca_file: Optional[str]
     cert_file: Optional[str]
     key_file: Optional[str]
 
     @property
     def mtls_enabled(self) -> bool:
-        """Helper property to identify mtls"""
+        """Helper property to identify if mtls is enabled"""
         return self.cert_file and self.key_file
 
+    # Don't use cached_property as DataBase does not contain a __dict__ object
+    # This also required provided private_slots to DataBase
     _private_slots = ("_ca_data", "_cert_data", "_key_data")
 
-    # Don't use cached_property as DataBase does not contain a __dict__ object
     @property
     def ca_data(self) -> Optional[bytes]:
         if self._ca_data:

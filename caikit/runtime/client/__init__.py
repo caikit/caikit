@@ -20,4 +20,4 @@ client code
 from .remote_config import RemoteModuleConfig
 from .remote_model_finder import RemoteModelFinder
 from .remote_model_initializer import RemoteModelInitializer
-from .remote_module_base import RemoteModelBaseClass
+from .remote_module_base import RemoteModuleBase
