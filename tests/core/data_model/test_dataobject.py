@@ -1395,3 +1395,19 @@ def test_dataobject_from_json_ignore_unknown_fields():
     m1 = Moo.from_json({"foo": 2, "boo": True}, ignore_unknown_fields=True)
     assert isinstance(m1, Moo)
     assert m1.foo == 2
+
+
+def test_dataobject_init_with_type_hints():
+    """Make sure a custom __init__ can be written with type hints without it
+    being overridden
+    """
+
+    @dataobject
+    class Something(DataObjectBase):
+        foo: int
+
+        def __init__(self, bar: int, bat: int):
+            self.foo = bar + bat
+
+    x = Something(1, 2)
+    assert x.foo == 3
