@@ -480,12 +480,26 @@ def _make_oneof_init(cls):
 
 
 def _has_dataclass_init(cls) -> bool:
-    """When the dataclass decorator adds an __init__ to a class, the __init__
-    function itself is created with a __qualname__ that looks like
-    __create_fn__.<locals>.__init__. This function looks for that __qualname__
-    to determine if the __init__ was injected by @dataclass or manually authored
-    by the code itself.
+    """Attempt to determine if the given class has an __init__ defined by the
+    @dataclass decorator
+
+    This turns out to be a very hard problem since @dataclass tries really hard
+    to cover its tracks. There are several things that can be used to attempt to
+    differentiate between an __init__ defined by @dataclass and one defined by
+    a user explicitly:
+
+    1. The cls.__init__.__qualname__: This only works in < 3.10 since >= 3.10
+        will set the __qualname__ to look like it was defined locally
+    2. The presence of 'return': None in the cls.__init__.__annotations__.
+        Generally, it's assumed that the return of __init__ is None and even
+        those who add argument type hints will omit the return hint.
     """
-    return (
+    dc_qualname = (
         getattr(cls.__init__, "__qualname__", None) == "__create_fn__.<locals>.__init__"
-    ) and not any(cls.__init__ is base.__init__ for base in cls.__bases__)
+    )
+    none_return_annotation = (
+        getattr(cls.__init__, "__annotations__", {}).get("return", "MISSING") is None
+    )
+    return (dc_qualname or none_return_annotation) and not any(
+        cls.__init__ is base.__init__ for base in cls.__bases__
+    )
