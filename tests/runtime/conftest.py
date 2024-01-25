@@ -21,6 +21,7 @@ from grpc_health.v1 import health_pb2, health_pb2_grpc
 import grpc
 import pytest
 import requests
+import tls_test_tools
 
 # First Party
 import alog
@@ -50,7 +51,7 @@ def open_port():
     Returns:
         int: Available port
     """
-    return _open_port()
+    return tls_test_tools.open_port()
 
 
 @pytest.fixture(scope="session")
@@ -59,7 +60,7 @@ def session_scoped_open_port():
     Returns:
         int: Available port
     """
-    return _open_port()
+    return tls_test_tools.open_port()
 
 
 @pytest.fixture(scope="session")
@@ -68,21 +69,7 @@ def http_session_scoped_open_port():
     Returns:
         int: Available port
     """
-    return _open_port()
-
-
-def _open_port(start=8888):
-    # TODO: This has obvious problems where the port returned for use by a test is not immediately
-    # put into use, so parallel tests could attempt to use the same port.
-    end = start + 1000
-    host = "localhost"
-    for port in range(start, end):
-        with socket.socket() as soc:
-            # soc.connect_ex returns 0 if connection is successful,
-            # indicating the port is in use
-            if soc.connect_ex((host, port)) != 0:
-                # So a non-zero code should mean the port is not currently in use
-                return port
+    return tls_test_tools.open_port()
 
 
 @pytest.fixture(scope="session")
