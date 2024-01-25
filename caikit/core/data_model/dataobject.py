@@ -52,6 +52,14 @@ from . import enums
 from .base import DataBase, _DataBaseMetaClass
 from .json_dict import JsonDict
 
+# Import dataclass_transform in a backwards-compatible way
+try:
+    # Standard
+    from typing import dataclass_transform
+except ImportError:
+    # Third Party
+    from typing_extensions import dataclass_transform
+
 ## Globals #####################################################################
 
 log = alog.use_channel("SCHEMA")
@@ -132,6 +140,7 @@ class DataObjectBase(DataBase, metaclass=_DataObjectBaseMetaClass):
 _DataObjectBaseT = TypeVar("_DataObjectBaseT", bound=Type[DataObjectBase])
 
 
+@dataclass_transform()
 def dataobject(*args, **kwargs) -> Callable[[_DataObjectBaseT], _DataObjectBaseT]:
     """The @dataobject decorator can be used to define a Data Model object's
     schema inline with the definition of the python class rather than needing to
