@@ -19,18 +19,23 @@
 # Standard
 from collections.abc import Iterable
 from types import GeneratorType
-from typing import Any
+from typing import TYPE_CHECKING
 import os
 
 # Local
 from caikit.config import get_config
 
+if TYPE_CHECKING:
+    from logging import Logger
+    from unittest.case import _ClassInfo
+    from typing import Optional, Union
+
 # dictionary mapping string log channel name to error handler instances
 # there is only one error handler instance for each log channel name
-_error_handlers = {}
+_error_handlers:dict[str, "ErrorHandler"] = {}
 
 
-def get(log_chan):
+def get(log_chan: Logger):
     """Get an error handler associated with a given alog log channel.  The same error handler will
     be returned if this function is called repeatedly with the same log channel.
 
@@ -53,7 +58,7 @@ class ErrorHandler:
     the `.log_raise` method.
     """
 
-    def __init__(self, log_chan):
+    def __init__(self, log_chan: Logger):
         """Create a new error handler that provides reusable error checking and automatic logging.
 
         Args:
@@ -62,20 +67,20 @@ class ErrorHandler:
         """
         self.log_chan = log_chan
 
-    def _handle_exception_messages(self, log_code, exception):
+    def _handle_exception_messages(self, log_code:str, exception:Exception):
         """Handle number of exception log messages to avoid overflows"""
         # increment the log message counter attribute or add it if not present
         if hasattr(exception, "_caikit_core_nexception_log_messages"):
-            exception._caikit_core_nexception_log_messages += 1
+            exception._caikit_core_nexception_log_messages += 1  # type: ignore
         else:
-            exception._caikit_core_nexception_log_messages = 0
+            exception._caikit_core_nexception_log_messages = 0  # type: ignore
 
         caikit_config = get_config()
 
         # if less than max log messages, then omit a log message
         if (
-            exception._caikit_core_nexception_log_messages
-            < caikit_config.max_exception_log_messages
+            exception._caikit_core_nexception_log_messages  # type: ignore
+            < caikit_config.max_exception_log_messages  # type: ignore
         ):
             self.log_chan.error(
                 log_code, "exception raised: {}".format(repr(exception))
@@ -83,17 +88,17 @@ class ErrorHandler:
 
         # if at the limit omit one message stating that we will no longer log
         elif (
-            exception._caikit_core_nexception_log_messages
-            == caikit_config.max_exception_log_messages
+            exception._caikit_core_nexception_log_messages  # type: ignore
+            == caikit_config.max_exception_log_messages  # type: ignore
         ):
             self.log_chan.error(
                 log_code,
                 "reached MAX_EXCEPTION_LOG_MESSAGES of `{}`, will no log exception `{}`".format(
-                    caikit_config.max_exception_log_messages, repr(exception)
+                    caikit_config.max_exception_log_messages, repr(exception)  # type: ignore
                 ),
             )
 
-    def log_raise(self, log_code, exception, root_exception=None):
+    def log_raise(self, log_code:str, exception: Exception, root_exception:Union[Exception,None]=None):
         """Log an exception with a log code and then re-raise it.  Using this instead of simply
         using the `raise` keyword with your exceptions will ensure that log message is emitted on
         the `error` level for the log channel associated with this handler.  This is invaluable for
@@ -132,7 +137,7 @@ class ErrorHandler:
     # calling an error handler is equivalent to calling the `.log_raise` method
     __call__ = log_raise
 
-    def type_check(self, log_code, *types, allow_none=False, **variables):
+    def type_check(self, log_code:str, *types:_ClassInfo, allow_none:bool=False, **variables:Union[_ClassInfo,None]):
         """Check for acceptable types for a given object.  If the type check fails, a log message
         will be emitted at the error level on the log channel associated with this handler and a
         `TypeError` exception will be raised with an appropriate message.  This check should be used
@@ -169,7 +174,7 @@ class ErrorHandler:
             # this type check verifies that `foo` and `bar` are both strings
             > error.type_check('<COR03761101E>', str, foo=foo, bar=bar)
         """
-        if not get_config().enable_error_checks:
+        if not get_config().enable_error_checks:  # type: ignore
             return
 
         if not types:
@@ -200,7 +205,7 @@ class ErrorHandler:
                     ),
                 )
 
-    def type_check_all(self, log_code, *types, allow_none=False, **variables):
+    def type_check_all(self, log_code:str, *types:_ClassInfo, allow_none:bool=False, **variables:Iterable[Union[_ClassInfo,None]]):
         """This type check is similar to `.type_check` except that it verifies that each variable
         in `**variables` is either a `list` or a `tuple` and then checks that *all* of the items
         they contain are instances of a type in `*types`.  If `allow_none` is set to `True`, then
@@ -224,7 +229,7 @@ class ErrorHandler:
             > baz = None
             > error.type_check('<COR40818868E>', None, int, foo=foo, bar=bar, baz=None)
         """
-        if not get_config().enable_error_checks:
+        if not get_config().enable_error_checks:  # type: ignore
             return
 
         if not types:
@@ -277,7 +282,7 @@ class ErrorHandler:
                     )
 
     def subclass_check(
-        self, log_code: str, child_class: Any, *parent_classes, allow_none: bool = False
+        self, log_code: str, child_class:Optional[_ClassInfo], *parent_classes:_ClassInfo, allow_none: bool = False
     ):
         """Check that the given child classes are valid types and that they
         derive from the given set of parent classes [issubclass(x, (y, z))]. If
@@ -319,7 +324,7 @@ class ErrorHandler:
             # this type check verifies that `foo` and `bar` are both strings
             > error.type_check('<COR03761101E>', str, foo=foo, bar=bar)
         """
-        if not get_config().enable_error_checks:
+        if not get_config().enable_error_checks:  # type: ignore
             return
 
         if allow_none and child_class is None:
@@ -344,7 +349,7 @@ class ErrorHandler:
                 ),
             )
 
-    def value_check(self, log_code, condition, *args):
+    def value_check(self, log_code:str, condition:bool, *args:object):
         """Check for acceptable values for a given object.  If this check fails, a log message will
         be emitted at the error level on the log channel associated with this handler and a
         `ValueError` exception will be raised with an appropriate message.  This check should be
@@ -371,7 +376,7 @@ class ErrorHandler:
                 condition is encountered.
 
         """
-        if not get_config().enable_error_checks:
+        if not get_config().enable_error_checks:  # type: ignore
             return
 
         if not condition:
@@ -385,7 +390,7 @@ class ErrorHandler:
                 log_code, ValueError("value check failed: {}".format(interpolated_msg))
             )
 
-    def file_check(self, log_code, *file_paths):
+    def file_check(self, log_code:str, *file_paths:str):
         """Check to see if one or more file paths exist and are regular files.  If any do not exist
         or are not files, then a log message will be emitted on the log channel associated with this
         error handler and a `FileNotFoundError` will be raised with an appropriate error message.
@@ -402,7 +407,7 @@ class ErrorHandler:
                 exist or is not a regular file, then a log message will be
                 emitted and a `FileNotFoundError` will be raised.
         """
-        if not get_config().enable_error_checks:
+        if not get_config().enable_error_checks:  # type: ignore
             return
 
         for file_path in file_paths:
@@ -420,7 +425,7 @@ class ErrorHandler:
                     FileNotFoundError("Path `{}` is not a file".format(file_path)),
                 )
 
-    def dir_check(self, log_code, *dir_paths):
+    def dir_check(self, log_code:str, *dir_paths:str):
         """Check to see if one or more directory paths exist and are, in fact, directories.  If any
         do not exist then a `FileNotFoundError` will be raised and if they are not directories then
         a `NotADirectoryError` will be raised.  In either case, a log message will be emitted on the
@@ -439,7 +444,7 @@ class ErrorHandler:
                 emitted and a `FileNotFoundError` or `NotADirectoryError` will
                 raised.
         """
-        if not get_config().enable_error_checks:
+        if not get_config().enable_error_checks:  # type: ignore
             return
 
         for dir_path in dir_paths:
@@ -457,7 +462,7 @@ class ErrorHandler:
                     NotADirectoryError("Path `{}` is not a directory".format(dir_path)),
                 )
 
-    def _fqname(self, o) -> str:
+    def _fqname(self, o:object) -> str:
         try:
             class_ = o.__class__
             return ".".join([class_.__module__, class_.__qualname__])
