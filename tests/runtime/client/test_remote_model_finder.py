@@ -27,6 +27,7 @@ from aconfig import Config, ImmutableConfig
 # Local
 from caikit.runtime.client import RemoteModelFinder, RemoteModuleConfig
 from caikit.runtime.model_management.model_manager import ModelManager
+from sample_lib.modules.file_processing import BoundingBoxModule
 from tests.conftest import random_test_id
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import multi_task_model_id  # noqa: F401
@@ -52,15 +53,38 @@ def sample_module_id(good_model_path) -> str:
 
 
 @contextmanager
+def file_task_model_context(box_model_path, file_model_id=None) -> str:
+    """Load file model id. This is copied from conftest except as
+    a contextmanager"""
+    model_id = file_model_id or random_test_id()
+    model_manager = ModelManager.get_instance()
+    # model load test already tests with archive - just using a model path here
+    model_manager.load_model(
+        model_id,
+        local_model_path=box_model_path,
+        model_type=Fixtures.get_good_model_type(),  # eventually we'd like to be determining the type from the model itself...
+    )
+    yield model_id
+
+    # teardown
+    model_manager.unload_model(model_id)
+
+
+@contextmanager
 def temp_finder(
     multi_finder_name="remote",
     multi_finder_cfg=None,
     connection_cfg=None,
+    min_poll_time=0,
     protocol="grpc",
 ):
     # Provide defaults
     if not multi_finder_cfg:
-        multi_finder_cfg = {"discover_models": True, "supported_models": {}}
+        multi_finder_cfg = {
+            "discover_models": True,
+            "supported_models": {},
+            "min_poll_time": min_poll_time,
+        }
 
     if connection_cfg:
         multi_finder_cfg["connection"] = connection_cfg
@@ -235,3 +259,59 @@ def test_remote_finder_not_found():
         multi_finder_cfg={"discover_models": False, "supported_models": {"wrong": "id"}}
     ) as finder:
         assert not finder.find_model("sample")
+
+
+@pytest.mark.parametrize("protocol", ["grpc", "http"])
+def test_remote_finder_lazy_discover_models(
+    sample_task_model_id, open_port, protocol, box_model_path
+):
+    """Test to ensure lazily discovering models"""
+    file_model_id = random_test_id()
+    with runtime_test_server(open_port, protocol=protocol) as server, temp_finder(
+        connection_cfg={
+            "hostname": "localhost",
+            "port": server.port,
+        },
+        protocol=protocol,
+    ) as finder:
+        config: RemoteModuleConfig | None = finder.find_model(sample_task_model_id)
+        assert config
+        assert isinstance(config, RemoteModuleConfig)
+        assert sample_task_model_id == config.model_path
+
+        # Assert file model hasn't been found
+        assert not finder.find_model(file_model_id)
+
+        with file_task_model_context(box_model_path, file_model_id):
+            # Assert finder can find model once in context
+            config = finder.find_model(model_path=file_model_id)
+            assert config
+            assert isinstance(config, RemoteModuleConfig)
+            assert config.model_path == file_model_id
+
+
+@pytest.mark.parametrize("protocol", ["grpc", "http"])
+def test_remote_finder_lazy_discover_models_poll_time(
+    sample_task_model_id, open_port, protocol, box_model_path
+):
+    """Test to ensure lazily discovering models doesn't work with poll time"""
+    file_model_id = random_test_id()
+    with runtime_test_server(open_port, protocol=protocol) as server, temp_finder(
+        connection_cfg={
+            "hostname": "localhost",
+            "port": server.port,
+        },
+        min_poll_time=10,
+        protocol=protocol,
+    ) as finder:
+        config: RemoteModuleConfig | None = finder.find_model(sample_task_model_id)
+        assert config
+        assert isinstance(config, RemoteModuleConfig)
+        assert sample_task_model_id == config.model_path
+
+        # Assert file model hasn't been found
+        assert not finder.find_model(file_model_id)
+
+        with file_task_model_context(box_model_path, file_model_id):
+            # Assert finder still can't find model since it was checked to recently
+            assert not finder.find_model(model_path=file_model_id)

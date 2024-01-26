@@ -25,6 +25,8 @@ model_management:
                 model_key: Optional[str]=MODEL_MESH_MODEL_ID_KEY <Optional setting to override the 
                     grpc model name>
                 protocol: Optional[str]="grpc" <protocol the remote server is using (grpc or http)>
+                min_poll_time: Optional[int]=30 <minimum time before attempting to rediscover
+                    models> 
                 discover_models: Optional[bool]=True <bool to automatically discover remote models
                     via the /info/models endpoint>
                 supported_models: Optional[Dict[str, str]]={} <mapping of model names to module_ids 
@@ -33,10 +35,12 @@ model_management:
 
 """
 # Standard
+from datetime import datetime, timedelta
+from threading import Lock
 from typing import Dict, Optional
 
 # Third Party
-from requests import RequestException, Session
+from requests import RequestException
 import grpc
 
 # First Party
@@ -105,6 +109,7 @@ class RemoteModelFinder(ModelFinderBase):
         # Type/Value check model parameters
         self._discover_models = config.get("discover_models", True)
         self._supported_models = config.get("supported_models") or {}
+        self._min_poll_time = config.get("min_poll_time", 30)
         error.type_check(
             "<COR74343245E>",
             dict,
@@ -115,9 +120,14 @@ class RemoteModelFinder(ModelFinderBase):
             bool,
             discover_models=self._discover_models,
         )
+        error.type_check("", int, min_poll_time=self._min_poll_time)
 
-        # Discover remote models
+        # If discovery models is enabled construct lock objects
+        # and then run discovery
         if self._discover_models:
+            self._last_discovered_time = None
+            self._poll_delta = timedelta(seconds=self._min_poll_time)
+            self._discovery_lock = Lock()
             self._supported_models.update(self.discover_models())
 
     def find_model(
@@ -126,6 +136,11 @@ class RemoteModelFinder(ModelFinderBase):
         **__,
     ) -> Optional[RemoteModuleConfig]:
         """Check if the remote runtime supports the model_path"""
+
+        # If model_path is not detected and discover models is enabled attempt
+        # rediscovery
+        if model_path not in self._supported_models and self._discover_models:
+            self._safe_discover()
 
         # If model_path is not one of the supported models then raise an error
         if model_path not in self._supported_models:
@@ -158,6 +173,29 @@ class RemoteModelFinder(ModelFinderBase):
             return self._discover_http_models()
 
     ### Discovery Helper Functions
+
+    def _safe_discover(self) -> Dict[str, str]:
+        """Helper function that lazily discovers models in a
+        thread safe manor. This function also ensures we don't overload
+        the remote server with discovery requests
+
+        Returns:
+            Dict[str, str]: Result of discover_models
+        """
+        with self._discovery_lock:
+            current_time = datetime.now()
+
+            # If discovery was ran recently then return the cached results
+            if (
+                self._last_discovered_time
+                and self._last_discovered_time + self._poll_delta > current_time
+            ):
+                return self._supported_models
+
+            # Run discovery
+            self._last_discovered_time = current_time
+            self._supported_models = self.discover_models()
+            return self._supported_models
 
     def _discover_grpc_models(self) -> Dict[str, str]:
         """Helper function to get all the supported models and modules
@@ -215,8 +253,10 @@ class RemoteModelFinder(ModelFinderBase):
         """
 
         # Configure HTTP target and Session object
+        http_scheme = "https://" if self._tls.enabled else "http://"
         target = (
-            f"{self._connection.hostname}:{self._connection.port}{MODELS_INFO_ENDPOINT}"
+            f"{http_scheme}{self._connection.hostname}:"
+            f"{self._connection.port}{MODELS_INFO_ENDPOINT}"
         )
         session = construct_requests_session(
             self._connection.options, self._tls, self._connection.timeout
