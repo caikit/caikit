@@ -50,6 +50,10 @@ from caikit.core.model_management.model_finder_base import ModelFinderBase
 from caikit.interfaces.common.data_model.remote import ConnectionInfo
 from caikit.interfaces.runtime.data_model import ModelInfoRequest, ModelInfoResponse
 from caikit.runtime.client.remote_config import RemoteModuleConfig
+from caikit.runtime.client.utils import (
+    construct_grpc_channel,
+    construct_requests_session,
+)
 from caikit.runtime.names import (
     MODEL_MESH_MODEL_ID_KEY,
     MODELS_INFO_ENDPOINT,
@@ -166,30 +170,7 @@ class RemoteModelFinder(ModelFinderBase):
 
         target = f"{self._connection.hostname}:{self._connection.port}"
         options = tuple(self._connection._options.items())
-
-        # Generate GRPC Channel
-        if self._tls.enabled:
-            # Gather CA and MTLS data
-            grpc_credentials = grpc.ssl_channel_credentials(
-                root_certificates=self._tls.ca_data,
-                private_key=self._tls.key_data,
-                certificate_chain=self._tls.cert_data,
-            )
-
-            # Construct secure channel
-            channel_func = grpc.secure_channel
-            channel_args = [target, grpc_credentials, options]
-        else:
-            channel_func = grpc.insecure_channel
-            channel_args = [target, options]
-
-        # Construct Info RPC and submit request
-        log.debug2(
-            "Constructing grpc finder channel with %s and %s",
-            channel_func,
-            str(channel_args),
-        )
-        with channel_func(*channel_args) as channel:
+        with construct_grpc_channel(target, options, self._tls) as channel:
             info_service_rpc = channel.unary_unary(
                 get_grpc_route_name(ServiceType.INFO, "GetModelsInfo"),
                 request_serializer=ModelInfoRequest.get_proto_class().SerializeToString,
@@ -233,38 +214,13 @@ class RemoteModelFinder(ModelFinderBase):
                 Mapping of remote model names to module_ids
         """
 
-        # Configure HTTP Client object
+        # Configure HTTP target and Session object
         target = (
             f"{self._connection.hostname}:{self._connection.port}{MODELS_INFO_ENDPOINT}"
         )
-
-        session = Session()
-        if self._tls.enabled:
-            target = f"https://{target}"
-
-            # Configure the TLS CA settings
-            if self._tls.insecure_verify:
-                session.verify = False
-            else:
-                session.verify = self._tls.ca_file or True
-
-            # Configure MTLS if its enabled
-            if self._tls.mtls_enabled:
-                session.cert = (
-                    self._tls.cert_file,
-                    self._tls.key_file,
-                )
-
-        else:
-            target = f"http://{target}"
-
-        # Add any supplied options
-        if self._connection.options:
-            session.params.update(self._connection.options)
-
-        # Update the connection timeout setting
-        if self._connection.timeout:
-            session.params["timeout"] = self._connection.timeout
+        session = construct_requests_session(
+            self._connection.options, self._tls, self._connection.timeout
+        )
 
         # Send HTTP Request
         try:

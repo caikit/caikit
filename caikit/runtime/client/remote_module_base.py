@@ -39,6 +39,10 @@ from caikit.core.modules import ModuleBase, module
 from caikit.core.task import TaskBase
 from caikit.interfaces.common.data_model import ConnectionInfo, Sequence
 from caikit.runtime.client.remote_config import RemoteModuleConfig, RemoteRPCDescriptor
+from caikit.runtime.client.utils import (
+    construct_grpc_channel,
+    construct_requests_session,
+)
 from caikit.runtime.names import (
     HTTP_TO_STATUS_CODE,
     MODEL_ID,
@@ -434,18 +438,7 @@ class RemoteModuleBase(ModuleBase):
             options = list(self._connection.options.items())
 
             # Generate secure channel
-            if self._tls.enabled:
-                grpc_credentials = grpc.ssl_channel_credentials(
-                    root_certificates=self._tls.ca_data,
-                    private_key=self._tls.key_data,
-                    certificate_chain=self._tls.cert_data,
-                )
-                channel = grpc.secure_channel(
-                    target, credentials=grpc_credentials, options=options
-                )
-            else:
-                channel = grpc.insecure_channel(target, options=options)
-
+            channel = construct_grpc_channel(target, options, self._tls)
             self._conn_channel = channel
             return self._conn_channel
 
@@ -462,33 +455,9 @@ class RemoteModuleBase(ModuleBase):
             if self._conn_channel:
                 return self._conn_channel
 
-            # Construct session with defaults
-            session = Session()
-            session.headers["Content-type"] = "application/json"
-
-            # Gather request SSL configuration
-            if self._tls.enabled:
-                # Configure the TLS CA settings
-                if self._tls.insecure_verify:
-                    session.verify = False
-                else:
-                    session.verify = self._tls.ca_file or True
-
-                # Configure MTLS if its enabled
-                if self._tls.mtls_enabled:
-                    session.cert = (
-                        self._tls.cert_file,
-                        self._tls.key_file,
-                    )
-
-            # Update request options and timeout variables
-            if self._connection.options:
-                session.params.update(self._connection.options)
-
-            if self._connection.timeout:
-                session.params["timeout"] = self._connection.timeout
-
-            self._conn_channel = session
+            self._conn_channel = construct_requests_session(
+                self._connection.options, self._tls, self._connection.timeout
+            )
             return self._conn_channel
 
     ### Generic Helper Functions
