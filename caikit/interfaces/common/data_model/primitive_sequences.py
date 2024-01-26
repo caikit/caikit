@@ -16,6 +16,7 @@ This file contains interfaces required for unions of lists
 """
 
 # Standard
+from dataclasses import dataclass
 from typing import List
 
 # First Party
@@ -26,20 +27,24 @@ from caikit.core.data_model import PACKAGE_COMMON, DataObjectBase, dataobject
 
 
 @dataobject(PACKAGE_COMMON)
+@dataclass
 class IntSequence(DataObjectBase):
     values: Annotated[List[int], FieldNumber(1)]
 
 
 @dataobject(PACKAGE_COMMON)
+@dataclass
 class FloatSequence(DataObjectBase):
     values: Annotated[List[float], FieldNumber(1)]
 
 
 @dataobject(PACKAGE_COMMON)
+@dataclass
 class StrSequence(DataObjectBase):
     values: Annotated[List[str], FieldNumber(1)]
 
 
 @dataobject(PACKAGE_COMMON)
+@dataclass
 class BoolSequence(DataObjectBase):
     values: Annotated[List[bool], FieldNumber(1)]
