@@ -251,6 +251,7 @@ def make_proto_def(
         out += justify_script_string(
             """
             from caikit.core.data_model import DataBase
+            from caikit.core.data_model.dataobject import _make_data_model_class
             from py_to_proto import dataclass_to_proto, descriptor_to_message_class
             from dataclasses import dataclass
             """
@@ -281,6 +282,8 @@ def make_proto_def(
 
                 class {message_name}(DataBase):
                     _proto_class = {proto_name}
+                    
+                {message_name} = _make_data_model_class({proto_name},{message_name})
                 """
             )
 

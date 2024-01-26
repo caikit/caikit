@@ -561,16 +561,13 @@ class DataBase(metaclass=_DataBaseMetaClass):
         """
 
         # Dataclass look ups are fast so keep them in to retain interface compatibility
-        if (
-            field_name in cls._fields_message
-            or field_name in cls._fields_message_repeated
-        ):
-            return cls.get_class_for_proto(
-                cls.get_proto_class().DESCRIPTOR.fields_by_name[field_name].message_type
-            )
-
         if field_name not in cls.fields:
             raise AttributeError(f"Invalid field {field_name}")
+
+        # If field_name has not been cached then perform lookup and
+        # save result
+        if field_name not in cls._fields_to_type:
+            cls._fields_to_type[field_name] = cls._get_type_for_field(field_name)
 
         return cls._fields_to_type.get(field_name)
 

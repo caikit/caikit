@@ -469,7 +469,7 @@ def test_get_field_message_type_valid_fields():
     ) as dm:
         # Non-message field
         thing_one = dm.ThingOne(1)
-        assert thing_one.get_field_message_type("foo") is None
+        assert thing_one.get_field_message_type("foo") == int
 
         # Non-repeated sub-message
         wrapper_msg = dm.WrapperThing(thing_one)
