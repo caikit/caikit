@@ -15,11 +15,13 @@
 Helper utils for GRPC and HTTP connections
 """
 # Standard
-from typing import List, Tuple, Dict, Optional
+from typing import Dict, List, Optional, Tuple
+
+# Third Party
+from requests import Session
 
 # Third party
 import grpc
-from requests import Session
 
 # Local
 from caikit.interfaces.common.data_model import ConnectionTlsInfo
@@ -37,7 +39,9 @@ def construct_grpc_channel(
             private_key=tls.key_data,
             certificate_chain=tls.cert_data,
         )
-        return grpc.secure_channel(target, credentials=grpc_credentials, options=options)
+        return grpc.secure_channel(
+            target, credentials=grpc_credentials, options=options
+        )
 
     return grpc.insecure_channel(target, options=options)
 

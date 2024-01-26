@@ -531,7 +531,7 @@ class RemoteModuleBase(ModuleBase):
                 if key in dm_type._fields_to_oneof:
                     dest_key = dm_type._fields_to_oneof[key]
 
-                val_type = dm_type._get_type_for_field(key)
+                val_type = dm_type.get_field_message_type(key)
                 output_dict[dest_key] = RemoteModuleBase._rename_union_sequence_types(
                     val, val_type
                 )

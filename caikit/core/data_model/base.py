@@ -76,6 +76,7 @@ class _DataBaseMetaClass(type):
     fields_enum_rev: Dict  # {}
     _fields_oneofs_map: Dict  # {}
     _fields_to_oneof: Dict  # {}
+    _fields_to_type: Dict  # {}
     _fields_map: Tuple  # ()
     _fields_message: Tuple  # ()
     _fields_message_repeated: Tuple  # ()
@@ -141,6 +142,7 @@ class _DataBaseMetaClass(type):
         attrs["fields_enum_rev"] = {}
         attrs["_fields_oneofs_map"] = {}
         attrs["_fields_to_oneof"] = {}
+        attrs["_fields_to_type"] = {}
         attrs["_fields_map"] = ()
         attrs["_fields_message"] = ()
         attrs["_fields_message_repeated"] = ()
@@ -472,6 +474,11 @@ class _DataBaseMetaClass(type):
                     ):
                         setattr(self, field_name, None)
 
+            # Add type information for all fields. Do this during init to
+            # allow for forward refs to be imported
+            for field in cls.fields:
+                cls._fields_to_type[field] = cls._get_type_for_field(field)
+
         # Set docstring to the method explicitly
         __init__.___doc__ = docstring
         return __init__
@@ -539,20 +546,21 @@ class DataBase(metaclass=_DataBaseMetaClass):
         return cls._proto_class
 
     @classmethod
-    def get_field_message_type(cls, field_name: str) -> Optional[Type["DataBase"]]:
-        """Get the data model class for the given field if the field is a
-        message or a repeated message
+    def get_field_message_type(cls, field_name: str) -> Optional[type]:
+        """Get the data model class for the given field. This function relies on
+        the metaclass to fill cls._fields_to_type. This is to avoid costly computation
+        during runtime
 
         Args:
             field_name (str): Field name to check (AttributeError raised if name
                 is invalid)
 
         Returns:
-            data_model_type:  Type[DataBase]
+            data_model_type:  type
                 The data model class type for the given field
         """
-        if field_name not in cls.fields:
-            raise AttributeError(f"Invalid field {field_name}")
+
+        # Dataclass look ups are fast so keep them in to retain interface compatibility
         if (
             field_name in cls._fields_message
             or field_name in cls._fields_message_repeated
@@ -560,7 +568,11 @@ class DataBase(metaclass=_DataBaseMetaClass):
             return cls.get_class_for_proto(
                 cls.get_proto_class().DESCRIPTOR.fields_by_name[field_name].message_type
             )
-        return None
+
+        if field_name not in cls.fields:
+            raise AttributeError(f"Invalid field {field_name}")
+
+        return cls._fields_to_type.get(field_name)
 
     @classmethod
     def from_backend(cls, backend):
@@ -619,7 +631,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
     @classmethod
     def _get_type_for_field(cls, field_name: str) -> type:
-        """Class method to return the type hint for a particular field"""
+        """Helper class method to return the type hint for a particular field"""
         cls_type_hints = get_type_hints(cls)
         if type_hint := cls_type_hints.get(field_name):
 
