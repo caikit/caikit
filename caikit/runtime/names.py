@@ -273,7 +273,7 @@ REQUIRED_INPUTS_KEY = "inputs"
 OPTIONAL_INPUTS_KEY = "parameters"
 MODEL_ID = "model_id"
 
-#  Stream event type for HTTP output streaming
+# Stream event type for HTTP output streaming
 class StreamEventTypes(Enum):
     MESSAGE = "message"
     ERROR = "error"

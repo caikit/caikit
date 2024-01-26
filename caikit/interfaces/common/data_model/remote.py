@@ -59,36 +59,21 @@ class ConnectionTlsInfo(DataObjectBase):
 
     @property
     def ca_data(self) -> Optional[bytes]:
-        if self._ca_data:
-            return self._ca_data
-
-        if self.ca_file and Path(self.ca_file).exists():
+        if not self._ca_data and self.ca_file and Path(self.ca_file).exists():
             self._ca_data = Path(self.ca_file).read_bytes()
-            return self._ca_data
-
-        return
+        return self._ca_data
 
     @property
     def key_data(self) -> Optional[bytes]:
-        if self._key_data:
-            return self._key_data
-
-        if self.key_file and Path(self.key_file).exists():
+        if not self._key_data and self.key_file and Path(self.key_file).exists():
             self._key_data = Path(self.key_file).read_bytes()
-            return self._key_data
-
-        return
+        return self._key_data
 
     @property
     def cert_data(self) -> Optional[bytes]:
-        if self._cert_data:
-            return self._cert_data
-
-        if self.cert_file and Path(self.cert_file).exists():
+        if not self._cert_data and self.cert_file and Path(self.cert_file).exists():
             self._cert_data = Path(self.cert_file).read_bytes()
-            return self._cert_data
-
-        return
+        return self._cert_data
 
     def __post_init__(self):
         """Post init function to verify field types and arguments"""
@@ -109,7 +94,7 @@ class ConnectionTlsInfo(DataObjectBase):
             insecure_verify=self.insecure_verify,
         )
 
-        # initialize cached properties
+        # Initialize cached properties
         self._ca_data = None
         self._cert_data = None
         self._key_data = None
@@ -164,7 +149,8 @@ class ConnectionInfo(DataObjectBase):
         if isinstance(self.tls, dict):
             self.tls = ConnectionTlsInfo(**self.tls)
 
-        # Set default port
+        # Set default port. Utilize the standard HTTP ports as the majority of protocols
+        # use http under the hood like grpc and s3
         if not self.port:
             self.port = HTTPS_PORT if self.tls.enabled else HTTP_PORT
 

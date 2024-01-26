@@ -46,10 +46,9 @@ from google.protobuf.descriptor import (
 )
 from google.protobuf.internal import type_checkers as proto_type_checkers
 from google.protobuf.message import Message as ProtoMessageType
-import typing_extensions
 
 # First Party
-from py_to_proto.compat_annotated import get_args, get_origin
+from py_to_proto.compat_annotated import Annotated, get_args, get_origin
 import alog
 
 # Local
@@ -622,8 +621,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
     def _get_type_for_field(cls, field_name: str) -> type:
         """Class method to return the type hint for a particular field"""
         cls_type_hints = get_type_hints(cls)
-        if field_name in cls_type_hints:
-            type_hint = cls_type_hints[field_name]
+        if type_hint := cls_type_hints.get(field_name):
 
             # If type is optional or a list then return internal type
             type_args = get_args(type_hint)
@@ -639,7 +637,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
                 type_hint = type_args[0]
 
             # If type is Annotated then get the actual type
-            if get_origin(type_hint) == typing_extensions.Annotated:
+            if get_origin(type_hint) == Annotated:
                 type_hint = get_args(type_hint)[0]
 
             return type_hint

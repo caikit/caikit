@@ -26,6 +26,9 @@ from caikit.core.data_model import PACKAGE_COMMON, DataObjectBase, dataobject
 
 
 class Sequence(DataObjectBase):
+    """Base class for all Sequences to enable type checking
+    e.g. isinstance(<>, Sequence)"""
+
     values: List[Any]
 
 
