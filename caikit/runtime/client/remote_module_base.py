@@ -415,7 +415,7 @@ class RemoteModuleBase(ModuleBase):
             except grpc.RpcError as err:
                 raise CaikitRuntimeException(
                     err.code() if hasattr(err, "code") else grpc.StatusCode.UNKNOWN,
-                    "Error received while streaming GRPC result",
+                    "Error received from GRPC request",
                 ) from err
 
             return response_dm_class.from_proto(response)

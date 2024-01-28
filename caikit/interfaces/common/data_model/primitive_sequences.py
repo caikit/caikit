@@ -16,6 +16,7 @@ This file contains interfaces required for unions of lists
 """
 
 # Standard
+from dataclasses import dataclass
 from typing import Any, List
 
 # First Party
@@ -33,20 +34,24 @@ class Sequence(DataObjectBase):
 
 
 @dataobject(PACKAGE_COMMON)
+@dataclass
 class IntSequence(Sequence):
     values: Annotated[List[int], FieldNumber(1)]
 
 
 @dataobject(PACKAGE_COMMON)
+@dataclass
 class FloatSequence(Sequence):
     values: Annotated[List[float], FieldNumber(1)]
 
 
 @dataobject(PACKAGE_COMMON)
+@dataclass
 class StrSequence(Sequence):
     values: Annotated[List[str], FieldNumber(1)]
 
 
 @dataobject(PACKAGE_COMMON)
+@dataclass
 class BoolSequence(Sequence):
     values: Annotated[List[bool], FieldNumber(1)]
