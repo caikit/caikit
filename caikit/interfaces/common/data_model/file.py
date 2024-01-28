@@ -16,6 +16,7 @@ This file contains interfaces required to handle File data
 """
 
 # Standard
+from dataclasses import dataclass
 from typing import Optional
 
 # First Party
@@ -26,6 +27,7 @@ from caikit.core.data_model import PACKAGE_COMMON, DataObjectBase, dataobject
 
 
 @dataobject(PACKAGE_COMMON)
+@dataclass
 class File(DataObjectBase):
     data: Annotated[bytes, FieldNumber(1)]
     filename: Annotated[Optional[str], FieldNumber(2)]

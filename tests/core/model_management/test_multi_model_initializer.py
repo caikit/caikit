@@ -24,6 +24,7 @@ import pytest
 import aconfig
 
 # Local
+from caikit.config import get_config
 from caikit.core.model_management.factories import model_initializer_factory
 from caikit.core.model_management.local_model_finder import LocalModelFinder
 from caikit.core.model_management.model_initializer_base import ModelInitializerBase
@@ -58,6 +59,10 @@ def construct_mm_initializer(multi_model_config, config_override={}):
     config_override = config_override or {
         "model_management": {
             "initializers": {
+                "default": {
+                    "type": "MULTI",
+                    "config": multi_model_config,
+                },
                 "local": {
                     "type": "LOCAL",
                 },
@@ -67,11 +72,9 @@ def construct_mm_initializer(multi_model_config, config_override={}):
     }
 
     with temp_config(config_override, "merge"):
-        model_config = {
-            "type": "MULTI",
-            "config": multi_model_config,
-        }
-        yield model_initializer_factory.construct(model_config, "instance_name")
+        yield model_initializer_factory.construct(
+            get_config().model_management.initializers.default, "default"
+        )
 
 
 ## Tests #######################################################################
