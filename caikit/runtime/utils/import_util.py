@@ -101,6 +101,7 @@ def get_data_model(config: aconfig.Config = None) -> UnifiedDataModel:
 
     cdm = UnifiedDataModel()
     for lib_name in lib_names:
+        log.debug2("Importing library %s", lib_name)
         cdm = _get_cdm_from_lib(lib_name, cdm)
 
     # Check module registry to get base modules
@@ -161,6 +162,8 @@ def get_dynamic_module(module_name: str, module_dir: str = None) -> ModuleType:
     Returns:
         (module): Handle to the module after dynamic import
     """
+    if module := sys.modules.get(module_name):
+        return module
     module_path = f"{module_dir}.{module_name}" if module_dir else module_name
     log.info("<RUN11997772I>", "Loading service module: %s", module_path)
     # Try to find the spec for the module that we're interested in.
