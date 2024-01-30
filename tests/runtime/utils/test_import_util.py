@@ -89,6 +89,15 @@ def test_get_caikit_library_loads_caikit_core():
     assert sample_module == caikit.core
 
 
+def test_get_caikit_library_loads_main():
+    """Make sure __main__ works"""
+    # Standard
+    import sys
+
+    sample_module = get_dynamic_module("__main__")
+    assert sample_module is sys.modules["__main__"]
+
+
 ### get_data_model #############################################################
 
 
