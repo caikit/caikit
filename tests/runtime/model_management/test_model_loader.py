@@ -16,6 +16,7 @@ from concurrent.futures import Future
 from contextlib import contextmanager
 from unittest import mock
 import tempfile
+import threading
 
 # Third Party
 import grpc
@@ -358,3 +359,35 @@ def test_load_model_fail_callback_once(model_loader):
         with pytest.raises(CaikitRuntimeException):
             loaded_model.wait()
         fail_cb.assert_called_once()
+
+
+def test_load_model_loaded_status(model_loader):
+    """Test that we can observe the 'loaded' status of a model without waiting"""
+    model_id = "loaded_status_test"
+    release_event = threading.Event()
+    model_mock = mock.MagicMock()
+
+    def _load_module_mock(*_, **__):
+        release_event.wait()
+        return model_mock
+
+    with mock.patch.object(model_loader, "_load_module", _load_module_mock):
+        loaded_model = model_loader.load_model(
+            model_id=model_id,
+            local_model_path=Fixtures.get_good_model_path(),
+            model_type=Fixtures.get_good_model_type(),
+        )
+        # While still loading, it's not loaded
+        assert not loaded_model.loaded()
+
+        # Unblock loading and wait for the future to complete
+        release_event.set()
+        loaded_model._caikit_model_future.result()
+
+        # It is "loaded" even if .model() has not been called
+        assert loaded_model.loaded()
+        assert loaded_model._model is None
+
+        # After calling .model() it's also loaded
+        assert loaded_model.model()
+        assert loaded_model.loaded()

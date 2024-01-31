@@ -118,6 +118,9 @@ class LoadedModel:  # pylint: disable=too-many-instance-attributes
         self.wait()
         return self._model
 
+    def loaded(self) -> bool:
+        return bool(self._model or self._caikit_model_future.done())
+
     def wait(self):
         if self._model is None:
             try:
