@@ -62,6 +62,7 @@ class ModelInfo(DataObjectBase):
     name: Annotated[str, FieldNumber(2)]
     size: Annotated[int, FieldNumber(3)]
     metadata: Annotated[Dict[str, str], FieldNumber(4)]
+    loaded: Annotated[bool, FieldNumber(7)]
 
     # Module Information
     module_id: Annotated[str, FieldNumber(5)]
