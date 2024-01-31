@@ -329,7 +329,7 @@ class GlobalPredictServicer:
             ).inc()
             raise CaikitRuntimeException(
                 StatusCode.INVALID_ARGUMENT,
-                f"Exception raised during inference. This may be a problem with your input: {e}",
+                f"{e}",
             ) from e
 
         # NOTE: Specifically handling RpcError here is to pass through
@@ -359,7 +359,7 @@ class GlobalPredictServicer:
                 model_id=model_id,
             ).inc()
             raise CaikitRuntimeException(
-                StatusCode.INTERNAL, "Unhandled exception during prediction"
+                StatusCode.INTERNAL, f"{e}",
             ) from e
 
     def _verify_model_task(self, model: ModuleBase):
