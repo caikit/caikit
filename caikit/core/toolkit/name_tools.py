@@ -19,4 +19,4 @@ and other Protobuf names
 
 def snake_to_upper_camel(string: str) -> str:
     """Simple snake -> upper camel conversion for descriptors"""
-    return "".join([part[0].upper() + part[1:] for part in string.split("_")])
+    return "".join([part[0].upper() + part[1:] for part in string.split("_") if part])

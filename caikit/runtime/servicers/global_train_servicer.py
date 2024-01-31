@@ -73,7 +73,7 @@ class GlobalTrainServicer:
             lib_version = "unknown"
 
         log.info(
-            "<RUN76884779I>",
+            "<RUN76884778I>",
             "Constructed train service for library: %s, version: %s",
             self.library,
             lib_version,

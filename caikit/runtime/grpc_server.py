@@ -120,14 +120,14 @@ class RuntimeGRPCServer(RuntimeServerBase):
             )
 
             # Add training management servicer to the gRPC server
-            training_management_service: ServicePackage = (
+            self.training_management_service: ServicePackage = (
                 ServicePackageFactory.get_service_package(
                     ServicePackageFactory.ServiceType.TRAINING_MANAGEMENT,
                 )
             )
-            service_names.append(training_management_service.descriptor.full_name)
+            service_names.append(self.training_management_service.descriptor.full_name)
 
-            training_management_service.registration_function(
+            self.training_management_service.registration_function(
                 TrainingManagementServicerImpl(), self.server
             )
 
