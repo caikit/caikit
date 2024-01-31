@@ -1035,6 +1035,8 @@ def test_all_model_info_ok_response(runtime_grpc_server, sample_task_model_id):
     for model in model_info_response.models:
         # Assert name and id exist
         assert model.name and model.module_id
+        # Assert loaded is set (could be True or False)
+        assert model.loaded is not None
         # Assert metadata module_name matches expected
         if model.name == sample_task_model_id:
             assert model.module_metadata.get("name") == "SampleModule"
