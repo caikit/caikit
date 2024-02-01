@@ -45,14 +45,18 @@ model_management:
             config:
                 connection:
                     hostname: str <remote host>
-                    port: int <remote port>
-                    protocol: Optional[str]="grpc" <protocol the remote server is using (grpc or http)>
+                    port: Optional[int]=80/443 <remote port>
                     tls:
                         enabled: Optional[bool]=False <if ssl is enabled on the remote server>
                         ca_file: Optional[str]=None <path to remote ca file>
                         cert_file: Optional[str]=None <path to MTLS cert>
                         key_file: Optional[str]=None <path to MTLS key>
+                        insecure_verify: Optional[bool] = False <if server's cert should be verified>
                     options:  Optional[Dict[str,str]]={} <optional dict of grpc or http configuration options>
+                    timeout: Optional[int]=60 <optional client timeout setting>
+                protocol: Optional[str]="grpc" <protocol the remote server is using (grpc or http)>
+                model_key: Optional[str]=MODEL_MESH_MODEL_ID_KEY <Optional setting to override the grpc model name>
+                min_poll_time: Optional[int]=30 <The minimum time between sending discovery requests>
                 discover_models: Optional[bool]=True <bool to automatically discover remote models via the /info/models endpoint> 
                 supported_models: Optional[Dict[str, str]]={} <mapping of model names to module_ids that this remote supports>
                     <model_path>: <module_id>
@@ -61,8 +65,7 @@ model_management:
 The proposed configuration for the RemoteModelFinder is above. The only required field is the 
 generic `connection` dictionary that supports a secure channel, mutual TLS, and custom GRPC/HTTP 
 options. The `connection.hostname` setting contains the remote's hostname, while `connection.port` determines the 
-runtime port. The optional `connection.protocol` config is used to select which protocol to send
-requests over, with the default being `grpc`. The `connection.tls` dictionary contains all information 
+runtime port. The `connection.tls` dictionary contains all information 
 related to TLS with `tls.enabled` controlling if the server is running SSL, `tls.ca_file` is the path to
 the CA file that the remote's certificate is signed by, `tls.cert_file` is the path to the
 MTLS client certificate to be sent with the request, and finally, `tls.key_file` which is the file 
@@ -70,6 +73,7 @@ containing the MTLS client key. The final connection config is `connection.optio
 list of options to pass to either the HTTP or GRPC request; for an example of options, take a look 
 at the [GRPC Channel options](https://grpc.github.io/grpc/core/group__grpc__arg__keys.html#details)
 
+There are three more optional parameters that help configure the remote connection. The first is an optional `protocol` config is used to select which protocol to send requests over, with the default being `grpc`. The next is `model_key` which is used to control the GRPC metadata field containing the model name, the default is ModelMeshs `mm-model-id`; however, a common alternative is `mm-vmodel-id`. The final parameter is the `min_poll_time` argument which controls how often to discover models. This stops the RemoteModelFinder from overloading the remote server. 
 
 Two additional optional fields help control what models this remote supports. The 
 `discover_models` setting is a boolean that controls if the finder should query the remote runtime

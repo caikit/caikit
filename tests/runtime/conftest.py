@@ -5,7 +5,7 @@ This sets up global test configs when pytest starts
 # Standard
 from contextlib import contextmanager
 from functools import partial
-from typing import Dict, Type, Union
+from typing import Dict, List, Optional, Type, Union
 import os
 import shlex
 import socket
@@ -21,13 +21,19 @@ from grpc_health.v1 import health_pb2, health_pb2_grpc
 import grpc
 import pytest
 import requests
+import tls_test_tools
 
 # First Party
+import aconfig
 import alog
 
 # Local
 from caikit.core import MODEL_MANAGER
-from caikit.core.data_model.dataobject import render_dataobject_protos
+from caikit.core.data_model.dataobject import (
+    DataObjectBase,
+    dataobject,
+    render_dataobject_protos,
+)
 from caikit.runtime import http_server
 from caikit.runtime.grpc_server import RuntimeGRPCServer
 from caikit.runtime.model_management.loaded_model import LoadedModel
@@ -218,6 +224,17 @@ def runtime_http_server(
         http_session_scoped_open_port,
     ) as server:
         yield server
+
+
+@contextmanager
+def runtime_test_server(*args, protocol: str = "grpc", **kwargs):
+    """Helper function to yield either server"""
+    if protocol == "http":
+        with runtime_http_test_server(*args, **kwargs) as server:
+            yield server
+    elif protocol == "grpc":
+        with runtime_grpc_test_server(*args, **kwargs) as server:
+            yield server
 
 
 @pytest.fixture(scope="session")
@@ -481,3 +498,133 @@ def _check_http_server_readiness(server, config_overrides: Dict[str, Dict]):
                 "[HTTP server not ready]; will try to reconnect to test server in 0.01 second."
             )
             time.sleep(0.001)
+
+
+## TLS Helpers #####################################################################
+
+
+@dataobject
+class KeyPair(DataObjectBase):
+    cert: str
+    key: str
+
+
+@dataobject
+class TLSConfig(DataObjectBase):
+    server: KeyPair
+    client: KeyPair
+
+
+@contextmanager
+def generate_tls_configs(
+    port: int,
+    tls: bool = False,
+    mtls: bool = False,
+    inline: bool = False,
+    separate_client_ca: bool = False,
+    server_sans: Optional[List[str]] = None,
+    client_sans: Optional[List[str]] = None,
+    **http_config_overrides,
+) -> Dict[str, Dict]:
+    """Helper to generate tls configs"""
+    with tempfile.TemporaryDirectory() as workdir:
+        config_overrides = {}
+        client_keyfile, client_certfile = None, None
+        ca_cert, server_cert, server_key = None, None, None
+        use_in_test = config_overrides.setdefault("use_in_test", {})
+        use_in_test["workdir"] = workdir
+        if mtls or tls:
+            ca_key = tls_test_tools.generate_key()[0]
+            ca_cert = tls_test_tools.generate_ca_cert(ca_key)
+            server_key, server_cert = tls_test_tools.generate_derived_key_cert_pair(
+                ca_key=ca_key,
+                san_list=server_sans,
+            )
+            server_certfile, server_keyfile = save_key_cert_pair(
+                "server", workdir, server_key, server_cert
+            )
+
+            if inline:
+                tls_config = TLSConfig(
+                    server=KeyPair(cert=server_cert, key=server_key),
+                    client=KeyPair(cert="", key=""),
+                )
+            else:
+                tls_config = TLSConfig(
+                    server=KeyPair(cert=server_certfile, key=server_keyfile),
+                    client=KeyPair(cert="", key=""),
+                )
+
+            # need to save this ca_certfile in config_overrides so the tls
+            # tests below can access it from client side
+            ca_certfile, _ = save_key_cert_pair("ca", workdir, cert=ca_cert)
+            use_in_test["ca_cert"] = ca_certfile
+            use_in_test["server_key"] = server_keyfile
+            use_in_test["server_cert"] = server_certfile
+
+            # also saving a bad ca_certfile for a failure test case
+            bad_ca_file = os.path.join(workdir, "bad_ca_cert.crt")
+            with open(bad_ca_file, "w") as handle:
+                bad_cert = (
+                    "-----BEGIN CERTIFICATE-----\nfoobar\n-----END CERTIFICATE-----"
+                )
+                handle.write(bad_cert)
+            use_in_test["bad_ca_cert"] = bad_ca_file
+
+            if mtls:
+                if separate_client_ca:
+                    subject_kwargs = {"common_name": "my.client"}
+                    client_ca_key = tls_test_tools.generate_key()[0]
+                    client_ca_cert = tls_test_tools.generate_ca_cert(
+                        client_ca_key, **subject_kwargs
+                    )
+                else:
+                    subject_kwargs = {}
+                    client_ca_key = ca_key
+                    client_ca_cert = ca_cert
+
+                # If inlining the client CA
+                if inline:
+                    tls_config.client.cert = client_ca_cert
+                else:
+                    client_ca_certfile, _ = save_key_cert_pair(
+                        "client_ca", workdir, cert=client_ca_cert
+                    )
+                    tls_config.client.cert = client_ca_certfile
+
+                # Set up the client key/cert pair derived from the client CA
+                client_certfile, client_keyfile = save_key_cert_pair(
+                    "client",
+                    workdir,
+                    *tls_test_tools.generate_derived_key_cert_pair(
+                        ca_key=client_ca_key,
+                        san_list=client_sans,
+                        **subject_kwargs,
+                    ),
+                )
+                # need to save the client cert and key in config_overrides so the mtls test below can access it
+                use_in_test["client_cert"] = client_certfile
+                use_in_test["client_key"] = client_keyfile
+
+            config_overrides["runtime"] = {"tls": tls_config.to_dict()}
+        config_overrides.setdefault("runtime", {})["http"] = {
+            "server_shutdown_grace_period_seconds": 0.01,  # this is so the server is killed after 0.1 if no test is running
+            "port": port,
+            **http_config_overrides,
+        }
+
+        with temp_config(config_overrides, "merge"):
+            yield aconfig.Config(config_overrides)
+
+
+def save_key_cert_pair(prefix, workdir, key=None, cert=None):
+    crtfile, keyfile = None, None
+    if key is not None:
+        keyfile = os.path.join(workdir, f"{prefix}.key")
+        with open(keyfile, "w") as handle:
+            handle.write(key)
+    if cert is not None:
+        crtfile = os.path.join(workdir, f"{prefix}.crt")
+        with open(crtfile, "w") as handle:
+            handle.write(cert)
+    return crtfile, keyfile

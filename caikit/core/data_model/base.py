@@ -30,6 +30,7 @@ from typing import (
     Tuple,
     Type,
     Union,
+    get_type_hints,
 )
 import base64
 import datetime
@@ -37,11 +38,17 @@ import json
 
 # Third Party
 from google.protobuf import json_format
-from google.protobuf.descriptor import Descriptor, FieldDescriptor, OneofDescriptor
+from google.protobuf.descriptor import (
+    Descriptor,
+    EnumDescriptor,
+    FieldDescriptor,
+    OneofDescriptor,
+)
 from google.protobuf.internal import type_checkers as proto_type_checkers
 from google.protobuf.message import Message as ProtoMessageType
 
 # First Party
+from py_to_proto.compat_annotated import Annotated, get_args, get_origin
 import alog
 
 # Local
@@ -69,6 +76,7 @@ class _DataBaseMetaClass(type):
     fields_enum_rev: Dict  # {}
     _fields_oneofs_map: Dict  # {}
     _fields_to_oneof: Dict  # {}
+    _fields_to_type: Dict  # {}
     _fields_map: Tuple  # ()
     _fields_message: Tuple  # ()
     _fields_message_repeated: Tuple  # ()
@@ -134,6 +142,7 @@ class _DataBaseMetaClass(type):
         attrs["fields_enum_rev"] = {}
         attrs["_fields_oneofs_map"] = {}
         attrs["_fields_to_oneof"] = {}
+        attrs["_fields_to_type"] = {}
         attrs["_fields_map"] = ()
         attrs["_fields_message"] = ()
         attrs["_fields_message_repeated"] = ()
@@ -465,6 +474,11 @@ class _DataBaseMetaClass(type):
                     ):
                         setattr(self, field_name, None)
 
+            # Add type information for all fields. Do this during init to
+            # allow for forward refs to be imported
+            for field in cls.fields:
+                cls._fields_to_type[field] = cls._get_type_for_field(field)
+
         # Set docstring to the method explicitly
         __init__.___doc__ = docstring
         return __init__
@@ -532,28 +546,30 @@ class DataBase(metaclass=_DataBaseMetaClass):
         return cls._proto_class
 
     @classmethod
-    def get_field_message_type(cls, field_name: str) -> Optional[Type["DataBase"]]:
-        """Get the data model class for the given field if the field is a
-        message or a repeated message
+    def get_field_message_type(cls, field_name: str) -> Optional[type]:
+        """Get the python type for the given field. This function relies on the
+        metaclass to fill cls._fields_to_type. This is to avoid costly
+        computation during runtime
 
         Args:
             field_name (str): Field name to check (AttributeError raised if name
                 is invalid)
 
         Returns:
-            data_model_type:  Type[DataBase]
+            field_type:  type
                 The data model class type for the given field
         """
+
+        # Dataclass look ups are fast so keep them in to retain interface compatibility
         if field_name not in cls.fields:
             raise AttributeError(f"Invalid field {field_name}")
-        if (
-            field_name in cls._fields_message
-            or field_name in cls._fields_message_repeated
-        ):
-            return cls.get_class_for_proto(
-                cls.get_proto_class().DESCRIPTOR.fields_by_name[field_name].message_type
-            )
-        return None
+
+        # If field_name has not been cached then perform lookup and
+        # save result
+        if field_name not in cls._fields_to_type:
+            cls._fields_to_type[field_name] = cls._get_type_for_field(field_name)
+
+        return cls._fields_to_type.get(field_name)
 
     @classmethod
     def from_backend(cls, backend):
@@ -609,6 +625,64 @@ class DataBase(metaclass=_DataBaseMetaClass):
             super().__setattr__(_DataBaseMetaClass._WHICH_ONEOF_ATTR, {})
             which_oneof = getattr(self, _DataBaseMetaClass._WHICH_ONEOF_ATTR)
         return which_oneof
+
+    @classmethod
+    def _get_type_for_field(cls, field_name: str) -> type:
+        """Helper class method to return the type hint for a particular field"""
+        cls_type_hints = get_type_hints(cls)
+        if type_hint := cls_type_hints.get(field_name):
+
+            # If type is optional or a list then return internal type
+            type_args = get_args(type_hint)
+            if (
+                get_origin(type_hint) == Union
+                and type_args
+                == (
+                    type_args[0],
+                    type(None),
+                )
+                or get_origin(type_hint) in [list, List]
+            ):
+                type_hint = type_args[0]
+
+            # If type is Annotated then get the actual type
+            if get_origin(type_hint) == Annotated:
+                type_hint = get_args(type_hint)[0]
+
+            return type_hint
+
+        fd = cls._proto_class.DESCRIPTOR.fields_by_name.get(field_name)
+        if not fd:
+            raise ValueError(f"Unknown field: {field_name}")
+
+        # Convert the fd type into python
+        if fd.type == fd.TYPE_MESSAGE:
+            return cls.get_class_for_proto(fd.message_type)
+        elif fd.type == fd.TYPE_ENUM:
+            return cls.get_class_for_proto(fd.enum_type)
+        elif fd.type == fd.TYPE_BOOL:
+            return bool
+        elif fd.type == fd.TYPE_BYTES:
+            return bytes
+        elif fd.type == fd.TYPE_STRING:
+            return str
+        elif fd.type in [
+            fd.TYPE_FIXED32,
+            fd.TYPE_FIXED64,
+            fd.TYPE_INT32,
+            fd.TYPE_INT64,
+            fd.TYPE_SFIXED32,
+            fd.TYPE_SFIXED64,
+            fd.TYPE_SINT32,
+            fd.TYPE_SINT64,
+            fd.TYPE_UINT32,
+            fd.TYPE_UINT64,
+        ]:
+            return int
+        elif fd.type in [fd.TYPE_FLOAT, fd.TYPE_DOUBLE]:
+            return float
+
+        raise ValueError(f"Unknown proto type: {fd.type}")
 
     @classmethod
     def _is_valid_type_for_field(cls, field_name: str, val: Any) -> bool:
@@ -1100,7 +1174,7 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
     @staticmethod
     def get_class_for_proto(
-        proto: Union[Descriptor, ProtoMessageType]
+        proto: Union[Descriptor, FieldDescriptor, EnumDescriptor, ProtoMessageType]
     ) -> Type["DataBase"]:
         """Look up the data model class corresponding to the given protobuf
 
@@ -1117,12 +1191,14 @@ class DataBase(metaclass=_DataBaseMetaClass):
         error.type_check(
             "<COR46446770E>",
             Descriptor,
+            FieldDescriptor,
+            EnumDescriptor,
             ProtoMessageType,
             proto=proto,
         )
         proto_full_name = (
             proto.full_name
-            if isinstance(proto, Descriptor)
+            if isinstance(proto, (Descriptor, FieldDescriptor, EnumDescriptor))
             else proto.DESCRIPTOR.full_name
         )
         cls = _DataBaseMetaClass.class_registry.get(proto_full_name)

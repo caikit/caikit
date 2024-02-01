@@ -17,7 +17,7 @@ This file contains interfaces required for unions of lists
 
 # Standard
 from dataclasses import dataclass
-from typing import List
+from typing import Any, List
 
 # First Party
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
@@ -26,25 +26,32 @@ from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
 from caikit.core.data_model import PACKAGE_COMMON, DataObjectBase, dataobject
 
 
+class Sequence(DataObjectBase):
+    """Base class for all Sequences to enable type checking
+    e.g. isinstance(<>, Sequence)"""
+
+    values: List[Any]
+
+
 @dataobject(PACKAGE_COMMON)
 @dataclass
-class IntSequence(DataObjectBase):
+class IntSequence(Sequence):
     values: Annotated[List[int], FieldNumber(1)]
 
 
 @dataobject(PACKAGE_COMMON)
 @dataclass
-class FloatSequence(DataObjectBase):
+class FloatSequence(Sequence):
     values: Annotated[List[float], FieldNumber(1)]
 
 
 @dataobject(PACKAGE_COMMON)
 @dataclass
-class StrSequence(DataObjectBase):
+class StrSequence(Sequence):
     values: Annotated[List[str], FieldNumber(1)]
 
 
 @dataobject(PACKAGE_COMMON)
 @dataclass
-class BoolSequence(DataObjectBase):
+class BoolSequence(Sequence):
     values: Annotated[List[bool], FieldNumber(1)]

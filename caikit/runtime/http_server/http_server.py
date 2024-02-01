@@ -64,10 +64,7 @@ from caikit.config import get_config
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.exceptions import error_handler
-from caikit.core.exceptions.caikit_core_exception import (
-    CaikitCoreException,
-    CaikitCoreStatusCode,
-)
+from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
 from caikit.runtime.names import (
     HEALTH_ENDPOINT,
@@ -76,6 +73,7 @@ from caikit.runtime.names import (
     OPTIONAL_INPUTS_KEY,
     REQUIRED_INPUTS_KEY,
     RUNTIME_INFO_ENDPOINT,
+    STATUS_CODE_TO_HTTP,
     StreamEventTypes,
     get_http_route_name,
 )
@@ -95,37 +93,6 @@ from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("SERVR-HTTP")
 error = error_handler.get(log)
-
-
-STATUS_CODE_TO_HTTP = {
-    # Mapping from GRPC codes to their corresponding HTTP codes
-    # pylint: disable=line-too-long
-    # CITE: https://chromium.googlesource.com/external/github.com/grpc/grpc/+/refs/tags/v1.21.4-pre1/doc/statuscodes.md
-    StatusCode.OK: 200,
-    StatusCode.INVALID_ARGUMENT: 400,
-    StatusCode.FAILED_PRECONDITION: 400,
-    StatusCode.OUT_OF_RANGE: 400,
-    StatusCode.UNAUTHENTICATED: 401,
-    StatusCode.PERMISSION_DENIED: 403,
-    StatusCode.NOT_FOUND: 404,
-    StatusCode.ALREADY_EXISTS: 409,
-    StatusCode.ABORTED: 409,
-    StatusCode.RESOURCE_EXHAUSTED: 429,
-    StatusCode.CANCELLED: 499,
-    StatusCode.UNKNOWN: 500,
-    StatusCode.DATA_LOSS: 500,
-    StatusCode.UNIMPLEMENTED: 501,
-    StatusCode.UNAVAILABLE: 501,
-    StatusCode.DEADLINE_EXCEEDED: 504,
-    # Mapping from CaikitCore StatusCodes codes to their corresponding HTTP codes
-    CaikitCoreStatusCode.INVALID_ARGUMENT: 400,
-    CaikitCoreStatusCode.UNAUTHORIZED: 401,
-    CaikitCoreStatusCode.FORBIDDEN: 403,
-    CaikitCoreStatusCode.NOT_FOUND: 404,
-    CaikitCoreStatusCode.CONNECTION_ERROR: 500,
-    CaikitCoreStatusCode.UNKNOWN: 500,
-    CaikitCoreStatusCode.FATAL: 500,
-}
 
 
 # Small dataclass for consolidating TLS files

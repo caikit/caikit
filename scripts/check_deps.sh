@@ -18,7 +18,7 @@ then
     exit 1
 fi
 
-if < deps.txt grep -q ".*caikit_interfaces.*\->.*caikit_core.module*"
+if grep -q ".*caikit_interfaces.*\->.*caikit_core.module*" deps.txt
 then
     echo "Fail: The core module definitions are importing the interfaces!"
     exit 1
