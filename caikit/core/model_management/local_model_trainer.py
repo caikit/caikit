@@ -320,9 +320,13 @@ class LocalModelTrainer(ModelTrainerBase):
 
         # Lock the global futures dict and add it to the dict
         with self._futures_lock:
-            assert (
-                model_future.id not in self._futures
-            ), f"UUID collision for model future {model_future.id}"
+            if current_future := self._futures.get(model_future.id):
+                error.value_check(
+                    "<COR35431427E>",
+                    current_future.get_info().status.is_terminal,
+                    "UUID collision for model future {}",
+                    model_future.id,
+                )
             self._futures[model_future.id] = model_future
 
         # Return the future
