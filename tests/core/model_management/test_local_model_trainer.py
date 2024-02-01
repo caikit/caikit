@@ -29,6 +29,7 @@ import aconfig
 
 # Local
 from caikit.config import get_config
+from caikit.core import ModuleBase
 from caikit.core.data_model import DataStream, TrainingStatus
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.core.model_management.local_model_trainer import LocalModelTrainer
@@ -60,6 +61,28 @@ def get_event(cfg: dict):
         )
         return multiprocessing.get_context(start_method).Event()
     return threading.Event()
+
+
+class FailTrainOnce(ModuleBase):
+    """Dummy module that will fail training the first time"""
+
+    _calls = 0
+
+    @classmethod
+    def train(cls):
+        cls._calls = cls._calls + 1
+        if cls._calls == 1:
+            raise RuntimeError("Yikes!")
+        return cls()
+
+
+class WaitTrain(ModuleBase):
+    """Dummy module that will block training on an event"""
+
+    @classmethod
+    def train(cls, wait_event: threading.Event):
+        wait_event.wait()
+        return cls()
 
 
 ## Tests #######################################################################
@@ -266,3 +289,39 @@ def test_get_into_return_error(trainer_type_cfg):
     assert isinstance(model_future.get_info().errors, list)
     assert isinstance(model_future.get_info().errors[0], ValueError)
     assert str(model_future.get_info().errors[0]) == "Batch size of 999 is not allowed!"
+
+
+def test_retry_duplicate_external_id():
+    """Test that a training can be retried safely reusing an external ID"""
+    trainer = local_trainer()
+    training_id = "my-training"
+
+    # First try should fail
+    try:
+        model_future = trainer.train(FailTrainOnce, external_training_id=training_id)
+        model_future.load()
+        raise AssertionError("Shouldn't get here")
+    except RuntimeError:
+        # Second time should succeed
+        model_future = trainer.train(FailTrainOnce, external_training_id=training_id)
+        assert model_future.load()
+
+
+def test_duplicate_external_id_cannot_restart_while_running():
+    """Make sure that if a training is actively running, it cannot be replaced
+    by a rerun
+    """
+    trainer = local_trainer()
+    training_id = "my-training"
+    wait_event = threading.Event()
+    model_future = trainer.train(
+        WaitTrain, wait_event, external_training_id=training_id
+    )
+    try:
+        with pytest.raises(ValueError, match="Cannot restart training.*"):
+            trainer.train(WaitTrain, wait_event, external_training_id=training_id)
+
+        assert trainer.get_model_future(training_id) is model_future
+    finally:
+        wait_event.set()
+        model_future.wait()
