@@ -619,6 +619,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     error_content = {
                         "details": repr(err),
                         "code": error_code,
+                        "id": uuid.uuid4().hex,
                     }
                 except (CaikitCoreException, CaikitRuntimeException) as err:
                     error_code = STATUS_CODE_TO_HTTP.get(err.status_code, 500)
