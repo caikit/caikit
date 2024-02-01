@@ -295,14 +295,15 @@ class LocalModelTrainer(ModelTrainerBase):
 
         # If there's an external ID, make sure it's not currently running before
         # launching the job
-        if external_training_id:
-            if current_future := self._futures.get(external_training_id):
-                error.value_check(
-                    "<COR79850561E>",
-                    current_future.get_info().status.is_terminal,
-                    "Cannot restart training {} that is currently running",
-                    external_training_id,
-                )
+        if external_training_id and (
+            current_future := self._futures.get(external_training_id)
+        ):
+            error.value_check(
+                "<COR79850561E>",
+                current_future.get_info().status.is_terminal,
+                "Cannot restart training {} that is currently running",
+                external_training_id,
+            )
 
         # Create the new future
         model_future = self.LocalModelFuture(
