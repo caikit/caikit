@@ -469,15 +469,15 @@ def test_get_field_message_type_valid_fields():
     ) as dm:
         # Non-message field
         thing_one = dm.ThingOne(1)
-        assert thing_one.get_field_message_type("foo") == int
+        assert thing_one.get_field_message_type("foo") is int
 
         # Non-repeated sub-message
         wrapper_msg = dm.WrapperThing(thing_one)
-        assert wrapper_msg.get_field_message_type("bar") == dm.ThingOne
+        assert wrapper_msg.get_field_message_type("bar") is dm.ThingOne
 
         # Repeated sub-message
         dm.RepeatedWrapperThing([thing_one])
-        assert wrapper_msg.get_field_message_type("bar") == dm.ThingOne
+        assert wrapper_msg.get_field_message_type("bar") is dm.ThingOne
 
 
 def test_get_field_message_type_invalid_field():

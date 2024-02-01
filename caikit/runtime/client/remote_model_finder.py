@@ -22,14 +22,14 @@ model_management:
             type: REMOTE
             config:
                 connection: ConnectionInfo <Required Connection Information>
-                model_key: Optional[str]=MODEL_MESH_MODEL_ID_KEY <Optional setting to override the 
+                model_key: Optional[str]=MODEL_MESH_MODEL_ID_KEY <Optional setting to override the
                     grpc model name>
                 protocol: Optional[str]="grpc" <protocol the remote server is using (grpc or http)>
                 min_poll_time: Optional[int]=30 <minimum time before attempting to rediscover
-                    models> 
+                    models>
                 discover_models: Optional[bool]=True <bool to automatically discover remote models
                     via the /info/models endpoint>
-                supported_models: Optional[Dict[str, str]]={} <mapping of model names to module_ids 
+                supported_models: Optional[Dict[str, str]]={} <mapping of model names to module_ids
                     that this remote supports. This is automatically populated by discover_models>
                     <model_path>: <module_id>
 
@@ -128,7 +128,7 @@ class RemoteModelFinder(ModelFinderBase):
             self._last_discovered_time = None
             self._poll_delta = timedelta(seconds=self._min_poll_time)
             self._discovery_lock = Lock()
-            self._supported_models.update(self.discover_models())
+            self._supported_models.update(self._discover())
 
     def find_model(
         self,
@@ -159,7 +159,9 @@ class RemoteModelFinder(ModelFinderBase):
             model_path=model_path,
         )
 
-    def discover_models(self) -> Dict[str, str]:
+    ### Discovery Helper Functions
+
+    def _discover(self) -> Dict[str, str]:
         """Helper method to discover models from a remote
         runtime. This is a separate function to help with subclassing
 
@@ -171,8 +173,7 @@ class RemoteModelFinder(ModelFinderBase):
             return self._discover_grpc_models()
         elif self._protocol == "http":
             return self._discover_http_models()
-
-    ### Discovery Helper Functions
+        error("<COR45835854E>", ValueError(f"Invalid protocol: {self._protocol}"))
 
     def _safe_discover(self) -> Dict[str, str]:
         """Helper function that lazily discovers models in a
@@ -194,7 +195,7 @@ class RemoteModelFinder(ModelFinderBase):
 
             # Run discovery
             self._last_discovered_time = current_time
-            self._supported_models = self.discover_models()
+            self._supported_models = self._discover()
             return self._supported_models
 
     def _discover_grpc_models(self) -> Dict[str, str]:

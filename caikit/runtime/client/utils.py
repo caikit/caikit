@@ -32,7 +32,7 @@ def construct_grpc_channel(
     options: Optional[List[Tuple[str, str]]] = None,
     tls: Optional[ConnectionTlsInfo] = None,
 ) -> grpc.Channel:
-    """Helper function to construct a grpc Channel"""
+    """Helper function to construct a grpc Channel with the given TLS config"""
     if tls and tls.enabled:
         grpc_credentials = grpc.ssl_channel_credentials(
             root_certificates=tls.ca_data,
@@ -51,7 +51,9 @@ def construct_requests_session(
     tls: Optional[ConnectionTlsInfo] = None,
     timeout: Optional[int] = None,
 ) -> Session:
-    """Helper function to construct a requests Session object"""
+    """Helper function to construct a requests Session object with the given TLS
+    config
+    """
     session = Session()
     session.headers["Content-type"] = "application/json"
 

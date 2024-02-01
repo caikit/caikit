@@ -547,16 +547,16 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
     @classmethod
     def get_field_message_type(cls, field_name: str) -> Optional[type]:
-        """Get the data model class for the given field. This function relies on
-        the metaclass to fill cls._fields_to_type. This is to avoid costly computation
-        during runtime
+        """Get the python type for the given field. This function relies on the
+        metaclass to fill cls._fields_to_type. This is to avoid costly
+        computation during runtime
 
         Args:
             field_name (str): Field name to check (AttributeError raised if name
                 is invalid)
 
         Returns:
-            data_model_type:  type
+            field_type:  type
                 The data model class type for the given field
         """
 
