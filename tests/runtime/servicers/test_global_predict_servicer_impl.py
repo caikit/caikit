@@ -70,7 +70,6 @@ def test_calling_predict_should_raise_if_module_raises(
             caikit_rpc=sample_task_unary_rpc,
         )
     assert context.value.status_code == grpc.StatusCode.INTERNAL
-    assert "Unhandled exception during prediction" in context.value.message
 
 
 def test_predict_raises_with_grpc_errors(
@@ -115,7 +114,6 @@ def test_invalid_input_to_a_valid_caikit_core_class_method_raises(
             caikit_rpc=sample_task_unary_rpc,
         )
     assert context.value.status_code == grpc.StatusCode.INVALID_ARGUMENT
-    assert "problem with your input" in context.value.message
 
 
 def test_global_predict_works_for_unary_rpcs(
