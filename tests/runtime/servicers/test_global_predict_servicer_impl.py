@@ -101,7 +101,7 @@ def test_invalid_input_to_a_valid_caikit_core_class_method_raises(
     sample_predict_servicer,
     sample_task_unary_rpc,
 ):
-    """Test that a caikit.core module that gets an unexpected input value errors in an expected way"""
+    """Test that a caikit.core module that gets an unexpected input value provides an error in an expected way"""
     with pytest.raises(CaikitRuntimeException) as context:
         # SampleModules will raise a ValueError if the poison pill name is given
         predict_class = get_inference_request(SampleTask)

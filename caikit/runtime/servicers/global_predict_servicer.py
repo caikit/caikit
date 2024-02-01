@@ -359,7 +359,8 @@ class GlobalPredictServicer:
                 model_id=model_id,
             ).inc()
             raise CaikitRuntimeException(
-                StatusCode.INTERNAL, f"{e}",
+                StatusCode.INTERNAL,
+                f"{e}",
             ) from e
 
     def _verify_model_task(self, model: ModuleBase):
