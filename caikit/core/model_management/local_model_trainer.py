@@ -293,6 +293,18 @@ class LocalModelTrainer(ModelTrainerBase):
             log.debug2("Subprocess wrapped models: %s", wrapped_models.keys())
             kwargs.update(wrapped_models)
 
+        # If there's an external ID, make sure it's not currently running before
+        # launching the job
+        if external_training_id and (
+            current_future := self._futures.get(external_training_id)
+        ):
+            error.value_check(
+                "<COR79850561E>",
+                current_future.get_info().status.is_terminal,
+                "Cannot restart training {} that is currently running",
+                external_training_id,
+            )
+
         # Create the new future
         model_future = self.LocalModelFuture(
             self._instance_name,
@@ -309,9 +321,13 @@ class LocalModelTrainer(ModelTrainerBase):
 
         # Lock the global futures dict and add it to the dict
         with self._futures_lock:
-            assert (
-                model_future.id not in self._futures
-            ), f"UUID collision for model future {model_future.id}"
+            if current_future := self._futures.get(model_future.id):
+                error.value_check(
+                    "<COR35431427E>",
+                    current_future.get_info().status.is_terminal,
+                    "UUID collision for model future {}",
+                    model_future.id,
+                )
             self._futures[model_future.id] = model_future
 
         # Return the future
