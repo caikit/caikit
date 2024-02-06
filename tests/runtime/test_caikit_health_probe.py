@@ -106,7 +106,71 @@ class ProbeTestConfig:
     should_become_healthy: bool = True
 
 
+def get_random_open_port():
+    port = random.randint(9000, 50000)
+    while not port_is_open(port):
+        port = random.randint(9000, 50000)
+    return port
+
+
 ## Tests #######################################################################
+
+
+################################################################################
+# NOTE/HACK/WARNING!!                                                          #
+# There is a _very_ strange piece of behavior in this set of tests that I have #
+# not yet diagnosed. The behavior is as follows:                               #
+#                                                                              #
+# 1. Run test_readiness_probe with GRPC and unix_socket=False                  #
+# 2. Run subprocess.Popen any time after the GRPC server contextmanager exits  #
+#                                                                              #
+# Step (2) will always hang indefinitely, no matter the command in the         #
+# subprocess call. With unix_socket enabled, it will not hang. This happens    #
+# regardless of the TLS settings.                                              #
+#                                                                              #
+# This bug was discovered when test_liveness_probe and test_readiness_probe    #
+# were in the opposite order. Since the bug does _not_ seem to effect real     #
+# usage of the probe, the fix is to simply reverse the order so that the Popen #
+# happens before the offending server boot/config. If this kind of a hang ever #
+# crops up in the future, we should start by looking at any shared global      #
+# state in the grpc C code that would possibly leave a bad state after a non-  #
+# socket client call.                                                          #
+################################################################################
+
+
+@pytest.mark.parametrize(
+    ["proc_identifier", "expected"],
+    [(None, True), ("caikit.runt", True), ("foobar", False)],
+)
+def test_liveness_probe(proc_identifier, expected):
+    """Test the logic for determining if the server process is alive"""
+    cmd = f"{sys.executable} -m caikit.runtime"
+    args = [] if proc_identifier is None else [proc_identifier]
+
+    # Liveness should fail if process is not booted
+    assert not caikit_health_probe.liveness_probe(*args)
+
+    proc = None
+    try:
+
+        # Start the process
+        env = os.environ.copy()
+        env.update(
+            RUNTIME_GRPC_PORT=str(get_random_open_port()),
+            RUNTIME_GRPC_ENABLED="true",
+            RUNTIME_HTTP_ENABLED="false",
+            RUNTIME_METRICS_ENABLED="false",
+        )
+        proc = subprocess.Popen(shlex.split(cmd), env=env)
+
+        # Liveness should pass/fail as expected
+        assert caikit_health_probe.liveness_probe(*args) == expected
+
+    finally:
+        # Kill the process if it started
+        if proc is not None and proc.poll() is None:
+
+            proc.kill()
 
 
 @pytest.mark.parametrize(
@@ -115,6 +179,7 @@ class ProbeTestConfig:
         # Insecure
         ProbeTestConfig(TlsMode.INSECURE, ServerMode.HTTP),
         ProbeTestConfig(TlsMode.INSECURE, ServerMode.GRPC),
+        ProbeTestConfig(TlsMode.INSECURE, ServerMode.GRPC, unix_socket=False),
         ProbeTestConfig(TlsMode.INSECURE, ServerMode.BOTH),
         # TLS
         ProbeTestConfig(TlsMode.TLS, ServerMode.HTTP),
@@ -188,7 +253,7 @@ def test_readiness_probe(test_config: ProbeTestConfig):
                                 "grpc.sock",
                             )
                             if test_config.unix_socket
-                            else None,
+                            else "",
                         },
                         "http": {
                             "enabled": test_config.server_mode
@@ -218,29 +283,3 @@ def test_readiness_probe(test_config: ProbeTestConfig):
                             caikit_health_probe.readiness_probe()
                             == test_config.should_become_healthy
                         )
-
-
-@pytest.mark.parametrize(
-    ["proc_identifier", "expected"],
-    [(None, True), ("caikit.runt", True), ("foobar", False)],
-)
-def test_liveness_probe(proc_identifier, expected):
-    """Test the logic for determining if the server process is alive"""
-    cmd = f"{sys.executable} -m caikit.runtime"
-    args = [] if proc_identifier is None else [proc_identifier]
-
-    # Liveness should fail if process is not booted
-    assert not caikit_health_probe.liveness_probe(*args)
-
-    proc = None
-    try:
-        # Start the process
-        proc = subprocess.Popen(shlex.split(cmd))
-
-        # Liveness should pass/fail as expected
-        assert caikit_health_probe.liveness_probe(*args) == expected
-
-    finally:
-        # Kill the process if it started
-        if proc is not None and proc.poll() is None:
-            proc.kill()
