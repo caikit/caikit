@@ -193,7 +193,7 @@ ignore = [
     # "C0411", # wrong-import-order
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = [
     "F401", # imported but unused
     "F403" # unable to detect undefined names
