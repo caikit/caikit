@@ -99,7 +99,7 @@ dev-docs = [
 ]
 
 dev-fmt = [
-    "ruff==0.1.15",
+    "ruff==0.2.1",
     "pre-commit>=3.0.4,<4.0",
     "pydeps>=1.12.12,<2",
 ]
@@ -193,7 +193,7 @@ ignore = [
     # "C0411", # wrong-import-order
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = [
     "F401", # imported but unused
     "F403" # unable to detect undefined names
