@@ -86,14 +86,16 @@ def _open_port(start=8888):
     # TODO: This has obvious problems where the port returned for use by a test is not immediately
     # put into use, so parallel tests could attempt to use the same port.
     end = start + 1000
-    host = "localhost"
     for port in range(start, end):
-        with socket.socket() as soc:
-            # soc.connect_ex returns 0 if connection is successful,
-            # indicating the port is in use
-            if soc.connect_ex((host, port)) != 0:
-                # So a non-zero code should mean the port is not currently in use
-                return port
+        if port_is_open(port):
+            return port
+
+
+def port_is_open(port: int) -> bool:
+    with socket.socket() as soc:
+        # soc.connect_ex returns 0 if connection is successful,
+        # indicating the port is in use
+        return soc.connect_ex(("localhost", port)) != 0
 
 
 @pytest.fixture(scope="session")

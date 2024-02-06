@@ -25,13 +25,13 @@ from dataclasses import dataclass
 from enum import Enum
 from unittest import mock
 import os
+import random
 import shlex
 import subprocess
 import sys
 
 # Third Party
 import pytest
-import tls_test_tools
 
 # First Party
 from caikit_health_probe import __main__ as caikit_health_probe
@@ -41,7 +41,7 @@ import alog
 from caikit import get_config
 from tests.conftest import temp_config
 from tests.runtime.conftest import (
-    get_open_port,
+    port_is_open,
     runtime_grpc_test_server,
     runtime_http_test_server,
 )
@@ -157,8 +157,8 @@ def test_readiness_probe(test_config: ProbeTestConfig):
     """Test all of the different ways that the servers could be running"""
     with alog.ContextLog(log.info, "---LOG CONFIG: %s---", test_config):
         # Get ports for both servers
-        http_port = get_open_port()
-        grpc_port = get_open_port()
+        http_port = get_random_open_port()
+        grpc_port = get_random_open_port()
 
         # Set up SAN lists if not putting "localhost" in
         server_sans, client_sans = None, None
