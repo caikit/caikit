@@ -334,7 +334,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def _get_model_id(self, request: Type[pydantic.BaseModel]) -> str:
         """Get the model id from the payload"""
         request_kwargs = dict(request)
-        model_id = request_kwargs.get(MODEL_ID, None)
+        model_id = request_kwargs.get(MODEL_ID)
         if model_id is None:
             raise CaikitRuntimeException(
                 status_code=StatusCode.INVALID_ARGUMENT,
