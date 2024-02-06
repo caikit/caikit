@@ -50,6 +50,11 @@ from tests.fixtures import Fixtures
 log = alog.use_channel("TEST-CONFTEST")
 
 
+def get_open_port():
+    """Non-fixture function to get an open port"""
+    return _open_port()
+
+
 @pytest.fixture
 def open_port():
     """Get an open port on localhost
