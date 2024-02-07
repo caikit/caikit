@@ -3,7 +3,7 @@ This sets up global test configs when pytest starts
 """
 
 # Standard
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from functools import partial
 from typing import Dict, List, Optional, Type, Union
 import os
@@ -52,7 +52,11 @@ log = alog.use_channel("TEST-CONFTEST")
 
 def get_open_port():
     """Non-fixture function to get an open port"""
-    return _open_port()
+    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+        s.bind(("", 0))
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        port = s.getsockname()[1]
+        return port
 
 
 @pytest.fixture
@@ -61,7 +65,7 @@ def open_port():
     Returns:
         int: Available port
     """
-    return _open_port()
+    return get_open_port()
 
 
 @pytest.fixture(scope="session")
@@ -70,7 +74,7 @@ def session_scoped_open_port():
     Returns:
         int: Available port
     """
-    return _open_port()
+    return get_open_port()
 
 
 @pytest.fixture(scope="session")
@@ -79,23 +83,7 @@ def http_session_scoped_open_port():
     Returns:
         int: Available port
     """
-    return _open_port()
-
-
-def _open_port(start=8888):
-    # TODO: This has obvious problems where the port returned for use by a test is not immediately
-    # put into use, so parallel tests could attempt to use the same port.
-    end = start + 1000
-    for port in range(start, end):
-        if port_is_open(port):
-            return port
-
-
-def port_is_open(port: int) -> bool:
-    with socket.socket() as soc:
-        # soc.connect_ex returns 0 if connection is successful,
-        # indicating the port is in use
-        return soc.connect_ex(("localhost", port)) != 0
+    return get_open_port()
 
 
 @pytest.fixture(scope="session")

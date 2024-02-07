@@ -41,7 +41,7 @@ import alog
 from caikit import get_config
 from tests.conftest import temp_config
 from tests.runtime.conftest import (
-    port_is_open,
+    get_open_port,
     runtime_grpc_test_server,
     runtime_http_test_server,
 )
@@ -106,13 +106,6 @@ class ProbeTestConfig:
     should_become_healthy: bool = True
 
 
-def get_random_open_port():
-    port = random.randint(9000, 50000)
-    while not port_is_open(port):
-        port = random.randint(9000, 50000)
-    return port
-
-
 ## Tests #######################################################################
 
 
@@ -156,7 +149,7 @@ def test_liveness_probe(proc_identifier, expected):
         # Start the process
         env = os.environ.copy()
         env.update(
-            RUNTIME_GRPC_PORT=str(get_random_open_port()),
+            RUNTIME_GRPC_PORT=str(get_open_port()),
             RUNTIME_GRPC_ENABLED="true",
             RUNTIME_HTTP_ENABLED="false",
             RUNTIME_METRICS_ENABLED="false",
@@ -222,8 +215,8 @@ def test_readiness_probe(test_config: ProbeTestConfig):
     """Test all of the different ways that the servers could be running"""
     with alog.ContextLog(log.info, "---LOG CONFIG: %s---", test_config):
         # Get ports for both servers
-        http_port = get_random_open_port()
-        grpc_port = get_random_open_port()
+        http_port = get_open_port()
+        grpc_port = get_open_port()
 
         # Set up SAN lists if not putting "localhost" in
         server_sans, client_sans = None, None
