@@ -240,7 +240,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
         if blocking:
             self.server.wait_for_termination(None)
 
-    def stop(self, grace_period_seconds: Union[float, int] = None):
+    def stop(self, grace_period_seconds: Optional[Union[float, int]] = None):
         """Stop the server, with an optional grace period.
 
         Args:

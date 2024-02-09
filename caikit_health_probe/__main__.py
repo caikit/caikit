@@ -17,7 +17,7 @@ running runtime servers.
 """
 # Standard
 from contextlib import contextmanager
-from typing import List, Optional, Tuple
+from typing import Generator, List, Optional, Tuple
 import importlib.util
 import os
 import sys
@@ -103,6 +103,7 @@ def liveness_probe(runtime_proc_identifier: str = "caikit.runtime") -> bool:
         and proc_info[0] == this_exe
         and any(runtime_proc_identifier in arg for arg in proc_info[1])
     ]
+    log.debug4("Caikit procs: %s", caikit_procs)
 
     # If we have running caikit processes, we consider the server to be alive
     return bool(caikit_procs)
@@ -275,23 +276,24 @@ def _grpc_readiness_probe(
         log.debug("Probing INSECURE gRPC server")
         channel = grpc.insecure_channel(hostname)
 
-    client = health_pb2_grpc.HealthStub(channel)
-    try:
-        client.Check(
-            health_pb2.HealthCheckRequest(),
-            timeout=get_config().runtime.grpc.probe_timeout,
-        )
-        return True
-    except Exception as err:  # pylint: disable=broad-exception-caught
-        log.debug2("Caught unexpected error: %s", err, exc_info=True)
-        return False
+    with channel:
+        client = health_pb2_grpc.HealthStub(channel)
+        try:
+            kwargs = {}
+            if (timeout := get_config().runtime.grpc.probe_timeout) is not None:
+                kwargs["timeout"] = timeout
+            client.Check(health_pb2.HealthCheckRequest(), **kwargs)
+            return True
+        except Exception as err:  # pylint: disable=broad-exception-caught
+            log.debug2("Caught unexpected error: %s", err, exc_info=True)
+            return False
 
 
 @contextmanager
 def _tls_files(
     tls_key: Optional[str],
     tls_cert: Optional[str],
-) -> Tuple[Optional[str], Optional[str]]:
+) -> Generator[Tuple[Optional[str], Optional[str]], None, None]:
     """Get files for the TLS key/cert if given"""
     if not tls_key or not tls_cert:
         yield None, None
