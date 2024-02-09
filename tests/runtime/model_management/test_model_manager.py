@@ -505,6 +505,55 @@ def test_model_manager_disk_caching_periodic_sync(good_model_path):
             assert mgr_one_unloaded and mgr_two_unloaded
 
 
+def test_periodic_sync_without_loading(good_model_path):
+    """Test that periodic synchronization of local_models_dir can proceed
+    without loading new models found there (unload only with lazy loading)
+    """
+    purge_period = 0.001
+    with TemporaryDirectory() as cache_dir:
+        # Copy the good model to the cache dir before starting the manager
+        model_id = random_test_id()
+        model_cache_path = os.path.join(cache_dir, model_id)
+        shutil.copytree(good_model_path, model_cache_path)
+
+        # Start the manager without loading new local models
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "load_new_local_models": False,
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                    "lazy_load_poll_period_seconds": purge_period,
+                    # NOTE: There won't be any initial model loads, but this
+                    #   ensures that if there were, they would happen
+                    #   synchronously during __init__
+                    "wait_for_initial_model_loads": True,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+
+            # The model doesn't load at boot
+            assert model_id not in manager.loaded_models
+
+            # Wait for the purge period to run and make sure it's still not
+            # loaded
+            manager._lazy_sync_timer.join()
+            assert model_id not in manager.loaded_models
+
+            # Explicitly retrieve the model and make sure it _does_ lazy load
+            model = manager.retrieve_model(model_id)
+            assert model
+            assert model_id in manager.loaded_models
+
+            # Remove the file from local_models_dir and make sure it gets purged
+            shutil.rmtree(model_cache_path)
+            manager._lazy_sync_timer.join()
+            assert model_id not in manager.loaded_models
+
+
 def test_lazy_load_of_large_model(good_model_path):
     """Test that a large model that is actively being written to disk is not incorrectly loaded
     too soon by the lazy loading poll

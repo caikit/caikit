@@ -164,12 +164,15 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         # Do the initial local models load
         if self._local_models_dir:
             wait = runtime_cfg.wait_for_initial_model_loads
+            load = runtime_cfg.load_new_local_models
             log.info(
                 "<RUN44739400I>",
-                "Loading local models into Caikit Runtime. Wait: %s",
+                "Initializing local_models_dir %s. Wait: %s. Load: %s",
+                self._local_models_dir,
                 wait,
+                load,
             )
-            self.sync_local_models(wait=wait)
+            self.sync_local_models(wait=wait, load=load)
 
     def shut_down(self):
         """Shut down cache purging"""
@@ -260,7 +263,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             # Return the loaded model handle
             return model
 
-    def sync_local_models(self, wait: bool = False):
+    def sync_local_models(self, wait: bool = False, load: bool = True):
         """Sync in-memory models with models in the configured local_model_dir
 
         New models will be loaded and models previously loaded from local will
@@ -268,9 +271,10 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
 
         Args:
             wait (bool): After starting all loads, wait for them to complete
+            load (bool): Perform loading during sync
         """
         try:
-            self._local_models_dir_sync(wait)
+            self._local_models_dir_sync(wait, load)
         except StopIteration:
             log.warning(
                 "<RUN56519883W>",
@@ -304,7 +308,9 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
                 [thread.name for thread in threading.enumerate()],
             )
             self._lazy_sync_timer = threading.Timer(
-                self._lazy_load_poll_period_seconds, self.sync_local_models
+                self._lazy_load_poll_period_seconds,
+                self.sync_local_models,
+                kwargs={"load": load},
             )
             self._lazy_sync_timer.daemon = True
             self._lazy_sync_timer.start()
@@ -446,7 +452,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
 
     ## Implementation Details ##
 
-    def _local_models_dir_sync(self, wait: bool = False):
+    def _local_models_dir_sync(self, wait: bool = False, load: bool = True):
         """This function implements the mechanics of synchronizing the
         local_models_dir and the in-memory loaded_models map. It may raise and
         therefore errors should be handled by the wrapper function.
@@ -471,10 +477,16 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         log.debug3("Currently loaded models: %s", list(self.loaded_models.keys()))
 
         # Find all models that aren't currently loaded
-        new_models = [
-            model_id for model_id in disk_models if model_id not in self.loaded_models
-        ]
-        log.debug("New local models: %s", new_models)
+        if load:
+            new_models = [
+                model_id
+                for model_id in disk_models
+                if model_id not in self.loaded_models
+            ]
+            log.debug("New local models: %s", new_models)
+        else:
+            log.debug("Skipping new model loading")
+            new_models = []
 
         # Find all models that are currently loaded from the local models dir
         # that no longer exist
