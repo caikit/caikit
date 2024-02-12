@@ -97,6 +97,11 @@ runtime:
     # the server
     wait_for_initial_model_loads: true
 
+    # If true, on each local_models_dir sync (include the initial one), any new
+    # models will start loading. If false, new models will be ignored and will
+    # only lazy load on inference.
+    load_new_local_models: true
+
     # If enabled, the models in local_models_dir will be periodically sync'ed
     # with the in-memory models. New models that are not in-memory that are
     # found in local_models_dir will be loaded and existing models that were
