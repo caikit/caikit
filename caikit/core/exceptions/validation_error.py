@@ -37,6 +37,6 @@ class DataValidationError(Exception):
         return self._reason
 
     @property
-    def item_number(self) -> int:
+    def item_number(self) -> Optional[int]:
         """The index of the training data item that failed validation. Probably zero indexed"""
         return self._item_number
