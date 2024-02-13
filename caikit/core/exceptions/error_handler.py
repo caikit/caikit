@@ -368,9 +368,7 @@ class ErrorHandler:
                 ),
             )
 
-    def value_check(
-        self, log_code: str, condition: bool, msg: Optional[str], *args: object
-    ) -> None:
+    def value_check(self, log_code: str, condition: bool, *args: object) -> None:
         """Check for acceptable values for a given object.  If this check fails, a log message will
         be emitted at the error level on the log channel associated with this handler and a
         `ValueError` exception will be raised with an appropriate message.  This check should be
@@ -388,12 +386,13 @@ class ErrorHandler:
                 passes `True` or fails `False`. Upon calling this function, this
                 is typically provided as an expression, e.g., `0 < variable <
                 1`.
-            msg (Optional[str]): The 'msg' argument. Note that string interpolation can be lazily
-                performed on `msg` using `{}` format syntax by passing additional arguments.
-                This is the preferred method for performing string interpolation on `msg` so
-                that it is only done if an error condition is encountered.
-            *args: A variable set of arguments describing the value check that failed to be
-                used for the string interpolation of 'msg'.
+            *args: A variable set of arguments describing the value check that failed. If no
+                args are provided then an empty msg string is assumed and no additional
+                information will be provided, otherwise the first argument will be treated as 'msg'
+                argument. Note that string interpolation can be lazily performed on `msg` using `{}`
+                format syntax by passing additional arguments.  This is the preferred method for
+                performing string interpolation on `msg` so that it is only done if an error
+                condition is encountered.
 
         """
         if not get_config().enable_error_checks:
@@ -401,7 +400,9 @@ class ErrorHandler:
 
         if not condition:
             interpolated_msg = (
-                "" if not msg else (msg if not args else msg.format(*args[1:]))
+                ""
+                if not args
+                else (args[0] if len(args) == 1 else args[0].format(*args[1:]))
             )
 
             self(
