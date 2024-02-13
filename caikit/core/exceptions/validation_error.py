@@ -13,10 +13,14 @@
 # limitations under the License.
 
 
+# Standard
+from typing import Optional
+
+
 class DataValidationError(Exception):
     """This error is used for data validation problems during training"""
 
-    def __init__(self, reason, item_number=None):
+    def __init__(self, reason: str, item_number: Optional[int] = None):
         if item_number:
             message = "Training data validation failed on item {}. {}".format(
                 item_number, reason
