@@ -14,7 +14,7 @@
 """Data structures for text representations"""
 
 # Standard
-from typing import List
+from typing import List, Optional
 
 # First Party
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
@@ -43,7 +43,8 @@ class Token(DataObjectBase):
 class TokenizationResults(DataObjectBase):
     """Tokenization result generated from a text."""
 
-    results: Annotated[List[Token], FieldNumber(1)]
+    results: Annotated[Optional[List[Token]], FieldNumber(1)]
+    token_count: Annotated[Optional[int], FieldNumber(4)]  # The number of tokens
 
 
 @dataobject(package=NLP_PACKAGE)
