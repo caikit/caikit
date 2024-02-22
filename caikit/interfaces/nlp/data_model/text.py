@@ -44,7 +44,9 @@ class TokenizationResults(DataObjectBase):
     """Tokenization result generated from a text."""
 
     results: Annotated[Optional[List[Token]], FieldNumber(1)]
-    token_count: Annotated[Optional[int], FieldNumber(4)]  # The number of tokens - Note: Field number 4 chosen due to Fields 2 and 3 used below in derived TokenizationStreamResult
+    # The number of tokens
+    # Note: Field number 4 chosen due to Fields 2 and 3 used below
+    token_count: Annotated[Optional[int], FieldNumber(4)]
 
 
 @dataobject(package=NLP_PACKAGE)
