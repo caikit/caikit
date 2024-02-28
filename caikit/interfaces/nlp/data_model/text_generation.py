@@ -45,6 +45,12 @@ class FinishReason(Enum):
 
 
 @dataobject(package=NLP_PACKAGE)
+class GeneratedToken(DataObjectBase):
+    text: Annotated[str, FieldNumber(1)]
+    logprob: Annotated[Optional[float], FieldNumber(3)]
+
+
+@dataobject(package=NLP_PACKAGE)
 class GeneratedTextResult(DataObjectBase):
     generated_text: Annotated[str, FieldNumber(1)]
     generated_tokens: Annotated[int, FieldNumber(2)]
@@ -52,12 +58,8 @@ class GeneratedTextResult(DataObjectBase):
     producer_id: Annotated[ProducerId, FieldNumber(4)]
     input_token_count: Annotated[int, FieldNumber(5)]
     seed: Annotated[Optional[np.uint64], FieldNumber(6)]
-
-
-@dataobject(package=NLP_PACKAGE)
-class GeneratedToken(DataObjectBase):
-    text: Annotated[str, FieldNumber(1)]
-    logprob: Annotated[Optional[float], FieldNumber(3)]
+    tokens: Annotated[Optional[List[GeneratedToken]], FieldNumber(7)]
+    input_tokens: Annotated[Optional[List[GeneratedToken]], FieldNumber(8)]
 
 
 @dataobject(package=NLP_PACKAGE)
@@ -74,3 +76,4 @@ class GeneratedTextStreamResult(DataObjectBase):
     tokens: Annotated[Optional[List[GeneratedToken]], FieldNumber(2)]
     details: Annotated[Optional[TokenStreamDetails], FieldNumber(3)]
     producer_id: Annotated[ProducerId, FieldNumber(4)]
+    input_tokens: Annotated[Optional[List[GeneratedToken]], FieldNumber(5)]
