@@ -13,14 +13,21 @@
 # limitations under the License.
 
 # Standard
+from datetime import datetime
 import os
 import tempfile
 
 # Third Party
+from google.protobuf import struct_pb2, timestamp_pb2
 import pytest
 
+# First Party
+from py_to_proto.json_to_service import json_to_service
+
 # Local
+from caikit.core import DataObjectBase, dataobject
 from caikit.core.data_model.base import DataBase
+from caikit.core.data_model.json_dict import JsonDict
 from caikit.runtime.protobufs import model_runtime_pb2
 from caikit.runtime.service_generation.data_stream_source import DataStreamSourceBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -194,6 +201,44 @@ def test_servicer_util_will_not_validate_arbitrary_service_descriptor():
     """Test that validate_data_model raises exception validating arbitrary ServiceDescriptor"""
     with pytest.raises(ValueError):
         validate_data_model(model_runtime_pb2._MODELRUNTIME)
+
+
+def test_servicer_util_special_conversion_types():
+    """Test that validate_data_model handles special conversion types (Timestamp
+    and Struct) correctly
+    """
+
+    @dataobject(package="test.foo.bar")
+    class TestNestedFields(DataObjectBase):
+        ts: datetime
+        data: JsonDict
+
+    special_type_svc = json_to_service(
+        name="SpecialService",
+        package="special",
+        json_service_def={
+            "service": {
+                "rpcs": [
+                    {
+                        "name": "TimestampSvc",
+                        "input_type": timestamp_pb2.Timestamp.DESCRIPTOR.full_name,
+                        "output_type": timestamp_pb2.Timestamp.DESCRIPTOR.full_name,
+                    },
+                    {
+                        "name": "StructSvc",
+                        "input_type": struct_pb2.Struct.DESCRIPTOR.full_name,
+                        "output_type": struct_pb2.Struct.DESCRIPTOR.full_name,
+                    },
+                    {
+                        "name": "NestedSvc",
+                        "input_type": TestNestedFields.get_proto_class().DESCRIPTOR.full_name,
+                        "output_type": TestNestedFields.get_proto_class().DESCRIPTOR.full_name,
+                    },
+                ]
+            }
+        },
+    )
+    validate_data_model(special_type_svc.descriptor)
 
 
 # ---------------- Tests for build_caikit_library_request_dict --------------------

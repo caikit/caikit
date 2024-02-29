@@ -16,6 +16,7 @@ Tests for the pydantic wrapping for REST server
 """
 # Standard
 from typing import Dict, List, Union, get_args
+import datetime
 import enum
 
 # Third Party
@@ -138,6 +139,10 @@ def test_pydantic_to_dataobject_datastream_file():
         (List[Annotated[str, "blah"]], List[str]),
         (Dict[str, int], Dict[str, int]),
         (Dict[Annotated[str, "blah"], int], Dict[str, int]),
+        (datetime.datetime, datetime.datetime),
+        (datetime.date, datetime.date),
+        (datetime.time, datetime.time),
+        (datetime.timedelta, datetime.timedelta),
     ],
 )
 def test_get_pydantic_type(input, output):

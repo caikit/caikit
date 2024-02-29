@@ -16,6 +16,7 @@ This module holds the Pydantic wrapping required by the REST server,
 capable of converting to and from Pydantic models to our DataObjects.
 """
 # Standard
+from datetime import date, datetime, time, timedelta
 from typing import Dict, List, Type, Union, get_args, get_type_hints
 import base64
 import enum
@@ -144,7 +145,18 @@ def _get_pydantic_type(field_type: type) -> type:
         return float
     if field_type == bytes:
         return Annotated[bytes, BeforeValidator(_from_base64)]
-    if field_type in (int, float, bool, str, dict, type(None)):
+    if field_type in (
+        int,
+        float,
+        bool,
+        str,
+        dict,
+        type(None),
+        date,
+        datetime,
+        time,
+        timedelta,
+    ):
         return field_type
     if isinstance(field_type, type) and issubclass(field_type, enum.Enum):
         return field_type
