@@ -511,6 +511,13 @@ class DataBase(metaclass=_DataBaseMetaClass):
         defined in the interface definitions.  If not, an exception will be thrown at runtime.
     """
 
+    # Class constant used to identify protobuf types that are handled with
+    # special logic in the to/from proto conversions
+    PROTO_CONVERSION_SPECIAL_TYPES = [
+        timestamp.TIMESTAMP_PROTOBUF_NAME,
+        json_dict.STRUCT_PROTOBUF_NAME,
+    ]
+
     @dataclass
     class OneofFieldVal:
         """Helper struct that backends can use to return information about
