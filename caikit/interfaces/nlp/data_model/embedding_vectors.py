@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Data structures for embedding vector representations
-"""
+"""Data structures for embedding vector representations"""
+
 # Standard
 from dataclasses import dataclass
+from typing import List
 
 # First Party
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
@@ -36,6 +37,7 @@ class EmbeddingResult(DataObjectBase):
 
     result: Annotated[Vector1D, FieldNumber(1)]
     producer_id: Annotated[ProducerId, FieldNumber(2)]
+    input_token_count: Annotated[int, FieldNumber(3)]
 
 
 @dataobject(package="caikit_data_model.caikit_nlp")
@@ -45,3 +47,4 @@ class EmbeddingResults(DataObjectBase):
 
     results: Annotated[ListOfVector1D, FieldNumber(1)]
     producer_id: Annotated[ProducerId, FieldNumber(2)]
+    input_token_count: Annotated[int, FieldNumber(3)]
