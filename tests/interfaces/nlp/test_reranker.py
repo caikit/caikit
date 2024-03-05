@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test for reranker
-"""
+"""Test for reranker"""
 
 # Standard
 import random
@@ -100,12 +99,18 @@ def input_scores2(input_random_score, input_random_score_3):
 
 @pytest.fixture
 def input_result_1(input_scores):
-    return {"result": dm.RerankScores(query="foo", scores=input_scores)}
+    return {
+        "result": dm.RerankScores(query="foo", scores=input_scores),
+        "input_token_count": 0,
+    }
 
 
 @pytest.fixture
 def input_result_2(input_scores2):
-    return {"result": dm.RerankScores(query="bar", scores=input_scores2)}
+    return {
+        "result": dm.RerankScores(query="bar", scores=input_scores2),
+        "input_token_count": 0,
+    }
 
 
 @pytest.fixture
@@ -114,7 +119,8 @@ def input_results(input_scores, input_scores2):
         "results": [
             dm.RerankScores(query="foo", scores=input_scores),
             dm.RerankScores(query="bar", scores=input_scores2),
-        ]
+        ],
+        "input_token_count": 0,
     }
 
 
@@ -125,7 +131,10 @@ def input_sentence_similarity_scores_1():
 
 @pytest.fixture
 def input_sentence_similarity_result(input_sentence_similarity_scores_1):
-    return {"result": dm.SentenceSimilarityScores(**input_sentence_similarity_scores_1)}
+    return {
+        "result": dm.SentenceSimilarityScores(**input_sentence_similarity_scores_1),
+        "input_token_count": 0,
+    }
 
 
 @pytest.fixture
@@ -145,7 +154,7 @@ def input_sentence_similarities_scores(
 
 @pytest.fixture
 def input_sentence_similarity_results(input_sentence_similarities_scores):
-    return {"results": input_sentence_similarities_scores}
+    return {"results": input_sentence_similarities_scores, "input_token_count": 0}
 
 
 ## Tests ########################################################################
@@ -162,7 +171,7 @@ def input_sentence_similarity_results(input_sentence_similarities_scores):
         (dm.SentenceSimilarityResults, "input_sentence_similarity_results"),
     ],
 )
-def test_data_object(data_object, inputs, request):
+def test_data_object(data_object, inputs, request: pytest.FixtureRequest):
     # Init data object
     fixture_values = request.getfixturevalue(inputs)
     new_do_from_init = data_object(**fixture_values)
