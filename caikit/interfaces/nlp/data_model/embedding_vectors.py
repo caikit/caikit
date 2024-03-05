@@ -15,7 +15,6 @@
 
 # Standard
 from dataclasses import dataclass
-from typing import List
 
 # First Party
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
