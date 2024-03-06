@@ -54,7 +54,7 @@ class RerankResult(DataObjectBase):
 
     result: Annotated[RerankScores, FieldNumber(1)]
     producer_id: Annotated[ProducerId, FieldNumber(2)]
-    input_token_count: Annotated[int, FieldNumber(3)]
+    input_token_count: Annotated[Optional[int], FieldNumber(3)]
 
 
 @dataobject(package="caikit_data_model.caikit_nlp")
@@ -65,4 +65,4 @@ class RerankResults(DataObjectBase):
 
     results: Annotated[List[RerankScores], FieldNumber(1)]
     producer_id: Annotated[ProducerId, FieldNumber(2)]
-    input_token_count: Annotated[int, FieldNumber(3)]
+    input_token_count: Annotated[Optional[int], FieldNumber(3)]

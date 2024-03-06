@@ -14,7 +14,7 @@
 """Data structures for embedding vector representations"""
 
 # Standard
-from typing import List
+from typing import List, Optional
 
 # First Party
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
@@ -42,7 +42,7 @@ class SentenceSimilarityResult(DataObjectBase):
 
     result: Annotated[SentenceSimilarityScores, FieldNumber(1)]
     producer_id: Annotated[ProducerId, FieldNumber(2)]
-    input_token_count: Annotated[int, FieldNumber(3)]
+    input_token_count: Annotated[Optional[int], FieldNumber(3)]
 
 
 @dataobject(package="caikit_data_model.caikit_nlp")
@@ -51,4 +51,4 @@ class SentenceSimilarityResults(DataObjectBase):
 
     results: Annotated[List[SentenceSimilarityScores], FieldNumber(1)]
     producer_id: Annotated[ProducerId, FieldNumber(2)]
-    input_token_count: Annotated[int, FieldNumber(3)]
+    input_token_count: Annotated[Optional[int], FieldNumber(3)]
