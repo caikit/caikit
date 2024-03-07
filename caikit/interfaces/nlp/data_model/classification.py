@@ -148,8 +148,8 @@ class ClassifiedGeneratedTextResult(DataObjectBase):
     warnings: Annotated[
         Optional[List[InputWarning]], FieldNumber(9)
     ]  # Warning to user in the event of input errors
-    tokens: Annotated[Optional[List[GeneratedToken]], FieldNumber(30)]
-    input_tokens: Annotated[Optional[List[GeneratedToken]], FieldNumber(40)]
+    tokens: Annotated[Optional[List[GeneratedToken]], FieldNumber(11)]
+    input_tokens: Annotated[Optional[List[GeneratedToken]], FieldNumber(12)]
 
 
 @dataobject(package=NLP_PACKAGE)
