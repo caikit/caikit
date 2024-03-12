@@ -21,6 +21,7 @@ from collections.abc import Iterable
 from types import GeneratorType
 from typing import TYPE_CHECKING, Dict, NoReturn, Optional, Type
 import os
+import typing
 
 # Local
 from caikit.config import get_config
@@ -219,7 +220,7 @@ class ErrorHandler:
         log_code: str,
         *types: Type,
         allow_none: bool = False,
-        **variables: Iterable[object]
+        **variables: typing.Iterable[object]
     ) -> None:
         """This type check is similar to `.type_check` except that it verifies that each variable
         in `**variables` is either a `list` or a `tuple` and then checks that *all* of the items
