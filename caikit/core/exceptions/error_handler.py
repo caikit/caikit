@@ -421,8 +421,8 @@ class ErrorHandler:
                 (example generation in `scripts/cor_log_code`) and where `E` is
                 an error level short-code, one of `{'fatal': 'F', 'error': 'E',
                 'warning': 'W', 'info': 'I', 'trace': 'T', 'debug': 'D'}`.
-            *file_paths (str): Variadic argument containing strings specifying
-                the file paths to check.  If any of these file paths does not
+            *file_paths (FileDescriptorOrPath): Variadic argument containing strings
+                specifying the file paths to check.  If any of these file paths does not
                 exist or is not a regular file, then a log message will be
                 emitted and a `FileNotFoundError` will be raised.
         """
@@ -457,8 +457,8 @@ class ErrorHandler:
                 (example generation in `scripts/cor_log_code`) and where `E` is
                 an error level short-code, one of `{'fatal': 'F', 'error': 'E',
                 'warning': 'W', 'info': 'I', 'trace': 'T', 'debug': 'D'}`.
-            *dir_paths (str): Variadic argument containing strings specifying
-                the directory paths to check.  If any of these file paths does
+            *dir_paths (FileDescriptorOrPath): Variadic argument containing strings
+                specifying the directory paths to check.  If any of these file paths does
                 not exist or is not a regular file, then a log message will be
                 emitted and a `FileNotFoundError` or `NotADirectoryError` will
                 raised.
