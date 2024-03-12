@@ -68,7 +68,7 @@ class Factory:
         configuration lives.
         """
         self._name = name
-        self._registered_types:dict[str,Type[FactoryConstructible]] = {}
+        self._registered_types = {}
 
     @property
     def name(self) -> str:
