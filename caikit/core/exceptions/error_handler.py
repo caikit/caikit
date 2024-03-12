@@ -19,7 +19,7 @@
 # Standard
 from collections.abc import Iterable
 from types import GeneratorType
-from typing import TYPE_CHECKING, NoReturn, Optional, Type
+from typing import TYPE_CHECKING, Dict, NoReturn, Optional, Type
 import os
 
 # Local
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
 # dictionary mapping string log channel name to error handler instances
 # there is only one error handler instance for each log channel name
-_error_handlers: dict[str, "ErrorHandler"] = {}
+_error_handlers: Dict[str, "ErrorHandler"] = {}
 
 
 def get(log_chan: "Logger"):
