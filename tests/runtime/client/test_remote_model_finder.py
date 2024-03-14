@@ -75,6 +75,7 @@ def temp_finder(
     multi_finder_name="remote",
     multi_finder_cfg=None,
     connection_cfg=None,
+    remote_connections_cfg=None,
     min_poll_time=0,
     protocol="grpc",
 ):
@@ -88,14 +89,16 @@ def temp_finder(
 
     if connection_cfg:
         multi_finder_cfg["connection"] = connection_cfg
-
-    if "protocol" not in multi_finder_cfg:
-        multi_finder_cfg["protocol"] = protocol
-
-    if "connection" not in multi_finder_cfg:
+    elif connection_cfg is None:
         multi_finder_cfg["connection"] = {
             "hostname": "localhost",
         }
+
+    if remote_connections_cfg:
+        multi_finder_cfg["remote_connections"] = remote_connections_cfg
+
+    if "protocol" not in multi_finder_cfg:
+        multi_finder_cfg["protocol"] = protocol
 
     yield RemoteModelFinder(ImmutableConfig(multi_finder_cfg), multi_finder_name)
 
@@ -119,6 +122,27 @@ def test_remote_finder_static_model(sample_module_id):
         assert len(config.task_methods) == 1
         # Assert how many SampleTask methods there are
         assert len(config.task_methods[0][1]) == 4
+
+
+def test_remote_finder_connection_template(sample_module_id):
+    """Test to ensure that the connection can be a template"""
+    hn_template = "foo.{}.svc"
+    with temp_finder(
+        connection_cfg={
+            "hostname": hn_template,
+            "port": 12345,
+        },
+        multi_finder_cfg={
+            "discover_models": False,
+            "supported_models": {
+                "sample1": sample_module_id,
+                "sample2": sample_module_id,
+            },
+        },
+    ) as finder:
+        for model_id in ["sample1", "sample2"]:
+            config = finder.find_model(model_id)
+            assert config.connection.hostname == hn_template.format(model_id)
 
 
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
