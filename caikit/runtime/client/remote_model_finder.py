@@ -95,14 +95,14 @@ class RemoteModelFinder(ModelFinderBase):
 
         # If a remote_models key is found, it's a mapping from model name to
         # connection info
-        for remote_conn in config.get("remote_connections", {}):
+        for remote_conn in config.get("remote_connections", []):
             conn = ConnectionInfo(**remote_conn)
-            self._connections[conn.hostname] = conn
+            self._connections[f"{conn.hostname}:{conn.port}"] = conn
 
         # If a single "global" connection given, initialize with model_name None
         if config.connection:
             default_conn = ConnectionInfo(**config.connection)
-            if default_conn.hostname not in self._connections:
+            if f"{default_conn.hostname}:{default_conn.port}" not in self._connections:
                 self._connection_template = default_conn
                 self._connections[default_conn.hostname] = default_conn
 
@@ -266,27 +266,29 @@ class RemoteModelFinder(ModelFinderBase):
                     model_info_proto = info_service_rpc(
                         ModelInfoRequest().to_proto(), timeout=conn.timeout
                     )
+
+                    model_info_response = ModelInfoResponse.from_proto(model_info_proto)
+
+                    # Parse response into dictionary of name->conn
+                    for model_info in model_info_response.models:
+                        model_name = model_info.name
+                        module_id = model_info.module_id
+
+                        log.debug(
+                            "Discovered model %s with module_id %s from remote runtime %s",
+                            model_name,
+                            module_id,
+                            target,
+                        )
+                        supported_modules[model_name] = ModuleConnectionInfo(
+                            conn, module_id
+                        )
                 except grpc.RpcError as exc:
                     log.warning(
                         "Unable to discover modules from remote: %s. Error: %s",
-                        conn.hostname,
+                        target,
                         str(exc),
                     )
-                    return {}
-
-            model_info_response = ModelInfoResponse.from_proto(model_info_proto)
-
-            # Parse response into dictionary of name->conn
-            for model_info in model_info_response.models:
-                model_name = model_info.name
-                module_id = model_info.module_id
-
-                log.debug(
-                    "Discovered model %s with module_id %s from remote runtime",
-                    model_name,
-                    module_id,
-                )
-                supported_modules[model_name] = ModuleConnectionInfo(conn, module_id)
 
         return supported_modules
 
@@ -314,36 +316,39 @@ class RemoteModelFinder(ModelFinderBase):
             # Send HTTP Request
             try:
                 resp = session.get(target)
+
+                if resp.status_code != 200:
+                    log.warning(
+                        "Unable to discover modules from remote: %s. Error: %s",
+                        target,
+                        resp.reason,
+                    )
+                else:
+
+                    # Load the response as a json object
+                    model_info = resp.json()
+
+                    # Parse response into dictionary of name->id
+                    for model_dict in model_info.get("models", []):
+                        model_name = model_dict.get("name")
+                        module_id = model_dict.get("module_id")
+
+                        log.debug(
+                            "Discovered model %s with module_id %s from remote runtime",
+                            model_name,
+                            module_id,
+                        )
+                        # NOTE: If multiple servers support the same model, the last to
+                        #   be checked will win
+                        supported_modules[model_name] = ModuleConnectionInfo(
+                            conn, module_id
+                        )
             except RequestException as exc:
                 log.warning(
                     "Unable to discover modules from remote: %s. Error: %s",
-                    conn.hostname,
+                    target,
                     str(exc),
                 )
-                return {}
-
-            if resp.status_code != 200:
-                log.warning(
-                    "Unable to discover modules from remote: %s. Error: %s",
-                    target,
-                    resp.reason,
-                )
-                return {}
-
-            # Load the response as a json object
-            model_info = resp.json()
-
-            # Parse response into dictionary of name->id
-            for model_dict in model_info.get("models", []):
-                model_name = model_dict.get("name")
-                module_id = model_dict.get("module_id")
-
-                log.debug(
-                    "Discovered model %s with module_id %s from remote runtime",
-                    model_name,
-                    module_id,
-                )
-                supported_modules[model_name] = ModuleConnectionInfo(conn, module_id)
 
         return supported_modules
 
@@ -359,9 +364,12 @@ class RemoteModelFinder(ModelFinderBase):
     def _get_conn_candidates(self, model_name: Optional[str]) -> List[ConnectionInfo]:
         """Common utility to get all connections to try"""
         candidate_conns = list(self._connections.values())
-        if model_name is not None and self._connection_template is not None:
-            if model_conn := self._render_conn_template(model_name):
-                candidate_conns.append(model_conn)
+        if (
+            model_name is not None
+            and self._connection_template is not None
+            and (model_conn := self._render_conn_template(model_name))
+        ):
+            candidate_conns.append(model_conn)
         return candidate_conns
 
 
