@@ -58,6 +58,30 @@ def test_dump_grpc_services_dir_does_not_exist():
         shutil.rmtree(fake_dir)
 
 
+@pytest.mark.skipif(
+    PROTOBUF_VERSION < 4 and ARM_ARCH, reason="protobuf 3 serialization bug"
+)
+def test_dump_grpc_services_consolidated():
+    with tempfile.TemporaryDirectory() as workdir:
+        dump_grpc_services(workdir, False, consolidate=True)
+        assert os.path.exists(workdir)
+        # Make sure the file names match the expected names for caikit plus
+        # sample_lib
+        # NOTE: This will break if any of these package names change which is
+        #   an indication that an API breaking change has happened!
+        assert set(os.listdir(workdir)) == {
+            "caikit.runtime.SampleLib.proto",
+            "caikit.runtime.info.proto",
+            "caikit.runtime.training.proto",
+            "caikit_data_model.common.proto",
+            "caikit_data_model.common.runtime.proto",
+            "caikit_data_model.runtime.proto",
+            "caikit_data_model.sample_lib.proto",
+            # NOTE: Added in conftest.py
+            "caikit_data_model.test.proto",
+        }
+
+
 def test_dump_http_services_dir_exists():
     with tempfile.TemporaryDirectory() as workdir:
         dump_http_services(workdir)
