@@ -22,25 +22,20 @@ import sys
 # Third Party
 import grpc
 
-# Local
-# pylint: disable=no-name-in-module,import-error
-from .generated import samplelibservice_pb2_grpc, samplelibtrainingservice_pb2_grpc
-
-# pylint: disable=no-name-in-module,import-error
-from .generated.caikit_sample_lib import (
-    sampletaskrequest_pb2,
-    sampletasksamplemoduletrainparameters_pb2,
-    sampletasksamplemoduletrainrequest_pb2,
-)
-
-# Make sample_lib available for import
-sys.path.append(
-    os.path.join(Path(__file__).parent.parent.parent, "tests/fixtures"),
+# Make generated available for import. This is needed because transitive
+# dependencies are imported without any qualification in generated protobufs.
+sys.path.extend(
+    [
+        os.path.join(Path(__file__).parent, "generated"),
+    ]
 )
 
 # Local
-# pylint: disable=wrong-import-position,wrong-import-order,import-error
-import sample_lib.data_model as dm
+from .generated import (
+    caikit_data_model_sample_lib_pb2,
+    caikit_sample_lib_pb2,
+    caikit_sample_lib_pb2_grpc,
+)
 
 if __name__ == "__main__":
     model_id = "my_model"
@@ -50,13 +45,13 @@ if __name__ == "__main__":
     channel = grpc.insecure_channel(f"localhost:{port}")
 
     # send train request
-    request = sampletasksamplemoduletrainrequest_pb2.SampleTaskSampleModuleTrainRequest(
+    request = caikit_sample_lib_pb2.SampleTaskSampleModuleTrainRequest(
         model_name=model_id,
-        parameters=sampletasksamplemoduletrainparameters_pb2.SampleTaskSampleModuleTrainParameters(
+        parameters=caikit_sample_lib_pb2.SampleTaskSampleModuleTrainParameters(
             training_data={"file": {"filename": "protos/sample.json"}}
         ),
     )
-    training_stub = samplelibtrainingservice_pb2_grpc.SampleLibTrainingServiceStub(
+    training_stub = caikit_sample_lib_pb2_grpc.SampleLibTrainingServiceStub(
         channel=channel
     )
     response = training_stub.SampleTaskSampleModuleTrain(request)
@@ -67,12 +62,10 @@ if __name__ == "__main__":
 
     sleep(1)
 
-    sample_input = dm.SampleInputType(name="world")
+    sample_input = caikit_data_model_sample_lib_pb2.SampleInputType(name="world")
 
-    request = sampletaskrequest_pb2.SampleTaskRequest(
-        sample_input=sample_input.to_proto()
-    )
-    inference_stub = samplelibservice_pb2_grpc.SampleLibServiceStub(channel=channel)
+    request = caikit_sample_lib_pb2.SampleTaskRequest(sample_input=sample_input)
+    inference_stub = caikit_sample_lib_pb2_grpc.SampleLibServiceStub(channel=channel)
     response = inference_stub.SampleTaskPredict(
         request, metadata=[("mm-model-id", model_id)], timeout=1
     )
