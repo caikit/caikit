@@ -39,10 +39,6 @@ if __name__ == "__main__":
                 os.path.join(Path(__file__).parent.parent.parent, "tests/fixtures"),
             )
 
-            # Import sample_lib to register modules for service dump
-            # Local
-            import sample_lib
-
             # Dump protos
             shutil.rmtree("protos", ignore_errors=True)
             if get_config().runtime.grpc.enabled:
