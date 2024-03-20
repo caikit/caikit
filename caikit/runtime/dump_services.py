@@ -179,7 +179,7 @@ def _get_proto_file_descriptors(
         dup_candidates.setdefault(f"{type(obj_desc)}/{obj_desc.full_name}", {})[
             id(obj_desc)
         ] = obj_desc
-    dups = {obj_desc for obj_desc in dup_candidates.values() if len(obj_desc) > 1}
+    dups = [obj_desc for obj_desc in dup_candidates.values() if len(obj_desc) > 1]
     error.value_check(
         "<COR01018988E>",
         not dups,

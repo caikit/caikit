@@ -67,19 +67,22 @@ def test_dump_grpc_services_consolidated():
         assert os.path.exists(workdir)
         # Make sure the file names match the expected names for caikit plus
         # sample_lib
-        # NOTE: This will break if any of these package names change which is
-        #   an indication that an API breaking change has happened!
-        assert set(os.listdir(workdir)) == {
-            "caikit_runtime_SampleLib.proto",
-            "caikit_runtime_info.proto",
-            "caikit_runtime_training.proto",
-            "caikit_data_model_common.proto",
-            "caikit_data_model_common_runtime.proto",
-            "caikit_data_model_runtime.proto",
-            "caikit_data_model_sample_lib.proto",
-            # NOTE: Added in conftest.py
-            "caikit_data_model_test.proto",
-        }
+        # NOTE: Dumping services dumps _all_ data model objects, so we cannot
+        #   do an exact check due to the global descriptor pool and other tests
+        #   that modify it.
+        dumped_files = os.listdir(workdir)
+        assert all(
+            fname in dumped_files
+            for fname in {
+                "caikit_runtime_SampleLib.proto",
+                "caikit_runtime_info.proto",
+                "caikit_runtime_training.proto",
+                "caikit_data_model_common.proto",
+                "caikit_data_model_common_runtime.proto",
+                "caikit_data_model_runtime.proto",
+                "caikit_data_model_sample_lib.proto",
+            }
+        )
 
 
 def test_dump_http_services_dir_exists():
