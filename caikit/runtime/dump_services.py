@@ -68,6 +68,7 @@ def dump_grpc_services(
             svc_pkg.service.write_proto_file(output_dir)
     else:
         log.info("Dumping service and data model protos with package consolidation")
+        os.makedirs(output_dir, exist_ok=True)
         all_descriptors = [
             proto_cls.DESCRIPTOR for proto_cls in _AUTO_GEN_PROTO_CLASSES
         ] + [pkg.descriptor for pkg in service_packages]
@@ -137,10 +138,11 @@ def _recursive_safe_add_to_pool(
     """Recursively add the given file descriptor and all of its dependencies to
     the pool and handle double-add conflicts.
     """
+    fds_to_add_by_file_name = {fd.name: fd for fd in fd_protos_to_add.values()}
     for dep_name in fd_proto.dependency:
         if not _try_find_file_by_name(dep_name, dpool):
             # Look in the pile of protos that need to be added
-            if pending_fd_proto := fd_protos_to_add.get(dep_name.rsplit(".", 1)[0]):
+            if pending_fd_proto := fds_to_add_by_file_name.get(dep_name):
                 _recursive_safe_add_to_pool(pending_fd_proto, fd_protos_to_add, dpool)
             # Look in the default pool
             elif dflt_fd := _try_find_file_by_name(dep_name, descriptor_pool.Default()):
@@ -199,7 +201,8 @@ def _get_proto_file_descriptors(
 
     # Update the file names to be package-level
     for pkg_name, pkg_fd in file_descriptor_protos.items():
-        pkg_fd.name = f"{pkg_name}.proto"
+        file_safe_pkg_name = pkg_name.replace(".", "_")
+        pkg_fd.name = f"{file_safe_pkg_name}.proto"
 
     # Update the dependencies for each package-level file descriptor proto
     for pkg_name, pkg_fd in file_descriptor_protos.items():
@@ -222,7 +225,9 @@ def _get_proto_file_descriptors(
                 pkg_fd.dependency.remove(existing_dep)
 
         # Add package-level dependency files
-        pkg_fd.dependency.extend(sorted([f"{pkg}.proto" for pkg in pkg_deps]))
+        pkg_fd.dependency.extend(
+            sorted([file_descriptor_protos[pkg].name for pkg in pkg_deps])
+        )
 
     return file_descriptor_protos
 

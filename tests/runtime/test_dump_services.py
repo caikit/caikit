@@ -70,15 +70,15 @@ def test_dump_grpc_services_consolidated():
         # NOTE: This will break if any of these package names change which is
         #   an indication that an API breaking change has happened!
         assert set(os.listdir(workdir)) == {
-            "caikit.runtime.SampleLib.proto",
-            "caikit.runtime.info.proto",
-            "caikit.runtime.training.proto",
-            "caikit_data_model.common.proto",
-            "caikit_data_model.common.runtime.proto",
-            "caikit_data_model.runtime.proto",
-            "caikit_data_model.sample_lib.proto",
+            "caikit_runtime_SampleLib.proto",
+            "caikit_runtime_info.proto",
+            "caikit_runtime_training.proto",
+            "caikit_data_model_common.proto",
+            "caikit_data_model_common_runtime.proto",
+            "caikit_data_model_runtime.proto",
+            "caikit_data_model_sample_lib.proto",
             # NOTE: Added in conftest.py
-            "caikit_data_model.test.proto",
+            "caikit_data_model_test.proto",
         }
 
 
