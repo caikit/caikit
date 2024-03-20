@@ -42,7 +42,7 @@ if __name__ == "__main__":
             # dump protos
             shutil.rmtree("protos", ignore_errors=True)
             if get_config().runtime.grpc.enabled:
-                dump_grpc_services("protos", True)
+                dump_grpc_services("protos", True, True)
             if get_config().runtime.http.enabled:
                 dump_http_services("protos")
 
