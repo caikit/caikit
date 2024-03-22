@@ -70,7 +70,9 @@ def dump_grpc_services(
         log.info("Dumping service and data model protos with package consolidation")
         os.makedirs(output_dir, exist_ok=True)
         all_descriptors = [
-            proto_cls.DESCRIPTOR for proto_cls in _AUTO_GEN_PROTO_CLASSES
+            proto_cls.DESCRIPTOR
+            for proto_cls in _AUTO_GEN_PROTO_CLASSES
+            if proto_cls.DESCRIPTOR.file.pool is descriptor_pool.Default()
         ] + [pkg.descriptor for pkg in service_packages]
         fd_protos = _get_proto_file_descriptors(all_descriptors)
         _dump_consolidated_protos(fd_protos, output_dir)
@@ -160,6 +162,40 @@ def _recursive_safe_add_to_pool(
     return dpool.FindFileByName(fd_proto.name)
 
 
+def _descriptor_to_proto(
+    descriptor: Union[
+        _descriptor.Descriptor,
+        _descriptor.EnumDescriptor,
+        _descriptor.ServiceDescriptor,
+    ],
+) -> Union[
+    descriptor_pb2.DescriptorProto,
+    descriptor_pb2.EnumDescriptorProto,
+    descriptor_pb2.ServiceDescriptorProto,
+]:
+    """Convert a given Descriptor type to the corresponding Proto for
+    comparison by content rather than instance id
+    """
+    error.type_check(
+        "<COR46719006E>",
+        _descriptor.Descriptor,
+        _descriptor.EnumDescriptor,
+        _descriptor.ServiceDescriptor,
+        descriptor=descriptor,
+    )
+    proto_type = None
+    if isinstance(descriptor, _descriptor.Descriptor):
+        proto_type = descriptor_pb2.DescriptorProto
+    elif isinstance(descriptor, _descriptor.EnumDescriptor):
+        proto_type = descriptor_pb2.EnumDescriptorProto
+    elif isinstance(descriptor, _descriptor.ServiceDescriptor):
+        proto_type = descriptor_pb2.ServiceDescriptorProto
+    assert proto_type
+    proto = proto_type()
+    descriptor.CopyToProto(proto)
+    return proto
+
+
 def _get_proto_file_descriptors(
     object_descriptors: List[
         Union[
@@ -179,12 +215,22 @@ def _get_proto_file_descriptors(
         dup_candidates.setdefault(f"{type(obj_desc)}/{obj_desc.full_name}", {})[
             id(obj_desc)
         ] = obj_desc
-    dups = [obj_desc for obj_desc in dup_candidates.values() if len(obj_desc) > 1]
+    dups = {
+        dup_name: obj_descs
+        for dup_name, obj_descs in dup_candidates.items()
+        if len(
+            {
+                _descriptor_to_proto(obj_desc).SerializeToString()
+                for obj_desc in obj_descs.values()
+            }
+        )
+        > 1
+    }
     error.value_check(
         "<COR01018988E>",
         not dups,
-        "Found conflicting definitions of protobuf objects: %s",
-        [dup.name for dup in dups],
+        "Found conflicting definitions of protobuf objects: {}",
+        list(dups.keys()),
     )
     object_descriptors = sorted(
         [list(obj_descs.values())[0] for obj_descs in dup_candidates.values()],
