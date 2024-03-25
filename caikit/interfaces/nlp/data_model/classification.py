@@ -27,7 +27,7 @@ import alog
 # Local
 from ....core import DataObjectBase, dataobject
 from .package import NLP_PACKAGE
-from .text_generation import FinishReason
+from .text_generation import FinishReason, GeneratedToken
 
 log = alog.use_channel("DATAM")
 
@@ -148,6 +148,8 @@ class ClassifiedGeneratedTextResult(DataObjectBase):
     warnings: Annotated[
         Optional[List[InputWarning]], FieldNumber(9)
     ]  # Warning to user in the event of input errors
+    tokens: Annotated[Optional[List[GeneratedToken]], FieldNumber(10)]
+    input_tokens: Annotated[Optional[List[GeneratedToken]], FieldNumber(11)]
 
 
 @dataobject(package=NLP_PACKAGE)
