@@ -205,7 +205,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             unvicorn_timeout_graceful_shutdown = (
                 get_config().runtime.http.server_shutdown_grace_period_seconds
             )
-            server_config = get_config().runtime.http.server_config
+            server_config = dict(**get_config().runtime.http.server_config)
             overlapping_tls_config = set(tls_kwargs).intersection(server_config)
             error.value_check(
                 "<RUN30233180E>",
@@ -227,14 +227,33 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 "Found caikit-managed uvicorn config in server_config: %s",
                 overlapping_kwarg_config,
             )
+
+            # Set the default concurrency limit if not changed from the default
+            # sentinel value
+            concurrency_limit = server_config.get("limit_concurrency", -1)
+            if not concurrency_limit or not isinstance(concurrency_limit, int):
+                log.info(
+                    "<RUN57106697I>", "Running HTTP server with unlimited concurrency"
+                )
+                concurrency_limit = None
+            elif concurrency_limit < 0:
+                max_threads = self.thread_pool._max_workers
+                concurrency_limit = max_threads * 2
+                log.info(
+                    "<RUN57106696I>",
+                    "Limiting HTTP server concurrency to %d",
+                    concurrency_limit,
+                )
+            server_config["limit_concurrency"] = concurrency_limit
+
+            # Make sure the config loads TLS files here so they can safely be
+            # deleted if they're ephemeral
             config = uvicorn.Config(
                 self.app,
                 **config_kwargs,
                 **tls_kwargs,
                 **server_config,
             )
-            # Make sure the config loads TLS files here so they can safely be
-            # deleted if they're ephemeral
             config.load()
 
         # Build the server with the loaded config

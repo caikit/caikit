@@ -162,7 +162,13 @@ runtime:
         probe_timeout: 0.01
         # Additional uvicorn server configuration
         # CITE: https://github.com/encode/uvicorn/blob/master/uvicorn/config.py#L188
-        server_config: {}
+        server_config:
+            # By default, if not set here, the concurrency limit will be set to
+            # 2x the size of the server thread pool. If set to 0 or null, no
+            # limiting will be used. If set to a positive value, the explicit
+            # value will be used.
+            limit_concurrency: -1
+            # Other configuration values can be added with merged overrides
 
     # Configuration for the metrics server
     metrics:
