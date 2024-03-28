@@ -45,7 +45,7 @@ log = alog.use_channel("TRAIN")
 error = error_handler.get(log)
 
 
-def main():
+def main() -> int:
     """Main entrypoint for running training jobs"""
     parser = argparse.ArgumentParser(description=__doc__)
 
@@ -186,12 +186,13 @@ def main():
         info = future.get_info()
         if info.status == TrainingStatus.COMPLETED:
             log.info("Training finished successfully")
+            return 0
         else:
             log.error("Training finished unsuccessfully")
             for err in info.errors or []:
                 log.error(err)
-            sys.exit(1)
+            return 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())  # pragma: no cover
