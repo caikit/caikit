@@ -498,13 +498,13 @@ def _check_http_server_readiness(server, config_overrides: Dict[str, Dict]):
 ## TLS Helpers #####################################################################
 
 
-@dataobject
+@dataobject(package="caikit_data_model.test")
 class KeyPair(DataObjectBase):
     cert: str
     key: str
 
 
-@dataobject
+@dataobject(package="caikit_data_model.test")
 class TLSConfig(DataObjectBase):
     server: KeyPair
     client: KeyPair
