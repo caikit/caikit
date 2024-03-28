@@ -50,17 +50,17 @@ The python client sends in requests to all 3 services that were mentioned above,
 
 ## Interact using terminal
 
-You can also use `grpcurl` (for gRPC requests) or `curl` (for http requests) to send in commands one-by-one to all the 3 services that were mentioned above. 
+You can also use `grpcurl` (for gRPC requests) or `curl` (for http requests) to send in commands one-by-one to all the 3 services that were mentioned above.
 
 Note: `http` does not currently support `training management` APIs.
 ### To train a model
 
 #### Using gRPC
 
-In order to train a model via gRPC, we will use `grpcurl` and point the import-path to `protos` dir, then call one of the Train rpc's available in the `SampleLibTrainingService` (see `protos/samplelibtrainingservice.proto` file generated above for all Train rpcs):
+In order to train a model via gRPC, we will use `grpcurl` and point the import-path to `protos` dir, then call one of the Train rpc's available in the `SampleLibTrainingService` (see `protos/caikit_sample_lib.proto` file generated above for all Train rpcs):
 
 ```shell
-grpcurl -plaintext -import-path protos/ -proto samplelibtrainingservice.proto -d '{"model_name": "my_model", "parameters": {"training_data": {"file": {"filename": "protos/sample.json"}}}}' localhost:8085 caikit_sample_lib.SampleLibTrainingService/SampleTaskSampleModuleTrain
+grpcurl -plaintext -import-path protos/ -proto caikit_sample_lib.proto -d '{"model_name": "my_model", "parameters": {"training_data": {"file": {"filename": "protos/sample.json"}}}}' localhost:8085 caikit_sample_lib.SampleLibTrainingService/SampleTaskSampleModuleTrain
 ```
 
 You should receive a response similar to the below:
@@ -85,7 +85,7 @@ Docs coming soon...
 With a `trainingId`, you can get a training status via gRPC. Replace the command below with your `trainingId`.
 
 ```shell
-grpcurl -plaintext -import-path protos/ -proto trainingmanagement.proto -d '{"training_id": "<training_id>"}' localhost:8085 caikit.runtime.training.TrainingManagement/GetTrainingStatus
+grpcurl -plaintext -import-path protos/ -proto caikit.runtime.training.proto -d '{"training_id": "<training_id>"}' localhost:8085 caikit.runtime.training.TrainingManagement/GetTrainingStatus
 ```
 
 You should get a response like this:
@@ -112,7 +112,7 @@ You are now ready to call inference via either gRPC or REST.
 
 You can also use the gRPC Server to call inference on this model by running:
 ```shell
-grpcurl -plaintext -import-path protos/ -proto samplelibservice.proto -d '{"sample_input": {"name": "world"}}' -H 'mm-model-id: my_model' localhost:8085 caikit_sample_lib.SampleLibService/SampleTaskPredict
+grpcurl -plaintext -import-path protos/ -proto caikit_sample_lib.proto -d '{"sample_input": {"name": "world"}}' -H 'mm-model-id: my_model' localhost:8085 caikit_sample_lib.SampleLibService/SampleTaskPredict
 ```
 
 You should receive a successful response back with a response body:
@@ -145,7 +145,7 @@ You should receive a 200 response back with a response body:
 
 ## Interact using a combination of pb2s and DataModels
 
-Install `protoc`, 
+Install `protoc`,
 
 ```shell
 pip3 install grpcio-tools

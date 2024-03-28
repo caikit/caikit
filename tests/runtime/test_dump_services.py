@@ -58,6 +58,38 @@ def test_dump_grpc_services_dir_does_not_exist():
         shutil.rmtree(fake_dir)
 
 
+@pytest.mark.skipif(
+    PROTOBUF_VERSION < 4 and ARM_ARCH, reason="protobuf 3 serialization bug"
+)
+def test_dump_grpc_services_consolidated():
+    with tempfile.TemporaryDirectory() as workdir:
+        dump_grpc_services(workdir, False, consolidate=True)
+        assert os.path.exists(workdir)
+        # Make sure the file names match the expected names for caikit plus
+        # sample_lib
+        # NOTE: Dumping services dumps _all_ data model objects, so we cannot
+        #   do an exact check due to the global descriptor pool and other tests
+        #   that modify it.
+        dumped_files = os.listdir(workdir)
+        exp_fnames = {
+            "caikit_runtime_SampleLib.proto",
+            "caikit_runtime_info.proto",
+            "caikit_runtime_training.proto",
+            "caikit_data_model_common.proto",
+            "caikit_data_model_common_runtime.proto",
+            "caikit_data_model_runtime.proto",
+            "caikit_data_model_sample_lib.proto",
+        }
+        assert all(fname in dumped_files for fname in exp_fnames)
+
+        # Spot check one of the files that we know will have specific contents
+        with open(os.path.join(workdir, "caikit_runtime_info.proto")) as handle:
+            content = handle.read()
+            assert "package caikit.runtime.info;" in content
+            assert "service InfoService" in content
+            assert "rpc GetRuntimeInfo" in content
+
+
 def test_dump_http_services_dir_exists():
     with tempfile.TemporaryDirectory() as workdir:
         dump_http_services(workdir)

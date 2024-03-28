@@ -39,10 +39,10 @@ if __name__ == "__main__":
                 os.path.join(Path(__file__).parent.parent.parent, "tests/fixtures"),
             )
 
-            # dump protos
+            # Dump protos
             shutil.rmtree("protos", ignore_errors=True)
             if get_config().runtime.grpc.enabled:
-                dump_grpc_services("protos", True)
+                dump_grpc_services("protos", True, True)
             if get_config().runtime.http.enabled:
                 dump_http_services("protos")
 
