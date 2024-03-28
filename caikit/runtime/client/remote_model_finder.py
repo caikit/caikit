@@ -363,13 +363,14 @@ class RemoteModelFinder(ModelFinderBase):
 
     def _get_conn_candidates(self, model_name: Optional[str]) -> List[ConnectionInfo]:
         """Common utility to get all connections to try"""
-        candidate_conns = list(self._connections.values())
+        candidate_conns = []
         if (
             model_name is not None
             and self._connection_template is not None
             and (model_conn := self._render_conn_template(model_name))
         ):
             candidate_conns.append(model_conn)
+        candidate_conns.extend(self._connections.values())
         return candidate_conns
 
 
