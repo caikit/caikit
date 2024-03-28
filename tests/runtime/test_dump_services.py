@@ -71,18 +71,23 @@ def test_dump_grpc_services_consolidated():
         #   do an exact check due to the global descriptor pool and other tests
         #   that modify it.
         dumped_files = os.listdir(workdir)
-        assert all(
-            fname in dumped_files
-            for fname in {
-                "caikit_runtime_SampleLib.proto",
-                "caikit_runtime_info.proto",
-                "caikit_runtime_training.proto",
-                "caikit_data_model_common.proto",
-                "caikit_data_model_common_runtime.proto",
-                "caikit_data_model_runtime.proto",
-                "caikit_data_model_sample_lib.proto",
-            }
-        )
+        exp_fnames = {
+            "caikit_runtime_SampleLib.proto",
+            "caikit_runtime_info.proto",
+            "caikit_runtime_training.proto",
+            "caikit_data_model_common.proto",
+            "caikit_data_model_common_runtime.proto",
+            "caikit_data_model_runtime.proto",
+            "caikit_data_model_sample_lib.proto",
+        }
+        assert all(fname in dumped_files for fname in exp_fnames)
+
+        # Spot check one of the files that we know will have specific contents
+        with open(os.path.join(workdir, "caikit_runtime_info.proto")) as handle:
+            content = handle.read()
+            assert "package caikit.runtime.info;" in content
+            assert "service InfoService" in content
+            assert "rpc GetRuntimeInfo" in content
 
 
 def test_dump_http_services_dir_exists():
