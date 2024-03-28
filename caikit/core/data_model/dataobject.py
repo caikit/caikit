@@ -253,6 +253,11 @@ def dataobject(*args, **kwargs) -> Callable[[_DataObjectBaseT], _DataObjectBaseT
     return decorator
 
 
+def get_generated_proto_classes():
+    """Provide get access to the auto-gen classes"""
+    return _AUTO_GEN_PROTO_CLASSES
+
+
 def render_dataobject_protos(interfaces_dir: str):
     """Write out protobufs files for all proto classes generated from dataobjects
     to the target interfaces directory

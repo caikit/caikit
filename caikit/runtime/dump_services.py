@@ -32,7 +32,7 @@ import alog
 # Local
 from ..config.config import get_config
 from ..core.data_model import render_dataobject_protos
-from ..core.data_model.dataobject import _AUTO_GEN_PROTO_CLASSES
+from ..core.data_model.dataobject import get_generated_proto_classes
 from ..core.exceptions import error_handler
 from .service_factory import ServicePackage, ServicePackageFactory
 import caikit
@@ -71,7 +71,7 @@ def dump_grpc_services(
         os.makedirs(output_dir, exist_ok=True)
         all_descriptors = [
             proto_cls.DESCRIPTOR
-            for proto_cls in _AUTO_GEN_PROTO_CLASSES
+            for proto_cls in get_generated_proto_classes()
             if proto_cls.DESCRIPTOR.file.pool is descriptor_pool.Default()
         ] + [pkg.descriptor for pkg in service_packages]
         fd_protos = _get_proto_file_descriptors(all_descriptors)
