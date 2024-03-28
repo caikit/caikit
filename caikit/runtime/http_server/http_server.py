@@ -230,7 +230,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
             # Set the default concurrency limit if not changed from the default
             # sentinel value
-            concurrency_limit = server_config.get("limit_concurrency", -1)
+            concurrency_limit = server_config.get("limit_concurrency", 0)
             if not concurrency_limit or not isinstance(concurrency_limit, int):
                 log.info(
                     "<RUN57106697I>", "Running HTTP server with unlimited concurrency"
