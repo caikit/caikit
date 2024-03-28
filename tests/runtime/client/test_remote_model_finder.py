@@ -17,23 +17,31 @@ Tests for the RemoteModelFinder
 
 # Standard
 from contextlib import contextmanager
+from typing import Optional
+from unittest.mock import MagicMock, patch
 
 # Third Party
+import grpc
 import pytest
 
 # First Party
 from aconfig import Config, ImmutableConfig
 
 # Local
+from caikit.interfaces.runtime.data_model import ModelInfo, ModelInfoResponse
 from caikit.runtime.client import RemoteModelFinder, RemoteModuleConfig
 from caikit.runtime.model_management.model_manager import ModelManager
 from sample_lib.modules.file_processing import BoundingBoxModule
+from sample_lib.modules.sample_task import SampleModule
 from tests.conftest import random_test_id
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import multi_task_model_id  # noqa: F401
-from tests.runtime.conftest import open_port  # noqa: F401
 from tests.runtime.conftest import sample_task_model_id  # noqa: F401
-from tests.runtime.conftest import generate_tls_configs, runtime_test_server
+from tests.runtime.conftest import (  # noqa: F401
+    generate_tls_configs,
+    open_port,
+    runtime_test_server,
+)
 
 ## Test Helpers #######################################################################
 
@@ -75,6 +83,7 @@ def temp_finder(
     multi_finder_name="remote",
     multi_finder_cfg=None,
     connection_cfg=None,
+    remote_connections_cfg=None,
     min_poll_time=0,
     protocol="grpc",
 ):
@@ -88,14 +97,16 @@ def temp_finder(
 
     if connection_cfg:
         multi_finder_cfg["connection"] = connection_cfg
-
-    if "protocol" not in multi_finder_cfg:
-        multi_finder_cfg["protocol"] = protocol
-
-    if "connection" not in multi_finder_cfg:
+    elif connection_cfg is None:
         multi_finder_cfg["connection"] = {
             "hostname": "localhost",
         }
+
+    if remote_connections_cfg:
+        multi_finder_cfg["remote_connections"] = remote_connections_cfg
+
+    if "protocol" not in multi_finder_cfg:
+        multi_finder_cfg["protocol"] = protocol
 
     yield RemoteModelFinder(ImmutableConfig(multi_finder_cfg), multi_finder_name)
 
@@ -121,6 +132,27 @@ def test_remote_finder_static_model(sample_module_id):
         assert len(config.task_methods[0][1]) == 4
 
 
+def test_remote_finder_connection_template(sample_module_id):
+    """Test to ensure that the connection can be a template"""
+    hn_template = "foo.{}.svc"
+    with temp_finder(
+        connection_cfg={
+            "hostname": hn_template,
+            "port": 12345,
+        },
+        multi_finder_cfg={
+            "discover_models": False,
+            "supported_models": {
+                "sample1": sample_module_id,
+                "sample2": sample_module_id,
+            },
+        },
+    ) as finder:
+        for model_id in ["sample1", "sample2"]:
+            config = finder.find_model(model_id)
+            assert config.connection.hostname == hn_template.format(model_id)
+
+
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
 def test_remote_finder_multi_task_model(multi_task_model_id, open_port, protocol):
     """Test to ensure model finder works for models with multiple tasks"""
@@ -138,7 +170,9 @@ def test_remote_finder_multi_task_model(multi_task_model_id, open_port, protocol
 
 
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
-def test_remote_finder_discover_models(sample_task_model_id, open_port, protocol):
+def test_remote_finder_discover_single_conn_models(
+    sample_task_model_id, open_port, protocol
+):
     """Test to ensure discovering models works for http"""
     with runtime_test_server(open_port, protocol=protocol) as server, temp_finder(
         connection_cfg={
@@ -153,6 +187,107 @@ def test_remote_finder_discover_models(sample_task_model_id, open_port, protocol
         assert len(config.task_methods) == 1
         # Assert how many SampleTask methods there are
         assert len(config.task_methods[0][1]) == 4
+
+
+@pytest.mark.parametrize("protocol", ["grpc", "http"])
+def test_remote_finder_discover_multi_conn_models(protocol):
+    """Test to ensure discovery works with multiple servers"""
+    hn_a = "foo.bar.com"
+    hn_b = "baz.biz.com"
+    port1 = 12345
+    port2 = 23456
+    mod_id_x = SampleModule.MODULE_ID
+    mod_id_y = BoundingBoxModule.MODULE_ID
+    model_id1 = random_test_id()
+    model_id2 = random_test_id()
+    model_id3 = random_test_id()
+    model_id4 = random_test_id()
+
+    class MockChannelSession:
+        def __init__(self, *_, target: Optional[str] = None, **__):
+            self.target = target
+
+        @staticmethod
+        def _get_resp(target: str):
+            return {
+                # hn A / port1 -> model1, model2
+                f"{hn_a}:{port1}": ModelInfoResponse(
+                    [
+                        ModelInfo(name=model_id1, module_id=mod_id_x),
+                        ModelInfo(name=model_id2, module_id=mod_id_x),
+                    ]
+                ),
+                # hn A / port2 -> model3
+                f"{hn_a}:{port2}": ModelInfoResponse(
+                    [
+                        ModelInfo(name=model_id3, module_id=mod_id_y),
+                    ]
+                ),
+                # hn B / port3 -> model4
+                f"{hn_b}:{port2}": ModelInfoResponse(
+                    [
+                        ModelInfo(name=model_id4, module_id=mod_id_y),
+                    ]
+                ),
+            }.get(target)
+
+        def get(self, target: str):
+            resp_mock = MagicMock()
+            resp = self._get_resp(target.split("/")[2])
+            if not resp:
+                resp_mock.status_code = 404
+            else:
+                resp_mock.status_code = 200
+                resp_mock.json = MagicMock(return_value=resp.to_dict())
+            return resp_mock
+
+        def unary_unary(self, *_, **__):
+            assert self.target
+            resp = self._get_resp(self.target)
+            if not resp:
+                return MagicMock(side_effect=grpc.RpcError)
+            return MagicMock(return_value=resp.to_proto())
+
+    @contextmanager
+    def mock_construct_grpc_channel(target, *_, **__):
+        yield MockChannelSession(target=target)
+
+    with patch(
+        "caikit.runtime.client.remote_model_finder.construct_grpc_channel",
+        new=mock_construct_grpc_channel,
+    ), patch(
+        "caikit.runtime.client.remote_model_finder.construct_requests_session",
+        new=MockChannelSession,
+    ):
+        with temp_finder(
+            remote_connections_cfg=[
+                {"hostname": hn_a, "port": port1},
+                {"hostname": hn_a, "port": port2},
+                {"hostname": hn_b, "port": port2},
+            ],
+            protocol=protocol,
+        ) as finder:
+            # hn A / port1 -> model1, model2
+            config1 = finder.find_model(model_id1)
+            assert config1
+            assert config1.connection.hostname == hn_a
+            assert config1.connection.port == port1
+            config2 = finder.find_model(model_id2)
+            assert config2
+            assert config2.connection.hostname == hn_a
+            assert config2.connection.port == port1
+            # hn A / port2 -> model3
+            config3 = finder.find_model(model_id3)
+            assert config3
+            assert config3.connection.hostname == hn_a
+            assert config3.connection.port == port2
+            # hn B / port3 -> model4
+            config4 = finder.find_model(model_id4)
+            assert config4
+            assert config4.connection.hostname == hn_b
+            assert config4.connection.port == port2
+            # Unknown model
+            assert finder.find_model("unknown") is None
 
 
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
