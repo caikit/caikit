@@ -280,8 +280,10 @@ class RemoteModelFinder(ModelFinderBase):
                             module_id,
                             target,
                         )
-                        supported_modules[model_name] = ModuleConnectionInfo(
-                            conn, module_id
+                        # NOTE: If multiple servers support the same model, the
+                        #   first to be checked will win
+                        supported_modules.setdefault(
+                            model_name, ModuleConnectionInfo(conn, module_id)
                         )
                 except grpc.RpcError as exc:
                     log.warning(
@@ -338,10 +340,10 @@ class RemoteModelFinder(ModelFinderBase):
                             model_name,
                             module_id,
                         )
-                        # NOTE: If multiple servers support the same model, the last to
-                        #   be checked will win
-                        supported_modules[model_name] = ModuleConnectionInfo(
-                            conn, module_id
+                        # NOTE: If multiple servers support the same model, the
+                        #   first to be checked will win
+                        supported_modules.setdefault(
+                            model_name, ModuleConnectionInfo(conn, module_id)
                         )
             except RequestException as exc:
                 log.warning(
