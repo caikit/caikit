@@ -15,13 +15,11 @@
 Tests for the caikit HTTP server
 """
 # Standard
-from contextlib import contextmanager
 from io import BytesIO
 from pathlib import Path
-from typing import Dict, List, Optional
+from unittest import mock
 import base64
 import json
-import os
 import signal
 import tempfile
 import zipfile
@@ -37,6 +35,7 @@ from caikit.core.data_model import TrainingStatus
 from caikit.core.model_management.multi_model_finder import MultiModelFinder
 from caikit.runtime import http_server
 from caikit.runtime.http_server.http_server import StreamEventTypes
+from caikit.runtime.server_base import ServerThreadPool
 from tests.conftest import temp_config
 from tests.runtime.conftest import (
     ModuleSubproc,
@@ -210,6 +209,35 @@ def test_services_disabled(open_port, enabled_services):
             # assert (server.global_train_servicer and enable_training) or (
             #     server.global_train_servicer is None and not enable_training
             # )
+
+
+@pytest.mark.parametrize(
+    ["config_overrides", "expected"],
+    [
+        ({}, None),
+        ({"runtime": {"http": {"server_config": {"limit_concurrency": 0}}}}, None),
+        ({"runtime": {"http": {"server_config": {"limit_concurrency": 123}}}}, 123),
+        (
+            {
+                "runtime": {
+                    "server_thread_pool_size": 4,
+                    "http": {"server_config": {"limit_concurrency": -1}},
+                }
+            },
+            8,
+        ),
+    ],
+)
+def test_http_server_concurrency_limiting(config_overrides, expected):
+    """Make sure that when the config for limiting concurrency is set, it is
+    correctly parsed when initializing the server
+    """
+    with temp_config(config_overrides, merge_strategy="merge"):
+        with mock.patch.object(
+            ServerThreadPool, "pool", ServerThreadPool._build_pool()
+        ):
+            svr = http_server.RuntimeHTTPServer()
+            assert svr.server.config.limit_concurrency == expected
 
 
 ## Inference Tests #######################################################################
