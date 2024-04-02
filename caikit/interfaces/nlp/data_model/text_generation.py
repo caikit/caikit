@@ -48,6 +48,7 @@ class FinishReason(Enum):
 class GeneratedToken(DataObjectBase):
     text: Annotated[str, FieldNumber(1)]
     logprob: Annotated[Optional[float], FieldNumber(3)]
+    rank: Annotated[Optional[int], FieldNumber(4)]
 
 
 @dataobject(package=NLP_PACKAGE)
