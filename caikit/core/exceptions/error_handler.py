@@ -19,9 +19,12 @@
 # Standard
 from collections.abc import Iterable
 from types import GeneratorType
-from typing import TYPE_CHECKING, Dict, NoReturn, Optional, Type
+from typing import TYPE_CHECKING, Dict, NoReturn, Optional, Type, Union
 import os
 import typing
+
+# First Party
+from alog.protocols import LoggerProtocol
 
 # Local
 from caikit.config import get_config
@@ -38,7 +41,7 @@ if TYPE_CHECKING:
 _error_handlers: Dict[str, "ErrorHandler"] = {}
 
 
-def get(log_chan: "Logger"):
+def get(log_chan: Union["Logger", LoggerProtocol]):
     """Get an error handler associated with a given alog log channel.  The same error handler will
     be returned if this function is called repeatedly with the same log channel.
 
@@ -61,7 +64,7 @@ class ErrorHandler:
     the `.log_raise` method.
     """
 
-    def __init__(self, log_chan: "Logger"):
+    def __init__(self, log_chan: Union["Logger", LoggerProtocol]):
         """Create a new error handler that provides reusable error checking and automatic logging.
 
         Args:
