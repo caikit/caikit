@@ -11,21 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Package constant for all runtime service data model objects
+"""
 
 # Local
-from . import training_management
-from .info import (
-    ModelInfo,
-    ModelInfoRequest,
-    ModelInfoResponse,
-    RuntimeInfoRequest,
-    RuntimeInfoResponse,
-)
-from .model_management import DeployModelRequest, UndeployModelRequest
-from .training_management import (
-    ModelPointer,
-    TrainingInfoRequest,
-    TrainingJob,
-    TrainingStatus,
-    TrainingStatusResponse,
-)
+from caikit.core.data_model import CAIKIT_DATA_MODEL
+
+RUNTIME_PACKAGE = f"{CAIKIT_DATA_MODEL}.runtime"
