@@ -19,6 +19,7 @@ from typing import Dict, Optional, Union
 import atexit
 import gc
 import os
+import shutil
 import threading
 import time
 
@@ -325,18 +326,19 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             Model_size (int) : Size of the loaded model in bytes
         """
         log.debug("List of loaded models: %s", str(self.loaded_models))
-        # If the model failed to load, just return 0; no need to throw an error here.
-        if model_id not in self.loaded_models:
-            log.debug("Model '%s' is not loaded, so it cannot be unloaded!", model_id)
-            return 0
-
-        # Temporarily store model size and type info
-        model_type = self.loaded_models[model_id].type()
-        model_size = self.loaded_models[model_id].size()
-
-        # Delete the model and remove it from the model map
         try:
-            model = self.loaded_models.pop(model_id)
+            # If the model failed to load, just return 0; no need to throw an error here.
+            model = self.loaded_models.pop(model_id, None)
+            if model_id is None:
+                log.debug(
+                    "Model '%s' is not loaded, so it cannot be unloaded!", model_id
+                )
+                return 0
+
+            # Temporarily store model size and type info
+            model_type = model.type()
+            model_size = model.size()
+
             # If the model is still loading, we need to wait for it to finish so
             # that we can do our best to fully free it
             model.wait()
@@ -449,6 +451,94 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         # NOTE: If the model is partially loaded, this call will wait on the
         #   model future in the LoadedModel
         return loaded_model.model()
+
+    def deploy_model(
+        self,
+        model_id: str,
+        model_files: Dict[str, bytes],
+        **kwargs,
+    ) -> LoadedModel:
+        """Given in-memory model files, this will save the model to the local
+        models dir, then load it locally.
+        """
+        error.value_check(
+            "<RUN05068605E>",
+            self._local_models_dir,
+            "runtime.local_models_dir must be a valid path to deploy models directly.",
+        )
+        try:
+            # If the model directory already exists, it's an error
+            model_dir = os.path.join(self._local_models_dir, model_id)
+            if os.path.exists(model_dir):
+                msg = f"Model '{model_id}' already exists"
+                raise CaikitRuntimeException(
+                    StatusCode.ALREADY_EXISTS, msg, {"model_id": model_id}
+                )
+
+            # Create the model directory directory
+            os.makedirs(model_dir)
+
+            # Write out all of the files
+            for fname, data in model_files.items():
+                fpath = os.path.join(model_dir, fname)
+                if not os.path.commonpath([model_dir, fpath]).lstrip(os.sep):
+                    raise CaikitRuntimeException(
+                        StatusCode.INVALID_ARGUMENT,
+                        f"Cannot use absolute paths for model files: {fname}",
+                        {"model_id": model_id},
+                    )
+                log.debug2(
+                    "Writing model file %s of size %s to %s", fname, len(data), fpath
+                )
+                with open(fpath, "wb") as handle:
+                    handle.write(data)
+
+            # Load the model
+            return self.load_model(
+                model_id=model_id,
+                local_model_path=model_dir,
+                model_type=self._LOCAL_MODEL_TYPE,
+                **kwargs,
+            )
+
+        except PermissionError as err:
+            raise CaikitRuntimeException(
+                StatusCode.PERMISSION_DENIED,
+                f"Unable to save model (PermissionError): {err}",
+                {"model_id": model_id},
+            ) from err
+
+        except OSError as err:
+            raise CaikitRuntimeException(
+                StatusCode.UNKNOWN,
+                f"Unable to save model (OSError): {err}",
+                {"model_id": model_id},
+            ) from err
+
+    def undeploy_model(self, model_id: str):
+        """Remove the given model from the loaded model map and delete the
+        artifacts from the local models dir.
+        """
+        error.value_check(
+            "<RUN05068606E>",
+            self._local_models_dir,
+            "runtime.local_models_dir must be a valid path to undeploy models directly.",
+        )
+
+        # Get a handle to the LoadedModel
+        model = self.loaded_models.get(model_id)
+        if model is None:
+            raise CaikitRuntimeException(
+                StatusCode.NOT_FOUND,
+                f"Cannot undeploy unknown model {model_id}",
+                {"model_id": model_id},
+            )
+
+        # Unload the model
+        self.unload_model(model_id)
+
+        # Delete the model artifacts from disk
+        shutil.rmtree(model.path())
 
     ## Implementation Details ##
 
