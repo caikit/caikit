@@ -56,6 +56,7 @@ class ServiceType(Enum):
     TRAINING = 2  # Training service for the GlobalTrainServicer
     TRAINING_MANAGEMENT = 3
     INFO = 4
+    MODEL_MANAGEMENT = 5
 
 
 ############################ Service Name Generation ###########################

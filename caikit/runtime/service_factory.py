@@ -37,12 +37,15 @@ from caikit.core.data_model.dataobject import _AUTO_GEN_PROTO_CLASSES
 from caikit.core.exceptions import error_handler
 from caikit.core.task import TaskBase
 from caikit.interfaces.runtime.data_model import (
+    DeployModelRequest,
+    ModelInfo,
     ModelInfoRequest,
     ModelInfoResponse,
     RuntimeInfoRequest,
     RuntimeInfoResponse,
     TrainingInfoRequest,
     TrainingStatusResponse,
+    UndeployModelRequest,
 )
 from caikit.runtime import service_generation
 from caikit.runtime.names import ServiceType as InterfaceServiceType
@@ -90,6 +93,24 @@ INFO_SERVICE_SPEC = {
                 "name": "GetModelsInfo",
                 "input_type": ModelInfoRequest.get_proto_class().DESCRIPTOR.full_name,
                 "output_type": ModelInfoResponse.get_proto_class().DESCRIPTOR.full_name,
+            },
+        ]
+    }
+}
+
+MODEL_MANAGEMENT_SERVICE_NAME = "ModelManagement"
+MODEL_MANAGEMENT_SERVICE_SPEC = {
+    "service": {
+        "rpcs": [
+            {
+                "name": "DeployModel",
+                "input_type": DeployModelRequest.get_proto_class().DESCRIPTOR.full_name,
+                "output_type": ModelInfo.get_proto_class().DESCRIPTOR.full_name,
+            },
+            {
+                "name": "UndeployModel",
+                "input_type": UndeployModelRequest.get_proto_class().DESCRIPTOR.full_name,
+                "output_type": UndeployModelRequest.get_proto_class().DESCRIPTOR.full_name,
             },
         ]
     }
@@ -145,6 +166,22 @@ class ServicePackageFactory:
                 name=TRAINING_MANAGEMENT_SERVICE_NAME,
                 package="caikit.runtime.training",
                 json_service_def=TRAINING_MANAGEMENT_SERVICE_SPEC,
+            )
+
+            return ServicePackage(
+                service=grpc_service.service_class,
+                descriptor=grpc_service.descriptor,
+                registration_function=grpc_service.registration_function,
+                stub_class=grpc_service.client_stub_class,
+                messages=None,  # we don't need messages here
+                caikit_rpcs={},  # No caikit RPCs
+            )
+
+        if service_type == cls.ServiceType.MODEL_MANAGEMENT:
+            grpc_service = json_to_service(
+                name=MODEL_MANAGEMENT_SERVICE_NAME,
+                package="caikit.runtime.models",
+                json_service_def=MODEL_MANAGEMENT_SERVICE_SPEC,
             )
 
             return ServicePackage(
