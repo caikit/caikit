@@ -76,6 +76,8 @@ from caikit.runtime.names import (
     REQUIRED_INPUTS_KEY,
     RUNTIME_INFO_ENDPOINT,
     STATUS_CODE_TO_HTTP,
+    TRAINING_MANAGEMENT_ENDPOINT,
+    TRAINING_MANAGEMENT_SERVICE_SPEC,
     StreamEventTypes,
     get_http_route_name,
 )
@@ -91,6 +93,9 @@ from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.servicers.info_servicer import InfoServicer
 from caikit.runtime.servicers.model_management_servicer import (
     ModelManagementServicerImpl,
+)
+from caikit.runtime.servicers.training_management_servicer import (
+    TrainingManagementServicerImpl,
 )
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
@@ -159,6 +164,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
         self.global_train_servicer = None
         self.info_servicer = InfoServicer()
 
+        # NOTE: The order that the modules are bound is directly reflected in
+        #   the swagger UI, so we intentionally bind inference, training,
+        #   management, info, then health.
+
         # Set up inference if enabled
         if self.enable_inference:
             log.info("<RUN77183426I>", "Enabling HTTP inference service")
@@ -166,8 +175,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 self.inference_service, interrupter=self.interrupter
             )
             self._bind_routes(self.inference_service)
-            self.model_management_servicer = ModelManagementServicerImpl()
-            self._bind_model_management_routes()
 
         # Set up training if enabled
         if self.enable_training:
@@ -175,18 +182,25 @@ class RuntimeHTTPServer(RuntimeServerBase):
             self.global_train_servicer = GlobalTrainServicer(self.training_service)
             self._bind_routes(self.training_service)
 
-        # Add the health endpoint
-        self.app.get(HEALTH_ENDPOINT, response_class=PlainTextResponse)(
-            self._health_check
-        )
+        # Set up management services
+        if self.enable_inference:
+            self.model_management_servicer = ModelManagementServicerImpl()
+            self._bind_model_management_routes()
+        if self.enable_training:
+            self.training_management_servicer = TrainingManagementServicerImpl()
+            self._bind_training_management_routes()
 
         # Add runtime info endpoints
         self.app.get(RUNTIME_INFO_ENDPOINT, response_class=JSONResponse)(
             self.info_servicer.get_version_dict
         )
-
         self.app.get(MODELS_INFO_ENDPOINT, response_class=JSONResponse)(
             self._model_info
+        )
+
+        # Add the health endpoint
+        self.app.get(HEALTH_ENDPOINT, response_class=PlainTextResponse)(
+            self._health_check
         )
 
         # Parse TLS configuration
@@ -450,11 +464,77 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         status_code=error_content["code"],
                     )
                 raise
+
+    def _bind_training_management_routes(self):
+        """Bind the routes for get/cancel trainings"""
+
+        # Bind GET to fetch a training
+        get_spec = TRAINING_MANAGEMENT_SERVICE_SPEC["service"]["rpcs"][0]
+        assert get_spec["name"] == "GetTrainingStatus"
+        get_dataobject_request = DataBase.get_class_for_name(get_spec["input_type"])
+        get_dataobject_response = DataBase.get_class_for_name(get_spec["output_type"])
+        get_pydantic_response = dataobject_to_pydantic(get_dataobject_response)
+
+        @self.app.get(
+            TRAINING_MANAGEMENT_ENDPOINT,
+            responses=self._get_response_openapi(
+                get_dataobject_response, get_pydantic_response
+            ),
+            response_class=Response,
+        )
+        def _get_training(training_id: Annotated[str, Query]) -> Response:
+            """GET handler for fetching a training"""
+            try:
+                result = self.training_management_servicer.GetTrainingStatus(
+                    get_dataobject_request(training_id).to_proto(), None
+                )
+                return Response(
+                    content=get_dataobject_response.from_proto(result).to_json(),
+                    media_type="application/json",
+                )
+            except Exception as err:
+                if error_content := self._handle_exception(err):
+                    return Response(
+                        content=json.dumps(error_content),
+                        status_code=error_content["code"],
+                    )
                 raise
-            return Response(
-                content=undeploy_dataobject_response.from_proto(result).to_json(),
-                media_type="application/json",
-            )
+
+        # Bind DELETE to cancel a training
+        cancel_spec = TRAINING_MANAGEMENT_SERVICE_SPEC["service"]["rpcs"][1]
+        assert cancel_spec["name"] == "CancelTraining"
+        cancel_dataobject_request = DataBase.get_class_for_name(
+            cancel_spec["input_type"]
+        )
+        cancel_dataobject_response = DataBase.get_class_for_name(
+            cancel_spec["output_type"]
+        )
+        cancel_pydantic_response = dataobject_to_pydantic(cancel_dataobject_response)
+
+        @self.app.delete(
+            TRAINING_MANAGEMENT_ENDPOINT,
+            responses=self._get_response_openapi(
+                cancel_dataobject_response, cancel_pydantic_response
+            ),
+            response_class=Response,
+        )
+        def _cancel_training(training_id: Annotated[str, Query]) -> Response:
+            """DELETE handler for undeploying a model"""
+            try:
+                result = self.training_management_servicer.CancelTraining(
+                    cancel_dataobject_request(training_id).to_proto(), None
+                )
+                return Response(
+                    content=cancel_dataobject_response.from_proto(result).to_json(),
+                    media_type="application/json",
+                )
+            except Exception as err:
+                if error_content := self._handle_exception(err):
+                    return Response(
+                        content=json.dumps(error_content),
+                        status_code=error_content["code"],
+                    )
+                raise
 
     def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
