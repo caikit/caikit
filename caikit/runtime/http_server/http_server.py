@@ -335,26 +335,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
         """Create wrapper for get_models_info so model_ids can be marked as a query parameter"""
         try:
             return self.info_servicer.get_models_info_dict(model_ids)
-        except HTTPException as err:
-            raise err
-        except CaikitRuntimeException as err:
-            error_code = STATUS_CODE_TO_HTTP.get(err.status_code, 500)
-            error_content = {
-                "details": err.message,
-                "code": error_code,
-                "id": err.id,
-            }
-            log.error("<RUN87691106E>", error_content, exc_info=True)
-            return error_content
-        except Exception as err:  # pylint: disable=broad-exception-caught
-            error_code = 500
-            error_content = {
-                "details": f"Unhandled exception: {str(err)}",
-                "code": error_code,
-                "id": uuid.uuid4().hex,
-            }
-            log.error("<RUN51231106E>", error_content, exc_info=True)
-            return error_content
+        except Exception as err:
+            if error_content := self._handle_exception(err):
+                return error_content
+            raise
 
     @staticmethod
     def _health_check() -> str:
@@ -411,12 +395,17 @@ class RuntimeHTTPServer(RuntimeServerBase):
         )
         async def _deploy_model(context: Request) -> Response:
             """POST handler for deploying a model"""
-            request = await pydantic_from_request(deploy_pydantic_request, context)
-            result = self.model_management_servicer.DeployModel(request, None)
-            return Response(
-                content=deploy_dataobject_response.from_proto(result).to_json(),
-                media_type="application/json",
-            )
+            try:
+                request = await pydantic_from_request(deploy_pydantic_request, context)
+                result = self.model_management_servicer.DeployModel(request, None)
+                return Response(
+                    content=deploy_dataobject_response.from_proto(result).to_json(),
+                    media_type="application/json",
+                )
+            except Exception as err:
+                if error_content := self._handle_exception(err):
+                    return error_content
+                raise
 
         # Bind DELETE to deploy a model
         undeploy_spec = MODEL_MANAGEMENT_SERVICE_SPEC["service"]["rpcs"][1]
@@ -442,8 +431,19 @@ class RuntimeHTTPServer(RuntimeServerBase):
         )
         async def _undeploy_model(context: Request) -> Response:
             """DELETE handler for undeploying a model"""
-            request = await pydantic_from_request(undeploy_pydantic_request, context)
-            result = self.model_management_servicer.UndeployModel(request, None)
+            try:
+                request = await pydantic_from_request(
+                    undeploy_pydantic_request, context
+                )
+                result = self.model_management_servicer.UndeployModel(request, None)
+                return Response(
+                    content=undeploy_dataobject_response.from_proto(result).to_json(),
+                    media_type="application/json",
+                )
+            except Exception as err:
+                if error_content := self._handle_exception(err):
+                    return error_content
+                raise
             return Response(
                 content=undeploy_dataobject_response.from_proto(result).to_json(),
                 media_type="application/json",
@@ -488,29 +488,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     return self._format_file_response(result)
 
                 return Response(content=result.to_json(), media_type="application/json")
-            except RequestValidationError as err:
-                raise err
-            except HTTPException as err:
-                raise err
-            except (CaikitCoreException, CaikitRuntimeException) as err:
-                error_code = STATUS_CODE_TO_HTTP.get(err.status_code, 500)
-                error_content = {
-                    "details": err.message,
-                    "code": error_code,
-                    "id": err.id,
-                }
-                log.error("<RUN87691106E>", error_content, exc_info=True)
-            except Exception as err:  # pylint: disable=broad-exception-caught
-                error_code = 500
-                error_content = {
-                    "details": f"Unhandled exception: {str(err)}",
-                    "code": error_code,
-                    "id": uuid.uuid4().hex,
-                }
-                log.error("<RUN51231106E>", error_content, exc_info=True)
-            return Response(
-                content=json.dumps(error_content), status_code=error_code
-            )  # pylint: disable=used-before-assignment
+            except Exception as err:
+                if error_content := self._handle_exception(err):
+                    return Response(
+                        content=json.dumps(error_content),
+                        status_code=error_content["code"],
+                    )
+                raise
 
     def _add_unary_input_unary_output_handler(self, rpc: TaskPredictRPC):
         """Add a unary:unary request handler for this RPC signature"""
@@ -572,29 +556,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
                 return Response(content=result.to_json(), media_type="application/json")
 
-            except HTTPException as err:
-                raise err
-            except RequestValidationError as err:
-                raise err
-            except (CaikitCoreException, CaikitRuntimeException) as err:
-                error_code = STATUS_CODE_TO_HTTP.get(err.status_code, 500)
-                error_content = {
-                    "details": err.message,
-                    "code": error_code,
-                    "id": err.id,
-                }
-                log.error("<RUN53211098E>", error_content, exc_info=True)
-            except Exception as err:  # pylint: disable=broad-exception-caught
-                error_code = 500
-                error_content = {
-                    "details": f"Unhandled exception: {str(err)}",
-                    "code": error_code,
-                    "id": uuid.uuid4().hex,
-                }
-                log.error("<RUN98751106E>", error_content, exc_info=True)
-            return Response(
-                content=json.dumps(error_content), status_code=error_code
-            )  # pylint: disable=used-before-assignment
+            except Exception as err:
+                if error_content := self._handle_exception(err):
+                    return Response(
+                        content=json.dumps(error_content),
+                        status_code=error_content["code"],
+                    )
+                raise
 
     def _add_unary_input_stream_output_handler(self, rpc: CaikitRPCBase):
         pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
@@ -645,10 +613,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                             )
 
                     return
-                except HTTPException as err:
-                    raise err
-                except RequestValidationError as err:
-                    raise err
                 except (TypeError, ValueError) as err:
                     log_dict = {
                         "log_code": "<RUN76624264W>",
@@ -662,24 +626,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         "code": error_code,
                         "id": uuid.uuid4().hex,
                     }
-                except (CaikitCoreException, CaikitRuntimeException) as err:
-                    error_code = STATUS_CODE_TO_HTTP.get(err.status_code, 500)
-                    error_content = {
-                        "details": err.message,
-                        "code": error_code,
-                        "id": err.id,
-                    }
-                    log.error("<RUN53234506E>", error_content, exc_info=True)
-                except Exception as err:  # pylint: disable=broad-exception-caught
-                    error_code = 500
-                    error_content = {
-                        "details": f"Unhandled exception: {str(err)}",
-                        "code": error_code,
-                        "id": uuid.uuid4().hex,
-                    }
-                    log.error("<RUN51891206E>", error_content, exc_info=True)
-
-                # If an error occurs, yield an error response and terminate
+                except Exception as err:
+                    if (error_content := self._handle_exception(err)) is None:
+                        raise
                 yield ServerSentEvent(
                     data=json.dumps(error_content), event=StreamEventTypes.ERROR.value
                 )
@@ -689,6 +638,40 @@ class RuntimeHTTPServer(RuntimeServerBase):
     #############
     ## Helpers ##
     #############
+
+    @staticmethod
+    def _handle_exception(err: Exception) -> Optional[dict]:
+        """Common exception handling. This function will return a dict with
+        "id," "code," and "details" if the exception should be handled with a
+        returned error body. If None is returned, the exception should be
+        re-raised.
+        """
+        # Native FastAPI exceptions should be reraised directly
+        if isinstance(
+            err, (HTTPException, RequestValidationError, ResponseValidationError)
+        ):
+            return None
+
+        # Convert caikit exceptions to error bodies
+        if isinstance(err, (CaikitCoreException, CaikitRuntimeException)):
+            error_code = STATUS_CODE_TO_HTTP.get(err.status_code, 500)
+            error_content = {
+                "details": err.message,
+                "code": error_code,
+                "id": err.id,
+            }
+            log.error("<RUN87691106E>", error_content, exc_info=True)
+            return error_content
+
+        # Other exceptions are 500s
+        error_code = 500
+        error_content = {
+            "details": f"Unhandled exception: {str(err)}",
+            "code": error_code,
+            "id": uuid.uuid4().hex,
+        }
+        log.error("<RUN51231106E>", error_content, exc_info=True)
+        return error_content
 
     def _run_in_thread(self):
         """Run the server in an isolated thread"""
