@@ -164,4 +164,4 @@ class ConnectionInfo(DataObjectBase):
         error.type_check("<COR734224567E>", int, port=self.port, timeout=self.timeout)
 
         if self.options:
-            error.type_check("<COR734424567E>", str, **self.options)
+            error.type_check("<COR734424567E>", str, int, float, **self.options)
