@@ -329,7 +329,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         try:
             # If the model failed to load, just return 0; no need to throw an error here.
             model = self.loaded_models.pop(model_id, None)
-            if model_id is None:
+            if model is None:
                 log.debug(
                     "Model '%s' is not loaded, so it cannot be unloaded!", model_id
                 )
