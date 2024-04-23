@@ -14,6 +14,7 @@
 """
 The Model Management Service is responsible for deploying and undeploying models
 """
+
 # Third Party
 import grpc
 
@@ -32,6 +33,12 @@ from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 log = alog.use_channel("MM-SERVICR-I")
 
 
+# Define types for the proto versions of the DM classes
+DeployModelRequestProto = DeployModelRequest.get_proto_class()
+ModelInfoProto = ModelInfo.get_proto_class()
+UndeployModelRequestProto = UndeployModelRequest.get_proto_class()
+
+
 class ModelManagementServicerImpl:
     __doc__ = __doc__
 
@@ -40,9 +47,9 @@ class ModelManagementServicerImpl:
 
     def DeployModel(
         self,
-        request: DeployModelRequest,
+        request: DeployModelRequestProto,  # type: ignore
         context: grpc.RpcContext,  # pylint: disable=unused-argument
-    ) -> ModelInfo:
+    ) -> ModelInfoProto:  # type: ignore
         """Deploy a model to the runtime"""
         if not request.model_name:
             raise CaikitRuntimeException(
@@ -74,9 +81,9 @@ class ModelManagementServicerImpl:
 
     def UndeployModel(
         self,
-        request: UndeployModelRequest,
+        request: UndeployModelRequestProto,  # type: ignore
         context: grpc.RpcContext,  # pylint: disable=unused-argument
-    ) -> ModelInfo:
+    ) -> UndeployModelRequestProto:  # type: ignore
         """Un-deploy a model to the runtime"""
         if not request.model_name:
             raise CaikitRuntimeException(
@@ -84,4 +91,4 @@ class ModelManagementServicerImpl:
                 "Must provide model_name",
             )
         self._model_manager.undeploy_model(request.model_name)
-        return request
+        return UndeployModelRequestProto(model_name=request.model_name)
