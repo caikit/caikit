@@ -487,6 +487,12 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
                         f"Cannot use absolute paths for model files: {fname}",
                         {"model_id": model_id},
                     )
+
+                # Make sure intermediate dirs exist
+                parent_dir = os.path.dirname(fpath)
+                if os.path.relpath(parent_dir, model_dir) != ".":
+                    os.makedirs(parent_dir, exist_ok=True)
+
                 log.debug2(
                     "Writing model file %s of size %s to %s", fname, len(data), fpath
                 )
