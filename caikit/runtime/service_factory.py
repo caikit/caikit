@@ -36,18 +36,18 @@ from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import _AUTO_GEN_PROTO_CLASSES
 from caikit.core.exceptions import error_handler
 from caikit.core.task import TaskBase
-from caikit.interfaces.runtime.data_model import (
-    DeployModelRequest,
-    ModelInfo,
-    ModelInfoRequest,
-    ModelInfoResponse,
-    RuntimeInfoRequest,
-    RuntimeInfoResponse,
-    TrainingInfoRequest,
-    TrainingStatusResponse,
-    UndeployModelRequest,
-)
 from caikit.runtime import service_generation
+from caikit.runtime.names import (
+    INFO_SERVICE_NAME,
+    INFO_SERVICE_PACKAGE,
+    INFO_SERVICE_SPEC,
+    MODEL_MANAGEMENT_SERVICE_NAME,
+    MODEL_MANAGEMENT_SERVICE_PACKAGE,
+    MODEL_MANAGEMENT_SERVICE_SPEC,
+    TRAINING_MANAGEMENT_SERVICE_NAME,
+    TRAINING_MANAGEMENT_SERVICE_PACKAGE,
+    TRAINING_MANAGEMENT_SERVICE_SPEC,
+)
 from caikit.runtime.names import ServiceType as InterfaceServiceType
 from caikit.runtime.names import (
     get_service_name,
@@ -61,60 +61,6 @@ from caikit.runtime.utils import import_util
 
 log = alog.use_channel("SVC-FACTORY")
 error = error_handler.get(log)
-
-TRAINING_MANAGEMENT_SERVICE_NAME = "TrainingManagement"
-TRAINING_MANAGEMENT_SERVICE_SPEC = {
-    "service": {
-        "rpcs": [
-            {
-                "name": "GetTrainingStatus",
-                "input_type": TrainingInfoRequest.get_proto_class().DESCRIPTOR.full_name,
-                "output_type": TrainingStatusResponse.get_proto_class().DESCRIPTOR.full_name,
-            },
-            {
-                "name": "CancelTraining",
-                "input_type": TrainingInfoRequest.get_proto_class().DESCRIPTOR.full_name,
-                "output_type": TrainingStatusResponse.get_proto_class().DESCRIPTOR.full_name,
-            },
-        ]
-    }
-}
-
-INFO_SERVICE_NAME = "InfoService"
-INFO_SERVICE_SPEC = {
-    "service": {
-        "rpcs": [
-            {
-                "name": "GetRuntimeInfo",
-                "input_type": RuntimeInfoRequest.get_proto_class().DESCRIPTOR.full_name,
-                "output_type": RuntimeInfoResponse.get_proto_class().DESCRIPTOR.full_name,
-            },
-            {
-                "name": "GetModelsInfo",
-                "input_type": ModelInfoRequest.get_proto_class().DESCRIPTOR.full_name,
-                "output_type": ModelInfoResponse.get_proto_class().DESCRIPTOR.full_name,
-            },
-        ]
-    }
-}
-
-MODEL_MANAGEMENT_SERVICE_NAME = "ModelManagement"
-MODEL_MANAGEMENT_SERVICE_SPEC = {
-    "service": {
-        "rpcs": [
-            {
-                "name": "DeployModel",
-                "input_type": DeployModelRequest.get_proto_class().DESCRIPTOR.full_name,
-                "output_type": ModelInfo.get_proto_class().DESCRIPTOR.full_name,
-            },
-            {
-                "name": "UndeployModel",
-                "input_type": UndeployModelRequest.get_proto_class().DESCRIPTOR.full_name,
-                "output_type": UndeployModelRequest.get_proto_class().DESCRIPTOR.full_name,
-            },
-        ]
-    }
-}
 
 
 @dataclasses.dataclass
@@ -164,7 +110,7 @@ class ServicePackageFactory:
         if service_type == cls.ServiceType.TRAINING_MANAGEMENT:
             grpc_service = json_to_service(
                 name=TRAINING_MANAGEMENT_SERVICE_NAME,
-                package="caikit.runtime.training",
+                package=TRAINING_MANAGEMENT_SERVICE_PACKAGE,
                 json_service_def=TRAINING_MANAGEMENT_SERVICE_SPEC,
             )
 
@@ -180,7 +126,7 @@ class ServicePackageFactory:
         if service_type == cls.ServiceType.MODEL_MANAGEMENT:
             grpc_service = json_to_service(
                 name=MODEL_MANAGEMENT_SERVICE_NAME,
-                package="caikit.runtime.models",
+                package=MODEL_MANAGEMENT_SERVICE_PACKAGE,
                 json_service_def=MODEL_MANAGEMENT_SERVICE_SPEC,
             )
 
@@ -196,7 +142,7 @@ class ServicePackageFactory:
         if service_type == cls.ServiceType.INFO:
             grpc_service = json_to_service(
                 name=INFO_SERVICE_NAME,
-                package="caikit.runtime.info",
+                package=INFO_SERVICE_PACKAGE,
                 json_service_def=INFO_SERVICE_SPEC,
             )
 

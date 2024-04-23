@@ -35,12 +35,15 @@ from caikit.core.modules import ModuleBase
 from caikit.core.task import TaskBase
 from caikit.core.toolkit.name_tools import snake_to_upper_camel
 from caikit.interfaces.runtime.data_model import (
+    DeployModelRequest,
+    ModelInfo,
     ModelInfoRequest,
     ModelInfoResponse,
     RuntimeInfoRequest,
     RuntimeInfoResponse,
     TrainingInfoRequest,
     TrainingStatusResponse,
+    UndeployModelRequest,
 )
 
 log = alog.use_channel("RNTM-NAMES")
@@ -95,7 +98,9 @@ def get_service_package_name(service_type: Optional[ServiceType] = None) -> str:
     if service_type == ServiceType.INFO:
         return INFO_SERVICE_PACKAGE
     elif service_type == ServiceType.TRAINING_MANAGEMENT:
-        return TRAINING_MANAGEMENT_PACKAGE
+        return TRAINING_MANAGEMENT_SERVICE_PACKAGE
+    elif service_type == ServiceType.MODEL_MANAGEMENT:
+        return MODEL_MANAGEMENT_SERVICE_PACKAGE
 
     caikit_config = get_config()
     ai_domain_name = get_ai_domain()
@@ -216,7 +221,7 @@ def get_task_predict_request_name(
 ##  Service Definitions
 
 TRAINING_MANAGEMENT_SERVICE_NAME = "TrainingManagement"
-TRAINING_MANAGEMENT_PACKAGE = "caikit.runtime.training"
+TRAINING_MANAGEMENT_SERVICE_PACKAGE = "caikit.runtime.training"
 TRAINING_MANAGEMENT_SERVICE_SPEC = {
     "service": {
         "rpcs": [
@@ -248,6 +253,25 @@ INFO_SERVICE_SPEC = {
                 "name": "GetModelsInfo",
                 "input_type": ModelInfoRequest.get_proto_class().DESCRIPTOR.full_name,
                 "output_type": ModelInfoResponse.get_proto_class().DESCRIPTOR.full_name,
+            },
+        ]
+    }
+}
+
+MODEL_MANAGEMENT_SERVICE_NAME = "ModelManagement"
+MODEL_MANAGEMENT_SERVICE_PACKAGE = "caikit.runtime.models"
+MODEL_MANAGEMENT_SERVICE_SPEC = {
+    "service": {
+        "rpcs": [
+            {
+                "name": "DeployModel",
+                "input_type": DeployModelRequest.get_proto_class().DESCRIPTOR.full_name,
+                "output_type": ModelInfo.get_proto_class().DESCRIPTOR.full_name,
+            },
+            {
+                "name": "UndeployModel",
+                "input_type": UndeployModelRequest.get_proto_class().DESCRIPTOR.full_name,
+                "output_type": UndeployModelRequest.get_proto_class().DESCRIPTOR.full_name,
             },
         ]
     }
