@@ -16,7 +16,19 @@
 and other Protobuf names
 """
 
+# Standard
+import re
+
 
 def snake_to_upper_camel(string: str) -> str:
     """Simple snake -> upper camel conversion for descriptors"""
     return "".join([part[0].upper() + part[1:] for part in string.split("_") if part])
+
+
+def camel_to_snake_case(string: str, kebab_case: bool = False) -> str:
+    """Convert from CamelCase (or camelCase) to snake_case or kebab-case"""
+    return re.sub(
+        r"(?<!^)(?=[A-Z])",
+        "-" if kebab_case else "_",
+        string,
+    ).lower()

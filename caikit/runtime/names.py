@@ -33,7 +33,7 @@ from caikit.config import get_config
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreStatusCode
 from caikit.core.modules import ModuleBase
 from caikit.core.task import TaskBase
-from caikit.core.toolkit.name_tools import snake_to_upper_camel
+from caikit.core.toolkit.name_tools import camel_to_snake_case, snake_to_upper_camel
 from caikit.interfaces.runtime.data_model import (
     DeployModelRequest,
     ModelInfo,
@@ -289,8 +289,14 @@ MODEL_MESH_MODEL_ID_KEY = "mm-model-id"
 HEALTH_ENDPOINT = "/health"
 
 # Endpoint to use for server info
-RUNTIME_INFO_ENDPOINT = "/info/version"
-MODELS_INFO_ENDPOINT = "/info/models"
+INFO_ENDPOINT = "/info"
+RUNTIME_INFO_ENDPOINT = f"{INFO_ENDPOINT}/version"
+MODELS_INFO_ENDPOINT = f"{INFO_ENDPOINT}/models"
+
+# Endpoints to use for resource management
+MANAGEMENT_ENDPOINT = "/management"
+MODEL_MANAGEMENT_ENDPOINT = f"{MANAGEMENT_ENDPOINT}/models"
+TRAINING_MANAGEMENT_ENDPOINT = f"{MANAGEMENT_ENDPOINT}/trainings"
 
 # These keys are used to define the logical sections of the request and response
 # data structures.
@@ -317,11 +323,10 @@ def get_http_route_name(rpc_name: str) -> str:
         str: The name of the http route for RPC
     """
     if rpc_name.endswith("Predict"):
-        task_name = re.sub(
-            r"(?<!^)(?=[A-Z])",
-            "-",
+        task_name = camel_to_snake_case(
             re.sub("Task$", "", re.sub("Predict$", "", rpc_name)),
-        ).lower()
+            kebab_case=True,
+        )
         route = "/".join([get_config().runtime.http.route_prefix, "task", task_name])
         if route[0] != "/":
             route = "/" + route
