@@ -337,7 +337,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
             return self.info_servicer.get_models_info_dict(model_ids)
         except Exception as err:
             if error_content := self._handle_exception(err):
-                return error_content
+                return Response(
+                    content=json.dumps(error_content), status_code=error_content["code"]
+                )
             raise
 
     @staticmethod
@@ -404,10 +406,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 )
             except Exception as err:
                 if error_content := self._handle_exception(err):
-                    return error_content
+                    return Response(
+                        content=json.dumps(error_content),
+                        status_code=error_content["code"],
+                    )
                 raise
 
-        # Bind DELETE to deploy a model
+        # Bind DELETE to undeploy a model
         undeploy_spec = MODEL_MANAGEMENT_SERVICE_SPEC["service"]["rpcs"][1]
         assert undeploy_spec["name"] == "UndeployModel"
         undeploy_dataobject_request = DataBase.get_class_for_name(
@@ -426,23 +431,25 @@ class RuntimeHTTPServer(RuntimeServerBase):
             responses=self._get_response_openapi(
                 undeploy_dataobject_response, undeploy_pydantic_response
             ),
-            openapi_extra=self._get_request_openapi(undeploy_pydantic_request),
             response_class=Response,
         )
-        async def _undeploy_model(context: Request) -> Response:
+        def _undeploy_model(model_id: Annotated[str, Query]) -> Response:
             """DELETE handler for undeploying a model"""
             try:
-                request = await pydantic_from_request(
-                    undeploy_pydantic_request, context
+                result = self.model_management_servicer.UndeployModel(
+                    undeploy_dataobject_request(model_id).to_proto(), None
                 )
-                result = self.model_management_servicer.UndeployModel(request, None)
                 return Response(
                     content=undeploy_dataobject_response.from_proto(result).to_json(),
                     media_type="application/json",
                 )
             except Exception as err:
                 if error_content := self._handle_exception(err):
-                    return error_content
+                    return Response(
+                        content=json.dumps(error_content),
+                        status_code=error_content["code"],
+                    )
+                raise
                 raise
             return Response(
                 content=undeploy_dataobject_response.from_proto(result).to_json(),
