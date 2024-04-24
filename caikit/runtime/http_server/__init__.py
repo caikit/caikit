@@ -15,8 +15,10 @@
 # Local
 from .http_server import (
     HEALTH_ENDPOINT,
+    MODEL_MANAGEMENT_ENDPOINT,
     MODELS_INFO_ENDPOINT,
     RUNTIME_INFO_ENDPOINT,
+    TRAINING_MANAGEMENT_ENDPOINT,
     RuntimeHTTPServer,
 )
 from .pydantic_wrapper import dataobject_to_pydantic, pydantic_to_dataobject
