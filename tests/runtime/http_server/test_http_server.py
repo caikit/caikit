@@ -47,7 +47,15 @@ from tests.runtime.model_management.test_model_manager import (
     non_singleton_model_managers,
 )
 
-## Fixtures #####################################################################
+################################################################################
+# NOTE for test authors:
+#
+# This test module is quite large. Please write tests under the appropriate
+# header section so that tests can be more easily discovered and managed as the
+# test suite grows.
+################################################################################
+
+## Fixtures ####################################################################
 
 
 @pytest.fixture
@@ -56,7 +64,7 @@ def client(runtime_http_server) -> TestClient:
         yield client
 
 
-## Insecure and TLS Tests #######################################################################
+## Insecure and TLS Tests ######################################################
 
 
 def test_insecure_server(runtime_http_server, open_port):
@@ -250,7 +258,48 @@ def test_http_server_concurrency_limiting(config_overrides, expected):
             assert svr.server.config.limit_concurrency == expected
 
 
-## Inference Tests #######################################################################
+## Lifecycle Tests #############################################################
+
+
+def test_http_server_shutdown_with_model_poll(open_port):
+    """Test that a SIGINT successfully shuts down the running server"""
+    with tempfile.TemporaryDirectory() as workdir:
+        server_proc = ModuleSubproc(
+            "caikit.runtime.http_server",
+            RUNTIME_HTTP_PORT=str(open_port),
+            RUNTIME_LOCAL_MODELS_DIR=workdir,
+            RUNTIME_LAZY_LOAD_LOCAL_MODELS="true",
+            RUNTIME_LAZY_LOAD_POLL_PERIOD_SECONDS="0.1",
+        )
+        with server_proc as proc:
+            # Wait for the server to be up
+            while True:
+                try:
+                    resp = requests.get(
+                        f"http://localhost:{open_port}{http_server.HEALTH_ENDPOINT}",
+                        timeout=0.1,
+                    )
+                    resp.raise_for_status()
+                    break
+                except (
+                    requests.HTTPError,
+                    requests.ConnectionError,
+                    requests.ConnectTimeout,
+                ):
+                    pass
+
+            # Signal the server to shut down
+            proc.send_signal(signal.SIGINT)
+
+        # Make sure the process was not killed
+        assert not server_proc.killed
+
+
+def test_http_and_grpc_server_share_threadpool(
+    runtime_http_server, runtime_grpc_server
+):
+    """Test that the grpc server and http server share a common thread pool"""
+    assert runtime_grpc_server.thread_pool is runtime_http_server.thread_pool
 
 
 def test_docs(client):
@@ -273,6 +322,65 @@ def test_docs_with_models(
     loaded"""
     response = requests.get(f"http://localhost:{runtime_http_server.port}/docs")
     assert response.status_code == 200
+
+
+def test_uvicorn_server_config_valid():
+    """Make sure that arbitrary uvicorn configs can be passed through from
+    runtime.http.server_config
+    """
+    timeout_keep_alive = 10
+    with temp_config(
+        {
+            "runtime": {
+                "http": {"server_config": {"timeout_keep_alive": timeout_keep_alive}}
+            }
+        },
+        "merge",
+    ):
+        server = http_server.RuntimeHTTPServer()
+        assert server.server.config.timeout_keep_alive == timeout_keep_alive
+
+
+def test_uvicorn_server_config_invalid_tls_overlap():
+    """Make sure uvicorn TLS arguments cannot be set if TLS is enabled in caikit
+    config
+    """
+    with temp_config(
+        {
+            "runtime": {
+                "http": {
+                    "server_config": {
+                        "ssl_keyfile": "/some/file.pem",
+                    }
+                }
+            }
+        },
+        "merge",
+    ):
+        with generate_tls_configs(port=1234, tls=True, mtls=True):
+            with pytest.raises(ValueError):
+                http_server.RuntimeHTTPServer()
+
+
+def test_uvicorn_server_config_invalid_kwarg_overlap():
+    """Make sure uvicorn config can't be set for configs that caikit manages"""
+    with temp_config(
+        {
+            "runtime": {
+                "http": {
+                    "server_config": {
+                        "log_level": "debug",
+                    }
+                }
+            }
+        },
+        "merge",
+    ):
+        with pytest.raises(ValueError):
+            http_server.RuntimeHTTPServer()
+
+
+## Inference Tests #############################################################
 
 
 def test_inference_sample_task(sample_task_model_id, client):
@@ -717,6 +825,9 @@ def test_health_check_ok(client):
     assert response.text == "OK"
 
 
+## Info Tests ##################################################################
+
+
 def test_runtime_info_ok(runtime_http_server):
     """Make sure the runtime info returns version data"""
     with TestClient(runtime_http_server.app) as client:
@@ -816,41 +927,7 @@ def test_single_models_info_ok(client, sample_task_model_id):
     assert model["module_metadata"]["name"] == "SampleModule"
 
 
-def test_http_server_shutdown_with_model_poll(open_port):
-    """Test that a SIGINT successfully shuts down the running server"""
-    with tempfile.TemporaryDirectory() as workdir:
-        server_proc = ModuleSubproc(
-            "caikit.runtime.http_server",
-            RUNTIME_HTTP_PORT=str(open_port),
-            RUNTIME_LOCAL_MODELS_DIR=workdir,
-            RUNTIME_LAZY_LOAD_LOCAL_MODELS="true",
-            RUNTIME_LAZY_LOAD_POLL_PERIOD_SECONDS="0.1",
-        )
-        with server_proc as proc:
-            # Wait for the server to be up
-            while True:
-                try:
-                    resp = requests.get(
-                        f"http://localhost:{open_port}{http_server.HEALTH_ENDPOINT}",
-                        timeout=0.1,
-                    )
-                    resp.raise_for_status()
-                    break
-                except (
-                    requests.HTTPError,
-                    requests.ConnectionError,
-                    requests.ConnectTimeout,
-                ):
-                    pass
-
-            # Signal the server to shut down
-            proc.send_signal(signal.SIGINT)
-
-        # Make sure the process was not killed
-        assert not server_proc.killed
-
-
-## Train Tests #######################################################################
+## Train Tests #################################################################
 
 
 def test_train_sample_task(client, runtime_http_server):
@@ -1033,12 +1110,6 @@ def test_train_other_task(client, runtime_http_server):
     assert json_response["farewell"] == "goodbye: world 64 times"
 
 
-def test_http_and_grpc_server_share_threadpool(
-    runtime_http_server, runtime_grpc_server
-):
-    assert runtime_grpc_server.thread_pool is runtime_http_server.thread_pool
-
-
 def test_train_long_running_sample_task(client, runtime_http_server):
     """Test that with a long running training job, the request returns before the training completes"""
     model_name = "sample_task_train"
@@ -1071,59 +1142,3 @@ def test_train_long_running_sample_task(client, runtime_http_server):
     model_future.cancel()
     assert model_future.get_info().status == TrainingStatus.CANCELED
     assert model_future.get_info().status.is_terminal
-
-
-def test_uvicorn_server_config_valid():
-    """Make sure that arbitrary uvicorn configs can be passed through from
-    runtime.http.server_config
-    """
-    timeout_keep_alive = 10
-    with temp_config(
-        {
-            "runtime": {
-                "http": {"server_config": {"timeout_keep_alive": timeout_keep_alive}}
-            }
-        },
-        "merge",
-    ):
-        server = http_server.RuntimeHTTPServer()
-        assert server.server.config.timeout_keep_alive == timeout_keep_alive
-
-
-def test_uvicorn_server_config_invalid_tls_overlap():
-    """Make sure uvicorn TLS arguments cannot be set if TLS is enabled in caikit
-    config
-    """
-    with temp_config(
-        {
-            "runtime": {
-                "http": {
-                    "server_config": {
-                        "ssl_keyfile": "/some/file.pem",
-                    }
-                }
-            }
-        },
-        "merge",
-    ):
-        with generate_tls_configs(port=1234, tls=True, mtls=True):
-            with pytest.raises(ValueError):
-                http_server.RuntimeHTTPServer()
-
-
-def test_uvicorn_server_config_invalid_kwarg_overlap():
-    """Make sure uvicorn config can't be set for configs that caikit manages"""
-    with temp_config(
-        {
-            "runtime": {
-                "http": {
-                    "server_config": {
-                        "log_level": "debug",
-                    }
-                }
-            }
-        },
-        "merge",
-    ):
-        with pytest.raises(ValueError):
-            http_server.RuntimeHTTPServer()
