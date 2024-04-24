@@ -51,10 +51,10 @@ class ModelManagementServicerImpl:
         context: grpc.RpcContext,  # pylint: disable=unused-argument
     ) -> ModelInfoProto:  # type: ignore
         """Deploy a model to the runtime"""
-        if not request.model_name:
+        if not request.model_id:
             raise CaikitRuntimeException(
                 grpc.StatusCode.INVALID_ARGUMENT,
-                "Must provide model_name",
+                "Must provide model_id",
             )
         if not request.model_files or any(
             not f.filename.strip() for f in request.model_files
@@ -66,7 +66,7 @@ class ModelManagementServicerImpl:
 
         # Deploy the model to the model manager
         loaded_model = self._model_manager.deploy_model(
-            model_id=request.model_name,
+            model_id=request.model_id,
             model_files={f.filename: f.data for f in request.model_files},
             wait=False,
         )
@@ -85,10 +85,10 @@ class ModelManagementServicerImpl:
         context: grpc.RpcContext,  # pylint: disable=unused-argument
     ) -> UndeployModelRequestProto:  # type: ignore
         """Un-deploy a model to the runtime"""
-        if not request.model_name:
+        if not request.model_id:
             raise CaikitRuntimeException(
                 grpc.StatusCode.INVALID_ARGUMENT,
-                "Must provide model_name",
+                "Must provide model_id",
             )
-        self._model_manager.undeploy_model(request.model_name)
-        return UndeployModelRequestProto(model_name=request.model_name)
+        self._model_manager.undeploy_model(request.model_id)
+        return UndeployModelRequestProto(model_id=request.model_id)

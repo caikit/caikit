@@ -30,7 +30,7 @@ from .package import RUNTIME_PACKAGE
 class DeployModelRequest(DataObjectBase):
     """Request to deploy a model"""
 
-    model_name: Annotated[str, FieldNumber(1)]
+    model_id: Annotated[str, FieldNumber(1)]
     model_files: Annotated[List[File], FieldNumber(2)]
 
 
@@ -38,4 +38,4 @@ class DeployModelRequest(DataObjectBase):
 class UndeployModelRequest(DataObjectBase):
     """Request to undeploy a model"""
 
-    model_name: Annotated[str, FieldNumber(1)]
+    model_id: Annotated[str, FieldNumber(1)]
