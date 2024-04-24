@@ -15,11 +15,14 @@
 Tests for the caikit HTTP server
 """
 # Standard
+from contextlib import contextmanager
 from io import BytesIO
 from pathlib import Path
+from typing import Iterable
 from unittest import mock
 import base64
 import json
+import os
 import signal
 import tempfile
 import zipfile
@@ -37,8 +40,10 @@ from caikit.runtime import http_server
 from caikit.runtime.http_server.http_server import StreamEventTypes
 from caikit.runtime.server_base import ServerThreadPool
 from tests.conftest import temp_config
+from tests.fixtures import Fixtures
 from tests.runtime.conftest import (
     ModuleSubproc,
+    deploy_good_model_files,
     generate_tls_configs,
     register_trained_model,
     runtime_http_test_server,
@@ -58,9 +63,15 @@ from tests.runtime.model_management.test_model_manager import (
 ## Fixtures ####################################################################
 
 
+@contextmanager
+def client_context(server) -> Iterable[TestClient]:
+    with TestClient(server.app) as client:
+        yield client
+
+
 @pytest.fixture
-def client(runtime_http_server) -> TestClient:
-    with TestClient(runtime_http_server.app) as client:
+def client(runtime_http_server) -> Iterable[TestClient]:
+    with client_context(runtime_http_server) as client:
         yield client
 
 
@@ -1142,3 +1153,86 @@ def test_train_long_running_sample_task(client, runtime_http_server):
     model_future.cancel()
     assert model_future.get_info().status == TrainingStatus.CANCELED
     assert model_future.get_info().status.is_terminal
+
+
+## Management Tests ############################################################
+
+
+def test_model_management_deploy_lifecycle(open_port, deploy_good_model_files):
+    """Test that models can be deployed/undeployed and reflect in the
+    local_models_dir
+    """
+    with tempfile.TemporaryDirectory() as workdir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": workdir,
+                    "lazy_load_local_models": True,
+                },
+            },
+            "merge",
+        ):
+            with runtime_http_test_server(open_port) as server:
+                with client_context(server) as client:
+
+                    # Make sure no models loaded initially
+                    resp = client.get(http_server.MODELS_INFO_ENDPOINT)
+                    resp.raise_for_status()
+                    model_info = resp.json()
+                    assert len(model_info["models"]) == 0
+
+                    # Do the deploy
+                    model_id = "my-model"
+                    deploy_req = {
+                        "model_id": model_id,
+                        "model_files": [
+                            {
+                                "filename": fname,
+                                "data": base64.b64encode(data).decode("utf-8"),
+                            }
+                            for fname, data in deploy_good_model_files.items()
+                        ],
+                    }
+                    resp = client.post(
+                        http_server.MODEL_MANAGEMENT_ENDPOINT, json=deploy_req
+                    )
+                    resp.raise_for_status()
+                    resp_json = resp.json()
+                    assert resp_json["name"] == model_id
+                    model_path = os.path.join(workdir, model_id)
+                    assert resp_json["model_path"] == model_path
+                    assert os.path.isdir(model_path)
+
+                    # Make sure the model shows up in info
+                    resp = client.get(http_server.MODELS_INFO_ENDPOINT)
+                    resp.raise_for_status()
+                    model_info = resp.json()
+                    assert len(model_info["models"]) == 1
+                    assert model_info["models"][0]["name"] == model_id
+
+                    # Make sure an appropriate error is raised for trying to
+                    # deploy the same model again
+                    resp = client.post(
+                        http_server.MODEL_MANAGEMENT_ENDPOINT, json=deploy_req
+                    )
+                    assert resp.status_code == 409
+
+                    # Undeploy the model
+                    resp = client.delete(
+                        http_server.MODEL_MANAGEMENT_ENDPOINT,
+                        params={"model_id": model_id},
+                    )
+                    resp.raise_for_status()
+
+                    # Make sure no models loaded
+                    assert not client.get(http_server.MODELS_INFO_ENDPOINT).json()[
+                        "models"
+                    ]
+
+                    # Make sure a 404 is raised if undeployed again
+                    resp = client.delete(
+                        http_server.MODEL_MANAGEMENT_ENDPOINT,
+                        params={"model_id": model_id},
+                    )
+                    assert resp.status_code == 404
