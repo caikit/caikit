@@ -178,11 +178,10 @@ def test_mutual_tls_server_with_wrong_cert(open_port):
 
 
 @pytest.mark.parametrize(
-    "enabled_services",
+    ["enable_inference", "enable_training"],
     [(True, False), (False, True), (False, False)],
 )
-def test_services_disabled(open_port, enabled_services):
-    enable_inference, enable_training = enabled_services
+def test_services_disabled(open_port, enable_inference, enable_training):
     with temp_config(
         {
             "runtime": {
@@ -201,14 +200,25 @@ def test_services_disabled(open_port, enabled_services):
             )
             resp.raise_for_status()
             assert server.enable_inference == enable_inference
-            assert (server.global_predict_servicer and enable_inference) or (
-                server.global_predict_servicer is None and not enable_inference
+            assert (
+                server.global_predict_servicer
+                and server.model_management_servicer
+                and enable_inference
+            ) or (
+                server.global_predict_servicer is None
+                and server.model_management_servicer is None
+                and not enable_inference
             )
             assert server.enable_training == enable_training
-            # TODO: Update once training enabled
-            # assert (server.global_train_servicer and enable_training) or (
-            #     server.global_train_servicer is None and not enable_training
-            # )
+            assert (
+                server.global_train_servicer
+                and server.training_management_servicer
+                and enable_training
+            ) or (
+                server.global_train_servicer is None
+                and server.training_management_servicer is None
+                and not enable_training
+            )
 
 
 @pytest.mark.parametrize(
