@@ -45,6 +45,7 @@ from sample_lib.data_model import SampleInputType
 from tests.conftest import TempFailWrapper, random_test_id, temp_config
 from tests.core.helpers import TestFinder
 from tests.fixtures import Fixtures
+from tests.runtime.conftest import deploy_good_model_files
 import caikit.runtime.model_management.model_loader
 
 get_dynamic_module("caikit.core")
@@ -773,7 +774,7 @@ def test_lazy_load_ephemeral_model():
             assert model_id in manager.loaded_models
 
 
-def test_deploy_undeploy_model():
+def test_deploy_undeploy_model(deploy_good_model_files):
     """Test that a model can be deployed by copying to the local models dir"""
     with TemporaryDirectory() as cache_dir:
         with non_singleton_model_managers(
@@ -795,15 +796,10 @@ def test_deploy_undeploy_model():
                 manager.retrieve_model(model_name)
                 assert excinfo.value.status_code == grpc.StatusCode.NOT_FOUND
 
-            # Read the model files
-            model_files = {}
-            model_path = Fixtures.get_good_model_path()
-            for fname in os.listdir(model_path):
-                with open(os.path.join(model_path, fname), "rb") as handle:
-                    model_files[fname] = handle.read()
-
             # Do the deploy (pass wait through to load)
-            loaded_model = manager.deploy_model(model_name, model_files, wait=True)
+            loaded_model = manager.deploy_model(
+                model_name, deploy_good_model_files, wait=True
+            )
             assert loaded_model
             assert loaded_model.loaded
 
@@ -813,7 +809,7 @@ def test_deploy_undeploy_model():
 
             # Make sure model cannot be deployed over
             with pytest.raises(CaikitRuntimeException) as excinfo:
-                manager.deploy_model(model_name, model_files)
+                manager.deploy_model(model_name, deploy_good_model_files)
                 assert excinfo.value.status_code == grpc.StatusCode.ALREADY_EXISTS
 
             # Undeploy the model
@@ -851,7 +847,7 @@ def test_deploy_invalid_files(invalid_fname):
                 assert excinfo.value.status_code == grpc.StatusCode.INVALID_ARGUMENT
 
 
-def test_deploy_with_nested_files():
+def test_deploy_with_nested_files(deploy_good_model_files):
     """Make sure models with nested directories can be deployed"""
     with TemporaryDirectory() as cache_dir:
         with non_singleton_model_managers(
@@ -871,12 +867,10 @@ def test_deploy_with_nested_files():
             # Read the model files and deploy
             nested_dir = os.path.join("nested", "twice")
             nested_fname = "foo.txt"
-            model_files = {os.path.join(nested_dir, nested_fname): b"foo"}
-            model_path = Fixtures.get_good_model_path()
-            for fname in os.listdir(model_path):
-                with open(os.path.join(model_path, fname), "rb") as handle:
-                    model_files[fname] = handle.read()
-            loaded_model = manager.deploy_model(model_name, model_files, wait=True)
+            deploy_good_model_files[os.path.join(nested_dir, nested_fname)] = b"foo"
+            loaded_model = manager.deploy_model(
+                model_name, deploy_good_model_files, wait=True
+            )
             assert loaded_model
 
             # Make sure the nested file structure was set up correctly
@@ -885,7 +879,7 @@ def test_deploy_with_nested_files():
             assert os.path.exists(os.path.join(local_nested_dir, nested_fname))
 
 
-def test_deploy_invalid_permissions():
+def test_deploy_invalid_permissions(deploy_good_model_files):
     """Make sure that an error is raised if attempting to deploy when writing to
     local_models_dir is denied
     """
@@ -908,16 +902,9 @@ def test_deploy_invalid_permissions():
                 manager = managers[0]
                 model_name = "my-model"
 
-                # Read the model files and deploy
-                model_files = {}
-                model_path = Fixtures.get_good_model_path()
-                for fname in os.listdir(model_path):
-                    with open(os.path.join(model_path, fname), "rb") as handle:
-                        model_files[fname] = handle.read()
-
                 # Make sure the deploy fails with a permission error
                 with pytest.raises(CaikitRuntimeException) as excinfo:
-                    manager.deploy_model(model_name, model_files, wait=True)
+                    manager.deploy_model(model_name, deploy_good_model_files, wait=True)
                     assert excinfo.status_code == grpc.StatusCode.PERMISSION_DENIED
 
         finally:

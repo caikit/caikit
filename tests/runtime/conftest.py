@@ -623,3 +623,13 @@ def save_key_cert_pair(prefix, workdir, key=None, cert=None):
         with open(crtfile, "w") as handle:
             handle.write(cert)
     return crtfile, keyfile
+
+
+@pytest.fixture
+def deploy_good_model_files():
+    model_files = {}
+    model_path = Fixtures.get_good_model_path()
+    for fname in os.listdir(model_path):
+        with open(os.path.join(model_path, fname), "rb") as handle:
+            model_files[fname] = handle.read()
+    yield model_files
