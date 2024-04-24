@@ -162,6 +162,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Placeholders for global servicers
         self.global_predict_servicer = None
         self.global_train_servicer = None
+        self.model_management_servicer = None
+        self.training_management_servicer = None
         self.info_servicer = InfoServicer()
 
         # NOTE: The order that the modules are bound is directly reflected in
