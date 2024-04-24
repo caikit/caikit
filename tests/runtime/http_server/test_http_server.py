@@ -945,7 +945,7 @@ def test_train_sample_task(client, runtime_http_server):
         },
     }
     training_response = client.post(
-        f"/api/v1/SampleTaskSampleModuleTrain",
+        "/api/v1/SampleTaskSampleModuleTrain",
         json=json_input,
     )
 
@@ -1220,3 +1220,141 @@ def test_model_management_deploy_lifecycle(open_port, deploy_good_model_files):
                         params={"model_id": model_id},
                     )
                     assert resp.status_code == 404
+
+
+def test_model_management_deploy_invalid(open_port):
+    """Test that attempting to deploy an invalid model fails"""
+    with tempfile.TemporaryDirectory() as workdir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": workdir,
+                    "lazy_load_local_models": True,
+                },
+            },
+            "merge",
+        ):
+            with runtime_http_test_server(open_port) as server:
+                with client_context(server) as client:
+
+                    # Make sure no models loaded initially
+                    resp = client.get(http_server.MODELS_INFO_ENDPOINT)
+                    resp.raise_for_status()
+                    model_info = resp.json()
+                    assert len(model_info["models"]) == 0
+
+                    # Do the deploy
+                    model_id = "my-model"
+                    deploy_req = {
+                        "model_id": model_id,
+                        "model_files": [
+                            {
+                                "filename": "foo.txt",
+                                "data": "yikes",  # <- not base64
+                            }
+                        ],
+                    }
+                    resp = client.post(
+                        http_server.MODEL_MANAGEMENT_ENDPOINT, json=deploy_req
+                    )
+                    assert resp.status_code == 422  # Unprocessable
+
+
+def test_training_management_get_status(client):
+    """Test that training status can be retrieved"""
+    model_name = "sample_task_train"
+    json_input = {
+        "model_name": model_name,
+        "parameters": {
+            "training_data": {"data_stream": {"data": [{"number": 1}]}},
+            "batch_size": 42,
+        },
+    }
+    training_response = client.post(
+        "/api/v1/SampleTaskSampleModuleTrain",
+        json=json_input,
+    )
+
+    # Start the training and make sure it starts successfully
+    training_json_response = training_response.json()
+    training_response.raise_for_status()
+
+    # Get the status for the training
+    training_id = training_json_response["training_id"]
+    get_response = client.get(
+        http_server.TRAINING_MANAGEMENT_ENDPOINT, params={"training_id": training_id}
+    )
+    get_response.raise_for_status()
+
+
+def test_training_management_cancel(client):
+    """Test that trainings can be canceled"""
+    model_name = "sample_task_train"
+    json_input = {
+        "model_name": model_name,
+        "parameters": {
+            "training_data": {"data_stream": {"data": [{"number": 1}]}},
+            "batch_size": 42,
+            # Sleep the job so that cancellation can interrupt it. It will not
+            # sleep for this long in practice.
+            "sleep_time": 20,
+        },
+    }
+    training_response = client.post(
+        "/api/v1/SampleTaskSampleModuleTrain",
+        json=json_input,
+    )
+
+    # Start the training and make sure it starts successfully
+    training_json_response = training_response.json()
+    training_response.raise_for_status()
+
+    # Cancel the training
+    training_id = training_json_response["training_id"]
+    cancel_response = client.delete(
+        http_server.TRAINING_MANAGEMENT_ENDPOINT, params={"training_id": training_id}
+    )
+    cancel_response.raise_for_status()
+
+    # Make sure the status reflects being canceled
+    get_response = client.get(
+        http_server.TRAINING_MANAGEMENT_ENDPOINT, params={"training_id": training_id}
+    )
+    get_response.raise_for_status()
+    assert get_response.json()["state"] == "CANCELED"
+
+
+def test_training_management_errors(client):
+    """Test that training status can be retrieved"""
+    model_name = "sample_task_train"
+    json_input = {
+        "model_name": model_name,
+        "parameters": {
+            "training_data": {"data_stream": {"data": [{"number": 1}]}},
+            "batch_size": 42,
+        },
+    }
+    training_response = client.post(
+        "/api/v1/SampleTaskSampleModuleTrain",
+        json=json_input,
+    )
+
+    # Make sure unknown training GET returns 404
+    assert (
+        client.get(
+            http_server.TRAINING_MANAGEMENT_ENDPOINT, params={"training_id": "bad-id"}
+        ).status_code
+        == 404
+    )
+
+    # Make sure missing param returns 422
+    assert client.get(http_server.TRAINING_MANAGEMENT_ENDPOINT).status_code == 422
+
+    # Make sure unknown training DELETE returns 404
+    assert (
+        client.delete(
+            http_server.TRAINING_MANAGEMENT_ENDPOINT, params={"training_id": "bad-id"}
+        ).status_code
+        == 404
+    )
