@@ -401,7 +401,7 @@ def test_inference_sample_task(sample_task_model_id, client):
         f"/api/v1/task/sample",
         json=json_input,
     )
-    json_response = json.loads(response.content.decode(response.default_encoding))
+    json_response = response.json()
     assert response.status_code == 200, json_response
     assert json_response["greeting"] == "Hello world"
 
@@ -424,7 +424,7 @@ def test_inference_primitive_task(primitive_task_model_id, client):
         f"/api/v1/task/sample",
         json=json_input,
     )
-    json_response = json.loads(response.content.decode(response.default_encoding))
+    json_response = response.json()
     assert response.status_code == 200, json_response
     assert "hello: primitives!" in json_response["greeting"]
 
@@ -456,7 +456,7 @@ def test_inference_sample_task_multipart_input(sample_task_model_id, client):
 
     response = client.post(f"/api/v1/task/sample", files=multipart_input)
 
-    json_response = json.loads(response.content.decode(response.default_encoding))
+    json_response = response.json()
     assert response.status_code == 200, json_response
     assert json_response["greeting"] == "Hello world"
 
@@ -508,7 +508,7 @@ def test_inference_other_task(other_task_model_id, client):
         f"/api/v1/task/other",
         json=json_input,
     )
-    json_response = json.loads(response.content.decode(response.default_encoding))
+    json_response = response.json()
     assert response.status_code == 200, json_response
     assert json_response["farewell"] == "goodbye: world 42 times"
 
@@ -565,7 +565,7 @@ def test_invalid_input_exception(file_task_model_id, client):
         json=json_file_input,
     )
     assert response.status_code == 400
-    json_response = json.loads(response.content.decode(response.default_encoding))
+    json_response = response.json()
     assert json_response["details"] == "Executables are not a supported File type"
 
 
@@ -691,7 +691,7 @@ def test_inference_malformed_param(client):
     )
     assert response.status_code == 422
 
-    json_response = json.loads(response.content.decode(response.default_encoding))
+    json_response = response.json()
 
     assert "Invalid JSON" in json_response["details"]
     assert json_response["additional_info"][0]["type"] == "json_invalid"
@@ -710,7 +710,7 @@ def test_inference_non_serializable_json(client):
     )
     assert response.status_code == 422
 
-    json_response = json.loads(response.content.decode(response.default_encoding))
+    json_response = response.json()
 
     assert "Invalid JSON" in json_response["details"]
     assert json_response["additional_info"][0]["type"] == "json_invalid"
@@ -723,9 +723,7 @@ def test_no_model_id(client):
         json={"inputs": {"name": "world"}},
     )
     assert response.status_code == 400
-    "Please provide model_id in payload" in response.content.decode(
-        response.default_encoding
-    )
+    assert "Please provide model_id in payload" in response.json()["details"]
 
 
 def test_inference_multi_task_module(multi_task_model_id, client):
@@ -739,7 +737,7 @@ def test_inference_multi_task_module(multi_task_model_id, client):
         f"/api/v1/task/second",
         json=json_input,
     )
-    json_response = json.loads(response.content.decode(response.default_encoding))
+    json_response = response.json()
     assert response.status_code == 200, json_response
     assert json_response["farewell"] == "Goodbye from SecondTask"
 
@@ -804,7 +802,7 @@ def test_inference_sample_task_incorrect_input(sample_task_model_id, client):
         json=json_input,
     )
     assert response.status_code == 422
-    json_response = json.loads(response.content.decode(response.default_encoding))
+    json_response = response.json()
     # assert standard fields in the response
     assert json_response["details"] is not None
     assert json_response["code"] is not None
@@ -824,7 +822,7 @@ def test_inference_sample_task_forward_compatibility(sample_task_model_id, clien
         f"/api/v1/task/sample",
         json=json_input,
     )
-    json_response = json.loads(response.content.decode(response.default_encoding))
+    json_response = response.json()
     assert response.status_code == 200, json_response
     assert json_response["greeting"] == "Hello world"
 
@@ -845,7 +843,7 @@ def test_runtime_info_ok(runtime_http_server):
         response = client.get(http_server.RUNTIME_INFO_ENDPOINT)
         assert response.status_code == 200
 
-        json_response = json.loads(response.content.decode(response.default_encoding))
+        json_response = response.json()
         assert "caikit" in json_response["python_packages"]
         # runtime_version not added if not set
         assert json_response["runtime_version"] == ""
@@ -871,9 +869,7 @@ def test_runtime_info_ok_response_all_packages(runtime_http_server):
             response = client.get(http_server.RUNTIME_INFO_ENDPOINT)
             assert response.status_code == 200
 
-            json_response = json.loads(
-                response.content.decode(response.default_encoding)
-            )
+            json_response = response.json()
             assert json_response["runtime_version"] == "1.2.3"
             assert "caikit" in json_response["python_packages"]
             # dependent libraries versions added
@@ -891,9 +887,7 @@ def test_runtime_info_ok_custom_python_packages(runtime_http_server):
             response = client.get(http_server.RUNTIME_INFO_ENDPOINT)
             assert response.status_code == 200
 
-            json_response = json.loads(
-                response.content.decode(response.default_encoding)
-            )
+            json_response = response.json()
             # runtime_version not added if not set
             assert json_response["runtime_version"] == ""
             # custom library is set while other random packages are not
@@ -907,7 +901,7 @@ def test_all_models_info_ok(client, sample_task_model_id):
     response = client.get(http_server.MODELS_INFO_ENDPOINT)
     assert response.status_code == 200
 
-    json_response = json.loads(response.content.decode(response.default_encoding))
+    json_response = response.json()
     # Assert some models are loaded
     assert len(json_response["models"]) > 0
 
@@ -929,7 +923,7 @@ def test_single_models_info_ok(client, sample_task_model_id):
     )
     assert response.status_code == 200
 
-    json_response = json.loads(response.content.decode(response.default_encoding))
+    json_response = response.json()
     # Assert some models are loaded
     assert len(json_response["models"]) == 1
 
@@ -956,9 +950,7 @@ def test_train_sample_task(client, runtime_http_server):
     )
 
     # assert training response
-    training_json_response = json.loads(
-        training_response.content.decode(training_response.default_encoding)
-    )
+    training_json_response = training_response.json()
     assert training_response.status_code == 200, training_json_response
     assert (training_id := training_json_response["training_id"])
     assert training_json_response["model_name"] == model_name
@@ -984,7 +976,7 @@ def test_train_sample_task(client, runtime_http_server):
         f"/api/v1/task/sample",
         json=json_input_inference,
     )
-    json_response = json.loads(response.content.decode(response.default_encoding))
+    json_response = response.json()
     assert response.status_code == 200, json_response
     assert json_response["greeting"] == "Hello world"
 
@@ -1006,11 +998,9 @@ def test_train_sample_task_throws_s3_value_error(client):
     )
     assert (
         "S3 output path not supported by this runtime"
-        in training_response.content.decode(training_response.default_encoding)
+        in training_response.json()["details"]
     )
-    assert training_response.status_code == 500, training_response.content.decode(
-        training_response.default_encoding
-    )
+    assert training_response.status_code == 500, training_response.json()
 
 
 def test_train_primitive_task(client, runtime_http_server):
@@ -1036,9 +1026,7 @@ def test_train_primitive_task(client, runtime_http_server):
         json=json_input,
     )
     # assert training response
-    training_json_response = json.loads(
-        training_response.content.decode(training_response.default_encoding)
-    )
+    training_json_response = training_response.json()
     assert training_response.status_code == 200, training_json_response
     assert (training_id := training_json_response["training_id"])
     assert training_json_response["model_name"] == model_name
@@ -1068,7 +1056,7 @@ def test_train_primitive_task(client, runtime_http_server):
         f"/api/v1/task/sample",
         json=json_input_inference,
     )
-    json_response = json.loads(response.content.decode(response.default_encoding))
+    json_response = response.json()
     assert response.status_code == 200, json_response
     assert json_response["greeting"] == "hello: primitives! [1, 2, 3] 100"
 
@@ -1088,9 +1076,7 @@ def test_train_other_task(client, runtime_http_server):
         json=json_input,
     )
     # assert training response
-    training_json_response = json.loads(
-        training_response.content.decode(training_response.default_encoding)
-    )
+    training_json_response = training_response.json()
     assert training_response.status_code == 200, training_json_response
     assert (training_id := training_json_response["training_id"])
     assert training_json_response["model_name"] == model_name
@@ -1116,7 +1102,7 @@ def test_train_other_task(client, runtime_http_server):
         f"/api/v1/task/other",
         json=json_input_inference,
     )
-    json_response = json.loads(response.content.decode(response.default_encoding))
+    json_response = response.json()
     assert response.status_code == 200, json_response
     assert json_response["farewell"] == "goodbye: world 64 times"
 
@@ -1138,9 +1124,7 @@ def test_train_long_running_sample_task(client, runtime_http_server):
     )
 
     # assert training response received before training completed
-    training_json_response = json.loads(
-        training_response.content.decode(training_response.default_encoding)
-    )
+    training_json_response = training_response.json()
     assert training_response.status_code == 200, training_json_response
     assert (training_id := training_json_response["training_id"])
     assert training_json_response["model_name"] == model_name
