@@ -824,10 +824,14 @@ def test_deploy_undeploy_model(deploy_good_model_files):
 
 
 @pytest.mark.parametrize(
-    "invalid_fname",
-    ["", "\t\n  ", "/foo/bar.txt"],
+    ["invalid_fname", "expected_reason"],
+    [
+        ("", "Got whitespace-only model file name"),
+        ("\t\n  ", "Got whitespace-only model file name"),
+        ("/foo/bar.txt", "Cannot use absolute paths for model files"),
+    ],
 )
-def test_deploy_invalid_files(invalid_fname):
+def test_deploy_invalid_files(invalid_fname, expected_reason):
     """Test that various flavors of invalid model names are not supported"""
     with TemporaryDirectory() as cache_dir:
         with non_singleton_model_managers(
@@ -842,7 +846,9 @@ def test_deploy_invalid_files(invalid_fname):
             "merge",
         ) as managers:
             manager = managers[0]
-            with pytest.raises(CaikitRuntimeException) as excinfo:
+            with pytest.raises(
+                CaikitRuntimeException, match=expected_reason
+            ) as excinfo:
                 manager.deploy_model("bad-model", {invalid_fname: b"asdf"})
             assert excinfo.value.status_code == grpc.StatusCode.INVALID_ARGUMENT
 
