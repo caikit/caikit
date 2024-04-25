@@ -794,7 +794,7 @@ def test_deploy_undeploy_model(deploy_good_model_files):
             # Make sure model is not currently loaded
             with pytest.raises(CaikitRuntimeException) as excinfo:
                 manager.retrieve_model(model_name)
-                assert excinfo.value.status_code == grpc.StatusCode.NOT_FOUND
+            assert excinfo.value.status_code == grpc.StatusCode.NOT_FOUND
 
             # Do the deploy (pass wait through to load)
             loaded_model = manager.deploy_model(
@@ -810,7 +810,7 @@ def test_deploy_undeploy_model(deploy_good_model_files):
             # Make sure model cannot be deployed over
             with pytest.raises(CaikitRuntimeException) as excinfo:
                 manager.deploy_model(model_name, deploy_good_model_files)
-                assert excinfo.value.status_code == grpc.StatusCode.ALREADY_EXISTS
+            assert excinfo.value.status_code == grpc.StatusCode.ALREADY_EXISTS
 
             # Undeploy the model
             manager.undeploy_model(model_name)
@@ -819,7 +819,7 @@ def test_deploy_undeploy_model(deploy_good_model_files):
             # local models dir
             with pytest.raises(CaikitRuntimeException) as excinfo:
                 manager.retrieve_model(model_name)
-                assert excinfo.value.status_code == grpc.StatusCode.NOT_FOUND
+            assert excinfo.value.status_code == grpc.StatusCode.NOT_FOUND
             assert not os.path.exists(os.path.join(cache_dir, model_name))
 
 
@@ -844,7 +844,7 @@ def test_deploy_invalid_files(invalid_fname):
             manager = managers[0]
             with pytest.raises(CaikitRuntimeException) as excinfo:
                 manager.deploy_model("bad-model", {invalid_fname: b"asdf"})
-                assert excinfo.value.status_code == grpc.StatusCode.INVALID_ARGUMENT
+            assert excinfo.value.status_code == grpc.StatusCode.INVALID_ARGUMENT
 
 
 def test_deploy_with_nested_files(deploy_good_model_files):
@@ -905,7 +905,7 @@ def test_deploy_invalid_permissions(deploy_good_model_files):
                 # Make sure the deploy fails with a permission error
                 with pytest.raises(CaikitRuntimeException) as excinfo:
                     manager.deploy_model(model_name, deploy_good_model_files, wait=True)
-                    assert excinfo.status_code == grpc.StatusCode.PERMISSION_DENIED
+                assert excinfo.value.status_code == grpc.StatusCode.FAILED_PRECONDITION
 
         finally:
             os.chmod(local_models_dir, 0o777)
@@ -929,7 +929,7 @@ def test_undeploy_unkonwn_model():
             manager = managers[0]
             with pytest.raises(CaikitRuntimeException) as excinfo:
                 manager.undeploy_model("foobar")
-                assert excinfo.value.status_code == grpc.StatusCode.NOT_FOUND
+            assert excinfo.value.status_code == grpc.StatusCode.NOT_FOUND
 
 
 # ****************************** Unit Tests ****************************** #

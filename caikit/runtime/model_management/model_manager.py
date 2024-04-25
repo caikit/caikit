@@ -480,6 +480,13 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
 
             # Write out all of the files
             for fname, data in model_files.items():
+                fname = fname.strip()
+                if not fname:
+                    raise CaikitRuntimeException(
+                        StatusCode.INVALID_ARGUMENT,
+                        f"Got whitespace-only model file name: [{fname}]",
+                        {"model_id": model_id},
+                    )
                 fpath = os.path.join(model_dir, fname)
                 if not os.path.commonpath([model_dir, fpath]).lstrip(os.sep):
                     raise CaikitRuntimeException(
@@ -509,7 +516,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
 
         except PermissionError as err:
             raise CaikitRuntimeException(
-                StatusCode.PERMISSION_DENIED,
+                StatusCode.FAILED_PRECONDITION,
                 f"Unable to save model (PermissionError): {err}",
                 {"model_id": model_id},
             ) from err
