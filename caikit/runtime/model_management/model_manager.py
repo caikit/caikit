@@ -538,20 +538,23 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             "runtime.local_models_dir must be a valid path to undeploy models directly.",
         )
 
-        # Get a handle to the LoadedModel
-        model = self.loaded_models.get(model_id)
-        if model is None:
+        # Check to see if the model exists in `local_models_dir` and delete it
+        # if so
+        local_model_path = os.path.join(self._local_models_dir, model_id)
+        if os.path.exists(local_model_path):
+            log.debug("Removing local model path: %s", local_model_path)
+            shutil.rmtree(local_model_path)
+
+            # If currently loaded in memory, unload it (unload_model will not
+            # raise if not found)
+            self.unload_model(model_id)
+
+        else:
             raise CaikitRuntimeException(
                 StatusCode.NOT_FOUND,
                 f"Cannot undeploy unknown model {model_id}",
                 {"model_id": model_id},
             )
-
-        # Unload the model
-        self.unload_model(model_id)
-
-        # Delete the model artifacts from disk
-        shutil.rmtree(model.path())
 
     ## Implementation Details ##
 

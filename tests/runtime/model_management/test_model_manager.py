@@ -938,6 +938,42 @@ def test_undeploy_unkonwn_model():
             assert excinfo.value.status_code == grpc.StatusCode.NOT_FOUND
 
 
+def test_undeploy_unloaded_model(deploy_good_model_files):
+    """If running with replicas and a shared local_models_dir, the replica that
+    gets the undeploy request may not have loaded the model into memory yet.
+    This tests that the model gets properly removed from local_models_dir, even
+    if not yet loaded.
+    """
+    with TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                    "lazy_load_poll_period_seconds": 0,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+
+            # Copy files to the local_models_dir
+            model_name = "foobar"
+            model_dir = os.path.join(cache_dir, model_name)
+            os.makedirs(model_dir)
+            for fname, data in deploy_good_model_files.items():
+                with open(os.path.join(model_dir, fname), "wb") as handle:
+                    handle.write(data)
+
+            # Make sure the undeploy completes successfully
+            assert model_name not in manager.loaded_models
+            assert os.path.exists(model_dir)
+            manager.undeploy_model(model_name)
+            assert model_name not in manager.loaded_models
+            assert not os.path.exists(model_dir)
+
+
 # ****************************** Unit Tests ****************************** #
 # These tests patch in mocks for the manager's dependencies, to test its code in isolation
 
