@@ -434,7 +434,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
         undeploy_dataobject_request = DataBase.get_class_for_name(
             undeploy_spec["input_type"]
         )
-        undeploy_pydantic_request = dataobject_to_pydantic(undeploy_dataobject_request)
         undeploy_dataobject_response = DataBase.get_class_for_name(
             undeploy_spec["output_type"]
         )
