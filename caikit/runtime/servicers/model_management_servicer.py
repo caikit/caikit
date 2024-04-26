@@ -14,6 +14,8 @@
 """
 The Model Management Service is responsible for deploying and undeploying models
 """
+# Standard
+from typing import Dict
 
 # Third Party
 import grpc
@@ -45,20 +47,40 @@ class ModelManagementServicerImpl:
     def __init__(self):
         self._model_manager = ModelManager.get_instance()
 
+    #######################
+    ## gRPC Service Impl ##
+    #######################
+
     def DeployModel(
         self,
         request: DeployModelRequestProto,  # type: ignore
         context: grpc.RpcContext,  # pylint: disable=unused-argument
     ) -> ModelInfoProto:  # type: ignore
         """Deploy a model to the runtime"""
-        if not request.model_id:
+        return self.deploy_model(
+            request.model_id, {f.filename: f.data for f in request.model_files}
+        ).to_proto()
+
+    def UndeployModel(
+        self,
+        request: UndeployModelRequestProto,  # type: ignore
+        context: grpc.RpcContext,  # pylint: disable=unused-argument
+    ) -> UndeployModelRequestProto:  # type: ignore
+        """Un-deploy a model to the runtime"""
+        return self.undeploy_model(request.model_id).to_proto()
+
+    ####################################
+    ## Interface-agnostic entrypoints ##
+    ####################################
+
+    def deploy_model(self, model_id: str, model_files: Dict[str, bytes]) -> ModelInfo:
+        """Deploy a model to the runtime"""
+        if not model_id:
             raise CaikitRuntimeException(
                 grpc.StatusCode.INVALID_ARGUMENT,
                 "Must provide model_id",
             )
-        if not request.model_files or any(
-            not f.filename.strip() for f in request.model_files
-        ):
+        if not model_files or any(not fname.strip() for fname in model_files):
             raise CaikitRuntimeException(
                 grpc.StatusCode.INVALID_ARGUMENT,
                 "Must provide at least one model_files entry and all must be valid file names",
@@ -66,8 +88,8 @@ class ModelManagementServicerImpl:
 
         # Deploy the model to the model manager
         loaded_model = self._model_manager.deploy_model(
-            model_id=request.model_id,
-            model_files={f.filename: f.data for f in request.model_files},
+            model_id=model_id,
+            model_files=model_files,
             wait=False,
         )
 
@@ -77,18 +99,14 @@ class ModelManagementServicerImpl:
             name=loaded_model.id(),
             size=loaded_model.size(),
             loaded=loaded_model.loaded(),
-        ).to_proto()
+        )
 
-    def UndeployModel(
-        self,
-        request: UndeployModelRequestProto,  # type: ignore
-        context: grpc.RpcContext,  # pylint: disable=unused-argument
-    ) -> UndeployModelRequestProto:  # type: ignore
+    def undeploy_model(self, model_id: str) -> UndeployModelRequest:
         """Un-deploy a model to the runtime"""
-        if not request.model_id:
+        if not model_id:
             raise CaikitRuntimeException(
                 grpc.StatusCode.INVALID_ARGUMENT,
                 "Must provide model_id",
             )
-        self._model_manager.undeploy_model(request.model_id)
-        return UndeployModelRequestProto(model_id=request.model_id)
+        self._model_manager.undeploy_model(model_id)
+        return UndeployModelRequest(model_id)

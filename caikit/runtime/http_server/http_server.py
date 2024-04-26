@@ -363,6 +363,76 @@ class RuntimeHTTPServer(RuntimeServerBase):
         log.debug4("Server healthy")
         return "OK"
 
+    async def _deploy_model(self, context: Request) -> Response:
+        """POST handler for deploying a model"""
+        assert hasattr(
+            self, "_deploy_pydantic_request"
+        ), "Cannot call _deploy_model without _bind_model_management_routes"
+        try:
+            request = await pydantic_from_request(
+                self._deploy_pydantic_request, context
+            )
+            result = self.model_management_servicer.deploy_model(
+                request.model_id,
+                {f.filename: f.data for f in request.model_files},
+            )
+            return Response(
+                content=result.to_json(),
+                media_type="application/json",
+            )
+        except Exception as err:
+            if error_content := self._handle_exception(err):
+                return Response(
+                    content=json.dumps(error_content),
+                    status_code=error_content["code"],
+                )
+            raise
+
+    async def _undeploy_model(self, model_id: Annotated[str, Query]) -> Response:
+        """DELETE handler for undeploying a model"""
+        try:
+            result = self.model_management_servicer.undeploy_model(model_id)
+            return Response(content=result.to_json(), media_type="application/json")
+        except Exception as err:
+            if error_content := self._handle_exception(err):
+                return Response(
+                    content=json.dumps(error_content),
+                    status_code=error_content["code"],
+                )
+            raise
+
+    def _get_training_status(self, training_id: Annotated[str, Query]) -> Response:
+        """GET handler for fetching a training"""
+        try:
+            result = self.training_management_servicer.get_training_status(training_id)
+            return Response(
+                content=result.to_json(),
+                media_type="application/json",
+            )
+        except Exception as err:
+            if error_content := self._handle_exception(err):
+                return Response(
+                    content=json.dumps(error_content),
+                    status_code=error_content["code"],
+                )
+            raise
+
+    def _cancel_training(self, training_id: Annotated[str, Query]) -> Response:
+        """DELETE handler for undeploying a model"""
+        try:
+            result = self.training_management_servicer.cancel_training(training_id)
+            return Response(
+                content=result.to_json(),
+                media_type="application/json",
+            )
+        except Exception as err:
+            if error_content := self._handle_exception(err):
+                return Response(
+                    content=json.dumps(error_content),
+                    status_code=error_content["code"],
+                )
+            raise
+
     #####################
     ## Request Binding ##
     #####################
@@ -403,37 +473,23 @@ class RuntimeHTTPServer(RuntimeServerBase):
         )
         deploy_pydantic_response = dataobject_to_pydantic(deploy_dataobject_response)
 
-        @self.app.post(
+        # Bind deploy_model
+        # NOTE: The deploy_pydantic_request must be bound to `self` so that it
+        #   it does not need to be bound to the `_deploy_model` function which
+        #   is hard since its async.
+        self._deploy_pydantic_request = deploy_pydantic_request
+        self.app.post(
             MODEL_MANAGEMENT_ENDPOINT,
             responses=self._get_response_openapi(
                 deploy_dataobject_response, deploy_pydantic_response
             ),
             openapi_extra=self._get_request_openapi(deploy_pydantic_request),
             response_class=Response,
-        )
-        async def _deploy_model(context: Request) -> Response:
-            """POST handler for deploying a model"""
-            try:
-                request = await pydantic_from_request(deploy_pydantic_request, context)
-                result = self.model_management_servicer.DeployModel(request, None)
-                return Response(
-                    content=deploy_dataobject_response.from_proto(result).to_json(),
-                    media_type="application/json",
-                )
-            except Exception as err:
-                if error_content := self._handle_exception(err):
-                    return Response(
-                        content=json.dumps(error_content),
-                        status_code=error_content["code"],
-                    )
-                raise
+        )(self._deploy_model)
 
         # Bind DELETE to undeploy a model
         undeploy_spec = MODEL_MANAGEMENT_SERVICE_SPEC["service"]["rpcs"][1]
         assert undeploy_spec["name"] == "UndeployModel"
-        undeploy_dataobject_request = DataBase.get_class_for_name(
-            undeploy_spec["input_type"]
-        )
         undeploy_dataobject_response = DataBase.get_class_for_name(
             undeploy_spec["output_type"]
         )
@@ -441,30 +497,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
             undeploy_dataobject_response
         )
 
-        @self.app.delete(
+        self.app.delete(
             MODEL_MANAGEMENT_ENDPOINT,
             responses=self._get_response_openapi(
                 undeploy_dataobject_response, undeploy_pydantic_response
             ),
             response_class=Response,
-        )
-        def _undeploy_model(model_id: Annotated[str, Query]) -> Response:
-            """DELETE handler for undeploying a model"""
-            try:
-                result = self.model_management_servicer.UndeployModel(
-                    undeploy_dataobject_request(model_id).to_proto(), None
-                )
-                return Response(
-                    content=undeploy_dataobject_response.from_proto(result).to_json(),
-                    media_type="application/json",
-                )
-            except Exception as err:
-                if error_content := self._handle_exception(err):
-                    return Response(
-                        content=json.dumps(error_content),
-                        status_code=error_content["code"],
-                    )
-                raise
+        )(self._undeploy_model)
 
     def _bind_training_management_routes(self):
         """Bind the routes for get/cancel trainings"""
@@ -472,70 +511,32 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Bind GET to fetch a training
         get_spec = TRAINING_MANAGEMENT_SERVICE_SPEC["service"]["rpcs"][0]
         assert get_spec["name"] == "GetTrainingStatus"
-        get_dataobject_request = DataBase.get_class_for_name(get_spec["input_type"])
         get_dataobject_response = DataBase.get_class_for_name(get_spec["output_type"])
         get_pydantic_response = dataobject_to_pydantic(get_dataobject_response)
 
-        @self.app.get(
+        self.app.get(
             TRAINING_MANAGEMENT_ENDPOINT,
             responses=self._get_response_openapi(
                 get_dataobject_response, get_pydantic_response
             ),
             response_class=Response,
-        )
-        def _get_training(training_id: Annotated[str, Query]) -> Response:
-            """GET handler for fetching a training"""
-            try:
-                result = self.training_management_servicer.GetTrainingStatus(
-                    get_dataobject_request(training_id).to_proto(), None
-                )
-                return Response(
-                    content=get_dataobject_response.from_proto(result).to_json(),
-                    media_type="application/json",
-                )
-            except Exception as err:
-                if error_content := self._handle_exception(err):
-                    return Response(
-                        content=json.dumps(error_content),
-                        status_code=error_content["code"],
-                    )
-                raise
+        )(self._get_training_status)
 
         # Bind DELETE to cancel a training
         cancel_spec = TRAINING_MANAGEMENT_SERVICE_SPEC["service"]["rpcs"][1]
         assert cancel_spec["name"] == "CancelTraining"
-        cancel_dataobject_request = DataBase.get_class_for_name(
-            cancel_spec["input_type"]
-        )
         cancel_dataobject_response = DataBase.get_class_for_name(
             cancel_spec["output_type"]
         )
         cancel_pydantic_response = dataobject_to_pydantic(cancel_dataobject_response)
 
-        @self.app.delete(
+        self.app.delete(
             TRAINING_MANAGEMENT_ENDPOINT,
             responses=self._get_response_openapi(
                 cancel_dataobject_response, cancel_pydantic_response
             ),
             response_class=Response,
-        )
-        def _cancel_training(training_id: Annotated[str, Query]) -> Response:
-            """DELETE handler for undeploying a model"""
-            try:
-                result = self.training_management_servicer.CancelTraining(
-                    cancel_dataobject_request(training_id).to_proto(), None
-                )
-                return Response(
-                    content=cancel_dataobject_response.from_proto(result).to_json(),
-                    media_type="application/json",
-                )
-            except Exception as err:
-                if error_content := self._handle_exception(err):
-                    return Response(
-                        content=json.dumps(error_content),
-                        status_code=error_content["code"],
-                    )
-                raise
+        )(self._cancel_training)
 
     def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
