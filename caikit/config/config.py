@@ -105,12 +105,7 @@ def _merge_extra_files(config: aconfig.Config) -> aconfig.Config:
             )
         ]
         for file in extra_config_files:
-            log.info(
-                {
-                    "log_code": "<RUN17612094I>",
-                    "message": "Loading config file '%s'" % file,
-                }
-            )
+            log.info("<RUN17612094I>", "Loading config file '%s'", file)
             new_overrides = aconfig.Config.from_yaml(file, override_env_vars=True)
             config = merge_configs(
                 config, new_overrides, _get_merge_strategy(new_overrides)

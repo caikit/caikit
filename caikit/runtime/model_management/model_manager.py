@@ -377,8 +377,8 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         """
         if not model_id or model_id not in self.loaded_models:
             msg = (
-                "Unable to retrieve the size of model '%s'; it is unregistered or unloaded."
-                % model_id
+                f"Unable to retrieve the size of model '{model_id}'; "
+                "it is unregistered or unloaded."
             )
             log.debug(msg)
             raise CaikitRuntimeException(
