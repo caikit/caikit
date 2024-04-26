@@ -41,7 +41,10 @@ import alog
 # Local
 from caikit import get_config
 from caikit.core.data_model.producer import ProducerId
+from caikit.interfaces.common.data_model import File
 from caikit.interfaces.runtime.data_model import (
+    DeployModelRequest,
+    ModelInfo,
     ModelInfoRequest,
     ModelInfoResponse,
     RuntimeInfoRequest,
@@ -49,6 +52,7 @@ from caikit.interfaces.runtime.data_model import (
     TrainingInfoRequest,
     TrainingJob,
     TrainingStatusResponse,
+    UndeployModelRequest,
 )
 from caikit.runtime import (
     get_inference_request,
@@ -82,9 +86,13 @@ from tests.runtime.conftest import (
     KeyPair,
     ModuleSubproc,
     TLSConfig,
+    deploy_good_model_files,
     get_open_port,
     register_trained_model,
     runtime_grpc_test_server,
+)
+from tests.runtime.model_management.test_model_manager import (
+    non_singleton_model_managers,
 )
 import caikit.interfaces.common
 
@@ -1221,12 +1229,11 @@ def test_mtls_different_root(open_port):
 
 
 @pytest.mark.parametrize(
-    "enabled_services",
+    ["enable_inference", "enable_training"],
     [(True, False), (False, True), (False, False)],
 )
-def test_services_disabled(open_port, enabled_services):
+def test_services_disabled(open_port, enable_inference, enable_training):
     """Boot up a server with different combinations of services disabled"""
-    enable_inference, enable_training = enabled_services
     with temp_config(
         {
             "runtime": {
@@ -1241,12 +1248,24 @@ def test_services_disabled(open_port, enabled_services):
         with runtime_grpc_test_server(open_port) as server:
             _assert_connection(server.make_local_channel())
             assert server.enable_inference == enable_inference
-            assert (server._global_predict_servicer and enable_inference) or (
-                server._global_predict_servicer is None and not enable_inference
+            assert (
+                server._global_predict_servicer
+                and server.model_management_service
+                and enable_inference
+            ) or (
+                server._global_predict_servicer is None
+                and server.model_management_service is None
+                and not enable_inference
             )
             assert server.enable_training == enable_training
-            assert (server.training_service and enable_training) or (
-                server.training_service is None and not enable_training
+            assert (
+                server.training_service
+                and server.training_management_service
+                and enable_training
+            ) or (
+                server.training_service is None
+                and server.training_management_service is None
+                and not enable_training
             )
 
 
@@ -1518,6 +1537,92 @@ def test_grpc_server_socket_listen():
                     actual_response.status
                     == model_runtime_pb2.RuntimeStatusResponse.READY
                 )
+
+
+def test_grpc_server_model_management_lifecycle(
+    open_port, sample_inference_service, deploy_good_model_files
+):
+    """Test that models can be deployed/undeployed and reflect in the
+    local_models_dir
+    """
+    info_service = ServicePackageFactory().get_service_package(
+        ServicePackageFactory.ServiceType.INFO,
+    )
+    model_management_service = ServicePackageFactory().get_service_package(
+        ServicePackageFactory.ServiceType.MODEL_MANAGEMENT,
+    )
+    with tempfile.TemporaryDirectory() as workdir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": workdir,
+                    "lazy_load_local_models": True,
+                },
+            },
+            "merge",
+        ):
+            with runtime_grpc_test_server(open_port) as server:
+                local_channel = server.make_local_channel()
+                _assert_connection(local_channel)
+                info_stub = info_service.stub_class(local_channel)
+                mm_stub = model_management_service.stub_class(local_channel)
+                inf_stub = sample_inference_service.stub_class(local_channel)
+
+                # Make sure no models loaded initially
+                resp = ModelInfoResponse.from_proto(
+                    info_stub.GetModelsInfo(ModelInfoRequest().to_proto())
+                )
+                assert len(resp.models) == 0
+
+                # Do the deploy
+                model_id = "my-model"
+                deploy_req = DeployModelRequest(
+                    model_id=model_id,
+                    model_files=[
+                        File(filename=fname, data=data)
+                        for fname, data in deploy_good_model_files.items()
+                    ],
+                )
+                deploy_resp = ModelInfo.from_proto(
+                    mm_stub.DeployModel(deploy_req.to_proto())
+                )
+                assert deploy_resp.name == model_id
+                model_path = os.path.join(workdir, model_id)
+                assert deploy_resp.model_path == model_path
+                assert os.path.isdir(model_path)
+
+                # Call inference on the model
+                inf_resp = inf_stub.SampleTaskPredict(
+                    get_inference_request(SampleTask)(
+                        sample_input=HAPPY_PATH_INPUT_DM
+                    ).to_proto(),
+                    metadata=[("mm-model-id", model_id)],
+                )
+                assert inf_resp == HAPPY_PATH_RESPONSE
+
+                # Make sure model shows as loaded
+                resp = ModelInfoResponse.from_proto(
+                    info_stub.GetModelsInfo(ModelInfoRequest().to_proto())
+                )
+                assert len(resp.models) == 1
+                assert resp.models[0].name == model_id
+
+                # Make sure an appropriate error is raised for trying to deploy
+                # the same model again
+                with pytest.raises(grpc.RpcError) as excinfo:
+                    mm_stub.DeployModel(deploy_req.to_proto())
+                assert excinfo.value.code() == grpc.StatusCode.ALREADY_EXISTS
+
+                # Undeploy the model
+                undeploy_req = UndeployModelRequest(model_id).to_proto()
+                resp = mm_stub.UndeployModel(undeploy_req)
+                assert resp.model_id
+
+                # Make sure undeploying a second time is NOT_FOUND
+                with pytest.raises(grpc.RpcError) as excinfo:
+                    mm_stub.UndeployModel(undeploy_req)
+                assert excinfo.value.code() == grpc.StatusCode.NOT_FOUND
 
 
 # Test implementation details #########################

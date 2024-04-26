@@ -28,10 +28,7 @@ from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
     CaikitCoreStatusCode,
 )
-from caikit.interfaces.runtime.data_model import (
-    TrainingInfoRequest,
-    TrainingStatusResponse,
-)
+from caikit.interfaces.runtime.data_model import TrainingStatusResponse
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.servicer_util import raise_caikit_runtime_exception
 
@@ -42,12 +39,25 @@ class TrainingManagementServicerImpl:
     """This class contains the implementation of all of the RPCs that are required to run a
     service in Model Mesh as a Model-Runtime."""
 
+    #######################
+    ## gRPC Service Impl ##
+    #######################
+
     def GetTrainingStatus(self, request, context):  # pylint: disable=unused-argument
         """Get the status of a training by ID"""
-        training_info_request = TrainingInfoRequest.from_proto(request)
-        model_future = self._get_model_future(
-            training_info_request.training_id, operation="get_status"
-        )
+        return self.get_training_status(request.training_id).to_proto()
+
+    def CancelTraining(self, request, context):  # pylint: disable=unused-argument
+        """Cancel a training future."""
+        return self.cancel_training(request.training_id).to_proto()
+
+    ####################################
+    ## Interface-agnostic entrypoints ##
+    ####################################
+
+    def get_training_status(self, training_id: str) -> TrainingStatusResponse:
+        """Get the status of a training by ID"""
+        model_future = self._get_model_future(training_id, operation="get_status")
         try:
             reasons = []
             training_info = model_future.get_info()
@@ -55,28 +65,25 @@ class TrainingManagementServicerImpl:
                 reasons = [str(error) for error in training_info.errors]
 
             return TrainingStatusResponse(
-                training_id=training_info_request.training_id,
+                training_id=training_id,
                 state=training_info.status,
                 reasons=reasons,
                 submission_timestamp=training_info.submission_time,
                 completion_timestamp=training_info.completion_time,
-            ).to_proto()
+            )
         except CaikitCoreException as err:
             raise_caikit_runtime_exception(exception=err)
         except Exception as err:
             raise CaikitRuntimeException(
                 grpc.StatusCode.INTERNAL,
                 "Failed to get status for training id {}".format(
-                    training_info_request.training_id,
+                    training_id,
                 ),
             ) from err
 
-    def CancelTraining(self, request, context):  # pylint: disable=unused-argument
+    def cancel_training(self, training_id: str) -> TrainingStatusResponse:
         """Cancel a training future."""
-        training_info_request = TrainingInfoRequest.from_proto(request)
-        model_future = self._get_model_future(
-            training_info_request.training_id, operation="cancel"
-        )
+        model_future = self._get_model_future(training_id, operation="cancel")
         try:
             model_future.cancel()
             training_info = model_future.get_info()
@@ -89,7 +96,7 @@ class TrainingManagementServicerImpl:
                 training_id=model_future.id,
                 state=training_info.status,
                 reasons=reasons,
-            ).to_proto()
+            )
         except CaikitCoreException as err:
             # In the case that we get a `NOT_FOUND`, we assume that the training was canceled.
             # This is to handle stateful trainers that implement `cancel` by fully deleting
@@ -97,22 +104,26 @@ class TrainingManagementServicerImpl:
             # would raise a not found error to the user.
             if err.status_code == CaikitCoreStatusCode.NOT_FOUND:
                 return TrainingStatusResponse(
-                    training_id=training_info_request.training_id,
+                    training_id=training_id,
                     state=TrainingStatus.CANCELED,
-                ).to_proto()
+                )
             raise_caikit_runtime_exception(exception=err)
         except Exception as err:
             log.debug2(
                 "Unexpected error trying to cancel training id %s: [%s]",
-                training_info_request.training_id,
+                training_id,
                 err,
             )
             raise CaikitRuntimeException(
                 grpc.StatusCode.INTERNAL,
                 "Failed to cancel training id {}".format(
-                    training_info_request.training_id,
+                    training_id,
                 ),
             ) from err
+
+    ############################
+    ## Implementation Details ##
+    ############################
 
     @staticmethod
     def _get_model_future(training_id: str, operation: str):

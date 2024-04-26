@@ -69,11 +69,15 @@ from caikit.core.toolkit.sync_to_async import async_wrap_iter
 from caikit.runtime.names import (
     HEALTH_ENDPOINT,
     MODEL_ID,
+    MODEL_MANAGEMENT_ENDPOINT,
+    MODEL_MANAGEMENT_SERVICE_SPEC,
     MODELS_INFO_ENDPOINT,
     OPTIONAL_INPUTS_KEY,
     REQUIRED_INPUTS_KEY,
     RUNTIME_INFO_ENDPOINT,
     STATUS_CODE_TO_HTTP,
+    TRAINING_MANAGEMENT_ENDPOINT,
+    TRAINING_MANAGEMENT_SERVICE_SPEC,
     StreamEventTypes,
     get_http_route_name,
 )
@@ -87,6 +91,12 @@ from caikit.runtime.service_generation.rpcs import (
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.servicers.info_servicer import InfoServicer
+from caikit.runtime.servicers.model_management_servicer import (
+    ModelManagementServicerImpl,
+)
+from caikit.runtime.servicers.training_management_servicer import (
+    TrainingManagementServicerImpl,
+)
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 ## Globals #####################################################################
@@ -152,7 +162,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Placeholders for global servicers
         self.global_predict_servicer = None
         self.global_train_servicer = None
+        self.model_management_servicer = None
+        self.training_management_servicer = None
         self.info_servicer = InfoServicer()
+
+        # NOTE: The order that the modules are bound is directly reflected in
+        #   the swagger UI, so we intentionally bind inference, training,
+        #   management, info, then health.
 
         # Set up inference if enabled
         if self.enable_inference:
@@ -168,18 +184,25 @@ class RuntimeHTTPServer(RuntimeServerBase):
             self.global_train_servicer = GlobalTrainServicer(self.training_service)
             self._bind_routes(self.training_service)
 
-        # Add the health endpoint
-        self.app.get(HEALTH_ENDPOINT, response_class=PlainTextResponse)(
-            self._health_check
-        )
+        # Set up management services
+        if self.enable_inference:
+            self.model_management_servicer = ModelManagementServicerImpl()
+            self._bind_model_management_routes()
+        if self.enable_training:
+            self.training_management_servicer = TrainingManagementServicerImpl()
+            self._bind_training_management_routes()
 
         # Add runtime info endpoints
         self.app.get(RUNTIME_INFO_ENDPOINT, response_class=JSONResponse)(
             self.info_servicer.get_version_dict
         )
-
         self.app.get(MODELS_INFO_ENDPOINT, response_class=JSONResponse)(
             self._model_info
+        )
+
+        # Add the health endpoint
+        self.app.get(HEALTH_ENDPOINT, response_class=PlainTextResponse)(
+            self._health_check
         )
 
         # Parse TLS configuration
@@ -318,19 +341,104 @@ class RuntimeHTTPServer(RuntimeServerBase):
         if self.interrupter:
             self.interrupter.stop()
 
-    ##########
-    ## Impl ##
-    ##########
+    ######################
+    ## Static Endpoints ##
+    ######################
 
-    def _run_in_thread(self):
-        self._uvicorn_server_thread = threading.Thread(target=self.server.run)
-        self._uvicorn_server_thread.start()
-        while not self.server.started:
-            time.sleep(1e-3)
-        log.info("HTTP Server is running in thread")
+    def _model_info(
+        self, model_ids: Annotated[List[str], Query(default_factory=list)]
+    ) -> Dict[str, Any]:
+        """Create wrapper for get_models_info so model_ids can be marked as a query parameter"""
+        try:
+            return self.info_servicer.get_models_info_dict(model_ids)
+        except Exception as err:
+            if error_content := self._handle_exception(err):
+                return Response(
+                    content=json.dumps(error_content), status_code=error_content["code"]
+                )
+            raise
+
+    @staticmethod
+    def _health_check() -> str:
+        log.debug4("Server healthy")
+        return "OK"
+
+    async def _deploy_model(self, context: Request) -> Response:
+        """POST handler for deploying a model"""
+        assert hasattr(
+            self, "_deploy_pydantic_request"
+        ), "Cannot call _deploy_model without _bind_model_management_routes"
+        try:
+            request = await pydantic_from_request(
+                self._deploy_pydantic_request, context
+            )
+            result = self.model_management_servicer.deploy_model(
+                request.model_id,
+                {f.filename: f.data for f in request.model_files},
+            )
+            return Response(
+                content=result.to_json(),
+                media_type="application/json",
+            )
+        except Exception as err:
+            if error_content := self._handle_exception(err):
+                return Response(
+                    content=json.dumps(error_content),
+                    status_code=error_content["code"],
+                )
+            raise
+
+    async def _undeploy_model(self, model_id: Annotated[str, Query]) -> Response:
+        """DELETE handler for undeploying a model"""
+        try:
+            result = self.model_management_servicer.undeploy_model(model_id)
+            return Response(content=result.to_json(), media_type="application/json")
+        except Exception as err:
+            if error_content := self._handle_exception(err):
+                return Response(
+                    content=json.dumps(error_content),
+                    status_code=error_content["code"],
+                )
+            raise
+
+    def _get_training_status(self, training_id: Annotated[str, Query]) -> Response:
+        """GET handler for fetching a training"""
+        try:
+            result = self.training_management_servicer.get_training_status(training_id)
+            return Response(
+                content=result.to_json(),
+                media_type="application/json",
+            )
+        except Exception as err:
+            if error_content := self._handle_exception(err):
+                return Response(
+                    content=json.dumps(error_content),
+                    status_code=error_content["code"],
+                )
+            raise
+
+    def _cancel_training(self, training_id: Annotated[str, Query]) -> Response:
+        """DELETE handler for undeploying a model"""
+        try:
+            result = self.training_management_servicer.cancel_training(training_id)
+            return Response(
+                content=result.to_json(),
+                media_type="application/json",
+            )
+        except Exception as err:
+            if error_content := self._handle_exception(err):
+                return Response(
+                    content=json.dumps(error_content),
+                    status_code=error_content["code"],
+                )
+            raise
+
+    #####################
+    ## Request Binding ##
+    #####################
 
     def _bind_routes(self, service: ServicePackage):
-        """Bind all rpcs as routes to the given app"""
+        """Bind all caikit rpcs as routes to the given app"""
         for rpc in service.caikit_rpcs.values():
             rpc_info = rpc.create_rpc_json("")
             if isinstance(rpc, TaskPredictRPC):
@@ -350,49 +458,85 @@ class RuntimeHTTPServer(RuntimeServerBase):
             elif isinstance(rpc, ModuleClassTrainRPC):
                 self._train_add_unary_input_unary_output_handler(rpc)
 
-    def _get_model_id(self, request: Type[pydantic.BaseModel]) -> str:
-        """Get the model id from the payload"""
-        request_kwargs = dict(request)
-        model_id = request_kwargs.get(MODEL_ID)
-        if model_id is None:
-            raise CaikitRuntimeException(
-                status_code=StatusCode.INVALID_ARGUMENT,
-                message="Please provide model_id in payload",
-            )
-        return model_id
+    def _bind_model_management_routes(self):
+        """Bind the routes for deploy/undeploy"""
 
-    def _get_request_params(
-        self, rpc: CaikitRPCBase, request: Type[pydantic.BaseModel]
-    ) -> Dict[str, Any]:
-        """Get the request params based on the RPC's req params, also
-        convert to DM objects"""
-        request_kwargs = dict(request)
-        input_name = None
-        required_params = None
-        if isinstance(rpc, TaskPredictRPC):
-            required_params = rpc.task.get_required_parameters(rpc.input_streaming)
-        # handle required param input name
-        if required_params and len(required_params) == 1:
-            input_name = list(required_params.keys())[0]
-        # flatten inputs and params into a dict
-        # would have been useful to call dataobject.to_dict()
-        # but unfortunately we now have converted pydantic objects
-        combined_dict = {}
-        for field, value in request_kwargs.items():
-            if field == MODEL_ID:
-                continue
-            if value:
-                if field == REQUIRED_INPUTS_KEY and input_name:
-                    combined_dict[input_name] = value
-                else:
-                    combined_dict.update(**dict(request_kwargs[field]))
-        # remove non-none items
-        request_params = {k: v for k, v in combined_dict.items() if v is not None}
-        # convert pydantic objects to our DM objects
-        for param_name, param_value in request_params.items():
-            if issubclass(type(param_value), pydantic.BaseModel):
-                request_params[param_name] = pydantic_to_dataobject(param_value)
-        return request_params
+        # Bind POST to deploy a model
+        deploy_spec = MODEL_MANAGEMENT_SERVICE_SPEC["service"]["rpcs"][0]
+        assert deploy_spec["name"] == "DeployModel"
+        deploy_dataobject_request = DataBase.get_class_for_name(
+            deploy_spec["input_type"]
+        )
+        deploy_pydantic_request = dataobject_to_pydantic(deploy_dataobject_request)
+        deploy_dataobject_response = DataBase.get_class_for_name(
+            deploy_spec["output_type"]
+        )
+        deploy_pydantic_response = dataobject_to_pydantic(deploy_dataobject_response)
+
+        # Bind deploy_model
+        # NOTE: The deploy_pydantic_request must be bound to `self` so that it
+        #   it does not need to be bound to the `_deploy_model` function which
+        #   is hard since its async.
+        self._deploy_pydantic_request = deploy_pydantic_request
+        self.app.post(
+            MODEL_MANAGEMENT_ENDPOINT,
+            responses=self._get_response_openapi(
+                deploy_dataobject_response, deploy_pydantic_response
+            ),
+            openapi_extra=self._get_request_openapi(deploy_pydantic_request),
+            response_class=Response,
+        )(self._deploy_model)
+
+        # Bind DELETE to undeploy a model
+        undeploy_spec = MODEL_MANAGEMENT_SERVICE_SPEC["service"]["rpcs"][1]
+        assert undeploy_spec["name"] == "UndeployModel"
+        undeploy_dataobject_response = DataBase.get_class_for_name(
+            undeploy_spec["output_type"]
+        )
+        undeploy_pydantic_response = dataobject_to_pydantic(
+            undeploy_dataobject_response
+        )
+
+        self.app.delete(
+            MODEL_MANAGEMENT_ENDPOINT,
+            responses=self._get_response_openapi(
+                undeploy_dataobject_response, undeploy_pydantic_response
+            ),
+            response_class=Response,
+        )(self._undeploy_model)
+
+    def _bind_training_management_routes(self):
+        """Bind the routes for get/cancel trainings"""
+
+        # Bind GET to fetch a training
+        get_spec = TRAINING_MANAGEMENT_SERVICE_SPEC["service"]["rpcs"][0]
+        assert get_spec["name"] == "GetTrainingStatus"
+        get_dataobject_response = DataBase.get_class_for_name(get_spec["output_type"])
+        get_pydantic_response = dataobject_to_pydantic(get_dataobject_response)
+
+        self.app.get(
+            TRAINING_MANAGEMENT_ENDPOINT,
+            responses=self._get_response_openapi(
+                get_dataobject_response, get_pydantic_response
+            ),
+            response_class=Response,
+        )(self._get_training_status)
+
+        # Bind DELETE to cancel a training
+        cancel_spec = TRAINING_MANAGEMENT_SERVICE_SPEC["service"]["rpcs"][1]
+        assert cancel_spec["name"] == "CancelTraining"
+        cancel_dataobject_response = DataBase.get_class_for_name(
+            cancel_spec["output_type"]
+        )
+        cancel_pydantic_response = dataobject_to_pydantic(cancel_dataobject_response)
+
+        self.app.delete(
+            TRAINING_MANAGEMENT_ENDPOINT,
+            responses=self._get_response_openapi(
+                cancel_dataobject_response, cancel_pydantic_response
+            ),
+            response_class=Response,
+        )(self._cancel_training)
 
     def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
@@ -433,29 +577,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     return self._format_file_response(result)
 
                 return Response(content=result.to_json(), media_type="application/json")
-            except RequestValidationError as err:
-                raise err
-            except HTTPException as err:
-                raise err
-            except (CaikitCoreException, CaikitRuntimeException) as err:
-                error_code = STATUS_CODE_TO_HTTP.get(err.status_code, 500)
-                error_content = {
-                    "details": err.message,
-                    "code": error_code,
-                    "id": err.id,
-                }
-                log.error("<RUN87691106E>", error_content, exc_info=True)
-            except Exception as err:  # pylint: disable=broad-exception-caught
-                error_code = 500
-                error_content = {
-                    "details": f"Unhandled exception: {str(err)}",
-                    "code": error_code,
-                    "id": uuid.uuid4().hex,
-                }
-                log.error("<RUN51231106E>", error_content, exc_info=True)
-            return Response(
-                content=json.dumps(error_content), status_code=error_code
-            )  # pylint: disable=used-before-assignment
+            except Exception as err:
+                if error_content := self._handle_exception(err):
+                    return Response(
+                        content=json.dumps(error_content),
+                        status_code=error_content["code"],
+                    )
+                raise
 
     def _add_unary_input_unary_output_handler(self, rpc: TaskPredictRPC):
         """Add a unary:unary request handler for this RPC signature"""
@@ -517,29 +645,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
                 return Response(content=result.to_json(), media_type="application/json")
 
-            except HTTPException as err:
-                raise err
-            except RequestValidationError as err:
-                raise err
-            except (CaikitCoreException, CaikitRuntimeException) as err:
-                error_code = STATUS_CODE_TO_HTTP.get(err.status_code, 500)
-                error_content = {
-                    "details": err.message,
-                    "code": error_code,
-                    "id": err.id,
-                }
-                log.error("<RUN53211098E>", error_content, exc_info=True)
-            except Exception as err:  # pylint: disable=broad-exception-caught
-                error_code = 500
-                error_content = {
-                    "details": f"Unhandled exception: {str(err)}",
-                    "code": error_code,
-                    "id": uuid.uuid4().hex,
-                }
-                log.error("<RUN98751106E>", error_content, exc_info=True)
-            return Response(
-                content=json.dumps(error_content), status_code=error_code
-            )  # pylint: disable=used-before-assignment
+            except Exception as err:
+                if error_content := self._handle_exception(err):
+                    return Response(
+                        content=json.dumps(error_content),
+                        status_code=error_content["code"],
+                    )
+                raise
 
     def _add_unary_input_stream_output_handler(self, rpc: CaikitRPCBase):
         pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
@@ -590,10 +702,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                             )
 
                     return
-                except HTTPException as err:
-                    raise err
-                except RequestValidationError as err:
-                    raise err
                 except (TypeError, ValueError) as err:
                     log_dict = {
                         "log_code": "<RUN76624264W>",
@@ -607,29 +715,104 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         "code": error_code,
                         "id": uuid.uuid4().hex,
                     }
-                except (CaikitCoreException, CaikitRuntimeException) as err:
-                    error_code = STATUS_CODE_TO_HTTP.get(err.status_code, 500)
-                    error_content = {
-                        "details": err.message,
-                        "code": error_code,
-                        "id": err.id,
-                    }
-                    log.error("<RUN53234506E>", error_content, exc_info=True)
-                except Exception as err:  # pylint: disable=broad-exception-caught
-                    error_code = 500
-                    error_content = {
-                        "details": f"Unhandled exception: {str(err)}",
-                        "code": error_code,
-                        "id": uuid.uuid4().hex,
-                    }
-                    log.error("<RUN51891206E>", error_content, exc_info=True)
-
-                # If an error occurs, yield an error response and terminate
+                except Exception as err:
+                    if (error_content := self._handle_exception(err)) is None:
+                        raise
                 yield ServerSentEvent(
                     data=json.dumps(error_content), event=StreamEventTypes.ERROR.value
                 )
 
             return EventSourceResponse(_generator())
+
+    #############
+    ## Helpers ##
+    #############
+
+    @staticmethod
+    def _handle_exception(err: Exception) -> Optional[dict]:
+        """Common exception handling. This function will return a dict with
+        "id," "code," and "details" if the exception should be handled with a
+        returned error body. If None is returned, the exception should be
+        re-raised.
+        """
+        # Native FastAPI exceptions should be reraised directly
+        if isinstance(
+            err, (HTTPException, RequestValidationError, ResponseValidationError)
+        ):
+            return None
+
+        # Convert caikit exceptions to error bodies
+        if isinstance(err, (CaikitCoreException, CaikitRuntimeException)):
+            error_code = STATUS_CODE_TO_HTTP.get(err.status_code, 500)
+            error_content = {
+                "details": err.message,
+                "code": error_code,
+                "id": err.id,
+            }
+            log.error("<RUN87691106E>", error_content, exc_info=True)
+            return error_content
+
+        # Other exceptions are 500s
+        error_code = 500
+        error_content = {
+            "details": f"Unhandled exception: {str(err)}",
+            "code": error_code,
+            "id": uuid.uuid4().hex,
+        }
+        log.error("<RUN51231106E>", error_content, exc_info=True)
+        return error_content
+
+    def _run_in_thread(self):
+        """Run the server in an isolated thread"""
+        self._uvicorn_server_thread = threading.Thread(target=self.server.run)
+        self._uvicorn_server_thread.start()
+        while not self.server.started:
+            time.sleep(1e-3)
+        log.info("HTTP Server is running in thread")
+
+    def _get_model_id(self, request: Type[pydantic.BaseModel]) -> str:
+        """Get the model id from the payload"""
+        request_kwargs = dict(request)
+        model_id = request_kwargs.get(MODEL_ID)
+        if model_id is None:
+            raise CaikitRuntimeException(
+                status_code=StatusCode.INVALID_ARGUMENT,
+                message="Please provide model_id in payload",
+            )
+        return model_id
+
+    def _get_request_params(
+        self, rpc: CaikitRPCBase, request: Type[pydantic.BaseModel]
+    ) -> Dict[str, Any]:
+        """Get the request params based on the RPC's req params, also
+        convert to DM objects"""
+        request_kwargs = dict(request)
+        input_name = None
+        required_params = None
+        if isinstance(rpc, TaskPredictRPC):
+            required_params = rpc.task.get_required_parameters(rpc.input_streaming)
+        # handle required param input name
+        if required_params and len(required_params) == 1:
+            input_name = list(required_params.keys())[0]
+        # flatten inputs and params into a dict
+        # would have been useful to call dataobject.to_dict()
+        # but unfortunately we now have converted pydantic objects
+        combined_dict = {}
+        for field, value in request_kwargs.items():
+            if field == MODEL_ID:
+                continue
+            if value:
+                if field == REQUIRED_INPUTS_KEY and input_name:
+                    combined_dict[input_name] = value
+                else:
+                    combined_dict.update(**dict(request_kwargs[field]))
+        # remove non-none items
+        request_params = {k: v for k, v in combined_dict.items() if v is not None}
+        # convert pydantic objects to our DM objects
+        for param_name, param_value in request_params.items():
+            if issubclass(type(param_value), pydantic.BaseModel):
+                request_params[param_name] = pydantic_to_dataobject(param_value)
+        return request_params
 
     def _get_request_dataobject(self, rpc: CaikitRPCBase) -> Type[DataBase]:
         """Get the dataobject request for the given rpc"""
@@ -774,40 +957,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
         output = {200: {"content": response_schema}}
         return output
 
-    def _model_info(
-        self, model_ids: Annotated[List[str], Query(default_factory=list)]
-    ) -> Dict[str, Any]:
-        """Create wrapper for get_models_info so model_ids can be marked as a query parameter"""
-        try:
-            return self.info_servicer.get_models_info_dict(model_ids)
-        except HTTPException as err:
-            raise err
-        except CaikitRuntimeException as err:
-            error_code = STATUS_CODE_TO_HTTP.get(err.status_code, 500)
-            error_content = {
-                "details": err.message,
-                "code": error_code,
-                "id": err.id,
-            }
-            log.error("<RUN87691106E>", error_content, exc_info=True)
-            return error_content
-        except Exception as err:  # pylint: disable=broad-exception-caught
-            error_code = 500
-            error_content = {
-                "details": f"Unhandled exception: {str(err)}",
-                "code": error_code,
-                "id": uuid.uuid4().hex,
-            }
-            log.error("<RUN51231106E>", error_content, exc_info=True)
-            return error_content
-
-    @staticmethod
-    def _health_check() -> str:
-        log.debug4("Server healthy")
-        return "OK"
-
     @contextmanager
-    def _tls_files(self) -> _TlsFiles:
+    def _tls_files(self) -> Iterable[_TlsFiles]:
         """This contextmanager ensures that the tls config values are files on
         disk since SslContext requires files
 
@@ -874,6 +1025,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         self._add_signal_handler(signal.SIGINT, original_exit_handler)
         self._add_signal_handler(signal.SIGTERM, original_exit_handler)
         self.server.handle_exit = signal.getsignal(signal.SIGINT)
+
+
+## Main ########################################################################
 
 
 def main(blocking: bool = True):

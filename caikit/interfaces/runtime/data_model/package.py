@@ -11,14 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Package constant for all runtime service data model objects
+"""
 
 # Local
-from .http_server import (
-    HEALTH_ENDPOINT,
-    MODEL_MANAGEMENT_ENDPOINT,
-    MODELS_INFO_ENDPOINT,
-    RUNTIME_INFO_ENDPOINT,
-    TRAINING_MANAGEMENT_ENDPOINT,
-    RuntimeHTTPServer,
-)
-from .pydantic_wrapper import dataobject_to_pydantic, pydantic_to_dataobject
+from caikit.core.data_model import CAIKIT_DATA_MODEL
+
+RUNTIME_PACKAGE = f"{CAIKIT_DATA_MODEL}.runtime"

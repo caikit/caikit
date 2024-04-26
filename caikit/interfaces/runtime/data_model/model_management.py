@@ -11,39 +11,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+"""
+Data model objects for the model management service
+"""
 # Standard
-from datetime import datetime
 from typing import List
 
 # First Party
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
 
 # Local
-from ....core.data_model import DataObjectBase, TrainingStatus, dataobject
+from ....core.data_model import DataObjectBase, dataobject
+from ...common.data_model import File
 from .package import RUNTIME_PACKAGE
 
 
 @dataobject(RUNTIME_PACKAGE)
-class TrainingInfoRequest(DataObjectBase):
-    training_id: str
+class DeployModelRequest(DataObjectBase):
+    """Request to deploy a model"""
+
+    model_id: Annotated[str, FieldNumber(1)]
+    model_files: Annotated[List[File], FieldNumber(2)]
 
 
 @dataobject(RUNTIME_PACKAGE)
-class TrainingJob(DataObjectBase):
-    training_id: str
-    model_name: str
+class UndeployModelRequest(DataObjectBase):
+    """Request to undeploy a model"""
 
-
-@dataobject(RUNTIME_PACKAGE)
-class ModelPointer(DataObjectBase):
-    model_id: str
-
-
-@dataobject(RUNTIME_PACKAGE)
-class TrainingStatusResponse(DataObjectBase):
-    training_id: Annotated[str, FieldNumber(1)]
-    state: Annotated[TrainingStatus, FieldNumber(2)]
-    submission_timestamp: Annotated[datetime, FieldNumber(3)]
-    completion_timestamp: Annotated[datetime, FieldNumber(4)]
-    reasons: Annotated[List[str], FieldNumber(5)]
+    model_id: Annotated[str, FieldNumber(1)]

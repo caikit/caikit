@@ -42,6 +42,9 @@ from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.servicers.info_servicer import InfoServicer
+from caikit.runtime.servicers.model_management_servicer import (
+    ModelManagementServicerImpl,
+)
 from caikit.runtime.servicers.model_runtime_servicer import ModelRuntimeServicerImpl
 from caikit.runtime.servicers.model_train_servicer import ModelTrainServicerImpl
 from caikit.runtime.servicers.training_management_servicer import (
@@ -81,6 +84,8 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
         # Intercept an Inference Service
         self._global_predict_servicer = None
+        self.model_management_service = None
+        self.training_management_service = None
         if self.enable_inference:
             log.info("<RUN20247875I>", "Enabling gRPC inference service")
             self._global_predict_servicer = GlobalPredictServicer(
@@ -96,6 +101,17 @@ class RuntimeGRPCServer(RuntimeServerBase):
             # Register inference service
             self.inference_service.registration_function(
                 self.inference_service.service, self.server
+            )
+
+            # Register model management service
+            self.model_management_service: ServicePackage = (
+                ServicePackageFactory.get_service_package(
+                    ServicePackageFactory.ServiceType.MODEL_MANAGEMENT,
+                )
+            )
+            service_names.append(self.model_management_service.descriptor.full_name)
+            self.model_management_service.registration_function(
+                ModelManagementServicerImpl(), self.server
             )
 
         # And intercept a training service, if we have one

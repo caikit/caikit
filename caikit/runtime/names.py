@@ -33,14 +33,17 @@ from caikit.config import get_config
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreStatusCode
 from caikit.core.modules import ModuleBase
 from caikit.core.task import TaskBase
-from caikit.core.toolkit.name_tools import snake_to_upper_camel
+from caikit.core.toolkit.name_tools import camel_to_snake_case, snake_to_upper_camel
 from caikit.interfaces.runtime.data_model import (
+    DeployModelRequest,
+    ModelInfo,
     ModelInfoRequest,
     ModelInfoResponse,
     RuntimeInfoRequest,
     RuntimeInfoResponse,
     TrainingInfoRequest,
     TrainingStatusResponse,
+    UndeployModelRequest,
 )
 
 log = alog.use_channel("RNTM-NAMES")
@@ -56,6 +59,7 @@ class ServiceType(Enum):
     TRAINING = 2  # Training service for the GlobalTrainServicer
     TRAINING_MANAGEMENT = 3
     INFO = 4
+    MODEL_MANAGEMENT = 5
 
 
 ############################ Service Name Generation ###########################
@@ -94,7 +98,9 @@ def get_service_package_name(service_type: Optional[ServiceType] = None) -> str:
     if service_type == ServiceType.INFO:
         return INFO_SERVICE_PACKAGE
     elif service_type == ServiceType.TRAINING_MANAGEMENT:
-        return TRAINING_MANAGEMENT_PACKAGE
+        return TRAINING_MANAGEMENT_SERVICE_PACKAGE
+    elif service_type == ServiceType.MODEL_MANAGEMENT:
+        return MODEL_MANAGEMENT_SERVICE_PACKAGE
 
     caikit_config = get_config()
     ai_domain_name = get_ai_domain()
@@ -215,7 +221,7 @@ def get_task_predict_request_name(
 ##  Service Definitions
 
 TRAINING_MANAGEMENT_SERVICE_NAME = "TrainingManagement"
-TRAINING_MANAGEMENT_PACKAGE = "caikit.runtime.training"
+TRAINING_MANAGEMENT_SERVICE_PACKAGE = "caikit.runtime.training"
 TRAINING_MANAGEMENT_SERVICE_SPEC = {
     "service": {
         "rpcs": [
@@ -252,6 +258,25 @@ INFO_SERVICE_SPEC = {
     }
 }
 
+MODEL_MANAGEMENT_SERVICE_NAME = "ModelManagement"
+MODEL_MANAGEMENT_SERVICE_PACKAGE = "caikit.runtime.models"
+MODEL_MANAGEMENT_SERVICE_SPEC = {
+    "service": {
+        "rpcs": [
+            {
+                "name": "DeployModel",
+                "input_type": DeployModelRequest.get_proto_class().DESCRIPTOR.full_name,
+                "output_type": ModelInfo.get_proto_class().DESCRIPTOR.full_name,
+            },
+            {
+                "name": "UndeployModel",
+                "input_type": UndeployModelRequest.get_proto_class().DESCRIPTOR.full_name,
+                "output_type": UndeployModelRequest.get_proto_class().DESCRIPTOR.full_name,
+            },
+        ]
+    }
+}
+
 ################################# Server Names #################################
 
 # Invocation metadata key for the model ID, provided by Model Mesh
@@ -264,8 +289,14 @@ MODEL_MESH_MODEL_ID_KEY = "mm-model-id"
 HEALTH_ENDPOINT = "/health"
 
 # Endpoint to use for server info
-RUNTIME_INFO_ENDPOINT = "/info/version"
-MODELS_INFO_ENDPOINT = "/info/models"
+INFO_ENDPOINT = "/info"
+RUNTIME_INFO_ENDPOINT = f"{INFO_ENDPOINT}/version"
+MODELS_INFO_ENDPOINT = f"{INFO_ENDPOINT}/models"
+
+# Endpoints to use for resource management
+MANAGEMENT_ENDPOINT = "/management"
+MODEL_MANAGEMENT_ENDPOINT = f"{MANAGEMENT_ENDPOINT}/models"
+TRAINING_MANAGEMENT_ENDPOINT = f"{MANAGEMENT_ENDPOINT}/trainings"
 
 # These keys are used to define the logical sections of the request and response
 # data structures.
@@ -292,11 +323,10 @@ def get_http_route_name(rpc_name: str) -> str:
         str: The name of the http route for RPC
     """
     if rpc_name.endswith("Predict"):
-        task_name = re.sub(
-            r"(?<!^)(?=[A-Z])",
-            "-",
+        task_name = camel_to_snake_case(
             re.sub("Task$", "", re.sub("Predict$", "", rpc_name)),
-        ).lower()
+            kebab_case=True,
+        )
         route = "/".join([get_config().runtime.http.route_prefix, "task", task_name])
         if route[0] != "/":
             route = "/" + route

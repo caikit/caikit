@@ -5,10 +5,12 @@ __pycache__
 .coverage.*
 durations/*
 coverage*.xml
+coverage-*
 dist
 htmlcov
 build
 test
+training_output
 
 # IDEs
 .vscode/

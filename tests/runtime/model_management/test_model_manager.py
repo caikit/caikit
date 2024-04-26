@@ -45,6 +45,7 @@ from sample_lib.data_model import SampleInputType
 from tests.conftest import TempFailWrapper, random_test_id, temp_config
 from tests.core.helpers import TestFinder
 from tests.fixtures import Fixtures
+from tests.runtime.conftest import deploy_good_model_files
 import caikit.runtime.model_management.model_loader
 
 get_dynamic_module("caikit.core")
@@ -771,6 +772,206 @@ def test_lazy_load_ephemeral_model():
             # Make sure the model does not get unloaded on sync
             manager._local_models_dir_sync(wait=True)
             assert model_id in manager.loaded_models
+
+
+def test_deploy_undeploy_model(deploy_good_model_files):
+    """Test that a model can be deployed by copying to the local models dir"""
+    with TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                    "lazy_load_poll_period_seconds": 0,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+            model_name = "my-model"
+
+            # Make sure model is not currently loaded
+            with pytest.raises(CaikitRuntimeException) as excinfo:
+                manager.retrieve_model(model_name)
+            assert excinfo.value.status_code == grpc.StatusCode.NOT_FOUND
+
+            # Do the deploy (pass wait through to load)
+            loaded_model = manager.deploy_model(
+                model_name, deploy_good_model_files, wait=True
+            )
+            assert loaded_model
+            assert loaded_model.loaded
+
+            # Make sure model can be retrieved and exists in the local models dir
+            assert manager.retrieve_model(model_name)
+            assert os.path.isdir(os.path.join(cache_dir, model_name))
+
+            # Make sure model cannot be deployed over
+            with pytest.raises(CaikitRuntimeException) as excinfo:
+                manager.deploy_model(model_name, deploy_good_model_files)
+            assert excinfo.value.status_code == grpc.StatusCode.ALREADY_EXISTS
+
+            # Undeploy the model
+            manager.undeploy_model(model_name)
+
+            # Make sure the model is not loaded anymore and was removed from
+            # local models dir
+            with pytest.raises(CaikitRuntimeException) as excinfo:
+                manager.retrieve_model(model_name)
+            assert excinfo.value.status_code == grpc.StatusCode.NOT_FOUND
+            assert not os.path.exists(os.path.join(cache_dir, model_name))
+
+
+@pytest.mark.parametrize(
+    ["invalid_fname", "expected_reason"],
+    [
+        ("", "Got whitespace-only model file name"),
+        ("\t\n  ", "Got whitespace-only model file name"),
+        ("/foo/bar.txt", "Cannot use absolute paths for model files"),
+    ],
+)
+def test_deploy_invalid_files(invalid_fname, expected_reason):
+    """Test that various flavors of invalid model names are not supported"""
+    with TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                    "lazy_load_poll_period_seconds": 0,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+            with pytest.raises(
+                CaikitRuntimeException, match=expected_reason
+            ) as excinfo:
+                manager.deploy_model("bad-model", {invalid_fname: b"asdf"})
+            assert excinfo.value.status_code == grpc.StatusCode.INVALID_ARGUMENT
+
+
+def test_deploy_with_nested_files(deploy_good_model_files):
+    """Make sure models with nested directories can be deployed"""
+    with TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                    "lazy_load_poll_period_seconds": 0,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+            model_name = "my-model"
+
+            # Read the model files and deploy
+            nested_dir = os.path.join("nested", "twice")
+            nested_fname = "foo.txt"
+            deploy_good_model_files[os.path.join(nested_dir, nested_fname)] = b"foo"
+            loaded_model = manager.deploy_model(
+                model_name, deploy_good_model_files, wait=True
+            )
+            assert loaded_model
+
+            # Make sure the nested file structure was set up correctly
+            local_nested_dir = os.path.join(cache_dir, model_name, nested_dir)
+            assert os.path.isdir(local_nested_dir)
+            assert os.path.exists(os.path.join(local_nested_dir, nested_fname))
+
+
+def test_deploy_invalid_permissions(deploy_good_model_files):
+    """Make sure that an error is raised if attempting to deploy when writing to
+    local_models_dir is denied
+    """
+    with TemporaryDirectory() as cache_dir:
+        local_models_dir = os.path.join(cache_dir, "local_models")
+        os.makedirs(local_models_dir)
+        os.chmod(local_models_dir, 0o600)
+        try:
+            with non_singleton_model_managers(
+                1,
+                {
+                    "runtime": {
+                        "local_models_dir": local_models_dir,
+                        "lazy_load_local_models": True,
+                        "lazy_load_poll_period_seconds": 0,
+                    },
+                },
+                "merge",
+            ) as managers:
+                manager = managers[0]
+                model_name = "my-model"
+
+                # Make sure the deploy fails with a permission error
+                with pytest.raises(CaikitRuntimeException) as excinfo:
+                    manager.deploy_model(model_name, deploy_good_model_files, wait=True)
+                assert excinfo.value.status_code == grpc.StatusCode.FAILED_PRECONDITION
+
+        finally:
+            os.chmod(local_models_dir, 0o777)
+            shutil.rmtree(local_models_dir)
+
+
+def test_undeploy_unkonwn_model():
+    """Make sure that attempting to undeploy an unknown model raises NOT_FOUND"""
+    with TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                    "lazy_load_poll_period_seconds": 0,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+            with pytest.raises(CaikitRuntimeException) as excinfo:
+                manager.undeploy_model("foobar")
+            assert excinfo.value.status_code == grpc.StatusCode.NOT_FOUND
+
+
+def test_undeploy_unloaded_model(deploy_good_model_files):
+    """If running with replicas and a shared local_models_dir, the replica that
+    gets the undeploy request may not have loaded the model into memory yet.
+    This tests that the model gets properly removed from local_models_dir, even
+    if not yet loaded.
+    """
+    with TemporaryDirectory() as cache_dir:
+        with non_singleton_model_managers(
+            1,
+            {
+                "runtime": {
+                    "local_models_dir": cache_dir,
+                    "lazy_load_local_models": True,
+                    "lazy_load_poll_period_seconds": 0,
+                },
+            },
+            "merge",
+        ) as managers:
+            manager = managers[0]
+
+            # Copy files to the local_models_dir
+            model_name = "foobar"
+            model_dir = os.path.join(cache_dir, model_name)
+            os.makedirs(model_dir)
+            for fname, data in deploy_good_model_files.items():
+                with open(os.path.join(model_dir, fname), "wb") as handle:
+                    handle.write(data)
+
+            # Make sure the undeploy completes successfully
+            assert model_name not in manager.loaded_models
+            assert os.path.exists(model_dir)
+            manager.undeploy_model(model_name)
+            assert model_name not in manager.loaded_models
+            assert not os.path.exists(model_dir)
 
 
 # ****************************** Unit Tests ****************************** #
