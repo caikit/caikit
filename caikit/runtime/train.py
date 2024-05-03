@@ -51,6 +51,7 @@ INTERNAL_ERROR_EXIT_CODE = 200
 
 class ArgumentParserError(Exception):
     """Custom exception class for ArgumentParser errors."""
+
     pass
 
 
