@@ -16,6 +16,7 @@ import pytest
 
 # Local
 from caikit.core.registries import module_registry
+from caikit.runtime import train
 from caikit.runtime.train import main
 from sample_lib.modules import SampleModule
 from tests.conftest import reset_module_registry, temp_config
@@ -215,8 +216,10 @@ def test_invalid_json():
         "--training-kwargs",
         "{invalid json",
     ):
-        with pytest.raises(json.decoder.JSONDecodeError):
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
             main()
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == train.USER_ERROR_EXIT_CODE
 
 
 def test_failed_training():
@@ -232,4 +235,88 @@ def test_failed_training():
         "--training-kwargs",
         json.dumps(training_kwargs),
     ):
-        assert main() == 1
+        assert main() == train.INTERNAL_ERROR_EXIT_CODE
+
+
+def test_bad_module():
+    """Make sure that a non-zero exit code is returned if an invalid module is provided"""
+    model_name = "my-model"
+    training_kwargs = copy.deepcopy(SAMPLE_TRAIN_KWARGS)
+    with sys_argv(
+        "--module",
+        "this.is.a.bad.module",
+        "--model-name",
+        model_name,
+        "--training-kwargs",
+        json.dumps(training_kwargs),
+    ):
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
+            main()
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == train.USER_ERROR_EXIT_CODE
+
+
+def test_no_module_provided():
+    """Make sure that a non-zero exit code is returned if an invalid module is provided"""
+    model_name = "my-model"
+    training_kwargs = copy.deepcopy(SAMPLE_TRAIN_KWARGS)
+    with sys_argv(
+        "--model-name",
+        model_name,
+        "--training-kwargs",
+        json.dumps(training_kwargs),
+    ):
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
+            main()
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 1
+
+
+def test_blank_kwargs():
+    """Make sure that a non-zero exit code is returned if kwargs are blank"""
+    model_name = "my-model"
+    with sys_argv(
+        "--model-name",
+        SAMPLE_MODULE,
+        "--model-name",
+        model_name,
+    ):
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
+            main()
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == train.USER_ERROR_EXIT_CODE
+
+
+def test_empty_module_name():
+    """Test handling of empty module parameter"""
+    model_name = "my-model"
+    with sys_argv(
+        "--module",
+        "",
+        "--model-name",
+        model_name,
+        "--training-kwargs",
+        json.dumps(SAMPLE_TRAIN_KWARGS),
+    ):
+        with pytest.raises(SystemExit) as e:
+            main()
+        assert e.value.code == train.USER_ERROR_EXIT_CODE
+
+
+def test_non_existent_save_path():
+    """Test with a non-existent save path"""
+    # We cannot verify save path ahead of time, so if it is unable
+    # to be written to, the training will fail with a system error
+    model_name = "my-model"
+    non_existent_path = "/path/that/does/not/exist"
+    with sys_argv(
+        "--module",
+        SAMPLE_MODULE,
+        "--model-name",
+        model_name,
+        "--save-path",
+        non_existent_path,
+        "--training-kwargs",
+        json.dumps(SAMPLE_TRAIN_KWARGS),
+    ):
+        assert main() == train.INTERNAL_ERROR_EXIT_CODE
