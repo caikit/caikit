@@ -66,7 +66,7 @@ is known.
 """
 
 # Standard
-from typing import TYPE_CHECKING, Set
+from typing import TYPE_CHECKING, List
 import abc
 import functools
 
@@ -158,8 +158,8 @@ class _ModuleBaseMeta(abc.ABCMeta):
         return super().__new__(mcs, name, bases, attrs)
 
     @property
-    def tasks(cls) -> Set["TaskBase"]:
-        return set(cls._TASK_CLASSES)
+    def tasks(cls) -> List["TaskBase"]:
+        return [task for task in cls._TASK_CLASSES]
 
     def __setattr__(cls, name, val):
         """Overwrite __setattr__ to warn on any dynamic updates to the load function.

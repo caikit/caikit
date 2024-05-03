@@ -188,15 +188,14 @@ def module(
         cls_.MODULE_CLASS = classname
         cls_.PRODUCER_ID = ProducerId(cls_.MODULE_NAME, cls_.MODULE_VERSION)
 
-        cls_._TASK_CLASSES = tasks
-
         # Parse the `train` and `run` signatures
         cls_.RUN_SIGNATURE = CaikitMethodSignature(cls_, "run")
         cls_.TRAIN_SIGNATURE = CaikitMethodSignature(cls_, "train")
         cls_._TASK_INFERENCE_SIGNATURES = {}
 
         # If the module has tasks, validate them:
-        for t in cls_._TASK_CLASSES:
+        task_classes = tasks
+        for t in task_classes:
             if not t.has_inference_method_decorators(module_class=cls_):
                 # Hackity hack hack - make sure at least one flavor is supported
                 validated = False
@@ -231,7 +230,16 @@ def module(
                 tasks_in_hierarchy.extend(class_._TASK_CLASSES)
 
         if tasks_in_hierarchy:
-            cls_._TASK_CLASSES += tasks_in_hierarchy
+            task_classes += tasks_in_hierarchy
+
+        # Make sure the tasks are unique. Note that the order here is important
+        # so that iterating the list of tasks is deterministic, unique, and the
+        # tasks given in the class' module list are shown before tasks inherited
+        # from parent classes.
+        cls_._TASK_CLASSES = []
+        for task in task_classes:
+            if task not in cls_._TASK_CLASSES:
+                cls_._TASK_CLASSES.append(task)
 
         # If no backend support described in the class, add current backend
         # as the only backend that can load models trained by this module
