@@ -35,8 +35,9 @@ from caikit import get_config
 from caikit.core import ModuleBase
 from caikit.core.exceptions import error_handler
 from caikit.core.model_management import ModelFinderBase, ModelInitializerBase
+from caikit.runtime.model_management.factories import model_loader_factory
+from caikit.runtime.model_management.model_loader_base import ModelLoaderBase
 from caikit.runtime.model_management.loaded_model import LoadedModel
-from caikit.runtime.model_management.model_loader import ModelLoader
 from caikit.runtime.model_management.model_sizer import ModelSizer
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
@@ -62,6 +63,7 @@ LOAD_MODEL_DURATION_SUMMARY = Summary(
     ["model_type"],
 )
 LOCAL_MODEL_TYPE = "LOCAL"
+DEFAULT_LOADER_NAME = "default"
 
 
 class ModelManager:  # pylint: disable=too-many-instance-attributes
@@ -91,7 +93,19 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         ModelManager.__instance = self
 
         # Pull in a ModelLoader and ModelSizer
-        self.model_loader = ModelLoader.get_instance()
+        loader_config = get_config().model_management.loaders.get(
+            DEFAULT_LOADER_NAME, {}
+        )
+        error.value_check(
+            "<COR53057389E>",
+            isinstance(loader_config, dict),
+            "Unknown {}: {}",
+            "loader",
+            DEFAULT_LOADER_NAME,
+        )
+        self.model_loader: ModelLoaderBase = model_loader_factory.construct(
+            loader_config, DEFAULT_LOADER_NAME
+        )
         self.model_sizer = ModelSizer.get_instance()
 
         # In-memory mapping of model_id to LoadedModel instance
