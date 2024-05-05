@@ -12,28 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # Standard
-from concurrent.futures import ThreadPoolExecutor
-from functools import partial
-from typing import Callable, Optional, Union
-import abc
+from typing import Optional, Union
 
 # Third Party
-from grpc import StatusCode
 from prometheus_client import Summary
 
 # First Party
 import alog
-import aconfig
 
 # Local
-from caikit.core.toolkit.factory import FactoryConstructible
-from caikit.config import get_config
 from caikit.core import MODEL_MANAGER, ModuleBase
 from caikit.core.model_management import ModelFinderBase, ModelInitializerBase
-from caikit.runtime.model_management.batcher import Batcher
-from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_loader_base import ModelLoaderBase
-from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("MODEL-LOADER")
 
@@ -43,11 +33,12 @@ CAIKIT_CORE_LOAD_DURATION_SUMMARY = Summary(
     ["model_type"],
 )
 
+
 class CoreModelLoader(ModelLoaderBase):
     """The CoreModelLoader loads a model using the caikit core.ModelManager"""
 
     name = "CORE"
-    
+
     def load_module_instance(
         self,
         model_path: str,
@@ -56,9 +47,7 @@ class CoreModelLoader(ModelLoaderBase):
         finder: Optional[Union[str, ModelFinderBase]] = None,
         initializer: Optional[Union[str, ModelInitializerBase]] = None,
     ) -> ModuleBase:
-        """Start loading a model from disk and associate the ID/size with it
-
-        """
+        """Start loading a model from disk and associate the ID/size with it"""
         log.info("<RUN89711114I>", "Loading model '%s'", model_id)
 
         # Only pass finder/initializer if they have values
@@ -73,4 +62,3 @@ class CoreModelLoader(ModelLoaderBase):
             model = MODEL_MANAGER.load(model_path, **load_kwargs)
 
         return model
-

@@ -12,32 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Standard
-from pathlib import Path
-from typing import Dict
-import os
-
-# Third Party
-import grpc
-
 # First Party
 import alog
-import aconfig
 
 # Local
 from caikit import get_config
-from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.model_management.directory_model_sizer import DirectoryModelSizer
 
-log = alog.use_channel("DIRECTORY-SIZER")
+log = alog.use_channel("MM-SIZER")
 
 
 class ModelMeshModelSizer(DirectoryModelSizer):
-    """ModelMeshModelSizer. This class calculates a models size based on the 
-    size of the files in the model directory plus a modelmesh modifier"""
+    """ModelMeshModelSizer. This class estimates a models size based on
+    the contents of the directory multiplied by a model specific
+    constant"""
+
     name = "MODEL_MESH"
 
-        
     def get_model_size(self, model_id, local_model_path, model_type) -> int:
         """
         Returns the estimated memory footprint of a model
@@ -48,7 +39,7 @@ class ModelMeshModelSizer(DirectoryModelSizer):
         Returns:
             The estimated size in bytes of memory that would be used by loading this model
         """
-        
+
         if (
             model_type
             in get_config().inference_plugin.model_mesh.model_size_multipliers
@@ -75,4 +66,6 @@ class ModelMeshModelSizer(DirectoryModelSizer):
                 model_id,
                 multiplier,
             )
-        return int(super().get_model_size(model_id, local_model_path, model_type) * multiplier)
+        return int(
+            super().get_model_size(model_id, local_model_path, model_type) * multiplier
+        )

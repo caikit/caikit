@@ -13,30 +13,24 @@
 # limitations under the License.
 
 # Standard
-from pathlib import Path
-from typing import Dict
-import os
 import abc
-
-# Third Party
-import grpc
 
 # First Party
 import alog
 
 # Local
-from caikit import get_config
-from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.core.toolkit.factory import FactoryConstructible
 
 log = alog.use_channel("MODEL-SIZER")
 
 
 class ModelSizerBase(FactoryConstructible):
-    """Model Sizer Base class. This class contains the """
+    """Model Sizer Base class. This class contains the"""
 
     @abc.abstractmethod
-    def get_model_size(self, model_id: str, local_model_path: str, model_type: str) -> int:
+    def get_model_size(
+        self, model_id: str, local_model_path: str, model_type: str
+    ) -> int:
         """
         Returns the estimated memory footprint of a model
         Args:
@@ -46,4 +40,3 @@ class ModelSizerBase(FactoryConstructible):
         Returns:
             The estimated size in bytes of memory that would be used by loading this model
         """
-       

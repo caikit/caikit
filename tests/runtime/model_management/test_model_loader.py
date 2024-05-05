@@ -52,9 +52,13 @@ def temp_model_loader():
 def model_loader():
     yield construct_model_loader()
 
+
 def construct_model_loader():
-    model_loader: CoreModelLoader = model_loader_factory.construct(get_config().model_management.loaders.default,"default")
+    model_loader: CoreModelLoader = model_loader_factory.construct(
+        get_config().model_management.loaders.default, "default"
+    )
     return model_loader
+
 
 def make_model_future(model_instance):
     fake_future = Future()
@@ -163,10 +167,11 @@ def test_nonzip_extract_fails(model_loader):
     assert "config.yml" in context.value.message
 
 
-#def test_no_double_instantiation_of_thread_pools():
-#    """Make sure trying to re-instantiate this singleton raises"""
-#    with construct_model_loader() as loader1, construct_model_loader() as loader2:
-#        assert loader1__load_thread_pool == loader2.__load_thread_pool
+def test_no_double_instantiation_of_thread_pools():
+    """Make sure trying to re-instantiate this singleton raises"""
+    loader1 = construct_model_loader()
+    loader2 = construct_model_loader()
+    assert loader1._load_thread_pool == loader2._load_thread_pool
 
 
 def test_with_batching(model_loader):
@@ -373,7 +378,9 @@ def test_load_model_loaded_status(model_loader):
         release_event.wait()
         return model_mock
 
-    with mock.patch.object(model_loader, "load_module_instance", _load_module_instance_mock):
+    with mock.patch.object(
+        model_loader, "load_module_instance", _load_module_instance_mock
+    ):
         loaded_model = model_loader.load_model(
             model_id=model_id,
             local_model_path=Fixtures.get_good_model_path(),

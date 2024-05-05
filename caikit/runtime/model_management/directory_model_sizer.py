@@ -21,29 +21,27 @@ import os
 import grpc
 
 # First Party
-import alog
 import aconfig
+import alog
 
 # Local
-from caikit import get_config
-from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.model_management.model_sizer_base import ModelSizerBase
+from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("DIRECTORY-SIZER")
 
 
 class DirectoryModelSizer(ModelSizerBase):
-    """DirectoryModelSizer. This class calculates a models size based on the 
+    """DirectoryModelSizer. This class calculates a models size based on the
     size of the files in the model directory"""
+
     name = "DIRECTORY"
-    
-    
+
     def __init__(self, config: aconfig.Config, instance_name: str):
         super().__init__(config, instance_name)
         # Cache of archive sizes: directory model path -> archive size in bytes
         self.model_directory_size: Dict[str, int] = {}
 
-    
     def get_model_size(self, model_id, local_model_path, model_type) -> int:
         """
         Returns the estimated memory footprint of a model

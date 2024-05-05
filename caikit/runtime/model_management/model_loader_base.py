@@ -19,37 +19,38 @@ import abc
 
 # Third Party
 from grpc import StatusCode
-from prometheus_client import Summary
 
 # First Party
-import alog
 import aconfig
+import alog
 
 # Local
-from caikit.core.toolkit.factory import FactoryConstructible
 from caikit.config import get_config
 from caikit.core import MODEL_MANAGER, ModuleBase
 from caikit.core.model_management import ModelFinderBase, ModelInitializerBase
+from caikit.core.toolkit.factory import FactoryConstructible
 from caikit.runtime.model_management.batcher import Batcher
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("MODEL-LOADER")
 
+
 class ModelLoaderBase(FactoryConstructible):
     """Model Loader Base class which describes how models are loaded."""
 
-    __load_thread_pool = None
-    
+    _load_thread_pool = None
+
     def __init__(self, config: aconfig.Config, instance_name: str):
         """A FactoryConstructible object must be constructed with a config
         object that it uses to pull in all configuration
         """
-        if ModelLoaderBase.__load_thread_pool is None:
-            ModelLoaderBase.__load_thread_pool = ThreadPoolExecutor(
+        if ModelLoaderBase._load_thread_pool is None:
+            ModelLoaderBase._load_thread_pool = ThreadPoolExecutor(
                 get_config().runtime.load_threads
             )
-       
+
+        super().__init__(config, instance_name)
         # Instead of storing config-based batching information here, we call
         # get_config() when needed to support dynamic config changes for
         # batching
@@ -67,15 +68,16 @@ class ModelLoaderBase(FactoryConstructible):
 
         Args:
             model_path (str): The model path to load from
-            model_id (str): The model's id 
+            model_id (str): The model's id
             model_type (str): The type of model being load
-            finder (Optional[Union[str, ModelFinderBase]], optional): The ModelFinder to use for loading. Defaults to None.
-            initializer (Optional[Union[str, ModelInitializerBase]], optional): The ModelInitializer to use for loading. Defaults to None.
+            finder (Optional[Union[str, ModelFinderBase]], optional): The ModelFinder to use for
+              loading. Defaults to None.
+            initializer (Optional[Union[str, ModelInitializerBase]], optional): The
+              ModelInitializer to use for loading. Defaults to None.
 
         Returns:
             ModuleBase: a loaded model
         """
-
 
     def load_model(
         self,
@@ -99,7 +101,7 @@ class ModelLoaderBase(FactoryConstructible):
         Returns:
             model (LoadedModel) : The model that was loaded
         """
-                # Set up the basics of the model's metadata
+        # Set up the basics of the model's metadata
         model_builder = (
             LoadedModel.Builder()
             .id(model_id)
@@ -113,7 +115,7 @@ class ModelLoaderBase(FactoryConstructible):
         args = (local_model_path, model_id, model_type, finder, initializer)
         log.debug2("Loading model %s async", model_id)
         future_factory = partial(
-            self.__load_thread_pool.submit, self._wrapped_load_model, *args
+            self._load_thread_pool.submit, self._wrapped_load_model, *args
         )
         model_builder.model_future_factory(future_factory)
 
@@ -131,9 +133,10 @@ class ModelLoaderBase(FactoryConstructible):
         try:
             log.info("<RUN89711114I>", "Loading model '%s'", model_id)
 
+            model = self.load_module_instance(
+                model_path, model_id, model_type, finder, initializer
+            )
 
-            model = self.load_module_instance(model_path, model_id, model_type, finder, initializer)
-            
             # If this model needs batching, configure a Batcher to wrap it
             model = self._wrap_in_batcher_if_configured(
                 model,
@@ -186,7 +189,7 @@ class ModelLoaderBase(FactoryConstructible):
         log.info("<RUN89713784I>", "Singleton cache: '%s'", str(cache_info))
 
         return model
-    
+
     def _wrap_in_batcher_if_configured(
         self,
         caikit_core_model: ModuleBase,

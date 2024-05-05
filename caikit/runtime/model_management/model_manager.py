@@ -67,6 +67,7 @@ LOAD_MODEL_DURATION_SUMMARY = Summary(
 )
 LOCAL_MODEL_TYPE = "LOCAL"
 DEFAULT_LOADER_NAME = "default"
+DEFAULT_SIZER_NAME = "default"
 
 
 class ModelManager:  # pylint: disable=too-many-instance-attributes
@@ -115,7 +116,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             isinstance(sizer_config, dict),
             "Unknown {}: {}",
             "sizer",
-            DEFAULT_LOADER_NAME,
+            DEFAULT_SIZER_NAME,
         )
         self.model_sizer: ModelSizerBase = model_sizer_factory.construct(
             sizer_config, DEFAULT_LOADER_NAME
