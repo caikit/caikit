@@ -18,8 +18,16 @@ Global factories for model management
 # Local
 from caikit.core.toolkit.factory import ImportableFactory
 from caikit.runtime.model_management.core_model_loader import CoreModelLoader
+from caikit.runtime.model_management.directory_model_sizer import DirectoryModelSizer
+from caikit.runtime.model_management.mm_model_sizer import ModelMeshModelSizer
 
-# Model Loader factory. A loader is responsible for constructing 
+# Model Loader factory. A loader is responsible for constructing
 # a LoadedModel instance
 model_loader_factory = ImportableFactory("ModelLoader")
 model_loader_factory.register(CoreModelLoader)
+
+# Model Sizer factory. A sizer is responsible for estimating
+# the size of a model
+model_sizer_factory = ImportableFactory("ModelSizer")
+model_sizer_factory.register(DirectoryModelSizer)
+model_sizer_factory.register(ModelMeshModelSizer)

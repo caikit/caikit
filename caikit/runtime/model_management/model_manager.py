@@ -35,10 +35,13 @@ from caikit import get_config
 from caikit.core import ModuleBase
 from caikit.core.exceptions import error_handler
 from caikit.core.model_management import ModelFinderBase, ModelInitializerBase
-from caikit.runtime.model_management.factories import model_loader_factory
-from caikit.runtime.model_management.model_loader_base import ModelLoaderBase
+from caikit.runtime.model_management.factories import (
+    model_loader_factory,
+    model_sizer_factory,
+)
 from caikit.runtime.model_management.loaded_model import LoadedModel
-from caikit.runtime.model_management.model_sizer import ModelSizer
+from caikit.runtime.model_management.model_loader_base import ModelLoaderBase
+from caikit.runtime.model_management.model_sizer_base import ModelSizerBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("MODEL-MANAGR")
@@ -106,7 +109,17 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
         self.model_loader: ModelLoaderBase = model_loader_factory.construct(
             loader_config, DEFAULT_LOADER_NAME
         )
-        self.model_sizer = ModelSizer.get_instance()
+        sizer_config = get_config().model_management.sizers.get(DEFAULT_LOADER_NAME, {})
+        error.value_check(
+            "<COR54257389E>",
+            isinstance(sizer_config, dict),
+            "Unknown {}: {}",
+            "sizer",
+            DEFAULT_LOADER_NAME,
+        )
+        self.model_sizer: ModelSizerBase = model_sizer_factory.construct(
+            sizer_config, DEFAULT_LOADER_NAME
+        )
 
         # In-memory mapping of model_id to LoadedModel instance
         self.loaded_models: Dict[str, LoadedModel] = {}

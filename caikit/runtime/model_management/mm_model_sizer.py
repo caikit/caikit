@@ -22,28 +22,22 @@ import grpc
 
 # First Party
 import alog
+import aconfig
 
 # Local
 from caikit import get_config
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from caikit.runtime.model_management.directory_model_sizer import DirectoryModelSizer
 
-log = alog.use_channel("MODEL-SIZER")
+log = alog.use_channel("DIRECTORY-SIZER")
 
 
-class ModelSizer:
-    """Model Loader class. The singleton class contains the core implementation details
-    for loading models in from S3."""
+class ModelMeshModelSizer(DirectoryModelSizer):
+    """ModelMeshModelSizer. This class calculates a models size based on the 
+    size of the files in the model directory plus a modelmesh modifier"""
+    name = "MODEL_MESH"
 
-    __instance = None
-
-    def __init__(self):
-        # Re-instantiating this is a programming error
-        assert self.__class__.__instance is None, "This class is a singleton!"
-        ModelSizer.__instance = self
-
-        # Cache of archive sizes: cos model path -> archive size in bytes
-        self._model_archive_sizes: Dict[str, int] = {}
-
+        
     def get_model_size(self, model_id, local_model_path, model_type) -> int:
         """
         Returns the estimated memory footprint of a model
@@ -54,17 +48,7 @@ class ModelSizer:
         Returns:
             The estimated size in bytes of memory that would be used by loading this model
         """
-        # Cache model's size
-        if local_model_path not in self._model_archive_sizes:
-            self._model_archive_sizes[local_model_path] = self.__get_archive_size(
-                model_id, local_model_path
-            )
-
-        return self.__estimate_with_multiplier(
-            model_id, model_type, self._model_archive_sizes[local_model_path]
-        )
-
-    def __estimate_with_multiplier(self, model_id, model_type, archive_size) -> int:
+        
         if (
             model_type
             in get_config().inference_plugin.model_mesh.model_size_multipliers
@@ -91,31 +75,4 @@ class ModelSizer:
                 model_id,
                 multiplier,
             )
-        return int(archive_size * multiplier)
-
-    def __get_archive_size(self, model_id, local_model_path) -> int:
-        try:
-            if os.path.isdir(local_model_path):
-                # Walk the directory to size all files
-                return sum(
-                    file.stat().st_size
-                    for file in Path(local_model_path).rglob("*")
-                    if file.is_file()
-                )
-
-            # Probably just an archive file
-            return os.path.getsize(local_model_path)
-        except FileNotFoundError as ex:
-            message = (
-                f"Failed to estimate size of model '{model_id}',"
-                f"file '{local_model_path}' not found"
-            )
-            log.error("<RUN62168924E>", message)
-            raise CaikitRuntimeException(grpc.StatusCode.NOT_FOUND, message) from ex
-
-    @classmethod
-    def get_instance(cls) -> "ModelSizer":
-        """This method returns the instance of Model Manager"""
-        if not cls.__instance:
-            cls.__instance = ModelSizer()
-        return cls.__instance
+        return int(super().get_model_size(model_id, local_model_path, model_type) * multiplier)

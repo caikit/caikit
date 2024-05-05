@@ -55,6 +55,10 @@ model_management:
         default:
             type: CORE
             config: {}
+    sizers:
+        default:
+            type: MODEL_MESH
+            config: {}
 
 log:
     # Default level for all python loggers
