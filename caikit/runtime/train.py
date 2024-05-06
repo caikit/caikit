@@ -142,7 +142,7 @@ def main() -> int:
             train_kwargs["trainer"] = args.trainer
 
     except Exception as e:
-        message = "Exception raised during training. This may be a problem with your input: {e}"
+        message = f"Exception raised during training. This may be a problem with your input: {e}"
         log.warning(
             {
                 "log_code": "<COR39662029E>",
@@ -254,7 +254,7 @@ def main() -> int:
         write_termination_log(message)
         exit(USER_ERROR_EXIT_CODE)
     except ValueError as e:
-        message = "Invalid value for one or more input parameters: {e}"
+        message = f"Invalid value for one or more input parameters: {e}"
         log.warning(
             {
                 "log_code": "<COR65474760E>",
