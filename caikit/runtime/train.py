@@ -158,7 +158,7 @@ def main() -> int:
         for library in args.library or []:
             log.info("<COR88091092I>", "Importing library %s", library)
             importlib.import_module(library)
-    except Exception as e:
+    except Exception:
         message = "Unable to import module {}".format(library)
         log.warning(
             {
@@ -193,7 +193,7 @@ def main() -> int:
             "Unable to find module {} to train",
             args.module,
         )
-    except (ValueError, Exception) as e:
+    except (ValueError, Exception):
         message = "Unable to find module {} to train".format(args.module)
         log.warning(
             {
@@ -262,7 +262,7 @@ def main() -> int:
                 "stack_trace": traceback.format_exc(),
             }
         )
-    except Exception as e:
+    except Exception:
         message = "Exception encountered when attempting to parse input parameters"
         log.warning(
             {
@@ -292,7 +292,7 @@ def main() -> int:
                     log.error(err)
                 write_termination_log("Training finished unsuccessfully")
                 return INTERNAL_ERROR_EXIT_CODE
-    except MemoryError as e:
+    except MemoryError:
         message = "OOM error during training"
         log.warning(
             {
@@ -303,7 +303,7 @@ def main() -> int:
         )
         write_termination_log(message)
         exit(INTERNAL_ERROR_EXIT_CODE)
-    except Exception as e:
+    except Exception:
         message = "Unhandled exception during training"
         log.warning(
             {
