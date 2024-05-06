@@ -539,7 +539,9 @@ class QualityEvaluator:
 
         for ground_truth_phrase in groundtruth:
             for predicted_phrase in prediction:
-                pd_compiler = re.compile(r"\b%s\b" % re.escape(predicted_phrase), re.I)
+                pd_compiler = re.compile(
+                    r"\b{}\b".format(re.escape(predicted_phrase)), re.I
+                )
                 # Checks if prediction is part of groundtruth
                 if pd_compiler.search(ground_truth_phrase):
                     pred_matched.add(predicted_phrase)
@@ -547,7 +549,7 @@ class QualityEvaluator:
                 else:
                     # Checks if groundtruth is part of prediction
                     gt_compiler = re.compile(
-                        r"\b%s\b" % re.escape(ground_truth_phrase), re.I
+                        r"\b{}\b".format(re.escape(ground_truth_phrase)), re.I
                     )
                     if gt_compiler.search(predicted_phrase):
                         pred_matched.add(predicted_phrase)

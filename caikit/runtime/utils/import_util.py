@@ -143,7 +143,7 @@ def _get_cdm_from_lib(lib_name: str, cdm: UnifiedDataModel):
     caikit_library = get_dynamic_module(lib_name)
 
     if caikit_library is None:
-        message = "Unable to load data model from library: %s" % (lib_name)
+        message = f"Unable to load data model from library: {lib_name}"
         log.error("<RUN22291311E>", message)
         raise ValueError(message)
     cdm.add_library(lib_name, caikit_library)
@@ -169,7 +169,7 @@ def get_dynamic_module(module_name: str, module_dir: str = None) -> ModuleType:
     # Try to find the spec for the module that we're interested in.
     spec = importlib.util.find_spec(module_path)
     if not spec:
-        message = "Unable to find spec for module: %s" % (module_path)
+        message = f"Unable to find spec for module: {module_path}"
         # TODO: figure out the better way of doing this
         # https://github.com/caikit/caikit/pull/85#discussion_r1182890609
         log.warning("<RUN11991313W>", message)

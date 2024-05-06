@@ -107,7 +107,7 @@ class GlobalTrainServicer:
                 A TrainingJob data model response object
         """
         desc_name = request.DESCRIPTOR.name
-        outer_scope_name = "GlobalTrainServicer.Train:%s" % desc_name
+        outer_scope_name = f"GlobalTrainServicer.Train:{desc_name}"
 
         try:
             with alog.ContextLog(log.debug, outer_scope_name):
