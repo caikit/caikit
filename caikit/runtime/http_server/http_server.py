@@ -635,6 +635,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         output_streaming=False,
                         task=rpc.task,
                         aborter=aborter,
+                        context=context,
                         **request_params,
                     )
                     result = await loop.run_in_executor(self.thread_pool, call)
@@ -692,6 +693,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                                 output_streaming=True,
                                 task=rpc.task,
                                 aborter=aborter,
+                                context=context,
                                 **request_params,
                             ),
                             pool=self.thread_pool,

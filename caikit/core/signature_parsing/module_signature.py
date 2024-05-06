@@ -53,10 +53,14 @@ class CaikitMethodSignature:
     """
 
     def __init__(
-        self, caikit_core_module: Type["caikit.core.ModuleBase"], method_name: str
+        self,
+        caikit_core_module: Type["caikit.core.ModuleBase"],
+        method_name: str,
+        context_arg: Optional[str] = None,
     ):
         self._module = caikit_core_module
         self._method_name = method_name
+        self._context_arg = context_arg
 
         try:
             self._method_pointer = getattr(self._module, self._method_name)
@@ -112,6 +116,11 @@ class CaikitMethodSignature:
     def qualified_name(self) -> str:
         """The full qualified name for the source function"""
         return self._qualified_name
+
+    @property
+    def context_arg(self) -> Optional[str]:
+        """The full qualified name for the source function"""
+        return self._context_arg
 
 
 class CustomSignature(CaikitMethodSignature):
