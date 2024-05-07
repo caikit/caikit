@@ -235,7 +235,10 @@ def test_failed_training():
         "--training-kwargs",
         json.dumps(training_kwargs),
     ):
-        assert main() == train.INTERNAL_ERROR_EXIT_CODE
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
+            main()
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == train.INTERNAL_ERROR_EXIT_CODE
 
 
 def test_bad_module():
@@ -319,4 +322,7 @@ def test_non_existent_save_path():
         "--training-kwargs",
         json.dumps(SAMPLE_TRAIN_KWARGS),
     ):
-        assert main() == train.INTERNAL_ERROR_EXIT_CODE
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
+            main()
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == train.INTERNAL_ERROR_EXIT_CODE

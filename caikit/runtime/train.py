@@ -45,8 +45,14 @@ from .utils.servicer_util import build_caikit_library_request_dict
 log = alog.use_channel("TRAIN")
 error = error_handler.get(log)
 
+# The USER_ERROR_EXIT_CODE will be thrown when the process must exit
+# as result of a user input error. User-related errors should be
+# >= 1 and <=127 due to how some kubernetes operators interpret them.
 USER_ERROR_EXIT_CODE = 1
-INTERNAL_ERROR_EXIT_CODE = 200
+# The INTERNAL_ERROR_EXIT_CODE will be thrown when training
+# abnormally terminates, and it is not clearly fault of the user.
+# System-level errors should be >= 128 and <= 254
+INTERNAL_ERROR_EXIT_CODE = 203
 
 
 class ArgumentParserError(Exception):
@@ -66,7 +72,8 @@ def write_termination_log(text: str, log_file="/dev/termination-log"):
     except Exception as e:
         log.warning(
             "<COR96300323W>",
-            "Unable to write termination log due to error {}".format(e),
+            "Unable to write termination log due to error %s",
+            e,
         )
 
 
@@ -193,7 +200,7 @@ def main() -> int:
             "Unable to find module {} to train",
             args.module,
         )
-    except (ValueError, Exception):
+    except Exception:
         message = "Unable to find module {} to train".format(args.module)
         log.warning(
             {
@@ -291,7 +298,7 @@ def main() -> int:
                 for err in info.errors or []:
                     log.error(err)
                 write_termination_log("Training finished unsuccessfully")
-                return INTERNAL_ERROR_EXIT_CODE
+                exit(INTERNAL_ERROR_EXIT_CODE)
     except MemoryError:
         message = "OOM error during training"
         log.warning(
