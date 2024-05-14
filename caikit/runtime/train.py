@@ -155,7 +155,8 @@ def main() -> int:
                 "log_code": "<COR39662029E>",
                 "message": message,
                 "stack_trace": traceback.format_exc(),
-            }
+            },
+            exc_info=True,
         )
         write_termination_log(message)
         exit(USER_ERROR_EXIT_CODE)
@@ -172,7 +173,8 @@ def main() -> int:
                 "log_code": "<COR17776539E>",
                 "message": message,
                 "stack_trace": traceback.format_exc(),
-            }
+            },
+            exc_info=True,
         )
         write_termination_log(message)
         exit(USER_ERROR_EXIT_CODE)
@@ -269,7 +271,8 @@ def main() -> int:
                 "log_code": "<COR65474760E>",
                 "message": message,
                 "stack_trace": traceback.format_exc(),
-            }
+            },
+            exc_info=True,
         )
     except Exception:
         message = "Exception encountered when attempting to parse input parameters"
@@ -278,7 +281,8 @@ def main() -> int:
                 "log_code": "<COR17776549E>",
                 "message": message,
                 "stack_trace": traceback.format_exc(),
-            }
+            },
+            exc_info=True,
         )
         write_termination_log(message)
         exit(USER_ERROR_EXIT_CODE)
@@ -308,7 +312,8 @@ def main() -> int:
                 "log_code": "<COR04280062E>",
                 "message": message,
                 "stack_trace": traceback.format_exc(),
-            }
+            },
+            exc_info=True,
         )
         write_termination_log(message)
         exit(INTERNAL_ERROR_EXIT_CODE)
@@ -319,7 +324,8 @@ def main() -> int:
                 "log_code": "<COR04280062E>",
                 "message": message,
                 "stack_trace": traceback.format_exc(),
-            }
+            },
+            exc_info=True,
         )
         write_termination_log(message)
         exit(INTERNAL_ERROR_EXIT_CODE)
