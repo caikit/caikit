@@ -207,7 +207,8 @@ def main() -> int:
                 "log_code": "<COR17476539E>",
                 "message": message,
                 "stack_trace": traceback.format_exc,
-            }
+            },
+            exc_info=True,
         )
         write_termination_log(message)
         exit(USER_ERROR_EXIT_CODE)
@@ -256,7 +257,8 @@ def main() -> int:
                 "log_code": "<COR65834760E>",
                 "message": message,
                 "stack_trace": traceback.format_exc(),
-            }
+            },
+            exc_info=True,
         )
         write_termination_log(message)
         exit(USER_ERROR_EXIT_CODE)
