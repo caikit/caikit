@@ -19,6 +19,7 @@ model objects inline without manually defining the protobufs representation
 
 # Standard
 from enum import Enum
+import functools
 from typing import (
     Any,
     Callable,
@@ -35,6 +36,7 @@ from typing import (
 import dataclasses
 
 # Third Party
+import fastapi
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from google.protobuf import struct_pb2
@@ -119,6 +121,17 @@ class _DataObjectBaseMetaClass(_DataBaseMetaClass):
 
         # Delegate to the base metaclass
         return super().__new__(mcs, name, bases, attrs)
+
+
+class Hidden:
+    """Define if a field of a type annotation using ``Annotated``, to be
+    used in a data object's field should be hidden in documentation, i.e.
+    it is essentially a dark feature."""
+
+    is_hidden: bool
+
+    def __init__(self, is_hidden: bool = True):
+        self.is_hidden = is_hidden
 
 
 class DataObjectBase(DataBase, metaclass=_DataObjectBaseMetaClass):
@@ -251,6 +264,29 @@ def dataobject(*args, **kwargs) -> Callable[[_DataObjectBaseT], _DataObjectBaseT
     else:
         package = kwargs.get("package", CAIKIT_DATA_MODEL)
     return decorator
+
+
+# def response_content_converter(
+#     method=None,
+#     *,
+#     http_status_code: int,
+#     media_types: List[str],
+# ):
+#     def result_mapping_decorator(method):
+#         @functools.wraps(method)
+#         def wrapper(self, *args, **kwargs) -> fastapi.Response:
+#             value = method(self)
+#             return value
+
+#         return wrapper
+
+#     assert http_status_code
+#     assert media_types
+
+#     if method is None:
+#         return result_mapping_decorator
+#     else:
+#         return result_mapping_decorator(method)
 
 
 def get_generated_proto_classes():

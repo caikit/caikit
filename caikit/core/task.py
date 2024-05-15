@@ -42,6 +42,9 @@ _STREAM_PARAMS_ANNOTATION = "__streaming_params"
 _UNARY_OUT_ANNOTATION = "__unary_output_type"
 _UNARY_PARAMS_ANNOTATION = "__unary_params"
 
+MODEL_ID_DEFAULT = "__model_id_default"
+MODEL_ID_SHOW = "__model_id_show"
+
 
 class TaskBase:
     """The TaskBase defines the interface for an abstract AI task
@@ -301,6 +304,8 @@ def task(
     streaming_parameters: Dict[str, Type[Iterable[ValidInputTypes]]] = None,
     unary_output_type: Type[DataBase] = None,
     streaming_output_type: Type[Iterable[Type[DataBase]]] = None,
+    model_id_default=None,
+    model_id_show=True,
     **kwargs,
 ) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
     """The decorator for AI Task classes.
@@ -381,6 +386,9 @@ def task(
             cls_annotations[_UNARY_OUT_ANNOTATION] = unary_output_type
         if streaming_output_type:
             cls_annotations[_STREAM_OUT_ANNOTATION] = streaming_output_type
+
+        cls_annotations[MODEL_ID_DEFAULT] = model_id_default
+        cls_annotations[MODEL_ID_SHOW] = model_id_show
 
         # Backwards compatibility with old-style @tasks
         if "required_parameters" in kwargs and not unary_parameters:

@@ -29,6 +29,14 @@ from caikit.core.data_model import PACKAGE_COMMON, DataObjectBase, dataobject
 @dataobject(PACKAGE_COMMON)
 @dataclass
 class File(DataObjectBase):
+    """
+    Generic file data which holds file bytes that are optionally tagged
+    with a file name and/or a file type.
+    The data information should be the raw bytes of the file.
+    The filename, if specified, should have an appropriate extension.
+    The type, if specified, should be a valid mime type.
+    """
+
     data: Annotated[bytes, FieldNumber(1)]
     filename: Annotated[Optional[str], FieldNumber(2)]
     type: Annotated[Optional[str], FieldNumber(3)]

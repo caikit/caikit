@@ -296,6 +296,10 @@ class TaskPredictRPC(CaikitRPCBase):
     def output_streaming(self) -> bool:
         return self._output_streaming
 
+    @property
+    def method_signatures(self) -> List[CaikitMethodSignature]:
+        return self._method_signatures
+
     def create_rpc_json(self, package_name: str) -> Dict:
         """Return json snippet for the service definition of this RPC"""
         if self.output_streaming:

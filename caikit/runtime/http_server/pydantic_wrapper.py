@@ -17,16 +17,31 @@ capable of converting to and from Pydantic models to our DataObjects.
 """
 # Standard
 from datetime import date, datetime, time, timedelta
-from typing import Dict, List, Type, Union, get_args, get_type_hints
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Type,
+    Union,
+    cast,
+    get_args,
+    get_type_hints,
+    get_origin,
+)
 import base64
 import enum
 import inspect
 import json
+from dataclasses import MISSING, Field as DataclassField
+from typing_extensions import Doc
 
 # Third Party
 from fastapi import Request, status
 from fastapi.datastructures import FormData
 from fastapi.exceptions import HTTPException, RequestValidationError
+from pydantic.fields import FieldInfo
 from pydantic.functional_validators import BeforeValidator
 from starlette.datastructures import UploadFile
 import numpy as np
@@ -41,6 +56,7 @@ import alog
 
 # Local
 from caikit.core.data_model.base import DataBase
+from caikit.core.data_model.dataobject import Hidden
 from caikit.interfaces.common.data_model import File
 from caikit.interfaces.common.data_model.primitive_sequences import (
     BoolSequence,
@@ -55,7 +71,7 @@ log = alog.use_channel("SERVR-HTTP-PYDNTC")
 # PYDANTIC_TO_DM_MAPPING is essentially a 2-way map of DMs <-> Pydantic models, you give it a
 # pydantic model, it gives you back a DM class, you give it a
 # DM class, you get back a pydantic model.
-PYDANTIC_TO_DM_MAPPING = {
+PYDANTIC_TO_DM_MAPPING: dict[Any, Any] = {
     # Map primitive sequences to lists
     StrSequence: List[str],
     IntSequence: List[int],
@@ -76,6 +92,7 @@ class ParentPydanticBaseModel(pydantic.BaseModel):
 def pydantic_to_dataobject(pydantic_model: pydantic.BaseModel) -> DataBase:
     """Convert pydantic objects to our DM objects"""
     dm_class_to_build = PYDANTIC_TO_DM_MAPPING.get(type(pydantic_model))
+    assert dm_class_to_build is not None
     dm_kwargs = {}
 
     for field_name, field_value in pydantic_model:
@@ -126,15 +143,81 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
             },
         },
     )
+
+    model_changed = False
+    dataclass_fields: Optional[dict[str, DataclassField]] = getattr(
+        dm_class, "__dataclass_fields_stashed__", None
+    )
+    model_fields: Optional[dict[str, FieldInfo]] = getattr(
+        pydantic_model, "model_fields", None
+    )
+    if dataclass_fields and model_fields is not None:
+        model_changed = True
+        for which_field, dataclass_field in dataclass_fields.items():
+            if dataclass_field.default is not MISSING:
+                model_fields[which_field].default = dataclass_field.default
+
+            if dataclass_field.default_factory is not MISSING:
+                default_factory = dataclass_field.default_factory
+                # any screening that needs to be done here?
+                model_fields[which_field].default_factory = default_factory
+
+            if "description" in dataclass_field.metadata:
+                description = dataclass_field.metadata.get("description")
+                model_fields[which_field].description = description
+
+            metadata = dataclass_field.metadata
+
+            if metadata is not None:
+                # Replicate some important Pydantic fields via metadata
+                if "examples" in metadata:
+                    model_fields[which_field].examples = metadata.get("examples")
+
+                if "deprecated" in metadata:
+                    model_fields[which_field].deprecated = metadata.get("deprecated")
+
+                if "title" in metadata:
+                    model_fields[which_field].title = metadata.get("title")
+
+                if "repr" in metadata:
+                    model_fields[which_field].repr = metadata.get("repr", True)
+
+                if "json_schema_extra" in metadata:
+                    model_fields[which_field].json_schema_extra = metadata.get(
+                        "json_schema_extra"
+                    )
+
+    annotated_types = get_type_hints(dm_class, localns=localns, include_extras=True)
+    for field_name, annotated in annotated_types.items():
+        if get_origin(annotated) is Annotated:
+            annotated_args = get_args(annotated)
+            for annotated_arg in annotated_args:
+                if isinstance(annotated_arg, Doc):
+                    if model_fields:
+                        model_fields[field_name].description = (
+                            annotated_arg.documentation
+                        )
+                        model_changed = True
+                elif isinstance(annotated_arg, Hidden):
+                    model_changed = True
+
+                    # What to do here?
+
+    pydantic_model_base = cast(pydantic.BaseModel, pydantic_model)
+    if model_changed:
+        pydantic_model_base.model_rebuild(force=True)
+    pydantic_model_base.__doc__ = dm_class.__doc__
+
     PYDANTIC_TO_DM_MAPPING[dm_class] = pydantic_model
     # also store the reverse mapping for easy retrieval
     # should be fine since we only check for dm_class in this dict
     PYDANTIC_TO_DM_MAPPING[pydantic_model] = dm_class
+    assert issubclass(pydantic_model, pydantic.BaseModel)
     return pydantic_model
 
 
 # pylint: disable=too-many-return-statements
-def _get_pydantic_type(field_type: type) -> type:
+def _get_pydantic_type(field_type: type) -> Union[type, Annotated]:
     """Recursive helper to get a valid pydantic type for every field type"""
     # pylint: disable=too-many-return-statements
 
@@ -174,9 +257,10 @@ def _get_pydantic_type(field_type: type) -> type:
     if get_origin(field_type) is Annotated:
         return _get_pydantic_type(get_args(field_type)[0])
     if get_origin(field_type) is Union:
-        return Union[  # type: ignore
-            tuple((_get_pydantic_type(arg_type) for arg_type in get_args(field_type)))
-        ]
+        pydantic_type = tuple(
+            _get_pydantic_type(arg_type) for arg_type in get_args(field_type)
+        )
+        return Union[pydantic_type]  # type: ignore
     if get_origin(field_type) is list:
         return List[_get_pydantic_type(get_args(field_type)[0])]
 
@@ -204,6 +288,11 @@ async def pydantic_from_request(
     and `multipart/form-data`"""
     content_type = request.headers.get("Content-Type")
     log.debug("Detected request using %s type", content_type)
+    if content_type is None:
+        raise HTTPException(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            "Null media type not supported",
+        )
 
     # If content type is json use pydantic to parse
     if content_type == "application/json":
@@ -238,7 +327,7 @@ def _parse_form_data_to_pydantic(
     for key in form_data:
         # Get the list of objects that has the key
         # field name
-        raw_objects = form_data.getlist(key)
+        raw_objects = list(form_data.getlist(key))
 
         # Make sure form field actually has values
         if not raw_objects or (len(raw_objects) > 0 and not raw_objects[0]):
@@ -247,7 +336,7 @@ def _parse_form_data_to_pydantic(
 
         # Get the type hint for the requested model
         sub_key_list = key.split(".")
-        model_type_hints = _get_pydantic_subtypes(pydantic_model, sub_key_list)
+        model_type_hints = list(_get_pydantic_subtypes(pydantic_model, sub_key_list))
         log.debug4("Gathered hints '%s' for model key '%s'", model_type_hints, key)
         if not model_type_hints:
             raise HTTPException(
@@ -271,18 +360,20 @@ def _parse_form_data_to_pydantic(
         parsed = False
         for type_hint in model_type_hints:
             # Parse any UploadFile types into the raw bytes or File information
+
             for n, sub_obj in enumerate(raw_objects):
                 if isinstance(sub_obj, UploadFile):
                     # If we're looking for a pydantic file type then parse the
                     # structure of UploadFile. Otherwise, just return the content bytes
+                    # Per type: ignore, something is completely bad here
                     if type_hint == pydantic_file:
-                        raw_objects[n] = {
+                        raw_objects[n] = {  # type: ignore
                             "filename": sub_obj.filename,
                             "data": sub_obj.file.read(),
                             "type": sub_obj.content_type,
                         }
                     else:
-                        raw_objects[n] = sub_obj.file.read()
+                        raw_objects[n] = sub_obj.file.read()  # type: ignore
 
             # If type_hint is a pydantic model then parse the json
             if (
@@ -293,7 +384,7 @@ def _parse_form_data_to_pydantic(
                 failed_to_parse_json = False
                 for n, sub_obj in enumerate(raw_objects):
                     try:
-                        raw_objects[n] = json.loads(sub_obj)
+                        raw_objects[n] = json.loads(sub_obj)  # type: ignore
                     except TypeError:
                         raise HTTPException(  # noqa: B904 # pylint: disable=raise-missing-from
                             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -339,7 +430,7 @@ def _parse_form_data_to_pydantic(
 
 def _get_pydantic_subtypes(
     pydantic_model: Type[pydantic.BaseModel], keys: List[str]
-) -> List[type]:
+) -> Iterable[type]:
     """Recursive helper to get the type_hint for a field"""
     if len(keys) == 0:
         return [pydantic_model]
@@ -353,17 +444,22 @@ def _get_pydantic_subtypes(
     if get_origin(current_type) is Union:
         # If we're trying to capture a union then return the entire union result
         if len(keys) == 0:
-            return get_args(current_type)
+            result = get_args(current_type)
+            return result
 
         # Get the arg which matches
         for arg in get_args(current_type):
             if result := _get_pydantic_subtypes(arg, keys):
                 return result
+        return []
+
     # If object is a list then recurse on its type
     elif get_origin(current_type) is list:
         if len(keys) == 0:
             return [current_type]
 
-        return _get_pydantic_subtypes(get_args(current_type)[0], keys)
+        result = _get_pydantic_subtypes(get_args(current_type)[0], keys)
+        return result
     else:
-        return _get_pydantic_subtypes(current_type, keys)
+        result = _get_pydantic_subtypes(current_type, keys)
+        return result

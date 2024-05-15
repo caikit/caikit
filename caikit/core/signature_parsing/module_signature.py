@@ -122,6 +122,11 @@ class CaikitMethodSignature:
         """The full qualified name for the source function"""
         return self._context_arg
 
+    @property
+    def method(self):
+        """The full qualified name for the source function"""
+        return self._method_pointer
+
 
 class CustomSignature(CaikitMethodSignature):
     """(TBD on new class)? Need something to hold an intentionally mutated representation of a
