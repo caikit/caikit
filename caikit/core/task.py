@@ -44,6 +44,7 @@ _UNARY_PARAMS_ANNOTATION = "__unary_params"
 
 MODEL_ID_DEFAULT = "__model_id_default"
 MODEL_ID_SHOW = "__model_id_show"
+OPEN_API_VISIBLE = "__open_api_visible"
 
 
 class TaskBase:
@@ -306,6 +307,7 @@ def task(
     streaming_output_type: Type[Iterable[Type[DataBase]]] = None,
     model_id_default=None,
     model_id_show=True,
+    open_api_visible=True,
     **kwargs,
 ) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
     """The decorator for AI Task classes.
@@ -363,6 +365,12 @@ def task(
         streaming_output_type (Type[Iterable[Type[DataBase]]]): The streaming output type of the
             task, which all modules' streaming-output inference methods must return. This must be
             in the form Iterable[T].
+        model_id_default (str): default model id to show in OpenAPI, as well as to use if none
+            is specified.
+        model_id_show (bool): In OpenAPI, if True, show the box to enter the model_id, otherwise
+            hide it.  Default is True.
+        open_api_visible (bool): if True, show the task in the OpenAPI, otherwise hide it.
+            Default is True.
 
     Returns:
         A decorator function for the task class, registering it with caikit's core registry of
@@ -378,6 +386,8 @@ def task(
             cls.__annotations__ = {}
             cls_annotations = cls.__dict__.get("__annotations__", None)
 
+        assert isinstance(cls_annotations, dict)
+
         if unary_parameters:
             cls_annotations[_UNARY_PARAMS_ANNOTATION] = unary_parameters
         if streaming_parameters:
@@ -389,6 +399,7 @@ def task(
 
         cls_annotations[MODEL_ID_DEFAULT] = model_id_default
         cls_annotations[MODEL_ID_SHOW] = model_id_show
+        cls_annotations[OPEN_API_VISIBLE] = open_api_visible
 
         # Backwards compatibility with old-style @tasks
         if "required_parameters" in kwargs and not unary_parameters:
