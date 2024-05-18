@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 
 # Local
 from caikit.core.data_model import DataStream, ProducerId
+from caikit.core.exceptions.caikit_core_exception import CaikitCoreStatusCode
 from caikit.runtime.service_factory import get_inference_request
 from sample_lib.data_model.sample import GeoSpatialTask
 from sample_lib.modules import MultiTaskModule, SecondTask
@@ -93,6 +94,28 @@ def test_predict_raises_with_grpc_errors(
         )
     assert context.value.status_code == grpc.StatusCode.RESOURCE_EXHAUSTED
     assert "Model is overloaded" in context.value.message
+
+
+def test_predict_raises_with_caikit_core_errors(
+    sample_inference_service,
+    sample_predict_servicer,
+    sample_task_model_id,
+    sample_task_unary_rpc,
+):
+    with pytest.raises(CaikitRuntimeException) as context:
+        predict_class = get_inference_request(SampleTask)
+        request = predict_class(
+            sample_input=HAPPY_PATH_INPUT_DM,
+            throw=True,
+            error="CORE_EXCEPTION",
+        ).to_proto()
+        sample_predict_servicer.Predict(
+            request,
+            Fixtures.build_context(sample_task_model_id),
+            caikit_rpc=sample_task_unary_rpc,
+        )
+    assert context.value.status_code == grpc.StatusCode.INVALID_ARGUMENT
+    assert "invalid argument" in context.value.message
 
 
 def test_invalid_input_to_a_valid_caikit_core_class_method_raises(
