@@ -17,6 +17,10 @@ from ...data_model.sample import (
     SampleTrainingType,
 )
 from caikit.core.data_model import DataStream
+from caikit.core.exceptions.caikit_core_exception import (
+    CaikitCoreException,
+    CaikitCoreStatusCode,
+)
 from caikit.core.modules import ModuleLoader, ModuleSaver
 import caikit.core
 
@@ -55,16 +59,22 @@ class SampleModule(caikit.core.ModuleBase):
             sample_lib.data_model.SampleOutputType: The output
         """
         if throw:
-            if error and error == "GRPC_RESOURCE_EXHAUSTED":
-                raise _channel._InactiveRpcError(
-                    _channel._RPCState(
-                        due=(),
-                        details="Model is overloaded",
-                        initial_metadata=None,
-                        trailing_metadata=None,
-                        code=StatusCode.RESOURCE_EXHAUSTED,
-                    ),
-                )
+            if error:
+                if error == "GRPC_RESOURCE_EXHAUSTED":
+                    raise _channel._InactiveRpcError(
+                        _channel._RPCState(
+                            due=(),
+                            details="Model is overloaded",
+                            initial_metadata=None,
+                            trailing_metadata=None,
+                            code=StatusCode.RESOURCE_EXHAUSTED,
+                        ),
+                    )
+                elif error == "CORE_EXCEPTION":
+                    raise CaikitCoreException(
+                        status_code=CaikitCoreStatusCode.INVALID_ARGUMENT,
+                        message="invalid argument",
+                    )
             raise RuntimeError("barf!")
         assert isinstance(sample_input, SampleInputType)
         if sample_input.name == self.POISON_PILL_NAME:
