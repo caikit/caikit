@@ -27,6 +27,32 @@ from prometheus_client import Counter, Summary
 # First Party
 import alog
 
+#OTEL Tracing SDK and pkgs
+########################
+
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import (
+    BatchSpanProcessor,
+    ConsoleSpanExporter,
+)
+
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
+
+provider = TracerProvider()
+otelendpoint=os.environ.get('OTEL_ENDPOINT')
+processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=otelendpoint,insecure=True))
+provider.add_span_processor(processor)
+
+# Sets the global default tracer provider
+trace.set_tracer_provider(provider)
+
+# Creates a tracer from the global tracer provider
+tracer = trace.get_tracer("caikit.runtime.servicers.global_predict_service")
+
+########################
+
 # Local
 from caikit import get_config
 from caikit.core import MODEL_MANAGER, ModuleBase, TaskBase
@@ -162,6 +188,13 @@ class GlobalPredictServicer:
         model_id = get_metadata(context, MODEL_MESH_MODEL_ID_KEY)
         request_name = caikit_rpc.request.name
 
+
+
+        #metadata sent by client request, this can be used to pass the context from the parent request, Gabe to help figuring this out
+  	metadict_context_from_client_request = dict(context.invocation_metadata())
+  	print("METADICT_CONTEXT_FROM_CLINENT_REQUEST")
+  	print(dir(metadict_context_from_client_request))
+
         with self._handle_predict_exceptions(model_id, request_name), alog.ContextLog(
             log.debug, "GlobalPredictServicer.Predict:%s", request_name
         ):
@@ -272,7 +305,14 @@ class GlobalPredictServicer:
                 inference request
         """
 
-        with self._handle_predict_exceptions(model_id, request_name):
+
+        #ctx can be derived from kwargs, ctx can be added to otel trace/span, [ Gabe to further look into it ]
+        ctx=kwargs
+
+
+        with self._handle_predict_exceptions(model_id, request_name), tracer.start_as_current_span("caikit.runtime.servicers/global_predict_servicer.predict_model",context=ctx) as span:
+        #with self._handle_predict_exceptions(model_id, request_name):
+
             model = model or self._model_manager.retrieve_model(model_id)
             self._verify_model_task(model)
             if input_streaming is not None and output_streaming is not None:
@@ -316,6 +356,26 @@ class GlobalPredictServicer:
             ).inc()
             if get_config().runtime.metering.enabled:
                 self.rpc_meter.update_metrics(str(type(model)))
+
+            #Span Attributes for OTEL trace/span added as the below
+            span.set_attribute("calling", "caikit.runtime.servicers/global_predict_servicer.predict_model")
+            model = self._model_manager.retrieve_model(model_id)
+            span.set_attribute("model_id", model_id)
+            span.set_attribute("request_name", request_name)
+            span.set_attribute("inference_func_name", inference_func_name)
+            span.set_attribute("task", task)
+
+            #Span Attributes specific to embedding response-type attributes
+            tmpA=getattr(response, '_producer_id')
+            span.set_attribute("producer_id name",tmpA.name)
+
+            tmpA=getattr(response, '_infer_which_oneof')
+            span.set_attribute("full_name",tmpA)
+
+            tmpA=getattr(response, '_input_token_count')
+            span.set_attribute("input token count",tmpA)
+
+
             return response
 
     def stop_metering(self):
