@@ -27,6 +27,7 @@ import alog
 # Local
 from caikit import get_config
 from caikit.core import MODEL_MANAGER, ModuleBase
+from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.interfaces.common.data_model.stream_sources import S3Path
 from caikit.interfaces.runtime.data_model import TrainingJob
 from caikit.runtime.model_management.model_manager import ModelManager
@@ -36,6 +37,7 @@ from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import clean_lib_names, get_data_model
 from caikit.runtime.utils.servicer_util import (
     build_caikit_library_request_dict,
+    raise_caikit_runtime_exception,
     validate_data_model,
 )
 import caikit.core
@@ -147,6 +149,8 @@ class GlobalTrainServicer:
 
         # Duplicate code in global_predict_servicer
         # pylint: disable=duplicate-code
+        except CaikitCoreException as e:
+            raise_caikit_runtime_exception(exception=e)
         except (TypeError, ValueError) as e:
             log_dict = {
                 "log_code": "<RUN72924264W>",

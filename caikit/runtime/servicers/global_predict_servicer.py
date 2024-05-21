@@ -31,6 +31,7 @@ import alog
 from caikit import get_config
 from caikit.core import ModuleBase, TaskBase
 from caikit.core.data_model import DataBase, DataStream
+from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.core.signature_parsing import CaikitMethodSignature
 from caikit.runtime.metrics.rpc_meter import RPCMeter
 from caikit.runtime.model_management.model_manager import ModelManager
@@ -44,6 +45,7 @@ from caikit.runtime.utils.servicer_util import (
     build_proto_response,
     build_proto_stream,
     get_metadata,
+    raise_caikit_runtime_exception,
     validate_data_model,
 )
 from caikit.runtime.work_management.abortable_context import (
@@ -325,9 +327,10 @@ class GlobalPredictServicer:
                 grpc_request=request_name, code=e.status_code.name, model_id=model_id
             ).inc()
             raise e
-
         # Duplicate code in global_train_servicer
         # pylint: disable=duplicate-code
+        except CaikitCoreException as e:
+            raise_caikit_runtime_exception(exception=e)
         except (TypeError, ValueError) as e:
             log_dict = {
                 "log_code": "<RUN490439039W>",
