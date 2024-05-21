@@ -184,6 +184,19 @@ runtime:
         enabled: true
         port: 8086
 
+    # Configuration for the trace push client
+    trace:
+        enabled: false
+        endpoint: "localhost:14250"
+        protocol: grpc
+        service_name: caikit.runtime
+        # TLS config for the otel server. If CA is falsy, insecure. If client
+        # key and cert provided with CA, mTLS, otherwise TLS.
+        tls:
+            ca: ""
+            client_key: ""
+            client_cert: ""
+
     # Whether or not to abort work on client cancellation
     use_abortable_threads: true
 
