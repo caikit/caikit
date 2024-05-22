@@ -15,7 +15,7 @@
 The trace module holds utilities for tracing runtime requests.
 """
 # Standard
-import base64
+from typing import Union
 import os
 
 # Third Party
@@ -38,11 +38,14 @@ _TRACE_MODULE = None
 
 def configure():
     """Configure all tracing based on config and installed packages"""
+    global _TRACE_MODULE
 
-    # Short circuit if not enabled
+    # Short circuit if not enabled, including resetting the global module
+    # pointer so that toggling from enabled -> disabled works as expected
     trace_cfg = get_config().runtime.trace
     if not trace_cfg.enabled:
         log.info("Trace disabled")
+        _TRACE_MODULE = None
         return
 
     # Figure out which protocol is being used
@@ -74,11 +77,11 @@ def configure():
             "<RUN41027815W>",
             "Cannot enable trace. You may need to `pip install caikt[runtime-trace]`: %s",
             err,
+            exc_info=True,
         )
         return
 
     # Populate the global module handle
-    global _TRACE_MODULE
     _TRACE_MODULE = trace
 
     # Configure the trace provider
@@ -114,7 +117,17 @@ def configure():
     exporter = OTLPSpanExporter(**exporter_kwargs)
 
     # Set up the trace provider
-    trace.set_tracer_provider(BatchSpanProcessor(exporter))
+    provider.add_span_processor(BatchSpanProcessor(exporter))
+    trace.set_tracer_provider(provider)
+
+
+def get_tracer(name: str) -> Union["_NoOpProxy", "Tracer"]:
+    """Get a tracer that can be called with the opentelemetry API. If not
+    configured, this will be a No-Op Proxy.
+    """
+    if _TRACE_MODULE:
+        return _TRACE_MODULE.get_tracer(name)
+    return _NoOpProxy()
 
 
 ## Implementation Details ######################################################
@@ -128,3 +141,23 @@ def _load_tls_secret(tls_config_val: str) -> bytes:
         with open(tls_config_val, "rb") as handle:
             return handle.read()
     return tls_config_val.encode("utf-8")
+
+
+class _NoOpProxy:
+    """This dummy class is infinitely callable and will return itself on any
+    getattr call or context enter/exit. It can be used to provide a no-op
+    stand-in for all of the classes in the opentelemetry ecosystem when they are
+    either not configured or not available.
+    """
+
+    def __getattr__(self, *_, **__):
+        return self
+
+    def __call__(self, *_, **__) -> "_NoOpProxy":
+        return self
+
+    def __enter__(self, *_, **__) -> "_NoOpProxy":
+        return self
+
+    def __exit__(self, *_, **__):
+        pass
