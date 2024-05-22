@@ -187,7 +187,8 @@ runtime:
     # Configuration for the trace push client
     trace:
         enabled: false
-        endpoint: "localhost:14250"
+        # For HTTP default, use "http(s)://localhost:4318/v1/traces"
+        endpoint: "localhost:4317"
         protocol: grpc
         service_name: caikit.runtime
         # TLS config for the otel server. If CA is falsy, insecure. If client
