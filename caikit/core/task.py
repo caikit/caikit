@@ -13,7 +13,7 @@
 # limitations under the License.
 # Standard
 from inspect import isclass
-from typing import Callable, Dict, Iterable, List, Type, TypeVar, Union
+from typing import Callable, Dict, Iterable, List, Optional, Type, TypeVar, Union
 import collections
 import dataclasses
 import typing
@@ -42,6 +42,10 @@ _STREAM_PARAMS_ANNOTATION = "__streaming_params"
 _UNARY_OUT_ANNOTATION = "__unary_output_type"
 _UNARY_PARAMS_ANNOTATION = "__unary_params"
 
+MODEL_ID_DEFAULT = "__model_id_default"
+MODEL_ID_SHOW = "__model_id_show"
+OPEN_API_VISIBLE = "__open_api_visible"
+
 
 class TaskBase:
     """The TaskBase defines the interface for an abstract AI task
@@ -61,6 +65,9 @@ class TaskBase:
         method_name: str  # the simple name of a method, like "run"
         input_streaming: bool
         output_streaming: bool
+        context_arg: Optional[
+            str
+        ]  # The name of the request context to pass if one is provided
 
     deferred_method_decorators: Dict[
         Type["TaskBase"], Dict[str, List["TaskBase.InferenceMethodPtr"]]
@@ -68,7 +75,10 @@ class TaskBase:
 
     @classmethod
     def taskmethod(
-        cls, input_streaming: bool = False, output_streaming: bool = False
+        cls,
+        input_streaming: bool = False,
+        output_streaming: bool = False,
+        context_arg: Optional[str] = None,
     ) -> Callable[[_InferenceMethodBaseT], _InferenceMethodBaseT]:
         """Decorates a module instancemethod and indicates whether the inputs and outputs should
         be handled as streams. This will trigger validation that the signature of this method
@@ -92,6 +102,7 @@ class TaskBase:
                     method_name=inference_method.__name__,
                     input_streaming=input_streaming,
                     output_streaming=output_streaming,
+                    context_arg=context_arg,
                 )
             )
             return inference_method
@@ -110,7 +121,9 @@ class TaskBase:
             keyname = _make_keyname_for_module(module)
             deferred_decorations = cls.deferred_method_decorators[cls][keyname]
             for decoration in deferred_decorations:
-                signature = CaikitMethodSignature(module, decoration.method_name)
+                signature = CaikitMethodSignature(
+                    module, decoration.method_name, decoration.context_arg
+                )
                 cls.validate_run_signature(
                     signature, decoration.input_streaming, decoration.output_streaming
                 )
@@ -292,6 +305,9 @@ def task(
     streaming_parameters: Dict[str, Type[Iterable[ValidInputTypes]]] = None,
     unary_output_type: Type[DataBase] = None,
     streaming_output_type: Type[Iterable[Type[DataBase]]] = None,
+    model_id_default=None,
+    model_id_show=True,
+    open_api_visible=True,
     **kwargs,
 ) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
     """The decorator for AI Task classes.
@@ -349,6 +365,12 @@ def task(
         streaming_output_type (Type[Iterable[Type[DataBase]]]): The streaming output type of the
             task, which all modules' streaming-output inference methods must return. This must be
             in the form Iterable[T].
+        model_id_default (str): default model id to show in OpenAPI, as well as to use if none
+            is specified.
+        model_id_show (bool): In OpenAPI, if True, show the box to enter the model_id, otherwise
+            hide it.  Default is True.
+        open_api_visible (bool): if True, show the task in the OpenAPI, otherwise hide it.
+            Default is True.
 
     Returns:
         A decorator function for the task class, registering it with caikit's core registry of
@@ -364,6 +386,8 @@ def task(
             cls.__annotations__ = {}
             cls_annotations = cls.__dict__.get("__annotations__", None)
 
+        assert isinstance(cls_annotations, dict)
+
         if unary_parameters:
             cls_annotations[_UNARY_PARAMS_ANNOTATION] = unary_parameters
         if streaming_parameters:
@@ -372,6 +396,10 @@ def task(
             cls_annotations[_UNARY_OUT_ANNOTATION] = unary_output_type
         if streaming_output_type:
             cls_annotations[_STREAM_OUT_ANNOTATION] = streaming_output_type
+
+        cls_annotations[MODEL_ID_DEFAULT] = model_id_default
+        cls_annotations[MODEL_ID_SHOW] = model_id_show
+        cls_annotations[OPEN_API_VISIBLE] = open_api_visible
 
         # Backwards compatibility with old-style @tasks
         if "required_parameters" in kwargs and not unary_parameters:

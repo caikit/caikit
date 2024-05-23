@@ -16,8 +16,10 @@
 """Base classes and functionality for all data structures.
 """
 # Standard
+import builtins
 from dataclasses import dataclass
 from enum import Enum
+import functools
 from io import IOBase
 from typing import (
     Any,
@@ -25,6 +27,7 @@ from typing import (
     ClassVar,
     Dict,
     List,
+    Mapping,
     NoReturn,
     Optional,
     Tuple,
@@ -37,6 +40,7 @@ import datetime
 import json
 
 # Third Party
+import fastapi
 from google.protobuf import json_format
 from google.protobuf.descriptor import (
     Descriptor,
@@ -496,11 +500,64 @@ class _DataBaseMetaClass(type):
             field.name
             for field in sorted(
                 oneof.fields,
-                key=lambda fld: mcs._PROTO_TYPE_ORDER.index(fld.type)
-                if fld.type in mcs._PROTO_TYPE_ORDER
-                else len(mcs._PROTO_TYPE_ORDER),
+                key=lambda fld: (
+                    mcs._PROTO_TYPE_ORDER.index(fld.type)
+                    if fld.type in mcs._PROTO_TYPE_ORDER
+                    else len(mcs._PROTO_TYPE_ORDER)
+                ),
             )
         ]
+
+
+# This mapping is in support of the DataBase.response_content_converter.  This map
+# has keys that are fully qualified data object's class names.  It would be nicer
+# if the values could just be class vars, but when the decorator is being processed
+# the class has not yet been defined, and also, adding attributes there can screw up
+# the processing of the attributes.  So this is cleaner and less problematic.  Only
+# data object classes that have the response_content_converter will have entries.
+# This should be kept as private as possible, because the design for this may well
+# change.
+__name_to_response_converters: Dict[str, Dict[int, Dict[str, Callable]]] = {}
+
+
+def _class_name_from_method(meth: Callable) -> str:
+    # We can only get the name here, because the class hasn't been defined yet!
+    class_func_owner = f"{meth.__module__}.{meth.__qualname__.split('.')[0]}"
+    return class_func_owner
+
+
+def _get_name_to_response_converters_from_qualified_name(
+    qualified_class_name: str, create_if_not_present: bool
+) -> Optional[Dict[int, Dict[str, Callable]]]:
+    response_content_converter_map: Optional[int, Dict[str, Callable]] = (
+        __name_to_response_converters.get(qualified_class_name, None)
+    )
+    if response_content_converter_map is None and create_if_not_present:
+        response_content_converter_map = {}
+        __name_to_response_converters[qualified_class_name] = (
+            response_content_converter_map
+        )
+    return response_content_converter_map
+
+
+def get_name_to_response_converters(
+    data_object_class: Type["DataBase"], create_if_not_present=False
+) -> Optional[Dict[int, Dict[str, Callable]]]:
+    qualified_class_name = (
+        f"{data_object_class.__module__}.{data_object_class.__name__}"
+    )
+    return _get_name_to_response_converters_from_qualified_name(
+        qualified_class_name, create_if_not_present
+    )
+
+
+def _get_name_to_response_converters_from_method(
+    method: Callable, create_if_not_present=True
+) -> Optional[Dict[int, Dict[str, Callable]]]:
+    qualified_class_name = _class_name_from_method(method)
+    return _get_name_to_response_converters_from_qualified_name(
+        qualified_class_name, create_if_not_present
+    )
 
 
 class DataBase(metaclass=_DataBaseMetaClass):
@@ -543,10 +600,13 @@ class DataBase(metaclass=_DataBaseMetaClass):
 
         # If attempting to set one of the named fields or a oneof, instead set
         # the private version of the attribute.
-        if name in cls.fields or name in cls._fields_oneofs_map:
-            super().__setattr__(f"_{name}", val)
-        else:
-            super().__setattr__(name, val)
+        try:
+            if name in cls.fields or name in cls._fields_oneofs_map:
+                super().__setattr__(f"_{name}", val)
+            else:
+                super().__setattr__(name, val)
+        except AttributeError:
+            print("yikes!!!")
 
     @classmethod
     def get_proto_class(cls) -> Type[ProtoMessageType]:
@@ -923,6 +983,53 @@ class DataBase(metaclass=_DataBaseMetaClass):
             caikit.core.data_model.DataBase: A DataBase object.
         """
         raise NotImplementedError(f"from_file not implemented for {cls}")
+
+    @classmethod
+    def response_content_converter(
+        cls,
+        method=None,
+        *,
+        http_status_code: int,
+        media_types: List[str],
+    ):
+        def result_mapping_decorator(method: Callable):
+            response_content_converter_map = (
+                _get_name_to_response_converters_from_method(method, True)
+            )
+            assert response_content_converter_map is not None
+
+            assert isinstance(response_content_converter_map, Mapping)
+            map_for_status_code = response_content_converter_map.get(
+                http_status_code, None
+            )
+            if map_for_status_code is None:
+                map_for_status_code = {}
+                response_content_converter_map[http_status_code] = map_for_status_code
+
+            assert isinstance(map_for_status_code, Mapping)
+            for media_type in media_types:
+                existing_converter = map_for_status_code.get(media_type, None)
+                if existing_converter is not None:
+                    log.warning(
+                        "redefining converter for "
+                        f"status-code/media type: {http_status_code}/{media_type}"
+                    )
+                map_for_status_code[media_type] = method
+
+            @functools.wraps(method)
+            def wrapper(self, *args, **kwargs) -> fastapi.Response:
+                value = method(self)
+                return value
+
+            return wrapper
+
+        assert http_status_code
+        assert media_types
+
+        if method is None:
+            return result_mapping_decorator
+        else:
+            return result_mapping_decorator(method)
 
     def to_proto(self):
         """Return a new protobufs populated with the information in this data structure."""

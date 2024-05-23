@@ -40,6 +40,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
 from grpc import StatusCode
+from pydantic.fields import FieldInfo
 from sse_starlette import EventSourceResponse, ServerSentEvent
 import pydantic
 import uvicorn
@@ -51,6 +52,8 @@ from py_to_proto.dataclass_to_proto import (  # Imported here for 3.8 compat
 )
 import aconfig
 import alog
+
+from caikit.core.task import MODEL_ID_DEFAULT, MODEL_ID_SHOW
 
 # Local
 from .pydantic_wrapper import (
@@ -135,9 +138,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
         ) -> Response:
             err_code = status.HTTP_422_UNPROCESSABLE_ENTITY
             error_content = {
-                "details": exc.errors()[0]["msg"]
-                if len(exc.errors()) > 0 and "msg" in exc.errors()[0]
-                else exc.errors(),
+                "details": (
+                    exc.errors()[0]["msg"]
+                    if len(exc.errors()) > 0 and "msg" in exc.errors()[0]
+                    else exc.errors()
+                ),
                 "additional_info": exc.errors(),
                 "code": err_code,
                 "id": uuid.uuid4().hex,
@@ -538,6 +543,18 @@ class RuntimeHTTPServer(RuntimeServerBase):
             response_class=Response,
         )(self._cancel_training)
 
+    def _get_rpc_description(self, rpc: TaskPredictRPC) -> Optional[str]:
+        task_description = rpc.task.__doc__
+        if not task_description:
+            # If the task doesn't have a description (shame), grab the first module description
+            for method_signature in rpc.method_signatures:
+                task_description = method_signature.method.__doc__
+                if task_description:
+                    break
+        if not task_description:
+            return None
+        return task_description
+
     def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = dataobject_to_pydantic(
@@ -587,7 +604,23 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
     def _add_unary_input_unary_output_handler(self, rpc: TaskPredictRPC):
         """Add a unary:unary request handler for this RPC signature"""
-        pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
+        request_dm = self._get_request_dataobject(rpc)
+        pydantic_request = dataobject_to_pydantic(request_dm)
+
+        task_description = self._get_rpc_description(rpc)
+
+        # Note: for Python > 3.10 inspect.get_annotations is best practice
+        task_annotations = rpc.task.__annotations__
+        model_id_default: Optional[str] = task_annotations.get(MODEL_ID_DEFAULT, None)
+        model_id_show = task_annotations.get(MODEL_ID_SHOW, True)
+        if "model_id" in pydantic_request.model_fields:
+            model_id_field_info: FieldInfo | None = pydantic_request.model_fields.get(
+                "model_id"
+            )
+            if model_id_field_info:
+                model_id_field_info.default = model_id_default
+                pydantic_request.model_rebuild(force=True)
+
         response_data_object = self._get_response_dataobject(rpc)
         pydantic_response = dataobject_to_pydantic(response_data_object)
 
@@ -598,6 +631,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             ),
             openapi_extra=self._get_request_openapi(pydantic_request),
             response_class=Response,
+            description=task_description,
         )
         # pylint: disable=unused-argument
         async def _handler(
@@ -635,6 +669,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         output_streaming=False,
                         task=rpc.task,
                         aborter=aborter,
+                        context=context,
                         **request_params,
                     )
                     result = await loop.run_in_executor(self.thread_pool, call)
@@ -692,6 +727,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                                 output_streaming=True,
                                 task=rpc.task,
                                 aborter=aborter,
+                                context=context,
                                 **request_params,
                             ),
                             pool=self.thread_pool,
@@ -859,6 +895,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 annotations=optional_params,
                 package=pkg_name,
             )
+            parameters_type.__doc__ = "Request Parameters"
 
         # Create the top-level request message
         request_annotations = {}
@@ -872,6 +909,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             annotations=request_annotations,
             package=pkg_name,
         )
+        request_message.__doc__ = "HTTP Request"
 
         return request_message
 
@@ -936,7 +974,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
     @staticmethod
     def _get_response_openapi(
         dm_class: Type[DataBase], pydantic_model: Union[Type, Type[pydantic.BaseModel]]
-    ):
+    ) -> Dict[Union[int, str], Dict[str, Any]]:
         """Helper to generate the openapi schema for a given response"""
 
         if dm_class.supports_file_operations:
@@ -954,7 +992,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
             response_schema = {"application/json": flatten_json_schema(json_schema)}
 
-        output = {200: {"content": response_schema}}
+        # Not certain why this type annotation is needed, since
+        # Dict[int, Dict[str, Any]] should match Dict[Union[int, str], Dict[str, Any]]?
+        # Never-the-less it fixes the problem with the responses argument to FastAPI's post.
+        output: Dict[Union[int, str], Dict[str, Any]] = {
+            200: {"content": response_schema}
+        }
         return output
 
     @contextmanager

@@ -203,6 +203,8 @@ class GlobalPredictServicer:
                 output_streaming=caikit_rpc.output_streaming,
                 task=caikit_rpc.task,
                 aborter=RpcAborter(context) if self._interrupter else None,
+                context=context,
+                context_arg=inference_signature.context_arg,
                 **caikit_library_request,
             )
 
@@ -225,6 +227,8 @@ class GlobalPredictServicer:
         output_streaming: Optional[bool] = None,
         task: Optional[TaskBase] = None,
         aborter: Optional[RpcAborter] = None,
+        context: Optional[Union[ServicerContext, "fastapi.Request"]] = None,
+        context_arg: Optional[str] = None,
         **kwargs,
     ) -> Union[DataBase, Iterable[DataBase]]:
         """Run a prediction against the given model using the raw arguments to
@@ -257,12 +261,22 @@ class GlobalPredictServicer:
             model = self._model_manager.retrieve_model(model_id)
             self._verify_model_task(model)
             if input_streaming is not None and output_streaming is not None:
-                inference_func_name = model.get_inference_signature(
+                inference_sig = model.get_inference_signature(
                     output_streaming=output_streaming,
                     input_streaming=input_streaming,
                     task=task,
-                ).method_name
-                log.debug2("Deduced inference function name: %s", inference_func_name)
+                )
+                inference_func_name = inference_sig.method_name
+                context_arg = inference_sig.context_arg
+
+                log.debug2(
+                    "Deduced inference function name: %s and context_arg: %s",
+                    inference_func_name,
+                    context_arg,
+                )
+
+            if context_arg:
+                kwargs[context_arg] = context
 
             model_run_fn = getattr(model, inference_func_name)
             # NB: we previously recorded the size of the request, and timed this module to
