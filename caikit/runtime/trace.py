@@ -101,8 +101,11 @@ def configure():
                 **creds_kwargs
             )
         else:
-            if trace_cfg.tls.client_key and trace_cfg.tls.client_cert:
-                log.warning("mTLS not supported for trace with HTTP")
+            error.value_check(
+                "<RUN46942098E>",
+                not (trace_cfg.tls.client_key and trace_cfg.tls.client_cert),
+                "mTLS not supported for trace with HTTP",
+            )
             log.debug("Configuring http trace with TLS")
             error.file_check("<RUN80171155E>", trace_cfg.tls.ca)
             exporter_kwargs["certificate_file"] = trace_cfg.tls.ca

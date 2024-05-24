@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from typing import Optional
 from unittest import mock
+import builtins
 import ssl
 import sys
 import threading
@@ -35,7 +36,6 @@ class MockCollectorHttpServer:
         port: int,
         cert: Optional[str] = None,
         key: Optional[str] = None,
-        client_ca: Optional[str] = None,
     ):
         self.requests = []
         self.app = FastAPI()
@@ -49,10 +49,11 @@ class MockCollectorHttpServer:
         if cert and key:
             tls_kwargs["ssl_keyfile"] = key
             tls_kwargs["ssl_certfile"] = cert
-            if client_ca:
-                tls_kwargs["ssl_ca_certs"] = client_ca
-                tls_kwargs["ssl_cert_required"] = ssl.CERT_REQUIRED
-        self.server = uvicorn.Server(uvicorn.Config(self.app, port=port, **tls_kwargs))
+        self.server = uvicorn.Server(
+            uvicorn.Config(
+                self.app, port=port, timeout_graceful_shutdown=0.001, **tls_kwargs
+            )
+        )
         self.server_thread = threading.Thread(target=self.server.run)
 
     def start(self):
@@ -255,6 +256,15 @@ def test_trace_disabled(reset_trace_imports, trace_disabled):
     assert "opentelemetry" not in sys.modules
 
 
+def test_trace_not_installed(reset_trace_imports, trace_enabled_grpc):
+    """Test that when the libraries cannot be imported, the configure step does
+    not raise
+    """
+
+    with mock.patch.object(builtins, "__import__", side_effect=ImportError("yikes")):
+        trace.configure()
+
+
 def test_trace_configured_grpc(
     reset_otel_trace_globals, trace_enabled_grpc, collector_grpc_insecure
 ):
@@ -327,6 +337,24 @@ def test_trace_grpc_tls(
                 tls=tls_trace_cfg,
                 flush_on_exit=False,
                 endpoint=f"localhost:{open_port}",
+            ):
+                trace.configure()
+            exercise_tracer_api(trace.get_tracer("test/tracer"))
+            verify_exported(servicer)
+
+
+def test_trace_http_tls(reset_otel_trace_globals, trace_enabled_http, open_port):
+    """Test that tracing can be enabled all flavors of (m)TLS"""
+    with generate_tls_configs(open_port, tls=True, inline=False) as tls_configs:
+        with MockCollectorHttpServer(
+            open_port,
+            cert=tls_configs.runtime.tls.server.cert,
+            key=tls_configs.runtime.tls.server.key,
+        ) as servicer:
+            with trace_config(
+                tls={"ca": tls_configs.use_in_test.ca_cert},
+                flush_on_exit=False,
+                endpoint=f"https://localhost:{open_port}/v1/traces",
             ):
                 trace.configure()
             exercise_tracer_api(trace.get_tracer("test/tracer"))
