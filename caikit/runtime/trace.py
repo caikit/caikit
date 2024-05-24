@@ -84,10 +84,6 @@ def configure():
     # Populate the global module handle
     _TRACE_MODULE = trace
 
-    # Configure the trace provider
-    resource = Resource(attributes={SERVICE_NAME: trace_cfg.service_name})
-    provider = TracerProvider(resource=resource)
-
     # Set up the exporter
     exporter_kwargs = {"endpoint": trace_cfg.endpoint}
     if trace_cfg.tls.ca:
@@ -116,7 +112,11 @@ def configure():
             exporter_kwargs["insecure"] = True
     exporter = OTLPSpanExporter(**exporter_kwargs)
 
-    # Set up the trace provider
+    # Configure the trace provider
+    resource = Resource(attributes={SERVICE_NAME: trace_cfg.service_name})
+    provider = TracerProvider(
+        resource=resource, shutdown_on_exit=trace_cfg.flush_on_exit
+    )
     provider.add_span_processor(BatchSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
 

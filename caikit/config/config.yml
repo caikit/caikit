@@ -191,6 +191,8 @@ runtime:
         endpoint: "localhost:4317"
         protocol: grpc
         service_name: caikit.runtime
+        # Flush the trace on exit
+        flush_on_exit: true
         # TLS config for the otel server. If CA is falsy, insecure. If client
         # key and cert provided with CA, mTLS, otherwise TLS.
         tls:
