@@ -10,6 +10,7 @@ from .modules import (
     SampleModule,
     SamplePrimitiveModule,
     StreamingModule,
+    MultiTaskModule
 )
 from caikit.config import configure
 

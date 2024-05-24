@@ -273,6 +273,7 @@ class GlobalPredictServicer:
                     context_arg,
                 )
 
+            # If a context arg was supplied then add the context
             if context_arg:
                 kwargs[context_arg] = context
 

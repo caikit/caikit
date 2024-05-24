@@ -119,7 +119,7 @@ class CaikitMethodSignature:
 
     @property
     def context_arg(self) -> Optional[str]:
-        """The full qualified name for the source function"""
+        """The name of the context arg to pass to the function"""
         return self._context_arg
 
 
