@@ -17,6 +17,7 @@ from importlib.metadata import version
 from typing import Any, Dict, Iterable, Optional, Set, Union
 import itertools
 import traceback
+import uuid
 
 # Third Party
 from google.protobuf.descriptor import FieldDescriptor
@@ -37,7 +38,7 @@ from caikit.interfaces.runtime.data_model import RuntimeServerContextType
 from caikit.runtime import trace
 from caikit.runtime.metrics.rpc_meter import RPCMeter
 from caikit.runtime.model_management.model_manager import ModelManager
-from caikit.runtime.names import MODEL_MESH_MODEL_ID_KEY
+from caikit.runtime.names import MODEL_MESH_MODEL_ID_KEY, REQUEST_ID_HEADER_KEY
 from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -207,6 +208,14 @@ class GlobalPredictServicer:
                     )
 
             # Get a unique ID from this request or make one up
+            if (
+                request_id := get_metadata(
+                    context, REQUEST_ID_HEADER_KEY, required=False
+                )
+                is None
+            ):
+                request_id = str(uuid.uuid4())
+                log.debug("Using internally generated request ID: %s", request_id)
 
             response = self.predict_model(
                 request_name,
@@ -218,6 +227,7 @@ class GlobalPredictServicer:
                 context=context,
                 context_arg=inference_signature.context_arg,
                 model=model,
+                request_id=request_id,
                 **caikit_library_request,
             )
 
