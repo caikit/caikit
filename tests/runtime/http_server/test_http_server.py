@@ -38,6 +38,7 @@ from caikit.core.data_model import TrainingStatus
 from caikit.core.model_management.multi_model_finder import MultiModelFinder
 from caikit.runtime import http_server
 from caikit.runtime.http_server.http_server import StreamEventTypes
+from caikit.runtime.names import REQUEST_ID_HEADER_KEY
 from caikit.runtime.server_base import ServerThreadPool
 from tests.conftest import get_mutable_config_copy, reset_globals, temp_config
 from tests.core.helpers import MockBackend
@@ -907,6 +908,45 @@ def test_http_inference_streaming_notifies_backends_of_context(
 
         # Make sure the context was registered
         assert list(mock_backend.runtime_contexts.keys()) == [sample_task_model_id]
+
+
+def test_inference_trace(sample_task_model_id, open_port):
+    """Test that tracing is called when enabled"""
+
+    span_mock = mock.MagicMock()
+    span_context_mock = mock.MagicMock()
+    tracer_mock = mock.MagicMock()
+    get_tracer_mock = mock.MagicMock()
+    tracer_mock.start_as_current_span.return_value = span_context_mock
+    span_context_mock.__enter__.return_value = span_mock
+    get_tracer_mock.return_value = tracer_mock
+
+    with mock.patch("caikit.runtime.trace.get_tracer", get_tracer_mock):
+        with runtime_http_test_server(open_port) as server:
+            with client_context(server) as client:
+                json_input = {
+                    "inputs": {"name": "world"},
+                    "model_id": sample_task_model_id,
+                }
+                request_id = "my-request"
+                response = client.post(
+                    f"/api/v1/task/sample",
+                    json=json_input,
+                    headers={REQUEST_ID_HEADER_KEY: request_id},
+                )
+                json_response = response.json()
+                assert response.status_code == 200, json_response
+                assert json_response["greeting"] == "Hello world"
+
+                # Make sure tracing called
+                get_tracer_mock.assert_called_once()
+                tracer_mock.start_as_current_span.assert_called_once()
+                assert (
+                    span_context := tracer_mock.start_as_current_span.call_args.kwargs.get(
+                        "context"
+                    )
+                )
+                assert span_context.get("request_id") == request_id
 
 
 ## Info Tests ##################################################################

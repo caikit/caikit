@@ -76,6 +76,7 @@ from caikit.runtime.names import (
     MODEL_MANAGEMENT_SERVICE_SPEC,
     MODELS_INFO_ENDPOINT,
     OPTIONAL_INPUTS_KEY,
+    REQUEST_ID_HEADER_KEY,
     REQUIRED_INPUTS_KEY,
     RUNTIME_INFO_ENDPOINT,
     STATUS_CODE_TO_HTTP,
@@ -650,6 +651,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     HttpRequestAborter(context) if self.interrupter else nullcontext()
                 )
 
+                # Get the request ID for this request either from the context or
+                # with an internal uuid
+                request_id = self._get_request_id(context)
+                log.debug("Predict request: %s", request_id)
+
                 with aborter_context as aborter:
                     # TODO: use `async_wrap_*`?
                     call = partial(
@@ -661,6 +667,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         task=rpc.task,
                         aborter=aborter,
                         context=context,
+                        request_id=request_id,
                         **request_params,
                     )
                     result = await loop.run_in_executor(self.thread_pool, call)
@@ -703,7 +710,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             request = await pydantic_from_request(pydantic_request, context)
             request_params = self._get_request_params(rpc, request)
 
-            async def _generator() -> pydantic_response:
+            async def _generator():
                 try:
                     model_id = self._get_model_id(request)
                     log.debug4(
@@ -723,6 +730,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         else nullcontext()
                     )
 
+                    # Get the request ID for this request either from the context or
+                    # with an internal uuid
+                    request_id = self._get_request_id(context)
+                    log.debug("Predict request: %s", request_id)
+
                     with aborter_context as aborter:
                         log.debug("In stream generator for %s", rpc.name)
                         async for result in async_wrap_iter(
@@ -734,6 +746,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                                 task=rpc.task,
                                 aborter=aborter,
                                 context=context,
+                                request_id=request_id,
                                 **request_params,
                             ),
                             pool=self.thread_pool,
@@ -916,6 +929,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
         )
 
         return request_message
+
+    @staticmethod
+    def _get_request_id(context: Request) -> str:
+        """Get a request ID from the headers and fall back to an internal id"""
+        if (request_id := context.headers.get(REQUEST_ID_HEADER_KEY)) is not None:
+            return request_id
+        return str(uuid.uuid4())
 
     @staticmethod
     def _get_response_dataobject(rpc: CaikitRPCBase) -> Type[DataBase]:
