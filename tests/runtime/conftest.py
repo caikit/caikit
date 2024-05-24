@@ -5,7 +5,7 @@ This sets up global test configs when pytest starts
 # Standard
 from contextlib import closing, contextmanager
 from functools import partial
-from typing import Dict, List, Optional, Type, Union
+from typing import Dict, Iterable, List, Optional, Type, Union
 import os
 import shlex
 import socket
@@ -99,12 +99,12 @@ def sample_inference_service(render_protos) -> ServicePackage:
     return inference_service
 
 
-@pytest.fixture(scope="session")
-def sample_predict_servicer(sample_inference_service) -> GlobalPredictServicer:
+@contextmanager
+def make_sample_predict_servicer(inference_service):
     interrupter = ThreadInterrupter()
     interrupter.start()
     servicer = GlobalPredictServicer(
-        inference_service=sample_inference_service, interrupter=interrupter
+        inference_service=inference_service, interrupter=interrupter
     )
     yield servicer
     # Make sure to not leave the rpc_meter hanging
@@ -113,6 +113,14 @@ def sample_predict_servicer(sample_inference_service) -> GlobalPredictServicer:
     if rpc_meter:
         rpc_meter.end_writer_thread()
     interrupter.stop()
+
+
+@pytest.fixture(scope="session")
+def sample_predict_servicer(
+    sample_inference_service,
+) -> Iterable[GlobalPredictServicer]:
+    with make_sample_predict_servicer(sample_inference_service) as servicer:
+        yield servicer
 
 
 @pytest.fixture(scope="session")

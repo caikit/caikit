@@ -212,8 +212,7 @@ class GlobalPredictServicer:
                 request_id := get_metadata(
                     context, REQUEST_ID_HEADER_KEY, required=False
                 )
-                is None
-            ):
+            ) is None:
                 request_id = str(uuid.uuid4())
                 log.debug("Using internally generated request ID: %s", request_id)
 
