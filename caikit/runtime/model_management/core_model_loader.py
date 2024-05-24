@@ -59,6 +59,4 @@ class CoreModelLoader(ModelLoaderBase):
 
         # Load using the caikit.core
         with CAIKIT_CORE_LOAD_DURATION_SUMMARY.labels(model_type=model_type).time():
-            model = MODEL_MANAGER.load(model_path, **load_kwargs)
-
-        return model
+            return MODEL_MANAGER.load(model_path, **load_kwargs)
