@@ -82,7 +82,7 @@ interfaces-ts-pyspark = [
 
 # NOTE: This is "all" from the user perspective, not the dev perspective
 all = [
-    "caikit[runtime-grpc, runtime-http, runtime-client, interfaces-vision, interfaces-ts]",
+    "caikit[runtime-grpc, runtime-http, runtime-client, runtime-trace, interfaces-vision, interfaces-ts]",
 ]
 
 ## Dev Extra Sets ##
