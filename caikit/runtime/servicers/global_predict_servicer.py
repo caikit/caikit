@@ -32,6 +32,7 @@ from caikit import get_config
 from caikit.core import ModuleBase, TaskBase
 from caikit.core.data_model import DataBase, DataStream
 from caikit.core.signature_parsing import CaikitMethodSignature
+from caikit.interfaces.runtime.data_model import RuntimeServerContextType
 from caikit.runtime.metrics.rpc_meter import RPCMeter
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.names import MODEL_MESH_MODEL_ID_KEY
@@ -225,9 +226,7 @@ class GlobalPredictServicer:
         output_streaming: Optional[bool] = None,
         task: Optional[TaskBase] = None,
         aborter: Optional[RpcAborter] = None,
-        context: Optional[
-            Union[ServicerContext, "fastapi.Request"]  # noqa: F821
-        ] = None,
+        context: Optional[RuntimeServerContextType] = None,  # noqa: F821
         context_arg: Optional[str] = None,
         **kwargs,
     ) -> Union[DataBase, Iterable[DataBase]]:
