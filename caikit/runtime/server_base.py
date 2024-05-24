@@ -28,6 +28,7 @@ import alog
 # Local
 from caikit.config import get_config
 from caikit.core.exceptions import error_handler
+from caikit.runtime import trace
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -77,6 +78,9 @@ class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attribute
 
         # Configure using the log level and formatter type specified in config.
         caikit.core.toolkit.logging.configure()
+
+        # Configure tracing
+        trace.configure()
 
         # We should always be able to stand up an inference service
         self.enable_inference = self.config.runtime.service_generation.enable_inference
