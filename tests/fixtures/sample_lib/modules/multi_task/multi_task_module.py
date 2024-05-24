@@ -29,6 +29,7 @@ class SecondTask(TaskBase):
 class ContextTask(TaskBase):
     pass
 
+
 @module(
     id="00110203-0123-0456-0789-0a0b02dd1eef",
     name="MultiTaskModule",
@@ -54,10 +55,10 @@ class MultiTaskModule(caikit.core.ModuleBase):
         )
 
     @ContextTask.taskmethod(context_arg="context")
-    def run_context_task(self, sample_input: SampleInputType, context=None) -> SampleOutputType:
+    def run_context_task(
+        self, sample_input: SampleInputType, context=None
+    ) -> SampleOutputType:
         if context is None:
             raise ValueError("Context is a required parameter")
-        
-        return SampleOutputType(
-            "Found context"
-        )
+
+        return SampleOutputType("Found context")

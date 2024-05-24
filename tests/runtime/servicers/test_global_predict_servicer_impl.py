@@ -19,7 +19,7 @@ from unittest.mock import MagicMock, patch
 from caikit.core.data_model import DataStream, ProducerId
 from caikit.runtime.service_factory import get_inference_request
 from sample_lib.data_model.sample import GeoSpatialTask
-from sample_lib.modules import MultiTaskModule, SecondTask, ContextTask
+from sample_lib.modules import ContextTask, MultiTaskModule, SecondTask
 from sample_lib.modules.geospatial import GeoStreamingModule
 
 try:
@@ -235,6 +235,7 @@ def test_global_predict_works_for_multitask_model(
         ).to_proto()
     )
 
+
 def test_global_predict_works_for_context_arg(
     sample_inference_service,
     sample_predict_servicer,
@@ -248,19 +249,12 @@ def test_global_predict_works_for_context_arg(
     )
     with patch.object(sample_predict_servicer, "_model_manager", mock_manager):
         response = sample_predict_servicer.Predict(
-            predict_class(
-                sample_input=HAPPY_PATH_INPUT_DM
-            ).to_proto(),
+            predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
             Fixtures.build_context(sample_task_model_id),
             caikit_rpc=sample_inference_service.caikit_rpcs["ContextTaskPredict"],
         )
 
-    assert (
-        response
-        == SampleOutputType(
-            "Found context"
-           ).to_proto()
-    )
+    assert response == SampleOutputType("Found context").to_proto()
 
 
 def test_global_predict_predict_model_direct(

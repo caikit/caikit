@@ -1,2 +1,2 @@
 # Local
-from .multi_task_module import FirstTask, MultiTaskModule, SecondTask, ContextTask
+from .multi_task_module import ContextTask, FirstTask, MultiTaskModule, SecondTask

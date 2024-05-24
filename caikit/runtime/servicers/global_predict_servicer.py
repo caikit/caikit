@@ -225,7 +225,9 @@ class GlobalPredictServicer:
         output_streaming: Optional[bool] = None,
         task: Optional[TaskBase] = None,
         aborter: Optional[RpcAborter] = None,
-        context: Optional[Union[ServicerContext, "fastapi.Request"]] = None,
+        context: Optional[
+            Union[ServicerContext, "fastapi.Request"]  # noqa: F821
+        ] = None,
         context_arg: Optional[str] = None,
         **kwargs,
     ) -> Union[DataBase, Iterable[DataBase]]:
