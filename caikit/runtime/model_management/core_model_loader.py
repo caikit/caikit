@@ -50,7 +50,7 @@ class CoreModelLoader(ModelLoaderBase):
         """Start loading a model from disk and associate the ID/size with it"""
         log.info("<RUN89711114I>", "Loading model '%s'", model_id)
 
-        # Only pass finder/initializer if they have values
+        # Only pass finder/initializer if they have values so that defaults are used otherwise
         load_kwargs = {}
         if finder:
             load_kwargs["finder"] = finder
