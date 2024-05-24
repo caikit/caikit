@@ -15,7 +15,7 @@
 The trace module holds utilities for tracing runtime requests.
 """
 # Standard
-from typing import Union
+from typing import TYPE_CHECKING, Union
 import os
 
 # Third Party
@@ -34,6 +34,11 @@ error = error_handler.get(log)
 
 # Global handle to the trace module that will be populated in configure()
 _TRACE_MODULE = None
+
+
+if TYPE_CHECKING:
+    # Third Party
+    from opentelemetry.trace import Tracer
 
 
 def configure():
