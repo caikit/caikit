@@ -171,7 +171,7 @@ def test_no_double_instantiation_of_thread_pools():
     """Make sure trying to re-instantiate this singleton raises"""
     loader1 = construct_model_loader()
     loader2 = construct_model_loader()
-    assert loader1._load_thread_pool == loader2._load_thread_pool
+    assert loader1._load_thread_pool is loader2._load_thread_pool
 
 
 def test_with_batching(model_loader):
