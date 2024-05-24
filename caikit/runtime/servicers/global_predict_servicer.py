@@ -135,7 +135,6 @@ class GlobalPredictServicer:
             library,
             lib_version,
         )
-        super()
 
     def Predict(
         self,
