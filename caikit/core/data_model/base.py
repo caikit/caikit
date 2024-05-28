@@ -469,7 +469,7 @@ class _DataBaseMetaClass(type):
                     used_fields.append(field_name)
 
             # Default all unspecified fields to their User specified defaults or None
-            default_values = getattr(self, _DataBaseMetaClass._USER_DEFINED_DEFAULTS, {})
+            default_values = self.get_field_defaults()
             if num_fields > 0:  # Do a quick check for performance reason
                 for field_name in fields:
                     if (
@@ -558,6 +558,12 @@ class DataBase(metaclass=_DataBaseMetaClass):
     @classmethod
     def get_proto_class(cls) -> Type[ProtoMessageType]:
         return cls._proto_class
+
+    @classmethod
+    def get_field_defaults(cls) -> Type[ProtoMessageType]:
+        """Get mapping of fields to default values. Mapping will not include fields without
+        defaults"""
+        return getattr(cls, _DataBaseMetaClass._USER_DEFINED_DEFAULTS, {})
 
     @classmethod
     def get_field_message_type(cls, field_name: str) -> Optional[type]:
