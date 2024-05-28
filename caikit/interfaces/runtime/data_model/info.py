@@ -25,6 +25,7 @@ import alog
 
 # Local
 from caikit.core.data_model import PACKAGE_COMMON, DataObjectBase, dataobject
+from caikit.core.data_model.json_dict import JsonDict
 
 log = alog.use_channel("RUNTIMEOPS")
 
@@ -61,7 +62,7 @@ class ModelInfo(DataObjectBase):
     model_path: Annotated[str, FieldNumber(1)]
     name: Annotated[str, FieldNumber(2)]
     size: Annotated[int, FieldNumber(3)]
-    metadata: Annotated[Dict[str, str], FieldNumber(4)]
+    metadata: Annotated[JsonDict, FieldNumber(4)]
     loaded: Annotated[bool, FieldNumber(7)]
 
     # Module Information
