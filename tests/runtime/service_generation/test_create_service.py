@@ -32,7 +32,13 @@ from sample_lib.data_model import (
     SampleOutputType,
     SampleTask,
 )
-from sample_lib.modules import FirstTask, MultiTaskModule, SampleModule, SecondTask
+from sample_lib.modules import (
+    ContextTask,
+    FirstTask,
+    MultiTaskModule,
+    SampleModule,
+    SecondTask,
+)
 from tests.conftest import temp_config
 import caikit
 import sample_lib
@@ -315,7 +321,7 @@ def test_create_inference_rpcs_removes_modules_with_no_task():
 
 def test_create_inference_rpcs_uses_taskmethod_decorators():
     rpcs = create_inference_rpcs([MultiTaskModule])
-    assert len(rpcs) == 2
+    assert len(rpcs) == 3
     assert MultiTaskModule in rpcs[0].module_list
 
 
@@ -336,7 +342,13 @@ def test_create_inference_rpcs_with_included_tasks():
 
 def test_create_inference_rpcs_with_excluded_tasks():
     with temp_config(
-        {"runtime": {"service_generation": {"task_types": {"excluded": ["FirstTask"]}}}}
+        {
+            "runtime": {
+                "service_generation": {
+                    "task_types": {"excluded": ["FirstTask", "ContextTask"]}
+                }
+            }
+        }
     ) as cfg:
         rpcs = create_inference_rpcs([MultiTaskModule], cfg)
         assert len(rpcs) == 1

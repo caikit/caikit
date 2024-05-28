@@ -6,6 +6,7 @@ from . import data_model, modules
 from .modules import (
     CompositeModule,
     InnerModule,
+    MultiTaskModule,
     OtherModule,
     SampleModule,
     SamplePrimitiveModule,

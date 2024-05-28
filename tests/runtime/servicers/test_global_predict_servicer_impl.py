@@ -20,7 +20,7 @@ from caikit.core.data_model import DataStream, ProducerId
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreStatusCode
 from caikit.runtime.service_factory import get_inference_request
 from sample_lib.data_model.sample import GeoSpatialTask
-from sample_lib.modules import MultiTaskModule, SecondTask
+from sample_lib.modules import ContextTask, MultiTaskModule, SecondTask
 from sample_lib.modules.geospatial import GeoStreamingModule
 
 try:
@@ -257,6 +257,27 @@ def test_global_predict_works_for_multitask_model(
             "Goodbye from SecondTask", ProducerId("MultiTaskModule", "0.0.1")
         ).to_proto()
     )
+
+
+def test_global_predict_works_for_context_arg(
+    sample_inference_service,
+    sample_predict_servicer,
+    sample_task_model_id,
+):
+    mock_manager = MagicMock()
+    mock_manager.retrieve_model.return_value = MultiTaskModule()
+
+    predict_class = get_inference_request(
+        ContextTask, input_streaming=False, output_streaming=False
+    )
+    with patch.object(sample_predict_servicer, "_model_manager", mock_manager):
+        response = sample_predict_servicer.Predict(
+            predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
+            Fixtures.build_context(sample_task_model_id),
+            caikit_rpc=sample_inference_service.caikit_rpcs["ContextTaskPredict"],
+        )
+
+    assert response == SampleOutputType("Found context").to_proto()
 
 
 def test_global_predict_predict_model_direct(

@@ -16,7 +16,12 @@ from sample_lib.data_model.sample import (
     SampleOutputType,
     SampleTask,
 )
-from sample_lib.modules.multi_task import FirstTask, MultiTaskModule, SecondTask
+from sample_lib.modules.multi_task import (
+    ContextTask,
+    FirstTask,
+    MultiTaskModule,
+    SecondTask,
+)
 import caikit.core
 
 
@@ -621,7 +626,7 @@ def test_tasks_property_order():
     """Ensure that the tasks returned by .tasks have a deterministic order that
     respects the order given in the module decorator
     """
-    assert MultiTaskModule.tasks == [FirstTask, SecondTask]
+    assert MultiTaskModule.tasks == [FirstTask, SecondTask, ContextTask]
 
 
 def test_tasks_property_unique():
@@ -640,7 +645,7 @@ def test_tasks_property_unique():
         def run_second_task(self, file_input: File) -> OtherOutputType:
             return OtherOutputType("I'm a derivative!")
 
-    assert DerivedMultitaskModule.tasks == [SecondTask, FirstTask]
+    assert DerivedMultitaskModule.tasks == [SecondTask, FirstTask, ContextTask]
 
 
 # ----------- BACKWARDS COMPATIBILITY ------------------------------------------- ##

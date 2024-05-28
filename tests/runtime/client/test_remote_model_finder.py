@@ -166,7 +166,7 @@ def test_remote_finder_multi_task_model(multi_task_model_id, open_port, protocol
         config = finder.find_model(multi_task_model_id)
         # Check RemoteModuleConfig has the right type, name, and task methods
         assert isinstance(config, RemoteModuleConfig)
-        assert len(config.task_methods) == 2
+        assert len(config.task_methods) == 3
 
 
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
