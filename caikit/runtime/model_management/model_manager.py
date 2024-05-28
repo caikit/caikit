@@ -42,6 +42,11 @@ from caikit.runtime.model_management.factories import (
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_loader_base import ModelLoaderBase
 from caikit.runtime.model_management.model_sizer_base import ModelSizerBase
+from caikit.runtime.names import (
+    DEFAULT_LOADER_NAME,
+    DEFAULT_SIZER_NAME,
+    LOCAL_MODEL_TYPE,
+)
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("MODEL-MANAGR")
@@ -65,9 +70,6 @@ LOAD_MODEL_DURATION_SUMMARY = Summary(
     "Summary of the duration (in seconds) of loadModel RPCs",
     ["model_type"],
 )
-LOCAL_MODEL_TYPE = "LOCAL"
-DEFAULT_LOADER_NAME = "default"
-DEFAULT_SIZER_NAME = "default"
 
 
 class ModelManager:  # pylint: disable=too-many-instance-attributes
@@ -78,8 +80,6 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
     __instance = None
 
     __model_size_gauge_lock = threading.Lock()
-
-    _LOCAL_MODEL_TYPE = "standalone-model"
 
     ## Construction ##
 
@@ -461,7 +461,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             loaded_model = self.load_model(
                 model_id=model_id,
                 local_model_path=local_model_path,
-                model_type=self._LOCAL_MODEL_TYPE,
+                model_type=LOCAL_MODEL_TYPE,
                 wait=True,
                 retries=get_config().runtime.lazy_load_retries,
             )
@@ -538,7 +538,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             return self.load_model(
                 model_id=model_id,
                 local_model_path=model_dir,
-                model_type=self._LOCAL_MODEL_TYPE,
+                model_type=LOCAL_MODEL_TYPE,
                 **kwargs,
             )
 
@@ -643,7 +643,7 @@ class ModelManager:  # pylint: disable=too-many-instance-attributes
             self.load_model(
                 model_id,
                 model_path,
-                self._LOCAL_MODEL_TYPE,
+                LOCAL_MODEL_TYPE,
                 wait=False,
                 retries=get_config().runtime.lazy_load_retries,
             )

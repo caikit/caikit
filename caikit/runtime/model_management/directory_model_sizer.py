@@ -33,7 +33,11 @@ log = alog.use_channel("DIRECTORY-SIZER")
 
 class DirectoryModelSizer(ModelSizerBase):
     """DirectoryModelSizer. This class calculates a models size based on the
-    size of the files in the model directory"""
+    size of the files in the model directory
+
+    ! Note: It caches the size of the directory after first sizing which can cause
+    race conditions in certain situations.
+    """
 
     name = "DIRECTORY"
 
@@ -52,15 +56,18 @@ class DirectoryModelSizer(ModelSizerBase):
         Returns:
             The estimated size in bytes of memory that would be used by loading this model
         """
-        # Cache model's size
-        if local_model_path not in self.model_directory_size:
-            self.model_directory_size[local_model_path] = self.__get_directory_size(
-                model_id, local_model_path
-            )
+        # Return the cached model size if one exists
+        if model_size := self.model_directory_size.get(local_model_path):
+            return model_size
 
-        return self.model_directory_size[local_model_path]
+        # Calculate the model size and add it to the cache.  This uses last in
+        # methodology so that the most recent size is used during parallel access
+        dir_size = self.__get_directory_size(model_id, local_model_path)
+        self.model_directory_size[local_model_path] = dir_size
+        return dir_size
 
     def __get_directory_size(self, model_id, local_model_path) -> int:
+        """Get the size of a directory"""
         try:
             if os.path.isdir(local_model_path):
                 # Walk the directory to size all files
