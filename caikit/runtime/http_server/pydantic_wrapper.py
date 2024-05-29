@@ -101,6 +101,7 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
         return PYDANTIC_TO_DM_MAPPING[dm_class]
 
     # Construct a mapping of field names to the type and FieldInfo objects.
+    dataclass_field_mapping = getattr(dm_class, "__dataclass_fields__", {})
     class_defaults = dm_class.get_field_defaults()
     field_mapping = {}
     for field_name, field_type in get_type_hints(dm_class, localns=localns).items():
@@ -125,6 +126,10 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
                 "title"
             ] = field_type.get_proto_class().DESCRIPTOR.full_name
 
+        # If the field added dataclass metadata then add it to the Pydantic Field kwargs. This
+        if dataclass_field := dataclass_field_mapping.get(field_name):
+            field_info_kwargs.update(dataclass_field.metadata)
+            
         # Construct field info objects
         field_info = Field(
             **field_info_kwargs,
