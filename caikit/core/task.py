@@ -41,6 +41,7 @@ _STREAM_OUT_ANNOTATION = "__streaming_output_type"
 _STREAM_PARAMS_ANNOTATION = "__streaming_params"
 _UNARY_OUT_ANNOTATION = "__unary_output_type"
 _UNARY_PARAMS_ANNOTATION = "__unary_params"
+_VISIBLE_ANNOTATION = "__visible"
 
 
 class TaskBase:
@@ -231,6 +232,13 @@ class TaskBase:
         if _STREAM_OUT_ANNOTATION not in cls.__annotations__:
             raise ValueError("No streaming outputs are specified for this task")
         return cls.__annotations__[_STREAM_OUT_ANNOTATION]
+    
+    @classmethod
+    def get_visibility(cls)->bool:
+        """Get the visibility for this task.
+        
+        NOTE: defaults to True even if visibility wasn't provided"""
+        return cls.__annotations__.get(_VISIBLE_ANNOTATION, True)
 
     @classmethod
     def _raise_on_wrong_output_type(cls, output_type, module, output_streaming: bool):
@@ -292,6 +300,7 @@ def task(
     streaming_parameters: Dict[str, Type[Iterable[ValidInputTypes]]] = None,
     unary_output_type: Type[DataBase] = None,
     streaming_output_type: Type[Iterable[Type[DataBase]]] = None,
+    visible: bool = True,
     **kwargs,
 ) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
     """The decorator for AI Task classes.
@@ -349,6 +358,9 @@ def task(
         streaming_output_type (Type[Iterable[Type[DataBase]]]): The streaming output type of the
             task, which all modules' streaming-output inference methods must return. This must be
             in the form Iterable[T].
+        
+        visible (bool): If this task should be exposed to the end user in documentation or if 
+          it should only be used internally
 
     Returns:
         A decorator function for the task class, registering it with caikit's core registry of
@@ -372,6 +384,7 @@ def task(
             cls_annotations[_UNARY_OUT_ANNOTATION] = unary_output_type
         if streaming_output_type:
             cls_annotations[_STREAM_OUT_ANNOTATION] = streaming_output_type
+        cls_annotations[_VISIBLE_ANNOTATION] = visible
 
         # Backwards compatibility with old-style @tasks
         if "required_parameters" in kwargs and not unary_parameters:

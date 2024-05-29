@@ -599,6 +599,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             responses=self._get_response_openapi(
                 response_data_object, pydantic_response
             ),
+            include_in_schema=rpc.task.get_visibility(),
             description=rpc.task.__doc__,
             openapi_extra=self._get_request_openapi(pydantic_request),
             response_class=Response,
@@ -666,6 +667,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             get_http_route_name(rpc.name),
             response_model=pydantic_response,
             description=rpc.task.__doc__,
+            include_in_schema=rpc.task.get_visibility(),
             openapi_extra=self._get_request_openapi(pydantic_request),
         )
         async def _handler(context: Request) -> EventSourceResponse:
