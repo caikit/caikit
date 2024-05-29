@@ -199,12 +199,13 @@ def dataobject(*args, **kwargs) -> Callable[[_DataObjectBaseT], _DataObjectBaseT
                     dataclass_defined_default = data_class_fields.get(
                         annotation, dataclasses.MISSING
                     )
-                    # If this class is a dataclass and this field has dataclass specific field 
-                    # defaults then use those. Because of how dataclasses wrapping is you have 
+                    # If this class is a dataclass and this field has dataclass specific field
+                    # defaults then use those. Because of how dataclasses wrapping is you have
                     # to check default and default_factory directly
                     if dataclass_defined_default != dataclasses.MISSING and (
                         dataclass_defined_default.default != dataclasses.MISSING
-                        or dataclass_defined_default.default_factory != dataclasses.MISSING
+                        or dataclass_defined_default.default_factory
+                        != dataclasses.MISSING
                     ):
                         # Revert the nulling of the cls with the dataclass field
                         setattr(cls, annotation, dataclass_defined_default)

@@ -76,19 +76,19 @@ def test_empty_sequences(sequence):
     """No type check error with empty sequences"""
     new_dm_from_init = dm.Vector1D(sequence)
     assert isinstance(new_dm_from_init.data, type(sequence))
-    assert new_dm_from_init.data.values == []
+    assert not new_dm_from_init.data.values
 
     # Test proto
     proto_from_dm = new_dm_from_init.to_proto()
     new_dm_from_proto = dm.Vector1D.from_proto(proto_from_dm)
     assert isinstance(new_dm_from_proto, dm.Vector1D)
-    assert new_dm_from_proto.data.values == []
+    assert not new_dm_from_proto.data.values
 
     # Test json
     json_from_dm = new_dm_from_init.to_json()
     new_dm_from_json = dm.Vector1D.from_json(json_from_dm)
     assert isinstance(new_dm_from_json, dm.Vector1D)
-    assert new_dm_from_json.data.values == []
+    assert not new_dm_from_json.data.values
 
 
 def test_vector1d_iterator_error():
