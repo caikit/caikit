@@ -60,7 +60,7 @@ from .pydantic_wrapper import (
 )
 from .request_aborter import HttpRequestAborter
 from .utils import convert_json_schema_to_multipart, flatten_json_schema
-from caikit.config import get_config
+from caikit.config.config import merge_configs, get_config
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.exceptions import error_handler
@@ -591,9 +591,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def _add_unary_input_unary_output_handler(self, rpc: TaskPredictRPC):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
+        request_openapi = self._get_request_openapi(pydantic_request)
         response_data_object = self._get_response_dataobject(rpc)
         pydantic_response = dataobject_to_pydantic(response_data_object)
-
+        
+        # Merge the DataObject openapi schema into the task schema
+        task_api_schema = merge_configs(rpc.task.get_extra_openapi_schema(), request_openapi)
         @self.app.post(
             get_http_route_name(rpc.name),
             responses=self._get_response_openapi(
@@ -601,7 +604,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             ),
             include_in_schema=rpc.task.get_visibility(),
             description=rpc.task.__doc__,
-            openapi_extra=self._get_request_openapi(pydantic_request),
+            openapi_extra=task_api_schema,
             response_class=Response,
         )
         # pylint: disable=unused-argument
@@ -660,7 +663,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
     def _add_unary_input_stream_output_handler(self, rpc: TaskPredictRPC):
         pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
+        request_openapi = self._get_request_openapi(pydantic_request)
         pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
+        
+        # Merge the DataObject openapi schema into the task schema
+        task_api_schema = merge_configs(rpc.task.get_extra_openapi_schema(), request_openapi)
 
         # pylint: disable=unused-argument
         @self.app.post(
@@ -668,7 +675,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             response_model=pydantic_response,
             description=rpc.task.__doc__,
             include_in_schema=rpc.task.get_visibility(),
-            openapi_extra=self._get_request_openapi(pydantic_request),
+            openapi_extra=task_api_schema,
         )
         async def _handler(context: Request) -> EventSourceResponse:
             log.debug("In streaming handler for %s", rpc.name)
