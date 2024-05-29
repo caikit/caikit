@@ -483,6 +483,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             responses=self._get_response_openapi(
                 deploy_dataobject_response, deploy_pydantic_response
             ),
+            description=ModelManagementServicerImpl.DeployModel.__doc__,
             openapi_extra=self._get_request_openapi(deploy_pydantic_request),
             response_class=Response,
         )(self._deploy_model)
@@ -502,6 +503,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             responses=self._get_response_openapi(
                 undeploy_dataobject_response, undeploy_pydantic_response
             ),
+            description=ModelManagementServicerImpl.UndeployModel.__doc__,
             response_class=Response,
         )(self._undeploy_model)
 
@@ -538,7 +540,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             response_class=Response,
         )(self._cancel_training)
 
-    def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
+    def _train_add_unary_input_unary_output_handler(self, rpc: ModuleClassTrainRPC):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = dataobject_to_pydantic(
             DataBase.get_class_for_name(rpc.request.name)
@@ -551,6 +553,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             responses=self._get_response_openapi(
                 response_data_object, pydantic_response
             ),
+            description=rpc._method._method_pointer.__doc__,
             openapi_extra=self._get_request_openapi(pydantic_request),
             response_class=Response,
         )
@@ -596,6 +599,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             responses=self._get_response_openapi(
                 response_data_object, pydantic_response
             ),
+            description=rpc.task.__doc__,
             openapi_extra=self._get_request_openapi(pydantic_request),
             response_class=Response,
         )
@@ -653,7 +657,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     )
                 raise
 
-    def _add_unary_input_stream_output_handler(self, rpc: CaikitRPCBase):
+    def _add_unary_input_stream_output_handler(self, rpc: TaskPredictRPC):
         pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
         pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
 
@@ -661,6 +665,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         @self.app.post(
             get_http_route_name(rpc.name),
             response_model=pydantic_response,
+            description=rpc.task.__doc__,
             openapi_extra=self._get_request_openapi(pydantic_request),
         )
         async def _handler(context: Request) -> EventSourceResponse:
