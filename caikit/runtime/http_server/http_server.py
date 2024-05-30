@@ -33,6 +33,7 @@ import threading
 import time
 import traceback
 import uuid
+import importlib
 
 # Third Party
 from fastapi import FastAPI, HTTPException, Query, Request, Response, status
@@ -60,13 +61,14 @@ from .pydantic_wrapper import (
     pydantic_to_dataobject,
 )
 from .request_aborter import HttpRequestAborter
-from .utils import convert_json_schema_to_multipart, flatten_json_schema
+from .utils import convert_json_schema_to_multipart
 from caikit.config.config import merge_configs, get_config
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.exceptions import error_handler
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
+from caikit.core.toolkit.name_tools import snake_to_upper_camel
 from caikit.runtime.names import (
     HEALTH_ENDPOINT,
     MODEL_ID,
@@ -941,11 +943,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
             raw_schema = pydantic.TypeAdapter(pydantic_model).json_schema()
 
         # Update openapi defs with defs from raw schema
-        for def_name, schema in raw_schema.get("$defs",{}).items():
+        for def_name, schema in raw_schema.pop("$defs",{}).items():
             self._openapi_defs[def_name] = schema
             
-        parsed_schema = flatten_json_schema(raw_schema)
-        multipart_schema = convert_json_schema_to_multipart(parsed_schema)
+        multipart_schema = convert_json_schema_to_multipart(raw_schema, self._openapi_defs)
         
         return {
             "requestBody": {
@@ -1038,10 +1039,27 @@ class RuntimeHTTPServer(RuntimeServerBase):
         specific fields though which is beneficial. 
         
         """
+        # Parse the library name into a more human readable version
+        library_name = "FastAPI"
+        if get_config().runtime.library:
+            library_name = snake_to_upper_camel(get_config().runtime.library)
+        
+        
+        # Attempt to load in the runtime library to fetch the module's docstring
+        try:
+            imported_module = importlib.import_module(get_config().runtime.library)
+            openapi_description = getattr(imported_module, "__doc__", "")
+        except ImportError:
+            log.debug(
+                "Unable to import runtime library %s when trying to fetch module description", 
+                get_config().runtime.library
+            )
+            openapi_description = ""
+        
         openapi_schema = get_openapi(
-            title="Custom title",
-            version="2.5.0",
-            description="This is a very custom OpenAPI schema",
+            title=library_name,
+            version=get_config().runtime.version_info.runtime_image or "",
+            description=openapi_description,
             routes=self.app.routes,
         )
         openapi_schema.setdefault("components",{}).setdefault("schemas", {}).update(self._openapi_defs)

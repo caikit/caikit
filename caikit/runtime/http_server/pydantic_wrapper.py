@@ -125,11 +125,12 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
         else:
             field_info_kwargs["default_factory"] = lambda: None
 
+
         # If the field is a DataBase object then set its title correctly
         if inspect.isclass(field_type) and issubclass(field_type, DataBase):
             field_info_kwargs[
                 "title"
-            ] = field_type.get_proto_class().DESCRIPTOR.full_name
+            ] = field_type.__name__
 
         # If the field added dataclass metadata then add it to the Pydantic Field kwargs. This
         if dataclass_field := dataclass_field_mapping.get(field_name):
@@ -153,14 +154,17 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
     # This is done to make sure any oneofs can be
     # correctly inferred by pydantic
     pydantic_model_config = pydantic.ConfigDict(extra="forbid", protected_namespaces=())
+    
 
     # Construct the pydantic data model using create_model to ensure all internal variables
     # are set correctly
     pydantic_model = pydantic.create_model(
-        __model_name=dm_class.get_proto_class().DESCRIPTOR.full_name,
+        __model_name=dm_class.__name__,
         __config__=pydantic_model_config,
         **field_mapping,
     )
+    # Add the dataobject doc message to the pydantic class args
+    pydantic_model.__doc__ = getattr(dm_class,"__doc__","")
     PYDANTIC_TO_DM_MAPPING[dm_class] = pydantic_model
     # also store the reverse mapping for easy retrieval
     # should be fine since we only check for dm_class in this dict
