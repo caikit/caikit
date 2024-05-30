@@ -16,7 +16,7 @@ This module holds utility functions and classes used only by the  REST server,
 this includes things like parameter handles and openapi spec generation
 """
 # Standard
-from typing import Any, Optional, Dict
+from typing import Any, Dict, Optional
 
 # Local
 from ...config.config import merge_configs
@@ -33,19 +33,23 @@ def convert_json_schema_to_multipart(json_schema, defs):
     return sparse_schema
 
 
-def _extract_raw_from_schema(json_schema: Any, defs: Dict[str, Any], current_path=None) -> (dict, dict):
+def _extract_raw_from_schema(
+    json_schema: Any, defs: Dict[str, Any], current_path=None
+) -> (dict, dict):
     """Helper function to extract all "bytes" or File fields from a json schema and return the
     cleaned schema dict and a dict of extracted schemas where the key is the original raw's path"""
     if isinstance(json_schema, dict):
         # If this json_schema represents a raw field extract it
         if raw_json_schema := _parse_raw_json_schema(json_schema):
             return None, {_clean_schema_path(current_path): raw_json_schema}
-        
+
         # If this json_schema is just a ref then just recurse on the ref
         if "$ref" in json_schema:
-            local_ref_name = json_schema["$ref"].replace("#/$defs/","")
+            local_ref_name = json_schema["$ref"].replace("#/$defs/", "")
             sub_json_obj = defs.get(local_ref_name)
-            _, extracted_bytes = _extract_raw_from_schema(sub_json_obj, defs, current_path)
+            _, extracted_bytes = _extract_raw_from_schema(
+                sub_json_obj, defs, current_path
+            )
             return json_schema, extracted_bytes
 
         # If this is a generic schema then recurse on it
@@ -75,7 +79,7 @@ def _extract_raw_from_schema(json_schema: Any, defs: Dict[str, Any], current_pat
         for schema in json_schema:
             # Recurse on sub schema with the same path
             updated_schema, extracted_bytes = _extract_raw_from_schema(
-                schema,defs,  current_path
+                schema, defs, current_path
             )
             if updated_schema:
                 output_schema.append(updated_schema)

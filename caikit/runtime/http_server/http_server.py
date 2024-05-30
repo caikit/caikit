@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Any, Dict, Iterable, List, Optional, Type, Union, get_args
 import asyncio
+import importlib
 import inspect
 import io
 import json
@@ -33,14 +34,13 @@ import threading
 import time
 import traceback
 import uuid
-import importlib
 
 # Third Party
 from fastapi import FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
-from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse, PlainTextResponse
 from grpc import StatusCode
 from sse_starlette import EventSourceResponse, ServerSentEvent
 import pydantic
@@ -62,13 +62,13 @@ from .pydantic_wrapper import (
 )
 from .request_aborter import HttpRequestAborter
 from .utils import convert_json_schema_to_multipart
-from caikit.config.config import merge_configs, get_config
+from caikit.config.config import get_config, merge_configs
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.exceptions import error_handler
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
-from caikit.core.toolkit.sync_to_async import async_wrap_iter
 from caikit.core.toolkit.name_tools import snake_to_upper_camel
+from caikit.core.toolkit.sync_to_async import async_wrap_iter
 from caikit.runtime.names import (
     HEALTH_ENDPOINT,
     MODEL_ID,
@@ -132,7 +132,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Construct FastAPI spec and create placeholders for open api deps
         self.app = FastAPI()
         self._openapi_defs = {}
-        
 
         # Request validation
         @self.app.exception_handler(RequestValidationError)
@@ -311,10 +310,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         if self.interrupter:
             self.interrupter.start()
-            
+
         # Patch the openapi spec to ensure defs are properly added
-        self._patch_openapi_spec() 
-        
+        self._patch_openapi_spec()
+
         # Patch the exit handler to retain correct signal handling behavior
         self._patch_exit_handler()
 
@@ -603,9 +602,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
         request_openapi = self._get_request_openapi(pydantic_request)
         response_data_object = self._get_response_dataobject(rpc)
         pydantic_response = dataobject_to_pydantic(response_data_object)
-        
+
         # Merge the DataObject openapi schema into the task schema
-        task_api_schema = merge_configs(rpc.task.get_extra_openapi_schema(), request_openapi)
+        task_api_schema = merge_configs(
+            rpc.task.get_extra_openapi_schema(), request_openapi
+        )
+
         @self.app.post(
             get_http_route_name(rpc.name),
             responses=self._get_response_openapi(
@@ -674,9 +676,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
         pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
         request_openapi = self._get_request_openapi(pydantic_request)
         pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
-        
+
         # Merge the DataObject openapi schema into the task schema
-        task_api_schema = merge_configs(rpc.task.get_extra_openapi_schema(), request_openapi)
+        task_api_schema = merge_configs(
+            rpc.task.get_extra_openapi_schema(), request_openapi
+        )
 
         # pylint: disable=unused-argument
         @self.app.post(
@@ -943,11 +947,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
             raw_schema = pydantic.TypeAdapter(pydantic_model).json_schema()
 
         # Update openapi defs with defs from raw schema
-        for def_name, schema in raw_schema.pop("$defs",{}).items():
+        for def_name, schema in raw_schema.pop("$defs", {}).items():
             self._openapi_defs[def_name] = schema
-            
-        multipart_schema = convert_json_schema_to_multipart(raw_schema, self._openapi_defs)
-        
+
+        multipart_schema = convert_json_schema_to_multipart(
+            raw_schema, self._openapi_defs
+        )
+
         return {
             "requestBody": {
                 "content": {
@@ -959,7 +965,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         }
 
     def _get_response_openapi(
-        self, dm_class: Type[DataBase], pydantic_model: Union[Type, Type[pydantic.BaseModel]]
+        self,
+        dm_class: Type[DataBase],
+        pydantic_model: Union[Type, Type[pydantic.BaseModel]],
     ):
         """Helper to generate the openapi schema for a given response"""
 
@@ -976,9 +984,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
             else:
                 json_schema = pydantic.TypeAdapter(pydantic_model).json_schema()
 
-            for def_name, schema in json_schema.pop("$defs",{}).items():
+            for def_name, schema in json_schema.pop("$defs", {}).items():
                 self._openapi_defs[def_name] = schema
-            
+
             response_schema = {"application/json": json_schema}
 
         output = {200: {"content": response_schema}}
@@ -1036,50 +1044,52 @@ class RuntimeHTTPServer(RuntimeServerBase):
         FastAPI does not have a way to dynamically add openapi defs
         for specific paths. This means we must wait till the very end
         to update the def values. This does allow for adding context
-        specific fields though which is beneficial. 
-        
+        specific fields though which is beneficial.
+
         """
         # Parse the library name into a more human readable version
         library_name = "FastAPI"
         if get_config().runtime.library:
             library_name = snake_to_upper_camel(get_config().runtime.library)
-        
-        
+
         # Attempt to load in the runtime library to fetch the module's docstring
         try:
             imported_module = importlib.import_module(get_config().runtime.library)
             openapi_description = getattr(imported_module, "__doc__", "")
         except ImportError:
             log.debug(
-                "Unable to import runtime library %s when trying to fetch module description", 
-                get_config().runtime.library
+                "Unable to import runtime library %s when trying to fetch module description",
+                get_config().runtime.library,
             )
             openapi_description = ""
-        
+
         openapi_schema = get_openapi(
             title=library_name,
             version=get_config().runtime.version_info.runtime_image or "",
             description=openapi_description,
             routes=self.app.routes,
         )
-        openapi_schema.setdefault("components",{}).setdefault("schemas", {}).update(self._openapi_defs)
+        openapi_schema.setdefault("components", {}).setdefault("schemas", {}).update(
+            self._openapi_defs
+        )
 
-        
-        def _recursively_update_defs_to_component(obj: Any)->dict:
+        def _recursively_update_defs_to_component(obj: Any) -> dict:
             if isinstance(obj, dict):
                 return {
-                    key: _recursively_update_defs_to_component(val) for key,val in obj.items()
+                    key: _recursively_update_defs_to_component(val)
+                    for key, val in obj.items()
                 }
             elif isinstance(obj, list):
                 return [_recursively_update_defs_to_component(val) for val in obj]
             elif isinstance(obj, str):
-                return obj.replace("$defs","components/schemas")
+                return obj.replace("$defs", "components/schemas")
             else:
                 return obj
+
         # Update $def references to components/schemas
         openapi_schema = _recursively_update_defs_to_component(openapi_schema)
         self.app.openapi_schema = openapi_schema
-        
+
     def _patch_exit_handler(self):
         """
         🌶️🌶️🌶️ Here there are dragons! 🌶️🌶️🌶️

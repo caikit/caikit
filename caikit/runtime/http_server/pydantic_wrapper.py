@@ -30,9 +30,9 @@ from fastapi.exceptions import HTTPException, RequestValidationError
 from pydantic.fields import Field
 from pydantic.functional_validators import BeforeValidator
 from starlette.datastructures import UploadFile
+from typing_extensions import Doc
 import numpy as np
 import pydantic
-from typing_extensions import Doc
 
 # First Party
 from py_to_proto.dataclass_to_proto import (  # Imported here for 3.8 compat
@@ -102,10 +102,12 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
         return PYDANTIC_TO_DM_MAPPING[dm_class]
 
     # Gather Mappings for field lookups
-    extra_field_type_mapping = get_type_hints(dm_class, localns=localns,include_extras=True)
+    extra_field_type_mapping = get_type_hints(
+        dm_class, localns=localns, include_extras=True
+    )
     dataclass_field_mapping = getattr(dm_class, "__dataclass_fields__", {})
     class_defaults = dm_class.get_field_defaults()
-    
+
     # Construct a mapping of field names to the type and FieldInfo objects.
     field_mapping = {}
     for field_name, field_type in get_type_hints(dm_class, localns=localns).items():
@@ -125,23 +127,20 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
         else:
             field_info_kwargs["default_factory"] = lambda: None
 
-
         # If the field is a DataBase object then set its title correctly
         if inspect.isclass(field_type) and issubclass(field_type, DataBase):
-            field_info_kwargs[
-                "title"
-            ] = field_type.__name__
+            field_info_kwargs["title"] = field_type.__name__
 
         # If the field added dataclass metadata then add it to the Pydantic Field kwargs. This
         if dataclass_field := dataclass_field_mapping.get(field_name):
             field_info_kwargs.update(dataclass_field.metadata)
-        
+
         # If the field used the Doc type annotation then update the description
         if get_origin(extra_field_type) is Annotated:
             for annotated_arg in get_args(extra_field_type):
                 if isinstance(annotated_arg, Doc):
                     field_info_kwargs["description"] = annotated_arg.documentation
-        
+
         # Construct field info objects
         field_info = Field(
             **field_info_kwargs,
@@ -154,7 +153,6 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
     # This is done to make sure any oneofs can be
     # correctly inferred by pydantic
     pydantic_model_config = pydantic.ConfigDict(extra="forbid", protected_namespaces=())
-    
 
     # Construct the pydantic data model using create_model to ensure all internal variables
     # are set correctly
@@ -164,7 +162,7 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
         **field_mapping,
     )
     # Add the dataobject doc message to the pydantic class args
-    pydantic_model.__doc__ = getattr(dm_class,"__doc__","")
+    pydantic_model.__doc__ = getattr(dm_class, "__doc__", "")
     PYDANTIC_TO_DM_MAPPING[dm_class] = pydantic_model
     # also store the reverse mapping for easy retrieval
     # should be fine since we only check for dm_class in this dict

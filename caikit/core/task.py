@@ -13,7 +13,7 @@
 # limitations under the License.
 # Standard
 from inspect import isclass
-from typing import Callable, Dict, Iterable, List, Type, TypeVar, Union, Any, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional, Type, TypeVar, Union
 import collections
 import dataclasses
 import typing
@@ -233,18 +233,18 @@ class TaskBase:
         if _STREAM_OUT_ANNOTATION not in cls.__annotations__:
             raise ValueError("No streaming outputs are specified for this task")
         return cls.__annotations__[_STREAM_OUT_ANNOTATION]
-    
+
     @classmethod
-    def get_visibility(cls)->bool:
+    def get_visibility(cls) -> bool:
         """Get the visibility for this task.
-        
+
         NOTE: defaults to True even if visibility wasn't provided"""
         return cls.__annotations__.get(_VISIBLE_ANNOTATION, True)
-    
+
     @classmethod
-    def get_extra_openapi_schema(cls)->Dict[str, Any]:
+    def get_extra_openapi_schema(cls) -> Dict[str, Any]:
         """Get the visibility for this task.
-        
+
         NOTE: defaults to True even if visibility wasn't provided"""
         return cls.__annotations__.get(_OPENAPI_EXTRA_SCHEMA, {})
 
@@ -367,8 +367,8 @@ def task(
         streaming_output_type (Type[Iterable[Type[DataBase]]]): The streaming output type of the
             task, which all modules' streaming-output inference methods must return. This must be
             in the form Iterable[T].
-        
-        visible (bool): If this task should be exposed to the end user in documentation or if 
+
+        visible (bool): If this task should be exposed to the end user in documentation or if
           it should only be used internally
 
     Returns:
