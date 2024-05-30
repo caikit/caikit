@@ -161,8 +161,11 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
         __config__=pydantic_model_config,
         **field_mapping,
     )
-    # Add the dataobject doc message to the pydantic class args
+    # Add the dataobject's doc message to the pydantic class. This has to happen
+    # after pydantic creation
     pydantic_model.__doc__ = getattr(dm_class, "__doc__", "")
+
+    # Update DM Mappings
     PYDANTIC_TO_DM_MAPPING[dm_class] = pydantic_model
     # also store the reverse mapping for easy retrieval
     # should be fine since we only check for dm_class in this dict

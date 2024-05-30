@@ -1063,6 +1063,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             )
             openapi_description = ""
 
+        # Construct openapi schema from fastapi routes
         openapi_schema = get_openapi(
             title=library_name,
             version=get_config().runtime.version_info.runtime_image or "",
@@ -1074,6 +1075,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         )
 
         def _recursively_update_defs_to_component(obj: Any) -> dict:
+            """Helper function to replace $defs references with components/schemas"""
             if isinstance(obj, dict):
                 return {
                     key: _recursively_update_defs_to_component(val)

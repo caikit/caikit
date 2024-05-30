@@ -243,9 +243,9 @@ class TaskBase:
 
     @classmethod
     def get_extra_openapi_schema(cls) -> Dict[str, Any]:
-        """Get the visibility for this task.
+        """Get any extra schema definitions for this task
 
-        NOTE: defaults to True even if visibility wasn't provided"""
+        NOTE: defaults to an empty dict if one wasn't provided"""
         return cls.__annotations__.get(_OPENAPI_EXTRA_SCHEMA, {})
 
     @classmethod
@@ -370,6 +370,9 @@ def task(
 
         visible (bool): If this task should be exposed to the end user in documentation or if
           it should only be used internally
+
+        extra_openapi_schema (Optional[Dict[str, Any]]): Any additional openapi schema that should
+          be included in the documentation for this task
 
     Returns:
         A decorator function for the task class, registering it with caikit's core registry of

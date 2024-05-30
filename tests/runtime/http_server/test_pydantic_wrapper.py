@@ -48,6 +48,7 @@ from caikit.runtime.http_server.pydantic_wrapper import (
 from caikit.runtime.service_generation.data_stream_source import make_data_stream_source
 from sample_lib.data_model.sample import (
     SampleInputType,
+    SampleListInputType,
     SampleOutputType,
     SampleTrainingType,
 )
@@ -67,6 +68,19 @@ def test_pydantic_to_dataobject_simple():
     # assert it's our DM object, all fine and dandy
     assert isinstance(sample_input_dm_obj, DataBase)
     assert sample_input_dm_obj.to_json() == '{"name": "Hello world"}'
+
+
+def test_pydantic_to_dataobject_documentation():
+    """Test building a simple pydantic object retains the documentation information"""
+    # get our DM class
+    sample_input_dm_class = DataBase.get_class_for_name("SampleListInputType")
+    # Create pydantic model for our DM class
+    sample_input_pydantic_model = dataobject_to_pydantic(sample_input_dm_class)
+    # Create openapi json from pydantic model to test descriptions
+    json_schema = sample_input_pydantic_model.model_json_schema()
+
+    # assert it's our DM object, all fine and dandy
+    assert json_schema.get("description") == SampleListInputType.__doc__
 
 
 def test_pydantic_to_dataobject_datastream_jsondata():
