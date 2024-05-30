@@ -114,9 +114,10 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
         elif dm_field_default is not None:
             field_info_kwargs["default"] = dm_field_default
         # If no default is provided then default the field to None. this ensures
-        # the parameter isn't required and uses caikits default logic
+        # the parameter isn't required and uses caikits default logic. Use
+        # default_factory to retain type info in swagger.
         else:
-            field_info_kwargs["default"] = None
+            field_info_kwargs["default_factory"] = lambda: None
 
         # If the field is a DataBase object then set its title correctly
         if inspect.isclass(field_type) and issubclass(field_type, DataBase):
