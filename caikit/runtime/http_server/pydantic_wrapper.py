@@ -32,6 +32,7 @@ from pydantic.functional_validators import BeforeValidator
 from starlette.datastructures import UploadFile
 import numpy as np
 import pydantic
+from typing_extensions import Doc
 
 # First Party
 from py_to_proto.dataclass_to_proto import (  # Imported here for 3.8 compat
@@ -100,11 +101,15 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
     if dm_class in PYDANTIC_TO_DM_MAPPING:
         return PYDANTIC_TO_DM_MAPPING[dm_class]
 
-    # Construct a mapping of field names to the type and FieldInfo objects.
+    # Gather Mappings for field lookups
+    extra_field_type_mapping = get_type_hints(dm_class, localns=localns,include_extras=True)
     dataclass_field_mapping = getattr(dm_class, "__dataclass_fields__", {})
     class_defaults = dm_class.get_field_defaults()
+    
+    # Construct a mapping of field names to the type and FieldInfo objects.
     field_mapping = {}
     for field_name, field_type in get_type_hints(dm_class, localns=localns).items():
+        extra_field_type = extra_field_type_mapping.get(field_name)
         pydantic_type = _get_pydantic_type(field_type)
 
         field_info_kwargs = {}
@@ -129,7 +134,13 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
         # If the field added dataclass metadata then add it to the Pydantic Field kwargs. This
         if dataclass_field := dataclass_field_mapping.get(field_name):
             field_info_kwargs.update(dataclass_field.metadata)
-            
+        
+        # If the field used the Doc type annotation then update the description
+        if get_origin(extra_field_type) is Annotated:
+            for annotated_arg in get_args(extra_field_type):
+                if isinstance(annotated_arg, Doc):
+                    field_info_kwargs["description"] = annotated_arg.documentation
+        
         # Construct field info objects
         field_info = Field(
             **field_info_kwargs,
