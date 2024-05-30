@@ -39,6 +39,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.openapi.utils import get_openapi
 from grpc import StatusCode
 from sse_starlette import EventSourceResponse, ServerSentEvent
 import pydantic
@@ -126,7 +127,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def __init__(self, tls_config_override: Optional[aconfig.Config] = None):
         super().__init__(get_config().runtime.http.port, tls_config_override)
 
+        # Construct FastAPI spec and create placeholders for open api deps
         self.app = FastAPI()
+        self._openapi_defs = {}
+        
 
         # Request validation
         @self.app.exception_handler(RequestValidationError)
@@ -305,7 +309,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         if self.interrupter:
             self.interrupter.start()
-
+            
+        # Patch the openapi spec to ensure defs are properly added
+        self._patch_openapi_spec() 
+        
         # Patch the exit handler to retain correct signal handling behavior
         self._patch_exit_handler()
 
@@ -920,9 +927,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
             media_type=file_type,
         )
 
-    @staticmethod
     def _get_request_openapi(
-        pydantic_model: Union[pydantic.BaseModel, Type, Type[pydantic.BaseModel]]
+        self, pydantic_model: Union[pydantic.BaseModel, Type, Type[pydantic.BaseModel]]
     ):
         """Helper to generate the openapi schema for a given request"""
 
@@ -934,22 +940,25 @@ class RuntimeHTTPServer(RuntimeServerBase):
         else:
             raw_schema = pydantic.TypeAdapter(pydantic_model).json_schema()
 
+        # Update openapi defs with defs from raw schema
+        for def_name, schema in raw_schema.get("$defs",{}).items():
+            self._openapi_defs[def_name] = schema
+            
         parsed_schema = flatten_json_schema(raw_schema)
         multipart_schema = convert_json_schema_to_multipart(parsed_schema)
-
+        
         return {
             "requestBody": {
                 "content": {
                     "multipart/form-data": {"schema": multipart_schema},
-                    "application/json": {"schema": parsed_schema},
+                    "application/json": {"schema": raw_schema},
                 },
                 "required": True,
             }
         }
 
-    @staticmethod
     def _get_response_openapi(
-        dm_class: Type[DataBase], pydantic_model: Union[Type, Type[pydantic.BaseModel]]
+        self, dm_class: Type[DataBase], pydantic_model: Union[Type, Type[pydantic.BaseModel]]
     ):
         """Helper to generate the openapi schema for a given response"""
 
@@ -966,7 +975,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
             else:
                 json_schema = pydantic.TypeAdapter(pydantic_model).json_schema()
 
-            response_schema = {"application/json": flatten_json_schema(json_schema)}
+            for def_name, schema in json_schema.pop("$defs",{}).items():
+                self._openapi_defs[def_name] = schema
+            
+            response_schema = {"application/json": json_schema}
 
         output = {200: {"content": response_schema}}
         return output
@@ -1018,6 +1030,38 @@ class RuntimeHTTPServer(RuntimeServerBase):
             )
             raise ValueError() from err
 
+    def _patch_openapi_spec(self):
+        """
+        FastAPI does not have a way to dynamically add openapi defs
+        for specific paths. This means we must wait till the very end
+        to update the def values. This does allow for adding context
+        specific fields though which is beneficial. 
+        
+        """
+        openapi_schema = get_openapi(
+            title="Custom title",
+            version="2.5.0",
+            description="This is a very custom OpenAPI schema",
+            routes=self.app.routes,
+        )
+        openapi_schema.setdefault("components",{}).setdefault("schemas", {}).update(self._openapi_defs)
+
+        
+        def _recursively_update_defs_to_component(obj: Any)->dict:
+            if isinstance(obj, dict):
+                return {
+                    key: _recursively_update_defs_to_component(val) for key,val in obj.items()
+                }
+            elif isinstance(obj, list):
+                return [_recursively_update_defs_to_component(val) for val in obj]
+            elif isinstance(obj, str):
+                return obj.replace("$defs","components/schemas")
+            else:
+                return obj
+        # Update $def references to components/schemas
+        openapi_schema = _recursively_update_defs_to_component(openapi_schema)
+        self.app.openapi_schema = openapi_schema
+        
     def _patch_exit_handler(self):
         """
         🌶️🌶️🌶️ Here there are dragons! 🌶️🌶️🌶️

@@ -136,7 +136,7 @@ def flatten_json_schema(json_schema: dict) -> dict:
     """Function to flatten a json schema. It replaces all references to $def
     with the requested object or {} if it's not found"""
     # Remove left over $defs field
-    refs_map = {"$defs": json_schema.pop("$defs", None)}
+    refs_map = {"$defs": json_schema.get("$defs", {})}
 
     return _replace_json_refs(json_schema, refs_map)
 
