@@ -615,8 +615,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 log.debug("In unary handler for %s for model %s", rpc.name, model_id)
                 loop = asyncio.get_running_loop()
 
-                request_params = self._get_request_params(rpc, request)
-
                 log.debug4(
                     "Sending request %s to model id %s", request_params, model_id
                 )
