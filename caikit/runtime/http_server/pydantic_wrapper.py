@@ -132,14 +132,13 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
 
         field_mapping[field_name] = (pydantic_type, field_info)
 
-    # We want to set the config to forbid extra attributes
-    # while instantiating any pydantic models
-    # This is done to make sure any oneofs can be
-    # correctly inferred by pydantic
+    # We want to set the config to forbid extra attributes while instantiating any pydantic models
+    # This is done to make sure any oneofs can be correctly inferred by pydantic
     pydantic_model_config = pydantic.ConfigDict(extra="forbid", protected_namespaces=())
 
     # Construct the pydantic data model using create_model to ensure all internal variables
-    # are set correctly
+    # are set correctly. This explicitly sets the name of the pydantic class to the
+    # name of the grpc buffer.
     pydantic_model = pydantic.create_model(
         __model_name=dm_class.get_proto_class().DESCRIPTOR.full_name,
         __config__=pydantic_model_config,
