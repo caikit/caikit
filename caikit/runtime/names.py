@@ -49,6 +49,11 @@ from caikit.interfaces.runtime.data_model import (
 log = alog.use_channel("RNTM-NAMES")
 
 
+################################# Model Management Names #######################
+LOCAL_MODEL_TYPE = "standalone-model"
+DEFAULT_LOADER_NAME = "default"
+DEFAULT_SIZER_NAME = "default"
+
 ################################# Service Names ################################
 
 

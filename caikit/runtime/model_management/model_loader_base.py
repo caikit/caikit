@@ -15,45 +15,69 @@
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from typing import Callable, Optional, Union
+import abc
 
 # Third Party
 from grpc import StatusCode
-from prometheus_client import Summary
 
 # First Party
+import aconfig
 import alog
 
 # Local
 from caikit.config import get_config
 from caikit.core import MODEL_MANAGER, ModuleBase
 from caikit.core.model_management import ModelFinderBase, ModelInitializerBase
+from caikit.core.toolkit.factory import FactoryConstructible
 from caikit.runtime.model_management.batcher import Batcher
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("MODEL-LOADER")
 
-CAIKIT_CORE_LOAD_DURATION_SUMMARY = Summary(
-    "caikit_core_load_model_duration_seconds",
-    "Summary of the duration (in seconds) of caikit.core.load(model)",
-    ["model_type"],
-)
 
+class ModelLoaderBase(FactoryConstructible):
+    """Model Loader Base class which describes how models are loaded."""
 
-class ModelLoader:
-    """Model Loader class. The singleton class contains the core implementation details
-    for loading models in from S3."""
+    _load_thread_pool = None
 
-    __instance = None
+    def __init__(self, config: aconfig.Config, instance_name: str):
+        """A FactoryConstructible object must be constructed with a config
+        object that it uses to pull in all configuration
+        """
+        if ModelLoaderBase._load_thread_pool is None:
+            ModelLoaderBase._load_thread_pool = ThreadPoolExecutor(
+                get_config().runtime.load_threads
+            )
 
-    def __init__(self):
-        # Re-instantiating this is a programming error
-        assert self.__class__.__instance is None, "This class is a singleton!"
-        ModelLoader.__instance = self
-        self._load_thread_pool = ThreadPoolExecutor(get_config().runtime.load_threads)
+        super().__init__(config, instance_name)
         # Instead of storing config-based batching information here, we call
         # get_config() when needed to support dynamic config changes for
         # batching
+
+    @abc.abstractmethod
+    def load_module_instance(
+        self,
+        model_path: str,
+        model_id: str,
+        model_type: str,
+        finder: Optional[Union[str, ModelFinderBase]] = None,
+        initializer: Optional[Union[str, ModelInitializerBase]] = None,
+    ) -> ModuleBase:
+        """Load an instance of a Caikit Model
+
+        Args:
+            model_path (str): The model path to load from
+            model_id (str): The model's id
+            model_type (str): The type of model being load
+            finder (Optional[Union[str, ModelFinderBase]], optional): The ModelFinder to use for
+              loading. Defaults to None.
+            initializer (Optional[Union[str, ModelInitializerBase]], optional): The
+              ModelInitializer to use for loading. Defaults to None.
+
+        Returns:
+            ModuleBase: a loaded model
+        """
 
     def load_model(
         self,
@@ -91,34 +115,27 @@ class ModelLoader:
         args = (local_model_path, model_id, model_type, finder, initializer)
         log.debug2("Loading model %s async", model_id)
         future_factory = partial(
-            self._load_thread_pool.submit, self._load_module, *args
+            self._load_thread_pool.submit, self._wrapped_load_model, *args
         )
         model_builder.model_future_factory(future_factory)
 
         # Return the built model with the future handle
         return model_builder.build()
 
-    def _load_module(
+    def _wrapped_load_model(
         self,
         model_path: str,
         model_id: str,
         model_type: str,
         finder: Optional[Union[str, ModelFinderBase]] = None,
         initializer: Optional[Union[str, ModelInitializerBase]] = None,
-    ) -> LoadedModel:
+    ) -> Union[Batcher, ModuleBase]:
         try:
             log.info("<RUN89711114I>", "Loading model '%s'", model_id)
 
-            # Only pass finder/initializer if they have values
-            load_kwargs = {}
-            if finder:
-                load_kwargs["finder"] = finder
-            if initializer:
-                load_kwargs["initializer"] = initializer
-
-            # Load using the caikit.core
-            with CAIKIT_CORE_LOAD_DURATION_SUMMARY.labels(model_type=model_type).time():
-                model = MODEL_MANAGER.load(model_path, **load_kwargs)
+            model = self.load_module_instance(
+                model_path, model_id, model_type, finder, initializer
+            )
 
             # If this model needs batching, configure a Batcher to wrap it
             model = self._wrap_in_batcher_if_configured(
@@ -126,6 +143,14 @@ class ModelLoader:
                 model_type,
                 model_id,
             )
+        except CaikitRuntimeException as cre:
+            log_dict = {
+                "log_code": "<RUN98613924E>",
+                "message": f"load failed to load model: {model_path} with error: {repr(cre)}",
+                "model_id": model_id,
+            }
+            log.error(log_dict)
+            raise cre
         except FileNotFoundError as fnfe:
             log_dict = {
                 "log_code": "<RUN98613924E>",
@@ -164,13 +189,6 @@ class ModelLoader:
         log.info("<RUN89713784I>", "Singleton cache: '%s'", str(cache_info))
 
         return model
-
-    @classmethod
-    def get_instance(cls) -> "ModelLoader":
-        """This method returns the instance of Model Manager"""
-        if not cls.__instance:
-            cls.__instance = ModelLoader()
-        return cls.__instance
 
     def _wrap_in_batcher_if_configured(
         self,
