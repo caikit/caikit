@@ -251,8 +251,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 overlapping_kwarg_config,
             )
 
-            log.info(
-                "<RUN99488935E>",
+            log.debug(
                 "server_config has the following configuration value(s): %s",
                 server_config,
             )
