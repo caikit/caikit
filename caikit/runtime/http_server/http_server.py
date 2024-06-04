@@ -267,6 +267,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     "Limiting HTTP server concurrency to %d",
                     concurrency_limit,
                 )
+            # limit concurrency is set to a specific value, so log the value
+            else:
+                log.info(
+                    "<RUN57106695I>",
+                    "HTTP server concurrency set to %d",
+                    concurrency_limit,
+                )
             server_config["limit_concurrency"] = concurrency_limit
 
             # Make sure the config loads TLS files here so they can safely be
