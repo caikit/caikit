@@ -19,6 +19,7 @@ from typing import Dict, List, Optional, Tuple
 
 # Third Party
 from requests import Session
+from requests.adapters import HTTPAdapter, Retry
 
 # Third party
 import grpc
@@ -31,8 +32,18 @@ def construct_grpc_channel(
     target: str,
     options: Optional[List[Tuple[str, str]]] = None,
     tls: Optional[ConnectionTlsInfo] = None,
+    retries: Optional[int] = None,
+    retry_options: Optional[Dict[str, str]] = None,
 ) -> grpc.Channel:
     """Helper function to construct a grpc Channel with the given TLS config"""
+    # Add retry option if one was provided
+    if retries and "grpc.enable_retries" not in options:
+        options["grpc.enable_retries"] = retries
+    # if retry_options:
+    #     for option_name, option_value in retry_options.items():
+    #         if option_name not in options:
+    #             options[option_name] = option_value
+        
     if tls and tls.enabled:
         grpc_credentials = grpc.ssl_channel_credentials(
             root_certificates=tls.ca_data,
@@ -50,6 +61,8 @@ def construct_requests_session(
     options: Optional[Dict[str, str]] = None,
     tls: Optional[ConnectionTlsInfo] = None,
     timeout: Optional[int] = None,
+    retries: Optional[int] = None,
+    retry_options: Optional[Dict[str, str]] = None,
 ) -> Session:
     """Helper function to construct a requests Session object with the given TLS
     config
@@ -78,5 +91,12 @@ def construct_requests_session(
 
     if timeout:
         session.params["timeout"] = timeout
+    
+    # Mount retry object if options were provided
+    if retries:
+        requests_retry = Retry(total=retries, **(retry_options or {}))  
+        session.mount('http://', HTTPAdapter(max_retries=requests_retry))
+        session.mount('https://', HTTPAdapter(max_retries=requests_retry))
+
 
     return session

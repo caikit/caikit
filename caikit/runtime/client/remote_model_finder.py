@@ -256,7 +256,7 @@ class RemoteModelFinder(ModelFinderBase):
         for conn in self._get_conn_candidates(model_name):
             target = f"{conn.hostname}:{conn.port}"
             options = [tuple(opt) for opt in conn.options.items()]
-            with construct_grpc_channel(target, options, conn.tls) as channel:
+            with construct_grpc_channel(target, options, conn.tls, conn.retries, conn.retry_options) as channel:
                 info_service_rpc = channel.unary_unary(
                     get_grpc_route_name(ServiceType.INFO, "GetModelsInfo"),
                     request_serializer=ModelInfoRequest.get_proto_class().SerializeToString,
@@ -313,7 +313,7 @@ class RemoteModelFinder(ModelFinderBase):
             target = (
                 f"{http_scheme}{conn.hostname}:" f"{conn.port}{MODELS_INFO_ENDPOINT}"
             )
-            session = construct_requests_session(conn.options, conn.tls, conn.timeout)
+            session = construct_requests_session(conn.options, conn.tls, conn.timeout, conn.retries, conn.retry_options)
 
             # Send HTTP Request
             try:

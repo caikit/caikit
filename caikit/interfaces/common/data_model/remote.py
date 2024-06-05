@@ -19,7 +19,7 @@ This file contains interfaces required to connect to Remote servers
 from dataclasses import field
 from http.client import HTTP_PORT, HTTPS_PORT
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 # First Party
 from py_to_proto.dataclass_to_proto import Dict
@@ -27,6 +27,7 @@ import alog
 
 # Local
 from caikit.core.data_model import PACKAGE_COMMON, DataObjectBase, dataobject
+from caikit.core.data_model.json_dict import JsonDict
 from caikit.core.exceptions import error_handler
 
 log = alog.use_channel("CNNCTDM")
@@ -140,8 +141,13 @@ class ConnectionInfo(DataObjectBase):
     timeout: Optional[int] = 60
 
     # Any extra options for the connection
-    options: Optional[Dict[str, str]] = field(default_factory=dict)
+    options: Optional[JsonDict] = field(default_factory=dict)
 
+    # Number of retries to perform
+    retries: Optional[int] = 1
+    # Runtime specific retry options
+    retry_options: Optional[JsonDict] = field(default_factory=dict)
+    
     def __post_init__(self):
         """Post init function to verify field types and set defaults"""
 
@@ -161,7 +167,15 @@ class ConnectionInfo(DataObjectBase):
             hostname=self.hostname,
         )
 
-        error.type_check("<COR734224567E>", int, port=self.port, timeout=self.timeout)
+        error.type_check(
+            "<COR734224567E>", 
+            int, 
+            port=self.port, 
+            timeout=self.timeout, 
+            retries=self.retries
+        )
 
         if self.options:
             error.type_check("<COR734424567E>", str, int, float, **self.options)
+        if self.retry_options:
+            error.type_check("<COR734424567E>", str, int, float, **self.retry_options)
