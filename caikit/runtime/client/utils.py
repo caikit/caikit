@@ -16,6 +16,7 @@ Helper utils for GRPC and HTTP connections
 """
 # Standard
 from typing import Dict, List, Optional, Tuple
+import json
 
 # Third Party
 from requests import Session
@@ -37,12 +38,32 @@ def construct_grpc_channel(
 ) -> grpc.Channel:
     """Helper function to construct a grpc Channel with the given TLS config"""
     # Add retry option if one was provided
-    if retries and "grpc.enable_retries" not in options:
-        options["grpc.enable_retries"] = retries
-    # if retry_options:
-    #     for option_name, option_value in retry_options.items():
-    #         if option_name not in options:
-    #             options[option_name] = option_value
+    if retries:
+        options.append(("grpc.enable_retries", 1))
+        
+        # Only add service_config if it wasn't already added to the GRPC option
+        # this stops us from overriding an advanced config
+        options_contain_service_config = False
+        for option_name, _ in options:
+            if option_name == "grpc.service_config":
+                options_contain_service_config = True
+                break
+        
+        if not options_contain_service_config:
+            service_config = {
+                "methodConfig": [
+                    {
+                        "name": [{}],
+                        "retryPolicy": {
+                            "maxAttempts": retries,
+                            "retryableStatusCodes": ["UNAVAILABLE","UNKNOWN","INTERNAL"],
+                            **retry_options
+                        },
+                    }
+                ]
+            }
+            
+            options.append(("grpc.service_config", json.dumps(service_config)))
         
     if tls and tls.enabled:
         grpc_credentials = grpc.ssl_channel_credentials(
