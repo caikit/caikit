@@ -18,6 +18,7 @@ job using caikit.core.train
 """
 
 # Standard
+from pathlib import Path
 from typing import Type
 import argparse
 import importlib
@@ -65,7 +66,8 @@ class TrainArgumentParser(argparse.ArgumentParser):
         raise ArgumentParserError(f"{self.prog}: error: {message}")
 
 
-def write_termination_log(text: str, log_file="/dev/termination-log"):
+def write_termination_log(text: str):
+    log_file = os.environ.get("TERMINATION_LOG_FILE", "/dev/termination-log")
     try:
         with open(log_file, "a") as handle:
             handle.write(text)
@@ -297,6 +299,9 @@ def main() -> int:
             future = train(module, wait=True, **train_kwargs)
             info = future.get_info()
             if info.status == TrainingStatus.COMPLETED:
+                complete_path = os.path.join(args.save_path, ".complete")
+                log.info(f"Creating completion file at: {complete_path}")
+                Path(complete_path).touch()
                 log.info("Training finished successfully")
                 return 0
             else:
