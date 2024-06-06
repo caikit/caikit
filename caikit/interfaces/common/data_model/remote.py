@@ -19,10 +19,9 @@ This file contains interfaces required to connect to Remote servers
 from dataclasses import field
 from http.client import HTTP_PORT, HTTPS_PORT
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 # First Party
-from py_to_proto.dataclass_to_proto import Dict
 import alog
 
 # Local
@@ -147,7 +146,7 @@ class ConnectionInfo(DataObjectBase):
     retries: Optional[int] = 1
     # Runtime specific retry options
     retry_options: Optional[JsonDict] = field(default_factory=dict)
-    
+
     def __post_init__(self):
         """Post init function to verify field types and set defaults"""
 
@@ -168,11 +167,11 @@ class ConnectionInfo(DataObjectBase):
         )
 
         error.type_check(
-            "<COR734224567E>", 
-            int, 
-            port=self.port, 
-            timeout=self.timeout, 
-            retries=self.retries
+            "<COR734224567E>",
+            int,
+            port=self.port,
+            timeout=self.timeout,
+            retries=self.retries,
         )
 
         if self.options:

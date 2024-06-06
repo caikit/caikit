@@ -2,7 +2,7 @@
 A sample module for sample things!
 """
 # Standard
-from typing import Iterable, List, Optional, Union, Dict
+from typing import Dict, Iterable, List, Optional, Union
 import os
 import time
 
@@ -64,16 +64,20 @@ class SampleModule(caikit.core.ModuleBase):
         """
         if throw:
             self._raise_error(error)
-            
+
         if throw_first_num_requests and not request_id:
-            self._raise_error("throw_first_num_requests requires providing a request_id")
+            self._raise_error(
+                "throw_first_num_requests requires providing a request_id"
+            )
         # If a throw_first_num_requests was provided  then increment the tracker and raise an exception
         # until the number of requests is high enough
         if throw_first_num_requests:
-            self.request_attempt_tracker[request_id] = self.request_attempt_tracker.get(request_id, 0) + 1
+            self.request_attempt_tracker[request_id] = (
+                self.request_attempt_tracker.get(request_id, 0) + 1
+            )
             if self.request_attempt_tracker[request_id] <= throw_first_num_requests:
                 self._raise_error(error)
-            
+
         assert isinstance(sample_input, SampleInputType)
         if sample_input.name == self.POISON_PILL_NAME:
             raise ValueError(f"{self.POISON_PILL_NAME} is not allowed!")

@@ -40,7 +40,7 @@ def construct_grpc_channel(
     # Add retry option if one was provided
     if retries and retries > 1:
         options.append(("grpc.enable_retries", 1))
-        
+
         # Only add service_config if it wasn't already added to the GRPC option
         # this stops us from overriding an advanced config
         options_contain_service_config = False
@@ -48,7 +48,7 @@ def construct_grpc_channel(
             if option_name == "grpc.service_config":
                 options_contain_service_config = True
                 break
-        
+
         if not options_contain_service_config:
             service_config = {
                 "methodConfig": [
@@ -59,15 +59,19 @@ def construct_grpc_channel(
                             "initialBackoff": "0.1s",
                             "maxBackoff": "1s",
                             "backoffMultiplier": 2,
-                            "retryableStatusCodes": ["UNAVAILABLE","UNKNOWN","INTERNAL"],
-                            **retry_options
+                            "retryableStatusCodes": [
+                                "UNAVAILABLE",
+                                "UNKNOWN",
+                                "INTERNAL",
+                            ],
+                            **retry_options,
                         },
                     }
                 ]
             }
-            
+
             options.append(("grpc.service_config", json.dumps(service_config)))
-        
+
     if tls and tls.enabled:
         grpc_credentials = grpc.ssl_channel_credentials(
             root_certificates=tls.ca_data,
@@ -115,13 +119,17 @@ def construct_requests_session(
 
     if timeout:
         session.params["timeout"] = timeout
-    
+
     # Mount retry object if options were provided
     if retries:
-        default_status_codes  = list(Retry.RETRY_AFTER_STATUS_CODES) + [500, 502, 504]
-        requests_retry = Retry(total=retries, allowed_methods=None,status_forcelist=default_status_codes, **(retry_options or {}))  
-        session.mount('http://', HTTPAdapter(max_retries=requests_retry))
-        session.mount('https://', HTTPAdapter(max_retries=requests_retry))
-
+        default_status_codes = list(Retry.RETRY_AFTER_STATUS_CODES) + [500, 502, 504]
+        requests_retry = Retry(
+            total=retries,
+            allowed_methods=None,
+            status_forcelist=default_status_codes,
+            **(retry_options or {})
+        )
+        session.mount("http://", HTTPAdapter(max_retries=requests_retry))
+        session.mount("https://", HTTPAdapter(max_retries=requests_retry))
 
     return session

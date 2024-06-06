@@ -473,7 +473,6 @@ def test_remote_initializer_exception_handling(
                 )
 
 
-
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
 def test_remote_initializer_retry(sample_task_model_id, open_port, protocol):
     """Test to ensure RemoteModule Initializer works for insecure connections"""
@@ -487,7 +486,7 @@ def test_remote_initializer_retry(sample_task_model_id, open_port, protocol):
         retry_options["initialBackoff"] = "0s"
     elif protocol == "http":
         retry_options["raise_on_redirect"] = True
-        
+
     # Construct Remote Module Config with 3 retries
     connection_info = ConnectionInfo(hostname="localhost", port=open_port, retries=3)
     remote_config = RemoteModuleConfig.load_from_module(
@@ -507,11 +506,18 @@ def test_remote_initializer_retry(sample_task_model_id, open_port, protocol):
         assert isinstance(remote_model, ModuleBase)
 
         # Run RemoteModule Request and ensure that even though 2 requests fail the 3rd succeeds and the result is returned
-        model_result = remote_model.run(SampleInputType(name="Test"),  request_id=random_test_id(), throw_first_num_requests=2)
+        model_result = remote_model.run(
+            SampleInputType(name="Test"),
+            request_id=random_test_id(),
+            throw_first_num_requests=2,
+        )
         assert isinstance(model_result, SampleOutputType)
         assert model_result.greeting == "Hello Test"
-        
+
         # Run RemoteModule and ensure an exception is still raised after the number of retries maxes out
         with pytest.raises(CaikitRuntimeException):
-            model_result = remote_model.run(SampleInputType(name="Test"),  request_id=random_test_id(), throw_first_num_requests=5)
-        
+            model_result = remote_model.run(
+                SampleInputType(name="Test"),
+                request_id=random_test_id(),
+                throw_first_num_requests=5,
+            )
