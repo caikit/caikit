@@ -66,8 +66,9 @@ class TrainArgumentParser(argparse.ArgumentParser):
         raise ArgumentParserError(f"{self.prog}: error: {message}")
 
 
-def write_termination_log(text: str):
-    log_file = os.environ.get("TERMINATION_LOG_FILE", "/dev/termination-log")
+def write_termination_log(text: str, log_file: str, enabled: bool):
+    if not enabled:
+        return
     try:
         with open(log_file, "a") as handle:
             handle.write(text)
@@ -132,14 +133,28 @@ def main() -> int:
     parser.add_argument(
         "--termination-log-file",
         "-f",
-        action="store_true",
-        default="/dev/termination-log",
         help="Location of where to write a termination error message",
+    )
+    parser.add_argument(
+        "--enable-termination-log",
+        "-e",
+        help="Whether to enable writing to termination log when training fails",
+    )
+    # Set default values for termination log incase parsing the arguments fail later on
+    enable_termination_log = os.environ.get("ENABLE_TERMINATION_LOG", True)
+    termination_log_file = os.environ.get(
+        "TERMINATION_LOG_FILE", "/dev/termination-log"
     )
 
     try:
         args = parser.parse_args()
         config_logging()
+
+        # Modify termination log variables if parsed
+        if args.enable_termination_log:
+            enable_termination_log = args.enable_termination_log
+        if args.termination_log_file:
+            termination_log_file = args.termination_log_file
 
         # Initialize top-level kwargs
         train_kwargs = {
@@ -149,7 +164,6 @@ def main() -> int:
         }
         if args.trainer is not None:
             train_kwargs["trainer"] = args.trainer
-
     except Exception as e:
         message = f"Exception raised during training. This may be a problem with your input: {e}"
         log.warning(
@@ -160,7 +174,7 @@ def main() -> int:
             },
             exc_info=True,
         )
-        write_termination_log(message)
+        write_termination_log(message, termination_log_file, enable_termination_log)
         exit(USER_ERROR_EXIT_CODE)
 
     # Import libraries to register modules
@@ -178,7 +192,7 @@ def main() -> int:
             },
             exc_info=True,
         )
-        write_termination_log(message)
+        write_termination_log(message, termination_log_file, enable_termination_log)
         exit(USER_ERROR_EXIT_CODE)
 
     # Try to import the root library of the provided module. It's ok if this
@@ -214,7 +228,7 @@ def main() -> int:
             },
             exc_info=True,
         )
-        write_termination_log(message)
+        write_termination_log(message, termination_log_file, enable_termination_log)
         exit(USER_ERROR_EXIT_CODE)
 
     # Read training kwargs
@@ -264,7 +278,7 @@ def main() -> int:
             },
             exc_info=True,
         )
-        write_termination_log(message)
+        write_termination_log(message, termination_log_file, enable_termination_log)
         exit(USER_ERROR_EXIT_CODE)
     except ValueError as e:
         message = f"Invalid value for one or more input parameters: {e}"
@@ -286,7 +300,7 @@ def main() -> int:
             },
             exc_info=True,
         )
-        write_termination_log(message)
+        write_termination_log(message, termination_log_file, enable_termination_log)
         exit(USER_ERROR_EXIT_CODE)
 
     try:
@@ -308,7 +322,11 @@ def main() -> int:
                 log.error("Training finished unsuccessfully")
                 for err in info.errors or []:
                     log.error(err)
-                write_termination_log("Training finished unsuccessfully")
+                write_termination_log(
+                    "Training finished unsuccessfully",
+                    termination_log_file,
+                    enable_termination_log,
+                )
                 exit(INTERNAL_ERROR_EXIT_CODE)
     except MemoryError:
         message = "OOM error during training"
@@ -320,7 +338,7 @@ def main() -> int:
             },
             exc_info=True,
         )
-        write_termination_log(message)
+        write_termination_log(message, termination_log_file, enable_termination_log)
         exit(INTERNAL_ERROR_EXIT_CODE)
     except Exception:
         message = "Unhandled exception during training"
@@ -332,7 +350,7 @@ def main() -> int:
             },
             exc_info=True,
         )
-        write_termination_log(message)
+        write_termination_log(message, termination_log_file, enable_termination_log)
         exit(INTERNAL_ERROR_EXIT_CODE)
 
 

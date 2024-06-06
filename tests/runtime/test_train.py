@@ -99,7 +99,6 @@ def test_train_module_uid(workdir):
     """Test referencing the module by its UID"""
     model_name = "my-model"
     log_path = os.path.join(workdir, "termination-log")
-    os.environ["TERMINATION_LOG_FILE"] = log_path
     with sys_argv(
         "--module",
         SampleModule.MODULE_ID,
@@ -109,6 +108,8 @@ def test_train_module_uid(workdir):
         workdir,
         "--training-kwargs",
         json.dumps(SAMPLE_TRAIN_KWARGS),
+        "--termination-log-file",
+        log_path,
     ):
         assert main() == 0
         model_dir = os.path.join(workdir, model_name)
@@ -227,17 +228,16 @@ def test_invalid_json(workdir):
         "{invalid json",
     ):
         log_path = os.path.join(workdir, "termination-log")
-        os.environ["TERMINATION_LOG_FILE"] = log_path
         with pytest.raises(SystemExit) as pytest_wrapped_e:
             main()
         assert pytest_wrapped_e.type == SystemExit
         assert pytest_wrapped_e.value.code == train.USER_ERROR_EXIT_CODE
-        assert os.path.isfile(log_path)
 
 
-def test_failed_training():
+def test_failed_training(workdir):
     """Make sure that a non-zero exit code is returned if training fails"""
     model_name = "my-model"
+    log_path = os.path.join(workdir, "termination-log")
     training_kwargs = copy.deepcopy(SAMPLE_TRAIN_KWARGS)
     training_kwargs["batch_size"] = SampleModule.POISON_PILL_BATCH_SIZE
     with sys_argv(
@@ -247,11 +247,14 @@ def test_failed_training():
         model_name,
         "--training-kwargs",
         json.dumps(training_kwargs),
+        "--termination-log-file",
+        log_path,
     ):
         with pytest.raises(SystemExit) as pytest_wrapped_e:
             main()
         assert pytest_wrapped_e.type == SystemExit
         assert pytest_wrapped_e.value.code == train.INTERNAL_ERROR_EXIT_CODE
+        assert os.path.isfile(log_path)
 
 
 def test_bad_module():
