@@ -313,6 +313,8 @@ def main() -> int:
             future = train(module, wait=True, **train_kwargs)
             info = future.get_info()
             if info.status == TrainingStatus.COMPLETED:
+                # The .complete file indicates all model files have completed
+                # being written to the filesystem
                 complete_path = os.path.join(args.save_path, ".complete")
                 log.info(f"Creating completion file at: {complete_path}")
                 Path(complete_path).touch()
