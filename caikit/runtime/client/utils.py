@@ -38,7 +38,7 @@ def construct_grpc_channel(
 ) -> grpc.Channel:
     """Helper function to construct a grpc Channel with the given TLS config"""
     # Add retry option if one was provided
-    if retries:
+    if retries and retries > 1:
         options.append(("grpc.enable_retries", 1))
         
         # Only add service_config if it wasn't already added to the GRPC option
@@ -56,6 +56,9 @@ def construct_grpc_channel(
                         "name": [{}],
                         "retryPolicy": {
                             "maxAttempts": retries,
+                            "initialBackoff": "0.1s",
+                            "maxBackoff": "1s",
+                            "backoffMultiplier": 2,
                             "retryableStatusCodes": ["UNAVAILABLE","UNKNOWN","INTERNAL"],
                             **retry_options
                         },
@@ -115,7 +118,8 @@ def construct_requests_session(
     
     # Mount retry object if options were provided
     if retries:
-        requests_retry = Retry(total=retries, **(retry_options or {}))  
+        default_status_codes  = list(Retry.RETRY_AFTER_STATUS_CODES) + [500, 502, 504]
+        requests_retry = Retry(total=retries, allowed_methods=None,status_forcelist=default_status_codes, **(retry_options or {}))  
         session.mount('http://', HTTPAdapter(max_retries=requests_retry))
         session.mount('https://', HTTPAdapter(max_retries=requests_retry))
 

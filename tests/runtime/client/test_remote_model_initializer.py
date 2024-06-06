@@ -471,3 +471,47 @@ def test_remote_initializer_exception_handling(
                         [SampleInputType(name="Test")]
                     )
                 )
+
+
+
+@pytest.mark.parametrize("protocol", ["grpc", "http"])
+def test_remote_initializer_retry(sample_task_model_id, open_port, protocol):
+    """Test to ensure RemoteModule Initializer works for insecure connections"""
+    local_module_class = (
+        ModelManager.get_instance().retrieve_model(sample_task_model_id).__class__
+    )
+
+    # Add custom retry options to ensure they're correctly applied
+    retry_options = {}
+    if protocol == "grpc":
+        retry_options["initialBackoff"] = "0s"
+    elif protocol == "http":
+        retry_options["raise_on_redirect"] = True
+        
+    # Construct Remote Module Config with 3 retries
+    connection_info = ConnectionInfo(hostname="localhost", port=open_port, retries=3)
+    remote_config = RemoteModuleConfig.load_from_module(
+        local_module_class,
+        connection_info,
+        protocol,
+        MODEL_MESH_MODEL_ID_KEY,
+        sample_task_model_id,
+    )
+    # Set random module_id so tests don't conflict
+    remote_config.module_id = random_test_id()
+
+    with runtime_test_server(open_port, protocol=protocol):
+        # Construct initializer and RemoteModule
+        remote_initializer = RemoteModelInitializer(Config({}), "test")
+        remote_model = remote_initializer.init(remote_config)
+        assert isinstance(remote_model, ModuleBase)
+
+        # Run RemoteModule Request and ensure that even though 2 requests fail the 3rd succeeds and the result is returned
+        model_result = remote_model.run(SampleInputType(name="Test"),  request_id=random_test_id(), throw_first_num_requests=2)
+        assert isinstance(model_result, SampleOutputType)
+        assert model_result.greeting == "Hello Test"
+        
+        # Run RemoteModule and ensure an exception is still raised after the number of retries maxes out
+        with pytest.raises(CaikitRuntimeException):
+            model_result = remote_model.run(SampleInputType(name="Test"),  request_id=random_test_id(), throw_first_num_requests=5)
+        
