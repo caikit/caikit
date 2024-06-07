@@ -108,6 +108,9 @@ class _DataBaseMetaClass(type):
     _BACKEND_ATTR = "_backend"
     _WHICH_ONEOF_ATTR = "_which_oneof"
 
+    # Special attribute used to indicate which defaults are user provided
+    _USER_DEFINED_DEFAULTS = "__user_defined_defaults__"
+
     # When inferring which field in a oneof a given value should be used for
     # based on the python type, we need to check types in order with bool first,
     # ints next, then floats values that fit a "more flexible" type don't
@@ -465,14 +468,18 @@ class _DataBaseMetaClass(type):
                     setattr(self, field_name, field_val)
                     used_fields.append(field_name)
 
-            # Default all unspecified fields to None
+            # Default all unspecified fields to their User specified defaults or None
+            default_values = self.get_field_defaults()
             if num_fields > 0:  # Do a quick check for performance reason
                 for field_name in fields:
                     if (
                         field_name not in used_fields
                         and field_name not in cls._fields_to_oneof
                     ):
-                        setattr(self, field_name, None)
+                        default_value = default_values.get(field_name)
+                        if default_value and isinstance(default_value, Callable):
+                            default_value = default_value()
+                        setattr(self, field_name, default_value)
 
             # Add type information for all fields. Do this during init to
             # allow for forward refs to be imported
@@ -551,6 +558,12 @@ class DataBase(metaclass=_DataBaseMetaClass):
     @classmethod
     def get_proto_class(cls) -> Type[ProtoMessageType]:
         return cls._proto_class
+
+    @classmethod
+    def get_field_defaults(cls) -> Type[ProtoMessageType]:
+        """Get mapping of fields to default values. Mapping will not include fields without
+        defaults"""
+        return getattr(cls, _DataBaseMetaClass._USER_DEFINED_DEFAULTS, {})
 
     @classmethod
     def get_field_message_type(cls, field_name: str) -> Optional[type]:

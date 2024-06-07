@@ -17,7 +17,7 @@ capable of converting to and from Pydantic models to our DataObjects.
 """
 # Standard
 from datetime import date, datetime, time, timedelta
-from typing import Dict, List, Type, Union, get_args, get_type_hints
+from typing import Callable, Dict, List, Type, Union, get_args, get_type_hints
 import base64
 import enum
 import inspect
@@ -27,6 +27,7 @@ import json
 from fastapi import Request, status
 from fastapi.datastructures import FormData
 from fastapi.exceptions import HTTPException, RequestValidationError
+from pydantic.fields import Field
 from pydantic.functional_validators import BeforeValidator
 from starlette.datastructures import UploadFile
 import numpy as np
@@ -64,15 +65,6 @@ PYDANTIC_TO_DM_MAPPING = {
 }
 
 
-# Base class for pydantic models
-# We want to set the config to forbid extra attributes
-# while instantiating any pydantic models
-# This is done to make sure any oneofs can be
-# correctly inferred by pydantic
-class ParentPydanticBaseModel(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(extra="forbid", protected_namespaces=())
-
-
 def pydantic_to_dataobject(pydantic_model: pydantic.BaseModel) -> DataBase:
     """Convert pydantic objects to our DM objects"""
     dm_class_to_build = PYDANTIC_TO_DM_MAPPING.get(type(pydantic_model))
@@ -108,23 +100,49 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
     if dm_class in PYDANTIC_TO_DM_MAPPING:
         return PYDANTIC_TO_DM_MAPPING[dm_class]
 
-    annotations = {
-        field_name: _get_pydantic_type(field_type)
-        for field_name, field_type in get_type_hints(dm_class, localns=localns).items()
-    }
-    pydantic_model = type(ParentPydanticBaseModel)(
-        dm_class.get_proto_class().DESCRIPTOR.full_name,
-        (ParentPydanticBaseModel,),
-        {
-            "__annotations__": annotations,
-            **{
-                name: None
-                for name, _ in get_type_hints(
-                    dm_class,
-                    localns=localns,
-                ).items()
-            },
-        },
+    # Construct a mapping of field names to the type and FieldInfo objects.
+    class_defaults = dm_class.get_field_defaults()
+    field_mapping = {}
+    for field_name, field_type in get_type_hints(dm_class, localns=localns).items():
+        pydantic_type = _get_pydantic_type(field_type)
+
+        field_info_kwargs = {}
+        # If the DM field has a default then add it to the kwargs
+        dm_field_default = class_defaults.get(field_name)
+        if isinstance(dm_field_default, Callable):
+            field_info_kwargs["default_factory"] = dm_field_default
+        elif dm_field_default is not None:
+            field_info_kwargs["default"] = dm_field_default
+        # If no default is provided then default the field to None. this ensures
+        # the parameter isn't required and uses caikits default logic. Use
+        # default_factory to retain type info in swagger.
+        else:
+            field_info_kwargs["default_factory"] = lambda: None
+
+        # If the field is a DataBase object then set its title correctly
+        if inspect.isclass(field_type) and issubclass(field_type, DataBase):
+            field_info_kwargs[
+                "title"
+            ] = field_type.get_proto_class().DESCRIPTOR.full_name
+
+        # Construct field info objects
+        field_info = Field(
+            **field_info_kwargs,
+        )
+
+        field_mapping[field_name] = (pydantic_type, field_info)
+
+    # We want to set the config to forbid extra attributes while instantiating any pydantic models
+    # This is done to make sure any oneofs can be correctly inferred by pydantic
+    pydantic_model_config = pydantic.ConfigDict(extra="forbid", protected_namespaces=())
+
+    # Construct the pydantic data model using create_model to ensure all internal variables
+    # are set correctly. This explicitly sets the name of the pydantic class to the
+    # name of the grpc buffer.
+    pydantic_model = pydantic.create_model(
+        __model_name=dm_class.get_proto_class().DESCRIPTOR.full_name,
+        __config__=pydantic_model_config,
+        **field_mapping,
     )
     PYDANTIC_TO_DM_MAPPING[dm_class] = pydantic_model
     # also store the reverse mapping for easy retrieval
