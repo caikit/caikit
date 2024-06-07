@@ -63,6 +63,9 @@ class TaskBase:
         method_name: str  # the simple name of a method, like "run"
         input_streaming: bool
         output_streaming: bool
+        context_arg: Optional[
+            str
+        ]  # The name of the request context to pass if one is provided
 
     deferred_method_decorators: Dict[
         Type["TaskBase"], Dict[str, List["TaskBase.InferenceMethodPtr"]]
@@ -70,7 +73,10 @@ class TaskBase:
 
     @classmethod
     def taskmethod(
-        cls, input_streaming: bool = False, output_streaming: bool = False
+        cls,
+        input_streaming: bool = False,
+        output_streaming: bool = False,
+        context_arg: Optional[str] = None,
     ) -> Callable[[_InferenceMethodBaseT], _InferenceMethodBaseT]:
         """Decorates a module instancemethod and indicates whether the inputs and outputs should
         be handled as streams. This will trigger validation that the signature of this method
@@ -94,6 +100,7 @@ class TaskBase:
                     method_name=inference_method.__name__,
                     input_streaming=input_streaming,
                     output_streaming=output_streaming,
+                    context_arg=context_arg,
                 )
             )
             return inference_method
@@ -112,7 +119,9 @@ class TaskBase:
             keyname = _make_keyname_for_module(module)
             deferred_decorations = cls.deferred_method_decorators[cls][keyname]
             for decoration in deferred_decorations:
-                signature = CaikitMethodSignature(module, decoration.method_name)
+                signature = CaikitMethodSignature(
+                    module, decoration.method_name, decoration.context_arg
+                )
                 cls.validate_run_signature(
                     signature, decoration.input_streaming, decoration.output_streaming
                 )

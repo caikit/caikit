@@ -27,8 +27,10 @@ from caikit.config import get_config
 from caikit.core import ModuleConfig
 from caikit.core.module_backends import backend_types
 from caikit.core.modules import base, module
+from caikit.core.toolkit.factory import FactoryConstructible
 from caikit.runtime.model_management.batcher import Batcher
-from caikit.runtime.model_management.model_loader import ModelLoader
+from caikit.runtime.model_management.core_model_loader import CoreModelLoader
+from caikit.runtime.model_management.factories import model_loader_factory
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model import SampleInputType, SampleOutputType
 from sample_lib.modules.sample_task import SampleModule
@@ -43,15 +45,19 @@ import caikit.core
 @contextmanager
 def temp_model_loader():
     """Temporarily reset the ModelLoader singleton"""
-    real_singleton = ModelLoader.get_instance()
-    ModelLoader._ModelLoader__instance = None
-    yield ModelLoader.get_instance()
-    ModelLoader._ModelLoader__instance = real_singleton
+    yield construct_model_loader()
 
 
 @pytest.fixture
 def model_loader():
-    return ModelLoader.get_instance()
+    yield construct_model_loader()
+
+
+def construct_model_loader():
+    model_loader: CoreModelLoader = model_loader_factory.construct(
+        get_config().model_management.loaders.default, "default"
+    )
+    return model_loader
 
 
 def make_model_future(model_instance):
@@ -161,10 +167,11 @@ def test_nonzip_extract_fails(model_loader):
     assert "config.yml" in context.value.message
 
 
-def test_no_double_instantiation():
+def test_no_double_instantiation_of_thread_pools():
     """Make sure trying to re-instantiate this singleton raises"""
-    with pytest.raises(Exception):
-        ModelLoader()
+    loader1 = construct_model_loader()
+    loader2 = construct_model_loader()
+    assert loader1._load_thread_pool is loader2._load_thread_pool
 
 
 def test_with_batching(model_loader):
@@ -319,11 +326,11 @@ def test_load_model_succeed_after_retry(model_loader):
     """
     failures = 2
     fail_wrapper = TempFailWrapper(
-        model_loader._load_module,
+        model_loader.load_module_instance,
         num_failures=failures,
         exc=CaikitRuntimeException(grpc.StatusCode.INTERNAL, "Yikes!"),
     )
-    with mock.patch.object(model_loader, "_load_module", fail_wrapper):
+    with mock.patch.object(model_loader, "load_module_instance", fail_wrapper):
         model_id = random_test_id()
         loaded_model = model_loader.load_model(
             model_id=model_id,
@@ -342,11 +349,11 @@ def test_load_model_fail_callback_once(model_loader):
     """
     failures = 3
     fail_wrapper = TempFailWrapper(
-        model_loader._load_module,
+        model_loader.load_module_instance,
         num_failures=failures,
         exc=CaikitRuntimeException(grpc.StatusCode.INTERNAL, "Yikes!"),
     )
-    with mock.patch.object(model_loader, "_load_module", fail_wrapper):
+    with mock.patch.object(model_loader, "load_module_instance", fail_wrapper):
         model_id = random_test_id()
         fail_cb = mock.MagicMock()
         loaded_model = model_loader.load_model(
@@ -367,11 +374,13 @@ def test_load_model_loaded_status(model_loader):
     release_event = threading.Event()
     model_mock = mock.MagicMock()
 
-    def _load_module_mock(*_, **__):
+    def _load_module_instance_mock(*_, **__):
         release_event.wait()
         return model_mock
 
-    with mock.patch.object(model_loader, "_load_module", _load_module_mock):
+    with mock.patch.object(
+        model_loader, "load_module_instance", _load_module_instance_mock
+    ):
         loaded_model = model_loader.load_model(
             model_id=model_id,
             local_model_path=Fixtures.get_good_model_path(),

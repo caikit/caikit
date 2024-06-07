@@ -19,6 +19,7 @@ model objects inline without manually defining the protobufs representation
 
 # Standard
 from enum import Enum
+from inspect import signature
 from typing import (
     Any,
     Callable,
@@ -192,7 +193,7 @@ def dataobject(*args, **kwargs) -> Callable[[_DataObjectBaseT], _DataObjectBaseT
 
                 # Class Attribute default
                 defined_default = getattr(cls, annotation, dataclasses.MISSING)
-                if defined_default == dataclasses.MISSING:
+                if defined_default is dataclasses.MISSING:
                     log.debug3("Setting None default attr for %s.%s", cls, annotation)
                     setattr(cls, annotation, None)
 
@@ -202,17 +203,26 @@ def dataobject(*args, **kwargs) -> Callable[[_DataObjectBaseT], _DataObjectBaseT
                     # If this class is a dataclass and this field has dataclass specific field
                     # defaults then use those. Because of how dataclasses wrapping is you have
                     # to check default and default_factory directly
-                    if dataclass_defined_default != dataclasses.MISSING and (
-                        dataclass_defined_default.default != dataclasses.MISSING
+                    if dataclass_defined_default is not dataclasses.MISSING and (
+                        dataclass_defined_default.default is not dataclasses.MISSING
                         or dataclass_defined_default.default_factory
-                        != dataclasses.MISSING
+                        is not dataclasses.MISSING
                     ):
                         # Revert the nulling of the cls with the dataclass field
                         setattr(cls, annotation, dataclass_defined_default)
                         defined_default = dataclass_defined_default
-                    else:
-                        # If this field has no available default then skip loop
-                        continue
+
+                        if isinstance(defined_default, Callable):
+                            callable_sig = signature(defined_default)
+                            error.value_check(
+                                "<COR95184430E>",
+                                len(callable_sig.parameters) == 0,
+                                "Callable dataclass default field must accept no parameters",
+                            )
+
+                # If this field has no available default then skip loop
+                if defined_default is dataclasses.MISSING:
+                    continue
 
                 # If this default is a dataclass field parse it
                 if isinstance(defined_default, dataclasses.Field):

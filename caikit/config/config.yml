@@ -51,6 +51,14 @@ model_management:
                 # List of module backend configurations in priority order
                 backend_priority:
                     - type: LOCAL
+    loaders:
+        default:
+            type: CORE
+            config: {}
+    sizers:
+        default:
+            type: MODEL_MESH
+            config: {}
 
 log:
     # Default level for all python loggers

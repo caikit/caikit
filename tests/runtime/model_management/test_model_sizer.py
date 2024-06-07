@@ -22,7 +22,8 @@ import grpc
 
 # Local
 from caikit import get_config
-from caikit.runtime.model_management.model_sizer import ModelSizer
+from caikit.runtime.model_management.factories import model_sizer_factory
+from caikit.runtime.model_management.model_sizer_base import ModelSizerBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from tests.conftest import random_test_id, temp_config
 from tests.fixtures import Fixtures
@@ -37,7 +38,9 @@ class TestModelSizer(unittest.TestCase):
 
     def setUp(self):
         """This method runs before each test begins to run"""
-        self.model_sizer = ModelSizer.get_instance()
+        self.model_sizer = model_sizer_factory.construct(
+            get_config().model_management.sizers.default, "default"
+        )
 
     @staticmethod
     def _add_file(path, charsize) -> int:

@@ -634,8 +634,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 log.debug("In unary handler for %s for model %s", rpc.name, model_id)
                 loop = asyncio.get_running_loop()
 
-                request_params = self._get_request_params(rpc, request)
-
                 log.debug4(
                     "Sending request %s to model id %s", request_params, model_id
                 )
@@ -654,6 +652,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                         output_streaming=False,
                         task=rpc.task,
                         aborter=aborter,
+                        context=context,
                         **request_params,
                     )
                     result = await loop.run_in_executor(self.thread_pool, call)
@@ -719,6 +718,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                                 output_streaming=True,
                                 task=rpc.task,
                                 aborter=aborter,
+                                context=context,
                                 **request_params,
                             ),
                             pool=self.thread_pool,

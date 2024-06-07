@@ -46,7 +46,7 @@ from tests.conftest import TempFailWrapper, random_test_id, temp_config
 from tests.core.helpers import TestFinder
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import deploy_good_model_files
-import caikit.runtime.model_management.model_loader
+import caikit.runtime.model_management.model_loader_base
 
 get_dynamic_module("caikit.core")
 ANY_MODEL_TYPE = "test-any-model-type"
@@ -72,7 +72,7 @@ def temp_local_models_dir(workdir, model_manager=MODEL_MANAGER):
 def non_singleton_model_managers(num_mgrs=1, *args, **kwargs):
     with temp_config(*args, **kwargs):
         with patch(
-            "caikit.runtime.model_management.model_loader.MODEL_MANAGER",
+            "caikit.runtime.model_management.core_model_loader.MODEL_MANAGER",
             new_callable=CoreModelManager,
         ):
             instances = []
@@ -1269,13 +1269,13 @@ def test_periodic_sync_handles_temporary_errors():
         ) as managers:
             manager = managers[0]
             flakey_loader = TempFailWrapper(
-                manager.model_loader._load_module,
+                manager.model_loader.load_module_instance,
                 num_failures=1,
                 exc=CaikitRuntimeException(grpc.StatusCode.INTERNAL, "Dang"),
             )
             with patch.object(
                 manager.model_loader,
-                "_load_module",
+                "load_module_instance",
                 flakey_loader,
             ):
                 assert manager._lazy_sync_timer is not None
@@ -1307,13 +1307,13 @@ def test_lazy_load_handles_temporary_errors():
         ) as managers:
             manager = managers[0]
             flakey_loader = TempFailWrapper(
-                manager.model_loader._load_module,
+                manager.model_loader.load_module_instance,
                 num_failures=1,
                 exc=CaikitRuntimeException(grpc.StatusCode.INTERNAL, "Dang"),
             )
             with patch.object(
                 manager.model_loader,
-                "_load_module",
+                "load_module_instance",
                 flakey_loader,
             ):
                 assert manager._lazy_sync_timer is None

@@ -11,22 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Typing constant for the Runtime Context
+"""
+# Standard
+from typing import Union
 
-# Local
-from . import training_management
-from .context import RuntimeServerContextType
-from .info import (
-    ModelInfo,
-    ModelInfoRequest,
-    ModelInfoResponse,
-    RuntimeInfoRequest,
-    RuntimeInfoResponse,
-)
-from .model_management import DeployModelRequest, UndeployModelRequest
-from .training_management import (
-    ModelPointer,
-    TrainingInfoRequest,
-    TrainingJob,
-    TrainingStatus,
-    TrainingStatusResponse,
-)
+RuntimeServerContextType = Union[
+    "grpc.ServicerContext", "fastapi.Request"  # noqa: F821
+]
