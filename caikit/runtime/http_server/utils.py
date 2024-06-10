@@ -43,7 +43,7 @@ def _extract_raw_from_schema(
         if raw_json_schema := _parse_raw_json_schema(json_schema):
             return None, {_clean_schema_path(current_path): raw_json_schema}
 
-        # If this json_schema is just a ref then just recurse on the ref's json to 
+        # If this json_schema is just a ref then just recurse on the ref's json to
         # extract the file information. However, don't modify the original json
         # ref schema
         if "$ref" in json_schema:

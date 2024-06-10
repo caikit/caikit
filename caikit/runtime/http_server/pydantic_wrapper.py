@@ -133,7 +133,7 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
 
         # If the field is a DataBase object then set its title correctly
         if inspect.isclass(field_type) and issubclass(field_type, DataBase):
-            field_info_kwargs["title"] = field_type.__name__
+            field_info_kwargs["title"] = dm_class.get_proto_class().DESCRIPTOR.full_name
 
         # If the field added dataclass metadata then add it to the Pydantic Field kwargs. This
         if dataclass_field := dataclass_field_mapping.get(field_name):
@@ -160,7 +160,7 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
     # are set correctly. This explicitly sets the name of the pydantic class to the
     # name of the grpc buffer.
     pydantic_model = pydantic.create_model(
-        __model_name=dm_class.__name__,
+        __model_name=dm_class.get_proto_class().DESCRIPTOR.full_name,
         __config__=pydantic_model_config,
         **field_mapping,
     )
