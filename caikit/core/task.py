@@ -42,7 +42,7 @@ _STREAM_PARAMS_ANNOTATION = "__streaming_params"
 _UNARY_OUT_ANNOTATION = "__unary_output_type"
 _UNARY_PARAMS_ANNOTATION = "__unary_params"
 _VISIBLE_ANNOTATION = "__visible"
-_OPENAPI_EXTRA_SCHEMA = "__openapi_extra_schema"
+_METADATA_ANNOTATION = "__metadata"
 
 
 class TaskBase:
@@ -251,11 +251,11 @@ class TaskBase:
         return cls.__annotations__.get(_VISIBLE_ANNOTATION, True)
 
     @classmethod
-    def get_extra_openapi_schema(cls) -> Dict[str, Any]:
-        """Get any extra schema definitions for this task
+    def get_metadata(cls) -> Dict[str, Any]:
+        """Get any metadata defined for this task
 
         NOTE: defaults to an empty dict if one wasn't provided"""
-        return cls.__annotations__.get(_OPENAPI_EXTRA_SCHEMA, {})
+        return cls.__annotations__.get(_METADATA_ANNOTATION, {})
 
     @classmethod
     def _raise_on_wrong_output_type(cls, output_type, module, output_streaming: bool):
@@ -318,7 +318,7 @@ def task(
     unary_output_type: Type[DataBase] = None,
     streaming_output_type: Type[Iterable[Type[DataBase]]] = None,
     visible: bool = True,
-    extra_openapi_schema: Optional[Dict[str, Any]] = None,
+    metadata: Optional[Dict[str, Any]] = None,
     **kwargs,
 ) -> Callable[[Type[TaskBase]], Type[TaskBase]]:
     """The decorator for AI Task classes.
@@ -406,7 +406,7 @@ def task(
         if streaming_output_type:
             cls_annotations[_STREAM_OUT_ANNOTATION] = streaming_output_type
         cls_annotations[_VISIBLE_ANNOTATION] = visible
-        cls_annotations[_OPENAPI_EXTRA_SCHEMA] = extra_openapi_schema or {}
+        cls_annotations[_METADATA_ANNOTATION] = metadata or {}
 
         # Backwards compatibility with old-style @tasks
         if "required_parameters" in kwargs and not unary_parameters:

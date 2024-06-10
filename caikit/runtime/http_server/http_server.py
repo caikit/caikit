@@ -70,6 +70,7 @@ from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.core.toolkit.name_tools import snake_to_upper_camel
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
 from caikit.runtime.names import (
+    EXTRA_OPENAPI_KEY,
     HEALTH_ENDPOINT,
     MODEL_ID,
     MODEL_MANAGEMENT_ENDPOINT,
@@ -605,7 +606,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         # Merge the DataObject openapi schema into the task schema
         task_api_schema = merge_configs(
-            rpc.task.get_extra_openapi_schema(), request_openapi
+            rpc.task.get_metadata().get(EXTRA_OPENAPI_KEY, {}), request_openapi
         )
 
         @self.app.post(
@@ -678,7 +679,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
         # Merge the DataObject openapi schema into the task schema
         task_api_schema = merge_configs(
-            rpc.task.get_extra_openapi_schema(), request_openapi
+            rpc.task.get_metadata().get(EXTRA_OPENAPI_KEY, {}), request_openapi
         )
 
         # pylint: disable=unused-argument
