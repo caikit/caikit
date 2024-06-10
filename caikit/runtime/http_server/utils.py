@@ -149,7 +149,11 @@ def flatten_json_schema(json_schema: dict) -> dict:
     # Remove left over $defs field
     refs_map = {"$defs": json_schema.get("$defs", {})}
 
-    return _replace_json_refs(json_schema, refs_map)
+    # Replace refs and remove the defs object. Don't do this to
+    # json_schema to not affect the source dict
+    flattened_schema = _replace_json_refs(json_schema, refs_map)
+    flattened_schema.pop("$defs")
+    return flattened_schema
 
 
 def _replace_json_refs(current_json: Any, refs_map: dict):

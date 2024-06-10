@@ -17,7 +17,7 @@ capable of converting to and from Pydantic models to our DataObjects.
 """
 # Standard
 from datetime import date, datetime, time, timedelta
-from typing import Callable, Dict, List, Type, Union, get_args, get_type_hints
+from typing import Any, Callable, Dict, List, Type, Union, get_args, get_type_hints
 import base64
 import enum
 import inspect
@@ -118,9 +118,13 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
         # If the DM field has a default then add it to the kwargs
         dm_field_default = class_defaults.get(field_name)
         if isinstance(dm_field_default, Callable):
-            field_info_kwargs["default_factory"] = dm_field_default
+            field_info_kwargs[
+                "default_factory"
+            ] = lambda func=dm_field_default: _conditionally_convert_dataobject(func())
         elif dm_field_default is not None:
-            field_info_kwargs["default"] = dm_field_default
+            field_info_kwargs["default"] = _conditionally_convert_dataobject(
+                dm_field_default
+            )
         # If no default is provided then default the field to None. this ensures
         # the parameter isn't required and uses caikits default logic. Use
         # default_factory to retain type info in swagger.
@@ -226,6 +230,16 @@ def _get_pydantic_type(field_type: type) -> type:
         ]
 
     raise TypeError(f"Cannot get pydantic type for type [{field_type}]")
+
+
+def _conditionally_convert_dataobject(obj: Any) -> Any:
+    if not isinstance(obj, DataBase):
+        return obj
+    if inspect.isclass(obj) and issubclass(obj, DataBase):
+        return dataobject_to_pydantic(obj)
+
+    pydantic_class = dataobject_to_pydantic(obj.__class__)
+    return pydantic_class.model_validate_json(obj.to_json())
 
 
 def _from_base64(data: Union[bytes, str]) -> bytes:
