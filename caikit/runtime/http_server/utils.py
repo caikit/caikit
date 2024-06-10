@@ -43,13 +43,18 @@ def _extract_raw_from_schema(
         if raw_json_schema := _parse_raw_json_schema(json_schema):
             return None, {_clean_schema_path(current_path): raw_json_schema}
 
-        # If this json_schema is just a ref then just recurse on the ref
+        # If this json_schema is just a ref then just recurse on the ref's json to 
+        # extract the file information. However, don't modify the original json
+        # ref schema
         if "$ref" in json_schema:
+            # Fetch ref json
             local_ref_name = json_schema["$ref"].replace("#/$defs/", "")
             sub_json_obj = defs.get(local_ref_name)
+            # Extract files
             _, extracted_bytes = _extract_raw_from_schema(
                 sub_json_obj, defs, current_path
             )
+            # Return original ref schema and file info
             return json_schema, extracted_bytes
 
         # If this is a generic schema then recurse on it
