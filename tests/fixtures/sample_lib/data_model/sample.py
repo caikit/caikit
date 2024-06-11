@@ -106,6 +106,7 @@ class SampleTrainingType(DataObjectBase):
     streaming_parameters={"sample_inputs": Iterable[SampleInputType]},
     unary_output_type=SampleOutputType,
     streaming_output_type=Iterable[SampleOutputType],
+    metadata={"extra_openapi": {"description": "An Overridden task description"}},
 )
 class SampleTask(TaskBase):
     """A sample `task` for our test models"""

@@ -16,16 +16,16 @@ This module holds utility functions and classes used only by the  REST server,
 this includes things like parameter handles and openapi spec generation
 """
 # Standard
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 # Local
 from ...config.config import merge_configs
 
 
-def convert_json_schema_to_multipart(json_schema):
+def convert_json_schema_to_multipart(json_schema, defs):
     """Helper function to convert a json schema from applicaiton/json into one
     that can be used for multipart requests"""
-    sparse_schema, extracted_files = _extract_raw_from_schema(json_schema)
+    sparse_schema, extracted_files = _extract_raw_from_schema(json_schema, defs)
     sparse_schema["properties"] = {
         **sparse_schema.get("properties", {}),
         **extracted_files,
@@ -33,13 +33,29 @@ def convert_json_schema_to_multipart(json_schema):
     return sparse_schema
 
 
-def _extract_raw_from_schema(json_schema: Any, current_path=None) -> (dict, dict):
+def _extract_raw_from_schema(
+    json_schema: Any, defs: Dict[str, Any], current_path=None
+) -> (dict, dict):
     """Helper function to extract all "bytes" or File fields from a json schema and return the
     cleaned schema dict and a dict of extracted schemas where the key is the original raw's path"""
     if isinstance(json_schema, dict):
         # If this json_schema represents a raw field extract it
         if raw_json_schema := _parse_raw_json_schema(json_schema):
             return None, {_clean_schema_path(current_path): raw_json_schema}
+
+        # If this json_schema is just a ref then just recurse on the ref's json to
+        # extract the file information. However, don't modify the original json
+        # ref schema
+        if "$ref" in json_schema:
+            # Fetch ref json
+            local_ref_name = json_schema["$ref"].replace("#/$defs/", "")
+            sub_json_obj = defs.get(local_ref_name)
+            # Extract files
+            _, extracted_bytes = _extract_raw_from_schema(
+                sub_json_obj, defs, current_path
+            )
+            # Return original ref schema and file info
+            return json_schema, extracted_bytes
 
         # If this is a generic schema then recurse on it
         output_schema = {}
@@ -52,7 +68,7 @@ def _extract_raw_from_schema(json_schema: Any, current_path=None) -> (dict, dict
 
             # Recurse on schemas
             updated_schema, extracted_bytes = _extract_raw_from_schema(
-                json_schema[key], key_path
+                json_schema[key], defs, key_path
             )
             if updated_schema:
                 output_schema[key] = updated_schema
@@ -68,7 +84,7 @@ def _extract_raw_from_schema(json_schema: Any, current_path=None) -> (dict, dict
         for schema in json_schema:
             # Recurse on sub schema with the same path
             updated_schema, extracted_bytes = _extract_raw_from_schema(
-                schema, current_path
+                schema, defs, current_path
             )
             if updated_schema:
                 output_schema.append(updated_schema)
@@ -136,9 +152,13 @@ def flatten_json_schema(json_schema: dict) -> dict:
     """Function to flatten a json schema. It replaces all references to $def
     with the requested object or {} if it's not found"""
     # Remove left over $defs field
-    refs_map = {"$defs": json_schema.pop("$defs", None)}
+    refs_map = {"$defs": json_schema.get("$defs", {})}
 
-    return _replace_json_refs(json_schema, refs_map)
+    # Replace refs and remove the defs object. Don't do this to
+    # json_schema to not affect the source dict
+    flattened_schema = _replace_json_refs(json_schema, refs_map)
+    flattened_schema.pop("$defs")
+    return flattened_schema
 
 
 def _replace_json_refs(current_json: Any, refs_map: dict):

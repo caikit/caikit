@@ -38,6 +38,7 @@ import uuid
 from fastapi import FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, PlainTextResponse
 from grpc import StatusCode
 from sse_starlette import EventSourceResponse, ServerSentEvent
@@ -59,14 +60,16 @@ from .pydantic_wrapper import (
     pydantic_to_dataobject,
 )
 from .request_aborter import HttpRequestAborter
-from .utils import convert_json_schema_to_multipart, flatten_json_schema
-from caikit.config import get_config
+from .utils import convert_json_schema_to_multipart
+from caikit.config.config import get_config, merge_configs
 from caikit.core.data_model import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.exceptions import error_handler
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
+from caikit.core.toolkit.name_tools import snake_to_upper_camel
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
 from caikit.runtime.names import (
+    EXTRA_OPENAPI_KEY,
     HEALTH_ENDPOINT,
     MODEL_ID,
     MODEL_MANAGEMENT_ENDPOINT,
@@ -98,6 +101,7 @@ from caikit.runtime.servicers.training_management_servicer import (
     TrainingManagementServicerImpl,
 )
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from caikit.runtime.utils.import_util import get_dynamic_module
 
 ## Globals #####################################################################
 
@@ -126,7 +130,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def __init__(self, tls_config_override: Optional[aconfig.Config] = None):
         super().__init__(get_config().runtime.http.port, tls_config_override)
 
+        # Construct FastAPI spec and create placeholders for open api deps
         self.app = FastAPI()
+        self._openapi_defs = {}
 
         # Request validation
         @self.app.exception_handler(RequestValidationError)
@@ -306,6 +312,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         if self.interrupter:
             self.interrupter.start()
 
+        # Patch the openapi spec to ensure defs are properly added
+        self._patch_openapi_spec()
+
         # Patch the exit handler to retain correct signal handling behavior
         self._patch_exit_handler()
 
@@ -483,6 +492,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             responses=self._get_response_openapi(
                 deploy_dataobject_response, deploy_pydantic_response
             ),
+            description=ModelManagementServicerImpl.DeployModel.__doc__,
             openapi_extra=self._get_request_openapi(deploy_pydantic_request),
             response_class=Response,
         )(self._deploy_model)
@@ -502,6 +512,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             responses=self._get_response_openapi(
                 undeploy_dataobject_response, undeploy_pydantic_response
             ),
+            description=ModelManagementServicerImpl.UndeployModel.__doc__,
             response_class=Response,
         )(self._undeploy_model)
 
@@ -538,7 +549,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             response_class=Response,
         )(self._cancel_training)
 
-    def _train_add_unary_input_unary_output_handler(self, rpc: CaikitRPCBase):
+    def _train_add_unary_input_unary_output_handler(self, rpc: ModuleClassTrainRPC):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = dataobject_to_pydantic(
             DataBase.get_class_for_name(rpc.request.name)
@@ -551,6 +562,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             responses=self._get_response_openapi(
                 response_data_object, pydantic_response
             ),
+            description=rpc._method._method_pointer.__doc__,
             openapi_extra=self._get_request_openapi(pydantic_request),
             response_class=Response,
         )
@@ -588,15 +600,23 @@ class RuntimeHTTPServer(RuntimeServerBase):
     def _add_unary_input_unary_output_handler(self, rpc: TaskPredictRPC):
         """Add a unary:unary request handler for this RPC signature"""
         pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
+        request_openapi = self._get_request_openapi(pydantic_request)
         response_data_object = self._get_response_dataobject(rpc)
         pydantic_response = dataobject_to_pydantic(response_data_object)
+
+        # Merge the DataObject openapi schema into the task schema
+        task_api_schema = merge_configs(
+            rpc.task.get_metadata().get(EXTRA_OPENAPI_KEY, {}), request_openapi
+        )
 
         @self.app.post(
             get_http_route_name(rpc.name),
             responses=self._get_response_openapi(
                 response_data_object, pydantic_response
             ),
-            openapi_extra=self._get_request_openapi(pydantic_request),
+            include_in_schema=rpc.task.get_visibility(),
+            description=rpc.task.__doc__,
+            openapi_extra=task_api_schema,
             response_class=Response,
         )
         # pylint: disable=unused-argument
@@ -652,15 +672,23 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     )
                 raise
 
-    def _add_unary_input_stream_output_handler(self, rpc: CaikitRPCBase):
+    def _add_unary_input_stream_output_handler(self, rpc: TaskPredictRPC):
         pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
+        request_openapi = self._get_request_openapi(pydantic_request)
         pydantic_response = dataobject_to_pydantic(self._get_response_dataobject(rpc))
+
+        # Merge the DataObject openapi schema into the task schema
+        task_api_schema = merge_configs(
+            rpc.task.get_metadata().get(EXTRA_OPENAPI_KEY, {}), request_openapi
+        )
 
         # pylint: disable=unused-argument
         @self.app.post(
             get_http_route_name(rpc.name),
             response_model=pydantic_response,
-            openapi_extra=self._get_request_openapi(pydantic_request),
+            description=rpc.task.__doc__,
+            include_in_schema=rpc.task.get_visibility(),
+            openapi_extra=task_api_schema,
         )
         async def _handler(context: Request) -> EventSourceResponse:
             log.debug("In streaming handler for %s", rpc.name)
@@ -906,9 +934,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
             media_type=file_type,
         )
 
-    @staticmethod
     def _get_request_openapi(
-        pydantic_model: Union[pydantic.BaseModel, Type, Type[pydantic.BaseModel]]
+        self, pydantic_model: Union[pydantic.BaseModel, Type, Type[pydantic.BaseModel]]
     ):
         """Helper to generate the openapi schema for a given request"""
 
@@ -920,22 +947,28 @@ class RuntimeHTTPServer(RuntimeServerBase):
         else:
             raw_schema = pydantic.TypeAdapter(pydantic_model).json_schema()
 
-        parsed_schema = flatten_json_schema(raw_schema)
-        multipart_schema = convert_json_schema_to_multipart(parsed_schema)
+        # Update openapi defs with defs from raw schema
+        for def_name, schema in raw_schema.pop("$defs", {}).items():
+            self._openapi_defs[def_name] = schema
+
+        multipart_schema = convert_json_schema_to_multipart(
+            raw_schema, self._openapi_defs
+        )
 
         return {
             "requestBody": {
                 "content": {
                     "multipart/form-data": {"schema": multipart_schema},
-                    "application/json": {"schema": parsed_schema},
+                    "application/json": {"schema": raw_schema},
                 },
                 "required": True,
             }
         }
 
-    @staticmethod
     def _get_response_openapi(
-        dm_class: Type[DataBase], pydantic_model: Union[Type, Type[pydantic.BaseModel]]
+        self,
+        dm_class: Type[DataBase],
+        pydantic_model: Union[Type, Type[pydantic.BaseModel]],
     ):
         """Helper to generate the openapi schema for a given response"""
 
@@ -952,7 +985,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
             else:
                 json_schema = pydantic.TypeAdapter(pydantic_model).json_schema()
 
-            response_schema = {"application/json": flatten_json_schema(json_schema)}
+            for def_name, schema in json_schema.pop("$defs", {}).items():
+                self._openapi_defs[def_name] = schema
+
+            response_schema = {"application/json": json_schema}
 
         output = {200: {"content": response_schema}}
         return output
@@ -1003,6 +1039,61 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 exc_info=True,
             )
             raise ValueError() from err
+
+    def _patch_openapi_spec(self):
+        """
+        FastAPI does not have a way to dynamically add openapi defs
+        for specific paths. This means we must wait till the very end
+        to update the def values. This does allow for adding context
+        specific fields though which is beneficial.
+
+        """
+        # Parse the library name into a more human readable version
+        library_name = "FastAPI"
+        if get_config().runtime.library:
+            library_name = snake_to_upper_camel(get_config().runtime.library)
+
+        # Attempt to load in the runtime library to fetch the module's docstring. This
+        # is safe to do in _patch_openapi_spec because the runtime service generation
+        # has already ocurred during super().__init__()
+        try:
+            imported_module = get_dynamic_module(get_config().runtime.library)
+            openapi_description = getattr(imported_module, "__doc__", "")
+        except ImportError:
+            log.debug(
+                "Unable to import runtime library %s when trying to fetch module description",
+                get_config().runtime.library,
+            )
+            openapi_description = ""
+
+        # Construct openapi schema from fastapi routes
+        openapi_schema = get_openapi(
+            title=library_name,
+            version=get_config().runtime.version_info.runtime_image or "",
+            description=openapi_description,
+            routes=self.app.routes,
+        )
+        openapi_schema.setdefault("components", {}).setdefault("schemas", {}).update(
+            self._openapi_defs
+        )
+
+        def _recursively_update_defs_to_component(obj: Any) -> dict:
+            """Helper function to replace $defs references with components/schemas"""
+            if isinstance(obj, dict):
+                return {
+                    key: _recursively_update_defs_to_component(val)
+                    for key, val in obj.items()
+                }
+            elif isinstance(obj, list):
+                return [_recursively_update_defs_to_component(val) for val in obj]
+            elif isinstance(obj, str):
+                return obj.replace("$defs", "components/schemas")
+            else:
+                return obj
+
+        # Update $def references to components/schemas
+        openapi_schema = _recursively_update_defs_to_component(openapi_schema)
+        self.app.openapi_schema = openapi_schema
 
     def _patch_exit_handler(self):
         """

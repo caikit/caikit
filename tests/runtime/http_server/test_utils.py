@@ -58,14 +58,13 @@ def _recursively_assert_no_refs(obj):
 def test_convert_json_schema_to_multipart():
     pydantic_model = dataobject_to_pydantic(ComplexUtilHttpServerInputs)
     parsed_schema = flatten_json_schema(pydantic_model.model_json_schema())
-    converted_schema = convert_json_schema_to_multipart(parsed_schema)
+    converted_schema = convert_json_schema_to_multipart(parsed_schema, {})
     # Make sure the converted schema has the properly extracted fields
     assert "inputs" in converted_schema["properties"].keys()
     assert "inputs.bytes_type" in converted_schema["properties"].keys()
     assert "inputs.file_type" in converted_schema["properties"].keys()
     assert "inputs.list_file_type" in converted_schema["properties"].keys()
     assert converted_schema["properties"]["inputs.list_file_type"]["type"] == "array"
-    _recursively_assert_no_refs(converted_schema)
 
 
 ### flatten_json_schema #############################################################

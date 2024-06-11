@@ -17,8 +17,9 @@ capable of converting to and from Pydantic models to our DataObjects.
 """
 # Standard
 from datetime import date, datetime, time, timedelta
-from typing import Callable, Dict, List, Type, Union, get_args, get_type_hints
+from typing import Any, Callable, Dict, List, Type, Union, get_args
 import base64
+import dataclasses
 import enum
 import inspect
 import json
@@ -30,6 +31,7 @@ from fastapi.exceptions import HTTPException, RequestValidationError
 from pydantic.fields import Field
 from pydantic.functional_validators import BeforeValidator
 from starlette.datastructures import UploadFile
+from typing_extensions import Doc, get_type_hints
 import numpy as np
 import pydantic
 
@@ -100,19 +102,31 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
     if dm_class in PYDANTIC_TO_DM_MAPPING:
         return PYDANTIC_TO_DM_MAPPING[dm_class]
 
-    # Construct a mapping of field names to the type and FieldInfo objects.
+    # Gather Mappings for field lookups
+    extra_field_type_mapping = get_type_hints(
+        dm_class, localns=localns, include_extras=True
+    )
+    dataclass_fields = dataclasses.fields(dm_class)
+    dataclass_field_mapping = {field.name: field for field in dataclass_fields}
     class_defaults = dm_class.get_field_defaults()
+
+    # Construct a mapping of field names to the type and FieldInfo objects.
     field_mapping = {}
     for field_name, field_type in get_type_hints(dm_class, localns=localns).items():
+        extra_field_type = extra_field_type_mapping.get(field_name)
         pydantic_type = _get_pydantic_type(field_type)
 
         field_info_kwargs = {}
         # If the DM field has a default then add it to the kwargs
         dm_field_default = class_defaults.get(field_name)
         if isinstance(dm_field_default, Callable):
-            field_info_kwargs["default_factory"] = dm_field_default
+            field_info_kwargs[
+                "default_factory"
+            ] = lambda func=dm_field_default: _conditionally_convert_dataobject(func())
         elif dm_field_default is not None:
-            field_info_kwargs["default"] = dm_field_default
+            field_info_kwargs["default"] = _conditionally_convert_dataobject(
+                dm_field_default
+            )
         # If no default is provided then default the field to None. this ensures
         # the parameter isn't required and uses caikits default logic. Use
         # default_factory to retain type info in swagger.
@@ -121,9 +135,17 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
 
         # If the field is a DataBase object then set its title correctly
         if inspect.isclass(field_type) and issubclass(field_type, DataBase):
-            field_info_kwargs[
-                "title"
-            ] = field_type.get_proto_class().DESCRIPTOR.full_name
+            field_info_kwargs["title"] = dm_class.get_proto_class().DESCRIPTOR.full_name
+
+        # If the field added dataclass metadata then add it to the Pydantic Field kwargs. This
+        if dataclass_field := dataclass_field_mapping.get(field_name):
+            field_info_kwargs.update(dataclass_field.metadata)
+
+        # If the field used the Doc type annotation then update the description
+        if get_origin(extra_field_type) is Annotated:
+            for annotated_arg in get_args(extra_field_type):
+                if isinstance(annotated_arg, Doc):
+                    field_info_kwargs["description"] = annotated_arg.documentation
 
         # Construct field info objects
         field_info = Field(
@@ -144,6 +166,11 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
         __config__=pydantic_model_config,
         **field_mapping,
     )
+    # Add the dataobject's doc message to the pydantic class. This has to happen
+    # after pydantic creation
+    pydantic_model.__doc__ = getattr(dm_class, "__doc__", "")
+
+    # Update DM Mappings
     PYDANTIC_TO_DM_MAPPING[dm_class] = pydantic_model
     # also store the reverse mapping for easy retrieval
     # should be fine since we only check for dm_class in this dict
@@ -205,6 +232,16 @@ def _get_pydantic_type(field_type: type) -> type:
         ]
 
     raise TypeError(f"Cannot get pydantic type for type [{field_type}]")
+
+
+def _conditionally_convert_dataobject(obj: Any) -> Any:
+    if not isinstance(obj, DataBase):
+        return obj
+    if inspect.isclass(obj) and issubclass(obj, DataBase):
+        return dataobject_to_pydantic(obj)
+
+    pydantic_class = dataobject_to_pydantic(obj.__class__)
+    return pydantic_class.model_validate_json(obj.to_json())
 
 
 def _from_base64(data: Union[bytes, str]) -> bytes:

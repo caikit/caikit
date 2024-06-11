@@ -308,6 +308,7 @@ TRAINING_MANAGEMENT_ENDPOINT = f"{MANAGEMENT_ENDPOINT}/trainings"
 REQUIRED_INPUTS_KEY = "inputs"
 OPTIONAL_INPUTS_KEY = "parameters"
 MODEL_ID = "model_id"
+EXTRA_OPENAPI_KEY = "extra_openapi"
 
 # Stream event type for HTTP output streaming
 class StreamEventTypes(Enum):
