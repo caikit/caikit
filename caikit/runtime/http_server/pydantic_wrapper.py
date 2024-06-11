@@ -17,7 +17,7 @@ capable of converting to and from Pydantic models to our DataObjects.
 """
 # Standard
 from datetime import date, datetime, time, timedelta
-from typing import Any, Callable, Dict, List, Type, Union, get_args, get_type_hints
+from typing import Any, Callable, Dict, List, Type, Union, get_args
 import base64
 import enum
 import inspect
@@ -30,7 +30,7 @@ from fastapi.exceptions import HTTPException, RequestValidationError
 from pydantic.fields import Field
 from pydantic.functional_validators import BeforeValidator
 from starlette.datastructures import UploadFile
-from typing_extensions import Doc
+from typing_extensions import Doc, get_type_hints
 import numpy as np
 import pydantic
 
