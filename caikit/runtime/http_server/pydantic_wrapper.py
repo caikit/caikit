@@ -19,6 +19,7 @@ capable of converting to and from Pydantic models to our DataObjects.
 from datetime import date, datetime, time, timedelta
 from typing import Any, Callable, Dict, List, Type, Union, get_args
 import base64
+import dataclasses
 import enum
 import inspect
 import json
@@ -105,7 +106,8 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
     extra_field_type_mapping = get_type_hints(
         dm_class, localns=localns, include_extras=True
     )
-    dataclass_field_mapping = getattr(dm_class, "__dataclass_fields__", {})
+    dataclass_fields = dataclasses.fields(dm_class)
+    dataclass_field_mapping = {field.name: field for field in dataclass_fields}
     class_defaults = dm_class.get_field_defaults()
 
     # Construct a mapping of field names to the type and FieldInfo objects.
