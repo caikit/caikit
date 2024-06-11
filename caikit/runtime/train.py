@@ -84,6 +84,12 @@ def main() -> int:
     """Main entrypoint for running training jobs"""
     parser = TrainArgumentParser(description=__doc__)
 
+    # Set default values for termination log incase parsing the arguments fail later on
+    enable_termination_log = os.environ.get("ENABLE_TERMINATION_LOG", True)
+    termination_log_file = os.environ.get(
+        "TERMINATION_LOG_FILE", "/dev/termination-log"
+    )
+
     # Required Args
     parser.add_argument(
         "--training-kwargs",
@@ -133,17 +139,14 @@ def main() -> int:
     parser.add_argument(
         "--termination-log-file",
         "-f",
+        default=termination_log_file,
         help="Location of where to write a termination error message",
     )
     parser.add_argument(
         "--enable-termination-log",
         "-e",
+        default=enable_termination_log,
         help="Whether to enable writing to termination log when training fails",
-    )
-    # Set default values for termination log incase parsing the arguments fail later on
-    enable_termination_log = os.environ.get("ENABLE_TERMINATION_LOG", True)
-    termination_log_file = os.environ.get(
-        "TERMINATION_LOG_FILE", "/dev/termination-log"
     )
 
     try:
@@ -311,13 +314,15 @@ def main() -> int:
             args.model_name,
         ):
             future = train(module, wait=True, **train_kwargs)
+
+            # The .complete file indicates all files have completed
+            # being written to the filesystem
+            complete_path = os.path.join(args.save_path, ".complete")
+            log.info(f"Creating completion file at: {complete_path}")
+            Path(complete_path).touch()
+
             info = future.get_info()
             if info.status == TrainingStatus.COMPLETED:
-                # The .complete file indicates all model files have completed
-                # being written to the filesystem
-                complete_path = os.path.join(args.save_path, ".complete")
-                log.info(f"Creating completion file at: {complete_path}")
-                Path(complete_path).touch()
                 log.info("Training finished successfully")
                 return 0
             else:
