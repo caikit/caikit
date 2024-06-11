@@ -102,6 +102,7 @@ from caikit.runtime.servicers.training_management_servicer import (
     TrainingManagementServicerImpl,
 )
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
+from caikit.runtime.utils.import_util import get_dynamic_module
 
 ## Globals #####################################################################
 
@@ -1053,9 +1054,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
         if get_config().runtime.library:
             library_name = snake_to_upper_camel(get_config().runtime.library)
 
-        # Attempt to load in the runtime library to fetch the module's docstring
+        # Attempt to load in the runtime library to fetch the module's docstring. This
+        # is safe to do in _patch_openapi_spec because the runtime service generation
+        # has already ocurred during super().__init__()
         try:
-            imported_module = importlib.import_module(get_config().runtime.library)
+            imported_module = get_dynamic_module(get_config().runtime.library)
             openapi_description = getattr(imported_module, "__doc__", "")
         except ImportError:
             log.debug(

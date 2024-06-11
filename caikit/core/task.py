@@ -380,7 +380,7 @@ def task(
         visible (bool): If this task should be exposed to the end user in documentation or if
           it should only be used internally
 
-        extra_openapi_schema (Optional[Dict[str, Any]]): Any additional openapi schema that should
+        metadata (Optional[Dict[str, Any]]): Any additional metadata that should
           be included in the documentation for this task
 
     Returns:
