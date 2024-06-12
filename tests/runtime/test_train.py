@@ -65,7 +65,10 @@ def test_train_sample_module(workdir):
         "--training-kwargs",
         json.dumps(SAMPLE_TRAIN_KWARGS),
     ):
-        assert main() == 0
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
+            main()
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 0
         model_dir = os.path.join(workdir, model_name)
         assert os.path.isdir(model_dir)
         assert os.path.isfile(os.path.join(model_dir, "config.yml"))
@@ -88,7 +91,10 @@ def test_train_from_file(workdir):
         "--training-kwargs",
         train_kwargs_file,
     ):
-        assert main() == 0
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
+            main()
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 0
         model_dir = os.path.join(workdir, model_name)
         assert os.path.isdir(model_dir)
         assert os.path.isfile(os.path.join(model_dir, "config.yml"))
@@ -111,7 +117,10 @@ def test_train_module_uid(workdir):
         "--termination-log-file",
         log_path,
     ):
-        assert main() == 0
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
+            main()
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 0
         model_dir = os.path.join(workdir, model_name)
         assert os.path.isdir(model_dir)
         assert os.path.isfile(os.path.join(model_dir, "config.yml"))
@@ -134,7 +143,10 @@ def test_train_save_with_id(workdir):
         json.dumps(SAMPLE_TRAIN_KWARGS),
         "--save-with-id",
     ):
-        assert main() == 0
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
+            main()
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 0
         flat_model_dir = os.path.join(workdir, model_name)
         assert not os.path.isdir(flat_model_dir)
         dirs = list(
@@ -182,7 +194,10 @@ def test_train_non_default_trainer(workdir):
             "--trainer",
             other_trainer,
         ):
-            assert main() == 0
+            with pytest.raises(SystemExit) as pytest_wrapped_e:
+                main()
+            assert pytest_wrapped_e.type == SystemExit
+            assert pytest_wrapped_e.value.code == 0
             model_dir = os.path.join(workdir, model_name)
             assert os.path.isdir(model_dir)
             assert os.path.isfile(os.path.join(model_dir, "config.yml"))
@@ -205,7 +220,10 @@ def test_train_import_library(workdir, reset_module_registry):
             "--library",
             "sample_lib",
         ):
-            assert main() == 0
+            with pytest.raises(SystemExit) as pytest_wrapped_e:
+                main()
+            assert pytest_wrapped_e.type == SystemExit
+            assert pytest_wrapped_e.value.code == 0
             model_dir = os.path.join(workdir, model_name)
             assert os.path.isdir(model_dir)
             assert os.path.isfile(os.path.join(model_dir, "config.yml"))
