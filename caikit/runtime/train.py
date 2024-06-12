@@ -94,10 +94,10 @@ def exit_complete(
     if save_path:
         try:
             complete_path = os.path.join(save_path, ".complete")
-            log.info(f"Creating completion file at: {complete_path}")
+            log.info("Creating completion file at: %s", complete_path)
             Path(complete_path).touch()
         except Exception as e:
-            log.warning(f"Unable to write completion file due to execption: {e}")
+            log.warning("Unable to write completion file due to execption: %s", e)
 
     exit(exit_code)
 
