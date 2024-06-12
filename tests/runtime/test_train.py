@@ -4,6 +4,7 @@ Unit tests for the train script entrypoint
 
 # Standard
 from contextlib import contextmanager
+from pathlib import Path
 from unittest import mock
 import copy
 import json
@@ -64,10 +65,14 @@ def test_train_sample_module(workdir):
         "--training-kwargs",
         json.dumps(SAMPLE_TRAIN_KWARGS),
     ):
-        assert main() == 0
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
+            main()
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 0
         model_dir = os.path.join(workdir, model_name)
         assert os.path.isdir(model_dir)
         assert os.path.isfile(os.path.join(model_dir, "config.yml"))
+        assert os.path.isfile(os.path.join(workdir, ".complete"))
 
 
 def test_train_from_file(workdir):
@@ -86,15 +91,20 @@ def test_train_from_file(workdir):
         "--training-kwargs",
         train_kwargs_file,
     ):
-        assert main() == 0
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
+            main()
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 0
         model_dir = os.path.join(workdir, model_name)
         assert os.path.isdir(model_dir)
         assert os.path.isfile(os.path.join(model_dir, "config.yml"))
+        assert os.path.isfile(os.path.join(workdir, ".complete"))
 
 
 def test_train_module_uid(workdir):
     """Test referencing the module by its UID"""
     model_name = "my-model"
+    log_path = os.path.join(workdir, "termination-log")
     with sys_argv(
         "--module",
         SampleModule.MODULE_ID,
@@ -104,11 +114,19 @@ def test_train_module_uid(workdir):
         workdir,
         "--training-kwargs",
         json.dumps(SAMPLE_TRAIN_KWARGS),
+        "--termination-log-file",
+        log_path,
     ):
-        assert main() == 0
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
+            main()
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 0
         model_dir = os.path.join(workdir, model_name)
         assert os.path.isdir(model_dir)
         assert os.path.isfile(os.path.join(model_dir, "config.yml"))
+        assert os.path.isfile(os.path.join(workdir, ".complete"))
+        # Ensure termination log doesn't exist, which indicates error
+        assert not os.path.isfile(log_path)
 
 
 def test_train_save_with_id(workdir):
@@ -125,7 +143,10 @@ def test_train_save_with_id(workdir):
         json.dumps(SAMPLE_TRAIN_KWARGS),
         "--save-with-id",
     ):
-        assert main() == 0
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
+            main()
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 0
         flat_model_dir = os.path.join(workdir, model_name)
         assert not os.path.isdir(flat_model_dir)
         dirs = list(
@@ -136,6 +157,7 @@ def test_train_save_with_id(workdir):
         )
         assert len(dirs) == 1
         assert os.path.isfile(os.path.join(dirs[0], model_name, "config.yml"))
+        assert os.path.isfile(os.path.join(dirs[0], workdir, ".complete"))
 
 
 def test_train_non_default_trainer(workdir):
@@ -172,10 +194,14 @@ def test_train_non_default_trainer(workdir):
             "--trainer",
             other_trainer,
         ):
-            assert main() == 0
+            with pytest.raises(SystemExit) as pytest_wrapped_e:
+                main()
+            assert pytest_wrapped_e.type == SystemExit
+            assert pytest_wrapped_e.value.code == 0
             model_dir = os.path.join(workdir, model_name)
             assert os.path.isdir(model_dir)
             assert os.path.isfile(os.path.join(model_dir, "config.yml"))
+            assert os.path.isfile(os.path.join(workdir, ".complete"))
 
 
 def test_train_import_library(workdir, reset_module_registry):
@@ -194,7 +220,10 @@ def test_train_import_library(workdir, reset_module_registry):
             "--library",
             "sample_lib",
         ):
-            assert main() == 0
+            with pytest.raises(SystemExit) as pytest_wrapped_e:
+                main()
+            assert pytest_wrapped_e.type == SystemExit
+            assert pytest_wrapped_e.value.code == 0
             model_dir = os.path.join(workdir, model_name)
             assert os.path.isdir(model_dir)
             assert os.path.isfile(os.path.join(model_dir, "config.yml"))
@@ -205,7 +234,7 @@ def test_train_import_library(workdir, reset_module_registry):
             ]
 
 
-def test_invalid_json():
+def test_invalid_json(workdir):
     """Make sure that an exception is raised for invalid json"""
     model_name = "my-model"
     with sys_argv(
@@ -216,15 +245,17 @@ def test_invalid_json():
         "--training-kwargs",
         "{invalid json",
     ):
+        log_path = os.path.join(workdir, "termination-log")
         with pytest.raises(SystemExit) as pytest_wrapped_e:
             main()
         assert pytest_wrapped_e.type == SystemExit
         assert pytest_wrapped_e.value.code == train.USER_ERROR_EXIT_CODE
 
 
-def test_failed_training():
+def test_failed_training(workdir):
     """Make sure that a non-zero exit code is returned if training fails"""
     model_name = "my-model"
+    log_path = os.path.join(workdir, "termination-log")
     training_kwargs = copy.deepcopy(SAMPLE_TRAIN_KWARGS)
     training_kwargs["batch_size"] = SampleModule.POISON_PILL_BATCH_SIZE
     with sys_argv(
@@ -234,11 +265,14 @@ def test_failed_training():
         model_name,
         "--training-kwargs",
         json.dumps(training_kwargs),
+        "--termination-log-file",
+        log_path,
     ):
         with pytest.raises(SystemExit) as pytest_wrapped_e:
             main()
         assert pytest_wrapped_e.type == SystemExit
         assert pytest_wrapped_e.value.code == train.INTERNAL_ERROR_EXIT_CODE
+        assert os.path.isfile(log_path)
 
 
 def test_bad_module():

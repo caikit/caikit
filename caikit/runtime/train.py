@@ -18,6 +18,7 @@ job using caikit.core.train
 """
 
 # Standard
+from pathlib import Path
 from typing import Type
 import argparse
 import importlib
@@ -65,7 +66,9 @@ class TrainArgumentParser(argparse.ArgumentParser):
         raise ArgumentParserError(f"{self.prog}: error: {message}")
 
 
-def write_termination_log(text: str, log_file="/dev/termination-log"):
+def write_termination_log(text: str, log_file: str, enabled: bool):
+    if not enabled:
+        return
     try:
         with open(log_file, "a") as handle:
             handle.write(text)
@@ -77,9 +80,37 @@ def write_termination_log(text: str, log_file="/dev/termination-log"):
         )
 
 
+# Final tasks before exiting the container
+def exit_complete(
+    exit_code: int,
+    save_path: str,
+    message: str,
+    termination_log_file: str,
+    enable_termination_log: bool,
+):
+    if exit_code != 0:
+        write_termination_log(message, termination_log_file, enable_termination_log)
+
+    if save_path:
+        try:
+            complete_path = os.path.join(save_path, ".complete")
+            log.info("Creating completion file at: %s", complete_path)
+            Path(complete_path).touch()
+        except Exception as e:
+            log.warning("Unable to write completion file due to execption: %s", e)
+
+    exit(exit_code)
+
+
 def main() -> int:
     """Main entrypoint for running training jobs"""
     parser = TrainArgumentParser(description=__doc__)
+
+    # Set default values for termination log incase parsing the arguments fail later on
+    enable_termination_log = os.environ.get("ENABLE_TERMINATION_LOG", True)
+    termination_log_file = os.environ.get(
+        "TERMINATION_LOG_FILE", "/dev/termination-log"
+    )
 
     # Required Args
     parser.add_argument(
@@ -130,14 +161,29 @@ def main() -> int:
     parser.add_argument(
         "--termination-log-file",
         "-f",
-        action="store_true",
-        default="/dev/termination-log",
+        default=termination_log_file,
         help="Location of where to write a termination error message",
+    )
+    parser.add_argument(
+        "--enable-termination-log",
+        "-e",
+        default=enable_termination_log,
+        help="Whether to enable writing to termination log when training fails",
     )
 
     try:
         args = parser.parse_args()
         config_logging()
+
+        # Modify termination log variables if parsed
+        # Previously we grabbed the values from env variables (if present)
+        # Here, we allow overriding it with the parser values
+        # If the parser throws an exception parsing any of the args, the values
+        # captured in previous sections will be used.
+        if args.enable_termination_log:
+            enable_termination_log = args.enable_termination_log
+        if args.termination_log_file:
+            termination_log_file = args.termination_log_file
 
         # Initialize top-level kwargs
         train_kwargs = {
@@ -147,7 +193,6 @@ def main() -> int:
         }
         if args.trainer is not None:
             train_kwargs["trainer"] = args.trainer
-
     except Exception as e:
         message = f"Exception raised during training. This may be a problem with your input: {e}"
         log.warning(
@@ -158,8 +203,14 @@ def main() -> int:
             },
             exc_info=True,
         )
-        write_termination_log(message)
-        exit(USER_ERROR_EXIT_CODE)
+        # We couldn't parse args, so cannot not pass save_path in
+        exit_complete(
+            USER_ERROR_EXIT_CODE,
+            None,
+            message,
+            termination_log_file,
+            enable_termination_log,
+        )
 
     # Import libraries to register modules
     try:
@@ -176,8 +227,13 @@ def main() -> int:
             },
             exc_info=True,
         )
-        write_termination_log(message)
-        exit(USER_ERROR_EXIT_CODE)
+        exit_complete(
+            USER_ERROR_EXIT_CODE,
+            args.save_path,
+            message,
+            termination_log_file,
+            enable_termination_log,
+        )
 
     # Try to import the root library of the provided module. It's ok if this
     # fails since the module may be a UID
@@ -212,8 +268,13 @@ def main() -> int:
             },
             exc_info=True,
         )
-        write_termination_log(message)
-        exit(USER_ERROR_EXIT_CODE)
+        exit_complete(
+            USER_ERROR_EXIT_CODE,
+            args.save_path,
+            message,
+            termination_log_file,
+            enable_termination_log,
+        )
 
     # Read training kwargs
     try:
@@ -262,8 +323,13 @@ def main() -> int:
             },
             exc_info=True,
         )
-        write_termination_log(message)
-        exit(USER_ERROR_EXIT_CODE)
+        exit_complete(
+            USER_ERROR_EXIT_CODE,
+            args.save_path,
+            message,
+            termination_log_file,
+            enable_termination_log,
+        )
     except ValueError as e:
         message = f"Invalid value for one or more input parameters: {e}"
         log.warning(
@@ -284,8 +350,13 @@ def main() -> int:
             },
             exc_info=True,
         )
-        write_termination_log(message)
-        exit(USER_ERROR_EXIT_CODE)
+        exit_complete(
+            USER_ERROR_EXIT_CODE,
+            args.save_path,
+            message,
+            termination_log_file,
+            enable_termination_log,
+        )
 
     try:
         # Run the training
@@ -295,16 +366,32 @@ def main() -> int:
             args.model_name,
         ):
             future = train(module, wait=True, **train_kwargs)
+
             info = future.get_info()
             if info.status == TrainingStatus.COMPLETED:
-                log.info("Training finished successfully")
-                return 0
+                log.info(
+                    {
+                        "log_code": "<COR74526958I>",
+                        "message": "Training finished successfully",
+                    }
+                )
+                exit_complete(0, args.save_path, None, None, None)
             else:
-                log.error("Training finished unsuccessfully")
+                log.warning(
+                    {
+                        "log_code:": "<COR72523958E>",
+                        "message": "Training finished unsuccessfully",
+                    }
+                )
                 for err in info.errors or []:
                     log.error(err)
-                write_termination_log("Training finished unsuccessfully")
-                exit(INTERNAL_ERROR_EXIT_CODE)
+                exit_complete(
+                    INTERNAL_ERROR_EXIT_CODE,
+                    args.save_path,
+                    "Training finished unsuccessfully",
+                    termination_log_file,
+                    enable_termination_log,
+                )
     except MemoryError:
         message = "OOM error during training"
         log.warning(
@@ -315,8 +402,13 @@ def main() -> int:
             },
             exc_info=True,
         )
-        write_termination_log(message)
-        exit(INTERNAL_ERROR_EXIT_CODE)
+        exit_complete(
+            INTERNAL_ERROR_EXIT_CODE,
+            args.save_path,
+            message,
+            termination_log_file,
+            enable_termination_log,
+        )
     except Exception:
         message = "Unhandled exception during training"
         log.warning(
@@ -327,8 +419,13 @@ def main() -> int:
             },
             exc_info=True,
         )
-        write_termination_log(message)
-        exit(INTERNAL_ERROR_EXIT_CODE)
+        exit_complete(
+            INTERNAL_ERROR_EXIT_CODE,
+            args.save_path,
+            message,
+            termination_log_file,
+            enable_termination_log,
+        )
 
 
 if __name__ == "__main__":
