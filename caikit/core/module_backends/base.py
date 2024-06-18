@@ -70,7 +70,7 @@ class BackendBase(abc.ABC):
         with self._start_lock:
             yield
 
-    def handle_runtime_context(
+    def handle_runtime_context(  # noqa: B027
         self,
         model_id: str,
         runtime_context: RuntimeServerContextType,
