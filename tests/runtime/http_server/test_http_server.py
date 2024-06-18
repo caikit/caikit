@@ -39,7 +39,8 @@ from caikit.core.model_management.multi_model_finder import MultiModelFinder
 from caikit.runtime import http_server
 from caikit.runtime.http_server.http_server import StreamEventTypes
 from caikit.runtime.server_base import ServerThreadPool
-from tests.conftest import temp_config
+from tests.conftest import get_mutable_config_copy, reset_globals, temp_config
+from tests.core.helpers import MockBackend
 from tests.fixtures import Fixtures
 from tests.runtime.conftest import (
     ModuleSubproc,
@@ -827,14 +828,95 @@ def test_inference_sample_task_forward_compatibility(sample_task_model_id, clien
     assert json_response["greeting"] == "Hello world"
 
 
+def test_http_inference_notifies_backends_of_context(
+    sample_task_model_id,
+    client,
+    reset_globals,
+):
+    """Test that inference calls notify the configured backends with the request
+    context
+    """
+    # Use an "override" config to explicitly set the backend priority list
+    # rather than prepend to it
+    override_config = get_mutable_config_copy()
+    override_config["model_management"]["initializers"]["default"]["config"][
+        "backend_priority"
+    ] = [
+        {"type": MockBackend.backend_type},
+        {"type": "LOCAL"},
+    ]
+
+    with temp_config(override_config, "override"):
+        # Get the mock backend
+        mock_backend = [
+            be
+            for be in MODEL_MANAGER.get_module_backends()
+            if isinstance(be, MockBackend)
+        ]
+        assert len(mock_backend) == 1
+        mock_backend = mock_backend[0]
+        assert not mock_backend.runtime_contexts
+
+        # Make an inference call
+        json_input = {"inputs": {"name": "world"}, "model_id": sample_task_model_id}
+        response = client.post(
+            f"/api/v1/task/sample",
+            json=json_input,
+        )
+        json_response = response.json()
+        assert response.status_code == 200, json_response
+        assert json_response["greeting"] == "Hello world"
+
+        # Make sure the context was registered
+        assert list(mock_backend.runtime_contexts.keys()) == [sample_task_model_id]
+
+
+def test_http_inference_streaming_notifies_backends_of_context(
+    sample_task_model_id,
+    runtime_http_server,
+    reset_globals,
+):
+    """Check that module context is registered with streaming requests"""
+    # Use an "override" config to explicitly set the backend priority list
+    # rather than prepend to it
+    override_config = get_mutable_config_copy()
+    override_config["model_management"]["initializers"]["default"]["config"][
+        "backend_priority"
+    ] = [
+        {"type": MockBackend.backend_type},
+        {"type": "LOCAL"},
+    ]
+
+    with temp_config(override_config, "override"):
+        # Get the mock backend
+        mock_backend = [
+            be
+            for be in MODEL_MANAGER.get_module_backends()
+            if isinstance(be, MockBackend)
+        ]
+        assert len(mock_backend) == 1
+        mock_backend = mock_backend[0]
+        assert not mock_backend.runtime_contexts
+
+        # Make a streaming inference call
+        input_json = {"model_id": sample_task_model_id, "inputs": {"name": "world"}}
+        url = f"http://localhost:{runtime_http_server.port}/api/v1/task/server-streaming-sample"
+        stream = requests.post(url=url, json=input_json, verify=False)
+        assert stream.status_code == 200
+        stream.content.decode(stream.encoding)
+
+        # Make sure the context was registered
+        assert list(mock_backend.runtime_contexts.keys()) == [sample_task_model_id]
+
+
+## Info Tests ##################################################################
+
+
 def test_health_check_ok(client):
     """Make sure the health check returns OK"""
     response = client.get(http_server.HEALTH_ENDPOINT)
     assert response.status_code == 200
     assert response.text == "OK"
-
-
-## Info Tests ##################################################################
 
 
 def test_runtime_info_ok(runtime_http_server):
