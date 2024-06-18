@@ -57,10 +57,15 @@ class SampleModule(caikit.core.ModuleBase):
     ) -> SampleOutputType:
         """
         Args:
-            sample_input (sample_lib.data_model.SampleInputType): the input
-
+            sample_input (SampleInputType): the input
+            throw (bool, optional): If this request should throw an error. Defaults to False.
+            error (Optional[str], optional): The error string to throw. Defaults to None.
+            request_id (Optional[str], optional): The request id for tracking the end-user identity
+                for throw_first_num_requests. Defaults to None.
+            throw_first_num_requests (Optional[int], optional): How many requests to throw an error
+                for before being successful. Defaults to None.
         Returns:
-            sample_lib.data_model.SampleOutputType: The output
+            SampleOutputType: The output
         """
         if throw:
             self._raise_error(error)

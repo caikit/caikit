@@ -36,7 +36,21 @@ def construct_grpc_channel(
     retries: Optional[int] = None,
     retry_options: Optional[Dict[str, str]] = None,
 ) -> grpc.Channel:
-    """Helper function to construct a grpc Channel with the given TLS config"""
+    """Helper function to construct a grpc Channel with the given TLS config
+
+    Args:
+        target (str): The target hostname
+        options (Optional[List[Tuple[str, str]]], optional): List of tuples representing GRPC
+            options. Defaults to None.
+        tls (Optional[ConnectionTlsInfo], optional): The TLS information for this channel.
+            Defaults to None.
+        retries (Optional[int], optional): The max number of retries to attempt. Defaults to None.
+        retry_options (Optional[Dict[str, str]], optional): Dictionary to override fields
+            in the GRPC retry service config. Defaults to None.
+
+    Returns:
+        grpc.Channel: The constructed channel
+    """
     # Add retry option if one was provided
     if retries and retries > 1:
         options.append(("grpc.enable_retries", 1))
@@ -94,6 +108,18 @@ def construct_requests_session(
 ) -> Session:
     """Helper function to construct a requests Session object with the given TLS
     config
+
+    Args:
+        options (Optional[Dict[str, str]], optional): Dictionary of request kwargs to pass to
+            session creation. Defaults to None.
+        tls (Optional[ConnectionTlsInfo], optional): The TLS information for this session.
+            Defaults to None.
+        retries (Optional[int], optional): The max number of retries to attempt. Defaults to None.
+        retry_options (Optional[Dict[str, str]], optional): Dictionary to override kwargs passed
+            to the Retry object construction
+
+    Returns:
+        Session: _description_
     """
     session = Session()
     session.headers["Content-type"] = "application/json"
