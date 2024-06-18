@@ -450,6 +450,8 @@ def test_non_local_supported_backend(reset_globals):
         dummy_model_path = os.path.join(TEST_DATA_PATH, DUMMY_BACKEND_MODEL_NAME)
         model = caikit.core.load(dummy_model_path)
         assert isinstance(model, DummyBaz)
+        assert len(backends := caikit.core.MODEL_MANAGER.get_module_backends()) == 1
+        assert isinstance(backends[0], MockBackend2)
 
 
 def test_load_must_return_model():

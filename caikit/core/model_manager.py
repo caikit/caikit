@@ -20,7 +20,7 @@
 from contextlib import contextmanager
 from io import BytesIO
 from threading import Lock
-from typing import Dict, Optional, Type, Union
+from typing import Dict, List, Optional, Type, Union
 import os
 import tempfile
 import zipfile
@@ -39,6 +39,8 @@ from .model_management import (
     model_initializer_factory,
     model_trainer_factory,
 )
+from .model_management.local_model_initializer import LocalModelInitializer
+from .module_backends.base import BackendBase
 from .modules.base import ModuleBase
 from .registries import module_registry
 from .toolkit.factory import Factory, FactoryConstructible
@@ -422,6 +424,31 @@ class ModelManager:
             component_cfg=get_config().model_management.initializers,
             component_type=ModelInitializerBase,
         )
+
+    def get_module_backends(
+        self,
+        initialize: bool = True,
+    ) -> List[BackendBase]:
+        """Convenience method to get access to the configured module backends if
+        any have been configured
+
+        Args:
+            initialize (bool): Initialize the components from config
+
+        Returns:
+            backends (List[BackendBase]): The list of backend instances that
+                have been configured
+        """
+        if initialize:
+            log.debug3("Initializing components to get backends")
+            self.initialize_components()
+
+        return [
+            backend
+            for initializer in self._initializers.values()
+            if isinstance(initializer, LocalModelInitializer)
+            for backend in initializer.backends
+        ]
 
     ## Implementation Details ##################################################
 
