@@ -2,7 +2,7 @@
 A sample module for sample things!
 """
 # Standard
-from typing import Iterable, List, Optional, Union
+from typing import Dict, Iterable, List, Optional, Union
 import os
 import time
 
@@ -36,7 +36,9 @@ class SampleModule(caikit.core.ModuleBase):
         super().__init__()
         self.batch_size = batch_size
         self.learning_rate = learning_rate
-        self.stream_size = stream_size
+        self.stream_size: int = stream_size
+        # Used for failing the first number of requests
+        self.request_attempt_tracker: Dict[str, int] = {}
 
     @classmethod
     def load(cls, model_path, **kwargs):
@@ -50,32 +52,37 @@ class SampleModule(caikit.core.ModuleBase):
         sample_input: SampleInputType,
         throw: bool = False,
         error: Optional[str] = None,
+        request_id: Optional[str] = None,
+        throw_first_num_requests: Optional[int] = None,
     ) -> SampleOutputType:
         """
         Args:
-            sample_input (sample_lib.data_model.SampleInputType): the input
-
+            sample_input (SampleInputType): the input
+            throw (bool, optional): If this request should throw an error. Defaults to False.
+            error (Optional[str], optional): The error string to throw. Defaults to None.
+            request_id (Optional[str], optional): The request id for tracking the end-user identity
+                for throw_first_num_requests. Defaults to None.
+            throw_first_num_requests (Optional[int], optional): How many requests to throw an error
+                for before being successful. Defaults to None.
         Returns:
-            sample_lib.data_model.SampleOutputType: The output
+            SampleOutputType: The output
         """
         if throw:
-            if error:
-                if error == "GRPC_RESOURCE_EXHAUSTED":
-                    raise _channel._InactiveRpcError(
-                        _channel._RPCState(
-                            due=(),
-                            details="Model is overloaded",
-                            initial_metadata=None,
-                            trailing_metadata=None,
-                            code=StatusCode.RESOURCE_EXHAUSTED,
-                        ),
-                    )
-                elif error == "CORE_EXCEPTION":
-                    raise CaikitCoreException(
-                        status_code=CaikitCoreStatusCode.INVALID_ARGUMENT,
-                        message="invalid argument",
-                    )
-            raise RuntimeError("barf!")
+            self._raise_error(error)
+
+        if throw_first_num_requests and not request_id:
+            self._raise_error(
+                "throw_first_num_requests requires providing a request_id"
+            )
+        # If a throw_first_num_requests was provided  then increment the tracker and raise an exception
+        # until the number of requests is high enough
+        if throw_first_num_requests:
+            self.request_attempt_tracker[request_id] = (
+                self.request_attempt_tracker.get(request_id, 0) + 1
+            )
+            if self.request_attempt_tracker[request_id] <= throw_first_num_requests:
+                self._raise_error(error)
+
         assert isinstance(sample_input, SampleInputType)
         if sample_input.name == self.POISON_PILL_NAME:
             raise ValueError(f"{self.POISON_PILL_NAME} is not allowed!")
@@ -219,3 +226,22 @@ class SampleModule(caikit.core.ModuleBase):
             assert isinstance(union_list, List)
             assert len(union_list) > 0
         return cls(batch_size=batch_size)
+
+    def _raise_error(self, error: str):
+        if error:
+            if error == "GRPC_RESOURCE_EXHAUSTED":
+                raise _channel._InactiveRpcError(
+                    _channel._RPCState(
+                        due=(),
+                        details="Model is overloaded",
+                        initial_metadata=None,
+                        trailing_metadata=None,
+                        code=StatusCode.RESOURCE_EXHAUSTED,
+                    ),
+                )
+            elif error == "CORE_EXCEPTION":
+                raise CaikitCoreException(
+                    status_code=CaikitCoreStatusCode.INVALID_ARGUMENT,
+                    message="invalid argument",
+                )
+        raise RuntimeError(error)

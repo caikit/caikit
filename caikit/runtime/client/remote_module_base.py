@@ -438,7 +438,13 @@ class RemoteModuleBase(ModuleBase):
             options = list(self._connection.options.items())
 
             # Generate secure channel
-            channel = construct_grpc_channel(target, options, self._tls)
+            channel = construct_grpc_channel(
+                target,
+                options,
+                self._tls,
+                self._connection.retries,
+                self._connection.retry_options,
+            )
             self._conn_channel = channel
             return self._conn_channel
 
@@ -456,7 +462,11 @@ class RemoteModuleBase(ModuleBase):
                 return self._conn_channel
 
             self._conn_channel = construct_requests_session(
-                self._connection.options, self._tls, self._connection.timeout
+                self._connection.options,
+                self._tls,
+                self._connection.timeout,
+                self._connection.retries,
+                self._connection.retry_options,
             )
             return self._conn_channel
 
