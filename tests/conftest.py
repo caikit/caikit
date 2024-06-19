@@ -4,7 +4,7 @@ This sets up global test configs when pytest starts
 
 # Standard
 from contextlib import contextmanager
-from typing import Callable, List, Union
+from typing import Callable, List, Optional, Union
 from unittest.mock import patch
 import copy
 import importlib
@@ -19,6 +19,7 @@ import pytest
 import semver
 
 # First Party
+import aconfig
 import alog
 
 # Local
@@ -207,6 +208,33 @@ def temp_config(config_overrides: dict, merge_strategy="override"):
                 caikit.configure(config_dict={str(uuid.uuid4()): str(uuid.uuid4())})
             # Yield to the test with the new overridden config
             yield get_config()
+
+
+def get_mutable_config_copy(base_config: Optional[aconfig.ImmutableConfig] = None):
+    """Get a mutable copy of the global config. This is tricky because aconfig
+    does not expose a way to cast from immutable to mutable, even with deepcopy.
+    """
+    if base_config is None:
+        base_config = get_config()
+    mutable_copy = {}
+    for key, val in base_config.items():
+        if isinstance(val, aconfig.ImmutableAttributeAccessDict):
+            mutable_copy[key] = get_mutable_config_copy(val)
+        elif isinstance(val, dict):
+            mutable_copy[key] = copy.deepcopy(val)
+        elif isinstance(val, list):
+            mutable_list_copy = []
+            for entry in val:
+                if isinstance(entry, aconfig.ImmutableConfig):
+                    mutable_list_copy.append(get_mutable_config_copy(entry))
+                elif isinstance(entry, dict):
+                    mutable_list_copy.append(copy.deepcopy(entry))
+                else:
+                    mutable_list_copy.append(entry)
+            mutable_copy[key] = mutable_list_copy
+        else:
+            mutable_copy[key] = val
+    return aconfig.Config(mutable_copy)
 
 
 @contextmanager

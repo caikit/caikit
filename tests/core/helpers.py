@@ -43,6 +43,7 @@ class MockBackend(BackendBase):
     def __init__(self, config=...) -> None:
         super().__init__(config)
         self._started = False
+        self.runtime_contexts = {}
 
     def start(self):
         self._started = True
@@ -52,6 +53,9 @@ class MockBackend(BackendBase):
 
     def stop(self):
         self._started = False
+
+    def handle_runtime_context(self, model_id, runtime_context):
+        self.runtime_contexts[model_id] = runtime_context
 
 
 backend_types.register_backend_type(MockBackend)

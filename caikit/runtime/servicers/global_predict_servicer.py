@@ -29,7 +29,7 @@ import alog
 
 # Local
 from caikit import get_config
-from caikit.core import ModuleBase, TaskBase
+from caikit.core import MODEL_MANAGER, ModuleBase, TaskBase
 from caikit.core.data_model import DataBase, DataStream
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.core.signature_parsing import CaikitMethodSignature
@@ -165,6 +165,11 @@ class GlobalPredictServicer:
         with self._handle_predict_exceptions(model_id, request_name), alog.ContextLog(
             log.debug, "GlobalPredictServicer.Predict:%s", request_name
         ):
+            # Before retrieving the model, which can trigger lazy backend
+            # initialization, we notify all backends of the context for this
+            # request which may update how the discovery logic works.
+            self.notify_backends_with_context(model_id, context)
+
             # Retrieve the model from the model manager
             log.debug("<RUN52259029D>", "Retrieving model '%s'", model_id)
             model = self._model_manager.retrieve_model(model_id)
@@ -206,6 +211,7 @@ class GlobalPredictServicer:
                 aborter=RpcAborter(context) if self._interrupter else None,
                 context=context,
                 context_arg=inference_signature.context_arg,
+                model=model,
                 **caikit_library_request,
             )
 
@@ -230,6 +236,7 @@ class GlobalPredictServicer:
         aborter: Optional[RpcAborter] = None,
         context: Optional[RuntimeServerContextType] = None,  # noqa: F821
         context_arg: Optional[str] = None,
+        model: Optional[ModuleBase] = None,
         **kwargs,
     ) -> Union[DataBase, Iterable[DataBase]]:
         """Run a prediction against the given model using the raw arguments to
@@ -251,6 +258,13 @@ class GlobalPredictServicer:
                 The task to use for inference (if multitask model)
             aborter (Optional[RpcAborter]):
                 If using abortable calls, this is the aborter to use
+            context (Optional[RuntimeServerContextType]):
+                The context object from the inbound request
+            context_arg (Optional[str]):
+                The arg name to the model inference method where the context
+                should be passed
+            model (Optional[ModuleBase]):
+                Pre-fetched model object
             **kwargs: Keyword arguments to pass to the model's run function
         Returns:
             response (Union[DataBase, Iterable[DataBase]]):
@@ -259,7 +273,7 @@ class GlobalPredictServicer:
         """
 
         with self._handle_predict_exceptions(model_id, request_name):
-            model = self._model_manager.retrieve_model(model_id)
+            model = model or self._model_manager.retrieve_model(model_id)
             self._verify_model_task(model)
             if input_streaming is not None and output_streaming is not None:
                 inference_sig = model.get_inference_signature(
@@ -309,6 +323,20 @@ class GlobalPredictServicer:
             self.rpc_meter.flush_metrics()
             self.rpc_meter.end_writer_thread()
             self._started_metering = False
+
+    def notify_backends_with_context(
+        self,
+        model_id: str,
+        context: RuntimeServerContextType,
+    ):
+        """Utility to notify all configured backends of the request context"""
+        for backend in MODEL_MANAGER.get_module_backends():
+            log.debug3(
+                "Notifying backend type %s of with context of type %s",
+                type(backend),
+                type(context),
+            )
+            backend.handle_runtime_context(model_id, context)
 
     ## Implementation Details ##################################################
 

@@ -12,8 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Forward core data model context here to interfaces
-"""
+Typing constant for the Runtime Context
 
-# Local
-from ....core.data_model.runtime_context import RuntimeServerContextType  # noqa: F401
+While caikit.core is not directly knowledgeable of caikit.interfaces or
+caikit.runtime, there are several functions within the core that expose the
+option to optionally handle context information when being called inside of a
+runtime request handler. This forward-declaration allows those methods to use a
+consistent type that derived classes would use directly.
+"""
+# Standard
+from typing import Union
+
+RuntimeServerContextType = Union[
+    "grpc.ServicerContext", "fastapi.Request"  # noqa: F821
+]

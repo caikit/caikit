@@ -632,6 +632,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     "Sending request %s to model id %s", request_params, model_id
                 )
 
+                # After fetching the model_id from the request, notify module
+                # backends of the request context which may influence the lazy
+                # initialization logic.
+                self.global_predict_servicer.notify_backends_with_context(
+                    model_id, context
+                )
+
                 log.debug("In unary handler for %s for model %s", rpc.name, model_id)
                 loop = asyncio.get_running_loop()
 
@@ -701,6 +708,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     model_id = self._get_model_id(request)
                     log.debug4(
                         "Sending request %s to model id %s", request_params, model_id
+                    )
+
+                    # After fetching the model_id from the request, notify
+                    # module backends of the request context which may influence
+                    # the lazy initialization logic.
+                    self.global_predict_servicer.notify_backends_with_context(
+                        model_id, context
                     )
 
                     aborter_context = (

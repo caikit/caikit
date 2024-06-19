@@ -14,10 +14,10 @@
 # Standard
 from typing import Iterator
 from unittest.mock import MagicMock, patch
+import copy
 
 # Local
 from caikit.core.data_model import DataStream, ProducerId
-from caikit.core.exceptions.caikit_core_exception import CaikitCoreStatusCode
 from caikit.runtime.service_factory import get_inference_request
 from sample_lib.data_model.sample import GeoSpatialTask
 from sample_lib.modules import ContextTask, MultiTaskModule, SecondTask
@@ -39,6 +39,8 @@ import grpc
 import pytest
 
 # Local
+from caikit.config import get_config
+from caikit.core import MODEL_MANAGER
 from caikit.interfaces.common.data_model import File
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.types.aborted_exception import AbortedException
@@ -46,7 +48,8 @@ from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from sample_lib.data_model import SampleInputType, SampleOutputType
 from sample_lib.data_model.sample import OtherOutputType, SampleTask
 from sample_lib.modules.sample_task import SampleModule
-from tests.conftest import temp_config
+from tests.conftest import get_mutable_config_copy, reset_globals, temp_config
+from tests.core.helpers import MockBackend
 from tests.fixtures import Fixtures
 
 HAPPY_PATH_INPUT_DM = SampleInputType(name="Gabe")
@@ -450,3 +453,52 @@ def test_metering_write_to_metrics_file_twice(
             }
         finally:
             sample_predict_servicer.stop_metering()
+
+
+def test_global_predict_notifies_backends_of_context(
+    sample_inference_service,
+    sample_predict_servicer,
+    sample_task_model_id,
+    sample_task_unary_rpc,
+    reset_globals,
+):
+    """Global predict of SampleTaskRequest notifies the configured backends with
+    the request context
+    """
+    # Use an "override" config to explicitly set the backend priority list
+    # rather than prepend to it
+    override_config = get_mutable_config_copy()
+    override_config["model_management"]["initializers"]["default"]["config"][
+        "backend_priority"
+    ] = [
+        {"type": MockBackend.backend_type},
+        {"type": "LOCAL"},
+    ]
+
+    with temp_config(override_config, "override"):
+        # Get the mock backend
+        mock_backend = [
+            be
+            for be in MODEL_MANAGER.get_module_backends()
+            if isinstance(be, MockBackend)
+        ]
+        assert len(mock_backend) == 1
+        mock_backend = mock_backend[0]
+
+        # Make sure no contexts registered yet
+        assert not mock_backend.runtime_contexts
+
+        # Make a predict call
+        predict_class = get_inference_request(SampleTask)
+        context = Fixtures.build_context(sample_task_model_id)
+        assert (
+            sample_predict_servicer.Predict(
+                predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
+                context,
+                caikit_rpc=sample_task_unary_rpc,
+            )
+            == HAPPY_PATH_RESPONSE
+        )
+
+        # Make sure the context was registered
+        assert mock_backend.runtime_contexts == {sample_task_model_id: context}

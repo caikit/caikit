@@ -24,6 +24,9 @@ import abc
 # First Party
 import aconfig
 
+# Local
+from ..data_model.runtime_context import RuntimeServerContextType
+
 
 class BackendBase(abc.ABC):
     """Interface for creating configuration setup for backends"""
@@ -66,3 +69,21 @@ class BackendBase(abc.ABC):
     def start_lock(self):
         with self._start_lock:
             yield
+
+    def handle_runtime_context(  # noqa: B027
+        self,
+        model_id: str,
+        runtime_context: RuntimeServerContextType,
+    ):
+        """Update backend state for the given model based on a runtime request.
+
+        Some backends may need to handle runtime context information for the
+        target model in order to correctly configure the backend before finding
+        and loading the model. By default, this is a No-Op.
+
+        Args:
+            model_id (str): The unique ID of the model that is referenced by the
+                runtime context
+            runtime_context (RuntimeServerContextType): The context for the
+                given runtime request
+        """
