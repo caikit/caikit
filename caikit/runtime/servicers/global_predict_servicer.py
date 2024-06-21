@@ -289,7 +289,7 @@ class GlobalPredictServicer:
                 The object (unary) or objects (output stream) produced by the
                 inference request
         """
-
+        trace.set_tracer(context, self._tracer)
         trace_context = trace.get_trace_context(context)
         trace_span_name = f"{__name__}.GlobalPredictServicer.predict_model"
         with self._handle_predict_exceptions(

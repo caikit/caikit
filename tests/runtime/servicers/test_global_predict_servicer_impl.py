@@ -536,22 +536,30 @@ def test_global_predict_tracing(
                 predict_class = get_inference_request(SampleTask)
                 request_id = "my-request"
                 metadata = {REQUEST_ID_HEADER_KEY: request_id}
+                context = Fixtures.build_context(sample_task_model_id, **metadata)
                 response = servicer.Predict(
                     predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
-                    Fixtures.build_context(sample_task_model_id, **metadata),
+                    context,
                     caikit_rpc=sample_task_unary_rpc,
                 )
                 assert response == HAPPY_PATH_RESPONSE
 
                 # Make sure span wiring was called
                 get_tracer_mock.assert_called_once()
-                tracer_mock.start_as_current_span.assert_called_once()
                 assert (
-                    tracer_mock.start_as_current_span.call_args.kwargs.get("context")
+                    tracer_mock.start_as_current_span.call_count == 2
+                )  # Once in GPS, once in run
+                assert (
+                    tracer_mock.start_as_current_span.mock_calls[0].kwargs.get(
+                        "context"
+                    )
                     is dummy_context
                 )
-                span_context_mock.__enter__.assert_called_once()
+                span_context_mock.__enter__.call_count == 2
 
                 # Validate some of the key attributes
                 span_mock.attrs.get("model_id") == sample_task_model_id
                 span_mock.attrs.get("task") == SampleTask
+
+                # Make sure the context got decorated with the tracer
+                assert hasattr(context, trace._CONTEXT_TRACER_ATTR)

@@ -17,11 +17,13 @@ from ...data_model.sample import (
     SampleTrainingType,
 )
 from caikit.core.data_model import DataStream
+from caikit.core.data_model.runtime_context import RuntimeServerContextType
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
     CaikitCoreStatusCode,
 )
 from caikit.core.modules import ModuleLoader, ModuleSaver
+from caikit.runtime import trace
 import caikit.core
 
 
@@ -39,6 +41,7 @@ class SampleModule(caikit.core.ModuleBase):
         self.stream_size: int = stream_size
         # Used for failing the first number of requests
         self.request_attempt_tracker: Dict[str, int] = {}
+        self._tracer = trace.get_tracer(__name__)
 
     @classmethod
     def load(cls, model_path, **kwargs):
@@ -46,7 +49,7 @@ class SampleModule(caikit.core.ModuleBase):
         config = loader.config
         return cls(config["train"]["batch_size"], config["train"]["learning_rate"])
 
-    @SampleTask.taskmethod()
+    @SampleTask.taskmethod(context_arg="context")
     def run(
         self,
         sample_input: SampleInputType,
@@ -54,6 +57,7 @@ class SampleModule(caikit.core.ModuleBase):
         error: Optional[str] = None,
         request_id: Optional[str] = None,
         throw_first_num_requests: Optional[int] = None,
+        context: Optional[RuntimeServerContextType] = None,
     ) -> SampleOutputType:
         """
         Args:
@@ -64,29 +68,32 @@ class SampleModule(caikit.core.ModuleBase):
                 for throw_first_num_requests. Defaults to None.
             throw_first_num_requests (Optional[int], optional): How many requests to throw an error
                 for before being successful. Defaults to None.
+            context (Optional[RuntimeServerContextType]): The context for the runtime server request
         Returns:
             SampleOutputType: The output
         """
-        if throw:
-            self._raise_error(error)
-
-        if throw_first_num_requests and not request_id:
-            self._raise_error(
-                "throw_first_num_requests requires providing a request_id"
-            )
-        # If a throw_first_num_requests was provided  then increment the tracker and raise an exception
-        # until the number of requests is high enough
-        if throw_first_num_requests:
-            self.request_attempt_tracker[request_id] = (
-                self.request_attempt_tracker.get(request_id, 0) + 1
-            )
-            if self.request_attempt_tracker[request_id] <= throw_first_num_requests:
+        span_name = f"{__name__}.{type(self).__name__}.run"
+        with trace.start_child_span(context, span_name):
+            if throw:
                 self._raise_error(error)
 
-        assert isinstance(sample_input, SampleInputType)
-        if sample_input.name == self.POISON_PILL_NAME:
-            raise ValueError(f"{self.POISON_PILL_NAME} is not allowed!")
-        return SampleOutputType(f"Hello {sample_input.name}")
+            if throw_first_num_requests and not request_id:
+                self._raise_error(
+                    "throw_first_num_requests requires providing a request_id"
+                )
+            # If a throw_first_num_requests was provided  then increment the tracker and raise an exception
+            # until the number of requests is high enough
+            if throw_first_num_requests:
+                self.request_attempt_tracker[request_id] = (
+                    self.request_attempt_tracker.get(request_id, 0) + 1
+                )
+                if self.request_attempt_tracker[request_id] <= throw_first_num_requests:
+                    self._raise_error(error)
+
+            assert isinstance(sample_input, SampleInputType)
+            if sample_input.name == self.POISON_PILL_NAME:
+                raise ValueError(f"{self.POISON_PILL_NAME} is not allowed!")
+            return SampleOutputType(f"Hello {sample_input.name}")
 
     @SampleTask.taskmethod(output_streaming=True)
     def run_stream_out(
