@@ -15,7 +15,8 @@
 The trace module holds utilities for tracing runtime requests.
 """
 # Standard
-from typing import TYPE_CHECKING, Optional, Union
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Iterable, Optional, Union
 import os
 
 # Third Party
@@ -42,7 +43,7 @@ _PROPAGATE_MODULE = None
 if TYPE_CHECKING:
     # Third Party
     from opentelemetry import Context
-    from opentelemetry.trace import Tracer
+    from opentelemetry.trace import Span, Tracer
 
 
 def configure():
@@ -168,7 +169,29 @@ def get_trace_context(runtime_context: RuntimeServerContextType) -> Optional["Co
     return None
 
 
+def set_tracer(runtime_context: RuntimeServerContextType, tracer: "Tracer"):
+    """Helper to decorate a runtime context with a tracer if enabled"""
+    if runtime_context:
+        setattr(runtime_context, _CONTEXT_TRACER_ATTR, tracer)
+
+
+@contextmanager
+def start_child_span(
+    runtime_context: RuntimeServerContextType,
+    span_name: str,
+) -> Iterable[Union["Span", "_NoOpProxy"]]:
+    """Context manager that wraps start_as_current_span if enabled and tries to
+    fetch a parent span from the runtime context
+    """
+    if (parent_tracer := getattr(runtime_context, _CONTEXT_TRACER_ATTR, None)) is None:
+        parent_tracer = get_tracer(span_name)
+    with parent_tracer.start_as_current_span(span_name) as span:
+        yield span
+
+
 ## Implementation Details ######################################################
+
+_CONTEXT_TRACER_ATTR = "__tracer__"
 
 
 def _load_tls_secret(tls_config_val: str) -> bytes:
