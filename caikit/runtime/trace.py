@@ -15,7 +15,7 @@
 The trace module holds utilities for tracing runtime requests.
 """
 # Standard
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Optional, Union
 import os
 
 # Third Party
@@ -26,24 +26,29 @@ import alog
 
 # Local
 from ..config import get_config
+from ..core.data_model.runtime_context import RuntimeServerContextType
 from ..core.exceptions import error_handler
 
 log = alog.use_channel("TRACE")
 error = error_handler.get(log)
 
 
-# Global handle to the trace module that will be populated in configure()
+# Global handle to the trace and propagate modules that will be populated in
+# configure()
 _TRACE_MODULE = None
+_PROPAGATE_MODULE = None
 
 
 if TYPE_CHECKING:
     # Third Party
+    from opentelemetry import Context
     from opentelemetry.trace import Tracer
 
 
 def configure():
     """Configure all tracing based on config and installed packages"""
     global _TRACE_MODULE
+    global _PROPAGATE_MODULE
 
     # Short circuit if not enabled, including resetting the global module
     # pointer so that toggling from enabled -> disabled works as expected
@@ -60,7 +65,7 @@ def configure():
     # Attempt to import the necessary packages
     try:
         # Third Party
-        from opentelemetry import trace
+        from opentelemetry import propagate, trace
         from opentelemetry.sdk.resources import SERVICE_NAME, Resource
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -88,6 +93,7 @@ def configure():
 
     # Populate the global module handle
     _TRACE_MODULE = trace
+    _PROPAGATE_MODULE = propagate
 
     # Set up the exporter
     exporter_kwargs = {"endpoint": trace_cfg.endpoint}
@@ -136,6 +142,30 @@ def get_tracer(name: str) -> Union["_NoOpProxy", "Tracer"]:
     if _TRACE_MODULE:
         return _TRACE_MODULE.get_tracer(name)
     return _NoOpProxy()
+
+
+def get_trace_context(runtime_context: RuntimeServerContextType) -> Optional["Context"]:
+    """Extract the trace context from the runtime request context"""
+    if runtime_context is None or not _PROPAGATE_MODULE:
+        return None
+
+    if isinstance(runtime_context, grpc.ServicerContext):
+        return _PROPAGATE_MODULE.extract(
+            carrier=dict(runtime_context.invocation_metadata())
+        )
+
+    # Local import of fastapi as an optional dependency
+    try:
+        # Third Party
+        import fastapi
+
+        if isinstance(runtime_context, fastapi.Request):
+            return _PROPAGATE_MODULE.extract(carrier=runtime_context.headers)
+    except ImportError:
+        pass
+
+    log.debug("Unknown context type: %s", type(runtime_context))
+    return None
 
 
 ## Implementation Details ######################################################

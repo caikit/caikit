@@ -23,7 +23,8 @@ import uvicorn
 # Local
 from caikit.runtime import trace
 from tests.conftest import temp_config
-from tests.runtime.conftest import generate_tls_configs, open_port
+from tests.fixtures import Fixtures
+from tests.runtime.conftest import generate_tls_configs, open_port, reset_trace
 
 ## Mock Collectors #############################################################
 
@@ -139,21 +140,6 @@ def maybe_inline(inline: bool, tls_file: str):
 ## Fixtures ####################################################################
 
 
-@pytest.fixture
-def reset_trace_imports():
-    """This fixture will cause all inline imports to be scoped to the duration
-    of the test and it will cause the trace module to revert to "unconfigured"
-    after tests complete.
-    """
-    sys_mod_copy = sys.modules.copy()
-    otel_modules = {mod for mod in sys_mod_copy if mod.startswith("opentelemetry")}
-    for mod in otel_modules:
-        del sys_mod_copy[mod]
-    with mock.patch.object(sys, "modules", sys_mod_copy):
-        with mock.patch.object(trace, "_TRACE_MODULE", None):
-            yield
-
-
 @contextmanager
 def trace_config(**kwargs):
     with temp_config({"runtime": {"trace": kwargs}}, "merge"):
@@ -239,7 +225,7 @@ def verify_exported(mock_server):
 ## Tests #######################################################################
 
 
-def test_trace_unconfigured(reset_trace_imports, trace_disabled):
+def test_trace_unconfigured(reset_trace, trace_disabled):
     """Test that without calling configure, all of the expected tracing
     operations are no-ops
     """
@@ -247,7 +233,7 @@ def test_trace_unconfigured(reset_trace_imports, trace_disabled):
     assert "opentelemetry" not in sys.modules
 
 
-def test_trace_disabled(reset_trace_imports, trace_disabled):
+def test_trace_disabled(reset_trace, trace_disabled):
     """Test that with configure called, but trace disabled, all of the expected
     tracing operations are no-ops
     """
@@ -256,7 +242,7 @@ def test_trace_disabled(reset_trace_imports, trace_disabled):
     assert "opentelemetry" not in sys.modules
 
 
-def test_trace_not_installed(reset_trace_imports, trace_enabled_grpc):
+def test_trace_not_installed(reset_trace, trace_enabled_grpc):
     """Test that when the libraries cannot be imported, the configure step does
     not raise
     """
@@ -359,3 +345,26 @@ def test_trace_http_tls(reset_otel_trace_globals, trace_enabled_http, open_port)
                 trace.configure()
             exercise_tracer_api(trace.get_tracer("test/tracer"))
             verify_exported(servicer)
+
+
+@pytest.mark.parametrize(
+    ["context", "configure", "should_return"],
+    [
+        (Fixtures.build_context(), True, True),
+        (Request({"type": "http", "headers": {}}), True, True),
+        (Fixtures.build_context(), False, False),
+        (Request({"type": "http", "headers": {}}), False, False),
+        (None, True, False),
+    ],
+)
+def test_trace_get_trace_context(context, configure, should_return, reset_trace):
+    """Test that get_trace_context returns a context under the right
+    circumstances
+    """
+    with trace_config(enabled=True):
+        if configure:
+            trace.configure()
+        ctx = trace.get_trace_context(context)
+        assert ((ctx is not None) and should_return) or (
+            ctx is None and not should_return
+        )

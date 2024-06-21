@@ -2,6 +2,9 @@
 import os
 import shutil
 
+# Third Party
+import grpc
+
 # First Party
 import alog
 
@@ -52,13 +55,50 @@ class Fixtures:
 
         # Create a dummy class for mimicking ServicerContext invocation
         # metadata storage
-        class TestContext:
+        class TestContext(grpc.ServicerContext):
             def __init__(self, model_id):
                 self.model_id = model_id
                 self.metadata = metadata
                 self.metadata[MODEL_MESH_MODEL_ID_KEY] = self.model_id
                 self.callbacks = []
                 self.canceled = False
+
+            # Define the abstract methods to do nothing
+            def abort(self, *_, **__):
+                pass
+
+            def abort_with_status(self, *_, **__):
+                pass
+
+            def auth_context(self, *_, **__):
+                pass
+
+            def is_active(self, *_, **__):
+                pass
+
+            def peer(self, *_, **__):
+                pass
+
+            def peer_identities(self, *_, **__):
+                pass
+
+            def peer_identity_key(self, *_, **__):
+                pass
+
+            def send_initial_metadata(self, *_, **__):
+                pass
+
+            def set_code(self, *_, **__):
+                pass
+
+            def set_details(self, *_, **__):
+                pass
+
+            def set_trailing_metadata(self, *_, **__):
+                pass
+
+            def time_remaining(self, *_, **__):
+                pass
 
             def invocation_metadata(self):
                 return list(self.metadata.items())

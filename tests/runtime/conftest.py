@@ -6,6 +6,7 @@ This sets up global test configs when pytest starts
 from contextlib import closing, contextmanager
 from functools import partial
 from typing import Dict, Iterable, List, Optional, Type, Union
+from unittest import mock
 import os
 import shlex
 import socket
@@ -34,7 +35,7 @@ from caikit.core.data_model.dataobject import (
     dataobject,
     render_dataobject_protos,
 )
-from caikit.runtime import http_server
+from caikit.runtime import http_server, trace
 from caikit.runtime.grpc_server import RuntimeGRPCServer
 from caikit.runtime.model_management.loaded_model import LoadedModel
 from caikit.runtime.model_management.model_manager import ModelManager
@@ -641,3 +642,25 @@ def deploy_good_model_files():
         with open(os.path.join(model_path, fname), "rb") as handle:
             model_files[fname] = handle.read()
     yield model_files
+
+
+@pytest.fixture
+def reset_trace():
+    """This fixture will cause all inline imports to be scoped to the duration
+    of the test and it will cause the trace module to revert to "unconfigured"
+    after tests complete.
+    """
+    sys_mod_copy = sys.modules.copy()
+    # NOTE: There is a strange import error in a circular import in
+    #   opentelemetry.metrics if we mock.patch sys.modules with the copy, so
+    #   instead we let the imports work with the real sys.modules and then prune
+    #   after the test. This is less robust to parallelism, but we don't run
+    #   tests in parallel for now anyway.
+    try:
+        with mock.patch.object(trace, "_TRACE_MODULE", None):
+            with mock.patch.object(trace, "_PROPAGATE_MODULE", None):
+                yield
+    finally:
+        new_mods = {mod for mod in sys.modules if mod not in sys_mod_copy}
+        for mod in new_mods:
+            sys.modules.pop(mod)
