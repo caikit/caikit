@@ -290,10 +290,8 @@ class GlobalPredictServicer:
                 inference request
         """
 
-        trace_context = kwargs.copy()
+        trace_context = trace.get_trace_context(context)
         trace_span_name = f"{__name__}.GlobalPredictServicer.predict_model"
-        if request_id:
-            trace_context["request_id"] = request_id
         with self._handle_predict_exceptions(
             model_id, request_name
         ), self._tracer.start_as_current_span(
@@ -305,7 +303,9 @@ class GlobalPredictServicer:
             trace_span.set_attribute("calling", trace_span_name)
             trace_span.set_attribute("model_id", model_id)
             trace_span.set_attribute("request_name", request_name)
-            trace_span.set_attribute("task", task)
+            trace_span.set_attribute("task", getattr(task, "__name__", str(task)))
+            if request_id:
+                trace_span.set_attribute("request_id", request_id)
 
             model = model or self._model_manager.retrieve_model(model_id)
             self._verify_model_task(model)

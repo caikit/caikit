@@ -14,7 +14,6 @@
 # Standard
 from typing import Iterator
 from unittest.mock import MagicMock, patch
-import copy
 
 # Local
 from caikit.core.data_model import DataStream, ProducerId
@@ -39,9 +38,9 @@ import grpc
 import pytest
 
 # Local
-from caikit.config import get_config
 from caikit.core import MODEL_MANAGER
 from caikit.interfaces.common.data_model import File
+from caikit.runtime import trace
 from caikit.runtime.names import REQUEST_ID_HEADER_KEY
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.types.aborted_exception import AbortedException
@@ -524,34 +523,35 @@ def test_global_predict_tracing(
     span_context_mock = MagicMock()
     tracer_mock = MagicMock()
     get_tracer_mock = MagicMock()
+    get_trace_context = MagicMock()
     tracer_mock.start_as_current_span.return_value = span_context_mock
     span_context_mock.__enter__.return_value = span_mock
     get_tracer_mock.return_value = tracer_mock
+    dummy_context = {"dummy": "context"}
+    get_trace_context.return_value = dummy_context
 
     with patch("caikit.runtime.trace.get_tracer", get_tracer_mock):
-        with make_sample_predict_servicer(sample_inference_service) as servicer:
-            predict_class = get_inference_request(SampleTask)
-            request_id = "my-request"
-            response = servicer.Predict(
-                predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
-                Fixtures.build_context(
-                    sample_task_model_id, **{REQUEST_ID_HEADER_KEY: request_id}
-                ),
-                caikit_rpc=sample_task_unary_rpc,
-            )
-            assert response == HAPPY_PATH_RESPONSE
-
-            # Make sure span wiring was called
-            get_tracer_mock.assert_called_once()
-            tracer_mock.start_as_current_span.assert_called_once()
-            assert (
-                span_context := tracer_mock.start_as_current_span.call_args.kwargs.get(
-                    "context"
+        with patch("caikit.runtime.trace.get_trace_context", get_trace_context):
+            with make_sample_predict_servicer(sample_inference_service) as servicer:
+                predict_class = get_inference_request(SampleTask)
+                request_id = "my-request"
+                metadata = {REQUEST_ID_HEADER_KEY: request_id}
+                response = servicer.Predict(
+                    predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
+                    Fixtures.build_context(sample_task_model_id, **metadata),
+                    caikit_rpc=sample_task_unary_rpc,
                 )
-            )
-            assert span_context.get("request_id") == request_id
-            span_context_mock.__enter__.assert_called_once()
+                assert response == HAPPY_PATH_RESPONSE
 
-            # Validate some of the key attributes
-            span_mock.attrs.get("model_id") == sample_task_model_id
-            span_mock.attrs.get("task") == SampleTask
+                # Make sure span wiring was called
+                get_tracer_mock.assert_called_once()
+                tracer_mock.start_as_current_span.assert_called_once()
+                assert (
+                    tracer_mock.start_as_current_span.call_args.kwargs.get("context")
+                    is dummy_context
+                )
+                span_context_mock.__enter__.assert_called_once()
+
+                # Validate some of the key attributes
+                span_mock.attrs.get("model_id") == sample_task_model_id
+                span_mock.attrs.get("task") == SampleTask
