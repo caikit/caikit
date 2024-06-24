@@ -703,7 +703,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             request = await pydantic_from_request(pydantic_request, context)
             request_params = self._get_request_params(rpc, request)
 
-            async def _generator() -> pydantic_response:
+            async def _generator():
                 try:
                     model_id = self._get_model_id(request)
                     log.debug4(

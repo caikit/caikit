@@ -14,7 +14,6 @@
 # Standard
 from typing import Iterator
 from unittest.mock import MagicMock, patch
-import copy
 
 # Local
 from caikit.core.data_model import DataStream, ProducerId
@@ -39,9 +38,9 @@ import grpc
 import pytest
 
 # Local
-from caikit.config import get_config
 from caikit.core import MODEL_MANAGER
 from caikit.interfaces.common.data_model import File
+from caikit.runtime import trace
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -51,6 +50,7 @@ from sample_lib.modules.sample_task import SampleModule
 from tests.conftest import get_mutable_config_copy, reset_globals, temp_config
 from tests.core.helpers import MockBackend
 from tests.fixtures import Fixtures
+from tests.runtime.conftest import make_sample_predict_servicer
 
 HAPPY_PATH_INPUT_DM = SampleInputType(name="Gabe")
 HAPPY_PATH_RESPONSE_DM = SampleOutputType(greeting="Hello Gabe")
@@ -502,3 +502,62 @@ def test_global_predict_notifies_backends_of_context(
 
         # Make sure the context was registered
         assert mock_backend.runtime_contexts == {sample_task_model_id: context}
+
+
+def test_global_predict_tracing(
+    sample_inference_service,
+    sample_task_model_id,
+    sample_task_unary_rpc,
+):
+    """Test that tracing can be correctly managed for predict requests"""
+
+    class SpanMock:
+        def __init__(self):
+            self.attrs = {}
+
+        def set_attribute(self, key, val):
+            self.attrs[key] = val
+
+    span_mock = SpanMock()
+    span_context_mock = MagicMock()
+    tracer_mock = MagicMock()
+    get_tracer_mock = MagicMock()
+    get_trace_context = MagicMock()
+    tracer_mock.start_as_current_span.return_value = span_context_mock
+    span_context_mock.__enter__.return_value = span_mock
+    get_tracer_mock.return_value = tracer_mock
+    dummy_context = {"dummy": "context"}
+    get_trace_context.return_value = dummy_context
+
+    with patch("caikit.runtime.trace.get_tracer", get_tracer_mock):
+        with patch("caikit.runtime.trace.get_trace_context", get_trace_context):
+            with make_sample_predict_servicer(sample_inference_service) as servicer:
+                predict_class = get_inference_request(SampleTask)
+                metadata = {}
+                context = Fixtures.build_context(sample_task_model_id, **metadata)
+                response = servicer.Predict(
+                    predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),
+                    context,
+                    caikit_rpc=sample_task_unary_rpc,
+                )
+                assert response == HAPPY_PATH_RESPONSE
+
+                # Make sure span wiring was called
+                get_tracer_mock.assert_called_once()
+                assert (
+                    tracer_mock.start_as_current_span.call_count == 2
+                )  # Once in GPS, once in run
+                assert (
+                    tracer_mock.start_as_current_span.mock_calls[0].kwargs.get(
+                        "context"
+                    )
+                    is dummy_context
+                )
+                span_context_mock.__enter__.call_count == 2
+
+                # Validate some of the key attributes
+                assert span_mock.attrs.get("model_id") == sample_task_model_id
+                assert span_mock.attrs.get("task") == SampleTask.__name__
+
+                # Make sure the context got decorated with the tracer
+                assert hasattr(context, trace._CONTEXT_TRACER_ATTR)

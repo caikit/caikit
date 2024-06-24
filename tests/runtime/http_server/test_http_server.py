@@ -909,6 +909,52 @@ def test_http_inference_streaming_notifies_backends_of_context(
         assert list(mock_backend.runtime_contexts.keys()) == [sample_task_model_id]
 
 
+def test_inference_trace(sample_task_model_id, open_port):
+    """Test that tracing is called when enabled"""
+
+    class SpanMock:
+        def __init__(self):
+            self.attrs = {}
+
+        def set_attribute(self, key, val):
+            self.attrs[key] = val
+
+    span_mock = SpanMock()
+    span_context_mock = mock.MagicMock()
+    tracer_mock = mock.MagicMock()
+    get_tracer_mock = mock.MagicMock()
+    get_trace_context = mock.MagicMock()
+    tracer_mock.start_as_current_span.return_value = span_context_mock
+    span_context_mock.__enter__.return_value = span_mock
+    get_tracer_mock.return_value = tracer_mock
+    dummy_context = {"dummy": "context"}
+    get_trace_context.return_value = dummy_context
+
+    with mock.patch("caikit.runtime.trace.get_tracer", get_tracer_mock):
+        with mock.patch("caikit.runtime.trace.get_trace_context", get_trace_context):
+            with runtime_http_test_server(open_port) as server:
+                with client_context(server) as client:
+                    json_input = {
+                        "inputs": {"name": "world"},
+                        "model_id": sample_task_model_id,
+                    }
+                    response = client.post(f"/api/v1/task/sample", json=json_input)
+                    json_response = response.json()
+                    assert response.status_code == 200, json_response
+                    assert json_response["greeting"] == "Hello world"
+
+                    # Make sure tracing called
+                    get_tracer_mock.assert_called_once()
+                    tracer_mock.start_as_current_span.call_count == 2
+                    assert (
+                        tracer_mock.start_as_current_span.mock_calls[0].kwargs.get(
+                            "context"
+                        )
+                        is dummy_context
+                    )
+                    assert span_mock.attrs.get("model_id") == sample_task_model_id
+
+
 ## Info Tests ##################################################################
 
 

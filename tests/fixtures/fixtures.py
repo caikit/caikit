@@ -2,11 +2,15 @@
 import os
 import shutil
 
+# Third Party
+import grpc
+
 # First Party
 import alog
 
 # Local
 from caikit.runtime.model_management.model_manager import ModelManager
+from caikit.runtime.names import MODEL_MESH_MODEL_ID_KEY
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 
 log = alog.use_channel("TEST-FIXTURE")
@@ -39,7 +43,7 @@ class Fixtures:
             raise e
 
     @staticmethod
-    def build_context(model_id="test-any-model-id"):
+    def build_context(model_id="test-any-model-id", **metadata):
         """Build a gRPC context object containing the specified model ID
 
         Args:
@@ -51,14 +55,53 @@ class Fixtures:
 
         # Create a dummy class for mimicking ServicerContext invocation
         # metadata storage
-        class TestContext:
+        class TestContext(grpc.ServicerContext):
             def __init__(self, model_id):
                 self.model_id = model_id
+                self.metadata = metadata
+                self.metadata[MODEL_MESH_MODEL_ID_KEY] = self.model_id
                 self.callbacks = []
                 self.canceled = False
 
+            # Define the abstract methods to do nothing
+            def abort(self, *_, **__):
+                pass
+
+            def abort_with_status(self, *_, **__):
+                pass
+
+            def auth_context(self, *_, **__):
+                pass
+
+            def is_active(self, *_, **__):
+                pass
+
+            def peer(self, *_, **__):
+                pass
+
+            def peer_identities(self, *_, **__):
+                pass
+
+            def peer_identity_key(self, *_, **__):
+                pass
+
+            def send_initial_metadata(self, *_, **__):
+                pass
+
+            def set_code(self, *_, **__):
+                pass
+
+            def set_details(self, *_, **__):
+                pass
+
+            def set_trailing_metadata(self, *_, **__):
+                pass
+
+            def time_remaining(self, *_, **__):
+                pass
+
             def invocation_metadata(self):
-                return [("mm-model-id", self.model_id)]
+                return list(self.metadata.items())
 
             def add_callback(self, some_function, *args, **kwargs):
                 self.callbacks.append(

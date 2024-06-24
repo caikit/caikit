@@ -34,6 +34,7 @@ from caikit.core.data_model import DataBase, DataStream
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.core.signature_parsing import CaikitMethodSignature
 from caikit.interfaces.runtime.data_model import RuntimeServerContextType
+from caikit.runtime import trace
 from caikit.runtime.metrics.rpc_meter import RPCMeter
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.names import MODEL_MESH_MODEL_ID_KEY
@@ -129,13 +130,15 @@ class GlobalPredictServicer:
         except Exception:  # pylint: disable=broad-exception-caught
             lib_version = "unknown"
 
+        # Set up shared tracer
+        self._tracer = trace.get_tracer(__name__)
+
         log.info(
             "<RUN76884779I>",
             "Constructed inference service for library: %s, version: %s",
             library,
             lib_version,
         )
-        super()
 
     def Predict(
         self,
@@ -202,6 +205,7 @@ class GlobalPredictServicer:
                         request,
                         inference_signature,
                     )
+
             response = self.predict_model(
                 request_name,
                 model_id,
@@ -271,8 +275,22 @@ class GlobalPredictServicer:
                 The object (unary) or objects (output stream) produced by the
                 inference request
         """
+        trace.set_tracer(context, self._tracer)
+        trace_context = trace.get_trace_context(context)
+        trace_span_name = f"{__name__}.GlobalPredictServicer.predict_model"
+        with self._handle_predict_exceptions(
+            model_id, request_name
+        ), self._tracer.start_as_current_span(
+            trace_span_name,
+            context=trace_context,
+        ) as trace_span:
 
-        with self._handle_predict_exceptions(model_id, request_name):
+            # Set trace attributes available before checking anything
+            trace_span.set_attribute("calling", trace_span_name)
+            trace_span.set_attribute("model_id", model_id)
+            trace_span.set_attribute("request_name", request_name)
+            trace_span.set_attribute("task", getattr(task, "__name__", str(task)))
+
             model = model or self._model_manager.retrieve_model(model_id)
             self._verify_model_task(model)
             if input_streaming is not None and output_streaming is not None:
@@ -289,6 +307,7 @@ class GlobalPredictServicer:
                     inference_func_name,
                     context_arg,
                 )
+                trace_span.set_attribute("inference_func_name", inference_func_name)
 
             # If a context arg was supplied then add the context
             if context_arg:
@@ -316,6 +335,7 @@ class GlobalPredictServicer:
             ).inc()
             if get_config().runtime.metering.enabled:
                 self.rpc_meter.update_metrics(str(type(model)))
+
             return response
 
     def stop_metering(self):
