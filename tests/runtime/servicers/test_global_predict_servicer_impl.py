@@ -556,8 +556,8 @@ def test_global_predict_tracing(
                 span_context_mock.__enter__.call_count == 2
 
                 # Validate some of the key attributes
-                span_mock.attrs.get("model_id") == sample_task_model_id
-                span_mock.attrs.get("task") == SampleTask
+                assert span_mock.attrs.get("model_id") == sample_task_model_id
+                assert span_mock.attrs.get("task") == SampleTask.__name__
 
                 # Make sure the context got decorated with the tracer
                 assert hasattr(context, trace._CONTEXT_TRACER_ATTR)
