@@ -41,7 +41,6 @@ import pytest
 from caikit.core import MODEL_MANAGER
 from caikit.interfaces.common.data_model import File
 from caikit.runtime import trace
-from caikit.runtime.names import REQUEST_ID_HEADER_KEY
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -534,8 +533,7 @@ def test_global_predict_tracing(
         with patch("caikit.runtime.trace.get_trace_context", get_trace_context):
             with make_sample_predict_servicer(sample_inference_service) as servicer:
                 predict_class = get_inference_request(SampleTask)
-                request_id = "my-request"
-                metadata = {REQUEST_ID_HEADER_KEY: request_id}
+                metadata = {}
                 context = Fixtures.build_context(sample_task_model_id, **metadata)
                 response = servicer.Predict(
                     predict_class(sample_input=HAPPY_PATH_INPUT_DM).to_proto(),

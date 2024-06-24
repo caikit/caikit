@@ -17,7 +17,6 @@ from importlib.metadata import version
 from typing import Any, Dict, Iterable, Optional, Set, Union
 import itertools
 import traceback
-import uuid
 
 # Third Party
 from google.protobuf.descriptor import FieldDescriptor
@@ -38,7 +37,7 @@ from caikit.interfaces.runtime.data_model import RuntimeServerContextType
 from caikit.runtime import trace
 from caikit.runtime.metrics.rpc_meter import RPCMeter
 from caikit.runtime.model_management.model_manager import ModelManager
-from caikit.runtime.names import MODEL_MESH_MODEL_ID_KEY, REQUEST_ID_HEADER_KEY
+from caikit.runtime.names import MODEL_MESH_MODEL_ID_KEY
 from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -207,15 +206,6 @@ class GlobalPredictServicer:
                         inference_signature,
                     )
 
-            # Get a unique ID from this request or make one up
-            if (
-                request_id := get_metadata(
-                    context, REQUEST_ID_HEADER_KEY, required=False
-                )
-            ) is None:
-                request_id = str(uuid.uuid4())
-                log.debug("Using internally generated request ID: %s", request_id)
-
             response = self.predict_model(
                 request_name,
                 model_id,
@@ -226,7 +216,6 @@ class GlobalPredictServicer:
                 context=context,
                 context_arg=inference_signature.context_arg,
                 model=model,
-                request_id=request_id,
                 **caikit_library_request,
             )
 
@@ -252,7 +241,6 @@ class GlobalPredictServicer:
         context: Optional[RuntimeServerContextType] = None,  # noqa: F821
         context_arg: Optional[str] = None,
         model: Optional[ModuleBase] = None,
-        request_id: Optional[str] = None,
         **kwargs,
     ) -> Union[DataBase, Iterable[DataBase]]:
         """Run a prediction against the given model using the raw arguments to
@@ -281,8 +269,6 @@ class GlobalPredictServicer:
                 should be passed
             model (Optional[ModuleBase]):
                 Pre-fetched model object
-            request_id (Optional[str]):
-                A unique request ID for this request for tracing
             **kwargs: Keyword arguments to pass to the model's run function
         Returns:
             response (Union[DataBase, Iterable[DataBase]]):
@@ -304,8 +290,6 @@ class GlobalPredictServicer:
             trace_span.set_attribute("model_id", model_id)
             trace_span.set_attribute("request_name", request_name)
             trace_span.set_attribute("task", getattr(task, "__name__", str(task)))
-            if request_id:
-                trace_span.set_attribute("request_id", request_id)
 
             model = model or self._model_manager.retrieve_model(model_id)
             self._verify_model_task(model)

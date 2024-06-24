@@ -287,9 +287,6 @@ MODEL_MANAGEMENT_SERVICE_SPEC = {
 # Invocation metadata key for the model ID, provided by Model Mesh
 MODEL_MESH_MODEL_ID_KEY = "mm-model-id"
 
-# Input request ID metadata/header key
-REQUEST_ID_HEADER_KEY = "request-id"
-
 ## HTTP Server
 
 # Endpoint to use for health checks

@@ -38,7 +38,6 @@ from caikit.core.data_model import TrainingStatus
 from caikit.core.model_management.multi_model_finder import MultiModelFinder
 from caikit.runtime import http_server
 from caikit.runtime.http_server.http_server import StreamEventTypes
-from caikit.runtime.names import REQUEST_ID_HEADER_KEY
 from caikit.runtime.server_base import ServerThreadPool
 from tests.conftest import get_mutable_config_copy, reset_globals, temp_config
 from tests.core.helpers import MockBackend
@@ -928,12 +927,7 @@ def test_inference_trace(sample_task_model_id, open_port):
                     "inputs": {"name": "world"},
                     "model_id": sample_task_model_id,
                 }
-                request_id = "my-request"
-                response = client.post(
-                    f"/api/v1/task/sample",
-                    json=json_input,
-                    headers={REQUEST_ID_HEADER_KEY: request_id},
-                )
+                response = client.post(f"/api/v1/task/sample", json=json_input)
                 json_response = response.json()
                 assert response.status_code == 200, json_response
                 assert json_response["greeting"] == "Hello world"
@@ -946,7 +940,7 @@ def test_inference_trace(sample_task_model_id, open_port):
                         "context"
                     )
                 )
-                assert span_context.get("request_id") == request_id
+                assert span_context.get("model_id") == sample_task_model_id
 
 
 ## Info Tests ##################################################################
