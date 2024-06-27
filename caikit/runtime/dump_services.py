@@ -58,7 +58,7 @@ def dump_grpc_services(
         consolidate (bool): Whether or not to consolidate the generated protos
             by package
     """
-    service_packages = _get_grpc_service_packages()
+    service_packages = _get_grpc_service_packages(write_modules_file)
     if not consolidate:
         log.info(
             "Dumping raw service and data model protos without package consolidation"
