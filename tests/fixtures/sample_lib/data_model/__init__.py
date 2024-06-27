@@ -6,4 +6,5 @@ from .sample import (
     SampleOutputType,
     SampleTask,
     SampleTrainingType,
+    SampleListInputType
 )

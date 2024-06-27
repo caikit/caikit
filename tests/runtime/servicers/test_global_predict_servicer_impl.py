@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, patch
 # Local
 from caikit.core.data_model import DataStream, ProducerId
 from caikit.runtime.service_factory import get_inference_request
-from sample_lib.data_model.sample import GeoSpatialTask
+from sample_lib.data_model.sample import BidiStreamingTask, GeoSpatialTask
 from sample_lib.modules import ContextTask, MultiTaskModule, SecondTask
 from sample_lib.modules.geospatial import GeoStreamingModule
 
@@ -44,7 +44,7 @@ from caikit.runtime import trace
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from sample_lib.data_model import SampleInputType, SampleOutputType
+from sample_lib.data_model import SampleInputType, SampleOutputType, SampleListInputType
 from sample_lib.data_model.sample import OtherOutputType, SampleTask
 from sample_lib.modules.sample_task import SampleModule
 from tests.conftest import get_mutable_config_copy, reset_globals, temp_config
@@ -202,6 +202,29 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs(
         count += 1
     assert count == 100
 
+@pytest.mark.parametrize("good_model_path", ["tests/fixtures/models/foo-bidi-streaming"])
+def test_global_predict_works_on_bidirectional_empty_streaming_rpcs(
+    sample_inference_service, sample_predict_servicer, sample_task_model_id
+):
+    """Test to check if bidirectional streaming works with empty input"""
+
+    predict_class = get_inference_request(
+        BidiStreamingTask, input_streaming=True, output_streaming=True
+    )
+
+    def req_iterator() -> Iterator[predict_class]:
+        yield predict_class("").to_proto()
+
+    response_stream = sample_predict_servicer.Predict(
+        req_iterator(),
+        Fixtures.build_context(sample_task_model_id),
+        caikit_rpc=sample_inference_service.caikit_rpcs[
+            "BidiStreamingSampleTaskPredict"
+        ],
+    )
+
+    for response in response_stream:
+        assert response == 'greeting: "Hello "\n'
 
 def test_global_predict_works_on_bidirectional_streaming_rpcs_with_multiple_streaming_parameters(
     sample_inference_service, sample_predict_servicer, sample_task_model_id
