@@ -403,7 +403,7 @@ def build_caikit_library_request_dict(
                 # Remove empty iterables since we cannot distinguish between
                 # unset and empty repeated fields
                 field_value = getattr(request, field.name)
-                # Note: str and bytes will also get evaluated as Iterable and so empty 
+                # Note: str and bytes will also get evaluated as Iterable and so empty
                 # strings would get considered as empty field. So we need to add
                 # explicit exclusion to avoid accidental conversion of "" to None
                 if (
