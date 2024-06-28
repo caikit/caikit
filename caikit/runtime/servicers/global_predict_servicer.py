@@ -191,7 +191,6 @@ class GlobalPredictServicer:
                     output_streaming=caikit_rpc.output_streaming,
                     task=caikit_rpc.task,
                 )
-
                 if not inference_signature:
                     raise CaikitRuntimeException(
                         StatusCode.INVALID_ARGUMENT,
@@ -467,7 +466,6 @@ class GlobalPredictServicer:
         # We need n+1 streams because the first stream is peeked in order to read all the
         # non-streaming parameters off of the first message
         num_streams = 1 + len(streaming_params)
-
         all_the_streams = itertools.tee(request_stream, num_streams)
 
         # Read the non-streaming parameters off of the first message in the stream
