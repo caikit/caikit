@@ -140,6 +140,8 @@ class CaikitRuntimeServerWrapper(grpc.Server):
             with alog.ContextLog(log.debug, "[Safe RPC]: %s", rpc.__name__):
                 try:
                     IN_PROGRESS_GAUGE.labels(rpc_name=rpc.__name__).inc()
+                    # Send an acknowledgement back for bi-directional streaming case
+                    context.send_initial_metadata((("acknowledgement", "ok"),))
                     if caikit_rpc:
                         # Pass through the CaikitRPCBase rpc description to the global handlers
                         return rpc(request, context, caikit_rpc=caikit_rpc)
