@@ -216,15 +216,15 @@ def test_global_predict_works_on_bidirectional_empty_streaming_rpcs(
         yield predict_class("").to_proto()
 
     response_stream = sample_predict_servicer.Predict(
-        req_iterator(),
+        list(req_iterator()),
         Fixtures.build_context(sample_task_model_id),
         caikit_rpc=sample_inference_service.caikit_rpcs[
-            "BidiStreamingSampleTaskPredict"
+            "BidiStreamingBidiStreamingTaskPredict"
         ],
     )
 
     for response in response_stream:
-        assert response == 'greeting: "Hello "\n'
+        assert response == SampleOutputType(greeting="Hello ").to_proto()
 
 def test_global_predict_works_on_bidirectional_streaming_rpcs_with_multiple_streaming_parameters(
     sample_inference_service, sample_predict_servicer, sample_task_model_id

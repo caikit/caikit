@@ -403,7 +403,7 @@ def build_caikit_library_request_dict(
                 # Remove empty iterables since we cannot distinguish between
                 # unset and empty repeated fields
                 field_value = getattr(request, field.name)
-                if isinstance(field_value, Iterable) and len(field_value) == 0:
+                if isinstance(field_value, Iterable) and len(field_value) == 0 and not isinstance(field_value, (str, bytes)):
                     unset_field_names.append(field.name)
         for unset_field_name in unset_field_names:
             if unset_field_name in kwargs_dict:

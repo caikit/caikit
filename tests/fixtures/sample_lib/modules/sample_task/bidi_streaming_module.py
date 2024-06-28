@@ -3,7 +3,7 @@ A bidi-streaming module for streaming things!
 
 """
 # Standard
-from typing import Iterable
+from typing import Iterable, Optional
 
 # Local
 from ...data_model.sample import SampleListInputType, SampleInputType, SampleOutputType, BidiStreamingTask
