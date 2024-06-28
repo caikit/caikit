@@ -165,9 +165,6 @@ class GlobalPredictServicer:
         model_id = get_metadata(context, MODEL_MESH_MODEL_ID_KEY)
         request_name = caikit_rpc.request.name
 
-        # # Send an acknowledgement back for bi-directional streaming case
-        # context.send_initial_metadata((("acknowledgement", "ok"),))
-
         with self._handle_predict_exceptions(model_id, request_name), alog.ContextLog(
             log.debug, "GlobalPredictServicer.Predict:%s", request_name
         ):
