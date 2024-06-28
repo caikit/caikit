@@ -37,7 +37,7 @@ class BidiStreamingModule(caikit.core.ModuleBase):
     ) -> DataStream[SampleOutputType]:
         """
         Args:
-            sample_inputs (sample_lib.data_model.SampleListInputType): the input
+            sample_inputs caikit.core.data_model.DataStream[str]: the input
 
         Returns:
             caikit.core.data_model.DataStream[sample_lib.data_model.SampleOutputType]: The output
