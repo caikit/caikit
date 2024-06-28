@@ -1,4 +1,5 @@
 # Local
+from .bidi_streaming_module import BidiStreamingModule
 from .composite_module import CompositeModule
 from .inner_module import InnerModule
 from .list_implementation import ListModule

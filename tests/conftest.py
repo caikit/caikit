@@ -119,6 +119,11 @@ def multi_task_model_path() -> str:
     return os.path.join(FIXTURES_DIR, "models", "multi")
 
 
+@pytest.fixture
+def bidi_streaming_model_path() -> str:
+    return os.path.join(FIXTURES_DIR, "models", "foo-bidi-streaming")
+
+
 # Sample data files for testing ###########################
 @pytest.fixture
 def data_stream_inputs() -> str:

@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, patch
 # Local
 from caikit.core.data_model import DataStream, ProducerId
 from caikit.runtime.service_factory import get_inference_request
-from sample_lib.data_model.sample import GeoSpatialTask
+from sample_lib.data_model.sample import BidiStreamingTask, GeoSpatialTask
 from sample_lib.modules import ContextTask, MultiTaskModule, SecondTask
 from sample_lib.modules.geospatial import GeoStreamingModule
 
@@ -201,6 +201,30 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs(
         assert response == HAPPY_PATH_RESPONSE
         count += 1
     assert count == 100
+
+
+def test_global_predict_works_on_bidirectional_empty_streaming_rpcs(
+    sample_inference_service, sample_predict_servicer, bidi_streaming_task_model_id
+):
+    """Test to check if bidirectional streaming works with empty input"""
+
+    predict_class = get_inference_request(
+        BidiStreamingTask, input_streaming=True, output_streaming=True
+    )
+
+    def req_iterator() -> Iterator[predict_class]:
+        yield predict_class("").to_proto()
+
+    response_stream = sample_predict_servicer.Predict(
+        req_iterator(),
+        Fixtures.build_context(bidi_streaming_task_model_id),
+        caikit_rpc=sample_inference_service.caikit_rpcs[
+            "BidiStreamingBidiStreamingTaskPredict"
+        ],
+    )
+
+    for response in response_stream:
+        assert response == SampleOutputType(greeting="Hello ").to_proto()
 
 
 def test_global_predict_works_on_bidirectional_streaming_rpcs_with_multiple_streaming_parameters(

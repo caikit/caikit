@@ -143,3 +143,11 @@ class GeoSpatialTask(TaskBase):
 )
 class StreamingTask(TaskBase):
     """A streaming version of a task"""
+
+
+@task(
+    streaming_parameters={"sample_inputs": Iterable[str]},
+    streaming_output_type=Iterable[SampleOutputType],
+)
+class BidiStreamingTask(TaskBase):
+    """A streaming version of a task"""

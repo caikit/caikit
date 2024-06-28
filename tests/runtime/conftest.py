@@ -351,6 +351,24 @@ def streaming_task_model_id(streaming_model_path) -> str:
 
 
 @pytest.fixture
+def bidi_streaming_task_model_id(bidi_streaming_model_path) -> str:
+    """Loaded model ID using model manager load model implementation"""
+    model_id = random_test_id()
+    model_manager = ModelManager.get_instance()
+    model_manager.load_model(
+        model_id,
+        local_model_path=bidi_streaming_model_path,
+        model_type=Fixtures.get_good_model_type(),
+    )
+    try:
+        yield model_id
+
+    # teardown
+    finally:
+        model_manager.unload_model(model_id)
+
+
+@pytest.fixture
 def other_task_model_id(other_good_model_path) -> str:
     """Loaded model ID using model manager load model implementation"""
     model_id = random_test_id()

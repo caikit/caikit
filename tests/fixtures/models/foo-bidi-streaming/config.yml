@@ -1,0 +1,12 @@
+module_class: sample_lib.modules.sample_task.bidi_streaming_module.BidiStreamingModule
+module_id: 00110203-0123-0456-0722-0a0b02dd0e0f
+created: "2023-03-14 11:24:58.720898"
+name: BidiStreamingModule
+sample_lib_version: 1.2.3
+saved: "2023-03-14 11:24:58.720929"
+tracking_id: 0676cc24-1823-4a31-a3ff-96a45b316699
+stream_size: 15
+train:
+    batch_size: 42
+    learning_rate: 0.0015
+version: 0.0.1
