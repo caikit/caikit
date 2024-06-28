@@ -6,7 +6,12 @@ A bidi-streaming module for streaming things!
 from typing import Iterable, Optional
 
 # Local
-from ...data_model.sample import SampleListInputType, SampleInputType, SampleOutputType, BidiStreamingTask
+from ...data_model.sample import (
+    BidiStreamingTask,
+    SampleInputType,
+    SampleListInputType,
+    SampleOutputType,
+)
 from caikit.core.data_model import DataStream
 from caikit.core.modules import ModuleLoader, ModuleSaver
 import caikit.core
@@ -27,7 +32,9 @@ class BidiStreamingModule(caikit.core.ModuleBase):
         return cls(config["stream_size"])
 
     @BidiStreamingTask.taskmethod(input_streaming=True, output_streaming=True)
-    def run_bidi_stream(self, sample_inputs: DataStream[str]) -> DataStream[SampleOutputType]:
+    def run_bidi_stream(
+        self, sample_inputs: DataStream[str]
+    ) -> DataStream[SampleOutputType]:
         """
         Args:
             sample_inputs (sample_lib.data_model.SampleListInputType): the input
@@ -38,8 +45,7 @@ class BidiStreamingModule(caikit.core.ModuleBase):
         """
         sample_input = sample_inputs.peek()
         list_ = [
-            SampleOutputType(f"Hello {sample_input}")
-            for x in range(self.stream_size)
+            SampleOutputType(f"Hello {sample_input}") for x in range(self.stream_size)
         ]
         stream = DataStream.from_iterable(list_)
         return stream

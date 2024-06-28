@@ -44,7 +44,7 @@ from caikit.runtime import trace
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.types.aborted_exception import AbortedException
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
-from sample_lib.data_model import SampleInputType, SampleOutputType, SampleListInputType
+from sample_lib.data_model import SampleInputType, SampleListInputType, SampleOutputType
 from sample_lib.data_model.sample import OtherOutputType, SampleTask
 from sample_lib.modules.sample_task import SampleModule
 from tests.conftest import get_mutable_config_copy, reset_globals, temp_config
@@ -202,7 +202,10 @@ def test_global_predict_works_on_bidirectional_streaming_rpcs(
         count += 1
     assert count == 100
 
-@pytest.mark.parametrize("good_model_path", ["tests/fixtures/models/foo-bidi-streaming"])
+
+@pytest.mark.parametrize(
+    "good_model_path", ["tests/fixtures/models/foo-bidi-streaming"]
+)
 def test_global_predict_works_on_bidirectional_empty_streaming_rpcs(
     sample_inference_service, sample_predict_servicer, sample_task_model_id
 ):
@@ -225,6 +228,7 @@ def test_global_predict_works_on_bidirectional_empty_streaming_rpcs(
 
     for response in response_stream:
         assert response == SampleOutputType(greeting="Hello ").to_proto()
+
 
 def test_global_predict_works_on_bidirectional_streaming_rpcs_with_multiple_streaming_parameters(
     sample_inference_service, sample_predict_servicer, sample_task_model_id

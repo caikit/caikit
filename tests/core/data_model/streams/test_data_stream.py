@@ -38,13 +38,13 @@ def validate_data_stream(data_stream, length, data_item_type, data_item_length=N
     # assert sum(1 for _ in data_stream) == length
 
     print(len(data_stream))
-    
+
     for data_item in data_stream:
         print(data_item)
         assert isinstance(data_item, data_item_type)
         if data_item_length is not None:
             assert len(data_item) == data_item_length
-    
+
     assert len(data_stream) == length
     assert sum(1 for _ in data_stream) == length
 
@@ -651,18 +651,18 @@ def test_dummy_stream(good_model_path, sample_csv_file):
     dummy_stream = dummy_model.stream(sample_input_stream)
     validate_data_stream(dummy_stream, stream_len, SampleOutputType)
 
+
 def test_dummy_empty_stream(good_model_path, sample_csv_file):
     """ """
     # dummy_model = caikit.core.load(good_model_path)
 
-    sample_input_stream = DataStream.from_iterable(
-        [SampleInputType(name="")] 
-    )
+    sample_input_stream = DataStream.from_iterable([SampleInputType(name="")])
     for data in sample_input_stream:
         print("reached here: ", data)
         assert data is None
     # dummy_stream = dummy_model.stream(sample_input_stream)
     # validate_data_stream(dummy_stream, stream_len, SampleOutputType)
+
 
 def test_only_one_stream_allowed(
     sample_csv_file_no_headers, good_model_path
