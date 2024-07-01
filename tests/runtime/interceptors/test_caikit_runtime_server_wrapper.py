@@ -23,7 +23,7 @@ from caikit.runtime.interceptors.caikit_runtime_server_wrapper import (
     CaikitRuntimeServerWrapper,
 )
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
-from sample_lib.data_model import SampleOutputType
+from sample_lib.data_model import SampleInputType, SampleOutputType
 
 
 def test_rpc_is_passed_to_predict_handlers(sample_inference_service, open_port):
@@ -55,3 +55,42 @@ def test_rpc_is_passed_to_predict_handlers(sample_inference_service, open_port):
         assert calls[0].name == "SampleTaskPredict"
     finally:
         wrapper.stop(0)
+
+
+# def test_rpc_is_passed_to_predict_handlers_bidi_header(
+#     sample_inference_service, open_port
+# ):
+#     calls = []
+
+#     def predict(request, context, caikit_rpc):
+#         calls.append(caikit_rpc)
+#         return SampleOutputType().to_proto()
+
+#     server = grpc.server(
+#         futures.ThreadPoolExecutor(max_workers=10),
+#     )
+#     wrapper = CaikitRuntimeServerWrapper(server, predict, sample_inference_service)
+#     sample_inference_service.registration_function(
+#         sample_inference_service.service, wrapper
+#     )
+#     wrapper.add_insecure_port(f"[::]:{open_port}")
+
+#     try:
+#         wrapper.start()
+
+#         client = sample_inference_service.stub_class(
+#             grpc.insecure_channel(f"localhost:{open_port}")
+#         )
+
+#         request_object = DataBase.get_class_for_name(
+#             "BidiStreamingBidiStreamingTaskRequest"
+#         )
+#         result = client.BidiStreamingBidiStreamingTaskPredict(
+#             [request_object(sample_inputs="foo").to_proto()], timeout=3
+#         )
+
+#         breakpoint()
+#         assert len(calls) == 1
+#         assert calls[0].name == "BidiStreamingBidiStreamingTaskPredict"
+#     finally:
+#         wrapper.stop(0)

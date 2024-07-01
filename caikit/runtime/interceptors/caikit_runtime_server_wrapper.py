@@ -146,7 +146,12 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                         # Enable sending acknowledgement for bi-directional streaming cases
                         # Note: we are not enabling it for every rpc, since it may create confusion
                         # on client side
-                        if caikit_rpc._input_streaming and caikit_rpc._output_streaming:
+                        if (
+                            hasattr(caikit_rpc, "_input_streaming")
+                            and hasattr(caikit_rpc, "_output_streaming")
+                            and caikit_rpc._input_streaming
+                            and caikit_rpc._output_streaming
+                        ):
                             # Send an acknowledgement in metadata
                             context.send_initial_metadata(((ACK_HEADER_STRING, "ok"),))
 
