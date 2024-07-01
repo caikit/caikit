@@ -25,6 +25,7 @@ import grpc
 import alog
 
 # Local
+from caikit.runtime.names import ACK_HEADER_STRING
 from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -141,6 +142,19 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                 try:
                     IN_PROGRESS_GAUGE.labels(rpc_name=rpc.__name__).inc()
                     if caikit_rpc:
+
+                        # Enable sending acknowledgement for bi-directional streaming cases
+                        # Note: we are not enabling it for every rpc, since it may create confusion
+                        # on client side
+                        if (
+                            hasattr(caikit_rpc, "_input_streaming")
+                            and hasattr(caikit_rpc, "_output_streaming")
+                            and caikit_rpc._input_streaming
+                            and caikit_rpc._output_streaming
+                        ):
+                            # Send an acknowledgement in metadata
+                            context.send_initial_metadata(((ACK_HEADER_STRING, "ok"),))
+
                         # Pass through the CaikitRPCBase rpc description to the global handlers
                         return rpc(request, context, caikit_rpc=caikit_rpc)
                     return rpc(request, context)
