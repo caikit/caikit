@@ -309,6 +309,9 @@ OPTIONAL_INPUTS_KEY = "parameters"
 MODEL_ID = "model_id"
 EXTRA_OPENAPI_KEY = "extra_openapi"
 
+# Key representing the acknowledgement header sent in case of bi-directional streaming
+ACK_HEADER_STRING = "acknowledgement"
+
 # Stream event type for HTTP output streaming
 class StreamEventTypes(Enum):
     MESSAGE = "message"

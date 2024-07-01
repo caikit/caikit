@@ -25,6 +25,7 @@ import grpc
 import alog
 
 # Local
+from caikit.runtime.names import ACK_HEADER_STRING
 from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -36,8 +37,6 @@ IN_PROGRESS_GAUGE = Gauge(
     "Total number of in-flight requests to caikit-runtime",
     ["rpc_name"],
 )
-
-ACK_STRING = "acknowledgement"
 
 
 class CaikitRuntimeServerWrapper(grpc.Server):
@@ -149,7 +148,7 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                         # on client side
                         if caikit_rpc._input_streaming and caikit_rpc._output_streaming:
                             # Send an acknowledgement in metadata
-                            context.send_initial_metadata(((ACK_STRING, "ok"),))
+                            context.send_initial_metadata(((ACK_HEADER_STRING, "ok"),))
 
                         # Pass through the CaikitRPCBase rpc description to the global handlers
                         return rpc(request, context, caikit_rpc=caikit_rpc)
