@@ -150,7 +150,7 @@ class CaikitRuntimeServerWrapper(grpc.Server):
                         if caikit_rpc._input_streaming and caikit_rpc._output_streaming:
                             # Send an acknowledgement in metadata
                             context.send_initial_metadata(((ACK_STRING, "ok"),))
-                            
+
                         # Pass through the CaikitRPCBase rpc description to the global handlers
                         return rpc(request, context, caikit_rpc=caikit_rpc)
                     return rpc(request, context)
