@@ -360,10 +360,12 @@ def bidi_streaming_task_model_id(bidi_streaming_model_path) -> str:
         local_model_path=bidi_streaming_model_path,
         model_type=Fixtures.get_good_model_type(),
     )
-    yield model_id
+    try:
+        yield model_id
 
     # teardown
-    model_manager.unload_model(model_id)
+    finally:
+        model_manager.unload_model(model_id)
 
 
 @pytest.fixture
