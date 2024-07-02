@@ -162,7 +162,7 @@ def dataobject_to_pydantic(dm_class: Type[DataBase]) -> Type[pydantic.BaseModel]
     # are set correctly. This explicitly sets the name of the pydantic class to the
     # name of the grpc buffer.
     pydantic_model = pydantic.create_model(
-        __model_name=dm_class.get_proto_class().DESCRIPTOR.full_name,
+        dm_class.get_proto_class().DESCRIPTOR.full_name,
         __config__=pydantic_model_config,
         **field_mapping,
     )
