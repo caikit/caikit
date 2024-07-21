@@ -35,6 +35,8 @@ from .model_management import (
     ModelFinderBase,
     ModelInitializerBase,
     ModelTrainerBase,
+    ModelFutureBase,
+    ModelBackgroundBase,
     model_finder_factory,
     model_initializer_factory,
     model_trainer_factory,
@@ -44,6 +46,7 @@ from .module_backends.base import BackendBase
 from .modules.base import ModuleBase
 from .registries import module_registry
 from .toolkit.factory import Factory, FactoryConstructible
+from .exceptions.caikit_core_exception import CaikitCoreException, CaikitCoreStatusCode
 from caikit.config import get_config
 
 log = alog.use_channel("MDLMNG")
@@ -103,7 +106,7 @@ class ModelManager:
         model_name: Optional[str] = None,
         wait: bool = False,
         **kwargs,
-    ) -> ModelTrainerBase.ModelFutureBase:
+    ) -> ModelFutureBase:
         """Train an instance of the given module with the given args and kwargs
         using the given trainer.
 
@@ -135,7 +138,7 @@ class ModelManager:
                 modules's train function
 
         Returns:
-            model_future (ModelTrainerBase.ModelFutureBase): The future handle
+            model_future (ModelFutureBase): The future handle
                 to the model which holds the status of the in-flight training.
         """
         # Resolve the module class
@@ -182,8 +185,9 @@ class ModelManager:
 
     def get_model_future(
         self,
-        training_id: str,
-    ) -> ModelTrainerBase.ModelFutureBase:
+        background_id: str,
+        future_type:str="training"
+    ) -> ModelFutureBase:
         """Get the future handle to an in-progress training
 
         Args:
@@ -194,14 +198,18 @@ class ModelManager:
             model_future (ModelTrainerBase.ModelFutureBase): The future handle
                 to the model which holds the status of the in-flight training.
         """
-        try:
-            trainer = self.get_trainer(ModelTrainerBase.get_trainer_name(training_id))
+        background_id = ModelBackgroundBase.get_background_name(background_id)
 
-        # Fall back to the default trainer to try to find this ID
-        except ValueError:
-            trainer = self.get_trainer("default")
+        if future_type == "training":
+            try:
+                trainer = self.get_trainer()
+            # Fall back to the default trainer to try to find this ID
+            except ValueError:
+                trainer = self.get_trainer("default")
 
-        return trainer.get_model_future(training_id)
+            return trainer.get_model_future(background_id)
+        else:
+            raise CaikitCoreException(CaikitCoreStatusCode.INVALID_ARGUMENT, f"Unknown future type {future_type}")
 
     def load(
         self,

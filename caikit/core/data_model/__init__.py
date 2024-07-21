@@ -29,4 +29,5 @@ from .enums import *
 from .producer import PACKAGE_COMMON, ProducerId
 from .streams import data_stream
 from .streams.data_stream import *
+from .background_status import BackgroundStatus
 from .training_status import TrainingStatus

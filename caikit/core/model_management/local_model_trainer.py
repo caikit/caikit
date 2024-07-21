@@ -35,6 +35,7 @@ from ..exceptions import error_handler
 from ..modules import ModuleBase
 from ..toolkit.logging import configure as configure_logging
 from .model_trainer_base import ModelTrainerBase, TrainingInfo
+from .model_background_base import ModelFutureBase
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
     CaikitCoreStatusCode,
@@ -62,7 +63,7 @@ class LocalModelTrainer(ModelTrainerBase):
 
     name = "LOCAL"
 
-    class LocalModelFuture(ModelTrainerBase.ModelFutureBase):
+    class LocalModelFuture(ModelFutureBase):
         """A local model future manages an execution thread for a single train
         operation
         """
@@ -81,8 +82,8 @@ class LocalModelTrainer(ModelTrainerBase):
             kwargs: Dict[str, Any],
         ):
             super().__init__(
-                trainer_name=trainer_name,
-                training_id=external_training_id or str(uuid.uuid4()),
+                future_name=trainer_name,
+                future_id=external_training_id or str(uuid.uuid4()),
                 save_with_id=save_with_id,
                 save_path=save_path,
                 model_name=model_name,
