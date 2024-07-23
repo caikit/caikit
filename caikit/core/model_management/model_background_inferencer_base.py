@@ -40,31 +40,23 @@ from ..toolkit.factory import FactoryConstructible
 from ..toolkit.reversible_hasher import ReversibleHasher
 
 
-class TrainingInfo(BackgroundInfo):
+class BackgroundInferenceInfo(BackgroundInfo):
     pass
 
-class ModelTrainerBase(ModelBackgroundBase):
+class ModelBackgroundInferenceBase(ModelBackgroundBase):
     __doc__ = __doc__
     ModelFutureBase = ModelFutureBase
 
+
     @abc.abstractmethod
-    def train(
+    def infer(
         self,
-        module_class: Type[ModuleBase],
+        model_name: Optional[str],
         *args,
         save_path: Optional[Union[str, S3Path]] = None,
         save_with_id: bool = False,
-        model_name: Optional[str] = None,
         **kwargs,
     ) -> ModelFutureBase:
         """Start training the given module and return a future to the trained
         model instance
         """
-
-
-    ## Shared Utilities ##
-
-    @classmethod
-    def get_trainer_name(cls, training_id: str) -> str:
-        """Un-hash the trainer's instance name from the given training id"""
-        return cls.get_background_name(training_id)

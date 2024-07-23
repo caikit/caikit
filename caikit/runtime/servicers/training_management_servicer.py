@@ -131,7 +131,7 @@ class TrainingManagementServicerImpl:
         Wrapped here so that we only catch errors directly in the `trainer.get_model_future` call
         """
         try:
-            return MODEL_MANAGER.get_model_future(training_id=training_id)
+            return MODEL_MANAGER.get_model_future(training_id)
         except CaikitCoreException as err:
             raise_caikit_runtime_exception(exception=err)
         except Exception as err:

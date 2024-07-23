@@ -114,7 +114,8 @@ class ModelFutureBase(abc.ABC):
 
     @abc.abstractmethod
     def load(self) -> ModuleBase:
-        """A model future must be loadable with no additional arguments"""
+        """A model future must be loadable with no additional arguments. Mainly
+        useful in train results"""
 
     ## Common Impl ##
 

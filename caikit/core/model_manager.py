@@ -78,6 +78,7 @@ class ModelManager:
         self._singleton_module_cache = {}
         self._trainers = {}
         self._finders = {}
+        self._background_inferencers = {}
         self._initializers = {}
         self.__singleton_lock = Lock()
 
@@ -93,6 +94,8 @@ class ModelManager:
             self.get_finder(finder)
         for initializer in mm_config.get("initializers", {}):
             self.get_initializer(initializer)
+        for background_inferencers in mm_config.get("background_inferencers", {}):
+            self.get_inferencer(background_inferencers)
 
     ## Public ##################################################################
 
@@ -185,29 +188,27 @@ class ModelManager:
 
     def get_model_future(
         self,
-        background_id: str,
-        future_type:str="training"
+        future_id: str=None,
+        future_type:str="training",
     ) -> ModelFutureBase:
         """Get the future handle to an in-progress training
 
         Args:
-            training_id (str): The ID string from the original training
+            future_id (str): The ID string from the original training
                 submission's ModelFuture
 
         Returns:
             model_future (ModelTrainerBase.ModelFutureBase): The future handle
                 to the model which holds the status of the in-flight training.
         """
-        background_id = ModelBackgroundBase.get_background_name(background_id)
-
         if future_type == "training":
             try:
-                trainer = self.get_trainer()
+                trainer = self.get_trainer(ModelTrainerBase.get_trainer_name(future_id))
             # Fall back to the default trainer to try to find this ID
             except ValueError:
                 trainer = self.get_trainer("default")
 
-            return trainer.get_model_future(background_id)
+            return trainer.get_model_future(future_id)
         else:
             raise CaikitCoreException(CaikitCoreStatusCode.INVALID_ARGUMENT, f"Unknown future type {future_type}")
 
@@ -422,6 +423,19 @@ class ModelManager:
 
     def get_initializer(
         self, initializer: Union[str, ModelInitializerBase]
+    ) -> ModelInitializerBase:
+        """Get the configured model initializer or the one passed by value"""
+        return self._get_component(
+            component=initializer,
+            component_dict=self._initializers,
+            component_factory=model_initializer_factory,
+            component_name="initializer",
+            component_cfg=get_config().model_management.initializers,
+            component_type=ModelInitializerBase,
+        )
+
+    def get_inferencer(
+        self, inferencer: Union[str, ModelBackgroundBase]
     ) -> ModelInitializerBase:
         """Get the configured model initializer or the one passed by value"""
         return self._get_component(
