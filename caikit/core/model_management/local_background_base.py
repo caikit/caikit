@@ -70,12 +70,13 @@ class LocalModelFuture(ModelFutureBase):
         module_class: Type[ModuleBase],
         save_path: Optional[Union[str, S3Path]],
         save_with_id: bool,
-        model_name: Optional[str],
         future_id: Optional[str],
-        use_subprocess: bool,
-        subprocess_start_method: str,
         args: Iterable[Any],
         kwargs: Dict[str, Any],
+        model_name: Optional[str] = None,
+        use_subprocess: bool = False,
+        extra_path_args: Optional[List[str]] = None,
+        subprocess_start_method: Optional[str] = "fork",
     ):
         super().__init__(
             future_name=future_name,
@@ -92,11 +93,19 @@ class LocalModelFuture(ModelFutureBase):
         # Set the submission time as right now. (Maybe this should be supplied instead?)
         self._submission_time = datetime.now()
 
+        self._save_path = self.__class__._save_path_with_id(
+            save_path,
+            save_with_id,
+            self._id,
+            model_name,
+            extra_path_args,
+        )
+
         # Set up the worker and start it
         self._use_subprocess = use_subprocess
         self._subprocess_start_method = subprocess_start_method
         if self._use_subprocess:
-            log.debug2("Running training %s as a SUBPROCESS", self.id)
+            log.debug2("Running background task %s as a SUBPROCESS", self.id)
             self._worker = DestroyableProcess(
                 start_method=self._subprocess_start_method,
                 target=self.run,
@@ -106,12 +115,12 @@ class LocalModelFuture(ModelFutureBase):
                     **kwargs,
                 },
             )
-            # If training in a subprocess without a save path, the model
-            # will be unreachable once trained!
+            # If background task in a subprocess without a save path, the result
+            # will be unreachable once completed!
             if not self.save_path:
                 log.warning(
                     "<COR28853922W>",
-                    "Training %s launched in a subprocess with no save path",
+                    "Background task %s launched in a subprocess with no save path",
                     self.id,
                 )
         else:
@@ -163,8 +172,10 @@ class LocalModelFuture(ModelFutureBase):
 
     def cancel(self):
         """Terminate the given training"""
-        log.debug("Canceling training %s", self.id)
-        with alog.ContextTimer(log.debug2, "Done canceling training %s in: ", self.id):
+        log.debug("Canceling background task %s", self.id)
+        with alog.ContextTimer(
+            log.debug2, "Done canceling background task %s in: ", self.id
+        ):
             log.debug3("Destroying worker in %s", self.id)
             self._worker.destroy()
 
@@ -191,6 +202,34 @@ class LocalModelFuture(ModelFutureBase):
             completion_time=self._completion_time,
             submission_time=self._submission_time,
         )
+
+    @classmethod
+    def _save_path_with_id(
+        cls,
+        save_path: Optional[str],
+        save_with_id: bool,
+        future_id: str,
+        model_name: Optional[str],
+        extra_path_args: Optional[List[str]],
+    ) -> Optional[str]:
+        """If asked to save_with_id, child classes should use this shared
+        utility to construct the final save path
+        """
+        if save_path is None:
+            return save_path
+
+        final_path_parts = [save_path]
+        # If told to save with the ID in the path, inject it before the
+        # model name.
+        if save_with_id and future_id not in save_path:
+            # (Don't inject training id if its already in the path)
+            final_path_parts.append(future_id)
+
+        if model_name and model_name not in save_path:
+            final_path_parts.append(model_name)
+
+        final_path_parts.extend(extra_path_args or [])
+        return os.path.join(*final_path_parts)
 
 
 class LocalModelBackground(ModelBackgroundBase):

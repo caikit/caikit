@@ -18,12 +18,12 @@ The LocalModelTrainer uses a local thread to launch and manage each training job
 # Standard
 from concurrent.futures.thread import _threads_queues
 from datetime import datetime, timedelta
-from typing import Any, Dict, Iterable, List, Optional, Type, Union
+from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any, Dict, Iterable, List, Optional, Type, Union
 import os
 import re
 import threading
-from pathlib import Path
 import uuid
 
 # First Party
@@ -32,12 +32,12 @@ import alog
 
 # Local
 from ...interfaces.common.data_model.stream_sources import S3Path
-from ..data_model import TrainingStatus, DataObjectBase
+from ..data_model import DataObjectBase, TrainingStatus
 from ..exceptions import error_handler
 from ..modules import ModuleBase
 from ..toolkit.logging import configure as configure_logging
-from .model_trainer_base import ModelTrainerBase, TrainingInfo
 from .local_background_base import LocalModelBackground, LocalModelFuture
+from .model_trainer_base import ModelTrainerBase, TrainingInfo
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
     CaikitCoreStatusCode,
@@ -72,7 +72,7 @@ class LocalModelInferFuture(LocalModelFuture):
         self._inference_func_name = inference_func_name
         self._result_type = None
         super().__init__(*args, **kwargs)
-    
+
     def run(self, *args, **kwargs):
         """Function that will run in the worker thread"""
         # If running in a spawned subprocess, reconfigure logging
@@ -83,33 +83,33 @@ class LocalModelInferFuture(LocalModelFuture):
             save_path_pathlib = Path(self.save_path)
             log.debug("Saving inference %s to %s", self.id, self.save_path)
             save_path_pathlib.parent.mkdir(exist_ok=True)
-            with alog.ContextTimer(log.debug, "Inference %s saved in: ", self.id) and save_path_pathlib.open("wb") as output_file:
+            with alog.ContextTimer(
+                log.debug, "Inference %s saved in: ", self.id
+            ) and save_path_pathlib.open("wb") as output_file:
                 output_file.write(infer_result.to_binary_buffer())
-            
-        self._result_type = infer_result.__class__                
+
+        self._result_type = infer_result.__class__
         self._completion_time = self._completion_time or datetime.now()
         log.debug2("Completion time for %s: %s", self.id, self._completion_time)
         return infer_result
 
     def load(self) -> ModuleBase:
-        """There is no new model for inference futures so return the existing object
-        """
+        """There is no new model for inference futures so return the existing object"""
         return self._model_instance
-    
+
     def result(self) -> DataObjectBase:
         result_path = Path(self.save_path)
         if not result_path.exists():
             return None
-        
+
         assert self._result_type
         return self._result_type.from_binary_buffer(result_path.read_bytes())
 
-            
-        
+
 class LocalModelInferencer(LocalModelBackground):
     __doc__ = __doc__
     LocalModelFuture = LocalModelInferFuture
-    
+
     name = "LOCAL"
 
     ## Interface ##
@@ -128,11 +128,11 @@ class LocalModelInferencer(LocalModelBackground):
             self._result_dir = self._tmp_dir.name
         self._subprocess_start_method = config.get("subprocess_start_method", "spawn")
         super().__init__(config, instance_name)
-    
+
     def __del__(self):
         if self._tmp_dir:
             self._tmp_dir.cleanup()
-            
+
     def infer(
         self,
         model_instance: ModuleBase,
@@ -160,23 +160,19 @@ class LocalModelInferencer(LocalModelBackground):
                 external_inference_id,
             )
 
-        # Update kwargs with required information
-        future_id = external_inference_id or str(uuid.uuid4())
-
         # Create the new future
         model_future = self.LocalModelFuture(
             future_name=self._instance_name,
             model_instance=model_instance,
             inference_func_name=inference_func_name,
             save_path=self._result_dir,
-            future_id=future_id,
+            future_id=external_inference_id,
             save_with_id=save_with_id,
-            use_subprocess=False, # don't use subprocess 
-            subprocess_start_method="",
+            use_subprocess=False,  # don't use subprocess
             module_class=model_instance.__class__,
-            model_name=model_instance.__class__.MODULE_NAME,
             args=args,
             kwargs=kwargs,
+            extra_path_args=["result.bin"],
         )
 
         # Lock the global futures dict and add it to the dict
@@ -192,7 +188,6 @@ class LocalModelInferencer(LocalModelBackground):
 
         # Return the future
         return model_future
-
 
     def get_model_future(self, inference_id: str) -> "LocalModelFuture":
         """Look up the model future for the given id"""

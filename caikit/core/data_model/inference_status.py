@@ -19,8 +19,8 @@ Common data model enum used for reporting training status
 from enum import Enum
 
 # Local
+from .background_status import BackgroundStatus
 from .dataobject import dataobject
 from .package import PACKAGE_COMMON
-from .background_status import BackgroundStatus
 
 BackgroundInferenceStatus = BackgroundStatus

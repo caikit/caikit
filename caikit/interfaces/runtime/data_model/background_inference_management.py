@@ -20,7 +20,7 @@ from typing import List
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
 
 # Local
-from ....core.data_model import DataObjectBase, BackgroundInferenceStatus, dataobject
+from ....core.data_model import BackgroundInferenceStatus, DataObjectBase, dataobject
 from .package import RUNTIME_PACKAGE
 
 

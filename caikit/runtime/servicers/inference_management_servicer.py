@@ -28,7 +28,10 @@ from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
     CaikitCoreStatusCode,
 )
-from caikit.interfaces.runtime.data_model import BackgroundInferenceStatusResponse, BackgroundInferenceInfoRequest
+from caikit.interfaces.runtime.data_model import (
+    BackgroundInferenceInfoRequest,
+    BackgroundInferenceStatusResponse,
+)
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.servicer_util import raise_caikit_runtime_exception
 
@@ -43,15 +46,21 @@ class InferenceManagementServicerImpl:
     ## gRPC Service Impl ##
     #######################
 
-    def GetBackgroundInferenceResult(self, request:BackgroundInferenceInfoRequest , context):  # pylint: disable=unused-argument
+    def GetBackgroundInferenceResult(
+        self, request: BackgroundInferenceInfoRequest, context
+    ):  # pylint: disable=unused-argument
         """Get the status of a training by ID"""
         return self.get_inference_result(request.inference_id).to_proto()
 
-    def GetBackgroundInferenceStatus(self, request: BackgroundInferenceInfoRequest, context):  # pylint: disable=unused-argument
+    def GetBackgroundInferenceStatus(
+        self, request: BackgroundInferenceInfoRequest, context
+    ):  # pylint: disable=unused-argument
         """Get the status of a training by ID"""
         return self.get_inference_status(request.inference_id).to_proto()
 
-    def CancelBackgroundInference(self, request: BackgroundInferenceInfoRequest, context):  # pylint: disable=unused-argument
+    def CancelBackgroundInference(
+        self, request: BackgroundInferenceInfoRequest, context
+    ):  # pylint: disable=unused-argument
         """Cancel a training future."""
         return self.cancel_inference(request.inference_id).to_proto()
 
@@ -73,8 +82,10 @@ class InferenceManagementServicerImpl:
                     inference_id,
                 ),
             ) from err
-            
-    def get_inference_status(self, inference_id: str) -> BackgroundInferenceStatusResponse:
+
+    def get_inference_status(
+        self, inference_id: str
+    ) -> BackgroundInferenceStatusResponse:
         """Get the status of a training by ID"""
         model_future = self._get_model_future(inference_id, operation="get_status")
         try:
@@ -105,15 +116,15 @@ class InferenceManagementServicerImpl:
         model_future = self._get_model_future(inference_id, operation="cancel")
         try:
             model_future.cancel()
-            training_info = model_future.get_info()
+            inference_info = model_future.get_info()
 
             reasons = []
-            if training_info.errors:
-                reasons = [str(error) for error in training_info.errors]
+            if inference_info.errors:
+                reasons = [str(error) for error in inference_info.errors]
 
             return BackgroundInferenceStatusResponse(
                 inference_id=model_future.id,
-                state=training_info.status,
+                state=inference_info.status,
                 reasons=reasons,
             )
         except CaikitCoreException as err:
@@ -150,7 +161,9 @@ class InferenceManagementServicerImpl:
         Wrapped here so that we only catch errors directly in the `trainer.get_model_future` call
         """
         try:
-            return MODEL_MANAGER.get_model_future(inference_id, future_type="background_inference")
+            return MODEL_MANAGER.get_model_future(
+                inference_id, future_type="background_inference"
+            )
         except CaikitCoreException as err:
             raise_caikit_runtime_exception(exception=err)
         except Exception as err:

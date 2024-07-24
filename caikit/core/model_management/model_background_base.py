@@ -74,12 +74,6 @@ class ModelFutureBase(abc.ABC):
             if use_reversible_hash
             else future_id
         )
-        self._save_path = self.__class__._save_path_with_id(
-            save_path,
-            save_with_id,
-            self._id,
-            model_name,
-        )
 
     @property
     def id(self) -> str:
@@ -117,34 +111,6 @@ class ModelFutureBase(abc.ABC):
     @abc.abstractmethod
     def result(self):
         """Support result() to match concurrent.futures.Future"""
-
-    ## Common Impl ##
-
-    @classmethod
-    def _save_path_with_id(
-        cls,
-        save_path: Optional[str],
-        save_with_id: bool,
-        future_id: str,
-        model_name: Optional[str],
-    ) -> Optional[str]:
-        """If asked to save_with_id, child classes should use this shared
-        utility to construct the final save path
-        """
-        if save_path is None:
-            return save_path
-
-        final_path_parts = [save_path]
-        # If told to save with the ID in the path, inject it before the
-        # model name.
-        if save_with_id and future_id not in save_path:
-            # (Don't inject training id if its already in the path)
-            final_path_parts.append(future_id)
-
-        if model_name and model_name not in save_path:
-            final_path_parts.append(model_name)
-
-        return os.path.join(*final_path_parts)
 
 
 class ModelBackgroundBase(FactoryConstructible):
