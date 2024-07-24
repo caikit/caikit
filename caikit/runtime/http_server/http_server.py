@@ -68,7 +68,14 @@ from caikit.core.exceptions import error_handler
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.core.toolkit.name_tools import snake_to_upper_camel
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
+from caikit.interfaces.runtime.data_model import (
+    BackgroundInferenceInfoRequest,
+    BackgroundInferenceJob,
+    BackgroundInferenceStatusResponse,
+)
 from caikit.runtime.names import (
+    BACKGROUND_INFERENCE_MANAGEMENT_ENDPOINT,
+    BACKGROUND_INFERENCE_RESULT_ENDPOINT,
     EXTRA_OPENAPI_KEY,
     HEALTH_ENDPOINT,
     MODEL_ID,
@@ -82,6 +89,7 @@ from caikit.runtime.names import (
     TRAINING_MANAGEMENT_ENDPOINT,
     TRAINING_MANAGEMENT_SERVICE_SPEC,
     StreamEventTypes,
+    get_http_background_route_name,
     get_http_route_name,
 )
 from caikit.runtime.server_base import RuntimeServerBase
@@ -93,6 +101,9 @@ from caikit.runtime.service_generation.rpcs import (
 )
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
+from caikit.runtime.servicers.inference_management_servicer import (
+    InferenceManagementServicerImpl,
+)
 from caikit.runtime.servicers.info_servicer import InfoServicer
 from caikit.runtime.servicers.model_management_servicer import (
     ModelManagementServicerImpl,
@@ -194,6 +205,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
         if self.enable_inference:
             self.model_management_servicer = ModelManagementServicerImpl()
             self._bind_model_management_routes()
+            self.background_inference_manager = InferenceManagementServicerImpl()
+            self._bind_inference_management_routes()
         if self.enable_training:
             self.training_management_servicer = TrainingManagementServicerImpl()
             self._bind_training_management_routes()
@@ -442,6 +455,66 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 )
             raise
 
+    def _get_background_inference_result(
+        self, inference_id: Annotated[str, Query]
+    ) -> Response:
+        """GET handler for fetching a training"""
+        try:
+            result = self.background_inference_manager.get_inference_result(
+                inference_id
+            )
+
+            if result.supports_file_operations:
+                return self._format_file_response(result)
+
+            return Response(content=result.to_json(), media_type="application/json")
+
+        except Exception as err:
+            if error_content := self._handle_exception(err):
+                return Response(
+                    content=json.dumps(error_content),
+                    status_code=error_content["code"],
+                )
+            raise
+
+    def _get_background_inference_status(
+        self, inference_id: Annotated[str, Query]
+    ) -> Response:
+        """GET handler for fetching a training"""
+        try:
+            result = self.background_inference_manager.get_inference_status(
+                inference_id
+            )
+            return Response(
+                content=result.to_json(),
+                media_type="application/json",
+            )
+        except Exception as err:
+            if error_content := self._handle_exception(err):
+                return Response(
+                    content=json.dumps(error_content),
+                    status_code=error_content["code"],
+                )
+            raise
+
+    def _cancel_background_inference(
+        self, inference_id: Annotated[str, Query]
+    ) -> Response:
+        """DELETE handler for undeploying a model"""
+        try:
+            result = self.background_inference_manager.cancel_inference(inference_id)
+            return Response(
+                content=result.to_json(),
+                media_type="application/json",
+            )
+        except Exception as err:
+            if error_content := self._handle_exception(err):
+                return Response(
+                    content=json.dumps(error_content),
+                    status_code=error_content["code"],
+                )
+            raise
+
     #####################
     ## Request Binding ##
     #####################
@@ -464,6 +537,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     self._add_unary_input_stream_output_handler(rpc)
                 else:
                     self._add_unary_input_unary_output_handler(rpc)
+                self._add_background_unary_input_unary_output_handler(rpc)
             elif isinstance(rpc, ModuleClassTrainRPC):
                 self._train_add_unary_input_unary_output_handler(rpc)
 
@@ -548,6 +622,46 @@ class RuntimeHTTPServer(RuntimeServerBase):
             ),
             response_class=Response,
         )(self._cancel_training)
+
+    def _bind_inference_management_routes(self):
+        """Bind the routes for get/cancel trainings"""
+
+        # Bind GET to fetch a training
+        # get_spec = TRAINING_MANAGEMENT_SERVICE_SPEC["service"]["rpcs"][0]
+        # assert get_spec["name"] == "GetTrainingStatus"
+        # get_dataobject_response = DataBase.get_class_for_name(get_spec["output_type"])
+        get_dataobject_response = BackgroundInferenceStatusResponse
+        get_pydantic_response = dataobject_to_pydantic(get_dataobject_response)
+
+        self.app.get(
+            BACKGROUND_INFERENCE_MANAGEMENT_ENDPOINT,
+            responses=self._get_response_openapi(
+                get_dataobject_response, get_pydantic_response
+            ),
+            response_class=Response,
+        )(self._get_background_inference_status)
+
+        # Bind DELETE to cancel a training
+        # cancel_spec = TRAINING_MANAGEMENT_SERVICE_SPEC["service"]["rpcs"][1]
+        # assert cancel_spec["name"] == "CancelTraining"
+        # cancel_dataobject_response = DataBase.get_class_for_name(
+        #    cancel_spec["output_type"]
+        # )
+        cancel_dataobject_response = BackgroundInferenceStatusResponse
+        cancel_pydantic_response = dataobject_to_pydantic(cancel_dataobject_response)
+
+        self.app.delete(
+            BACKGROUND_INFERENCE_MANAGEMENT_ENDPOINT,
+            responses=self._get_response_openapi(
+                cancel_dataobject_response, cancel_pydantic_response
+            ),
+            response_class=Response,
+        )(self._cancel_background_inference)
+
+        self.app.get(
+            BACKGROUND_INFERENCE_RESULT_ENDPOINT,
+            response_class=Response,
+        )(self._get_background_inference_result)
 
     def _train_add_unary_input_unary_output_handler(self, rpc: ModuleClassTrainRPC):
         """Add a unary:unary request handler for this RPC signature"""
@@ -668,6 +782,86 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
                 if response_data_object.supports_file_operations:
                     return self._format_file_response(result)
+
+                return Response(content=result.to_json(), media_type="application/json")
+
+            except Exception as err:
+                if error_content := self._handle_exception(err):
+                    return Response(
+                        content=json.dumps(error_content),
+                        status_code=error_content["code"],
+                    )
+                raise
+
+    def _add_background_unary_input_unary_output_handler(self, rpc: TaskPredictRPC):
+        """Add a unary:unary request handler for this RPC signature"""
+        pydantic_request = dataobject_to_pydantic(self._get_request_dataobject(rpc))
+        request_openapi = self._get_request_openapi(pydantic_request)
+        response_data_object = self._get_response_dataobject(rpc)
+        pydantic_response = dataobject_to_pydantic(response_data_object)
+
+        # Merge the DataObject openapi schema into the task schema
+        task_api_schema = merge_configs(
+            rpc.task.get_metadata().get(EXTRA_OPENAPI_KEY, {}), request_openapi
+        )
+
+        @self.app.post(
+            get_http_background_route_name(rpc.name),
+            responses=self._get_response_openapi(
+                BackgroundInferenceJob,
+                pydantic_model=dataobject_to_pydantic(BackgroundInferenceJob),
+            ),
+            include_in_schema=rpc.task.get_visibility(),
+            description=rpc.task.__doc__,
+            openapi_extra=task_api_schema,
+            response_class=Response,
+        )
+        # pylint: disable=unused-argument
+        async def _handler(
+            context: Request,
+        ) -> Response:
+            try:
+                request = await pydantic_from_request(pydantic_request, context)
+                request_params = self._get_request_params(rpc, request)
+
+                model_id = self._get_model_id(request)
+                log.debug4(
+                    "Sending background request %s to model id %s",
+                    request_params,
+                    model_id,
+                )
+
+                # After fetching the model_id from the request, notify module
+                # backends of the request context which may influence the lazy
+                # initialization logic.
+                self.global_predict_servicer.notify_backends_with_context(
+                    model_id, context
+                )
+                log.debug(
+                    "In background handler for %s for model %s", rpc.name, model_id
+                )
+                loop = asyncio.get_running_loop()
+
+                log.debug4(
+                    "Sending request %s to model id %s", request_params, model_id
+                )
+
+                # TODO: use `async_wrap_*`?
+                call = partial(
+                    self.global_predict_servicer.run_background_predict_model,
+                    model_id=model_id,
+                    request_name=rpc.request.name,
+                    input_streaming=False,
+                    output_streaming=False,
+                    task=rpc.task,
+                    aborter=None,
+                    context=context,
+                    **request_params,
+                )
+                result = await loop.run_in_executor(self.thread_pool, call)
+                log.debug4(
+                    "Job started from model %s with id", model_id, result.inference_id
+                )
 
                 return Response(content=result.to_json(), media_type="application/json")
 

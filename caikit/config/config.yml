@@ -39,6 +39,14 @@ model_management:
                 retention_duration: 1d
                 use_subprocess: false
                 subprocess_start_method: spawn
+    background_inferencers:
+        default:
+            type: LOCAL
+            # import_class can be used to import loaders from third-party packages
+            import_class: null
+            config:
+                # Format: XdXhXmXs
+                retention_duration: 1d
     finders:
         default:
             type: LOCAL
@@ -248,6 +256,12 @@ runtime:
     training:
         # The directory to save trained models in
         output_dir: training_output
+        save_with_id: true
+
+    # Background Inference configuration for server
+    background_inference:
+        # The directory to save trained models in
+        output_dir: inference_output
         save_with_id: true
 
     # Version details to retrieve

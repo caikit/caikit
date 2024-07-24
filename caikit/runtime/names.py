@@ -301,6 +301,8 @@ MODELS_INFO_ENDPOINT = f"{INFO_ENDPOINT}/models"
 MANAGEMENT_ENDPOINT = "/management"
 MODEL_MANAGEMENT_ENDPOINT = f"{MANAGEMENT_ENDPOINT}/models"
 TRAINING_MANAGEMENT_ENDPOINT = f"{MANAGEMENT_ENDPOINT}/trainings"
+BACKGROUND_INFERENCE_MANAGEMENT_ENDPOINT = f"{MANAGEMENT_ENDPOINT}/background_tasks"
+BACKGROUND_INFERENCE_RESULT_ENDPOINT = f"{MANAGEMENT_ENDPOINT}/background_tasks/results"
 
 # These keys are used to define the logical sections of the request and response
 # data structures.
@@ -345,6 +347,22 @@ def get_http_route_name(rpc_name: str) -> str:
             route = "/" + route
         return route
     raise NotImplementedError(f"Unknown RPC type for rpc name {rpc_name}")
+
+
+def get_http_background_route_name(rpc_name: str) -> str:
+    """Function to get the http route for a given rpc name
+
+    Args:
+        rpc_name (str): The name of the Caikit RPC
+
+    Raises:
+        NotImplementedError: If the RPC is not a Train or Predict RPC
+
+    Returns:
+        str: The name of the http route for RPC
+    """
+    traditional_route = get_http_route_name(rpc_name)
+    return f"{traditional_route}/background"
 
 
 ## GRPC Server

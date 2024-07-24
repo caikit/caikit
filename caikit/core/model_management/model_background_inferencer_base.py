@@ -32,31 +32,39 @@ import datetime
 import os
 
 # Local
-from .model_background_base import ModelBackgroundBase, ModelFutureBase, BackgroundInfo
 from ...interfaces.common.data_model.stream_sources import S3Path
 from ..data_model import TrainingStatus
 from ..modules import ModuleBase
 from ..toolkit.factory import FactoryConstructible
 from ..toolkit.reversible_hasher import ReversibleHasher
+from .model_background_base import BackgroundInfo, ModelBackgroundBase, ModelFutureBase
 
 
 class BackgroundInferenceInfo(BackgroundInfo):
     pass
 
+
 class ModelBackgroundInferenceBase(ModelBackgroundBase):
     __doc__ = __doc__
     ModelFutureBase = ModelFutureBase
 
-
     @abc.abstractmethod
     def infer(
         self,
-        model_name: Optional[str],
+        model_instance: ModuleBase,
         *args,
         save_path: Optional[Union[str, S3Path]] = None,
         save_with_id: bool = False,
+        external_inference_id: Optional[str] = None,
         **kwargs,
     ) -> ModelFutureBase:
         """Start training the given module and return a future to the trained
         model instance
         """
+
+    ## Shared Utilities ##
+
+    @classmethod
+    def get_inferencer_name(cls, inference_id: str) -> str:
+        """Un-hash the trainer's instance name from the given training id"""
+        return cls.get_background_name(inference_id)

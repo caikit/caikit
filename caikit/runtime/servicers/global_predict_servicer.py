@@ -33,7 +33,11 @@ from caikit.core import MODEL_MANAGER, ModuleBase, TaskBase
 from caikit.core.data_model import DataBase, DataStream
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.core.signature_parsing import CaikitMethodSignature
-from caikit.interfaces.runtime.data_model import RuntimeServerContextType
+from caikit.interfaces.runtime.data_model import (
+    BackgroundInferenceJob,
+    BackgroundInferenceStatusResponse,
+    RuntimeServerContextType,
+)
 from caikit.runtime import trace
 from caikit.runtime.metrics.rpc_meter import RPCMeter
 from caikit.runtime.model_management.model_manager import ModelManager
@@ -228,6 +232,162 @@ class GlobalPredictServicer:
                 else:
                     response_proto = build_proto_response(response)
             return response_proto
+
+    def BackgroundPredict(
+        self,
+        request: Union[ProtobufMessage, Iterable[ProtobufMessage]],
+        context: ServicerContext,
+        caikit_rpc: TaskPredictRPC,
+        *_,
+        **__,
+    ) -> BackgroundInferenceJob:
+        """Global predict RPC -- Mocks the invocation of a Caikit Library module.run()
+        method for a loaded Caikit Library model
+
+        Args:
+            request (ProtobufMessage):
+                A deserialized RPC request message
+            context (ServicerContext):
+                Context object (contains request metadata, etc)
+
+        Returns:
+            response (Union[ProtobufMessage, Iterable[ProtobufMessage]]):
+                A Caikit Library data model response object
+        """
+        # Make sure the request has a model before doing anything
+        model_id = get_metadata(context, MODEL_MESH_MODEL_ID_KEY)
+        request_name = caikit_rpc.request.name
+
+        with alog.ContextLog(
+            log.debug,
+            "GlobalBackgroundPredictServicer.BackgroundPredict:%s",
+            request_name,
+        ):
+            # Before retrieving the model, which can trigger lazy backend
+            # initialization, we notify all backends of the context for this
+            # request which may update how the discovery logic works.
+            self.notify_backends_with_context(model_id, context)
+
+            # Retrieve the model from the model manager
+            log.debug("<RUN52259029D>", "Retrieving model '%s'", model_id)
+            model = self._model_manager.retrieve_model(model_id)
+            model_class = type(model)
+
+            # Little hackity hack: Calling _verify_model_task upfront here as well to
+            # short-circuit requests where the model is _totally_ unsupported
+            self._verify_model_task(model)
+
+            # Unmarshall the request object into the required module run argument(s)
+            with PREDICT_FROM_PROTO_SUMMARY.labels(
+                grpc_request=request_name, model_id=model_id
+            ).time():
+                inference_signature = model_class.get_inference_signature(
+                    input_streaming=caikit_rpc.input_streaming,
+                    output_streaming=caikit_rpc.output_streaming,
+                    task=caikit_rpc.task,
+                )
+                if not inference_signature:
+                    raise CaikitRuntimeException(
+                        StatusCode.INVALID_ARGUMENT,
+                        f"Model class {model_class} does not support {caikit_rpc.name}",
+                    )
+                if caikit_rpc.input_streaming:
+                    caikit_library_request = self._build_caikit_library_request_stream(
+                        request, inference_signature, caikit_rpc
+                    )
+                else:
+                    caikit_library_request = build_caikit_library_request_dict(
+                        request,
+                        inference_signature,
+                    )
+
+            response = self.run_background_predict_model(
+                request_name,
+                model_id,
+                input_streaming=caikit_rpc.input_streaming,
+                output_streaming=caikit_rpc.output_streaming,
+                task=caikit_rpc.task,
+                aborter=RpcAborter(context) if self._interrupter else None,
+                context=context,
+                context_arg=inference_signature.context_arg,
+                model=model,
+                wait=False,
+                **caikit_library_request,
+            )
+
+            # Marshall the response to the necessary return type
+            with PREDICT_TO_PROTO_SUMMARY.labels(
+                grpc_request=request_name, model_id=model_id
+            ).time():
+                response_proto = build_proto_response(response)
+            return response_proto
+
+    def run_background_predict_model(
+        self,
+        request_name: str,
+        model_id: str,
+        inference_func_name: str = "run",
+        input_streaming: Optional[bool] = None,
+        output_streaming: Optional[bool] = None,
+        aborter: Optional[RpcAborter] = None,
+        task: Optional[TaskBase] = None,
+        context: Optional[RuntimeServerContextType] = None,  # noqa: F821
+        context_arg: Optional[str] = None,
+        model: Optional[ModuleBase] = None,
+        **kwargs,
+    ) -> BackgroundInferenceJob:
+        trace.set_tracer(context, self._tracer)
+        trace_context = trace.get_trace_context(context)
+        trace_span_name = (
+            f"{__name__}.GlobalPredictServicer.run_background_predict_model"
+        )
+        with self._handle_predict_exceptions(
+            model_id, request_name
+        ), self._tracer.start_as_current_span(
+            trace_span_name,
+            context=trace_context,
+        ) as trace_span:
+
+            # Set trace attributes available before checking anything
+            trace_span.set_attribute("calling", trace_span_name)
+            trace_span.set_attribute("model_id", model_id)
+            trace_span.set_attribute("request_name", request_name)
+            trace_span.set_attribute("task", getattr(task, "__name__", str(task)))
+
+            model = model or self._model_manager.retrieve_model(model_id)
+            self._verify_model_task(model)
+            if input_streaming is not None and output_streaming is not None:
+                inference_sig = model.get_inference_signature(
+                    output_streaming=output_streaming,
+                    input_streaming=input_streaming,
+                    task=task,
+                )
+                inference_func_name = inference_sig.method_name
+                context_arg = inference_sig.context_arg
+
+                log.debug2(
+                    "Deduced inference function name: %s and context_arg: %s",
+                    inference_func_name,
+                    context_arg,
+                )
+                trace_span.set_attribute("inference_func_name", inference_func_name)
+
+            # If a context arg was supplied then add the context
+            if context_arg:
+                kwargs[context_arg] = context
+
+            model_future = MODEL_MANAGER.background_infer(
+                model=model, inference_func_name=inference_func_name, **kwargs
+            )
+
+            # Update Prometheus metrics
+            PREDICT_RPC_COUNTER.labels(
+                grpc_request=request_name, code=StatusCode.OK.name, model_id=model_id
+            ).inc()
+            if get_config().runtime.metering.enabled:
+                self.rpc_meter.update_metrics(str(type(model)))
+
+            return BackgroundInferenceJob(inference_id=model_future.id)
 
     def predict_model(
         self,

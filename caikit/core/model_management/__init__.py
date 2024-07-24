@@ -21,11 +21,13 @@ For architectural details, see docs/adrs/020-model-management-abstractions.md
 
 # Local
 from .factories import (
+    model_background_inferencer_factory,
     model_finder_factory,
     model_initializer_factory,
     model_trainer_factory,
 )
+from .model_background_base import ModelBackgroundBase, ModelFutureBase
+from .model_background_inferencer_base import ModelBackgroundInferenceBase
 from .model_finder_base import ModelFinderBase
 from .model_initializer_base import ModelInitializerBase
 from .model_trainer_base import ModelTrainerBase, TrainingInfo
-from .model_background_base import ModelFutureBase, ModelBackgroundBase

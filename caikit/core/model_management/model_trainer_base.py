@@ -32,16 +32,17 @@ import datetime
 import os
 
 # Local
-from .model_background_base import ModelBackgroundBase, ModelFutureBase, BackgroundInfo
 from ...interfaces.common.data_model.stream_sources import S3Path
 from ..data_model import TrainingStatus
 from ..modules import ModuleBase
 from ..toolkit.factory import FactoryConstructible
 from ..toolkit.reversible_hasher import ReversibleHasher
+from .model_background_base import BackgroundInfo, ModelBackgroundBase, ModelFutureBase
 
 
 class TrainingInfo(BackgroundInfo):
     pass
+
 
 class ModelTrainerBase(ModelBackgroundBase):
     __doc__ = __doc__
@@ -60,7 +61,6 @@ class ModelTrainerBase(ModelBackgroundBase):
         """Start training the given module and return a future to the trained
         model instance
         """
-
 
     ## Shared Utilities ##
 

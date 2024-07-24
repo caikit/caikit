@@ -34,8 +34,8 @@ from ..data_model import TrainingStatus
 from ..exceptions import error_handler
 from ..modules import ModuleBase
 from ..toolkit.logging import configure as configure_logging
-from .model_trainer_base import ModelTrainerBase, TrainingInfo
 from .local_background_base import LocalModelBackground, LocalModelFuture
+from .model_trainer_base import ModelTrainerBase, TrainingInfo
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
     CaikitCoreStatusCode,
@@ -75,36 +75,41 @@ class LocalModelTrainFuture(LocalModelFuture):
         return trained_model
 
     def load(self) -> ModuleBase:
-            """Wait for the training to complete, then return the resulting
-            model or raise any errors that happened during training.
-            """
-            self.wait()
-            if self._use_subprocess:
-                log.debug2("Loading model saved in subprocess")
-                error.value_check(
-                    "<COR16745216E>",
-                    self.save_path,
-                    "Unable to load model from training {} "
-                    + "trained in subprocess without a save_path",
-                    self.id,
-                )
-                error.value_check(
-                    "<COR59551640E>",
-                    os.path.exists(self.save_path),
-                    "Unable to load model from training {} "
-                    + "saved in subprocess, path does not exist: {}",
-                    self.id,
-                    self.save_path,
-                )
-                result = caikit.load(self.save_path)
-            else:
-                result = self._worker.get_or_throw()
-            return result
-        
+        """Wait for the training to complete, then return the resulting
+        model or raise any errors that happened during training.
+        """
+        self.wait()
+        if self._use_subprocess:
+            log.debug2("Loading model saved in subprocess")
+            error.value_check(
+                "<COR16745216E>",
+                self.save_path,
+                "Unable to load model from training {} "
+                + "trained in subprocess without a save_path",
+                self.id,
+            )
+            error.value_check(
+                "<COR59551640E>",
+                os.path.exists(self.save_path),
+                "Unable to load model from training {} "
+                + "saved in subprocess, path does not exist: {}",
+                self.id,
+                self.save_path,
+            )
+            result = caikit.load(self.save_path)
+        else:
+            result = self._worker.get_or_throw()
+        return result
+
+    def result(self):
+        """Support result() to match concurrent.futures.Future"""
+        return self.load()
+
+
 class LocalModelTrainer(LocalModelBackground):
     __doc__ = __doc__
     LocalModelFuture = LocalModelTrainFuture
-    
+
     name = "LOCAL"
 
     ## Interface ##
@@ -113,6 +118,12 @@ class LocalModelTrainer(LocalModelBackground):
     _timedelta_expr = re.compile(
         r"^((?P<days>\d+?)d)?((?P<hours>\d+?)h)?((?P<minutes>\d+?)m)?((?P<seconds>\d*\.?\d*?)s)?$"
     )
+
+    def __init__(self, config: aconfig.Config, instance_name: str):
+        """Initialize with a shared dict of all trainings"""
+        self._use_subprocess = config.get("use_subprocess", False)
+        self._subprocess_start_method = config.get("subprocess_start_method", "spawn")
+        super().__init__(config, instance_name)
 
     def train(
         self,
@@ -192,31 +203,6 @@ class LocalModelTrainer(LocalModelBackground):
             status_code=CaikitCoreStatusCode.NOT_FOUND,
             message=f"Unknown training_id: {training_id}",
         )
-
-    ## Impl ##
-
-    def _purge_old_futures(self):
-        """If a retention duration is configured, purge any futures that are
-        older than the policy
-        """
-        if self._retention_duration is None:
-            return
-        now = datetime.now()
-        purged_ids = {
-            fid
-            for fid, future in self._futures.items()
-            if future.completion_time is not None
-            and future.completion_time + self._retention_duration < now
-        }
-        if not purged_ids:
-            log.debug3("No ids to purge")
-            return
-        log.debug3("Purging ids: %s", purged_ids)
-        with self._futures_lock:
-            for fid in purged_ids:
-                # NOTE: Concurrent purges could have already done this, so don't
-                #   error if the id is already gone
-                self._futures.pop(fid, None)
 
 
 class _SpawnProcessModelWrapper(ModuleBase):

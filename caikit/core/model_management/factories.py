@@ -18,6 +18,7 @@ Global factories for model management
 # Local
 from ..toolkit.factory import ImportableFactory
 from .local_model_finder import LocalModelFinder
+from .local_model_inferencer import LocalModelInferencer
 from .local_model_initializer import LocalModelInitializer
 from .local_model_trainer import LocalModelTrainer
 from .multi_model_finder import MultiModelFinder
@@ -27,6 +28,11 @@ from .multi_model_initializer import MultiModelInitializer
 # operation against a configured framework connection.
 model_trainer_factory = ImportableFactory("ModelTrainer")
 model_trainer_factory.register(LocalModelTrainer)
+
+# Model trainer factory. A trainer is responsible for performing the train
+# operation against a configured framework connection.
+model_background_inferencer_factory = ImportableFactory("ModelBackgroundInferencer")
+model_background_inferencer_factory.register(LocalModelInferencer)
 
 # Model finder factory. A finder is responsible for locating a well defined
 # configuration for a model based on a unique path or id.

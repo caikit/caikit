@@ -14,6 +14,12 @@
 
 # Local
 from . import training_management
+from .background_inference_management import (
+    BackgroundInferenceInfoRequest,
+    BackgroundInferenceJob,
+    BackgroundInferenceStatus,
+    BackgroundInferenceStatusResponse,
+)
 from .context import RuntimeServerContextType
 from .info import (
     ModelInfo,

@@ -39,15 +39,12 @@ from ..toolkit.factory import FactoryConstructible
 from ..toolkit.reversible_hasher import ReversibleHasher
 
 
-
 @dataclasses.dataclass
 class BackgroundInfo:
     status: BackgroundStatus
     errors: Optional[List[Exception]] = None
     submission_time: Optional[datetime.datetime] = None
     completion_time: Optional[datetime.datetime] = None
-
-
 
 
 class ModelFutureBase(abc.ABC):
@@ -117,11 +114,11 @@ class ModelFutureBase(abc.ABC):
         """A model future must be loadable with no additional arguments. Mainly
         useful in train results"""
 
-    ## Common Impl ##
-
-    def result(self) -> ModuleBase:
+    @abc.abstractmethod
+    def result(self):
         """Support result() to match concurrent.futures.Future"""
-        return self.load()
+
+    ## Common Impl ##
 
     @classmethod
     def _save_path_with_id(
@@ -148,14 +145,12 @@ class ModelFutureBase(abc.ABC):
             final_path_parts.append(model_name)
 
         return os.path.join(*final_path_parts)
-    
-    
-    
+
+
 class ModelBackgroundBase(FactoryConstructible):
     @abc.abstractmethod
     def get_model_future(self, training_id: str) -> "ModelFutureBase":
         """Look up the model future for the given id"""
-
 
     ## Shared Utilities ##
 

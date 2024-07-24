@@ -31,12 +31,15 @@ import alog
 # Local
 from ..interfaces.common.data_model.stream_sources import S3Path
 from .exceptions import error_handler
+from .exceptions.caikit_core_exception import CaikitCoreException, CaikitCoreStatusCode
 from .model_management import (
+    ModelBackgroundBase,
+    ModelBackgroundInferenceBase,
     ModelFinderBase,
+    ModelFutureBase,
     ModelInitializerBase,
     ModelTrainerBase,
-    ModelFutureBase,
-    ModelBackgroundBase,
+    model_background_inferencer_factory,
     model_finder_factory,
     model_initializer_factory,
     model_trainer_factory,
@@ -46,7 +49,6 @@ from .module_backends.base import BackendBase
 from .modules.base import ModuleBase
 from .registries import module_registry
 from .toolkit.factory import Factory, FactoryConstructible
-from .exceptions.caikit_core_exception import CaikitCoreException, CaikitCoreStatusCode
 from caikit.config import get_config
 
 log = alog.use_channel("MDLMNG")
@@ -186,10 +188,85 @@ class ModelManager:
         # Return a handle to the training
         return model_future
 
+    def background_infer(
+        self,
+        model: ModuleBase,
+        inference_func_name: str,
+        *args,
+        inferencer: Union[str, ModelBackgroundInferenceBase] = "default",
+        save_with_id: bool = True,
+        wait: bool = False,
+        **kwargs,
+    ) -> ModelFutureBase:
+        """Train an instance of the given module with the given args and kwargs
+        using the given trainer.
+
+        Each module's train function encapsulates the code needed to perform the
+        training locally. This top-level train function provides the wrapper
+        functionality to delegate the execution of the module's train function
+        to an alternate framework using a ModelTrainerBase. It also allows
+        training to be launched asynchronously.
+
+        Args:
+            module (Union[Type[ModuleBase], str]): The module class or guid for
+                the module to train
+            *args: Additional positional args to pass through to the module's
+                train function
+
+        Kwargs:
+            trainer (Union[str, ModelTrainerBase]): The trainer to use. If given
+                as a string, this is a key in the global config at
+                model_management.trainers.
+            save_path (Optional[Union[str, S3Path]]): Base path where the model should be
+                saved (may be relative to a remote trainer's filesystem, or link to S3
+                storage)
+            save_with_id (bool): Inject the training ID into the save path for
+                the output model
+            model_name (Optional[str]): Name of model that will be appended
+                to the end of the save_path
+            wait (bool): Wait for training to complete before returning
+            **kwargs: Additional keyword arguments to pass through to the
+                modules's train function
+
+        Returns:
+            model_future (ModelFutureBase): The future handle
+                to the model which holds the status of the in-flight training.
+        """
+        error.type_check("<COR05418775E>", ModuleBase, model=model)
+
+        # Get the trainer to use
+        inferencer: ModelBackgroundInferenceBase = self.get_inferencer(inferencer)
+
+        # Start the training
+        with alog.ContextTimer(log.debug, "Started background inference in: "):
+            model_future = inferencer.infer(
+                model,
+                inference_func_name,
+                *args,
+                save_with_id=save_with_id,
+                **kwargs,
+            )
+            log.debug(
+                "Started Background Inference %s with save path %s",
+                model_future.id,
+                model_future.save_path,
+            )
+
+        # If requested, wait for the future to complete
+        if wait:
+            log.debug("Waiting for inference %s to complete", model_future.id)
+            with alog.ContextTimer(
+                log.debug, "Finished training %s in: ", model_future.id
+            ):
+                model_future.wait()
+
+        # Return a handle to the training
+        return model_future
+
     def get_model_future(
         self,
-        future_id: str=None,
-        future_type:str="training",
+        future_id: str = None,
+        future_type: str = "training",
     ) -> ModelFutureBase:
         """Get the future handle to an in-progress training
 
@@ -209,8 +286,21 @@ class ModelManager:
                 trainer = self.get_trainer("default")
 
             return trainer.get_model_future(future_id)
+        if future_type == "background_inference":
+            try:
+                inferencer = self.get_inferencer(
+                    ModelBackgroundInferenceBase.get_inferencer_name(future_id)
+                )
+            # Fall back to the default trainer to try to find this ID
+            except ValueError:
+                inferencer = self.get_inferencer("default")
+
+            return inferencer.get_model_future(future_id)
         else:
-            raise CaikitCoreException(CaikitCoreStatusCode.INVALID_ARGUMENT, f"Unknown future type {future_type}")
+            raise CaikitCoreException(
+                CaikitCoreStatusCode.INVALID_ARGUMENT,
+                f"Unknown future type {future_type}",
+            )
 
     def load(
         self,
@@ -439,11 +529,11 @@ class ModelManager:
     ) -> ModelInitializerBase:
         """Get the configured model initializer or the one passed by value"""
         return self._get_component(
-            component=initializer,
-            component_dict=self._initializers,
-            component_factory=model_initializer_factory,
-            component_name="initializer",
-            component_cfg=get_config().model_management.initializers,
+            component=inferencer,
+            component_dict=self._background_inferencers,
+            component_factory=model_background_inferencer_factory,
+            component_name="background_inferencer",
+            component_cfg=get_config().model_management.background_inferencers,
             component_type=ModelInitializerBase,
         )
 
