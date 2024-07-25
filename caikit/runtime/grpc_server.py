@@ -31,6 +31,7 @@ import alog
 from caikit import get_config
 from caikit.runtime.interceptors.caikit_runtime_server_wrapper import (
     CaikitRuntimeServerWrapper,
+    CaikitRuntimeServerMultiFuncWrapper
 )
 from caikit.runtime.protobufs import (
     model_runtime_pb2,
@@ -40,6 +41,7 @@ from caikit.runtime.protobufs import (
 from caikit.runtime.server_base import RuntimeServerBase
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
+from caikit.runtime.servicers.prediction_job_management_servicer import PredictionJobManagementServicerImpl
 from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.servicers.info_servicer import InfoServicer
 from caikit.runtime.servicers.model_management_servicer import (
@@ -50,6 +52,7 @@ from caikit.runtime.servicers.model_train_servicer import ModelTrainServicerImpl
 from caikit.runtime.servicers.training_management_servicer import (
     TrainingManagementServicerImpl,
 )
+from caikit.runtime.service_generation.rpcs import TaskPredictionJobRPC, TaskPredictionStatusRPC, TaskPredictionCancelRPC, TaskPredictionResultRPC
 
 # Have pylint ignore broad exception catching in this file so that we can log all
 # unexpected errors using alog.
@@ -113,6 +116,25 @@ class RuntimeGRPCServer(RuntimeServerBase):
             self.model_management_service.registration_function(
                 ModelManagementServicerImpl(), self.server
             )
+            
+            self._prediction_job_management_servicer = PredictionJobManagementServicerImpl()
+            # Register the job inference endpoints 
+            self.server = CaikitRuntimeServerMultiFuncWrapper(
+                server=self.server,
+                rpc_callable_map={
+                    TaskPredictionJobRPC: self._global_predict_servicer.StartPredictionJob,
+                    TaskPredictionStatusRPC: self._prediction_job_management_servicer.GetPredictionJobStatus,
+                    TaskPredictionCancelRPC: self._prediction_job_management_servicer.CancelPredictionJob, 
+                    TaskPredictionResultRPC: self._prediction_job_management_servicer.GetPredictionJobResult,
+                },
+                intercepted_svc_package=self.inference_job_service,
+            )
+            service_names.append(self.inference_job_service.descriptor.full_name)
+            
+            self.inference_job_service.registration_function(
+                self.inference_job_service.service, self.server
+            )
+            
 
         # And intercept a training service, if we have one
         if self.enable_training and self.training_service:

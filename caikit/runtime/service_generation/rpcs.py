@@ -38,9 +38,18 @@ from caikit.core import ModuleBase, TaskBase
 from caikit.core.data_model.base import DataBase
 from caikit.core.data_model.dataobject import make_dataobject
 from caikit.core.signature_parsing import CaikitMethodSignature, CustomSignature
-from caikit.interfaces.runtime.data_model import ModelPointer, TrainingJob
+from caikit.interfaces.runtime.data_model import (
+    ModelPointer,
+    PredictionJob,
+    PredictionJobStatusResponse,
+    PredictionJobInfoRequest,
+    TrainingJob,
+)
 from caikit.runtime.names import (
+    get_task_predict_job_cancel_rpc_name,
+    get_task_predict_job_result_rpc_name,
     get_task_predict_job_rpc_name,
+    get_task_predict_job_status_rpc_name,
     get_task_predict_request_name,
     get_task_predict_rpc_name,
     get_train_parameter_name,
@@ -356,6 +365,151 @@ class TaskPredictRPC(CaikitRPCBase):
         return get_task_predict_rpc_name(
             self.task, self._input_streaming, self._output_streaming
         )
+
+
+class TaskPredictionJobRPC(TaskPredictRPC):
+    """Helper class to create a unique RPC for the aggregate set of Modules that
+    implement the same task
+    """
+
+    def __init__(
+        self,
+        task: Type[TaskBase],
+        method_signatures: List[CaikitMethodSignature],
+    ):
+        super().__init__(
+            task, method_signatures, input_streaming=False, output_streaming=False
+        )
+
+    return_type = PredictionJob
+
+    def _task_to_rpc_name(self) -> str:
+        """Helper function to convert the pair of library name and task name
+        to an RPC name
+
+        Example: self.task = (sample_lib, sample_task)
+
+        return: SampleTaskPredict
+        """
+        return get_task_predict_job_rpc_name(self.task)
+
+
+class TaskPredictionManagementRPC(CaikitRPCBase):
+    """Helper class to create a unique RPC for the aggregate set of Modules that
+    implement the same task
+    """
+
+    def __init__(
+        self,
+        task: Type[TaskBase],
+        method_signatures: List[CaikitMethodSignature],
+    ):
+        """Initialize a .proto generator with all modules of a given task to convert
+
+        Args:
+            task (Type[TaskBase]): Task type
+
+            method_signatures (List[CaikitMethodSignature]): The list of method
+                signatures from concrete modules implementing this task
+        """
+        self.task = task
+        self._method_signatures = method_signatures
+
+        params = {"job_id": str}
+
+        self._req = _RequestMessage(
+        self.input_type.get_proto_class().DESCRIPTOR.full_name,
+            params,
+            {},
+        )
+
+        # Create the rpc name based on the module type
+        self._name = self.get_rpc_name()
+    
+    @property
+    def request(self) -> "_RequestMessage":
+        return self._req
+
+    @property
+    def module_list(self) -> List[Type[ModuleBase]]:
+        """Returns the list of all caikit.core.modules that this RPC will be for. These should all
+        be of the same ai-problem, e.g. my_caikit_library.modules.classification
+        """
+        return [method.module for method in self._method_signatures]
+
+    @property
+    @abc.abstractmethod
+    def return_type() -> Type[DataBase]:
+        """"""
+        
+    @property
+    def input_type(self) -> Type[DataBase]:
+        return PredictionJobInfoRequest
+
+    def create_request_data_model(self, package_name: str) -> Type[DataBase]:
+        return self.return_type
+
+    def create_rpc_json(self, package_name: str) -> Dict:
+        """Return json snippet for the service definition of this RPC"""
+        rpc_json = {
+            "name": f"{self.name}",
+            "input_type": f"{self.request.name}",
+            "output_type": self.return_type.get_proto_class().DESCRIPTOR.full_name,
+        }
+        return rpc_json
+
+    @abc.abstractmethod
+    def get_rpc_name(self) -> str:
+        """Helper function to convert the pair of library name and task name
+        to an RPC name
+
+        Example: self.task = (sample_lib, sample_task)
+
+        return: SampleTaskPredict
+        """
+
+class TaskPredictionStatusRPC(TaskPredictionManagementRPC):
+    return_type = PredictionJobStatusResponse
+
+    def get_rpc_name(self) -> str:
+        """Helper function to convert the pair of library name and task name
+        to an RPC name
+
+        Example: self.task = (sample_lib, sample_task)
+
+        return: SampleTaskPredict
+        """
+        return get_task_predict_job_status_rpc_name(self.task)
+
+
+class TaskPredictionCancelRPC(TaskPredictionManagementRPC):
+    return_type = PredictionJobStatusResponse
+
+    def get_rpc_name(self) -> str:
+        """Helper function to convert the pair of library name and task name
+        to an RPC name
+
+        Example: self.task = (sample_lib, sample_task)
+
+        return: SampleTaskPredict
+        """
+        return get_task_predict_job_cancel_rpc_name(self.task)
+
+
+class TaskPredictionResultRPC(TaskPredictionManagementRPC):
+    @property
+    def return_type(self):
+        return self.task.get_output_type(output_streaming=False)
+
+    def get_rpc_name(self) -> str:
+        """Helper function to convert the pair of library name and task name
+        to an RPC name
+
+        Example: self.task = (sample_lib, sample_task)
+
+        return: SampleTaskPredict
+        """
+        return get_task_predict_job_result_rpc_name(self.task)
 
 
 class _RequestMessage:

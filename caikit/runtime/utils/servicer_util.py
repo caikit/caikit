@@ -231,16 +231,15 @@ def validate_data_model(
                     )
                     continue
 
-                field_message_type = input_proto_msg.fields_by_name[
-                    field.name
-                ].message_type
+                field_descriptor = input_proto_msg.fields_by_name[field.name]
                 if (
-                    field_message_type.full_name
+                    field_descriptor.message_type
+                    and field_descriptor.message_type.full_name
                     not in DataBase.PROTO_CONVERSION_SPECIAL_TYPES
                 ):
 
                     # ... or that we can get the field type name, e.g., RawDocument...
-                    field_type = field_message_type.name
+                    field_type = field_descriptor.message_type.full_name
 
                     # ...and ensuring that we can load a corresponding object from the Caikit* CDM
                     caikit_library_class = validate_caikit_library_class_exists(
@@ -252,6 +251,7 @@ def validate_data_model(
                     validate_caikit_library_class_method_exists(
                         caikit_library_class, "from_proto"
                     )
+
             else:
                 log.debug(
                     "<RUN51658879D>",

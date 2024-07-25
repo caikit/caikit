@@ -51,7 +51,9 @@ class PredictionJobManagementServicerImpl:
     #######################
 
     def GetPredictionJobResult(
-        self, request: PredictionJobInfoRequest, context
+        self, request: PredictionJobInfoRequest, context,
+        *_,
+        **__,
     ) -> Union[
         ProtobufMessage, Iterable[ProtobufMessage]
     ]:  # pylint: disable=unused-argument
@@ -59,13 +61,17 @@ class PredictionJobManagementServicerImpl:
         return self.get_job_result(request.job_id).to_proto()
 
     def GetPredictionJobStatus(
-        self, request: PredictionJobInfoRequest, context
+        self, request: PredictionJobInfoRequest, context,
+        *_,
+        **__,
     ):  # pylint: disable=unused-argument
         """Get the status of a training by ID"""
         return self.get_job_status(request.job_id).to_proto()
 
     def CancelPredictionJob(
-        self, request: PredictionJobInfoRequest, context
+        self, request: PredictionJobInfoRequest, context,
+        *_,
+        **__,
     ):  # pylint: disable=unused-argument
         """Cancel a training future."""
         return self.cancel_job(request.job_id).to_proto()

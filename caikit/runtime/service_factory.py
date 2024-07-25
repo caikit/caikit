@@ -178,6 +178,15 @@ class ServicePackageFactory:
             rpc_list = service_generation.create_inference_rpcs(
                 clean_modules, caikit_config
             )
+        elif service_type == cls.ServiceType.JOB_INFERENCE:
+            # Assert for backwards compatibility, if enabled, when service type is INFERENCE
+            ServicePackageFactory._check_backwards_compatibility(
+                caikit_config, clean_modules
+            )
+
+            rpc_list = service_generation.create_job_inference_rpcs(
+                clean_modules, caikit_config
+            )
         else:  # service_type == cls.ServiceType.TRAINING
             rpc_list = service_generation.create_training_rpcs(clean_modules)
 

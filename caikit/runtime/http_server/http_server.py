@@ -96,6 +96,7 @@ from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.rpcs import (
     CaikitRPCBase,
     ModuleClassTrainRPC,
+    TaskPredictionJobRPC,
     TaskPredictRPC,
 )
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
@@ -193,6 +194,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 self.inference_service, interrupter=self.interrupter
             )
             self._bind_routes(self.inference_service)
+            self.prediction_job_manager = PredictionJobManagementServicerImpl()
+            self._bind_routes(self.inference_job_service)
 
         # Set up training if enabled
         if self.enable_training:
@@ -204,7 +207,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
         if self.enable_inference:
             self.model_management_servicer = ModelManagementServicerImpl()
             self._bind_model_management_routes()
-            self.prediction_job_manager = PredictionJobManagementServicerImpl()
         if self.enable_training:
             self.training_management_servicer = TrainingManagementServicerImpl()
             self._bind_training_management_routes()
@@ -511,7 +513,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         """Bind all caikit rpcs as routes to the given app"""
         for rpc in service.caikit_rpcs.values():
             rpc_info = rpc.create_rpc_json("")
-            if isinstance(rpc, TaskPredictRPC):
+            if isinstance(rpc, TaskPredictRPC) and not isinstance(
+                rpc, TaskPredictionJobRPC
+            ):
                 if hasattr(rpc, "input_streaming") and rpc.input_streaming:
                     # Skipping the binding of this route since we don't have support
                     log.info(
@@ -525,8 +529,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     self._add_unary_input_stream_output_handler(rpc)
                 else:
                     self._add_unary_input_unary_output_handler(rpc)
-                    self._add_prediction_job_unary_input_handler(rpc)
-                    self._add_prediction_job_management_handler(rpc)
+            elif isinstance(
+                rpc, TaskPredictionJobRPC
+            ):
+                # Add endpoints for prediction jobs
+                self._add_prediction_job_unary_input_handler(rpc)
+                self._add_prediction_job_management_handler(rpc)
             elif isinstance(rpc, ModuleClassTrainRPC):
                 self._train_add_unary_input_unary_output_handler(rpc)
 

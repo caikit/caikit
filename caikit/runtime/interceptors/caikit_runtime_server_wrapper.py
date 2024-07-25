@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Standard
-from typing import Callable, Optional
+from typing import Callable, Optional, Dict
 import traceback
 
 # Third Party
@@ -379,3 +379,42 @@ class CaikitRuntimeServerWrapper(grpc.Server):
         if handler.stream_unary:
             return handler.stream_unary
         return handler.stream_stream
+
+
+class CaikitRuntimeServerMultiFuncWrapper(CaikitRuntimeServerWrapper):
+    """
+    """
+
+    def __init__(self, server, rpc_callable_map: Dict[CaikitRPCBase, Callable], intercepted_svc_package: ServicePackage):
+        super().__init__(server, None, intercepted_svc_package)
+        self._rpc_callable_map = rpc_callable_map
+
+    
+    def _make_new_handler(
+        self,
+        original_rpc_handler: RpcMethodHandler,
+        caikit_rpc: Optional[CaikitRPCBase] = None,
+    ):
+        if caikit_rpc:
+            if type(caikit_rpc) not in self._rpc_callable_map:
+                raise ValueError(f"Unknown rpc type {type(caikit_rpc)} passed to MultiFuncWrapper")
+            
+            rpc_func = self._rpc_callable_map[type(caikit_rpc)]
+            behavior = self.safe_rpc_wrapper(rpc_func, caikit_rpc)
+        else:
+            behavior = self.safe_rpc_wrapper(self._get_handler_fn(original_rpc_handler))
+
+        if original_rpc_handler.unary_unary:
+            handler_constructor = grpc.unary_unary_rpc_method_handler
+        elif original_rpc_handler.unary_stream:
+            handler_constructor = grpc.unary_stream_rpc_method_handler
+        elif original_rpc_handler.stream_unary:
+            handler_constructor = grpc.stream_unary_rpc_method_handler
+        else:
+            handler_constructor = grpc.stream_stream_rpc_method_handler
+
+        return handler_constructor(
+            behavior=behavior,
+            request_deserializer=original_rpc_handler.request_deserializer,
+            response_serializer=original_rpc_handler.response_serializer,
+        )

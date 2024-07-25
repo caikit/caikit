@@ -65,6 +65,7 @@ class ServiceType(Enum):
     TRAINING_MANAGEMENT = 3
     INFO = 4
     MODEL_MANAGEMENT = 5
+    JOB_INFERENCE = 6 # Inference service for background
 
 
 ############################ Service Name Generation ###########################
@@ -127,6 +128,8 @@ def get_service_name(service_type: ServiceType) -> str:
     """
     if service_type == ServiceType.INFERENCE:
         return f"{get_ai_domain()}Service"
+    if service_type == ServiceType.JOB_INFERENCE:
+        return f"{get_ai_domain()}JobService"
     elif service_type == ServiceType.TRAINING:
         return f"{get_ai_domain()}TrainingService"
     elif service_type == ServiceType.TRAINING_MANAGEMENT:
@@ -198,6 +201,71 @@ def get_task_predict_job_rpc_name(
         else task_or_module_class
     )
     return snake_to_upper_camel(f"{task_class.__name__}_StartPredictionJob")
+
+
+def get_task_predict_job_status_rpc_name(
+    task_or_module_class: Type[Union[ModuleBase, TaskBase]],
+) -> str:
+    """Helper function to get the name of a task's RPC"""
+    task_class = (
+        next(iter(task_or_module_class.tasks))
+        if issubclass(task_or_module_class, ModuleBase)
+        else task_or_module_class
+    )
+    return snake_to_upper_camel(f"{task_class.__name__}_PredictionJobStatus")
+
+
+def get_task_predict_job_cancel_rpc_name(
+    task_or_module_class: Type[Union[ModuleBase, TaskBase]],
+) -> str:
+    """Helper function to get the name of a task's RPC"""
+    task_class = (
+        next(iter(task_or_module_class.tasks))
+        if issubclass(task_or_module_class, ModuleBase)
+        else task_or_module_class
+    )
+    return snake_to_upper_camel(f"{task_class.__name__}_CancelPredictionJob")
+
+
+def get_task_predict_job_result_rpc_name(
+    task_or_module_class: Type[Union[ModuleBase, TaskBase]],
+) -> str:
+    """Helper function to get the name of a task's RPC"""
+    task_class = (
+        next(iter(task_or_module_class.tasks))
+        if issubclass(task_or_module_class, ModuleBase)
+        else task_or_module_class
+    )
+    return snake_to_upper_camel(f"{task_class.__name__}_GetPredictionJobResult")
+
+
+def get_train_rpc_name(module_class: Type[ModuleBase]) -> str:
+    """Helper function to convert from the name of a module to the name of the
+    request RPC function
+    """
+
+    # 🌶️🌶️🌶️ The naming scheme for training RPCs probably needs to change.
+    # This uses the first task from the `tasks` kwarg in the `@caikit.module` decorator.
+    # This is both:
+    # - Flaky, since re-ordering that list would be perfectly reasonable and valid to do except
+    #   for the side effect of breaking the training service api
+    # - Not very intuitive, since a module supporting multiple tasks will have a training
+    #   endpoint that lists only one of them
+    rpc_name = snake_to_upper_camel(
+        f"{next(iter(module_class.tasks)).__name__}_{module_class.__name__}_Train"
+    )
+
+    if len(module_class.tasks) > 1:
+        log.warning(
+            "<RUN35134050W>",
+            "Multiple tasks detected for training rpc. "
+            "Module: [%s], Tasks: [%s], RPC name: %s ",
+            module_class,
+            module_class.tasks,
+            rpc_name,
+        )
+
+    return rpc_name
 
 
 ##  Service DataModel Name Descriptors
@@ -345,6 +413,15 @@ def get_http_route_name(rpc_name: str) -> str:
     if rpc_name.endswith("Predict"):
         task_name = camel_to_snake_case(
             re.sub("Task$", "", re.sub("Predict$", "", rpc_name)),
+            kebab_case=True,
+        )
+        route = "/".join([get_config().runtime.http.route_prefix, "task", task_name])
+        if route[0] != "/":
+            route = "/" + route
+        return route
+    if rpc_name.endswith("StartPredictionJob"):
+        task_name = camel_to_snake_case(
+            re.sub("Task$", "", re.sub("StartPredictionJob$", "", rpc_name)),
             kebab_case=True,
         )
         route = "/".join([get_config().runtime.http.route_prefix, "task", task_name])

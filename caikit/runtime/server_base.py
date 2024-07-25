@@ -92,6 +92,13 @@ class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attribute
             if self.enable_inference
             else None
         )
+        self.inference_job_service: Optional[ServicePackage] = (
+            ServicePackageFactory.get_service_package(
+                ServicePackageFactory.ServiceType.JOB_INFERENCE,
+            )
+            if self.enable_inference
+            else None
+        )
 
         # But maybe not always a training service
         try:
