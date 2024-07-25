@@ -14,12 +14,6 @@
 
 # Local
 from . import training_management
-from .background_inference_management import (
-    BackgroundInferenceInfoRequest,
-    BackgroundInferenceJob,
-    BackgroundInferenceStatus,
-    BackgroundInferenceStatusResponse,
-)
 from .context import RuntimeServerContextType
 from .info import (
     ModelInfo,
@@ -29,6 +23,12 @@ from .info import (
     RuntimeInfoResponse,
 )
 from .model_management import DeployModelRequest, UndeployModelRequest
+from .prediction_job_management import (
+    PredictionJob,
+    PredictionJobInfoRequest,
+    PredictionJobStatusResponse,
+    PredictJobStatus,
+)
 from .training_management import (
     ModelPointer,
     TrainingInfoRequest,

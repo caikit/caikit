@@ -20,24 +20,24 @@ from typing import List
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
 
 # Local
-from ....core.data_model import BackgroundInferenceStatus, DataObjectBase, dataobject
+from ....core.data_model import DataObjectBase, PredictJobStatus, dataobject
 from .package import RUNTIME_PACKAGE
 
 
 @dataobject(RUNTIME_PACKAGE)
-class BackgroundInferenceInfoRequest(DataObjectBase):
-    inference_id: str
+class PredictionJobInfoRequest(DataObjectBase):
+    job_id: str
 
 
 @dataobject(RUNTIME_PACKAGE)
-class BackgroundInferenceJob(DataObjectBase):
-    inference_id: str
+class PredictionJob(DataObjectBase):
+    job_id: str
 
 
 @dataobject(RUNTIME_PACKAGE)
-class BackgroundInferenceStatusResponse(DataObjectBase):
-    inference_id: Annotated[str, FieldNumber(1)]
-    state: Annotated[BackgroundInferenceStatus, FieldNumber(2)]
+class PredictionJobStatusResponse(DataObjectBase):
+    job_id: Annotated[str, FieldNumber(1)]
+    state: Annotated[PredictJobStatus, FieldNumber(2)]
     submission_timestamp: Annotated[datetime, FieldNumber(3)]
     completion_timestamp: Annotated[datetime, FieldNumber(4)]
     reasons: Annotated[List[str], FieldNumber(5)]

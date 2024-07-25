@@ -37,24 +37,22 @@ from ..data_model import TrainingStatus
 from ..modules import ModuleBase
 from ..toolkit.factory import FactoryConstructible
 from ..toolkit.reversible_hasher import ReversibleHasher
-from .model_background_base import BackgroundInfo, ModelBackgroundBase, ModelFutureBase
+from .job_base import JobBase, JobFutureBase, JobInfo
 
 
-class BackgroundInferenceInfo(BackgroundInfo):
+class JobPredictorInfo(JobInfo):
     pass
 
 
-class ModelBackgroundInferenceBase(ModelBackgroundBase):
+class JobPredictorBase(JobBase):
     __doc__ = __doc__
-    ModelFutureBase = ModelFutureBase
+    ModelFutureBase = JobFutureBase
 
     @abc.abstractmethod
-    def infer(
+    def predict(
         self,
         model_instance: ModuleBase,
         *args,
-        save_path: Optional[Union[str, S3Path]] = None,
-        save_with_id: bool = False,
         external_inference_id: Optional[str] = None,
         **kwargs,
     ) -> ModelFutureBase:
@@ -65,6 +63,6 @@ class ModelBackgroundInferenceBase(ModelBackgroundBase):
     ## Shared Utilities ##
 
     @classmethod
-    def get_inferencer_name(cls, inference_id: str) -> str:
+    def get_predictor_name(cls, predict_id: str) -> str:
         """Un-hash the trainer's instance name from the given training id"""
-        return cls.get_background_name(inference_id)
+        return cls.get_job_name(predict_id)

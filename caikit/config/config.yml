@@ -39,7 +39,7 @@ model_management:
                 retention_duration: 1d
                 use_subprocess: false
                 subprocess_start_method: spawn
-    background_inferencers:
+    job_predictors:
         default:
             type: LOCAL
             # import_class can be used to import loaders from third-party packages

@@ -34,8 +34,8 @@ from ..data_model import TrainingStatus
 from ..exceptions import error_handler
 from ..modules import ModuleBase
 from ..toolkit.logging import configure as configure_logging
-from .local_background_base import LocalModelBackground, LocalModelFuture
-from .model_trainer_base import ModelTrainerBase, TrainingInfo
+from .local_job_base import LocalJobBase, LocalJobFuture
+from .model_trainer_base import ModelTrainerBase, ModelTrainerFutureBase, TrainingInfo
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
     CaikitCoreStatusCode,
@@ -58,56 +58,56 @@ if hasattr(os, "register_at_fork"):
     os.register_at_fork(after_in_child=_threads_queues.clear)
 
 
-class LocalModelTrainFuture(LocalModelFuture):
-    def run(self, *args, **kwargs):
-        """Function that will run in the worker thread"""
-        # If running in a spawned subprocess, reconfigure logging
-        if self._use_subprocess and self._subprocess_start_method != "fork":
-            configure_logging()
-        with alog.ContextTimer(log.debug, "Training %s finished in: ", self.id):
-            trained_model = self._module_class.train(*args, **kwargs)
-        if self.save_path is not None:
-            log.debug("Saving training %s to %s", self.id, self.save_path)
-            with alog.ContextTimer(log.debug, "Training %s saved in: ", self.id):
-                trained_model.save(self.save_path)
-        self._completion_time = self._completion_time or datetime.now()
-        log.debug2("Completion time for %s: %s", self.id, self._completion_time)
-        return trained_model
-
-    def load(self) -> ModuleBase:
-        """Wait for the training to complete, then return the resulting
-        model or raise any errors that happened during training.
-        """
-        self.wait()
-        if self._use_subprocess:
-            log.debug2("Loading model saved in subprocess")
-            error.value_check(
-                "<COR16745216E>",
-                self.save_path,
-                "Unable to load model from training {} "
-                + "trained in subprocess without a save_path",
-                self.id,
-            )
-            error.value_check(
-                "<COR59551640E>",
-                os.path.exists(self.save_path),
-                "Unable to load model from training {} "
-                + "saved in subprocess, path does not exist: {}",
-                self.id,
-                self.save_path,
-            )
-            result = caikit.load(self.save_path)
-        else:
-            result = self._worker.get_or_throw()
-        return result
-
-    def result(self):
-        """Support result() to match concurrent.futures.Future"""
-        return self.load()
-
-
-class LocalModelTrainer(LocalModelBackground):
+class LocalModelTrainer(LocalJobBase, ModelTrainerBase):
     __doc__ = __doc__
+
+    class LocalModelTrainFuture(LocalJobFuture, ModelTrainerFutureBase):
+        def run(self, *args, **kwargs):
+            """Function that will run in the worker thread"""
+            # If running in a spawned subprocess, reconfigure logging
+            if self._use_subprocess and self._subprocess_start_method != "fork":
+                configure_logging()
+            with alog.ContextTimer(log.debug, "Training %s finished in: ", self.id):
+                trained_model = self._module_class.train(*args, **kwargs)
+            if self.save_path is not None:
+                log.debug("Saving training %s to %s", self.id, self.save_path)
+                with alog.ContextTimer(log.debug, "Training %s saved in: ", self.id):
+                    trained_model.save(self.save_path)
+            self._completion_time = self._completion_time or datetime.now()
+            log.debug2("Completion time for %s: %s", self.id, self._completion_time)
+            return trained_model
+
+        def load(self) -> ModuleBase:
+            """Wait for the training to complete, then return the resulting
+            model or raise any errors that happened during training.
+            """
+            self.wait()
+            if self._use_subprocess:
+                log.debug2("Loading model saved in subprocess")
+                error.value_check(
+                    "<COR16745216E>",
+                    self.save_path,
+                    "Unable to load model from training {} "
+                    + "trained in subprocess without a save_path",
+                    self.id,
+                )
+                error.value_check(
+                    "<COR59551640E>",
+                    os.path.exists(self.save_path),
+                    "Unable to load model from training {} "
+                    + "saved in subprocess, path does not exist: {}",
+                    self.id,
+                    self.save_path,
+                )
+                result = caikit.load(self.save_path)
+            else:
+                result = self._worker.get_or_throw()
+            return result
+
+        def result(self):
+            """Support result() to match concurrent.futures.Future"""
+            return self.load()
+
     LocalModelFuture = LocalModelTrainFuture
 
     name = "LOCAL"

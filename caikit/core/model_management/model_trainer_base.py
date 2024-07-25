@@ -25,7 +25,7 @@ model_management:
                 <config option>: <value>
 """
 # Standard
-from typing import List, Optional, Type, Union
+from typing import Any, Dict, Iterable, List, Optional, Type, Union
 import abc
 import dataclasses
 import datetime
@@ -37,16 +37,24 @@ from ..data_model import TrainingStatus
 from ..modules import ModuleBase
 from ..toolkit.factory import FactoryConstructible
 from ..toolkit.reversible_hasher import ReversibleHasher
-from .model_background_base import BackgroundInfo, ModelBackgroundBase, ModelFutureBase
+from .job_base import JobBase, JobFutureBase, JobInfo
 
 
-class TrainingInfo(BackgroundInfo):
+class TrainingInfo(JobInfo):
     pass
 
 
-class ModelTrainerBase(ModelBackgroundBase):
+class ModelTrainerFutureBase(JobFutureBase):
+    @abc.abstractmethod
+    def load(self) -> ModuleBase:
+        """A model future must be loadable with no additional arguments. Mainly
+        useful in train results"""
+
+
+class ModelTrainerBase(JobBase):
     __doc__ = __doc__
-    ModelFutureBase = ModelFutureBase
+
+    ModelFutureBase = ModelTrainerFutureBase
 
     @abc.abstractmethod
     def train(
@@ -67,4 +75,4 @@ class ModelTrainerBase(ModelBackgroundBase):
     @classmethod
     def get_trainer_name(cls, training_id: str) -> str:
         """Un-hash the trainer's instance name from the given training id"""
-        return cls.get_background_name(training_id)
+        return cls.get_job_name(training_id)

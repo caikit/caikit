@@ -33,13 +33,14 @@ from ..interfaces.common.data_model.stream_sources import S3Path
 from .exceptions import error_handler
 from .exceptions.caikit_core_exception import CaikitCoreException, CaikitCoreStatusCode
 from .model_management import (
-    ModelBackgroundBase,
-    ModelBackgroundInferenceBase,
+    JobBase,
+    JobFutureBase,
+    JobPredictorBase,
     ModelFinderBase,
-    ModelFutureBase,
     ModelInitializerBase,
     ModelTrainerBase,
-    model_background_inferencer_factory,
+    ModelTrainerFutureBase,
+    job_predictor_factory,
     model_finder_factory,
     model_initializer_factory,
     model_trainer_factory,
@@ -80,7 +81,7 @@ class ModelManager:
         self._singleton_module_cache = {}
         self._trainers = {}
         self._finders = {}
-        self._background_inferencers = {}
+        self._job_predictors = {}
         self._initializers = {}
         self.__singleton_lock = Lock()
 
@@ -96,8 +97,8 @@ class ModelManager:
             self.get_finder(finder)
         for initializer in mm_config.get("initializers", {}):
             self.get_initializer(initializer)
-        for background_inferencers in mm_config.get("background_inferencers", {}):
-            self.get_inferencer(background_inferencers)
+        for job_predictor in mm_config.get("job_predictors", {}):
+            self.get_predictor(job_predictor)
 
     ## Public ##################################################################
 
@@ -111,7 +112,7 @@ class ModelManager:
         model_name: Optional[str] = None,
         wait: bool = False,
         **kwargs,
-    ) -> ModelFutureBase:
+    ) -> ModelTrainerFutureBase:
         """Train an instance of the given module with the given args and kwargs
         using the given trainer.
 
@@ -188,73 +189,37 @@ class ModelManager:
         # Return a handle to the training
         return model_future
 
-    def background_infer(
+    def start_prediction_job(
         self,
         model: ModuleBase,
         inference_func_name: str,
         *args,
-        inferencer: Union[str, ModelBackgroundInferenceBase] = "default",
-        save_with_id: bool = True,
+        predictor: Union[str, JobPredictorBase] = "default",
         wait: bool = False,
         **kwargs,
-    ) -> ModelFutureBase:
-        """Train an instance of the given module with the given args and kwargs
-        using the given trainer.
-
-        Each module's train function encapsulates the code needed to perform the
-        training locally. This top-level train function provides the wrapper
-        functionality to delegate the execution of the module's train function
-        to an alternate framework using a ModelTrainerBase. It also allows
-        training to be launched asynchronously.
-
-        Args:
-            module (Union[Type[ModuleBase], str]): The module class or guid for
-                the module to train
-            *args: Additional positional args to pass through to the module's
-                train function
-
-        Kwargs:
-            trainer (Union[str, ModelTrainerBase]): The trainer to use. If given
-                as a string, this is a key in the global config at
-                model_management.trainers.
-            save_path (Optional[Union[str, S3Path]]): Base path where the model should be
-                saved (may be relative to a remote trainer's filesystem, or link to S3
-                storage)
-            save_with_id (bool): Inject the training ID into the save path for
-                the output model
-            model_name (Optional[str]): Name of model that will be appended
-                to the end of the save_path
-            wait (bool): Wait for training to complete before returning
-            **kwargs: Additional keyword arguments to pass through to the
-                modules's train function
-
-        Returns:
-            model_future (ModelFutureBase): The future handle
-                to the model which holds the status of the in-flight training.
-        """
+    ) -> JobFutureBase:
+        """TODO"""
         error.type_check("<COR05418775E>", ModuleBase, model=model)
 
         # Get the trainer to use
-        inferencer: ModelBackgroundInferenceBase = self.get_inferencer(inferencer)
+        inferencer: JobPredictorBase = self.get_predictor(predictor)
 
         # Start the training
-        with alog.ContextTimer(log.debug, "Started background inference in: "):
-            model_future = inferencer.infer(
+        with alog.ContextTimer(log.debug, "Started prediction job in: "):
+            model_future = inferencer.predict(
                 model,
                 inference_func_name,
                 *args,
-                save_with_id=save_with_id,
                 **kwargs,
             )
             log.debug(
-                "Started Background Inference %s with save path %s",
+                "Started Prediction Job %s",
                 model_future.id,
-                model_future.save_path,
             )
 
         # If requested, wait for the future to complete
         if wait:
-            log.debug("Waiting for inference %s to complete", model_future.id)
+            log.debug("Waiting for prediction %s to complete", model_future.id)
             with alog.ContextTimer(
                 log.debug, "Finished training %s in: ", model_future.id
             ):
@@ -267,7 +232,7 @@ class ModelManager:
         self,
         future_id: str = None,
         future_type: str = "training",
-    ) -> ModelFutureBase:
+    ) -> JobFutureBase:
         """Get the future handle to an in-progress training
 
         Args:
@@ -286,16 +251,16 @@ class ModelManager:
                 trainer = self.get_trainer("default")
 
             return trainer.get_model_future(future_id)
-        if future_type == "background_inference":
+        if future_type == "predicting":
             try:
-                inferencer = self.get_inferencer(
-                    ModelBackgroundInferenceBase.get_inferencer_name(future_id)
+                predictor = self.get_predictor(
+                    JobPredictorBase.get_predictor_name(future_id)
                 )
             # Fall back to the default trainer to try to find this ID
             except ValueError:
-                inferencer = self.get_inferencer("default")
+                predictor = self.get_predictor("default")
 
-            return inferencer.get_model_future(future_id)
+            return predictor.get_model_future(future_id)
         else:
             raise CaikitCoreException(
                 CaikitCoreStatusCode.INVALID_ARGUMENT,
@@ -524,17 +489,17 @@ class ModelManager:
             component_type=ModelInitializerBase,
         )
 
-    def get_inferencer(
-        self, inferencer: Union[str, ModelBackgroundBase]
-    ) -> ModelInitializerBase:
-        """Get the configured model initializer or the one passed by value"""
+    def get_predictor(
+        self, inferencer: Union[str, JobPredictorBase]
+    ) -> JobPredictorBase:
+        """Get the configured job predictor or the one passed by value"""
         return self._get_component(
             component=inferencer,
-            component_dict=self._background_inferencers,
-            component_factory=model_background_inferencer_factory,
-            component_name="background_inferencer",
-            component_cfg=get_config().model_management.background_inferencers,
-            component_type=ModelInitializerBase,
+            component_dict=self._job_predictors,
+            component_factory=job_predictor_factory,
+            component_name="predictor",
+            component_cfg=get_config().model_management.job_predictors,
+            component_type=JobPredictorBase,
         )
 
     def get_module_backends(

@@ -34,8 +34,8 @@ from caikit.core.data_model import DataBase, DataStream
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.core.signature_parsing import CaikitMethodSignature
 from caikit.interfaces.runtime.data_model import (
-    BackgroundInferenceJob,
-    BackgroundInferenceStatusResponse,
+    PredictionJob,
+    PredictionJobStatusResponse,
     RuntimeServerContextType,
 )
 from caikit.runtime import trace
@@ -233,14 +233,14 @@ class GlobalPredictServicer:
                     response_proto = build_proto_response(response)
             return response_proto
 
-    def BackgroundPredict(
+    def StartPredictionJob(
         self,
         request: Union[ProtobufMessage, Iterable[ProtobufMessage]],
         context: ServicerContext,
         caikit_rpc: TaskPredictRPC,
         *_,
         **__,
-    ) -> BackgroundInferenceJob:
+    ) -> PredictionJob:
         """Global predict RPC -- Mocks the invocation of a Caikit Library module.run()
         method for a loaded Caikit Library model
 
@@ -301,7 +301,7 @@ class GlobalPredictServicer:
                         inference_signature,
                     )
 
-            response = self.run_background_predict_model(
+            response = self.run_prediction_job(
                 request_name,
                 model_id,
                 input_streaming=caikit_rpc.input_streaming,
@@ -322,7 +322,7 @@ class GlobalPredictServicer:
                 response_proto = build_proto_response(response)
             return response_proto
 
-    def run_background_predict_model(
+    def run_prediction_job(
         self,
         request_name: str,
         model_id: str,
@@ -335,12 +335,10 @@ class GlobalPredictServicer:
         context_arg: Optional[str] = None,
         model: Optional[ModuleBase] = None,
         **kwargs,
-    ) -> BackgroundInferenceJob:
+    ) -> PredictionJob:
         trace.set_tracer(context, self._tracer)
         trace_context = trace.get_trace_context(context)
-        trace_span_name = (
-            f"{__name__}.GlobalPredictServicer.run_background_predict_model"
-        )
+        trace_span_name = f"{__name__}.GlobalPredictServicer.run_prediction_job"
         with self._handle_predict_exceptions(
             model_id, request_name
         ), self._tracer.start_as_current_span(
@@ -376,7 +374,7 @@ class GlobalPredictServicer:
             if context_arg:
                 kwargs[context_arg] = context
 
-            model_future = MODEL_MANAGER.background_infer(
+            model_future = MODEL_MANAGER.start_prediction_job(
                 model=model, inference_func_name=inference_func_name, **kwargs
             )
 
@@ -387,7 +385,7 @@ class GlobalPredictServicer:
             if get_config().runtime.metering.enabled:
                 self.rpc_meter.update_metrics(str(type(model)))
 
-            return BackgroundInferenceJob(inference_id=model_future.id)
+            return PredictionJob(job_id=model_future.id)
 
     def predict_model(
         self,

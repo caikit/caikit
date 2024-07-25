@@ -12,29 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Common data model enum used for reporting background status
+Common data model enum used for reporting training status
 """
-
-# Standard
-from enum import Enum
-
 # Local
-from .dataobject import dataobject
-from .package import PACKAGE_COMMON
+from .job_status import JobStatus
 
-
-@dataobject(PACKAGE_COMMON)
-class BackgroundStatus(Enum):
-    QUEUED = 1
-    RUNNING = 2
-    COMPLETED = 3
-    CANCELED = 4
-    ERRORED = 5
-
-    @property
-    def is_terminal(self):
-        return self in [
-            self.__class__.COMPLETED,
-            self.__class__.CANCELED,
-            self.__class__.ERRORED,
-        ]
+PredictJobStatus = JobStatus

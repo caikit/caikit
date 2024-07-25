@@ -18,7 +18,6 @@
 
 # Local
 from . import base, data_backends, enums, producer, protobufs
-from .background_status import BackgroundStatus
 from .base import DataBase
 from .dataobject import (
     CAIKIT_DATA_MODEL,
@@ -27,7 +26,8 @@ from .dataobject import (
     render_dataobject_protos,
 )
 from .enums import *
-from .inference_status import BackgroundInferenceStatus
+from .job_status import JobStatus
+from .predict_status import PredictJobStatus
 from .producer import PACKAGE_COMMON, ProducerId
 from .streams import data_stream
 from .streams.data_stream import *

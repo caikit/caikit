@@ -31,11 +31,11 @@ import alog
 
 # Local
 from ...interfaces.common.data_model.stream_sources import S3Path
-from ..data_model import BackgroundStatus
+from ..data_model import JobStatus
 from ..exceptions import error_handler
 from ..modules import ModuleBase
 from ..toolkit.logging import configure as configure_logging
-from .model_background_base import BackgroundInfo, ModelBackgroundBase, ModelFutureBase
+from .job_base import JobBase, JobFutureBase, JobInfo
 from .model_trainer_base import ModelTrainerBase, TrainingInfo
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
@@ -59,7 +59,7 @@ if hasattr(os, "register_at_fork"):
     os.register_at_fork(after_in_child=_threads_queues.clear)
 
 
-class LocalModelFuture(ModelFutureBase):
+class LocalJobFuture(JobFutureBase):
     """A local model future manages an execution thread for a single train
     operation
     """
@@ -81,11 +81,10 @@ class LocalModelFuture(ModelFutureBase):
         super().__init__(
             future_name=future_name,
             future_id=future_id or str(uuid.uuid4()),
-            save_with_id=save_with_id,
-            save_path=save_path,
             model_name=model_name,
             use_reversible_hash=future_id is None,
         )
+
         self._module_class = module_class
 
         # Placeholder for the time when the future completed
@@ -93,6 +92,9 @@ class LocalModelFuture(ModelFutureBase):
         # Set the submission time as right now. (Maybe this should be supplied instead?)
         self._submission_time = datetime.now()
 
+        # Trainers should deal with an S3 ref first and not pass it along here
+        if save_path and isinstance(save_path, S3Path):
+            raise ValueError("S3 output path not supported by this runtime")
         self._save_path = self.__class__._save_path_with_id(
             save_path,
             save_with_id,
@@ -133,12 +135,19 @@ class LocalModelFuture(ModelFutureBase):
         self._worker.start()
 
     @property
+    def save_path(self) -> Optional[str]:
+        """If created with a save path, the future must expose it, including
+        any injected background id
+        """
+        return self._save_path
+
+    @property
     def completion_time(self) -> Optional[datetime]:
         return self._completion_time
 
     ## Interface ##
 
-    def get_info(self) -> BackgroundInfo:
+    def get_info(self) -> JobInfo:
         """Every model future must be able to poll the status of the
         training job
         """
@@ -146,29 +155,28 @@ class LocalModelFuture(ModelFutureBase):
         # The worker was canceled while doing work. It may still be in the
         # process of terminating and thus still alive.
         if self._worker.canceled:
-            return self._make_background_info(status=BackgroundStatus.CANCELED)
+            return self._make_background_info(status=JobStatus.CANCELED)
 
         # If the worker is currently alive it's doing work
         if self._worker.is_alive():
-            return self._make_background_info(status=BackgroundStatus.RUNNING)
+            return self._make_background_info(status=JobStatus.RUNNING)
 
         # The worker threw outside of a cancellation process
         if self._worker.threw:
             return self._make_background_info(
-                status=BackgroundStatus.ERRORED, errors=[self._worker.error]
+                status=JobStatus.ERRORED, errors=[self._worker.error]
             )
 
         # The worker completed its work without being canceled or raising
         if self._worker.ran:
-            return self._make_background_info(status=BackgroundStatus.COMPLETED)
+            return self._make_background_info(status=JobStatus.COMPLETED)
 
         # If it's not alive and not done, it hasn't started yet
-        return self._make_background_info(status=BackgroundStatus.QUEUED)
+        return self._make_background_info(status=JobStatus.QUEUED)
 
+    @abc.abstractmethod
     def run(self):
-        raise NotImplementedError(
-            "Subclasses of LocalModelFuture must implement a run method"
-        )
+        """"""
 
     def cancel(self):
         """Terminate the given training"""
@@ -186,17 +194,11 @@ class LocalModelFuture(ModelFutureBase):
         log.debug2("Done waiting for %s", self.id)
         self._completion_time = self._completion_time or datetime.now()
 
-    @abc.abstractmethod
-    def load(self) -> ModuleBase:
-        """Load the resultant model into memory. For trainer subclasses this
-        is the trained model while inferencer subclasses return the existing model
-        """
-
     ## Impl ##
     def _make_background_info(
-        self, status: BackgroundStatus, errors: Optional[List[Exception]] = None
-    ) -> BackgroundInfo:
-        return BackgroundInfo(
+        self, status: JobStatus, errors: Optional[List[Exception]] = None
+    ) -> JobInfo:
+        return JobInfo(
             status=status,
             errors=errors,
             completion_time=self._completion_time,
@@ -232,7 +234,7 @@ class LocalModelFuture(ModelFutureBase):
         return os.path.join(*final_path_parts)
 
 
-class LocalModelBackground(ModelBackgroundBase):
+class LocalJobBase(JobBase):
     __doc__ = __doc__
 
     ## Interface ##
@@ -272,14 +274,14 @@ class LocalModelBackground(ModelBackgroundBase):
         self._futures = {}
         self._futures_lock = threading.Lock()
 
-    def get_model_future(self, background_id: str) -> "LocalModelFuture":
+    def get_model_future(self, job_id: str) -> "LocalJobFuture":
         """Look up the model future for the given id"""
         self._purge_old_futures()
-        if model_future := self._futures.get(background_id):
+        if model_future := self._futures.get(job_id):
             return model_future
         raise CaikitCoreException(
             status_code=CaikitCoreStatusCode.NOT_FOUND,
-            message=f"Unknown background_id: {background_id}",
+            message=f"Unknown background_id: {job_id}",
         )
 
     ## Impl ##

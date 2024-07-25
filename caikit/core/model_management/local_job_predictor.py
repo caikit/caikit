@@ -36,7 +36,8 @@ from ..data_model import DataObjectBase, TrainingStatus
 from ..exceptions import error_handler
 from ..modules import ModuleBase
 from ..toolkit.logging import configure as configure_logging
-from .local_background_base import LocalModelBackground, LocalModelFuture
+from .job_predictor_base import JobFutureBase, JobPredictorBase
+from .local_job_base import LocalJobBase, LocalJobFuture
 from .model_trainer_base import ModelTrainerBase, TrainingInfo
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
@@ -60,16 +61,16 @@ if hasattr(os, "register_at_fork"):
     os.register_at_fork(after_in_child=_threads_queues.clear)
 
 
-class LocalModelInferFuture(LocalModelFuture):
+class LocalJobPredictorFuture(LocalJobFuture):
     def __init__(
         self,
         model_instance: ModuleBase,
-        inference_func_name: str,
+        prediction_func_name: str,
         *args,
         **kwargs: Dict[str, Any],
     ):
         self._model_instance = model_instance
-        self._inference_func_name = inference_func_name
+        self._prediction_func_name = prediction_func_name
         self._result_type = None
         super().__init__(*args, **kwargs)
 
@@ -77,7 +78,7 @@ class LocalModelInferFuture(LocalModelFuture):
         """Function that will run in the worker thread"""
         # If running in a spawned subprocess, reconfigure logging
         with alog.ContextTimer(log.debug, "Inference %s finished in: ", self.id):
-            model_run_fn = getattr(self._model_instance, self._inference_func_name)
+            model_run_fn = getattr(self._model_instance, self._prediction_func_name)
             infer_result = model_run_fn(*args, **kwargs)
         if self.save_path is not None:
             save_path_pathlib = Path(self.save_path)
@@ -106,9 +107,9 @@ class LocalModelInferFuture(LocalModelFuture):
         return self._result_type.from_binary_buffer(result_path.read_bytes())
 
 
-class LocalModelInferencer(LocalModelBackground):
+class LocalJobPredictor(LocalJobBase, JobPredictorBase):
     __doc__ = __doc__
-    LocalModelFuture = LocalModelInferFuture
+    LocalModelFuture = LocalJobPredictorFuture
 
     name = "LOCAL"
 
@@ -133,15 +134,15 @@ class LocalModelInferencer(LocalModelBackground):
         if self._tmp_dir:
             self._tmp_dir.cleanup()
 
-    def infer(
+    def predict(
         self,
         model_instance: ModuleBase,
-        inference_func_name: str,
+        prediction_func_name: str,
         *args,
         save_with_id: bool = True,
         external_inference_id: Optional[str] = None,
         **kwargs,
-    ) -> LocalModelInferFuture:
+    ) -> LocalJobPredictorFuture:
         """Start training the given module and return a future to the trained
         model instance
         """
@@ -164,7 +165,7 @@ class LocalModelInferencer(LocalModelBackground):
         model_future = self.LocalModelFuture(
             future_name=self._instance_name,
             model_instance=model_instance,
-            inference_func_name=inference_func_name,
+            prediction_func_name=prediction_func_name,
             save_path=self._result_dir,
             future_id=external_inference_id,
             save_with_id=save_with_id,

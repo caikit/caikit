@@ -96,6 +96,7 @@ def create_inference_rpcs(
             for streaming_type, method_signatures in task_methods.items():
                 input_streaming, output_streaming = streaming_type
                 try:
+                    # ! TODO CASEY ADD JOB PREDICT RPC
                     rpcs.append(
                         TaskPredictRPC(
                             task, method_signatures, input_streaming, output_streaming

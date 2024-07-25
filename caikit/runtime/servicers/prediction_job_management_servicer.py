@@ -15,7 +15,11 @@
 # Have pylint ignore Class XXXX has no YYYY member so that we can use gRPC enums.
 # pylint: disable=E1101
 
+# Standard
+from typing import Iterable, Union
+
 # Third Party
+from google.protobuf.message import Message as ProtobufMessage
 import grpc
 
 # First Party
@@ -23,14 +27,14 @@ import alog
 
 # Local
 from caikit.core import MODEL_MANAGER, DataObjectBase
-from caikit.core.data_model import BackgroundInferenceStatus
+from caikit.core.data_model import JobStatus
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
     CaikitCoreStatusCode,
 )
 from caikit.interfaces.runtime.data_model import (
-    BackgroundInferenceInfoRequest,
-    BackgroundInferenceStatusResponse,
+    PredictionJobInfoRequest,
+    PredictionJobStatusResponse,
 )
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.servicer_util import raise_caikit_runtime_exception
@@ -38,7 +42,7 @@ from caikit.runtime.utils.servicer_util import raise_caikit_runtime_exception
 log = alog.use_channel("TM-SERVICR-I")
 
 
-class InferenceManagementServicerImpl:
+class PredictionJobManagementServicerImpl:
     """This class contains the implementation of all of the RPCs that are required to run a
     service in Model Mesh as a Model-Runtime."""
 
@@ -46,31 +50,33 @@ class InferenceManagementServicerImpl:
     ## gRPC Service Impl ##
     #######################
 
-    def GetBackgroundInferenceResult(
-        self, request: BackgroundInferenceInfoRequest, context
+    def GetPredictionJobResult(
+        self, request: PredictionJobInfoRequest, context
+    ) -> Union[
+        ProtobufMessage, Iterable[ProtobufMessage]
+    ]:  # pylint: disable=unused-argument
+        """Get the status of a training by ID"""
+        return self.get_job_result(request.job_id).to_proto()
+
+    def GetPredictionJobStatus(
+        self, request: PredictionJobInfoRequest, context
     ):  # pylint: disable=unused-argument
         """Get the status of a training by ID"""
-        return self.get_inference_result(request.inference_id).to_proto()
+        return self.get_job_status(request.job_id).to_proto()
 
-    def GetBackgroundInferenceStatus(
-        self, request: BackgroundInferenceInfoRequest, context
-    ):  # pylint: disable=unused-argument
-        """Get the status of a training by ID"""
-        return self.get_inference_status(request.inference_id).to_proto()
-
-    def CancelBackgroundInference(
-        self, request: BackgroundInferenceInfoRequest, context
+    def CancelPredictionJob(
+        self, request: PredictionJobInfoRequest, context
     ):  # pylint: disable=unused-argument
         """Cancel a training future."""
-        return self.cancel_inference(request.inference_id).to_proto()
+        return self.cancel_job(request.job_id).to_proto()
 
     ####################################
     ## Interface-agnostic entrypoints ##
     ####################################
 
-    def get_inference_result(self, inference_id: str) -> DataObjectBase:
-        """Get the status of a training by ID"""
-        model_future = self._get_model_future(inference_id, operation="get_status")
+    def get_job_result(self, job_id: str) -> DataObjectBase:
+        """Get the status of a job by ID"""
+        model_future = self._get_model_future(job_id, operation="get_status")
         try:
             return model_future.result()
         except CaikitCoreException as err:
@@ -78,24 +84,22 @@ class InferenceManagementServicerImpl:
         except Exception as err:
             raise CaikitRuntimeException(
                 grpc.StatusCode.INTERNAL,
-                "Failed to get result for inference id {}".format(
-                    inference_id,
+                "Failed to get result for job id {}".format(
+                    job_id,
                 ),
             ) from err
 
-    def get_inference_status(
-        self, inference_id: str
-    ) -> BackgroundInferenceStatusResponse:
+    def get_job_status(self, job_id: str) -> PredictionJobStatusResponse:
         """Get the status of a training by ID"""
-        model_future = self._get_model_future(inference_id, operation="get_status")
+        model_future = self._get_model_future(job_id, operation="get_status")
         try:
             reasons = []
             training_info = model_future.get_info()
             if training_info.errors:
                 reasons = [str(error) for error in training_info.errors]
 
-            return BackgroundInferenceStatusResponse(
-                inference_id=inference_id,
+            return PredictionJobStatusResponse(
+                job_id=job_id,
                 state=training_info.status,
                 reasons=reasons,
                 submission_timestamp=training_info.submission_time,
@@ -106,14 +110,14 @@ class InferenceManagementServicerImpl:
         except Exception as err:
             raise CaikitRuntimeException(
                 grpc.StatusCode.INTERNAL,
-                "Failed to get status for inference id {}".format(
-                    inference_id,
+                "Failed to get status for job id {}".format(
+                    job_id,
                 ),
             ) from err
 
-    def cancel_inference(self, inference_id: str) -> BackgroundInferenceStatusResponse:
+    def cancel_job(self, job_id: str) -> PredictionJobStatusResponse:
         """Cancel a training future."""
-        model_future = self._get_model_future(inference_id, operation="cancel")
+        model_future = self._get_model_future(job_id, operation="cancel")
         try:
             model_future.cancel()
             inference_info = model_future.get_info()
@@ -122,8 +126,8 @@ class InferenceManagementServicerImpl:
             if inference_info.errors:
                 reasons = [str(error) for error in inference_info.errors]
 
-            return BackgroundInferenceStatusResponse(
-                inference_id=model_future.id,
+            return PredictionJobStatusResponse(
+                job_id=model_future.id,
                 state=inference_info.status,
                 reasons=reasons,
             )
@@ -133,21 +137,21 @@ class InferenceManagementServicerImpl:
             # the training. NB: Future `GetTrainingStatus` calls for these canceled trainings
             # would raise a not found error to the user.
             if err.status_code == CaikitCoreStatusCode.NOT_FOUND:
-                return BackgroundInferenceStatusResponse(
-                    inference_id=inference_id,
-                    state=BackgroundInferenceStatus.CANCELED,
+                return PredictionJobStatusResponse(
+                    inference_id=job_id,
+                    state=JobStatus.CANCELED,
                 )
             raise_caikit_runtime_exception(exception=err)
         except Exception as err:
             log.debug2(
-                "Unexpected error trying to cancel inference id %s: [%s]",
-                inference_id,
+                "Unexpected error trying to cancel job id %s: [%s]",
+                job_id,
                 err,
             )
             raise CaikitRuntimeException(
                 grpc.StatusCode.INTERNAL,
-                "Failed to cancel inference id {}".format(
-                    inference_id,
+                "Failed to cancel job id {}".format(
+                    job_id,
                 ),
             ) from err
 
@@ -156,25 +160,23 @@ class InferenceManagementServicerImpl:
     ############################
 
     @staticmethod
-    def _get_model_future(inference_id: str, operation: str):
+    def _get_model_future(job_id: str, operation: str):
         """Returns a model future, or raises 404 caikit runtime exception on error.
         Wrapped here so that we only catch errors directly in the `trainer.get_model_future` call
         """
         try:
-            return MODEL_MANAGER.get_model_future(
-                inference_id, future_type="background_inference"
-            )
+            return MODEL_MANAGER.get_model_future(job_id, future_type="predicting")
         except CaikitCoreException as err:
             raise_caikit_runtime_exception(exception=err)
         except Exception as err:
             log.debug2(
                 "Caught unexpected exception while trying to look up model future for id %s: [%s]",
-                inference_id,
+                job_id,
                 err,
             )
             raise CaikitRuntimeException(
                 grpc.StatusCode.INTERNAL,
-                "Unexpected error with inference id {}. Could not perform {}".format(
-                    inference_id, operation
+                "Unexpected error with job id {}. Could not perform {}".format(
+                    job_id, operation
                 ),
             ) from err

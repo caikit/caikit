@@ -188,6 +188,18 @@ def get_task_predict_rpc_name(
     return snake_to_upper_camel(f"{task_class.__name__}_Predict")
 
 
+def get_task_predict_job_rpc_name(
+    task_or_module_class: Type[Union[ModuleBase, TaskBase]],
+) -> str:
+    """Helper function to get the name of a task's RPC"""
+    task_class = (
+        next(iter(task_or_module_class.tasks))
+        if issubclass(task_or_module_class, ModuleBase)
+        else task_or_module_class
+    )
+    return snake_to_upper_camel(f"{task_class.__name__}_StartPredictionJob")
+
+
 ##  Service DataModel Name Descriptors
 
 
@@ -301,8 +313,6 @@ MODELS_INFO_ENDPOINT = f"{INFO_ENDPOINT}/models"
 MANAGEMENT_ENDPOINT = "/management"
 MODEL_MANAGEMENT_ENDPOINT = f"{MANAGEMENT_ENDPOINT}/models"
 TRAINING_MANAGEMENT_ENDPOINT = f"{MANAGEMENT_ENDPOINT}/trainings"
-BACKGROUND_INFERENCE_MANAGEMENT_ENDPOINT = f"{MANAGEMENT_ENDPOINT}/background_tasks"
-BACKGROUND_INFERENCE_RESULT_ENDPOINT = f"{MANAGEMENT_ENDPOINT}/background_tasks/results"
 
 # These keys are used to define the logical sections of the request and response
 # data structures.
@@ -349,7 +359,7 @@ def get_http_route_name(rpc_name: str) -> str:
     raise NotImplementedError(f"Unknown RPC type for rpc name {rpc_name}")
 
 
-def get_http_background_route_name(rpc_name: str) -> str:
+def get_http_prediction_job_route_name(rpc_name: str) -> str:
     """Function to get the http route for a given rpc name
 
     Args:
@@ -362,7 +372,23 @@ def get_http_background_route_name(rpc_name: str) -> str:
         str: The name of the http route for RPC
     """
     traditional_route = get_http_route_name(rpc_name)
-    return f"{traditional_route}/background"
+    return f"{traditional_route}/job"
+
+
+def get_http_prediction_job_result_route_name(rpc_name: str) -> str:
+    """Function to get the http route for a given rpc name
+
+    Args:
+        rpc_name (str): The name of the Caikit RPC
+
+    Raises:
+        NotImplementedError: If the RPC is not a Train or Predict RPC
+
+    Returns:
+        str: The name of the http route for RPC
+    """
+    job_route = get_http_prediction_job_route_name(rpc_name)
+    return f"{job_route}/results"
 
 
 ## GRPC Server

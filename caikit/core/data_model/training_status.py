@@ -14,13 +14,7 @@
 """
 Common data model enum used for reporting training status
 """
-
-# Standard
-from enum import Enum
-
 # Local
-from .background_status import BackgroundStatus
-from .dataobject import dataobject
-from .package import PACKAGE_COMMON
+from .job_status import JobStatus
 
-TrainingStatus = BackgroundStatus
+TrainingStatus = JobStatus

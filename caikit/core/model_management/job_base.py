@@ -33,21 +33,21 @@ import os
 
 # Local
 from ...interfaces.common.data_model.stream_sources import S3Path
-from ..data_model import BackgroundStatus
+from ..data_model import JobStatus
 from ..modules import ModuleBase
 from ..toolkit.factory import FactoryConstructible
 from ..toolkit.reversible_hasher import ReversibleHasher
 
 
 @dataclasses.dataclass
-class BackgroundInfo:
-    status: BackgroundStatus
+class JobInfo:
+    status: JobStatus
     errors: Optional[List[Exception]] = None
     submission_time: Optional[datetime.datetime] = None
     completion_time: Optional[datetime.datetime] = None
 
 
-class ModelFutureBase(abc.ABC):
+class JobFutureBase(abc.ABC):
     """Every Background implementation must have a ModelFuture class that can access the
     job information in the infrastructure managed by the task.
     """
@@ -58,15 +58,9 @@ class ModelFutureBase(abc.ABC):
         self,
         future_name: str,
         future_id: str,
-        save_with_id: bool,
-        save_path: Optional[Union[str, S3Path]],
-        model_name: Optional[str] = None,
         use_reversible_hash: bool = True,
         **kwargs,
     ):
-        # Trainers should deal with an S3 ref first and not pass it along here
-        if save_path and isinstance(save_path, S3Path):
-            raise ValueError("S3 output path not supported by this runtime")
         self._id = (
             self.__class__.ID_DELIMITER.join(
                 [ReversibleHasher.hash(future_name), future_id]
@@ -82,15 +76,8 @@ class ModelFutureBase(abc.ABC):
         """
         return self._id
 
-    @property
-    def save_path(self) -> Optional[str]:
-        """If created with a save path, the future must expose it, including
-        any injected background id
-        """
-        return self._save_path
-
     @abc.abstractmethod
-    def get_info(self) -> BackgroundInfo:
+    def get_info(self) -> JobInfo:
         """Every model future must be able to poll the status of the
         background job
         """
@@ -104,25 +91,20 @@ class ModelFutureBase(abc.ABC):
         """Block until the job reaches a terminal state"""
 
     @abc.abstractmethod
-    def load(self) -> ModuleBase:
-        """A model future must be loadable with no additional arguments. Mainly
-        useful in train results"""
-
-    @abc.abstractmethod
     def result(self):
         """Support result() to match concurrent.futures.Future"""
 
 
-class ModelBackgroundBase(FactoryConstructible):
+class JobBase(FactoryConstructible):
     @abc.abstractmethod
-    def get_model_future(self, training_id: str) -> "ModelFutureBase":
+    def get_model_future(self, job_id: str) -> JobFutureBase:
         """Look up the model future for the given id"""
 
     ## Shared Utilities ##
 
     @classmethod
-    def get_background_name(cls, background_id: str) -> str:
+    def get_job_name(cls, job_id: str) -> str:
         """Un-hash the background's instance name from the given training id"""
         return ReversibleHasher.reverse_hash(
-            background_id.split(ModelFutureBase.ID_DELIMITER)[0]
+            job_id.split(JobFutureBase.ID_DELIMITER)[0]
         )
