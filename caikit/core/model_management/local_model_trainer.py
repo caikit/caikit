@@ -13,15 +13,23 @@
 # limitations under the License.
 """
 The LocalModelTrainer uses a local thread to launch and manage each training job
+
+model_management:
+    trainers:
+        <predictor name>:
+            type: LOCAL
+            config:
+                # ! Inherits config from LocalJobBase
+                # Path to a local directory that holds the results. Defaults
+                # to a temporary directory
+                result_dir: <null or str>
 """
 
 # Standard
-from concurrent.futures.thread import _threads_queues
-from datetime import datetime, timedelta
-from typing import Any, Dict, Iterable, List, Optional, Type, Union
+from datetime import datetime
+from typing import Optional, Type
 import os
 import re
-import threading
 import uuid
 
 # First Party
@@ -29,39 +37,28 @@ import aconfig
 import alog
 
 # Local
-from ...interfaces.common.data_model.stream_sources import S3Path
-from ..data_model import TrainingStatus
 from ..exceptions import error_handler
 from ..modules import ModuleBase
 from ..toolkit.logging import configure as configure_logging
-from .local_job_base import LocalJobBase, LocalJobFuture
-from .model_trainer_base import ModelTrainerBase, ModelTrainerFutureBase, TrainingInfo
+from .local_job_base import LocalJobBase
+from .model_trainer_base import ModelTrainerBase, ModelTrainerFutureBase
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
     CaikitCoreStatusCode,
 )
-from caikit.core.toolkit.concurrency.destroyable_process import DestroyableProcess
-from caikit.core.toolkit.concurrency.destroyable_thread import DestroyableThread
 import caikit
 
 log = alog.use_channel("LOC-TRNR")
 error = error_handler.get(log)
 
 
-# 🌶️🌶️🌶️
-# Fix for python3.9, 3.10 and 3.11 issue where forked processes always exit with exitcode 1
-# when it's created inside a ThreadPoolExecutor: https://github.com/python/cpython/issues/88110
-# Fix taken from https://github.com/python/cpython/pull/101940
-# Credit: marmarek, https://github.com/marmarek
-
-if hasattr(os, "register_at_fork"):
-    os.register_at_fork(after_in_child=_threads_queues.clear)
-
-
 class LocalModelTrainer(LocalJobBase, ModelTrainerBase):
     __doc__ = __doc__
 
-    class LocalModelTrainFuture(LocalJobFuture, ModelTrainerFutureBase):
+    class LocalModelTrainFuture(LocalJobBase.LocalJobFuture, ModelTrainerFutureBase):
+        """LocalModelTrainFuture takes a module class and training request and
+        runs it in a thread or subprocess"""
+
         def run(self, *args, **kwargs):
             """Function that will run in the worker thread"""
             # If running in a spawned subprocess, reconfigure logging

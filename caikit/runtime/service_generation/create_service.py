@@ -120,10 +120,11 @@ def create_inference_rpcs(
 
     return sorted(rpcs, key=lambda x: x.name)
 
+
 def create_job_inference_rpcs(
     modules: List[Type[ModuleBase]], caikit_config: aconfig.Config = None
 ) -> List[CaikitRPCBase]:
-    """Handles the logic to create all the RPCs for inference"""
+    """Handles the logic to create all the RPCs for inference jobs"""
     rpcs = []
 
     included_task_types = (

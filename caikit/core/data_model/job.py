@@ -25,6 +25,8 @@ from .package import PACKAGE_COMMON
 
 @dataobject(PACKAGE_COMMON)
 class JobStatus(Enum):
+    """Enum to track current status of a job"""
+
     QUEUED = 1
     RUNNING = 2
     COMPLETED = 3
@@ -38,3 +40,10 @@ class JobStatus(Enum):
             self.__class__.CANCELED,
             self.__class__.ERRORED,
         ]
+
+
+class JobType(Enum):
+    """Enum to track the different types of Jobs"""
+
+    TRAINING = (1,)
+    PREDICTION = 2

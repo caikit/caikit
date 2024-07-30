@@ -13,28 +13,16 @@
 # limitations under the License.
 """
 A Base class for background model operations. This class is 
-used for background training and inferences
-
-Configuration for ModelTrainers lives under the config as follows:
-
-model_management:
-    trainers:
-        <trainer name>:
-            type: <trainer type name>
-            config:
-                <config option>: <value>
+used for background training and predictions
 """
 # Standard
-from typing import List, Optional, Type, Union
+from typing import List, Optional
 import abc
 import dataclasses
 import datetime
-import os
 
 # Local
-from ...interfaces.common.data_model.stream_sources import S3Path
 from ..data_model import JobStatus
-from ..modules import ModuleBase
 from ..toolkit.factory import FactoryConstructible
 from ..toolkit.reversible_hasher import ReversibleHasher
 
@@ -48,7 +36,7 @@ class JobInfo:
 
 
 class JobFutureBase(abc.ABC):
-    """Every Background implementation must have a ModelFuture class that can access the
+    """Every JobBase implementation must have a JobFutureBase class that can access the
     job information in the infrastructure managed by the task.
     """
 
@@ -71,7 +59,7 @@ class JobFutureBase(abc.ABC):
 
     @property
     def id(self) -> str:
-        """Every model future must have a unique ID that can be used to look
+        """Every job future must have a unique ID that can be used to look
         up the in-flight background task
         """
         return self._id

@@ -70,7 +70,6 @@ from caikit.core.toolkit.name_tools import snake_to_upper_camel
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
 from caikit.interfaces.runtime.data_model import (
     PredictionJob,
-    PredictionJobInfoRequest,
     PredictionJobStatusResponse,
 )
 from caikit.runtime.names import (
@@ -194,6 +193,8 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 self.inference_service, interrupter=self.interrupter
             )
             self._bind_routes(self.inference_service)
+
+            # Bind routes for prediction jobs
             self.prediction_job_manager = PredictionJobManagementServicerImpl()
             self._bind_routes(self.inference_job_service)
 
@@ -513,9 +514,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
         """Bind all caikit rpcs as routes to the given app"""
         for rpc in service.caikit_rpcs.values():
             rpc_info = rpc.create_rpc_json("")
-            if isinstance(rpc, TaskPredictRPC) and not isinstance(
-                rpc, TaskPredictionJobRPC
-            ):
+            # TaskPredictionJob must come before TaskPredictRPC since it is a subclass
+            if isinstance(rpc, TaskPredictionJobRPC):
+                # Add endpoints for prediction jobs
+                self._add_prediction_job_unary_input_handler(rpc)
+                self._add_prediction_job_management_handler(rpc)
+            elif isinstance(rpc, TaskPredictRPC):
                 if hasattr(rpc, "input_streaming") and rpc.input_streaming:
                     # Skipping the binding of this route since we don't have support
                     log.info(
@@ -529,12 +533,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     self._add_unary_input_stream_output_handler(rpc)
                 else:
                     self._add_unary_input_unary_output_handler(rpc)
-            elif isinstance(
-                rpc, TaskPredictionJobRPC
-            ):
-                # Add endpoints for prediction jobs
-                self._add_prediction_job_unary_input_handler(rpc)
-                self._add_prediction_job_management_handler(rpc)
             elif isinstance(rpc, ModuleClassTrainRPC):
                 self._train_add_unary_input_unary_output_handler(rpc)
 
@@ -751,12 +749,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 raise
 
     def _add_prediction_job_management_handler(self, rpc: TaskPredictRPC):
-        """Bind the routes for get/cancel/result prediction"""
+        """Bind the routes for get/cancel/result of a prediction"""
 
-        # Bind GET to fetch a training
-        # get_spec = TRAINING_MANAGEMENT_SERVICE_SPEC["service"]["rpcs"][0]
-        # assert get_spec["name"] == "GetTrainingStatus"
-        # get_dataobject_response = DataBase.get_class_for_name(get_spec["output_type"])
+        # Bind GET to fetch a prediction job status
         get_dataobject_response = PredictionJobStatusResponse
         get_pydantic_response = dataobject_to_pydantic(get_dataobject_response)
 
@@ -770,11 +765,6 @@ class RuntimeHTTPServer(RuntimeServerBase):
         )(self._get_prediction_job_status)
 
         # Bind DELETE to cancel a training
-        # cancel_spec = TRAINING_MANAGEMENT_SERVICE_SPEC["service"]["rpcs"][1]
-        # assert cancel_spec["name"] == "CancelTraining"
-        # cancel_dataobject_response = DataBase.get_class_for_name(
-        #    cancel_spec["output_type"]
-        # )
         cancel_dataobject_response = PredictionJobStatusResponse
         cancel_pydantic_response = dataobject_to_pydantic(cancel_dataobject_response)
 
@@ -787,6 +777,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             include_in_schema=rpc.task.get_visibility(),
         )(self._cancel_prediction_job)
 
+        # Bind GET at the `/result` subpath to get the result of a training
         result_dataobject_response = rpc.return_type
         result_pydantic_response = dataobject_to_pydantic(result_dataobject_response)
         self.app.get(
@@ -798,18 +789,20 @@ class RuntimeHTTPServer(RuntimeServerBase):
             include_in_schema=rpc.task.get_visibility(),
         )(self._get_prediction_job_result)
 
-    def _add_prediction_job_unary_input_handler(self, rpc: TaskPredictRPC):
-        """Add a unary:unary request handler for this RPC signature"""
+    def _add_prediction_job_unary_input_handler(self, rpc: TaskPredictionJobRPC):
+        """Add a unary:unary request handler to start a prediction job for this RPC"""
+
+        # Get request variables in same way as unary_unary
         pydantic_predict_request = dataobject_to_pydantic(
             self._get_request_dataobject(rpc)
         )
         predict_request_openapi = self._get_request_openapi(pydantic_predict_request)
+
+        # Result will always be a Prediction Job
         pydantic_job_response = dataobject_to_pydantic(PredictionJob)
         job_response_openapi = self._get_response_openapi(
             PredictionJob, pydantic_job_response
         )
-        # predict_response_data_object = self._get_response_dataobject(rpc)
-        # pydantic_predict_response: pydantic.BaseModel = dataobject_to_pydantic(predict_response_data_object)
 
         # Merge the DataObject openapi schema into the task schema
         task_api_schema = merge_configs(
@@ -854,10 +847,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     self.global_predict_servicer.run_prediction_job,
                     model_id=model_id,
                     request_name=rpc.request.name,
-                    input_streaming=False,
-                    output_streaming=False,
                     task=rpc.task,
-                    aborter=None,
                     context=context,
                     **request_params,
                 )

@@ -29,7 +29,7 @@ from .multi_model_initializer import MultiModelInitializer
 model_trainer_factory = ImportableFactory("ModelTrainer")
 model_trainer_factory.register(LocalModelTrainer)
 
-# Model trainer factory. A trainer is responsible for performing the train
+# Job Predictor factory. A job predictor is responsible for performing the prediction
 # operation against a configured framework connection.
 job_predictor_factory = ImportableFactory("JobPredictors")
 job_predictor_factory.register(LocalJobPredictor)

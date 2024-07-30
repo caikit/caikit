@@ -42,8 +42,6 @@ model_management:
     job_predictors:
         default:
             type: LOCAL
-            # import_class can be used to import loaders from third-party packages
-            import_class: null
             config:
                 # Format: XdXhXmXs
                 retention_duration: 1d

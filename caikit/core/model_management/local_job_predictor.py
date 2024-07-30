@@ -12,103 +12,102 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-The LocalModelTrainer uses a local thread to launch and manage each training job
+The LocalJobPredictor uses a local thread to launch and manage each prediction job
+
+model_management:
+    job_predictors:
+        <predictor name>:
+            type: LOCAL
+            config:
+                # ! Inherits config from LocalJobBase
+                # Path to a local directory that holds the results. Defaults
+                # to a temporary directory
+                result_dir: <null or str>
 """
 
 # Standard
-from concurrent.futures.thread import _threads_queues
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, Iterable, List, Optional, Type, Union
-import os
+from typing import Any, Dict, Optional
 import re
-import threading
-import uuid
 
 # First Party
 import aconfig
 import alog
 
 # Local
-from ...interfaces.common.data_model.stream_sources import S3Path
-from ..data_model import DataObjectBase, TrainingStatus
+from ..data_model import DataObjectBase
 from ..exceptions import error_handler
 from ..modules import ModuleBase
-from ..toolkit.logging import configure as configure_logging
-from .job_predictor_base import JobFutureBase, JobPredictorBase
-from .local_job_base import LocalJobBase, LocalJobFuture
-from .model_trainer_base import ModelTrainerBase, TrainingInfo
+from .job_predictor_base import JobPredictorBase
+from .local_job_base import LocalJobBase
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
     CaikitCoreStatusCode,
 )
-from caikit.core.toolkit.concurrency.destroyable_process import DestroyableProcess
-from caikit.core.toolkit.concurrency.destroyable_thread import DestroyableThread
-import caikit
 
 log = alog.use_channel("LOC-TRNR")
 error = error_handler.get(log)
 
 
-# 🌶️🌶️🌶️
-# Fix for python3.9, 3.10 and 3.11 issue where forked processes always exit with exitcode 1
-# when it's created inside a ThreadPoolExecutor: https://github.com/python/cpython/issues/88110
-# Fix taken from https://github.com/python/cpython/pull/101940
-# Credit: marmarek, https://github.com/marmarek
-
-if hasattr(os, "register_at_fork"):
-    os.register_at_fork(after_in_child=_threads_queues.clear)
-
-
-class LocalJobPredictorFuture(LocalJobFuture):
-    def __init__(
-        self,
-        model_instance: ModuleBase,
-        prediction_func_name: str,
-        *args,
-        **kwargs: Dict[str, Any],
-    ):
-        self._model_instance = model_instance
-        self._prediction_func_name = prediction_func_name
-        self._result_type = None
-        super().__init__(*args, **kwargs)
-
-    def run(self, *args, **kwargs):
-        """Function that will run in the worker thread"""
-        # If running in a spawned subprocess, reconfigure logging
-        with alog.ContextTimer(log.debug, "Inference %s finished in: ", self.id):
-            model_run_fn = getattr(self._model_instance, self._prediction_func_name)
-            infer_result = model_run_fn(*args, **kwargs)
-        if self.save_path is not None:
-            save_path_pathlib = Path(self.save_path)
-            log.debug("Saving inference %s to %s", self.id, self.save_path)
-            save_path_pathlib.parent.mkdir(exist_ok=True)
-            with alog.ContextTimer(
-                log.debug, "Inference %s saved in: ", self.id
-            ) and save_path_pathlib.open("wb") as output_file:
-                output_file.write(infer_result.to_binary_buffer())
-
-        self._result_type = infer_result.__class__
-        self._completion_time = self._completion_time or datetime.now()
-        log.debug2("Completion time for %s: %s", self.id, self._completion_time)
-        return infer_result
-
-    def load(self) -> ModuleBase:
-        """There is no new model for inference futures so return the existing object"""
-        return self._model_instance
-
-    def result(self) -> DataObjectBase:
-        result_path = Path(self.save_path)
-        if not result_path.exists():
-            return None
-
-        assert self._result_type
-        return self._result_type.from_binary_buffer(result_path.read_bytes())
-
-
 class LocalJobPredictor(LocalJobBase, JobPredictorBase):
     __doc__ = __doc__
+
+    class LocalJobPredictorFuture(LocalJobBase.LocalJobFuture):
+        """LocalJobPredictorFuture takes a model instance and prediction function
+        and runs the function in a destroyable thread"""
+
+        def __init__(
+            self,
+            model_instance: ModuleBase,
+            prediction_func_name: str,
+            *args,
+            **kwargs: Dict[str, Any],
+        ):
+            self._model_instance = model_instance
+            self._prediction_func_name = prediction_func_name
+            self._result_type = None
+            super().__init__(*args, **kwargs)
+
+        def run(self, *args, **kwargs):
+            """Run the prediction and save the results in a binary format to a file"""
+            # If running in a spawned subprocess, reconfigure logging
+            with alog.ContextTimer(log.debug, "Inference %s finished in: ", self.id):
+                model_run_fn = getattr(self._model_instance, self._prediction_func_name)
+                infer_result = model_run_fn(*args, **kwargs)
+            if self.save_path is not None:
+                save_path_pathlib = Path(self.save_path)
+                log.debug("Saving inference %s to %s", self.id, self.save_path)
+                save_path_pathlib.parent.mkdir(exist_ok=True)
+                with alog.ContextTimer(
+                    log.debug, "Inference %s saved in: ", self.id
+                ) and save_path_pathlib.open("wb") as output_file:
+                    output_file.write(infer_result.to_binary_buffer())
+
+            self._result_type = infer_result.__class__
+            self._completion_time = self._completion_time or datetime.now()
+            log.debug2("Completion time for %s: %s", self.id, self._completion_time)
+            return infer_result
+
+        def result(self) -> DataObjectBase:
+            """Fetch the result from the result directory"""
+            if not self.completion_time:
+                raise CaikitCoreException(
+                    CaikitCoreStatusCode.NOT_FOUND,
+                    f"Prediction {self.id} is still in progress",
+                )
+
+            result_path = Path(self.save_path)
+            if not result_path.exists():
+                raise CaikitCoreException(
+                    CaikitCoreStatusCode.NOT_FOUND,
+                    f"Prediction result for {self.id} is not found",
+                )
+
+            assert self._result_type
+            return self._result_type.from_binary_buffer(result_path.read_bytes())
+
     LocalModelFuture = LocalJobPredictorFuture
 
     name = "LOCAL"
@@ -121,13 +120,13 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
     )
 
     def __init__(self, config: aconfig.Config, instance_name: str):
-        """Initialize with a shared dict of all trainings"""
+        """Initialize by creating a result temporary directory or
+        just holding a reference"""
         self._result_dir = config.get("result_dir", None)
         self._tmp_dir = None
         if not self._result_dir:
             self._tmp_dir = TemporaryDirectory()
             self._result_dir = self._tmp_dir.name
-        self._subprocess_start_method = config.get("subprocess_start_method", "spawn")
         super().__init__(config, instance_name)
 
     def __del__(self):

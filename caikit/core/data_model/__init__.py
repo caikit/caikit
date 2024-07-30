@@ -26,7 +26,7 @@ from .dataobject import (
     render_dataobject_protos,
 )
 from .enums import *
-from .job_status import JobStatus
+from .job import JobStatus, JobType
 from .predict_status import PredictJobStatus
 from .producer import PACKAGE_COMMON, ProducerId
 from .streams import data_stream

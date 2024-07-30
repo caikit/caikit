@@ -12,35 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-A Trainer is responsible for managing execution of a training job for a given
-module class
+A Job Predictor is responsible for managing execution of a prediction jobs running
+in a background for a given task method
 
-Configuration for ModelTrainers lives under the config as follows:
+Configuration for Job Predictors lives under the config as follows:
 
 model_management:
-    trainers:
-        <trainer name>:
+    job_predictors:
+        <predictor name>:
             type: <trainer type name>
             config:
                 <config option>: <value>
 """
 # Standard
-from typing import List, Optional, Type, Union
+from typing import Optional
 import abc
-import dataclasses
-import datetime
-import os
 
 # Local
-from ...interfaces.common.data_model.stream_sources import S3Path
-from ..data_model import TrainingStatus
 from ..modules import ModuleBase
-from ..toolkit.factory import FactoryConstructible
-from ..toolkit.reversible_hasher import ReversibleHasher
 from .job_base import JobBase, JobFutureBase, JobInfo
 
 
 class JobPredictorInfo(JobInfo):
+    """JobPredictorInfo isa remap of JobInfo but for predictors"""
+
     pass
 
 
@@ -52,17 +47,18 @@ class JobPredictorBase(JobBase):
     def predict(
         self,
         model_instance: ModuleBase,
+        prediction_func_name: str,
         *args,
         external_inference_id: Optional[str] = None,
         **kwargs,
     ) -> ModelFutureBase:
-        """Start training the given module and return a future to the trained
-        model instance
+        """Start a prediction with the given model instance and function and return a
+        future to the prediction result
         """
 
     ## Shared Utilities ##
 
     @classmethod
     def get_predictor_name(cls, predict_id: str) -> str:
-        """Un-hash the trainer's instance name from the given training id"""
+        """Un-hash the predictors's instance name from the given training id"""
         return cls.get_job_name(predict_id)

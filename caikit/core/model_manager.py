@@ -30,10 +30,10 @@ import alog
 
 # Local
 from ..interfaces.common.data_model.stream_sources import S3Path
+from .data_model.job import JobType
 from .exceptions import error_handler
 from .exceptions.caikit_core_exception import CaikitCoreException, CaikitCoreStatusCode
 from .model_management import (
-    JobBase,
     JobFutureBase,
     JobPredictorBase,
     ModelFinderBase,
@@ -192,23 +192,34 @@ class ModelManager:
     def start_prediction_job(
         self,
         model: ModuleBase,
-        inference_func_name: str,
+        prediction_func_name: str,
         *args,
         predictor: Union[str, JobPredictorBase] = "default",
         wait: bool = False,
         **kwargs,
     ) -> JobFutureBase:
-        """TODO"""
-        error.type_check("<COR05418775E>", ModuleBase, model=model)
+        """Start a prediction job using a job_predictor.
 
-        # Get the trainer to use
+        Args:
+            model (ModuleBase): Loaded model to run prediction on
+            prediction_func_name (str): String reference to name of function to run
+            predictor (Union[str, JobPredictorBase], optional): Which job_predictor to use.
+              Defaults to "default".
+            wait (bool, optional): Weather to wait for job to finish. Defaults to False.
+
+        Returns:
+            JobFutureBase: Future to track job result
+        """
+        error.type_check("<COR02418775E>", ModuleBase, model=model)
+
+        # Get the predictor to use
         inferencer: JobPredictorBase = self.get_predictor(predictor)
 
-        # Start the training
+        # Start the prediction job
         with alog.ContextTimer(log.debug, "Started prediction job in: "):
             model_future = inferencer.predict(
                 model,
-                inference_func_name,
+                prediction_func_name,
                 *args,
                 **kwargs,
             )
@@ -225,25 +236,27 @@ class ModelManager:
             ):
                 model_future.wait()
 
-        # Return a handle to the training
+        # Return a handle to the future
         return model_future
 
     def get_model_future(
         self,
         future_id: str = None,
-        future_type: str = "training",
+        future_type: JobType = JobType.TRAINING,
     ) -> JobFutureBase:
         """Get the future handle to an in-progress training
 
         Args:
             future_id (str): The ID string from the original training
                 submission's ModelFuture
+            future_type (JobType): Which type of job to fetch the future
+                of
 
         Returns:
             model_future (ModelTrainerBase.ModelFutureBase): The future handle
                 to the model which holds the status of the in-flight training.
         """
-        if future_type == "training":
+        if future_type == JobType.TRAINING:
             try:
                 trainer = self.get_trainer(ModelTrainerBase.get_trainer_name(future_id))
             # Fall back to the default trainer to try to find this ID
@@ -251,7 +264,7 @@ class ModelManager:
                 trainer = self.get_trainer("default")
 
             return trainer.get_model_future(future_id)
-        if future_type == "predicting":
+        elif future_type == JobType.PREDICTION:
             try:
                 predictor = self.get_predictor(
                     JobPredictorBase.get_predictor_name(future_id)

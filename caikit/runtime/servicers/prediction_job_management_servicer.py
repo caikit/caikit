@@ -27,7 +27,7 @@ import alog
 
 # Local
 from caikit.core import MODEL_MANAGER, DataObjectBase
-from caikit.core.data_model import JobStatus
+from caikit.core.data_model import JobStatus, JobType
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
     CaikitCoreStatusCode,
@@ -43,37 +43,44 @@ log = alog.use_channel("TM-SERVICR-I")
 
 
 class PredictionJobManagementServicerImpl:
-    """This class contains the implementation of all of the RPCs that are required to run a
-    service in Model Mesh as a Model-Runtime."""
+    """This class contains the implementation of all of the RPCs that are required to manage
+    a prediction job. This includes fetching status, cancelling jobs, and getting the results.
+    """
 
     #######################
     ## gRPC Service Impl ##
     #######################
 
     def GetPredictionJobResult(
-        self, request: PredictionJobInfoRequest, context,
+        self,
+        request: PredictionJobInfoRequest,
+        context,
         *_,
         **__,
     ) -> Union[
         ProtobufMessage, Iterable[ProtobufMessage]
     ]:  # pylint: disable=unused-argument
-        """Get the status of a training by ID"""
+        """Get the result of a prediction job by ID"""
         return self.get_job_result(request.job_id).to_proto()
 
     def GetPredictionJobStatus(
-        self, request: PredictionJobInfoRequest, context,
+        self,
+        request: PredictionJobInfoRequest,
+        context,
         *_,
         **__,
     ):  # pylint: disable=unused-argument
-        """Get the status of a training by ID"""
+        """Get the status of a prediction job ID"""
         return self.get_job_status(request.job_id).to_proto()
 
     def CancelPredictionJob(
-        self, request: PredictionJobInfoRequest, context,
+        self,
+        request: PredictionJobInfoRequest,
+        context,
         *_,
         **__,
     ):  # pylint: disable=unused-argument
-        """Cancel a training future."""
+        """Cancel a prediction job."""
         return self.cancel_job(request.job_id).to_proto()
 
     ####################################
@@ -81,7 +88,7 @@ class PredictionJobManagementServicerImpl:
     ####################################
 
     def get_job_result(self, job_id: str) -> DataObjectBase:
-        """Get the status of a job by ID"""
+        """Get the result of a job by ID"""
         model_future = self._get_model_future(job_id, operation="get_status")
         try:
             return model_future.result()
@@ -96,20 +103,20 @@ class PredictionJobManagementServicerImpl:
             ) from err
 
     def get_job_status(self, job_id: str) -> PredictionJobStatusResponse:
-        """Get the status of a training by ID"""
+        """Get the status of a job by ID"""
         model_future = self._get_model_future(job_id, operation="get_status")
         try:
             reasons = []
-            training_info = model_future.get_info()
-            if training_info.errors:
-                reasons = [str(error) for error in training_info.errors]
+            job_info = model_future.get_info()
+            if job_info.errors:
+                reasons = [str(error) for error in job_info.errors]
 
             return PredictionJobStatusResponse(
                 job_id=job_id,
-                state=training_info.status,
+                state=job_info.status,
                 reasons=reasons,
-                submission_timestamp=training_info.submission_time,
-                completion_timestamp=training_info.completion_time,
+                submission_timestamp=job_info.submission_time,
+                completion_timestamp=job_info.completion_time,
             )
         except CaikitCoreException as err:
             raise_caikit_runtime_exception(exception=err)
@@ -122,26 +129,25 @@ class PredictionJobManagementServicerImpl:
             ) from err
 
     def cancel_job(self, job_id: str) -> PredictionJobStatusResponse:
-        """Cancel a training future."""
+        """Cancel a prediction job."""
         model_future = self._get_model_future(job_id, operation="cancel")
         try:
             model_future.cancel()
-            inference_info = model_future.get_info()
+            job_info = model_future.get_info()
 
             reasons = []
-            if inference_info.errors:
-                reasons = [str(error) for error in inference_info.errors]
+            if job_info.errors:
+                reasons = [str(error) for error in job_info.errors]
 
             return PredictionJobStatusResponse(
                 job_id=model_future.id,
-                state=inference_info.status,
+                state=job_info.status,
                 reasons=reasons,
             )
         except CaikitCoreException as err:
-            # In the case that we get a `NOT_FOUND`, we assume that the training was canceled.
+            # In the case that we get a `NOT_FOUND`, we assume that the job was canceled.
             # This is to handle stateful trainers that implement `cancel` by fully deleting
-            # the training. NB: Future `GetTrainingStatus` calls for these canceled trainings
-            # would raise a not found error to the user.
+            # the training.
             if err.status_code == CaikitCoreStatusCode.NOT_FOUND:
                 return PredictionJobStatusResponse(
                     inference_id=job_id,
@@ -168,10 +174,12 @@ class PredictionJobManagementServicerImpl:
     @staticmethod
     def _get_model_future(job_id: str, operation: str):
         """Returns a model future, or raises 404 caikit runtime exception on error.
-        Wrapped here so that we only catch errors directly in the `trainer.get_model_future` call
+        Wrapped here so that we only catch errors directly in the `predictor.get_model_future` call
         """
         try:
-            return MODEL_MANAGER.get_model_future(job_id, future_type="predicting")
+            return MODEL_MANAGER.get_model_future(
+                job_id, future_type=JobType.PREDICTION
+            )
         except CaikitCoreException as err:
             raise_caikit_runtime_exception(exception=err)
         except Exception as err:

@@ -179,7 +179,7 @@ class ServicePackageFactory:
                 clean_modules, caikit_config
             )
         elif service_type == cls.ServiceType.JOB_INFERENCE:
-            # Assert for backwards compatibility, if enabled, when service type is INFERENCE
+            # Assert for backwards compatibility, if enabled, when service type is JOB_INFERENCE
             ServicePackageFactory._check_backwards_compatibility(
                 caikit_config, clean_modules
             )

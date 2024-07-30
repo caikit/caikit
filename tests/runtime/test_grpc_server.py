@@ -40,6 +40,7 @@ import alog
 
 # Local
 from caikit import get_config
+from caikit.core.data_model import PredictJobStatus
 from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.common.data_model import File
 from caikit.interfaces.runtime.data_model import (
@@ -47,6 +48,9 @@ from caikit.interfaces.runtime.data_model import (
     ModelInfo,
     ModelInfoRequest,
     ModelInfoResponse,
+    PredictionJob,
+    PredictionJobInfoRequest,
+    PredictionJobStatusResponse,
     RuntimeInfoRequest,
     RuntimeInfoResponse,
     TrainingInfoRequest,
@@ -69,6 +73,7 @@ from caikit.runtime.protobufs import (
     process_pb2_grpc,
 )
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
+from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.servicer_util import build_caikit_library_request_dict
 from sample_lib import CompositeModule, InnerModule, OtherModule, SamplePrimitiveModule
 from sample_lib.data_model import (
@@ -320,6 +325,92 @@ def test_predict_sample_module_error_response(
             predict_request, metadata=[("mm-model-id", "random_model_id")]
         )
     assert context.value.code() == grpc.StatusCode.NOT_FOUND
+
+
+def test_job_predict_sample_module_ok_response(
+    sample_task_model_id, runtime_grpc_server, sample_job_inference_service
+):
+    """Test RPC CaikitRuntime.SampleTaskStartPredictionJob successful response as well
+    as status and result rpcs"""
+    stub = sample_job_inference_service.stub_class(
+        runtime_grpc_server.make_local_channel()
+    )
+    predict_request = get_inference_request(SampleTask)(
+        sample_input=HAPPY_PATH_INPUT_DM
+    ).to_proto()
+
+    # Start prediction in background
+    job_proto_info = stub.SampleTaskStartPredictionJob(
+        predict_request, metadata=[("mm-model-id", sample_task_model_id)]
+    )
+
+    job_info = PredictionJob.from_proto(job_proto_info)
+    assert job_info.job_id is not None
+
+    # Check background status
+    predict_status_request = PredictionJobInfoRequest(job_id=job_info.job_id).to_proto()
+    job_proto_status = stub.SampleTaskPredictionJobStatus(
+        predict_status_request, metadata=[("mm-model-id", sample_task_model_id)]
+    )
+
+    job_status = PredictionJobStatusResponse.from_proto(job_proto_status)
+    assert job_status.state == PredictJobStatus.COMPLETED.value
+
+    # Get background result
+    job_result = stub.SampleTaskGetPredictionJobResult(
+        predict_status_request, metadata=[("mm-model-id", sample_task_model_id)]
+    )
+    assert job_result == HAPPY_PATH_RESPONSE
+
+
+def test_job_predict_sample_module_cancel_request(
+    sample_task_model_id, runtime_grpc_server, sample_job_inference_service
+):
+    """Test that a grpc prediction job can be cancelled"""
+    # start a prediction that sleeps for a long time, so I can cancel
+    stub = sample_job_inference_service.stub_class(
+        runtime_grpc_server.make_local_channel()
+    )
+    predict_request = get_inference_request(SampleTask)(
+        sample_input=HAPPY_PATH_INPUT_DM, sleep_time=10
+    ).to_proto()
+
+    # Start prediction in background
+    job_proto_info = stub.SampleTaskStartPredictionJob(
+        predict_request, metadata=[("mm-model-id", sample_task_model_id)]
+    )
+
+    job_info = PredictionJob.from_proto(job_proto_info)
+    assert job_info.job_id is not None
+
+    # Test to ensure that the  status is Running
+    predict_status_request = PredictionJobInfoRequest(job_id=job_info.job_id).to_proto()
+    job_proto_status = stub.SampleTaskPredictionJobStatus(
+        predict_status_request, metadata=[("mm-model-id", sample_task_model_id)]
+    )
+    job_status = PredictionJobStatusResponse.from_proto(job_proto_status)
+    assert (
+        job_status.state == PredictJobStatus.RUNNING.value
+    ), "Could not cancel this prediction within 10s"
+
+    # Test to ensure that fetching a result while before its completed raises an exception
+    with pytest.raises(grpc.RpcError):
+        # Ensure attempting to get the prediction result raises an error
+        stub.SampleTaskGetPredictionJobResult(
+            predict_status_request, metadata=[("mm-model-id", sample_task_model_id)]
+        )
+
+    # cancel the training
+    canceled_response = stub.SampleTaskCancelPredictionJob(predict_status_request)
+    canceled_status = PredictionJobStatusResponse.from_proto(canceled_response)
+    assert canceled_status.state == PredictJobStatus.CANCELED.value
+
+    # Test to ensure that fetching a result after its been cancelled raises an exception
+    with pytest.raises(grpc.RpcError):
+        # Ensure attempting to get the prediction result raises an error
+        stub.SampleTaskGetPredictionJobResult(
+            predict_status_request, metadata=[("mm-model-id", sample_task_model_id)]
+        )
 
 
 @pytest.mark.skip("Skipping for now since we're doing streaming stuff")

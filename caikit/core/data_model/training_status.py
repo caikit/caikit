@@ -15,6 +15,7 @@
 Common data model enum used for reporting training status
 """
 # Local
-from .job_status import JobStatus
+from .job import JobStatus
 
+# Copy JobStatus as training status for now
 TrainingStatus = JobStatus

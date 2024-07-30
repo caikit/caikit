@@ -1060,6 +1060,81 @@ def test_single_models_info_ok(client, sample_task_model_id):
     assert model["module_metadata"]["name"] == "SampleModule"
 
 
+## Job Inference Tests #############################################################
+
+
+def test_job_inference_sample_task(sample_task_model_id, client):
+    """Simple check that we can run a task using a prediction job"""
+    # Submit request
+    json_input = {"model_id": sample_task_model_id, "inputs": {"name": "world"}}
+    response = client.post(
+        f"/api/v1/task/sample/job",
+        json=json_input,
+    )
+    json_response = response.json()
+    assert response.status_code == 200, json_response
+    id = json_response["job_id"]
+
+    # Check that status is completed
+    response = client.get(f"/api/v1/task/sample/job", params={"job_id": id})
+    json_response = response.json()
+    assert response.status_code == 200, json_response
+    assert json_response["state"] == "COMPLETED"
+
+    # Validate the results
+    response = client.get(f"/api/v1/task/sample/job/results", params={"job_id": id})
+    json_response = response.json()
+    assert response.status_code == 200, json_response
+    assert json_response["greeting"] == "Hello world"
+
+
+def test_job_inference_sample_task_cancelled(sample_task_model_id, client):
+    """Simple check that we can cancel a prediction job"""
+    # Submit request with sleep delay
+    json_input = {
+        "model_id": sample_task_model_id,
+        "inputs": {"name": "world"},
+        "parameters": {"sleep_time": 10},
+    }
+    response = client.post(
+        f"/api/v1/task/sample/job",
+        json=json_input,
+    )
+    json_response = response.json()
+    assert response.status_code == 200, json_response
+    id = json_response["job_id"]
+
+    # Check that status is running
+    response = client.get(f"/api/v1/task/sample/job", params={"job_id": id})
+    json_response = response.json()
+    assert response.status_code == 200, json_response
+    assert json_response["state"] == "RUNNING"
+
+    # Check that fetching results of a running job raises a 404
+    response = client.get(f"/api/v1/task/sample/job/results", params={"job_id": id})
+    json_response = response.json()
+    assert response.status_code == 404, json_response
+
+    # Cancel the job and check the status
+    response = client.delete(f"/api/v1/task/sample/job", params={"job_id": id})
+    json_response = response.json()
+    assert response.status_code == 200, json_response
+    assert json_response["state"] == "CANCELED"
+
+    # Validate that results raise 404
+    response = client.get(f"/api/v1/task/sample/job/results", params={"job_id": id})
+    json_response = response.json()
+    assert response.status_code == 404, json_response
+
+
+def test_job_inference_not_exist(client):
+    """Simple check that we can cancel a prediction job"""
+    # Submit request with sleep delay
+    response = client.get(f"/api/v1/task/sample/job", params={"job_id": "random_id"})
+    json_response = response.json()
+    assert response.status_code == 404, json_response
+
+
 ## Train Tests #################################################################
 
 
