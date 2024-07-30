@@ -101,20 +101,21 @@ class InfoServicer:
         response = ModelInfoResponse(models=[])
         for name, loaded_module in loaded_model_list:
             # Skip models that haven't been loaded yet
-            if not loaded_module.loaded():
-                continue
-            model_instance = loaded_module.model()
-            response.models.append(
-                ModelInfo(
-                    model_path=loaded_module.path(),
-                    name=name,
-                    size=loaded_module.size(),
-                    metadata=model_instance.public_model_info,
-                    loaded=loaded_module.loaded(),
-                    module_id=model_instance.MODULE_ID,
-                    module_metadata=model_instance.module_metadata,
+            if loaded_module.loaded():
+                model_instance = loaded_module.model()
+                response.models.append(
+                    ModelInfo(
+                        model_path=loaded_module.path(),
+                        name=name,
+                        size=loaded_module.size(),
+                        metadata=model_instance.public_model_info,
+                        loaded=loaded_module.loaded(),
+                        module_id=model_instance.MODULE_ID,
+                        module_metadata=model_instance.module_metadata,
+                    )
                 )
-            )
+            else:
+                response.models.append(ModelInfo(loaded=False, name=name))
         return response
 
     def GetRuntimeInfo(
