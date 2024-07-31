@@ -213,20 +213,20 @@ def test_remote_finder_discover_multi_conn_models(protocol):
                 # hn A / port1 -> model1, model2
                 f"{hn_a}:{port1}": ModelInfoResponse(
                     [
-                        ModelInfo(name=model_id1, module_id=mod_id_x),
-                        ModelInfo(name=model_id2, module_id=mod_id_x),
+                        ModelInfo(name=model_id1, module_id=mod_id_x, loaded=True),
+                        ModelInfo(name=model_id2, module_id=mod_id_x, loaded=True),
                     ]
                 ),
                 # hn A / port2 -> model3
                 f"{hn_a}:{port2}": ModelInfoResponse(
                     [
-                        ModelInfo(name=model_id3, module_id=mod_id_y),
+                        ModelInfo(name=model_id3, module_id=mod_id_y, loaded=True),
                     ]
                 ),
                 # hn B / port3 -> model4
                 f"{hn_b}:{port2}": ModelInfoResponse(
                     [
-                        ModelInfo(name=model_id4, module_id=mod_id_y),
+                        ModelInfo(name=model_id4, module_id=mod_id_y, loaded=True),
                     ]
                 ),
             }.get(target)
