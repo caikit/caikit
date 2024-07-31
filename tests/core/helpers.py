@@ -30,6 +30,7 @@ from caikit.core.model_management import (
     model_trainer_factory,
 )
 from caikit.core.model_management.local_model_initializer import LocalModelInitializer
+from caikit.core.model_management.local_model_trainer import LocalModelTrainer
 from caikit.core.module_backends import BackendBase, backend_types
 from caikit.core.modules import ModuleBase, ModuleConfig
 from sample_lib.modules import SampleModule
@@ -132,14 +133,18 @@ class TestTrainer(ModelTrainerBase):
             super().__init__(
                 future_name=parent.instance_name,
                 future_id=str(uuid.uuid4()),
-                save_path=save_path,
                 save_with_id=save_with_id,
             )
             self._parent = parent
             self._trained_model = trained_model
             self._canceled = False
             self._completed = False
-
+            self._save_path =save_path
+        
+        @property
+        def save_path(self):
+            return self._save_path
+        
         def get_info(self):
             if self._completed:
                 return TrainingInfo(status=TrainingStatus.COMPLETED)

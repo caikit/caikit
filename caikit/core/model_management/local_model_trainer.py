@@ -101,10 +101,6 @@ class LocalModelTrainer(LocalJobBase, ModelTrainerBase):
                 result = self._worker.get_or_throw()
             return result
 
-        def result(self):
-            """Support result() to match concurrent.futures.Future"""
-            return self.load()
-
     LocalModelFuture = LocalModelTrainFuture
 
     name = "LOCAL"

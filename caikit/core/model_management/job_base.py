@@ -16,7 +16,7 @@ A Base class for background model operations. This class is
 used for background training and predictions
 """
 # Standard
-from typing import List, Optional
+from typing import Any, List, Optional
 import abc
 import dataclasses
 import datetime
@@ -79,7 +79,7 @@ class JobFutureBase(abc.ABC):
         """Block until the job reaches a terminal state"""
 
     @abc.abstractmethod
-    def result(self):
+    def result(self) -> Any:
         """Support result() to match concurrent.futures.Future"""
 
 

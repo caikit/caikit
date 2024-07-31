@@ -44,6 +44,10 @@ class ModelTrainerFutureBase(JobFutureBase):
         """A model future must be loadable with no additional arguments. Mainly
         useful in train results"""
 
+    def result(self) -> ModuleBase:
+        """The result of a model train future is the loaded model"""
+        return self.load()
+
 
 class ModelTrainerBase(JobBase):
     __doc__ = __doc__
