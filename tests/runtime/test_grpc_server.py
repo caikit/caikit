@@ -284,7 +284,12 @@ def test_global_predict_build_caikit_library_request_dict_creates_caikit_core_ru
     )
 
     # unset fields are included if they have defaults set
-    python_expected_arguments = {"sample_input", "throw"}
+    python_expected_arguments = {
+        "sleep_increment",
+        "sleep_time",
+        "sample_input",
+        "throw",
+    }
     assert python_request.HasField("throw") is True
     assert python_expected_arguments == set(python_sample_module_request_dict.keys())
 

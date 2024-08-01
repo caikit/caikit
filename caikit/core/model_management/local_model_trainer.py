@@ -20,9 +20,11 @@ model_management:
             type: LOCAL
             config:
                 # ! Inherits config from LocalJobBase
-                # Path to a local directory that holds the results. Defaults
-                # to a temporary directory
-                result_dir: <null or str>
+                # Whether to train in a subprocess or different thread
+                use_subprocess: <bool: False>
+                # Type of subprocess to use if use_subprocess=True
+                subprocess_start_method: <string: spawn>
+                
 """
 
 # Standard

@@ -256,12 +256,6 @@ runtime:
         output_dir: training_output
         save_with_id: true
 
-    # Background Inference configuration for server
-    background_inference:
-        # The directory to save trained models in
-        output_dir: inference_output
-        save_with_id: true
-
     # Version details to retrieve
     version_info:
         python_packages:
