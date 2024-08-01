@@ -72,8 +72,6 @@ class SampleModule(caikit.core.ModuleBase):
                 for before being successful. Defaults to None.
             sleep_time float: How long to sleep before returning a result. Defaults to 0.
             sleep_increment float: How large of increments to sleep in.
-            throw_first_num_requests (Optional[int], optional): How many requests to throw an error
-                for before being successful. Defaults to None.
             context (Optional[RuntimeServerContextType]): The context for the runtime server request
         Returns:
             SampleOutputType: The output

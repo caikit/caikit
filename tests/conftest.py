@@ -384,13 +384,16 @@ def reset_model_manager():
     prev_finders = MODEL_MANAGER._finders
     prev_initializers = MODEL_MANAGER._initializers
     prev_trainers = MODEL_MANAGER._trainers
+    prev_predictors = MODEL_MANAGER._job_predictors
     MODEL_MANAGER._finders = {}
     MODEL_MANAGER._initializers = {}
     MODEL_MANAGER._trainers = {}
+    MODEL_MANAGER._job_predictors = {}
     yield
     MODEL_MANAGER._finders = prev_finders
     MODEL_MANAGER._initializers = prev_initializers
     MODEL_MANAGER._trainers = prev_trainers
+    MODEL_MANAGER._job_predictors = prev_predictors
 
 
 @pytest.fixture

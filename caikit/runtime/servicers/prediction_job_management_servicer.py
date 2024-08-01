@@ -32,6 +32,7 @@ from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
     CaikitCoreStatusCode,
 )
+from caikit.core.model_management.job_base import JobFutureBase
 from caikit.interfaces.runtime.data_model import (
     PredictionJobInfoRequest,
     PredictionJobStatusResponse,
@@ -89,8 +90,16 @@ class PredictionJobManagementServicerImpl:
 
     def get_job_result(self, job_id: str) -> DataObjectBase:
         """Get the result of a job by ID"""
-        model_future = self._get_model_future(job_id, operation="get_status")
+        model_future: JobFutureBase | None = self._get_model_future(
+            job_id, operation="get_status"
+        )
         try:
+            if model_future.get_info().status != JobStatus.COMPLETED:
+                raise CaikitCoreException(
+                    CaikitCoreStatusCode.NOT_FOUND,
+                    f"Prediction {model_future.id} is still in progress",
+                )
+
             return model_future.result()
         except CaikitCoreException as err:
             raise_caikit_runtime_exception(exception=err)

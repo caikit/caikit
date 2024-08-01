@@ -27,7 +27,7 @@ from .factories import (
     model_trainer_factory,
 )
 from .job_base import JobBase, JobFutureBase
-from .job_predictor_base import JobPredictorBase
+from .job_predictor_base import JobPredictorBase, JobPredictorInfo
 from .model_finder_base import ModelFinderBase
 from .model_initializer_base import ModelInitializerBase
 from .model_trainer_base import ModelTrainerBase, ModelTrainerFutureBase, TrainingInfo

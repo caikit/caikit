@@ -79,7 +79,7 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
             if self.save_path is not None:
                 save_path_pathlib = Path(self.save_path)
                 log.debug("Saving inference %s to %s", self.id, self.save_path)
-                save_path_pathlib.parent.mkdir(exist_ok=True)
+                save_path_pathlib.parent.mkdir(exist_ok=True, parents=True)
                 with alog.ContextTimer(
                     log.debug, "Inference %s saved in: ", self.id
                 ) and save_path_pathlib.open("wb") as output_file:
@@ -92,11 +92,8 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
 
         def result(self) -> DataObjectBase:
             """Fetch the result from the result directory"""
-            if not self.completion_time:
-                raise CaikitCoreException(
-                    CaikitCoreStatusCode.NOT_FOUND,
-                    f"Prediction {self.id} is still in progress",
-                )
+            # Wait for future to complete
+            self.wait()
 
             result_path = Path(self.save_path)
             if not result_path.exists():
@@ -139,7 +136,7 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
         prediction_func_name: str,
         *args,
         save_with_id: bool = True,
-        external_inference_id: Optional[str] = None,
+        external_prediction_id: Optional[str] = None,
         **kwargs,
     ) -> LocalJobPredictorFuture:
         """Start training the given module and return a future to the trained
@@ -150,14 +147,14 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
 
         # If there's an external ID, make sure it's not currently running before
         # launching the job
-        if external_inference_id and (
-            current_future := self._futures.get(external_inference_id)
+        if external_prediction_id and (
+            current_future := self._futures.get(external_prediction_id)
         ):
             error.value_check(
                 "<COR79850561E>",
                 current_future.get_info().status.is_terminal,
-                "Cannot restart inference {} that is currently running",
-                external_inference_id,
+                "Cannot restart prediction {} that is currently running",
+                external_prediction_id,
             )
 
         # Create the new future
@@ -166,7 +163,7 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
             model_instance=model_instance,
             prediction_func_name=prediction_func_name,
             save_path=self._result_dir,
-            future_id=external_inference_id,
+            future_id=external_prediction_id,
             save_with_id=save_with_id,
             use_subprocess=False,  # don't use subprocess
             module_class=model_instance.__class__,
@@ -196,5 +193,5 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
             return model_future
         raise CaikitCoreException(
             status_code=CaikitCoreStatusCode.NOT_FOUND,
-            message=f"Unknown training_id: {inference_id}",
+            message=f"Unknown future_id: {inference_id}",
         )
