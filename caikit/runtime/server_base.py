@@ -85,6 +85,9 @@ class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attribute
         # We should always be able to stand up an inference service
         self.enable_inference = self.config.runtime.service_generation.enable_inference
         self.enable_training = self.config.runtime.service_generation.enable_training
+        self.enable_inference_jobs = (
+            self.config.runtime.service_generation.enable_inference_jobs
+        )
         self.inference_service: Optional[ServicePackage] = (
             ServicePackageFactory.get_service_package(
                 ServicePackageFactory.ServiceType.INFERENCE,
@@ -96,7 +99,7 @@ class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attribute
             ServicePackageFactory.get_service_package(
                 ServicePackageFactory.ServiceType.JOB_INFERENCE,
             )
-            if self.enable_inference
+            if self.enable_inference_jobs
             else None
         )
 

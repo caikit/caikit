@@ -214,6 +214,7 @@ runtime:
         # Toggles for the generated inference and training services
         enable_inference: true
         enable_training: true
+        enable_inference_jobs: true
 
         # Configurations for which module implementations and tasks to include
         # in the service generation

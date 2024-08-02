@@ -194,6 +194,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             )
             self._bind_routes(self.inference_service)
 
+        if self.enable_inference_jobs:
             # Bind routes for prediction jobs
             self.prediction_job_manager = PredictionJobManagementServicerImpl()
             self._bind_routes(self.inference_job_service)

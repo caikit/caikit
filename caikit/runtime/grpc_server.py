@@ -113,17 +113,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
                 self.inference_service.service, self.server
             )
 
-            # Register model management service
-            self.model_management_service: ServicePackage = (
-                ServicePackageFactory.get_service_package(
-                    ServicePackageFactory.ServiceType.MODEL_MANAGEMENT,
-                )
-            )
-            service_names.append(self.model_management_service.descriptor.full_name)
-            self.model_management_service.registration_function(
-                ModelManagementServicerImpl(), self.server
-            )
-
+        if self.enable_inference_jobs:
             # Initialize the job management servicer and create a function wrapper
             self._prediction_job_management_servicer = (
                 PredictionJobManagementServicerImpl()
@@ -145,6 +135,18 @@ class RuntimeGRPCServer(RuntimeServerBase):
             # Register the job inference endpoints
             self.inference_job_service.registration_function(
                 self.inference_job_service.service, self.server
+            )
+
+        if self.enable_inference or self.enable_inference_jobs:
+            # Register model management service
+            self.model_management_service: ServicePackage = (
+                ServicePackageFactory.get_service_package(
+                    ServicePackageFactory.ServiceType.MODEL_MANAGEMENT,
+                )
+            )
+            service_names.append(self.model_management_service.descriptor.full_name)
+            self.model_management_service.registration_function(
+                ModelManagementServicerImpl(), self.server
             )
 
         # And intercept a training service, if we have one

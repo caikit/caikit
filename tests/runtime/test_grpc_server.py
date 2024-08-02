@@ -1538,6 +1538,7 @@ def test_all_signal_handlers_invoked(open_port):
             RUNTIME_METRICS_ENABLED="false",
             RUNTIME_GRPC_ENABLED="true",
             RUNTIME_HTTP_ENABLED="true",
+            RUNTIME_SERVICE_GENERATION_ENABLE_INFERENCE_JOBS="false",
             LOG_LEVEL="info",
         )
         with server_proc as proc:

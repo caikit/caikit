@@ -20,7 +20,7 @@ Configuration for Job Predictors lives under the config as follows:
 model_management:
     job_predictors:
         <predictor name>:
-            type: <trainer type name>
+            type: <predictor type name>
             config:
                 <config option>: <value>
 """
