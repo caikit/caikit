@@ -94,6 +94,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
 
         # Intercept an Inference Service
         self._global_predict_servicer = None
+        self._prediction_job_management_servicer = None
         self.model_management_service = None
         self.training_management_service = None
         if self.enable_inference:

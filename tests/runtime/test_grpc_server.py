@@ -15,6 +15,7 @@
 # Have pylint ignore Class XXXX has no YYYY member so that we can use gRPC enums.
 # pylint: disable=E1101
 # Standard
+from contextlib import nullcontext
 from dataclasses import dataclass
 from unittest import mock
 import json
@@ -1325,10 +1326,17 @@ def test_mtls_different_root(open_port):
 
 
 @pytest.mark.parametrize(
-    ["enable_inference", "enable_training"],
-    [(True, False), (False, True), (False, False)],
+    ["enable_inference", "enable_training", "enable_inference_jobs", "error"],
+    [
+        (True, False, False, False),
+        (False, True, False, False),
+        (False, False, False, False),
+        (False, False, True, True),
+    ],
 )
-def test_services_disabled(open_port, enable_inference, enable_training):
+def test_services_disabled(
+    open_port, enable_inference, enable_training, enable_inference_jobs, error
+):
     """Boot up a server with different combinations of services disabled"""
     with temp_config(
         {
@@ -1336,33 +1344,38 @@ def test_services_disabled(open_port, enable_inference, enable_training):
                 "service_generation": {
                     "enable_inference": enable_inference,
                     "enable_training": enable_training,
+                    "enable_inference_jobs": enable_inference_jobs,
                 }
             },
         },
         "merge",
     ):
-        with runtime_grpc_test_server(open_port) as server:
-            _assert_connection(server.make_local_channel())
-            assert server.enable_inference == enable_inference
-            assert (
-                server._global_predict_servicer
-                and server.model_management_service
-                and enable_inference
-            ) or (
-                server._global_predict_servicer is None
-                and server.model_management_service is None
-                and not enable_inference
-            )
-            assert server.enable_training == enable_training
-            assert (
-                server.training_service
-                and server.training_management_service
-                and enable_training
-            ) or (
-                server.training_service is None
-                and server.training_management_service is None
-                and not enable_training
-            )
+        error_context = (
+            pytest.raises(CaikitRuntimeException) if error else nullcontext()
+        )
+        with error_context:
+            with runtime_grpc_test_server(open_port) as server:
+                _assert_connection(server.make_local_channel())
+                assert server.enable_inference == enable_inference
+                assert (
+                    server._global_predict_servicer
+                    and server.model_management_service
+                    and enable_inference
+                ) or (
+                    server._global_predict_servicer is None
+                    and server.model_management_service is None
+                    and not enable_inference
+                )
+                assert server.enable_training == enable_training
+                assert (
+                    server.training_service
+                    and server.training_management_service
+                    and enable_training
+                ) or (
+                    server.training_service is None
+                    and server.training_management_service is None
+                    and not enable_training
+                )
 
 
 def test_certs_can_be_loaded_as_files(tmp_path, open_port):

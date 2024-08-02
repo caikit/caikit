@@ -15,7 +15,7 @@
 Tests for the caikit HTTP server
 """
 # Standard
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from io import BytesIO
 from pathlib import Path
 from typing import Iterable
@@ -39,6 +39,7 @@ from caikit.core.model_management.multi_model_finder import MultiModelFinder
 from caikit.runtime import http_server
 from caikit.runtime.http_server.http_server import StreamEventTypes
 from caikit.runtime.server_base import ServerThreadPool
+from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from tests.conftest import get_mutable_config_copy, reset_globals, temp_config
 from tests.core.helpers import MockBackend
 from tests.fixtures import Fixtures
@@ -198,47 +199,59 @@ def test_mutual_tls_server_with_wrong_cert(open_port):
 
 
 @pytest.mark.parametrize(
-    ["enable_inference", "enable_training"],
-    [(True, False), (False, True), (False, False)],
+    ["enable_inference", "enable_training", "enable_inference_jobs", "error"],
+    [
+        (True, False, False, False),
+        (False, True, False, False),
+        (False, False, False, False),
+        (False, False, True, True),
+    ],
 )
-def test_services_disabled(open_port, enable_inference, enable_training):
+def test_services_disabled(
+    open_port, enable_inference, enable_training, enable_inference_jobs, error
+):
     with temp_config(
         {
             "runtime": {
                 "service_generation": {
                     "enable_inference": enable_inference,
                     "enable_training": enable_training,
+                    "enable_inference_jobs": enable_inference_jobs,
                 }
             },
         },
         "merge",
     ):
-        with runtime_http_test_server(open_port) as server:
-            # start a non-blocking http server with basic tls
-            resp = requests.get(
-                f"http://localhost:{open_port}{http_server.HEALTH_ENDPOINT}",
-            )
-            resp.raise_for_status()
-            assert server.enable_inference == enable_inference
-            assert (
-                server.global_predict_servicer
-                and server.model_management_servicer
-                and enable_inference
-            ) or (
-                server.global_predict_servicer is None
-                and server.model_management_servicer is None
-                and not enable_inference
-            )
-            assert server.enable_training == enable_training
-            assert (
-                server.global_train_servicer
-                and server.training_management_servicer
-                and enable_training
-            ) or (
-                server.global_train_servicer is None
-                and server.training_management_servicer is None
-                and not enable_training
-            )
+        error_context = (
+            pytest.raises(CaikitRuntimeException) if error else nullcontext()
+        )
+        with error_context:
+            with runtime_http_test_server(open_port) as server:
+                # start a non-blocking http server with basic tls
+                resp = requests.get(
+                    f"http://localhost:{open_port}{http_server.HEALTH_ENDPOINT}",
+                )
+                resp.raise_for_status()
+                assert server.enable_inference == enable_inference
+                assert (
+                    server.global_predict_servicer
+                    and server.model_management_servicer
+                    and enable_inference
+                ) or (
+                    server.global_predict_servicer is None
+                    and server.model_management_servicer is None
+                    and not enable_inference
+                )
+                assert server.enable_training == enable_training
+                assert (
+                    server.global_train_servicer
+                    and server.training_management_servicer
+                    and enable_training
+                ) or (
+                    server.global_train_servicer is None
+                    and server.training_management_servicer is None
+                    and not enable_training
+                )
 
 
 @pytest.mark.parametrize(
