@@ -25,6 +25,7 @@ import json
 import os
 import signal
 import tempfile
+import time
 import zipfile
 
 # Third Party
@@ -1092,6 +1093,12 @@ def test_job_inference_sample_task(sample_task_model_id, client):
     response = client.get(f"/api/v1/task/sample/job", params={"job_id": id})
     json_response = response.json()
     assert response.status_code == 200, json_response
+    # IF job is still running then refetch until its completed
+    while json_response["state"] == "RUNNING":
+        response = client.get(f"/api/v1/task/sample/job", params={"job_id": id})
+        json_response = response.json()
+        assert response.status_code == 200, json_response
+        time.sleep(0.001)
     assert json_response["state"] == "COMPLETED"
 
     # Validate the results
