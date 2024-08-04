@@ -296,12 +296,20 @@ def _get_grpc_service_packages(
 ) -> List[ServicePackage]:
     """Get all enabled grpc service packages"""
     inf_enabled = get_config().runtime.service_generation.enable_inference
+    inf_job_enabled = get_config().runtime.service_generation.enable_inference_jobs
     train_enabled = get_config().runtime.service_generation.enable_training
     svc_descriptors = []
     if inf_enabled:
         svc_descriptors.append(
             ServicePackageFactory.get_service_package(
                 ServicePackageFactory.ServiceType.INFERENCE,
+                write_modules_file=write_modules_file,
+            )
+        )
+    if inf_enabled and inf_job_enabled:
+        svc_descriptors.append(
+            ServicePackageFactory.get_service_package(
+                ServicePackageFactory.ServiceType.JOB_INFERENCE,
                 write_modules_file=write_modules_file,
             )
         )

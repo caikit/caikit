@@ -27,12 +27,10 @@ from .prediction_job_management import (
     PredictionJob,
     PredictionJobInfoRequest,
     PredictionJobStatusResponse,
-    PredictJobStatus,
 )
 from .training_management import (
     ModelPointer,
     TrainingInfoRequest,
     TrainingJob,
-    TrainingStatus,
     TrainingStatusResponse,
 )

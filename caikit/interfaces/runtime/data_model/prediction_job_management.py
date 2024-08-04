@@ -20,7 +20,7 @@ from typing import List
 from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
 
 # Local
-from ....core.data_model import DataObjectBase, PredictJobStatus, dataobject
+from ....core.data_model import DataObjectBase, JobStatus, dataobject
 from .package import RUNTIME_PACKAGE
 
 
@@ -43,7 +43,7 @@ class PredictionJobStatusResponse(DataObjectBase):
     """DataModel representing the status of a PredictionJob"""
 
     job_id: Annotated[str, FieldNumber(1)]
-    state: Annotated[PredictJobStatus, FieldNumber(2)]
+    state: Annotated[JobStatus, FieldNumber(2)]
     submission_timestamp: Annotated[datetime, FieldNumber(3)]
     completion_timestamp: Annotated[datetime, FieldNumber(4)]
     reasons: Annotated[List[str], FieldNumber(5)]
