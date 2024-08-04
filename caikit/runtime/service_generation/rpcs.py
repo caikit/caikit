@@ -413,17 +413,19 @@ class TaskPredictionManagementRPC(CaikitRPCBase):
         self.task = task
         self._method_signatures = method_signatures
 
+        # Create the rpc name based on the module type
+        self._name = self.get_rpc_name()
+
+        # Params and default map are the same for all PredictionManagementRequests
         params = {"job_id": str}
+        default_map = {}
 
         # Construct GRPC RequestMessage
         self._req = _RequestMessage(
-            self.input_type.get_proto_class().DESCRIPTOR.full_name,
+            self.name,
             params,
-            {},
+            default_map,
         )
-
-        # Create the rpc name based on the module type
-        self._name = self.get_rpc_name()
 
     @property
     @abc.abstractmethod
@@ -447,15 +449,11 @@ class TaskPredictionManagementRPC(CaikitRPCBase):
         """The input type for all management requests will be a PredictionJobInfoRequest"""
         return PredictionJobInfoRequest
 
-    def create_request_data_model(self, package_name: str) -> Type[DataBase]:
-        """The data model has already been created for this RPC so its a noop"""
-        return self.return_type
-
     def create_rpc_json(self, package_name: str) -> Dict:
         """Return json snippet for the service definition of this RPC"""
         rpc_json = {
             "name": f"{self.name}",
-            "input_type": f"{self.request.name}",
+            "input_type": self.input_type.get_proto_class().DESCRIPTOR.full_name,
             "output_type": self.return_type.get_proto_class().DESCRIPTOR.full_name,
         }
         return rpc_json
