@@ -84,27 +84,37 @@ def validate_caikit_library_class_method_exists(caikit_library_class, method_nam
 
 
 def build_proto_stream(
-    caikit_library_response: Iterable[DataBase],
+    caikit_library_response: Iterable[DataBase], context
 ) -> Iterator[ProtoMessageType]:
     """Returns an iterator that serializes each item in the model's response to protobuf"""
 
     def _proto_generator():
-        for item in caikit_library_response:
-            try:
-                yield item.to_proto()
-            except Exception as e:
-                log.warning(
-                    {
-                        "log_code": "<RUN11567943W>",
-                        "message": "Exception while serializing response from stream: "
-                        "{}".format(e),
-                        "stack_trace": traceback.format_exc(),
-                    }
-                )
-                raise CaikitRuntimeException(
-                    grpc.StatusCode.INTERNAL,
-                    "Could not serialize output in model response stream",
-                ) from e
+        try:
+            for item in caikit_library_response:
+                try:
+                    yield item.to_proto()
+                except Exception as e:
+                    log.warning(
+                        {
+                            "log_code": "<RUN11567943W>",
+                            "message": "Exception while serializing response from stream: "
+                            "{}".format(e),
+                            "stack_trace": traceback.format_exc(),
+                        }
+                    )
+                    raise CaikitRuntimeException(
+                        grpc.StatusCode.INTERNAL,
+                        "Could not serialize output in model response stream",
+                    ) from e
+        except (TypeError, ValueError) as e:
+            log.warning(
+                {
+                    "log_code": "<RUN12568943W>",
+                    "message": "Invalid argument" "{}".format(e),
+                    "stack_trace": traceback.format_exc(),
+                }
+            )
+            context.abort(grpc.StatusCode.INVALID_ARGUMENT, f"{e}")
 
     return iter(DataStream(_proto_generator))
 
