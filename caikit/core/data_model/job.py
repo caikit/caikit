@@ -45,5 +45,5 @@ class JobStatus(Enum):
 class JobType(Enum):
     """Enum to track the different types of Jobs"""
 
-    TRAINING = (1,)
+    TRAINING = 1
     PREDICTION = 2
