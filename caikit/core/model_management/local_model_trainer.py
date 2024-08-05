@@ -31,7 +31,6 @@ model_management:
 from datetime import datetime
 from typing import Optional, Type
 import os
-import re
 import uuid
 
 # First Party
@@ -108,11 +107,6 @@ class LocalModelTrainer(LocalJobBase, ModelTrainerBase):
     name = "LOCAL"
 
     ## Interface ##
-
-    # Expression for parsing retention policy
-    _timedelta_expr = re.compile(
-        r"^((?P<days>\d+?)d)?((?P<hours>\d+?)h)?((?P<minutes>\d+?)m)?((?P<seconds>\d*\.?\d*?)s)?$"
-    )
 
     def __init__(self, config: aconfig.Config, instance_name: str):
         """Initialize with a shared dict of all trainings"""

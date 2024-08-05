@@ -30,7 +30,6 @@ from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, Optional
-import re
 
 # First Party
 import aconfig
@@ -72,10 +71,12 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
 
         def run(self, *args, **kwargs):
             """Run the prediction and save the results in a binary format to a file"""
-            # If running in a spawned subprocess, reconfigure logging
             with alog.ContextTimer(log.debug, "Inference %s finished in: ", self.id):
                 model_run_fn = getattr(self._model_instance, self._prediction_func_name)
                 infer_result = model_run_fn(*args, **kwargs)
+                self._result_type = infer_result.__class__
+
+            # If save path was provided then output result
             if self.save_path is not None:
                 save_path_pathlib = Path(self.save_path)
                 log.debug("Saving inference %s to %s", self.id, self.save_path)
@@ -85,7 +86,6 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
                 ) and save_path_pathlib.open("wb") as output_file:
                     output_file.write(infer_result.to_binary_buffer())
 
-            self._result_type = infer_result.__class__
             self._completion_time = self._completion_time or datetime.now()
             log.debug2("Completion time for %s: %s", self.id, self._completion_time)
             return infer_result
@@ -111,11 +111,6 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
 
     ## Interface ##
 
-    # Expression for parsing retention policy
-    _timedelta_expr = re.compile(
-        r"^((?P<days>\d+?)d)?((?P<hours>\d+?)h)?((?P<minutes>\d+?)m)?((?P<seconds>\d*\.?\d*?)s)?$"
-    )
-
     def __init__(self, config: aconfig.Config, instance_name: str):
         """Initialize by creating a result temporary directory or
         just holding a reference"""
@@ -139,8 +134,8 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
         external_prediction_id: Optional[str] = None,
         **kwargs,
     ) -> LocalJobPredictorFuture:
-        """Start training the given module and return a future to the trained
-        model instance
+        """Start prediction the given model and return a future to the result
+        of the prediction
         """
         # Always purge old futures
         self._purge_old_futures()
