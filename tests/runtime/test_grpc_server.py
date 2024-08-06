@@ -322,6 +322,27 @@ def test_predict_sample_module_error_response(
     assert context.value.code() == grpc.StatusCode.NOT_FOUND
 
 
+def test_predict_sample_module_streaming_value_error_response(
+    sample_task_model_id, runtime_grpc_server, sample_inference_service
+):
+    """Test RPC CaikitRuntime.ServerStreamingSampleTaskPredict with error"""
+    stub = sample_inference_service.stub_class(runtime_grpc_server.make_local_channel())
+    # err_stream=True here will raise ValueError
+    predict_request = get_inference_request(SampleTask, output_streaming=True)(
+        sample_input=HAPPY_PATH_INPUT_DM, err_stream=True
+    ).to_proto()
+
+    with pytest.raises(grpc.RpcError) as context:
+        response = stub.ServerStreamingSampleTaskPredict(
+            predict_request, metadata=[("mm-model-id", sample_task_model_id)]
+        )
+        for _ in response:
+            # try to read off the stream
+            pass
+
+    assert context.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+
+
 @pytest.mark.skip("Skipping for now since we're doing streaming stuff")
 def test_rpc_validation_on_predict(
     sample_task_model_id, runtime_grpc_server, sample_inference_service
