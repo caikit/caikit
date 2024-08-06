@@ -84,7 +84,7 @@ def validate_caikit_library_class_method_exists(caikit_library_class, method_nam
 
 
 def build_proto_stream(
-    caikit_library_response: Iterable[DataBase], context
+    caikit_library_response: Iterable[DataBase], context: grpc.ServicerContext
 ) -> Iterator[ProtoMessageType]:
     """Returns an iterator that serializes each item in the model's response to protobuf"""
 
@@ -102,15 +102,15 @@ def build_proto_stream(
                             "stack_trace": traceback.format_exc(),
                         }
                     )
-                    raise CaikitRuntimeException(
+                    context.abort(
                         grpc.StatusCode.INTERNAL,
                         "Could not serialize output in model response stream",
-                    ) from e
+                    )
         except (TypeError, ValueError) as e:
             log.warning(
                 {
                     "log_code": "<RUN12568943W>",
-                    "message": "Invalid argument" "{}".format(e),
+                    "message": repr(e),
                     "stack_trace": traceback.format_exc(),
                 }
             )
