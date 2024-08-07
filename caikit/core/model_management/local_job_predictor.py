@@ -30,6 +30,7 @@ from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, Optional
+import shutil
 
 # First Party
 import aconfig
@@ -49,6 +50,10 @@ from caikit.core.exceptions.caikit_core_exception import (
 log = alog.use_channel("LOC-TRNR")
 error = error_handler.get(log)
 
+# Constant for the result file name. This is exposed here to better support
+# subclassing
+RESULT_FILE_NAME = "result.bin"
+
 
 class LocalJobPredictor(LocalJobBase, JobPredictorBase):
     __doc__ = __doc__
@@ -67,24 +72,28 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
             self._model_instance = model_instance
             self._prediction_func_name = prediction_func_name
             self._result_type = None
-            super().__init__(*args, **kwargs)
+            super().__init__(*args, extra_path_args=[RESULT_FILE_NAME], **kwargs)
 
         def run(self, *args, **kwargs):
             """Run the prediction and save the results in a binary format to a file"""
-            with alog.ContextTimer(log.debug, "Inference %s finished in: ", self.id):
+
+            # Create parent prediction directory before starting request
+            save_path_pathlib = Path(self.save_path)
+            log.debug3(
+                "Creating prediction result directory %s", save_path_pathlib.parent
+            )
+            save_path_pathlib.parent.mkdir(exist_ok=True, parents=True)
+
+            with alog.ContextTimer(
+                log.debug, "Inference in job %s finished in: ", self.id
+            ):
                 model_run_fn = getattr(self._model_instance, self._prediction_func_name)
                 infer_result = model_run_fn(*args, **kwargs)
                 self._result_type = infer_result.__class__
 
             # If save path was provided then output result
             if self.save_path is not None:
-                save_path_pathlib = Path(self.save_path)
-                log.debug("Saving inference %s to %s", self.id, self.save_path)
-                save_path_pathlib.parent.mkdir(exist_ok=True, parents=True)
-                with alog.ContextTimer(
-                    log.debug, "Inference %s saved in: ", self.id
-                ) and save_path_pathlib.open("wb") as output_file:
-                    output_file.write(infer_result.to_binary_buffer())
+                self._save_result(infer_result)
 
             self._completion_time = self._completion_time or datetime.now()
             log.debug2("Completion time for %s: %s", self.id, self._completion_time)
@@ -104,6 +113,27 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
 
             assert self._result_type
             return self._result_type.from_binary_buffer(result_path.read_bytes())
+
+        def _delete_result(self):
+            # Delete the result.bin if one exists
+            super()._delete_result()
+
+            # Delete parent directory to clear out future id
+            if self.save_path:
+                parent_path = Path(self.save_path).parent
+                if parent_path.exists():
+                    shutil.rmtree(parent_path, ignore_errors=True)
+
+        def _save_result(self, result: DataObjectBase):
+            """Helper function to save a result to disk. This abstraction helps
+            subclasses implement their own save method like S3"""
+            save_path_pathlib = Path(self.save_path)
+            log.debug("Saving inference %s to %s", self.id, self.save_path)
+            save_path_pathlib.parent.mkdir(exist_ok=True, parents=True)
+            with alog.ContextTimer(
+                log.debug, "Inference %s saved in: ", self.id
+            ) and save_path_pathlib.open("wb") as output_file:
+                output_file.write(result.to_binary_buffer())
 
     LocalModelFuture = LocalJobPredictorFuture
 
@@ -164,7 +194,6 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
             module_class=model_instance.__class__,
             args=args,
             kwargs=kwargs,
-            extra_path_args=["result.bin"],
         )
 
         # Lock the global futures dict and add it to the dict

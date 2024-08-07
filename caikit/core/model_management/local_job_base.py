@@ -209,6 +209,11 @@ class LocalJobBase(JobBase):
             self._completion_time = self._completion_time or datetime.now()
 
         ## Impl ##
+        def _delete_result(self):
+            """Helper function to clear out the result when purging"""
+            if self.save_path and Path(self.save_path).exists():
+                Path(self.save_path).unlink(missing_ok=True)
+
         def _make_background_info(
             self, status: JobStatus, errors: Optional[List[Exception]] = None
         ) -> JobInfo:
@@ -281,7 +286,7 @@ class LocalJobBase(JobBase):
                 )
 
         # The shared dict of futures and a lock to serialize mutations to it
-        self._futures = {}
+        self._futures: Dict[str, self.LocalJobFuture] = {}
         self._futures_lock = threading.Lock()
 
     def get_model_future(self, job_id: str) -> LocalJobFuture:
@@ -320,5 +325,4 @@ class LocalJobBase(JobBase):
                 self._futures.pop(fid, None)
 
                 # Attempt to delete results if another purge hasn't already
-                if future.save_path and Path(future.save_path).exists():
-                    Path(future.save_path).unlink(missing_ok=True)
+                future._delete_result()
