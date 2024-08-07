@@ -400,3 +400,14 @@ HTTP_TO_STATUS_CODE = {}
 for key, val in STATUS_CODE_TO_HTTP.items():
     if val not in HTTP_TO_STATUS_CODE or isinstance(key, StatusCode):
         HTTP_TO_STATUS_CODE[val] = key
+
+# Mapping from CaikitCore StatusCodes codes to their corresponding GRPC status codes
+CAIKIT_STATUS_CODE_TO_GRPC = {
+    CaikitCoreStatusCode.INVALID_ARGUMENT: StatusCode.INVALID_ARGUMENT,
+    CaikitCoreStatusCode.UNAUTHORIZED: StatusCode.UNAUTHENTICATED,
+    CaikitCoreStatusCode.FORBIDDEN: StatusCode.PERMISSION_DENIED,
+    CaikitCoreStatusCode.NOT_FOUND: StatusCode.NOT_FOUND,
+    CaikitCoreStatusCode.CONNECTION_ERROR: StatusCode.UNAVAILABLE,
+    CaikitCoreStatusCode.UNKNOWN: StatusCode.UNKNOWN,
+    CaikitCoreStatusCode.FATAL: StatusCode.INTERNAL,
+}
