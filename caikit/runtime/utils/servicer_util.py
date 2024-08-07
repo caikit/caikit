@@ -127,13 +127,21 @@ def build_proto_stream(
             log.warning({**log_dict, **e.metadata})
             context.abort(e.status_code, e.message)
         except CaikitCoreException as e:
-            log.warning(
-                "[%s] Error: [%s]",
-                CAIKIT_STATUS_CODE_TO_DEBUG_ERROR_TYPE[e.status_code],
-                e.message,
-                exc_info=True,
-            )
-            context.abort(CAIKIT_STATUS_CODE_TO_GRPC[e.status_code], e.message)
+            if e.status_code in CAIKIT_STATUS_CODE_TO_GRPC:
+                log.warning(
+                    "[%s] Error: [%s]",
+                    CAIKIT_STATUS_CODE_TO_DEBUG_ERROR_TYPE[e.status_code],
+                    e.message,
+                    exc_info=True,
+                )
+                context.abort(CAIKIT_STATUS_CODE_TO_GRPC[e.status_code], e.message)
+            else:
+                log.debug2(
+                    "Unhandled CaikitCoreException Error: [%s]",
+                    e.message,
+                    exc_info=True,
+                )
+                context.abort(grpc.StatusCode.INTERNAL, e.message)
         except (TypeError, ValueError) as e:
             log.warning(
                 {
