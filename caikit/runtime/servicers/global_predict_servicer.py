@@ -224,7 +224,7 @@ class GlobalPredictServicer:
                 grpc_request=request_name, model_id=model_id
             ).time():
                 if caikit_rpc.output_streaming:
-                    response_proto = build_proto_stream(response)
+                    response_proto = build_proto_stream(response, context)
                 else:
                     response_proto = build_proto_response(response)
             return response_proto
