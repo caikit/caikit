@@ -16,6 +16,7 @@ Tests for LocalJobPredictor
 """
 # Standard
 from datetime import timedelta
+from pathlib import Path
 import multiprocessing
 import os
 import tempfile
@@ -210,6 +211,8 @@ def test_purge_retention_time(predictor_type_cfg):
     model_future._completion_time = model_future._completion_time - timedelta(days=2)
     with pytest.raises(CaikitCoreException):
         predictor.get_model_future(model_future.id)
+    assert not Path(retrieved_future.save_path).exists()
+    assert not Path(retrieved_future.save_path).parent.exists()
 
 
 @pytest.mark.parametrize(
