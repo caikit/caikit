@@ -118,6 +118,22 @@ def build_proto_stream(
                         grpc.StatusCode.INTERNAL,
                         "Could not serialize output in model response stream",
                     )
+        except CaikitRuntimeException as e:
+            log_dict = {
+                "log_code": "<RUN50630380W>",
+                "message": e.message,
+                "error_id": e.id,
+            }
+            log.warning({**log_dict, **e.metadata})
+            context.abort(e.status_code, e.message)
+        except CaikitCoreException as e:
+            log.warning(
+                "[%s] Error: [%s]",
+                CAIKIT_STATUS_CODE_TO_DEBUG_ERROR_TYPE[e.status_code],
+                e.message,
+                exc_info=True,
+            )
+            context.abort(CAIKIT_STATUS_CODE_TO_GRPC[e.status_code], e.message)
         except (TypeError, ValueError) as e:
             log.warning(
                 {
@@ -127,6 +143,18 @@ def build_proto_stream(
                 }
             )
             context.abort(grpc.StatusCode.INVALID_ARGUMENT, f"{e}")
+        except grpc.RpcError as e:
+            log_dict = {"log_code": "<RUN39029171W>", "message": repr(e)}
+            log.warning(log_dict)
+            context.abort(e.code(), e.details())
+        except Exception as e:
+            log_dict = {
+                "log_code": "<RUN46049070W>",
+                "message": repr(e),
+                "stack_trace": traceback.format_exc(),
+            }
+            log.warning(log_dict)
+            context.abort(grpc.StatusCode.INTERNAL, f"{e}")
 
     return iter(DataStream(_proto_generator))
 
