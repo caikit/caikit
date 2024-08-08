@@ -118,6 +118,9 @@ def build_proto_stream(
                         grpc.StatusCode.INTERNAL,
                         "Could not serialize output in model response stream",
                     )
+        # The exception handling here accounts for errors on stream iteration. Errors
+        # on stream creation are already handled at a higher level. Here, we abort context
+        # with grpc errors codes, to be surfaced to the end user.
         except CaikitRuntimeException as e:
             log_dict = {
                 "log_code": "<RUN50630380W>",
