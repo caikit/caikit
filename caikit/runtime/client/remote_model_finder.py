@@ -273,6 +273,13 @@ class RemoteModelFinder(ModelFinderBase):
 
                     # Parse response into dictionary of name->conn
                     for model_info in model_info_response.models:
+                        if not model_info.loaded:
+                            log.debug(
+                                "Skipping model %s as it has not finished being loaded",
+                                model_name,
+                            )
+                            continue
+
                         model_name = model_info.name
                         module_id = model_info.module_id
 
@@ -337,6 +344,13 @@ class RemoteModelFinder(ModelFinderBase):
                     # Parse response into dictionary of name->id
                     for model_dict in model_info.get("models", []):
                         model_name = model_dict.get("name")
+                        if not model_dict.get("loaded", False):
+                            log.debug(
+                                "Skipping model %s as it has not finished being loaded",
+                                model_name,
+                            )
+                            continue
+
                         module_id = model_dict.get("module_id")
 
                         log.debug(

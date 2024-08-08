@@ -59,15 +59,15 @@ class ModelInfo(DataObjectBase):
     """Information regarding a specific Model instance"""
 
     # Model information
-    model_path: Annotated[str, FieldNumber(1)]
+    model_path: Annotated[Optional[str], FieldNumber(1)]
     name: Annotated[str, FieldNumber(2)]
-    size: Annotated[int, FieldNumber(3)]
-    metadata: Annotated[JsonDict, FieldNumber(4)]
+    size: Annotated[Optional[int], FieldNumber(3)]
+    metadata: Annotated[Optional[JsonDict], FieldNumber(4)]
     loaded: Annotated[bool, FieldNumber(7)]
 
     # Module Information
-    module_id: Annotated[str, FieldNumber(5)]
-    module_metadata: Annotated[Dict[str, str], FieldNumber(6)]
+    module_id: Annotated[Optional[str], FieldNumber(5)]
+    module_metadata: Annotated[Optional[Dict[str, str]], FieldNumber(6)]
 
 
 @dataobject(RUNTIME_PACKAGE)

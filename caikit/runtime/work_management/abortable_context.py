@@ -114,7 +114,7 @@ class ThreadInterrupter:
         thread_id = self._context_thread_map.get(context_id, None)
 
         if thread_id:
-            log.debug("Interrupting thread id: ", thread_id)
+            log.debug("Interrupting thread id: %s", thread_id)
             # This raises an AbortedException asynchronously in the target thread. (We can't just
             # use raise, because this thread is the ThreadInterrupter's watch thread).
             # The exception will only be raised once the target thread regains control of the
