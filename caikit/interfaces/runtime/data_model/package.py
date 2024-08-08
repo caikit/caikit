@@ -19,3 +19,4 @@ Package constant for all runtime service data model objects
 from caikit.core.data_model import CAIKIT_DATA_MODEL
 
 RUNTIME_PACKAGE = f"{CAIKIT_DATA_MODEL}.runtime"
+RUNTIME_JOB_PACKAGE = f"{RUNTIME_PACKAGE}.job"

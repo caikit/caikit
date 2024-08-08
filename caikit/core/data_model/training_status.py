@@ -14,27 +14,8 @@
 """
 Common data model enum used for reporting training status
 """
-
-# Standard
-from enum import Enum
-
 # Local
-from .dataobject import dataobject
-from .package import PACKAGE_COMMON
+from .job import JobStatus
 
-
-@dataobject(PACKAGE_COMMON)
-class TrainingStatus(Enum):
-    QUEUED = 1
-    RUNNING = 2
-    COMPLETED = 3
-    CANCELED = 4
-    ERRORED = 5
-
-    @property
-    def is_terminal(self):
-        return self in [
-            self.__class__.COMPLETED,
-            self.__class__.CANCELED,
-            self.__class__.ERRORED,
-        ]
+# Copy JobStatus as training status for now
+TrainingStatus = JobStatus

@@ -43,4 +43,5 @@ extract = MODEL_MANAGER.extract
 load = MODEL_MANAGER.load
 resolve_and_load = MODEL_MANAGER.resolve_and_load
 train = MODEL_MANAGER.train
+start_prediction_job = MODEL_MANAGER.start_prediction_job
 get_model_future = MODEL_MANAGER.get_model_future

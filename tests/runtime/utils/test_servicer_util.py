@@ -256,7 +256,7 @@ def test_global_predict_build_caikit_library_request_dict_creates_caikit_core_ru
     )
 
     # Since using pythonic data model and throw has a default parameter, it is an expected argument
-    expected_arguments = {"sample_input", "throw"}
+    expected_arguments = {"sample_input", "throw", "sleep_time", "sleep_increment"}
 
     assert expected_arguments == set(request_dict.keys())
     assert isinstance(request_dict["sample_input"], SampleInputType)
@@ -277,7 +277,7 @@ def test_global_predict_build_caikit_library_request_dict_strips_invalid_run_kwa
         sample_lib.modules.sample_task.SampleModule.RUN_SIGNATURE,
     )
 
-    expected_arguments = {"sample_input", "throw"}
+    expected_arguments = {"sample_input", "throw", "sleep_time", "sleep_increment"}
     assert expected_arguments == set(request_dict.keys())
     assert "int_type" not in request_dict.keys()
 

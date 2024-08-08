@@ -24,7 +24,15 @@ from aconfig import aconfig
 import alog
 
 # Local
-from .rpcs import CaikitRPCBase, ModuleClassTrainRPC, TaskPredictRPC
+from .rpcs import (
+    CaikitRPCBase,
+    ModuleClassTrainRPC,
+    TaskPredictionCancelRPC,
+    TaskPredictionJobRPC,
+    TaskPredictionResultRPC,
+    TaskPredictionStatusRPC,
+    TaskPredictRPC,
+)
 from caikit.core import ModuleBase, TaskBase
 from caikit.core.exceptions import error_handler
 from caikit.core.signature_parsing.module_signature import CaikitMethodSignature
@@ -108,6 +116,49 @@ def create_inference_rpcs(
                         task,
                         err,
                         exc_info=True,
+                    )
+
+    return sorted(rpcs, key=lambda x: x.name)
+
+
+def create_job_inference_rpcs(
+    modules: List[Type[ModuleBase]], caikit_config: aconfig.Config = None
+) -> List[CaikitRPCBase]:
+    """Handles the logic to create all the RPCs for inference jobs"""
+    rpcs = []
+
+    included_task_types = (
+        caikit_config
+        and caikit_config.runtime.service_generation
+        and caikit_config.runtime.service_generation.task_types
+        and caikit_config.runtime.service_generation.task_types.included
+    ) or []
+
+    excluded_task_types = (
+        caikit_config
+        and caikit_config.runtime.service_generation
+        and caikit_config.runtime.service_generation.task_types
+        and caikit_config.runtime.service_generation.task_types.excluded
+    ) or []
+
+    task_groups = _group_modules_by_task(
+        modules, included_task_types, excluded_task_types
+    )
+
+    # Create the RPC for each task
+    for task, task_methods in task_groups.items():
+        with alog.ContextLog(log.debug, "Generating task RPC for %s", task):
+            for streaming_type, method_signatures in task_methods.items():
+                input_streaming, output_streaming = streaming_type
+                # For every unary task add the generic prediction job services
+                if not input_streaming and not output_streaming:
+                    rpcs.extend(
+                        [
+                            TaskPredictionJobRPC(task, method_signatures),
+                            TaskPredictionResultRPC(task, method_signatures),
+                            TaskPredictionStatusRPC(task, method_signatures),
+                            TaskPredictionCancelRPC(task, method_signatures),
+                        ]
                     )
 
     return sorted(rpcs, key=lambda x: x.name)
