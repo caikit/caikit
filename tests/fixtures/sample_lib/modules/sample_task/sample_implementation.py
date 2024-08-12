@@ -107,12 +107,16 @@ class SampleModule(caikit.core.ModuleBase):
 
     @SampleTask.taskmethod(output_streaming=True)
     def run_stream_out(
-        self, sample_input: SampleInputType, err_stream: bool = False
+        self,
+        sample_input: SampleInputType,
+        err_stream: bool = False,
+        error: Optional[str] = None,
     ) -> DataStream[SampleOutputType]:
         """
         Args:
             sample_input (sample_lib.data_model.SampleInputType): the input
-            err_stream (bool): An optional parameter to error out the stream
+            err_stream (bool, optional): An optional parameter to error out the stream
+            error (Optional[str], optional): The error string to error out. Defaults to None.
 
         Returns:
             caikit.core.data_model.DataStream[sample_lib.data_model.SampleOutputType]: The output
@@ -122,14 +126,17 @@ class SampleModule(caikit.core.ModuleBase):
             SampleOutputType(f"Hello {sample_input.name} stream")
             for x in range(self.stream_size)
         ]
-        # raise a value error when the stream is iterated, not before.
-        def raise_exception():
-            raise ValueError("raising a ValueError")
+        # raise errors when the stream is iterated, not before.
+        def raise_exception(error):
+            if error:
+                self._raise_error(error)
+            else:
+                raise ValueError("raising a ValueError")
 
         stream = (
             DataStream.from_iterable(list_)
             if not err_stream
-            else DataStream.from_iterable([1]).map(lambda x: raise_exception())
+            else DataStream.from_iterable([1]).map(lambda x: raise_exception(error))
         )
         return stream
 

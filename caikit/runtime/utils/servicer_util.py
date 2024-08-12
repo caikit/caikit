@@ -37,6 +37,7 @@ from caikit.core.exceptions.caikit_core_exception import (
 from caikit.core.signature_parsing import CaikitMethodSignature
 from caikit.interfaces.runtime.data_model.training_management import ModelPointer
 from caikit.runtime.model_management.model_manager import ModelManager
+from caikit.runtime.names import CAIKIT_STATUS_CODE_TO_GRPC
 from caikit.runtime.service_generation.data_stream_source import (
     DataStreamSourceBase,
     make_data_stream_source,
@@ -49,6 +50,17 @@ log = alog.use_channel("SERVICR-UTIL")
 # Protobuf non primitives
 # Ref: https://developers.google.com/protocol-buffers/docs/reference/cpp/google.protobuf.descriptor
 NON_PRIMITIVE_TYPES = [FieldDescriptor.TYPE_MESSAGE, FieldDescriptor.TYPE_ENUM]
+
+# Mapping from CaikitCore StatusCodes codes to their types, for error messages
+CAIKIT_STATUS_CODE_TO_DEBUG_ERROR_TYPE = {
+    CaikitCoreStatusCode.INVALID_ARGUMENT: "Invalid Argument",
+    CaikitCoreStatusCode.UNAUTHORIZED: "Unauthorized",
+    CaikitCoreStatusCode.FORBIDDEN: "Forbidden",
+    CaikitCoreStatusCode.NOT_FOUND: "Not Found",
+    CaikitCoreStatusCode.CONNECTION_ERROR: "Connection",
+    CaikitCoreStatusCode.UNKNOWN: "Unknown",
+    CaikitCoreStatusCode.FATAL: "Fatal",
+}
 
 
 def validate_caikit_library_class_exists(cdm, class_name):
@@ -84,27 +96,76 @@ def validate_caikit_library_class_method_exists(caikit_library_class, method_nam
 
 
 def build_proto_stream(
-    caikit_library_response: Iterable[DataBase],
+    caikit_library_response: Iterable[DataBase], context: grpc.ServicerContext
 ) -> Iterator[ProtoMessageType]:
     """Returns an iterator that serializes each item in the model's response to protobuf"""
 
     def _proto_generator():
-        for item in caikit_library_response:
-            try:
-                yield item.to_proto()
-            except Exception as e:
+        try:
+            for item in caikit_library_response:
+                try:
+                    yield item.to_proto()
+                except Exception as e:
+                    log.warning(
+                        {
+                            "log_code": "<RUN11567943W>",
+                            "message": "Exception while serializing response from stream: "
+                            "{}".format(e),
+                            "stack_trace": traceback.format_exc(),
+                        }
+                    )
+                    context.abort(
+                        grpc.StatusCode.INTERNAL,
+                        "Could not serialize output in model response stream",
+                    )
+        # The exception handling here accounts for errors on stream iteration. Errors
+        # on stream creation are already handled at a higher level. Here, we abort context
+        # with grpc errors codes, to be surfaced to the end user.
+        except CaikitRuntimeException as e:
+            log_dict = {
+                "log_code": "<RUN50630380W>",
+                "message": e.message,
+                "error_id": e.id,
+            }
+            log.warning({**log_dict, **e.metadata})
+            context.abort(e.status_code, e.message)
+        except CaikitCoreException as e:
+            if e.status_code in CAIKIT_STATUS_CODE_TO_GRPC:
                 log.warning(
-                    {
-                        "log_code": "<RUN11567943W>",
-                        "message": "Exception while serializing response from stream: "
-                        "{}".format(e),
-                        "stack_trace": traceback.format_exc(),
-                    }
+                    "[%s] Error: [%s]",
+                    CAIKIT_STATUS_CODE_TO_DEBUG_ERROR_TYPE[e.status_code],
+                    e.message,
+                    exc_info=True,
                 )
-                raise CaikitRuntimeException(
-                    grpc.StatusCode.INTERNAL,
-                    "Could not serialize output in model response stream",
-                ) from e
+                context.abort(CAIKIT_STATUS_CODE_TO_GRPC[e.status_code], e.message)
+            else:
+                log.debug2(
+                    "Unhandled CaikitCoreException Error: [%s]",
+                    e.message,
+                    exc_info=True,
+                )
+                context.abort(grpc.StatusCode.INTERNAL, e.message)
+        except (TypeError, ValueError) as e:
+            log.warning(
+                {
+                    "log_code": "<RUN12568943W>",
+                    "message": repr(e),
+                    "stack_trace": traceback.format_exc(),
+                }
+            )
+            context.abort(grpc.StatusCode.INVALID_ARGUMENT, f"{e}")
+        except grpc.RpcError as e:
+            log_dict = {"log_code": "<RUN39029171W>", "message": repr(e)}
+            log.warning(log_dict)
+            context.abort(e.code(), e.details())
+        except Exception as e:
+            log_dict = {
+                "log_code": "<RUN46049070W>",
+                "message": repr(e),
+                "stack_trace": traceback.format_exc(),
+            }
+            log.warning(log_dict)
+            context.abort(grpc.StatusCode.INTERNAL, f"{e}")
 
     return iter(DataStream(_proto_generator))
 
@@ -468,52 +529,15 @@ def build_caikit_library_request_dict(
 
 
 def raise_caikit_runtime_exception(exception: CaikitCoreException):
-    if exception.status_code == CaikitCoreStatusCode.NOT_FOUND:
-        log.debug2("Not Found Error: [%s]", exception.message, exc_info=True)
-        raise CaikitRuntimeException(
-            grpc.StatusCode.NOT_FOUND,
+    if exception.status_code in CAIKIT_STATUS_CODE_TO_GRPC:
+        log.debug2(
+            "%s Error: [%s]",
+            CAIKIT_STATUS_CODE_TO_DEBUG_ERROR_TYPE[exception.status_code],
             exception.message,
-        ) from exception
-
-    if exception.status_code == CaikitCoreStatusCode.INVALID_ARGUMENT:
-        log.debug2("Invalid Argument Error: [%s]", exception.message, exc_info=True)
+            exc_info=True,
+        )
         raise CaikitRuntimeException(
-            grpc.StatusCode.INVALID_ARGUMENT,
-            exception.message,
-        ) from exception
-
-    if exception.status_code == CaikitCoreStatusCode.FORBIDDEN:
-        log.debug2("Forbidden Error: [%s]", exception.message, exc_info=True)
-        raise CaikitRuntimeException(
-            grpc.StatusCode.PERMISSION_DENIED,
-            exception.message,
-        ) from exception
-
-    if exception.status_code == CaikitCoreStatusCode.CONNECTION_ERROR:
-        log.debug2("Connection Error: [%s]", exception.message, exc_info=True)
-        raise CaikitRuntimeException(
-            grpc.StatusCode.UNAVAILABLE,
-            exception.message,
-        ) from exception
-
-    if exception.status_code == CaikitCoreStatusCode.UNAUTHORIZED:
-        log.debug2("Unauthorized Error: [%s]", exception.Message, exc_info=True)
-        raise CaikitRuntimeException(
-            grpc.StatusCode.UNAUTHENTICATED,
-            exception.message,
-        ) from exception
-
-    if exception.status_code == CaikitCoreStatusCode.FATAL:
-        log.debug2("Fatal Error: [%s]", exception.message, exc_info=True)
-        raise CaikitRuntimeException(
-            grpc.StatusCode.INTERNAL,
-            exception.message,
-        ) from exception
-
-    if exception.status_code == CaikitCoreStatusCode.UNKNOWN:
-        log.debug2("Unknown Error: [%s]", exception.message, exc_info=True)
-        raise CaikitRuntimeException(
-            grpc.StatusCode.UNKNOWN,
+            CAIKIT_STATUS_CODE_TO_GRPC[exception.status_code],
             exception.message,
         ) from exception
 
