@@ -483,7 +483,6 @@ def test_predict_sample_module_streaming_grpc_error_response(
             pass
 
     assert context.value.code() == grpc.StatusCode.RESOURCE_EXHAUSTED
->>>>>>> main
 
 
 @pytest.mark.skip("Skipping for now since we're doing streaming stuff")
