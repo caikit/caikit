@@ -212,7 +212,7 @@ def get_task_predict_job_status_rpc_name(
         if issubclass(task_or_module_class, ModuleBase)
         else task_or_module_class
     )
-    return snake_to_upper_camel(f"{task_class.__name__}_PredictionJobStatus")
+    return snake_to_upper_camel(f"{task_class.__name__}_GetPredictionJobStatus")
 
 
 def get_task_predict_job_cancel_rpc_name(
