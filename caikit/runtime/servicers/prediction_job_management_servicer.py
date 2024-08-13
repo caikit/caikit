@@ -94,13 +94,24 @@ class PredictionJobManagementServicerImpl:
             job_id, operation="get_status"
         )
         try:
-            if model_future.get_info().status != JobStatus.COMPLETED:
-                raise CaikitCoreException(
-                    CaikitCoreStatusCode.NOT_FOUND,
-                    f"Prediction {model_future.id} is still in progress",
-                )
+            model_status = model_future.get_info().status
+            if model_status == JobStatus.COMPLETED:
+                return model_future.result()
 
-            return model_future.result()
+            model_err_message = f"Unable to find {model_future.id} result"
+            if model_status == JobStatus.RUNNING:
+                model_err_message = f"Prediction {model_future.id} is still in progress"
+            if model_status == JobStatus.CANCELED:
+                model_err_message = f"Prediction {model_future.id} was cancelled"
+            if model_status == JobStatus.ERRORED:
+                model_err_message = f"Prediction {model_future.id} encountered an error"
+            if model_status == JobStatus.QUEUED:
+                model_err_message = f"Prediction {model_future.id} has not started yet"
+
+            raise CaikitCoreException(
+                CaikitCoreStatusCode.NOT_FOUND,
+                model_err_message,
+            )
         except CaikitCoreException as err:
             raise_caikit_runtime_exception(exception=err)
         except Exception as err:
