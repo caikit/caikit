@@ -25,7 +25,7 @@ import pytest
 
 # Local
 from caikit.core import LocalBackend
-from caikit.core.data_model import DataStream, JobType, TrainingStatus
+from caikit.core.data_model import DataStream, TrainingStatus
 from caikit.core.model_management import ModelFinderBase, model_finder_factory
 from caikit.core.modules import ModuleBase, ModuleSaver, module
 from sample_lib.data_model import SampleInputType, SampleOutputType

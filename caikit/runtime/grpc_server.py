@@ -30,9 +30,9 @@ import alog
 # Get the injectable servicer class definitions
 from caikit import get_config
 from caikit.runtime.interceptors.caikit_runtime_server_wrapper import (
-    CaikitRuntimeServerMultiFuncWrapper,
     CaikitRuntimeServerWrapper,
 )
+from caikit.runtime.names import ServiceType
 from caikit.runtime.protobufs import (
     model_runtime_pb2,
     model_runtime_pb2_grpc,
@@ -104,8 +104,9 @@ class RuntimeGRPCServer(RuntimeServerBase):
             )
             self.server = CaikitRuntimeServerWrapper(
                 server=self.server,
-                global_predict=self._global_predict_servicer.Predict,
+                rpc_callable=self._global_predict_servicer.Predict,
                 intercepted_svc_package=self.inference_service,
+                service_type=ServiceType.INFERENCE,
             )
             service_names.append(self.inference_service.descriptor.full_name)
 
@@ -119,16 +120,16 @@ class RuntimeGRPCServer(RuntimeServerBase):
             self._prediction_job_management_servicer = (
                 PredictionJobManagementServicerImpl()
             )
-            self.server = CaikitRuntimeServerMultiFuncWrapper(
+            self.server = CaikitRuntimeServerWrapper(
                 server=self.server,
-                rpc_callable_map={
+                rpc_callable={
                     TaskPredictionJobRPC: self._global_predict_servicer.StartPredictionJob,
                     TaskPredictionStatusRPC: self._prediction_job_management_servicer.GetPredictionJobStatus,  # noqa: E501
                     TaskPredictionCancelRPC: self._prediction_job_management_servicer.CancelPredictionJob,  # noqa: E501
                     TaskPredictionResultRPC: self._prediction_job_management_servicer.GetPredictionJobResult,  # noqa: E501
                 },
                 intercepted_svc_package=self.inference_job_service,
-                service_type=ServicePackageFactory.ServiceType.JOB_INFERENCE,
+                service_type=ServiceType.JOB_INFERENCE,
             )
 
             service_names.append(self.inference_job_service.descriptor.full_name)
@@ -156,8 +157,9 @@ class RuntimeGRPCServer(RuntimeServerBase):
             global_train_servicer = GlobalTrainServicer(self.training_service)
             self.server = CaikitRuntimeServerWrapper(
                 server=self.server,
-                global_predict=global_train_servicer.Train,
+                rpc_callable=global_train_servicer.Train,
                 intercepted_svc_package=self.training_service,
+                service_type=ServiceType.TRAINING,
             )
             service_names.append(self.training_service.descriptor.full_name)
 
