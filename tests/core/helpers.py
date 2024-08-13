@@ -19,7 +19,7 @@ import uuid
 
 # Local
 from caikit.core import MODEL_MANAGER
-from caikit.core.data_model import PredictJobStatus, TrainingStatus
+from caikit.core.data_model import PredictionJobStatus, TrainingStatus
 from caikit.core.model_management import (
     JobPredictorBase,
     JobPredictorInfo,
@@ -195,7 +195,7 @@ class TestPredictor(JobPredictorBase):
 
     def __init__(self, config, instance_name):
         self.instance_name = instance_name
-        self.canned_status = config.get("canned_status", PredictJobStatus.RUNNING)
+        self.canned_status = config.get("canned_status", PredictionJobStatus.RUNNING)
         self._futures = {}
 
     class TestJobFuture(JobPredictorBase.ModelFutureBase):
@@ -213,9 +213,9 @@ class TestPredictor(JobPredictorBase):
 
         def get_info(self):
             if self._completed:
-                return TrainingInfo(status=PredictJobStatus.COMPLETED)
+                return TrainingInfo(status=PredictionJobStatus.COMPLETED)
             if self._canceled:
-                return TrainingInfo(status=PredictJobStatus.CANCELED)
+                return TrainingInfo(status=PredictionJobStatus.CANCELED)
             return TrainingInfo(status=self._parent.canned_status)
 
         def cancel(self):

@@ -16,6 +16,10 @@ Common data model enum used for reporting training status
 """
 # Local
 from .job import JobStatus
+from caikit.core import dataobject
 
-# Copy JobStatus as prediction status for now
-PredictJobStatus = JobStatus
+
+# Copy JobStatus as training status for now
+@dataobject
+class PredictionJobStatus(JobStatus):
+    pass

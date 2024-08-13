@@ -31,7 +31,7 @@ import aconfig
 # Local
 from caikit.config import get_config
 from caikit.core import ModuleBase
-from caikit.core.data_model import DataStream, PredictJobStatus
+from caikit.core.data_model import DataStream, PredictionJobStatus
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.core.model_management.local_job_predictor import LocalJobPredictor
 from sample_lib.data_model import SampleInputType, SampleOutputType
@@ -80,13 +80,13 @@ def test_predict_and_get_info(predictor_type_cfg):
         "run",
         wait_event=wait_event,
     )
-    assert model_future.get_info().status == PredictJobStatus.RUNNING
+    assert model_future.get_info().status == PredictionJobStatus.RUNNING
     assert not model_future.get_info().status.is_terminal
 
     # Let the training proceed and wait for it to complete
     wait_event.set()
     model_future.wait()
-    assert model_future.get_info().status == PredictJobStatus.COMPLETED
+    assert model_future.get_info().status == PredictionJobStatus.COMPLETED
     assert model_future.get_info().status.is_terminal
 
     # Re-fetch the future by ID
@@ -107,13 +107,13 @@ def test_predict_and_get_info(predictor_type_cfg):
         "run",
         wait_event=wait_event,
     )
-    assert model_future.get_info().status == PredictJobStatus.RUNNING
+    assert model_future.get_info().status == PredictionJobStatus.RUNNING
     assert not model_future.get_info().status.is_terminal
 
     # Let the training proceed and wait for it to complete
     wait_event.set()
     model_future.wait()
-    assert model_future.get_info().status == PredictJobStatus.COMPLETED
+    assert model_future.get_info().status == PredictionJobStatus.COMPLETED
     assert model_future.get_info().status.is_terminal
 
     # Re-fetch the future by ID
@@ -148,12 +148,12 @@ def test_cancel_clean_termination(predictor_type_cfg):
         sample_input=SampleInputType(),
         sleep_time=1000,
     )
-    assert model_future.get_info().status == PredictJobStatus.RUNNING
+    assert model_future.get_info().status == PredictionJobStatus.RUNNING
     assert not model_future.get_info().status.is_terminal
 
     # Cancel the future
     model_future.cancel()
-    assert model_future.get_info().status == PredictJobStatus.CANCELED
+    assert model_future.get_info().status == PredictionJobStatus.CANCELED
     assert model_future.get_info().status.is_terminal
     model_future.wait()
 
@@ -171,13 +171,13 @@ def test_cancel_without_waiting(predictor_type_cfg):
         sleep_time=1000,
         sleep_increment=0.5,
     )
-    assert model_future.get_info().status == PredictJobStatus.RUNNING
+    assert model_future.get_info().status == PredictionJobStatus.RUNNING
     assert not model_future.get_info().status.is_terminal
 
     # Cancel the future and make sure it reports canceled, even though the
     # function is still sleeping
     model_future.cancel()
-    assert model_future.get_info().status == PredictJobStatus.CANCELED
+    assert model_future.get_info().status == PredictionJobStatus.CANCELED
     assert model_future.get_info().status.is_terminal
     model_future.wait()
 
@@ -245,7 +245,7 @@ def test_get_into_return_error(predictor_type_cfg):
 
     # Let the training proceed and wait for it to complete
     model_future.wait()
-    assert model_future.get_info().status == PredictJobStatus.ERRORED
+    assert model_future.get_info().status == PredictionJobStatus.ERRORED
     assert model_future.get_info().status.is_terminal
     assert isinstance(model_future.get_info().errors, list)
     assert isinstance(model_future.get_info().errors[0], RuntimeError)

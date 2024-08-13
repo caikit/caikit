@@ -41,7 +41,7 @@ import alog
 
 # Local
 from caikit import get_config
-from caikit.core.data_model import PredictJobStatus
+from caikit.core.data_model import PredictionJobStatus
 from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.common.data_model import File
 from caikit.interfaces.runtime.data_model import (
@@ -356,7 +356,7 @@ def test_job_predict_sample_module_ok_response(
     # Check background status. Repeatably check until status is not RUNNING
     job_status = None
     while not job_status or (
-        job_status and job_status.state == PredictJobStatus.RUNNING.value
+        job_status and job_status.state == PredictionJobStatus.RUNNING.value
     ):
         predict_status_request = PredictionJobInfoRequest(
             job_id=job_info.job_id
@@ -366,7 +366,7 @@ def test_job_predict_sample_module_ok_response(
         )
 
         job_status = PredictionJobStatusResponse.from_proto(job_proto_status)
-    assert job_status.state == PredictJobStatus.COMPLETED.value
+    assert job_status.state == PredictionJobStatus.COMPLETED.value
 
     # Get background result
     job_result = stub.SampleTaskGetPredictionJobResult(
@@ -402,7 +402,7 @@ def test_job_predict_sample_module_cancel_request(
     )
     job_status = PredictionJobStatusResponse.from_proto(job_proto_status)
     assert (
-        job_status.state == PredictJobStatus.RUNNING.value
+        job_status.state == PredictionJobStatus.RUNNING.value
     ), "Could not cancel this prediction within 10s"
 
     # Test to ensure that fetching a result while before its completed raises an exception
@@ -415,7 +415,7 @@ def test_job_predict_sample_module_cancel_request(
     # cancel the training
     canceled_response = stub.SampleTaskCancelPredictionJob(predict_status_request)
     canceled_status = PredictionJobStatusResponse.from_proto(canceled_response)
-    assert canceled_status.state == PredictJobStatus.CANCELED.value
+    assert canceled_status.state == PredictionJobStatus.CANCELED.value
 
     # Test to ensure that fetching a result after its been cancelled raises an exception
     with pytest.raises(grpc.RpcError):

@@ -773,4 +773,4 @@ def test_job_predictor_with_wait(reset_globals):
             model, "run", sample_input=sample_input, wait=True
         )
         assert isinstance(predict_future, JobPredictorBase.ModelFutureBase)
-        result = predict_future.get_info().status == PredictJobStatus.COMPLETED
+        result = predict_future.get_info().status == PredictionJobStatus.COMPLETED
