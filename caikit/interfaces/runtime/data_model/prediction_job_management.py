@@ -28,14 +28,14 @@ from .package import RUNTIME_JOB_PACKAGE
 class PredictionJobInfoRequest(DataObjectBase):
     """DataModel to request information about a PredictionJob"""
 
-    job_id: str
+    job_id: Annotated[str, FieldNumber(1)]
 
 
 @dataobject(RUNTIME_JOB_PACKAGE)
 class PredictionJob(DataObjectBase):
     """DataModel returned as a result of starting a PredictionJob"""
 
-    job_id: str
+    job_id: Annotated[str, FieldNumber(1)]
 
 
 @dataobject(RUNTIME_JOB_PACKAGE)
