@@ -85,7 +85,7 @@ class JobFutureBase(abc.ABC):
 
 class JobBase(FactoryConstructible):
     @abc.abstractmethod
-    def get_model_future(self, job_id: str) -> JobFutureBase:
+    def get_future(self, job_id: str) -> JobFutureBase:
         """Look up the model future for the given id"""
 
     ## Shared Utilities ##

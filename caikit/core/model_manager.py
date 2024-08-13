@@ -30,12 +30,11 @@ import alog
 
 # Local
 from ..interfaces.common.data_model.stream_sources import S3Path
-from .data_model.job import JobType
 from .exceptions import error_handler
-from .exceptions.caikit_core_exception import CaikitCoreException, CaikitCoreStatusCode
 from .model_management import (
     JobFutureBase,
     JobPredictorBase,
+    JobPredictorFutureBase,
     ModelFinderBase,
     ModelInitializerBase,
     ModelTrainerBase,
@@ -241,44 +240,49 @@ class ModelManager:
 
     def get_model_future(
         self,
-        future_id: str = None,
-        future_type: JobType = JobType.TRAINING,
-    ) -> JobFutureBase:
+        training_id: str = None,
+    ) -> ModelTrainerFutureBase:
         """Get the future handle to an in-progress training
 
         Args:
             future_id (str): The ID string from the original training
                 submission's ModelFuture
-            future_type (JobType): Which type of job to fetch the future
-                of
 
         Returns:
-            model_future (ModelTrainerBase.ModelFutureBase): The future handle
+            model_future (ModelTrainerFutureBase): The future handle
                 to the model which holds the status of the in-flight training.
         """
-        if future_type == JobType.TRAINING:
-            try:
-                trainer = self.get_trainer(ModelTrainerBase.get_trainer_name(future_id))
-            # Fall back to the default trainer to try to find this ID
-            except ValueError:
-                trainer = self.get_trainer("default")
+        try:
+            trainer = self.get_trainer(ModelTrainerBase.get_trainer_name(training_id))
+        # Fall back to the default trainer to try to find this ID
+        except ValueError:
+            trainer = self.get_trainer("default")
 
-            return trainer.get_model_future(future_id)
-        elif future_type == JobType.PREDICTION:
-            try:
-                predictor = self.get_predictor(
-                    JobPredictorBase.get_predictor_name(future_id)
-                )
-            # Fall back to the default trainer to try to find this ID
-            except ValueError:
-                predictor = self.get_predictor("default")
+        return trainer.get_model_future(training_id)
 
-            return predictor.get_model_future(future_id)
-        else:
-            raise CaikitCoreException(
-                CaikitCoreStatusCode.INVALID_ARGUMENT,
-                f"Unknown future type {future_type}",
+    def get_prediction_future(
+        self,
+        prediction_id: str = None,
+    ) -> JobPredictorFutureBase:
+        """Get the future handle to an in-progress prediction job
+
+        Args:
+            future_id (str): The ID string from the original prediction
+                submission's ModelFuture
+
+        Returns:
+            model_future (JobPredictorFutureBase): The future handle
+                to the job which holds the status of the in-flight prediction.
+        """
+        try:
+            predictor = self.get_predictor(
+                JobPredictorBase.get_predictor_name(prediction_id)
             )
+        # Fall back to the default trainer to try to find this ID
+        except ValueError:
+            predictor = self.get_predictor("default")
+
+        return predictor.get_job_future(prediction_id)
 
     def load(
         self,

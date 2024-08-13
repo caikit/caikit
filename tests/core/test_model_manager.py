@@ -755,9 +755,7 @@ def test_job_predictor_with_model(reset_globals):
         assert isinstance(predict_future, JobPredictorBase.ModelFutureBase)
         result = predict_future.result()
         assert isinstance(result, SampleOutputType)
-        found_future = caikit.get_model_future(
-            predict_future.id, future_type=JobType.PREDICTION
-        )
+        found_future = caikit.get_prediction_future(predict_future.id)
         assert found_future is predict_future
 
 

@@ -289,7 +289,7 @@ class LocalJobBase(JobBase):
         self._futures: Dict[str, self.LocalJobFuture] = {}
         self._futures_lock = threading.Lock()
 
-    def get_model_future(self, job_id: str) -> LocalJobFuture:
+    def get_local_future(self, job_id: str) -> LocalJobFuture:
         """Look up the model future for the given id"""
         self._purge_old_futures()
         if model_future := self._futures.get(job_id):

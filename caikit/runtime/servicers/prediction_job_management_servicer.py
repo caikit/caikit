@@ -27,7 +27,7 @@ import alog
 
 # Local
 from caikit.core import MODEL_MANAGER, DataObjectBase
-from caikit.core.data_model import JobStatus, JobType
+from caikit.core.data_model import JobStatus
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
     CaikitCoreStatusCode,
@@ -197,9 +197,7 @@ class PredictionJobManagementServicerImpl:
         Wrapped here so that we only catch errors directly in the `predictor.get_model_future` call
         """
         try:
-            return MODEL_MANAGER.get_model_future(
-                job_id, future_type=JobType.PREDICTION
-            )
+            return MODEL_MANAGER.get_prediction_future(job_id)
         except CaikitCoreException as err:
             raise_caikit_runtime_exception(exception=err)
         except Exception as err:

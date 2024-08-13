@@ -68,7 +68,15 @@ class ModelTrainerBase(JobBase):
         model instance
         """
 
+    @abc.abstractmethod
+    def get_model_future(self, training_id: str) -> ModelFutureBase:
+        """Look up the model future for the given id"""
+
     ## Shared Utilities ##
+
+    def get_future(self, job_id: str) -> JobFutureBase:
+        """Look up the model future for the given id"""
+        return self.get_model_future(job_id)
 
     @classmethod
     def get_trainer_name(cls, training_id: str) -> str:

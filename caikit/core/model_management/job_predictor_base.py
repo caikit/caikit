@@ -62,7 +62,15 @@ class JobPredictorBase(JobBase):
         future to the prediction result
         """
 
+    @abc.abstractmethod
+    def get_job_future(self, future_id: str) -> JobPredictorFutureBase:
+        """Look up the jobs future for the given id"""
+
     ## Shared Utilities ##
+
+    def get_future(self, job_id: str) -> JobFutureBase:
+        """Look up the job future for the given id"""
+        return self.get_job_future(job_id)
 
     @classmethod
     def get_predictor_name(cls, predict_id: str) -> str:

@@ -43,10 +43,6 @@ from ..modules import ModuleBase
 from ..toolkit.logging import configure as configure_logging
 from .local_job_base import LocalJobBase
 from .model_trainer_base import ModelTrainerBase, ModelTrainerFutureBase
-from caikit.core.exceptions.caikit_core_exception import (
-    CaikitCoreException,
-    CaikitCoreStatusCode,
-)
 import caikit
 
 log = alog.use_channel("LOC-TRNR")
@@ -185,13 +181,7 @@ class LocalModelTrainer(LocalJobBase, ModelTrainerBase):
 
     def get_model_future(self, training_id: str) -> "LocalModelFuture":
         """Look up the model future for the given id"""
-        self._purge_old_futures()
-        if model_future := self._futures.get(training_id):
-            return model_future
-        raise CaikitCoreException(
-            status_code=CaikitCoreStatusCode.NOT_FOUND,
-            message=f"Unknown training_id: {training_id}",
-        )
+        return self.get_local_future(training_id)
 
 
 class _SpawnProcessModelWrapper(ModuleBase):

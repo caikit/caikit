@@ -40,10 +40,3 @@ class JobStatus(Enum):
             self.__class__.CANCELED,
             self.__class__.ERRORED,
         ]
-
-
-class JobType(Enum):
-    """Enum to track the different types of Jobs"""
-
-    TRAINING = 1
-    PREDICTION = 2

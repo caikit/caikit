@@ -208,12 +208,6 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
         # Return the future
         return model_future
 
-    def get_model_future(self, inference_id: str) -> LocalJobPredictorFuture:
+    def get_job_future(self, future_id: str) -> LocalJobPredictorFuture:
         """Look up the model future for the given id"""
-        self._purge_old_futures()
-        if model_future := self._futures.get(inference_id):
-            return model_future
-        raise CaikitCoreException(
-            status_code=CaikitCoreStatusCode.NOT_FOUND,
-            message=f"Unknown future_id: {inference_id}",
-        )
+        return self.get_local_future(future_id)
