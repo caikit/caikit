@@ -29,19 +29,25 @@ from typing import Optional
 import abc
 
 # Local
+from ..data_model import DataObjectBase
 from ..modules import ModuleBase
 from .job_base import JobBase, JobFutureBase, JobInfo
 
 
 class JobPredictorInfo(JobInfo):
-    """JobPredictorInfo isa remap of JobInfo but for predictors"""
+    """JobPredictorInfo is a remap of JobInfo but for predictors"""
 
-    pass
+
+class JobPredictorFutureBase(JobFutureBase):
+    """Subclass of JobFutureBase for Job Predictions"""
+
+    @abc.abstractmethod
+    def result(self) -> DataObjectBase:
+        """The result of a JobPredictorFutureBase is the result object"""
 
 
 class JobPredictorBase(JobBase):
     __doc__ = __doc__
-    ModelFutureBase = JobFutureBase
 
     @abc.abstractmethod
     def predict(
@@ -51,7 +57,7 @@ class JobPredictorBase(JobBase):
         *args,
         external_inference_id: Optional[str] = None,
         **kwargs,
-    ) -> ModelFutureBase:
+    ) -> JobPredictorFutureBase:
         """Start a prediction with the given model instance and function and return a
         future to the prediction result
         """

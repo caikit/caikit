@@ -22,6 +22,7 @@ from caikit.core import MODEL_MANAGER
 from caikit.core.data_model import PredictionJobStatus, TrainingStatus
 from caikit.core.model_management import (
     JobPredictorBase,
+    JobPredictorFutureBase,
     JobPredictorInfo,
     ModelFinderBase,
     ModelInitializerBase,
@@ -198,7 +199,7 @@ class TestPredictor(JobPredictorBase):
         self.canned_status = config.get("canned_status", PredictionJobStatus.RUNNING)
         self._futures = {}
 
-    class TestJobFuture(JobPredictorBase.ModelFutureBase):
+    class TestJobFuture(JobPredictorFutureBase):
         __test__ = False
 
         def __init__(self, parent, result):
@@ -234,7 +235,7 @@ class TestPredictor(JobPredictorBase):
         *args,
         external_inference_id: Optional[str] = None,
         **kwargs,
-    ) -> JobPredictorBase.ModelFutureBase:
+    ) -> JobPredictorFutureBase:
         func = getattr(model_instance, prediction_func_name)
         result = func(*args, **kwargs)
         future = self.TestJobFuture(self, result)

@@ -40,7 +40,7 @@ import alog
 from ..data_model import DataObjectBase
 from ..exceptions import error_handler
 from ..modules import ModuleBase
-from .job_predictor_base import JobPredictorBase
+from .job_predictor_base import JobPredictorBase, JobPredictorFutureBase
 from .local_job_base import LocalJobBase
 from caikit.core.exceptions.caikit_core_exception import (
     CaikitCoreException,
@@ -58,7 +58,7 @@ RESULT_FILE_NAME = "result.bin"
 class LocalJobPredictor(LocalJobBase, JobPredictorBase):
     __doc__ = __doc__
 
-    class LocalJobPredictorFuture(LocalJobBase.LocalJobFuture):
+    class LocalJobPredictorFuture(LocalJobBase.LocalJobFuture, JobPredictorFutureBase):
         """LocalJobPredictorFuture takes a model instance and prediction function
         and runs the function in a destroyable thread"""
 
@@ -135,8 +135,6 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
             ) and save_path_pathlib.open("wb") as output_file:
                 output_file.write(result.to_binary_buffer())
 
-    LocalModelFuture = LocalJobPredictorFuture
-
     name = "LOCAL"
 
     ## Interface ##
@@ -183,7 +181,7 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
             )
 
         # Create the new future
-        model_future = self.LocalModelFuture(
+        model_future = self.LocalJobPredictorFuture(
             future_name=self._instance_name,
             model_instance=model_instance,
             prediction_func_name=prediction_func_name,
@@ -210,7 +208,7 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
         # Return the future
         return model_future
 
-    def get_model_future(self, inference_id: str) -> "LocalModelFuture":
+    def get_model_future(self, inference_id: str) -> LocalJobPredictorFuture:
         """Look up the model future for the given id"""
         self._purge_old_futures()
         if model_future := self._futures.get(inference_id):
