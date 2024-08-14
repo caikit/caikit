@@ -90,7 +90,7 @@ def test_predict_and_get_info(predictor_type_cfg):
     assert model_future.get_info().status.is_terminal
 
     # Re-fetch the future by ID
-    fetched_future = predictor.get_model_future(model_future.id)
+    fetched_future = predictor.get_job_future(model_future.id)
     assert fetched_future is model_future
 
 
@@ -117,7 +117,7 @@ def test_predict_and_get_info(predictor_type_cfg):
     assert model_future.get_info().status.is_terminal
 
     # Re-fetch the future by ID
-    fetched_future = predictor.get_model_future(model_future.id)
+    fetched_future = predictor.get_job_future(model_future.id)
     assert fetched_future is model_future
 
 
@@ -193,7 +193,7 @@ def test_no_retention_time(predictor_type_cfg):
         sample_input=SampleInputType(),
     )
     model_future.wait()
-    retrieved_future = predictor.get_model_future(model_future.id)
+    retrieved_future = predictor.get_job_future(model_future.id)
     assert retrieved_future is model_future
 
 
@@ -206,11 +206,11 @@ def test_purge_retention_time(predictor_type_cfg):
         sample_input=SampleInputType(),
     )
     model_future.wait()
-    retrieved_future = predictor.get_model_future(model_future.id)
+    retrieved_future = predictor.get_job_future(model_future.id)
     assert retrieved_future is model_future
     model_future._completion_time = model_future._completion_time - timedelta(days=2)
     with pytest.raises(CaikitCoreException):
-        predictor.get_model_future(model_future.id)
+        predictor.get_job_future(model_future.id)
     assert not Path(retrieved_future.save_path).exists()
     assert not Path(retrieved_future.save_path).parent.exists()
 
@@ -299,6 +299,6 @@ def test_duplicate_external_id_cannot_restart_while_running():
             wait_event=wait_event,
         )
 
-    assert predictor.get_model_future(predictor_id) is model_future
+    assert predictor.get_job_future(predictor_id) is model_future
     wait_event.set()
     assert model_future.result()

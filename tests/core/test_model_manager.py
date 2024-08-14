@@ -752,7 +752,7 @@ def test_job_predictor_with_model(reset_globals):
         predict_future = caikit.core.start_prediction_job(
             model, "run", sample_input=sample_input
         )
-        assert isinstance(predict_future, JobPredictorBase.ModelFutureBase)
+        assert isinstance(predict_future, JobPredictorFutureBase)
         result = predict_future.result()
         assert isinstance(result, SampleOutputType)
         found_future = caikit.get_prediction_future(predict_future.id)
@@ -770,5 +770,5 @@ def test_job_predictor_with_wait(reset_globals):
         predict_future = caikit.core.start_prediction_job(
             model, "run", sample_input=sample_input, wait=True
         )
-        assert isinstance(predict_future, JobPredictorBase.ModelFutureBase)
+        assert isinstance(predict_future, JobPredictorFutureBase)
         result = predict_future.get_info().status == PredictionJobStatus.COMPLETED

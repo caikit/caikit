@@ -22,6 +22,7 @@ from caikit.core.data_model.base import DataBase
 from caikit.runtime.interceptors.caikit_runtime_server_wrapper import (
     CaikitRuntimeServerWrapper,
 )
+from caikit.runtime.names import ServiceType
 from caikit.runtime.service_generation.rpcs import TaskPredictRPC
 from sample_lib.data_model import SampleOutputType
 
@@ -36,7 +37,9 @@ def test_rpc_is_passed_to_predict_handlers(sample_inference_service, open_port):
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10),
     )
-    wrapper = CaikitRuntimeServerWrapper(server, predict, sample_inference_service)
+    wrapper = CaikitRuntimeServerWrapper(
+        server, predict, sample_inference_service, ServiceType.INFERENCE
+    )
     sample_inference_service.registration_function(
         sample_inference_service.service, wrapper
     )

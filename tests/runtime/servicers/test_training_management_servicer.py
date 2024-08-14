@@ -258,7 +258,7 @@ def test_training_status_incorrect_id(training_management_servicer):
 
     assert context.value.status_code == grpc.StatusCode.NOT_FOUND
     assert (
-        f"Unknown training_id: some_random_id" in context.value.message
+        f"Unknown background_id: some_random_id" in context.value.message
     )  # message set by local_model_trainer.get_model_future
 
 
@@ -286,7 +286,7 @@ def test_training_raises_when_cancel_on_incorrect_id(training_management_service
 
     assert context.value.status_code == grpc.StatusCode.NOT_FOUND
     assert (
-        f"Unknown training_id: some_random_id" in context.value.message
+        f"Unknown background_id: some_random_id" in context.value.message
     )  # message set by local_model_trainer.get_model_future
 
 
