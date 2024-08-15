@@ -1086,7 +1086,7 @@ def test_job_inference_sample_task(sample_task_model_id, client):
         json=json_input,
     )
     json_response = response.json()
-    assert response.status_code == 200, json_response
+    assert response.status_code == 202, json_response
     id = json_response["job_id"]
 
     # Check that status is completed
@@ -1121,7 +1121,7 @@ def test_job_inference_sample_task_cancelled(sample_task_model_id, client):
         json=json_input,
     )
     json_response = response.json()
-    assert response.status_code == 200, json_response
+    assert response.status_code == 202, json_response
     id = json_response["job_id"]
 
     # Check that status is running
@@ -1174,7 +1174,7 @@ def test_train_sample_task(client, runtime_http_server):
 
     # assert training response
     training_json_response = training_response.json()
-    assert training_response.status_code == 200, training_json_response
+    assert training_response.status_code == 202, training_json_response
     assert (training_id := training_json_response["training_id"])
     assert training_json_response["model_name"] == model_name
 
@@ -1250,7 +1250,7 @@ def test_train_primitive_task(client, runtime_http_server):
     )
     # assert training response
     training_json_response = training_response.json()
-    assert training_response.status_code == 200, training_json_response
+    assert training_response.status_code == 202, training_json_response
     assert (training_id := training_json_response["training_id"])
     assert training_json_response["model_name"] == model_name
 
@@ -1300,7 +1300,7 @@ def test_train_other_task(client, runtime_http_server):
     )
     # assert training response
     training_json_response = training_response.json()
-    assert training_response.status_code == 200, training_json_response
+    assert training_response.status_code == 202, training_json_response
     assert (training_id := training_json_response["training_id"])
     assert training_json_response["model_name"] == model_name
 
@@ -1348,7 +1348,7 @@ def test_train_long_running_sample_task(client, runtime_http_server):
 
     # assert training response received before training completed
     training_json_response = training_response.json()
-    assert training_response.status_code == 200, training_json_response
+    assert training_response.status_code == 202, training_json_response
     assert (training_id := training_json_response["training_id"])
     assert training_json_response["model_name"] == model_name
 
