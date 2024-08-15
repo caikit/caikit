@@ -628,9 +628,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
         pydantic_response = dataobject_to_pydantic(response_data_object)
 
         @self.app.post(
-            get_http_route_name(rpc.name),
+            get_http_route_name(rpc_name=rpc.name),
             responses=self._get_response_openapi(
-                response_data_object, pydantic_response
+                response_data_object, pydantic_response, 202
             ),
             description=rpc._method._method_pointer.__doc__,
             openapi_extra=self._get_request_openapi(pydantic_request),
@@ -658,7 +658,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 if response_data_object.supports_file_operations:
                     return self._format_file_response(result)
 
-                return Response(content=result.to_json(), media_type="application/json")
+                return Response(
+                    content=result.to_json(),
+                    media_type="application/json",
+                    status_code=status.HTTP_202_ACCEPTED,
+                )
             except Exception as err:
                 if error_content := self._handle_exception(err):
                     return Response(
@@ -802,7 +806,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Result will always be a Prediction Job
         pydantic_job_response = dataobject_to_pydantic(PredictionJob)
         job_response_openapi = self._get_response_openapi(
-            PredictionJob, pydantic_job_response
+            PredictionJob, pydantic_job_response, 202
         )
 
         # Merge the DataObject openapi schema into the task schema
@@ -855,7 +859,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 result = await loop.run_in_executor(self.thread_pool, call)
                 log.debug4("Job started from model %s with id", model_id, result.job_id)
 
-                return Response(content=result.to_json(), media_type="application/json")
+                return Response(
+                    content=result.to_json(),
+                    media_type="application/json",
+                    status_code=status.HTTP_202_ACCEPTED,
+                )
 
             except Exception as err:
                 if error_content := self._handle_exception(err):
@@ -1169,6 +1177,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         self,
         dm_class: Type[DataBase],
         pydantic_model: Union[Type, Type[pydantic.BaseModel]],
+        response_code: int = 200,
     ):
         """Helper to generate the openapi schema for a given response"""
 
@@ -1190,7 +1199,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
 
             response_schema = {"application/json": {"schema": json_schema}}
 
-        output = {200: {"content": response_schema}}
+        output = {response_code: {"content": response_schema}}
         return output
 
     @contextmanager
