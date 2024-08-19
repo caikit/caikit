@@ -21,24 +21,24 @@ from py_to_proto.dataclass_to_proto import Annotated, FieldNumber
 
 # Local
 from ....core.data_model import DataObjectBase, JobStatus, dataobject
-from .package import RUNTIME_JOB_PACKAGE
+from .package import RUNTIME_PACKAGE
 
 
-@dataobject(RUNTIME_JOB_PACKAGE)
+@dataobject(RUNTIME_PACKAGE)
 class PredictionJobInfoRequest(DataObjectBase):
     """DataModel to request information about a PredictionJob"""
 
     job_id: Annotated[str, FieldNumber(1)]
 
 
-@dataobject(RUNTIME_JOB_PACKAGE)
+@dataobject(RUNTIME_PACKAGE)
 class PredictionJob(DataObjectBase):
     """DataModel returned as a result of starting a PredictionJob"""
 
     job_id: Annotated[str, FieldNumber(1)]
 
 
-@dataobject(RUNTIME_JOB_PACKAGE)
+@dataobject(RUNTIME_PACKAGE)
 class PredictionJobStatusResponse(DataObjectBase):
     """DataModel representing the status of a PredictionJob"""
 
