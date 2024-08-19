@@ -240,7 +240,7 @@ class ModelManager:
 
     def get_model_future(
         self,
-        training_id: str = None,
+        training_id: str,
     ) -> ModelTrainerFutureBase:
         """Get the future handle to an in-progress training
 
@@ -262,7 +262,7 @@ class ModelManager:
 
     def get_prediction_future(
         self,
-        prediction_id: str = None,
+        prediction_id: str,
     ) -> JobPredictorFutureBase:
         """Get the future handle to an in-progress prediction job
 

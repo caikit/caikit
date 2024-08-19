@@ -27,7 +27,7 @@ from .dataobject import (
 )
 from .enums import *
 from .job import JobStatus
-from .predict_status import PredictionJobStatus
+from .prediction_status import PredictionJobStatus
 from .producer import PACKAGE_COMMON, ProducerId
 from .streams import data_stream
 from .streams.data_stream import *

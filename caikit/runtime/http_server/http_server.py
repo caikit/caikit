@@ -630,7 +630,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         @self.app.post(
             get_http_route_name(rpc_name=rpc.name),
             responses=self._get_response_openapi(
-                response_data_object, pydantic_response, 202
+                response_data_object, pydantic_response
             ),
             description=rpc._method._method_pointer.__doc__,
             openapi_extra=self._get_request_openapi(pydantic_request),
@@ -661,7 +661,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 return Response(
                     content=result.to_json(),
                     media_type="application/json",
-                    status_code=status.HTTP_202_ACCEPTED,
+                    status_code=status.HTTP_200_OK,
                 )
             except Exception as err:
                 if error_content := self._handle_exception(err):
@@ -806,7 +806,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         # Result will always be a Prediction Job
         pydantic_job_response = dataobject_to_pydantic(PredictionJob)
         job_response_openapi = self._get_response_openapi(
-            PredictionJob, pydantic_job_response, 202
+            PredictionJob, pydantic_job_response
         )
 
         # Merge the DataObject openapi schema into the task schema
@@ -862,7 +862,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 return Response(
                     content=result.to_json(),
                     media_type="application/json",
-                    status_code=status.HTTP_202_ACCEPTED,
+                    status_code=status.HTTP_200_OK,
                 )
 
             except Exception as err:
