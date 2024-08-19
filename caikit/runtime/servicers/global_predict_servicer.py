@@ -316,7 +316,6 @@ class GlobalPredictServicer:
                 **caikit_library_request,
             )
 
-            # Don't measure
             response_proto = build_proto_response(response)
             return response_proto
 

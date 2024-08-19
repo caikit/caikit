@@ -16,7 +16,7 @@
 # pylint: disable=E1101
 
 # Standard
-from typing import Iterable, Union
+from typing import Iterable, Union, Optional
 
 # Third Party
 from google.protobuf.message import Message as ProtobufMessage
@@ -90,7 +90,7 @@ class PredictionJobManagementServicerImpl:
 
     def get_job_result(self, job_id: str) -> DataObjectBase:
         """Get the result of a job by ID"""
-        model_future: JobFutureBase | None = self._get_model_future(
+        model_future: Optional[JobFutureBase] = self._get_prediction_future(
             job_id, operation="get_status"
         )
         try:
@@ -124,7 +124,7 @@ class PredictionJobManagementServicerImpl:
 
     def get_job_status(self, job_id: str) -> PredictionJobStatusResponse:
         """Get the status of a job by ID"""
-        model_future = self._get_model_future(job_id, operation="get_status")
+        model_future = self._get_prediction_future(job_id, operation="get_status")
         try:
             reasons = []
             job_info = model_future.get_info()
@@ -150,7 +150,7 @@ class PredictionJobManagementServicerImpl:
 
     def cancel_job(self, job_id: str) -> PredictionJobStatusResponse:
         """Cancel a prediction job."""
-        model_future = self._get_model_future(job_id, operation="cancel")
+        model_future = self._get_prediction_future(job_id, operation="cancel")
         try:
             model_future.cancel()
             job_info = model_future.get_info()
@@ -166,8 +166,8 @@ class PredictionJobManagementServicerImpl:
             )
         except CaikitCoreException as err:
             # In the case that we get a `NOT_FOUND`, we assume that the job was canceled.
-            # This is to handle stateful trainers that implement `cancel` by fully deleting
-            # the training.
+            # This is to handle stateful predictors that implement `cancel` by fully deleting
+            # the prediction.
             if err.status_code == CaikitCoreStatusCode.NOT_FOUND:
                 return PredictionJobStatusResponse(
                     inference_id=job_id,
@@ -192,9 +192,10 @@ class PredictionJobManagementServicerImpl:
     ############################
 
     @staticmethod
-    def _get_model_future(job_id: str, operation: str):
+    def _get_prediction_future(job_id: str, operation: str):
         """Returns a model future, or raises 404 caikit runtime exception on error.
-        Wrapped here so that we only catch errors directly in the `predictor.get_model_future` call
+        Wrapped here so that we only catch errors directly in the `predictor.get_prediction_future` 
+        call
         """
         try:
             return MODEL_MANAGER.get_prediction_future(job_id)

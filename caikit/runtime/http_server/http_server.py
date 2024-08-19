@@ -458,7 +458,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             raise
 
     def _get_prediction_job_result(self, job_id: Annotated[str, Query]) -> Response:
-        """GET handler for fetching a training"""
+        """GET handler for fetching a prediction job result"""
         try:
             result = self.prediction_job_manager.get_job_result(job_id)
 
@@ -476,7 +476,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             raise
 
     def _get_prediction_job_status(self, job_id: Annotated[str, Query]) -> Response:
-        """GET handler for fetching a training"""
+        """GET handler for fetching a prediction job status"""
         try:
             result = self.prediction_job_manager.get_job_status(job_id)
             return Response(
@@ -492,7 +492,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             raise
 
     def _cancel_prediction_job(self, job_id: Annotated[str, Query]) -> Response:
-        """DELETE handler for undeploying a model"""
+        """DELETE handler for cancelling a prediction job"""
         try:
             result = self.prediction_job_manager.cancel_job(job_id)
             return Response(
@@ -769,7 +769,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             include_in_schema=rpc.task.get_visibility(),
         )(self._get_prediction_job_status)
 
-        # Bind DELETE to cancel a training
+        # Bind DELETE to cancel a prediction job
         cancel_dataobject_response = PredictionJobStatusResponse
         cancel_pydantic_response = dataobject_to_pydantic(cancel_dataobject_response)
 
@@ -782,7 +782,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
             include_in_schema=rpc.task.get_visibility(),
         )(self._cancel_prediction_job)
 
-        # Bind GET at the `/result` subpath to get the result of a training
+        # Bind GET at the `/result` subpath to get the result of a prediction job
         result_dataobject_response = rpc.return_type
         result_pydantic_response = dataobject_to_pydantic(result_dataobject_response)
         self.app.get(
