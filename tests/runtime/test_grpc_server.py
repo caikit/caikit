@@ -334,11 +334,11 @@ def test_predict_sample_module_error_response(
 
 
 def test_job_predict_sample_module_ok_response(
-    sample_task_model_id, runtime_grpc_server, sample_job_inference_service
+    sample_task_model_id, runtime_grpc_server, sample_inferece_job_service
 ):
     """Test RPC CaikitRuntime.SampleTaskStartPredictionJob successful response as well
     as status and result rpcs"""
-    stub = sample_job_inference_service.stub_class(
+    stub = sample_inferece_job_service.stub_class(
         runtime_grpc_server.make_local_channel()
     )
     predict_request = get_inference_request(SampleTask)(
@@ -376,11 +376,11 @@ def test_job_predict_sample_module_ok_response(
 
 
 def test_job_predict_sample_module_cancel_request(
-    sample_task_model_id, runtime_grpc_server, sample_job_inference_service
+    sample_task_model_id, runtime_grpc_server, sample_inferece_job_service
 ):
     """Test that a grpc prediction job can be cancelled"""
     # start a prediction that sleeps for a long time, so I can cancel
-    stub = sample_job_inference_service.stub_class(
+    stub = sample_inferece_job_service.stub_class(
         runtime_grpc_server.make_local_channel()
     )
     predict_request = get_inference_request(SampleTask)(

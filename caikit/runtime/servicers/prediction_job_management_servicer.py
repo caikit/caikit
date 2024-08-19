@@ -16,7 +16,7 @@
 # pylint: disable=E1101
 
 # Standard
-from typing import Iterable, Union, Optional
+from typing import Iterable, Optional, Union
 
 # Third Party
 from google.protobuf.message import Message as ProtobufMessage
@@ -194,7 +194,7 @@ class PredictionJobManagementServicerImpl:
     @staticmethod
     def _get_prediction_future(job_id: str, operation: str):
         """Returns a model future, or raises 404 caikit runtime exception on error.
-        Wrapped here so that we only catch errors directly in the `predictor.get_prediction_future` 
+        Wrapped here so that we only catch errors directly in the `predictor.get_prediction_future`
         call
         """
         try:

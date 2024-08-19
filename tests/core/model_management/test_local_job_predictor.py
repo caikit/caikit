@@ -75,23 +75,23 @@ def test_predict_and_get_info(predictor_type_cfg):
     # NOTE: Data stream passed by positional arg to ensure it is passed through
     #   correctly by position
     wait_event = threading.Event()
-    model_future = predictor.predict(
+    job_future = predictor.predict(
         WaitPredict(),
         "run",
         wait_event=wait_event,
     )
-    assert model_future.get_info().status == PredictionJobStatus.RUNNING
-    assert not model_future.get_info().status.is_terminal
+    assert job_future.get_info().status == PredictionJobStatus.RUNNING
+    assert not job_future.get_info().status.is_terminal
 
     # Let the training proceed and wait for it to complete
     wait_event.set()
-    model_future.wait()
-    assert model_future.get_info().status == PredictionJobStatus.COMPLETED
-    assert model_future.get_info().status.is_terminal
+    job_future.wait()
+    assert job_future.get_info().status == PredictionJobStatus.COMPLETED
+    assert job_future.get_info().status.is_terminal
 
     # Re-fetch the future by ID
-    fetched_future = predictor.get_job_future(model_future.id)
-    assert fetched_future is model_future
+    fetched_future = predictor.get_job_future(job_future.id)
+    assert fetched_future is job_future
 
 
 def test_predict_and_get_info(predictor_type_cfg):
@@ -102,23 +102,23 @@ def test_predict_and_get_info(predictor_type_cfg):
     # NOTE: Data stream passed by positional arg to ensure it is passed through
     #   correctly by position
     wait_event = threading.Event()
-    model_future = predictor.predict(
+    job_future = predictor.predict(
         WaitPredict(),
         "run",
         wait_event=wait_event,
     )
-    assert model_future.get_info().status == PredictionJobStatus.RUNNING
-    assert not model_future.get_info().status.is_terminal
+    assert job_future.get_info().status == PredictionJobStatus.RUNNING
+    assert not job_future.get_info().status.is_terminal
 
     # Let the training proceed and wait for it to complete
     wait_event.set()
-    model_future.wait()
-    assert model_future.get_info().status == PredictionJobStatus.COMPLETED
-    assert model_future.get_info().status.is_terminal
+    job_future.wait()
+    assert job_future.get_info().status == PredictionJobStatus.COMPLETED
+    assert job_future.get_info().status.is_terminal
 
     # Re-fetch the future by ID
-    fetched_future = predictor.get_job_future(model_future.id)
-    assert fetched_future is model_future
+    fetched_future = predictor.get_job_future(job_future.id)
+    assert fetched_future is job_future
 
 
 def test_save_with_id(predictor_type_cfg, save_path):
@@ -126,15 +126,15 @@ def test_save_with_id(predictor_type_cfg, save_path):
     save path
     """
     predictor = local_predictor(**predictor_type_cfg)
-    model_future = predictor.predict(
+    job_future = predictor.predict(
         SampleModule(),
         "run",
         sample_input=SampleInputType(),
     )
-    model_future.wait()
-    assert model_future.save_path != save_path
-    assert model_future.id in model_future.save_path
-    assert os.path.exists(model_future.save_path)
+    job_future.wait()
+    assert job_future.save_path != save_path
+    assert job_future.id in job_future.save_path
+    assert os.path.exists(job_future.save_path)
 
 
 def test_cancel_clean_termination(predictor_type_cfg):
@@ -142,20 +142,20 @@ def test_cancel_clean_termination(predictor_type_cfg):
     prediction
     """
     predictor = local_predictor(**predictor_type_cfg)
-    model_future = predictor.predict(
+    job_future = predictor.predict(
         SampleModule(),
         "run",
         sample_input=SampleInputType(),
         sleep_time=1000,
     )
-    assert model_future.get_info().status == PredictionJobStatus.RUNNING
-    assert not model_future.get_info().status.is_terminal
+    assert job_future.get_info().status == PredictionJobStatus.RUNNING
+    assert not job_future.get_info().status.is_terminal
 
     # Cancel the future
-    model_future.cancel()
-    assert model_future.get_info().status == PredictionJobStatus.CANCELED
-    assert model_future.get_info().status.is_terminal
-    model_future.wait()
+    job_future.cancel()
+    assert job_future.get_info().status == PredictionJobStatus.CANCELED
+    assert job_future.get_info().status.is_terminal
+    job_future.wait()
 
 
 def test_cancel_without_waiting(predictor_type_cfg):
@@ -164,22 +164,22 @@ def test_cancel_without_waiting(predictor_type_cfg):
     before the prediction has fully terminated.
     """
     predictor = local_predictor(**predictor_type_cfg)
-    model_future = predictor.predict(
+    job_future = predictor.predict(
         SampleModule(),
         "run",
         sample_input=SampleInputType(),
         sleep_time=1000,
         sleep_increment=0.5,
     )
-    assert model_future.get_info().status == PredictionJobStatus.RUNNING
-    assert not model_future.get_info().status.is_terminal
+    assert job_future.get_info().status == PredictionJobStatus.RUNNING
+    assert not job_future.get_info().status.is_terminal
 
     # Cancel the future and make sure it reports canceled, even though the
     # function is still sleeping
-    model_future.cancel()
-    assert model_future.get_info().status == PredictionJobStatus.CANCELED
-    assert model_future.get_info().status.is_terminal
-    model_future.wait()
+    job_future.cancel()
+    assert job_future.get_info().status == PredictionJobStatus.CANCELED
+    assert job_future.get_info().status.is_terminal
+    job_future.wait()
 
 
 def test_no_retention_time(predictor_type_cfg):
@@ -187,30 +187,30 @@ def test_no_retention_time(predictor_type_cfg):
     forever and doesn't cause errors
     """
     predictor = local_predictor(retention_duration=None, **predictor_type_cfg)
-    model_future = predictor.predict(
+    job_future = predictor.predict(
         SampleModule(),
         "run",
         sample_input=SampleInputType(),
     )
-    model_future.wait()
-    retrieved_future = predictor.get_job_future(model_future.id)
-    assert retrieved_future is model_future
+    job_future.wait()
+    retrieved_future = predictor.get_job_future(job_future.id)
+    assert retrieved_future is job_future
 
 
 def test_purge_retention_time(predictor_type_cfg):
     """Test that purging old models works as expected"""
     predictor = local_predictor(retention_duration="1d10s", **predictor_type_cfg)
-    model_future = predictor.predict(
+    job_future = predictor.predict(
         SampleModule(),
         "run",
         sample_input=SampleInputType(),
     )
-    model_future.wait()
-    retrieved_future = predictor.get_job_future(model_future.id)
-    assert retrieved_future is model_future
-    model_future._completion_time = model_future._completion_time - timedelta(days=2)
+    job_future.wait()
+    retrieved_future = predictor.get_job_future(job_future.id)
+    assert retrieved_future is job_future
+    job_future._completion_time = job_future._completion_time - timedelta(days=2)
     with pytest.raises(CaikitCoreException):
-        predictor.get_job_future(model_future.id)
+        predictor.get_job_future(job_future.id)
     assert not Path(retrieved_future.save_path).exists()
     assert not Path(retrieved_future.save_path).parent.exists()
 
@@ -233,23 +233,21 @@ def test_get_into_return_error(predictor_type_cfg):
     """Test that failed prediction returns error properly"""
     predictor = local_predictor(**predictor_type_cfg)
 
-    model_future = predictor.predict(
+    job_future = predictor.predict(
         SampleModule(),
         "run",
         sample_input=SampleInputType("hello"),
         throw=True,
         error="Error",
     )
-    # assert model_future.get_info().status == TrainingStatus.RUNNING
-    # assert not model_future.get_info().status.is_terminal
 
     # Let the training proceed and wait for it to complete
-    model_future.wait()
-    assert model_future.get_info().status == PredictionJobStatus.ERRORED
-    assert model_future.get_info().status.is_terminal
-    assert isinstance(model_future.get_info().errors, list)
-    assert isinstance(model_future.get_info().errors[0], RuntimeError)
-    assert str(model_future.get_info().errors[0]) == "Error"
+    job_future.wait()
+    assert job_future.get_info().status == PredictionJobStatus.ERRORED
+    assert job_future.get_info().status.is_terminal
+    assert isinstance(job_future.get_info().errors, list)
+    assert isinstance(job_future.get_info().errors[0], RuntimeError)
+    assert str(job_future.get_info().errors[0]) == "Error"
 
 
 def test_retry_duplicate_external_id():
@@ -259,7 +257,7 @@ def test_retry_duplicate_external_id():
 
     # First try should fail
     with pytest.raises(CaikitCoreException):
-        model_future = predictor.predict(
+        job_future = predictor.predict(
             SampleModule(),
             "run",
             external_prediction_id=predictor_id,
@@ -267,16 +265,16 @@ def test_retry_duplicate_external_id():
             throw=True,
             error="Error",
         )
-        model_future.result()
+        job_future.result()
 
     # Second time should succeed
-    model_future = predictor.predict(
+    job_future = predictor.predict(
         SampleModule(),
         "run",
         external_prediction_id=predictor_id,
         sample_input=SampleInputType("hello"),
     )
-    assert model_future.result()
+    assert job_future.result()
 
 
 def test_duplicate_external_id_cannot_restart_while_running():
@@ -287,18 +285,18 @@ def test_duplicate_external_id_cannot_restart_while_running():
     predictor_id = "my-prediction"
     wait_event = threading.Event()
 
-    model_future = predictor.predict(
+    job_future = predictor.predict(
         WaitPredict(), "run", external_prediction_id=predictor_id, wait_event=wait_event
     )
     # Test that rerunning existing prediction fails
     with pytest.raises(ValueError, match="Cannot restart prediction.*"):
-        model_future = predictor.predict(
+        job_future = predictor.predict(
             model_instance=WaitPredict(),
             prediction_func_name="run",
             external_prediction_id=predictor_id,
             wait_event=wait_event,
         )
 
-    assert predictor.get_job_future(predictor_id) is model_future
+    assert predictor.get_job_future(predictor_id) is job_future
     wait_event.set()
-    assert model_future.result()
+    assert job_future.result()

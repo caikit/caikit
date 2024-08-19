@@ -101,7 +101,7 @@ def sample_inference_service(render_protos) -> ServicePackage:
 
 
 @pytest.fixture(scope="session")
-def sample_job_inference_service(render_protos) -> ServicePackage:
+def sample_inferece_job_service(render_protos) -> ServicePackage:
     """Service package pointing to `sample_lib` for testing"""
     job_inference_service = ServicePackageFactory().get_service_package(
         ServicePackageFactory.ServiceType.JOB_INFERENCE,

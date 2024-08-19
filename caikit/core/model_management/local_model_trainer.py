@@ -39,6 +39,7 @@ import alog
 
 # Local
 from ..exceptions import error_handler
+from ..exceptions.caikit_core_exception import CaikitCoreException, CaikitCoreStatusCode
 from ..modules import ModuleBase
 from ..toolkit.logging import configure as configure_logging
 from .local_job_base import LocalJobBase
@@ -180,8 +181,15 @@ class LocalModelTrainer(LocalJobBase, ModelTrainerBase):
         return model_future
 
     def get_model_future(self, training_id: str) -> "LocalModelFuture":
-        """Look up the model future for the given id"""
-        return self.get_local_future(training_id)
+        """Look up the model future for the given id. Use custom implementation
+        to retain error codes"""
+        self._purge_old_futures()
+        if model_future := self._futures.get(training_id):
+            return model_future
+        raise CaikitCoreException(
+            status_code=CaikitCoreStatusCode.NOT_FOUND,
+            message=f"Unknown training_id: {training_id}",
+        )
 
 
 class _SpawnProcessModelWrapper(ModuleBase):

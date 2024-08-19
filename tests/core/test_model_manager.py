@@ -742,7 +742,7 @@ def test_train_with_save_path(reset_globals):
 
 
 def test_job_predictor_with_model(reset_globals):
-    """Make sure training can be accessed through the central train function
+    """Make sure predictions can be accessed through the central predict function
     with the class directly
     """
 

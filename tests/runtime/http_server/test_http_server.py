@@ -94,7 +94,6 @@ def test_basic_tls_server(open_port):
             open_port,
             tls_config_override=config_overrides,
         ) as http_server_with_tls:
-            # start a non-blocking http server with basic tls
             resp = requests.get(
                 f"https://localhost:{http_server_with_tls.port}/docs",
                 verify=config_overrides["use_in_test"]["ca_cert"],
@@ -108,7 +107,6 @@ def test_basic_tls_server_with_wrong_cert(open_port):
             open_port,
             tls_config_override=config_overrides,
         ) as http_server_with_tls:
-            # start a non-blocking http server with basic tls
             with pytest.raises(requests.exceptions.SSLError):
                 requests.get(
                     f"https://localhost:{http_server_with_tls.port}/docs",
@@ -1086,7 +1084,7 @@ def test_job_inference_sample_task(sample_task_model_id, client):
         json=json_input,
     )
     json_response = response.json()
-    assert response.status_code == 202, json_response
+    assert response.status_code == 200, json_response
     id = json_response["job_id"]
 
     # Check that status is completed
@@ -1121,7 +1119,7 @@ def test_job_inference_sample_task_cancelled(sample_task_model_id, client):
         json=json_input,
     )
     json_response = response.json()
-    assert response.status_code == 202, json_response
+    assert response.status_code == 200, json_response
     id = json_response["job_id"]
 
     # Check that status is running
@@ -1174,7 +1172,7 @@ def test_train_sample_task(client, runtime_http_server):
 
     # assert training response
     training_json_response = training_response.json()
-    assert training_response.status_code == 202, training_json_response
+    assert training_response.status_code == 200, training_json_response
     assert (training_id := training_json_response["training_id"])
     assert training_json_response["model_name"] == model_name
 
@@ -1250,7 +1248,7 @@ def test_train_primitive_task(client, runtime_http_server):
     )
     # assert training response
     training_json_response = training_response.json()
-    assert training_response.status_code == 202, training_json_response
+    assert training_response.status_code == 200, training_json_response
     assert (training_id := training_json_response["training_id"])
     assert training_json_response["model_name"] == model_name
 
@@ -1300,7 +1298,7 @@ def test_train_other_task(client, runtime_http_server):
     )
     # assert training response
     training_json_response = training_response.json()
-    assert training_response.status_code == 202, training_json_response
+    assert training_response.status_code == 200, training_json_response
     assert (training_id := training_json_response["training_id"])
     assert training_json_response["model_name"] == model_name
 
@@ -1348,7 +1346,7 @@ def test_train_long_running_sample_task(client, runtime_http_server):
 
     # assert training response received before training completed
     training_json_response = training_response.json()
-    assert training_response.status_code == 202, training_json_response
+    assert training_response.status_code == 200, training_json_response
     assert (training_id := training_json_response["training_id"])
     assert training_json_response["model_name"] == model_name
 

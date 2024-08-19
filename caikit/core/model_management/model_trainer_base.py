@@ -39,6 +39,13 @@ class TrainingInfo(JobInfo):
 
 
 class ModelTrainerFutureBase(JobFutureBase):
+    def __init__(self, *args, **kwargs):
+        if "trainer_name" in kwargs:
+            kwargs["future_name"] = kwargs["trainer_name"]
+        if "training_id" in kwargs:
+            kwargs["future_id"] = kwargs["training_id"]
+        super().__init__(*args, **kwargs)
+
     @abc.abstractmethod
     def load(self) -> ModuleBase:
         """A model future must be loadable with no additional arguments. Mainly
