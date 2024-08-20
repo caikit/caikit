@@ -226,7 +226,6 @@ def test_services_disabled(
         )
         with error_context:
             with runtime_http_test_server(open_port) as server:
-                # start a non-blocking http server with basic tls
                 resp = requests.get(
                     f"http://localhost:{open_port}{http_server.HEALTH_ENDPOINT}",
                 )
