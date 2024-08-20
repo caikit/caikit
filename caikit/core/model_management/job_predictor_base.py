@@ -74,5 +74,5 @@ class JobPredictorBase(JobBase):
 
     @classmethod
     def get_predictor_name(cls, predict_id: str) -> str:
-        """Un-hash the predictors's instance name from the given training id"""
+        """Un-hash the predictors's instance name from the given prediction id"""
         return cls.get_job_name(predict_id)

@@ -216,7 +216,7 @@ class ModelManager:
 
         # Start the prediction job
         with alog.ContextTimer(log.debug, "Started prediction job in: "):
-            model_future = inferencer.predict(
+            prediction_future = inferencer.predict(
                 model,
                 prediction_func_name,
                 *args,
@@ -224,19 +224,19 @@ class ModelManager:
             )
             log.debug(
                 "Started Prediction Job %s",
-                model_future.id,
+                prediction_future.id,
             )
 
         # If requested, wait for the future to complete
         if wait:
-            log.debug("Waiting for prediction %s to complete", model_future.id)
+            log.debug("Waiting for prediction %s to complete", prediction_future.id)
             with alog.ContextTimer(
-                log.debug, "Finished training %s in: ", model_future.id
+                log.debug, "Finished training %s in: ", prediction_future.id
             ):
-                model_future.wait()
+                prediction_future.wait()
 
         # Return a handle to the future
-        return model_future
+        return prediction_future
 
     def get_model_future(
         self,

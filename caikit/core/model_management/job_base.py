@@ -72,7 +72,7 @@ class JobFutureBase(abc.ABC):
 
     @abc.abstractmethod
     def cancel(self):
-        """Terminate the given training"""
+        """Terminate the given job"""
 
     @abc.abstractmethod
     def wait(self):
@@ -92,7 +92,7 @@ class JobBase(FactoryConstructible):
 
     @classmethod
     def get_job_name(cls, job_id: str) -> str:
-        """Un-hash the background's instance name from the given training id"""
+        """Un-hash the background's instance name from the given job id"""
         return ReversibleHasher.reverse_hash(
             job_id.split(JobFutureBase.ID_DELIMITER)[0]
         )

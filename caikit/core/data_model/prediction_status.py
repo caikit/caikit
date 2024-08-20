@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Common data model enum used for reporting training status
+Common data model enum used for reporting prediction status
 """
 # Local
 from .job import JobStatus
