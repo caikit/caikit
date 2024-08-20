@@ -275,6 +275,12 @@ def _get_proto_file_descriptors(
             sorted([file_descriptor_protos[pkg].name for pkg in pkg_deps])
         )
 
+        # Remove duplicate dependencies. This is due to a proto3 bug in CopyToProto which
+        # includes all dependencies even if they already exist
+        pruned_deps = set(pkg_fd.dependency)
+        del pkg_fd.dependency[:]
+        pkg_fd.dependency.extend(list(pruned_deps))
+
     return file_descriptor_protos
 
 
