@@ -17,5 +17,5 @@ Common data model enum used for reporting prediction status
 # Local
 from .job import JobStatus
 
-# Copy JobStatus as training status for now
+# Copy JobStatus as PredictionJobStatus since Enum inheritance does not work
 PredictionJobStatus = JobStatus
