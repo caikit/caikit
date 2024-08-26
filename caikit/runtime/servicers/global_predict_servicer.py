@@ -179,7 +179,7 @@ class GlobalPredictServicer:
             self.notify_backends_with_context(model_id, context)
 
             # Retrieve the model from the model manager
-            log.debug("<RUN52259029D>", "Retrieving model '%s'", model_id)
+            log.debug("<RUN52259129D>", "Retrieving model '%s'", model_id)
             model = self._model_manager.retrieve_model(model_id)
             model_class = type(model)
 
@@ -272,7 +272,7 @@ class GlobalPredictServicer:
             self.notify_backends_with_context(model_id, context)
 
             # Retrieve the model from the model manager
-            log.debug("<RUN52259029D>", "Retrieving model '%s'", model_id)
+            log.debug("<RUN52259129D>", "Retrieving model '%s'", model_id)
             model = self._model_manager.retrieve_model(model_id)
             model_class = type(model)
 
@@ -404,7 +404,7 @@ class GlobalPredictServicer:
             if get_config().runtime.metering.enabled:
                 self.rpc_meter.update_metrics(str(type(model)))
 
-            return PredictionJob(job_id=model_future.id)
+            return PredictionJob(prediction_id=model_future.id)
 
     def predict_model(
         self,

@@ -62,7 +62,7 @@ class PredictionJobManagementServicerImpl:
         ProtobufMessage, Iterable[ProtobufMessage]
     ]:  # pylint: disable=unused-argument
         """Get the result of a prediction job by ID"""
-        return self.get_job_result(request.job_id).to_proto()
+        return self.get_prediction_result(request.prediction_id).to_proto()
 
     def GetPredictionJobStatus(
         self,
@@ -72,7 +72,7 @@ class PredictionJobManagementServicerImpl:
         **__,
     ):  # pylint: disable=unused-argument
         """Get the status of a prediction job ID"""
-        return self.get_job_status(request.job_id).to_proto()
+        return self.get_prediction_status(request.prediction_id).to_proto()
 
     def CancelPredictionJob(
         self,
@@ -82,16 +82,16 @@ class PredictionJobManagementServicerImpl:
         **__,
     ):  # pylint: disable=unused-argument
         """Cancel a prediction job."""
-        return self.cancel_job(request.job_id).to_proto()
+        return self.cancel_prediction(request.prediction_id).to_proto()
 
     ####################################
     ## Interface-agnostic entrypoints ##
     ####################################
 
-    def get_job_result(self, job_id: str) -> DataObjectBase:
+    def get_prediction_result(self, prediction_id: str) -> DataObjectBase:
         """Get the result of a job by ID"""
         model_future: Optional[JobFutureBase] = self._get_prediction_future(
-            job_id, operation="get_status"
+            prediction_id, operation="get_status"
         )
         try:
             model_status = model_future.get_info().status
@@ -118,13 +118,15 @@ class PredictionJobManagementServicerImpl:
             raise CaikitRuntimeException(
                 grpc.StatusCode.INTERNAL,
                 "Failed to get result for job id {}".format(
-                    job_id,
+                    prediction_id,
                 ),
             ) from err
 
-    def get_job_status(self, job_id: str) -> PredictionJobStatusResponse:
+    def get_prediction_status(self, prediction_id: str) -> PredictionJobStatusResponse:
         """Get the status of a job by ID"""
-        model_future = self._get_prediction_future(job_id, operation="get_status")
+        model_future = self._get_prediction_future(
+            prediction_id, operation="get_status"
+        )
         try:
             reasons = []
             job_info = model_future.get_info()
@@ -132,7 +134,7 @@ class PredictionJobManagementServicerImpl:
                 reasons = [str(error) for error in job_info.errors]
 
             return PredictionJobStatusResponse(
-                job_id=job_id,
+                prediction_id=prediction_id,
                 state=job_info.status,
                 reasons=reasons,
                 submission_timestamp=job_info.submission_time,
@@ -144,13 +146,13 @@ class PredictionJobManagementServicerImpl:
             raise CaikitRuntimeException(
                 grpc.StatusCode.INTERNAL,
                 "Failed to get status for job id {}".format(
-                    job_id,
+                    prediction_id,
                 ),
             ) from err
 
-    def cancel_job(self, job_id: str) -> PredictionJobStatusResponse:
+    def cancel_prediction(self, prediction_id: str) -> PredictionJobStatusResponse:
         """Cancel a prediction job."""
-        model_future = self._get_prediction_future(job_id, operation="cancel")
+        model_future = self._get_prediction_future(prediction_id, operation="cancel")
         try:
             model_future.cancel()
             job_info = model_future.get_info()
@@ -160,7 +162,7 @@ class PredictionJobManagementServicerImpl:
                 reasons = [str(error) for error in job_info.errors]
 
             return PredictionJobStatusResponse(
-                job_id=model_future.id,
+                prediction_id=model_future.id,
                 state=job_info.status,
                 reasons=reasons,
             )
@@ -170,20 +172,20 @@ class PredictionJobManagementServicerImpl:
             # the prediction.
             if err.status_code == CaikitCoreStatusCode.NOT_FOUND:
                 return PredictionJobStatusResponse(
-                    inference_id=job_id,
+                    inference_id=prediction_id,
                     state=JobStatus.CANCELED,
                 )
             raise_caikit_runtime_exception(exception=err)
         except Exception as err:
             log.debug2(
                 "Unexpected error trying to cancel job id %s: [%s]",
-                job_id,
+                prediction_id,
                 err,
             )
             raise CaikitRuntimeException(
                 grpc.StatusCode.INTERNAL,
                 "Failed to cancel job id {}".format(
-                    job_id,
+                    prediction_id,
                 ),
             ) from err
 
@@ -192,24 +194,24 @@ class PredictionJobManagementServicerImpl:
     ############################
 
     @staticmethod
-    def _get_prediction_future(job_id: str, operation: str):
+    def _get_prediction_future(prediction_id: str, operation: str):
         """Returns a model future, or raises 404 caikit runtime exception on error.
         Wrapped here so that we only catch errors directly in the `predictor.get_prediction_future`
         call
         """
         try:
-            return MODEL_MANAGER.get_prediction_future(job_id)
+            return MODEL_MANAGER.get_prediction_future(prediction_id)
         except CaikitCoreException as err:
             raise_caikit_runtime_exception(exception=err)
         except Exception as err:
             log.debug2(
                 "Caught unexpected exception while trying to look up model future for id %s: [%s]",
-                job_id,
+                prediction_id,
                 err,
             )
             raise CaikitRuntimeException(
                 grpc.StatusCode.INTERNAL,
                 "Unexpected error with job id {}. Could not perform {}".format(
-                    job_id, operation
+                    prediction_id, operation
                 ),
             ) from err

@@ -351,7 +351,7 @@ def test_job_predict_sample_module_ok_response(
     )
 
     job_info = PredictionJob.from_proto(job_proto_info)
-    assert job_info.job_id is not None
+    assert job_info.prediction_id is not None
 
     # Check background status. Repeatably check until status is not RUNNING
     job_status = None
@@ -359,7 +359,7 @@ def test_job_predict_sample_module_ok_response(
         job_status and job_status.state == PredictionJobStatus.RUNNING.value
     ):
         predict_status_request = PredictionJobInfoRequest(
-            job_id=job_info.job_id
+            prediction_id=job_info.prediction_id
         ).to_proto()
         job_proto_status = stub.SampleTaskGetPredictionJobStatus(
             predict_status_request, metadata=[("mm-model-id", sample_task_model_id)]
@@ -393,10 +393,12 @@ def test_job_predict_sample_module_cancel_request(
     )
 
     job_info = PredictionJob.from_proto(job_proto_info)
-    assert job_info.job_id is not None
+    assert job_info.prediction_id is not None
 
     # Test to ensure that the  status is Running
-    predict_status_request = PredictionJobInfoRequest(job_id=job_info.job_id).to_proto()
+    predict_status_request = PredictionJobInfoRequest(
+        prediction_id=job_info.prediction_id
+    ).to_proto()
     job_proto_status = stub.SampleTaskGetPredictionJobStatus(
         predict_status_request, metadata=[("mm-model-id", sample_task_model_id)]
     )

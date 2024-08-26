@@ -1084,22 +1084,24 @@ def test_job_inference_sample_task(sample_task_model_id, client):
     )
     json_response = response.json()
     assert response.status_code == 200, json_response
-    id = json_response["job_id"]
+    id = json_response["prediction_id"]
 
     # Check that status is completed
-    response = client.get(f"/api/v1/task/sample/job", params={"job_id": id})
+    response = client.get(f"/api/v1/task/sample/job", params={"prediction_id": id})
     json_response = response.json()
     assert response.status_code == 200, json_response
     # IF job is still running then refetch until its completed
     while json_response["state"] == "RUNNING":
-        response = client.get(f"/api/v1/task/sample/job", params={"job_id": id})
+        response = client.get(f"/api/v1/task/sample/job", params={"prediction_id": id})
         json_response = response.json()
         assert response.status_code == 200, json_response
         time.sleep(0.001)
     assert json_response["state"] == "COMPLETED"
 
     # Validate the results
-    response = client.get(f"/api/v1/task/sample/job/results", params={"job_id": id})
+    response = client.get(
+        f"/api/v1/task/sample/job/results", params={"prediction_id": id}
+    )
     json_response = response.json()
     assert response.status_code == 200, json_response
     assert json_response["greeting"] == "Hello world"
@@ -1119,27 +1121,31 @@ def test_job_inference_sample_task_cancelled(sample_task_model_id, client):
     )
     json_response = response.json()
     assert response.status_code == 200, json_response
-    id = json_response["job_id"]
+    id = json_response["prediction_id"]
 
     # Check that status is running
-    response = client.get(f"/api/v1/task/sample/job", params={"job_id": id})
+    response = client.get(f"/api/v1/task/sample/job", params={"prediction_id": id})
     json_response = response.json()
     assert response.status_code == 200, json_response
     assert json_response["state"] == "RUNNING"
 
     # Check that fetching results of a running job raises a 404
-    response = client.get(f"/api/v1/task/sample/job/results", params={"job_id": id})
+    response = client.get(
+        f"/api/v1/task/sample/job/results", params={"prediction_id": id}
+    )
     json_response = response.json()
     assert response.status_code == 404, json_response
 
     # Cancel the job and check the status
-    response = client.delete(f"/api/v1/task/sample/job", params={"job_id": id})
+    response = client.delete(f"/api/v1/task/sample/job", params={"prediction_id": id})
     json_response = response.json()
     assert response.status_code == 200, json_response
     assert json_response["state"] == "CANCELED"
 
     # Validate that results raise 404
-    response = client.get(f"/api/v1/task/sample/job/results", params={"job_id": id})
+    response = client.get(
+        f"/api/v1/task/sample/job/results", params={"prediction_id": id}
+    )
     json_response = response.json()
     assert response.status_code == 404, json_response
 
@@ -1147,7 +1153,9 @@ def test_job_inference_sample_task_cancelled(sample_task_model_id, client):
 def test_job_inference_not_exist(client):
     """Simple check that we can cancel a prediction job"""
     # Submit request with sleep delay
-    response = client.get(f"/api/v1/task/sample/job", params={"job_id": "random_id"})
+    response = client.get(
+        f"/api/v1/task/sample/job", params={"prediction_id": "random_id"}
+    )
     json_response = response.json()
     assert response.status_code == 404, json_response
 

@@ -28,21 +28,21 @@ from .package import RUNTIME_PACKAGE
 class PredictionJobInfoRequest(DataObjectBase):
     """DataModel to request information about a PredictionJob"""
 
-    job_id: Annotated[str, FieldNumber(1)]
+    prediction_id: Annotated[str, FieldNumber(1)]
 
 
 @dataobject(RUNTIME_PACKAGE)
 class PredictionJob(DataObjectBase):
     """DataModel returned as a result of starting a PredictionJob"""
 
-    job_id: Annotated[str, FieldNumber(1)]
+    prediction_id: Annotated[str, FieldNumber(1)]
 
 
 @dataobject(RUNTIME_PACKAGE)
 class PredictionJobStatusResponse(DataObjectBase):
     """DataModel representing the status of a PredictionJob"""
 
-    job_id: Annotated[str, FieldNumber(1)]
+    prediction_id: Annotated[str, FieldNumber(1)]
     state: Annotated[JobStatus, FieldNumber(2)]
     submission_timestamp: Annotated[datetime, FieldNumber(3)]
     completion_timestamp: Annotated[datetime, FieldNumber(4)]

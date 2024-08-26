@@ -417,7 +417,7 @@ class TaskPredictionManagementRPC(CaikitRPCBase):
         self._name = self.get_rpc_name()
 
         # Params and default map are the same for all PredictionManagementRequests
-        params = {"job_id": str}
+        params = {"prediction_id": str}
         default_map = {}
 
         # Construct GRPC RequestMessage

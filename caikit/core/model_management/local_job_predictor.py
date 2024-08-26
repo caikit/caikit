@@ -198,7 +198,7 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
         with self._futures_lock:
             if current_future := self._futures.get(model_future.id):
                 error.value_check(
-                    "<COR35431427E>",
+                    "<COR30431427E>",
                     current_future.get_info().status.is_terminal,
                     "UUID collision for model future {}",
                     model_future.id,

@@ -457,10 +457,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 )
             raise
 
-    def _get_prediction_job_result(self, job_id: Annotated[str, Query]) -> Response:
+    def _get_prediction_job_result(
+        self, prediction_id: Annotated[str, Query]
+    ) -> Response:
         """GET handler for fetching a prediction job result"""
         try:
-            result = self.prediction_job_manager.get_job_result(job_id)
+            result = self.prediction_job_manager.get_prediction_result(prediction_id)
 
             if result.supports_file_operations:
                 return self._format_file_response(result)
@@ -475,10 +477,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 )
             raise
 
-    def _get_prediction_job_status(self, job_id: Annotated[str, Query]) -> Response:
+    def _get_prediction_job_status(
+        self, prediction_id: Annotated[str, Query]
+    ) -> Response:
         """GET handler for fetching a prediction job status"""
         try:
-            result = self.prediction_job_manager.get_job_status(job_id)
+            result = self.prediction_job_manager.get_prediction_status(prediction_id)
             return Response(
                 content=result.to_json(),
                 media_type="application/json",
@@ -491,10 +495,10 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 )
             raise
 
-    def _cancel_prediction_job(self, job_id: Annotated[str, Query]) -> Response:
+    def _cancel_prediction_job(self, prediction_id: Annotated[str, Query]) -> Response:
         """DELETE handler for cancelling a prediction job"""
         try:
-            result = self.prediction_job_manager.cancel_job(job_id)
+            result = self.prediction_job_manager.cancel_prediction(prediction_id)
             return Response(
                 content=result.to_json(),
                 media_type="application/json",
@@ -857,7 +861,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     **request_params,
                 )
                 result = await loop.run_in_executor(self.thread_pool, call)
-                log.debug4("Job started from model %s with id", model_id, result.job_id)
+                log.debug4(
+                    "Job started from model %s with id", model_id, result.prediction_id
+                )
 
                 return Response(
                     content=result.to_json(),
