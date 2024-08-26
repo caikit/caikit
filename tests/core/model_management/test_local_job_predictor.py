@@ -278,7 +278,7 @@ def test_retry_duplicate_external_id():
 
 
 def test_duplicate_external_id_cannot_restart_while_running():
-    """Make sure that if a training is actively running, it cannot be replaced
+    """Make sure that if a prediction is actively running, it cannot be replaced
     by a rerun
     """
     predictor = local_predictor()
