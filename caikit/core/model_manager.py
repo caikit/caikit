@@ -32,7 +32,6 @@ import alog
 from ..interfaces.common.data_model.stream_sources import S3Path
 from .exceptions import error_handler
 from .model_management import (
-    JobFutureBase,
     JobPredictorBase,
     JobPredictorFutureBase,
     ModelFinderBase,
@@ -196,7 +195,7 @@ class ModelManager:
         predictor: Union[str, JobPredictorBase] = "default",
         wait: bool = False,
         **kwargs,
-    ) -> JobFutureBase:
+    ) -> JobPredictorFutureBase:
         """Start a prediction job using a job_predictor.
 
         Args:
@@ -207,7 +206,7 @@ class ModelManager:
             wait (bool, optional): Weather to wait for job to finish. Defaults to False.
 
         Returns:
-            JobFutureBase: Future to track job result
+            JobPredictorFutureBase: Future to track job result
         """
         error.type_check("<COR02418775E>", ModuleBase, model=model)
 
@@ -267,11 +266,11 @@ class ModelManager:
         """Get the future handle to an in-progress prediction job
 
         Args:
-            future_id (str): The ID string from the original prediction
+            prediction_id (str): The ID string from the original prediction
                 submission's ModelFuture
 
         Returns:
-            model_future (JobPredictorFutureBase): The future handle
+            prediction_future (JobPredictorFutureBase): The future handle
                 to the job which holds the status of the in-flight prediction.
         """
         try:
@@ -282,7 +281,7 @@ class ModelManager:
         except ValueError:
             predictor = self.get_predictor("default")
 
-        return predictor.get_job_future(prediction_id)
+        return predictor.get_prediction_future(prediction_id)
 
     def load(
         self,

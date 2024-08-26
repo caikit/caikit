@@ -208,6 +208,6 @@ class LocalJobPredictor(LocalJobBase, JobPredictorBase):
         # Return the future
         return model_future
 
-    def get_job_future(self, future_id: str) -> LocalJobPredictorFuture:
+    def get_prediction_future(self, future_id: str) -> LocalJobPredictorFuture:
         """Look up the model future for the given id"""
         return self.get_local_future(future_id)

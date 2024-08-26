@@ -143,7 +143,7 @@ class LocalModelTrainer(LocalJobBase, ModelTrainerBase):
             current_future := self._futures.get(external_training_id)
         ):
             error.value_check(
-                "<COR79850561E>",
+                "<COR79850511E>",
                 current_future.get_info().status.is_terminal,
                 "Cannot restart training {} that is currently running",
                 external_training_id,
