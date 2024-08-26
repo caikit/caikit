@@ -90,34 +90,7 @@ def test_predict_and_get_info(predictor_type_cfg):
     assert job_future.get_info().status.is_terminal
 
     # Re-fetch the future by ID
-    fetched_future = predictor.get_job_future(job_future.id)
-    assert fetched_future is job_future
-
-
-def test_predict_and_get_info(predictor_type_cfg):
-    """Test that running a prediction can fetch status correctly"""
-    predictor = local_predictor(**predictor_type_cfg)
-
-    # Launch the training and force it to wait
-    # NOTE: Data stream passed by positional arg to ensure it is passed through
-    #   correctly by position
-    wait_event = threading.Event()
-    job_future = predictor.predict(
-        WaitPredict(),
-        "run",
-        wait_event=wait_event,
-    )
-    assert job_future.get_info().status == PredictionJobStatus.RUNNING
-    assert not job_future.get_info().status.is_terminal
-
-    # Let the training proceed and wait for it to complete
-    wait_event.set()
-    job_future.wait()
-    assert job_future.get_info().status == PredictionJobStatus.COMPLETED
-    assert job_future.get_info().status.is_terminal
-
-    # Re-fetch the future by ID
-    fetched_future = predictor.get_job_future(job_future.id)
+    fetched_future = predictor.get_prediction_future(job_future.id)
     assert fetched_future is job_future
 
 
@@ -193,7 +166,7 @@ def test_no_retention_time(predictor_type_cfg):
         sample_input=SampleInputType(),
     )
     job_future.wait()
-    retrieved_future = predictor.get_job_future(job_future.id)
+    retrieved_future = predictor.get_prediction_future(job_future.id)
     assert retrieved_future is job_future
 
 
@@ -206,11 +179,11 @@ def test_purge_retention_time(predictor_type_cfg):
         sample_input=SampleInputType(),
     )
     job_future.wait()
-    retrieved_future = predictor.get_job_future(job_future.id)
+    retrieved_future = predictor.get_prediction_future(job_future.id)
     assert retrieved_future is job_future
     job_future._completion_time = job_future._completion_time - timedelta(days=2)
     with pytest.raises(CaikitCoreException):
-        predictor.get_job_future(job_future.id)
+        predictor.get_prediction_future(job_future.id)
     assert not Path(retrieved_future.save_path).exists()
     assert not Path(retrieved_future.save_path).parent.exists()
 
@@ -297,6 +270,6 @@ def test_duplicate_external_id_cannot_restart_while_running():
             wait_event=wait_event,
         )
 
-    assert predictor.get_job_future(predictor_id) is job_future
+    assert predictor.get_prediction_future(predictor_id) is job_future
     wait_event.set()
     assert job_future.result()

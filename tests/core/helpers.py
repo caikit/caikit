@@ -242,7 +242,7 @@ class TestPredictor(JobPredictorBase):
         self._futures[future.id] = future
         return future
 
-    def get_job_future(self, job_id: str) -> TestJobFuture:
+    def get_prediction_future(self, job_id: str) -> TestJobFuture:
         if job_id not in self._futures:
             raise ValueError(f"Unknown training id: {job_id}")
         return self._futures[job_id]
