@@ -245,7 +245,7 @@ class ModelManager:
         """Get the future handle to an in-progress training
 
         Args:
-            future_id (str): The ID string from the original training
+            training_id (str): The ID string from the original training
                 submission's ModelFuture
 
         Returns:
