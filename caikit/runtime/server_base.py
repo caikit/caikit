@@ -19,6 +19,7 @@ import abc
 import signal
 
 # Third Party
+from grpc import StatusCode
 from prometheus_client import start_http_server
 
 # First Party
@@ -85,11 +86,28 @@ class RuntimeServerBase(abc.ABC):  # pylint: disable=too-many-instance-attribute
         # We should always be able to stand up an inference service
         self.enable_inference = self.config.runtime.service_generation.enable_inference
         self.enable_training = self.config.runtime.service_generation.enable_training
+        self.enable_inference_jobs = (
+            self.config.runtime.service_generation.enable_inference_jobs
+        )
+
+        if self.enable_inference_jobs and not self.enable_inference:
+            raise CaikitRuntimeException(
+                StatusCode.INVALID_ARGUMENT,
+                "Inference Jobs require enabling the Inference service",
+            )
+
         self.inference_service: Optional[ServicePackage] = (
             ServicePackageFactory.get_service_package(
                 ServicePackageFactory.ServiceType.INFERENCE,
             )
             if self.enable_inference
+            else None
+        )
+        self.inference_job_service: Optional[ServicePackage] = (
+            ServicePackageFactory.get_service_package(
+                ServicePackageFactory.ServiceType.JOB_INFERENCE,
+            )
+            if self.enable_inference_jobs
             else None
         )
 

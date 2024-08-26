@@ -21,10 +21,17 @@ For architectural details, see docs/adrs/020-model-management-abstractions.md
 
 # Local
 from .factories import (
+    job_predictor_factory,
     model_finder_factory,
     model_initializer_factory,
     model_trainer_factory,
 )
+from .job_base import JobBase, JobFutureBase
+from .job_predictor_base import (
+    JobPredictorBase,
+    JobPredictorFutureBase,
+    JobPredictorInfo,
+)
 from .model_finder_base import ModelFinderBase
 from .model_initializer_base import ModelInitializerBase
-from .model_trainer_base import ModelTrainerBase, TrainingInfo
+from .model_trainer_base import ModelTrainerBase, ModelTrainerFutureBase, TrainingInfo

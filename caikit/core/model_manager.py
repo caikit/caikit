@@ -32,9 +32,13 @@ import alog
 from ..interfaces.common.data_model.stream_sources import S3Path
 from .exceptions import error_handler
 from .model_management import (
+    JobPredictorBase,
+    JobPredictorFutureBase,
     ModelFinderBase,
     ModelInitializerBase,
     ModelTrainerBase,
+    ModelTrainerFutureBase,
+    job_predictor_factory,
     model_finder_factory,
     model_initializer_factory,
     model_trainer_factory,
@@ -75,6 +79,7 @@ class ModelManager:
         self._singleton_module_cache = {}
         self._trainers = {}
         self._finders = {}
+        self._job_predictors = {}
         self._initializers = {}
         self.__singleton_lock = Lock()
 
@@ -90,6 +95,8 @@ class ModelManager:
             self.get_finder(finder)
         for initializer in mm_config.get("initializers", {}):
             self.get_initializer(initializer)
+        for job_predictor in mm_config.get("job_predictors", {}):
+            self.get_predictor(job_predictor)
 
     ## Public ##################################################################
 
@@ -103,7 +110,7 @@ class ModelManager:
         model_name: Optional[str] = None,
         wait: bool = False,
         **kwargs,
-    ) -> ModelTrainerBase.ModelFutureBase:
+    ) -> ModelTrainerFutureBase:
         """Train an instance of the given module with the given args and kwargs
         using the given trainer.
 
@@ -135,7 +142,7 @@ class ModelManager:
                 modules's train function
 
         Returns:
-            model_future (ModelTrainerBase.ModelFutureBase): The future handle
+            model_future (ModelFutureBase): The future handle
                 to the model which holds the status of the in-flight training.
         """
         # Resolve the module class
@@ -180,10 +187,60 @@ class ModelManager:
         # Return a handle to the training
         return model_future
 
+    def start_prediction_job(
+        self,
+        model: ModuleBase,
+        prediction_func_name: str,
+        *args,
+        predictor: Union[str, JobPredictorBase] = "default",
+        wait: bool = False,
+        **kwargs,
+    ) -> JobPredictorFutureBase:
+        """Start a prediction job using a job_predictor.
+
+        Args:
+            model (ModuleBase): Loaded model to run prediction on
+            prediction_func_name (str): String reference to name of function to run
+            predictor (Union[str, JobPredictorBase], optional): Which job_predictor to use.
+              Defaults to "default".
+            wait (bool, optional): Weather to wait for job to finish. Defaults to False.
+
+        Returns:
+            JobPredictorFutureBase: Future to track job result
+        """
+        error.type_check("<COR02418775E>", ModuleBase, model=model)
+
+        # Get the predictor to use
+        inferencer: JobPredictorBase = self.get_predictor(predictor)
+
+        # Start the prediction job
+        with alog.ContextTimer(log.debug, "Started prediction job in: "):
+            prediction_future = inferencer.predict(
+                model,
+                prediction_func_name,
+                *args,
+                **kwargs,
+            )
+            log.debug(
+                "Started Prediction Job %s",
+                prediction_future.id,
+            )
+
+        # If requested, wait for the future to complete
+        if wait:
+            log.debug("Waiting for prediction %s to complete", prediction_future.id)
+            with alog.ContextTimer(
+                log.debug, "Finished training %s in: ", prediction_future.id
+            ):
+                prediction_future.wait()
+
+        # Return a handle to the future
+        return prediction_future
+
     def get_model_future(
         self,
         training_id: str,
-    ) -> ModelTrainerBase.ModelFutureBase:
+    ) -> ModelTrainerFutureBase:
         """Get the future handle to an in-progress training
 
         Args:
@@ -191,17 +248,40 @@ class ModelManager:
                 submission's ModelFuture
 
         Returns:
-            model_future (ModelTrainerBase.ModelFutureBase): The future handle
+            model_future (ModelTrainerFutureBase): The future handle
                 to the model which holds the status of the in-flight training.
         """
         try:
             trainer = self.get_trainer(ModelTrainerBase.get_trainer_name(training_id))
-
         # Fall back to the default trainer to try to find this ID
         except ValueError:
             trainer = self.get_trainer("default")
 
         return trainer.get_model_future(training_id)
+
+    def get_prediction_future(
+        self,
+        prediction_id: str,
+    ) -> JobPredictorFutureBase:
+        """Get the future handle to an in-progress prediction job
+
+        Args:
+            prediction_id (str): The ID string from the original prediction
+                submission's ModelFuture
+
+        Returns:
+            prediction_future (JobPredictorFutureBase): The future handle
+                to the job which holds the status of the in-flight prediction.
+        """
+        try:
+            predictor = self.get_predictor(
+                JobPredictorBase.get_predictor_name(prediction_id)
+            )
+        # Fall back to the default trainer to try to find this ID
+        except ValueError:
+            predictor = self.get_predictor("default")
+
+        return predictor.get_prediction_future(prediction_id)
 
     def load(
         self,
@@ -423,6 +503,19 @@ class ModelManager:
             component_name="initializer",
             component_cfg=get_config().model_management.initializers,
             component_type=ModelInitializerBase,
+        )
+
+    def get_predictor(
+        self, inferencer: Union[str, JobPredictorBase]
+    ) -> JobPredictorBase:
+        """Get the configured job predictor or the one passed by value"""
+        return self._get_component(
+            component=inferencer,
+            component_dict=self._job_predictors,
+            component_factory=job_predictor_factory,
+            component_name="predictor",
+            component_cfg=get_config().model_management.job_predictors,
+            component_type=JobPredictorBase,
         )
 
     def get_module_backends(

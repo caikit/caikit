@@ -39,6 +39,12 @@ model_management:
                 retention_duration: 1d
                 use_subprocess: false
                 subprocess_start_method: spawn
+    job_predictors:
+        default:
+            type: LOCAL
+            config:
+                # Format: XdXhXmXs
+                retention_duration: 1d
     finders:
         default:
             type: LOCAL
@@ -208,6 +214,7 @@ runtime:
         # Toggles for the generated inference and training services
         enable_inference: true
         enable_training: true
+        enable_inference_jobs: true
 
         # Configurations for which module implementations and tasks to include
         # in the service generation

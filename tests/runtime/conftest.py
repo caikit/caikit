@@ -100,6 +100,19 @@ def sample_inference_service(render_protos) -> ServicePackage:
     return inference_service
 
 
+@pytest.fixture(scope="session")
+def sample_inferece_job_service(render_protos) -> ServicePackage:
+    """Service package pointing to `sample_lib` for testing"""
+    job_inference_service = ServicePackageFactory().get_service_package(
+        ServicePackageFactory.ServiceType.JOB_INFERENCE,
+    )
+    if render_protos:
+        output_dir = os.path.join("tests", "protos")
+        render_dataobject_protos(output_dir)
+        job_inference_service.service.write_proto_file(output_dir)
+    return job_inference_service
+
+
 @contextmanager
 def make_sample_predict_servicer(inference_service):
     interrupter = ThreadInterrupter()

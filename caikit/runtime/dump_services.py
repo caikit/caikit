@@ -275,6 +275,12 @@ def _get_proto_file_descriptors(
             sorted([file_descriptor_protos[pkg].name for pkg in pkg_deps])
         )
 
+        # Remove duplicate dependencies. This is due to a proto3 bug in CopyToProto which
+        # includes all dependencies even if they already exist
+        pruned_deps = set(pkg_fd.dependency)
+        del pkg_fd.dependency[:]
+        pkg_fd.dependency.extend(list(pruned_deps))
+
     return file_descriptor_protos
 
 
@@ -296,12 +302,20 @@ def _get_grpc_service_packages(
 ) -> List[ServicePackage]:
     """Get all enabled grpc service packages"""
     inf_enabled = get_config().runtime.service_generation.enable_inference
+    inf_job_enabled = get_config().runtime.service_generation.enable_inference_jobs
     train_enabled = get_config().runtime.service_generation.enable_training
     svc_descriptors = []
     if inf_enabled:
         svc_descriptors.append(
             ServicePackageFactory.get_service_package(
                 ServicePackageFactory.ServiceType.INFERENCE,
+                write_modules_file=write_modules_file,
+            )
+        )
+    if inf_enabled and inf_job_enabled:
+        svc_descriptors.append(
+            ServicePackageFactory.get_service_package(
+                ServicePackageFactory.ServiceType.JOB_INFERENCE,
                 write_modules_file=write_modules_file,
             )
         )

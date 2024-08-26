@@ -19,17 +19,22 @@ import uuid
 
 # Local
 from caikit.core import MODEL_MANAGER
-from caikit.core.data_model import TrainingStatus
+from caikit.core.data_model import PredictionJobStatus, TrainingStatus
 from caikit.core.model_management import (
+    JobPredictorBase,
+    JobPredictorFutureBase,
+    JobPredictorInfo,
     ModelFinderBase,
     ModelInitializerBase,
     ModelTrainerBase,
     TrainingInfo,
+    job_predictor_factory,
     model_finder_factory,
     model_initializer_factory,
     model_trainer_factory,
 )
 from caikit.core.model_management.local_model_initializer import LocalModelInitializer
+from caikit.core.model_management.local_model_trainer import LocalModelTrainer
 from caikit.core.module_backends import BackendBase, backend_types
 from caikit.core.modules import ModuleBase, ModuleConfig
 from sample_lib.modules import SampleModule
@@ -132,13 +137,17 @@ class TestTrainer(ModelTrainerBase):
             super().__init__(
                 trainer_name=parent.instance_name,
                 training_id=str(uuid.uuid4()),
-                save_path=save_path,
                 save_with_id=save_with_id,
             )
             self._parent = parent
             self._trained_model = trained_model
             self._canceled = False
             self._completed = False
+            self._save_path = save_path
+
+        @property
+        def save_path(self):
+            return self._save_path
 
         def get_info(self):
             if self._completed:
@@ -178,6 +187,68 @@ class TestTrainer(ModelTrainerBase):
 
 
 model_trainer_factory.register(TestTrainer)
+
+
+# Add a new simple predictor for tests to use
+class TestPredictor(JobPredictorBase):
+    name = "TestPredictor"
+    __test__ = False
+
+    def __init__(self, config, instance_name):
+        self.instance_name = instance_name
+        self.canned_status = config.get("canned_status", PredictionJobStatus.RUNNING)
+        self._futures = {}
+
+    class TestJobFuture(JobPredictorFutureBase):
+        __test__ = False
+
+        def __init__(self, parent, result):
+            super().__init__(
+                future_name=parent.instance_name,
+                future_id=str(uuid.uuid4()),
+            )
+            self._parent = parent
+            self._result = result
+            self._canceled = False
+            self._completed = False
+
+        def get_info(self):
+            if self._completed:
+                return TrainingInfo(status=PredictionJobStatus.COMPLETED)
+            if self._canceled:
+                return TrainingInfo(status=PredictionJobStatus.CANCELED)
+            return TrainingInfo(status=self._parent.canned_status)
+
+        def cancel(self):
+            self._canceled = True
+
+        def wait(self):
+            self._completed = True
+
+        def result(self):
+            return self._result
+
+    def predict(
+        self,
+        model_instance: ModuleBase,
+        prediction_func_name: str,
+        *args,
+        external_inference_id: Optional[str] = None,
+        **kwargs,
+    ) -> JobPredictorFutureBase:
+        func = getattr(model_instance, prediction_func_name)
+        result = func(*args, **kwargs)
+        future = self.TestJobFuture(self, result)
+        self._futures[future.id] = future
+        return future
+
+    def get_prediction_future(self, job_id: str) -> TestJobFuture:
+        if job_id not in self._futures:
+            raise ValueError(f"Unknown training id: {job_id}")
+        return self._futures[job_id]
+
+
+job_predictor_factory.register(TestPredictor)
 
 
 def configured_backends():

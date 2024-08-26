@@ -65,6 +65,7 @@ class ServiceType(Enum):
     TRAINING_MANAGEMENT = 3
     INFO = 4
     MODEL_MANAGEMENT = 5
+    JOB_INFERENCE = 6  # Inference service for background
 
 
 ############################ Service Name Generation ###########################
@@ -127,6 +128,8 @@ def get_service_name(service_type: ServiceType) -> str:
     """
     if service_type == ServiceType.INFERENCE:
         return f"{get_ai_domain()}Service"
+    if service_type == ServiceType.JOB_INFERENCE:
+        return f"{get_ai_domain()}JobService"
     elif service_type == ServiceType.TRAINING:
         return f"{get_ai_domain()}TrainingService"
     elif service_type == ServiceType.TRAINING_MANAGEMENT:
@@ -186,6 +189,54 @@ def get_task_predict_rpc_name(
     if input_streaming:
         return snake_to_upper_camel(f"ClientStreaming{task_class.__name__}_Predict")
     return snake_to_upper_camel(f"{task_class.__name__}_Predict")
+
+
+def get_task_predict_job_rpc_name(
+    task_or_module_class: Type[Union[ModuleBase, TaskBase]],
+) -> str:
+    """Helper function to get the name of a task's start job RPC"""
+    task_class = (
+        next(iter(task_or_module_class.tasks))
+        if issubclass(task_or_module_class, ModuleBase)
+        else task_or_module_class
+    )
+    return snake_to_upper_camel(f"{task_class.__name__}_StartPredictionJob")
+
+
+def get_task_predict_job_status_rpc_name(
+    task_or_module_class: Type[Union[ModuleBase, TaskBase]],
+) -> str:
+    """Helper function to get the name of a task's job status RPC"""
+    task_class = (
+        next(iter(task_or_module_class.tasks))
+        if issubclass(task_or_module_class, ModuleBase)
+        else task_or_module_class
+    )
+    return snake_to_upper_camel(f"{task_class.__name__}_GetPredictionJobStatus")
+
+
+def get_task_predict_job_cancel_rpc_name(
+    task_or_module_class: Type[Union[ModuleBase, TaskBase]],
+) -> str:
+    """Helper function to get the name of a task's job cancel RPC"""
+    task_class = (
+        next(iter(task_or_module_class.tasks))
+        if issubclass(task_or_module_class, ModuleBase)
+        else task_or_module_class
+    )
+    return snake_to_upper_camel(f"{task_class.__name__}_CancelPredictionJob")
+
+
+def get_task_predict_job_result_rpc_name(
+    task_or_module_class: Type[Union[ModuleBase, TaskBase]],
+) -> str:
+    """Helper function to get the name of a task's job resul RPC"""
+    task_class = (
+        next(iter(task_or_module_class.tasks))
+        if issubclass(task_or_module_class, ModuleBase)
+        else task_or_module_class
+    )
+    return snake_to_upper_camel(f"{task_class.__name__}_GetPredictionJobResult")
 
 
 ##  Service DataModel Name Descriptors
@@ -339,12 +390,53 @@ def get_http_route_name(rpc_name: str) -> str:
         if route[0] != "/":
             route = "/" + route
         return route
+    if rpc_name.endswith("StartPredictionJob"):
+        task_name = camel_to_snake_case(
+            re.sub("Task$", "", re.sub("StartPredictionJob$", "", rpc_name)),
+            kebab_case=True,
+        )
+        route = "/".join([get_config().runtime.http.route_prefix, "task", task_name])
+        if route[0] != "/":
+            route = "/" + route
+        return route
     if rpc_name.endswith("Train"):
         route = "/".join([get_config().runtime.http.route_prefix, rpc_name])
         if route[0] != "/":
             route = "/" + route
         return route
     raise NotImplementedError(f"Unknown RPC type for rpc name {rpc_name}")
+
+
+def get_http_prediction_job_route_name(rpc_name: str) -> str:
+    """Function to get the http route for a prediction job given a rpc name
+
+    Args:
+        rpc_name (str): The name of the Caikit RPC
+
+    Raises:
+        NotImplementedError: If the RPC is not a Train or Predict RPC
+
+    Returns:
+        str: The name of the http route for RPC
+    """
+    traditional_route = get_http_route_name(rpc_name)
+    return f"{traditional_route}/job"
+
+
+def get_http_prediction_job_result_route_name(rpc_name: str) -> str:
+    """Function to get the http route for a prediction job result given a rpc name
+
+    Args:
+        rpc_name (str): The name of the Caikit RPC
+
+    Raises:
+        NotImplementedError: If the RPC is not a Train or Predict RPC
+
+    Returns:
+        str: The name of the http route for RPC
+    """
+    job_route = get_http_prediction_job_route_name(rpc_name)
+    return f"{job_route}/results"
 
 
 ## GRPC Server

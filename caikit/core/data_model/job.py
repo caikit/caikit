@@ -11,24 +11,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
-"""Common data model containing all data structures that are passed in and out of modules.
+"""
+Common data model enum used for reporting background status
 """
 
+# Standard
+from enum import Enum
+
 # Local
-from . import base, data_backends, enums, producer, protobufs
-from .base import DataBase
-from .dataobject import (
-    CAIKIT_DATA_MODEL,
-    DataObjectBase,
-    dataobject,
-    render_dataobject_protos,
-)
-from .enums import *
-from .job import JobStatus
-from .prediction_status import PredictionJobStatus
-from .producer import PACKAGE_COMMON, ProducerId
-from .streams import data_stream
-from .streams.data_stream import *
-from .training_status import TrainingStatus
+from .dataobject import dataobject
+from .package import PACKAGE_COMMON
+
+
+@dataobject(PACKAGE_COMMON)
+class JobStatus(Enum):
+    """Enum to track current status of a job"""
+
+    QUEUED = 1
+    RUNNING = 2
+    COMPLETED = 3
+    CANCELED = 4
+    ERRORED = 5
+
+    @property
+    def is_terminal(self):
+        return self in [
+            self.__class__.COMPLETED,
+            self.__class__.CANCELED,
+            self.__class__.ERRORED,
+        ]

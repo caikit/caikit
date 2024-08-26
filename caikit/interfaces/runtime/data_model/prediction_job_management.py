@@ -25,24 +25,24 @@ from .package import RUNTIME_PACKAGE
 
 
 @dataobject(RUNTIME_PACKAGE)
-class TrainingInfoRequest(DataObjectBase):
-    training_id: str
+class PredictionJobInfoRequest(DataObjectBase):
+    """DataModel to request information about a PredictionJob"""
+
+    prediction_id: Annotated[str, FieldNumber(1)]
 
 
 @dataobject(RUNTIME_PACKAGE)
-class TrainingJob(DataObjectBase):
-    training_id: str
-    model_name: str
+class PredictionJob(DataObjectBase):
+    """DataModel returned as a result of starting a PredictionJob"""
+
+    prediction_id: Annotated[str, FieldNumber(1)]
 
 
 @dataobject(RUNTIME_PACKAGE)
-class ModelPointer(DataObjectBase):
-    model_id: str
+class PredictionJobStatusResponse(DataObjectBase):
+    """DataModel representing the status of a PredictionJob"""
 
-
-@dataobject(RUNTIME_PACKAGE)
-class TrainingStatusResponse(DataObjectBase):
-    training_id: Annotated[str, FieldNumber(1)]
+    prediction_id: Annotated[str, FieldNumber(1)]
     state: Annotated[JobStatus, FieldNumber(2)]
     submission_timestamp: Annotated[datetime, FieldNumber(3)]
     completion_timestamp: Annotated[datetime, FieldNumber(4)]

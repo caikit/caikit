@@ -68,6 +68,10 @@ from caikit.core.exceptions import error_handler
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.core.toolkit.name_tools import snake_to_upper_camel
 from caikit.core.toolkit.sync_to_async import async_wrap_iter
+from caikit.interfaces.runtime.data_model import (
+    PredictionJob,
+    PredictionJobStatusResponse,
+)
 from caikit.runtime.names import (
     EXTRA_OPENAPI_KEY,
     HEALTH_ENDPOINT,
@@ -82,6 +86,8 @@ from caikit.runtime.names import (
     TRAINING_MANAGEMENT_ENDPOINT,
     TRAINING_MANAGEMENT_SERVICE_SPEC,
     StreamEventTypes,
+    get_http_prediction_job_result_route_name,
+    get_http_prediction_job_route_name,
     get_http_route_name,
 )
 from caikit.runtime.server_base import RuntimeServerBase
@@ -89,6 +95,7 @@ from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.rpcs import (
     CaikitRPCBase,
     ModuleClassTrainRPC,
+    TaskPredictionJobRPC,
     TaskPredictRPC,
 )
 from caikit.runtime.servicers.global_predict_servicer import GlobalPredictServicer
@@ -96,6 +103,9 @@ from caikit.runtime.servicers.global_train_servicer import GlobalTrainServicer
 from caikit.runtime.servicers.info_servicer import InfoServicer
 from caikit.runtime.servicers.model_management_servicer import (
     ModelManagementServicerImpl,
+)
+from caikit.runtime.servicers.prediction_job_management_servicer import (
+    PredictionJobManagementServicerImpl,
 )
 from caikit.runtime.servicers.training_management_servicer import (
     TrainingManagementServicerImpl,
@@ -183,6 +193,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 self.inference_service, interrupter=self.interrupter
             )
             self._bind_routes(self.inference_service)
+
+        if self.enable_inference_jobs:
+            # Bind routes for prediction jobs
+            self.prediction_job_manager = PredictionJobManagementServicerImpl()
+            self._bind_routes(self.inference_job_service)
 
         # Set up training if enabled
         if self.enable_training:
@@ -442,6 +457,60 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 )
             raise
 
+    def _get_prediction_job_result(
+        self, prediction_id: Annotated[str, Query]
+    ) -> Response:
+        """GET handler for fetching a prediction job result"""
+        try:
+            result = self.prediction_job_manager.get_prediction_result(prediction_id)
+
+            if result.supports_file_operations:
+                return self._format_file_response(result)
+
+            return Response(content=result.to_json(), media_type="application/json")
+
+        except Exception as err:
+            if error_content := self._handle_exception(err):
+                return Response(
+                    content=json.dumps(error_content),
+                    status_code=error_content["code"],
+                )
+            raise
+
+    def _get_prediction_job_status(
+        self, prediction_id: Annotated[str, Query]
+    ) -> Response:
+        """GET handler for fetching a prediction job status"""
+        try:
+            result = self.prediction_job_manager.get_prediction_status(prediction_id)
+            return Response(
+                content=result.to_json(),
+                media_type="application/json",
+            )
+        except Exception as err:
+            if error_content := self._handle_exception(err):
+                return Response(
+                    content=json.dumps(error_content),
+                    status_code=error_content["code"],
+                )
+            raise
+
+    def _cancel_prediction_job(self, prediction_id: Annotated[str, Query]) -> Response:
+        """DELETE handler for cancelling a prediction job"""
+        try:
+            result = self.prediction_job_manager.cancel_prediction(prediction_id)
+            return Response(
+                content=result.to_json(),
+                media_type="application/json",
+            )
+        except Exception as err:
+            if error_content := self._handle_exception(err):
+                return Response(
+                    content=json.dumps(error_content),
+                    status_code=error_content["code"],
+                )
+            raise
+
     #####################
     ## Request Binding ##
     #####################
@@ -450,7 +519,12 @@ class RuntimeHTTPServer(RuntimeServerBase):
         """Bind all caikit rpcs as routes to the given app"""
         for rpc in service.caikit_rpcs.values():
             rpc_info = rpc.create_rpc_json("")
-            if isinstance(rpc, TaskPredictRPC):
+            # TaskPredictionJob must come before TaskPredictRPC since it is a subclass
+            if isinstance(rpc, TaskPredictionJobRPC):
+                # Add endpoints for prediction jobs
+                self._add_prediction_job_unary_input_handler(rpc)
+                self._add_prediction_job_management_handler(rpc)
+            elif isinstance(rpc, TaskPredictRPC):
                 if hasattr(rpc, "input_streaming") and rpc.input_streaming:
                     # Skipping the binding of this route since we don't have support
                     log.info(
@@ -558,7 +632,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         pydantic_response = dataobject_to_pydantic(response_data_object)
 
         @self.app.post(
-            get_http_route_name(rpc.name),
+            get_http_route_name(rpc_name=rpc.name),
             responses=self._get_response_openapi(
                 response_data_object, pydantic_response
             ),
@@ -588,7 +662,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 if response_data_object.supports_file_operations:
                     return self._format_file_response(result)
 
-                return Response(content=result.to_json(), media_type="application/json")
+                return Response(
+                    content=result.to_json(),
+                    media_type="application/json",
+                    status_code=status.HTTP_200_OK,
+                )
             except Exception as err:
                 if error_content := self._handle_exception(err):
                     return Response(
@@ -670,6 +748,128 @@ class RuntimeHTTPServer(RuntimeServerBase):
                     return self._format_file_response(result)
 
                 return Response(content=result.to_json(), media_type="application/json")
+
+            except Exception as err:
+                if error_content := self._handle_exception(err):
+                    return Response(
+                        content=json.dumps(error_content),
+                        status_code=error_content["code"],
+                    )
+                raise
+
+    def _add_prediction_job_management_handler(self, rpc: TaskPredictRPC):
+        """Bind the routes for get/cancel/result of a prediction"""
+
+        # Bind GET to fetch a prediction job status
+        get_dataobject_response = PredictionJobStatusResponse
+        get_pydantic_response = dataobject_to_pydantic(get_dataobject_response)
+
+        self.app.get(
+            get_http_prediction_job_route_name(rpc_name=rpc.name),
+            responses=self._get_response_openapi(
+                get_dataobject_response, get_pydantic_response
+            ),
+            response_class=Response,
+            include_in_schema=rpc.task.get_visibility(),
+        )(self._get_prediction_job_status)
+
+        # Bind DELETE to cancel a prediction job
+        cancel_dataobject_response = PredictionJobStatusResponse
+        cancel_pydantic_response = dataobject_to_pydantic(cancel_dataobject_response)
+
+        self.app.delete(
+            get_http_prediction_job_route_name(rpc_name=rpc.name),
+            responses=self._get_response_openapi(
+                cancel_dataobject_response, cancel_pydantic_response
+            ),
+            response_class=Response,
+            include_in_schema=rpc.task.get_visibility(),
+        )(self._cancel_prediction_job)
+
+        # Bind GET at the `/result` subpath to get the result of a prediction job
+        result_dataobject_response = rpc.return_type
+        result_pydantic_response = dataobject_to_pydantic(result_dataobject_response)
+        self.app.get(
+            get_http_prediction_job_result_route_name(rpc.name),
+            responses=self._get_response_openapi(
+                result_dataobject_response, result_pydantic_response
+            ),
+            response_class=Response,
+            include_in_schema=rpc.task.get_visibility(),
+        )(self._get_prediction_job_result)
+
+    def _add_prediction_job_unary_input_handler(self, rpc: TaskPredictionJobRPC):
+        """Add a unary:unary request handler to start a prediction job for this RPC"""
+
+        # Get request variables in same way as unary_unary
+        pydantic_predict_request = dataobject_to_pydantic(
+            self._get_request_dataobject(rpc)
+        )
+        predict_request_openapi = self._get_request_openapi(pydantic_predict_request)
+
+        # Result will always be a Prediction Job
+        pydantic_job_response = dataobject_to_pydantic(PredictionJob)
+        job_response_openapi = self._get_response_openapi(
+            PredictionJob, pydantic_job_response
+        )
+
+        # Merge the DataObject openapi schema into the task schema
+        task_api_schema = merge_configs(
+            rpc.task.get_metadata().get(EXTRA_OPENAPI_KEY, {}), predict_request_openapi
+        )
+
+        @self.app.post(
+            get_http_prediction_job_route_name(rpc.name),
+            responses=job_response_openapi,
+            include_in_schema=rpc.task.get_visibility(),
+            description=rpc.task.__doc__,
+            openapi_extra=task_api_schema,
+            response_class=Response,
+        )
+        # pylint: disable=unused-argument
+        async def _handler(
+            context: Request,
+        ) -> Response:
+            try:
+                request = await pydantic_from_request(pydantic_predict_request, context)
+                request_params = self._get_request_params(rpc, request)
+
+                model_id = self._get_model_id(request)
+                log.debug4(
+                    "Starting prediction job with args %s for model id %s",
+                    request_params,
+                    model_id,
+                )
+
+                # After fetching the model_id from the request, notify module
+                # backends of the request context which may influence the lazy
+                # initialization logic.
+                self.global_predict_servicer.notify_backends_with_context(
+                    model_id, context
+                )
+                log.debug(
+                    "In prediction job handler for %s for model %s", rpc.name, model_id
+                )
+                loop = asyncio.get_running_loop()
+
+                call = partial(
+                    self.global_predict_servicer.run_prediction_job,
+                    model_id=model_id,
+                    request_name=rpc.request.name,
+                    task=rpc.task,
+                    context=context,
+                    **request_params,
+                )
+                result = await loop.run_in_executor(self.thread_pool, call)
+                log.debug4(
+                    "Job started from model %s with id", model_id, result.prediction_id
+                )
+
+                return Response(
+                    content=result.to_json(),
+                    media_type="application/json",
+                    status_code=status.HTTP_200_OK,
+                )
 
             except Exception as err:
                 if error_content := self._handle_exception(err):
@@ -983,6 +1183,7 @@ class RuntimeHTTPServer(RuntimeServerBase):
         self,
         dm_class: Type[DataBase],
         pydantic_model: Union[Type, Type[pydantic.BaseModel]],
+        response_code: int = 200,
     ):
         """Helper to generate the openapi schema for a given response"""
 
@@ -1002,9 +1203,9 @@ class RuntimeHTTPServer(RuntimeServerBase):
             for def_name, schema in json_schema.pop("$defs", {}).items():
                 self._openapi_defs[def_name] = schema
 
-            response_schema = {"application/json": json_schema}
+            response_schema = {"application/json": {"schema": json_schema}}
 
-        output = {200: {"content": response_schema}}
+        output = {response_code: {"content": response_schema}}
         return output
 
     @contextmanager

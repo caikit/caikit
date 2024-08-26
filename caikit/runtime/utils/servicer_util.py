@@ -292,14 +292,14 @@ def validate_data_model(
                     )
                     continue
 
-                field_message_type = input_proto_msg.fields_by_name[
-                    field.name
-                ].message_type
+                field_message_type = getattr(
+                    input_proto_msg.fields_by_name[field.name], "message_type", None
+                )
                 if (
-                    field_message_type.full_name
+                    field_message_type
+                    and field_message_type.full_name
                     not in DataBase.PROTO_CONVERSION_SPECIAL_TYPES
                 ):
-
                     # ... or that we can get the field type name, e.g., RawDocument...
                     field_type = field_message_type.name
 

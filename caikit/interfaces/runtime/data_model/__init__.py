@@ -23,10 +23,14 @@ from .info import (
     RuntimeInfoResponse,
 )
 from .model_management import DeployModelRequest, UndeployModelRequest
+from .prediction_job_management import (
+    PredictionJob,
+    PredictionJobInfoRequest,
+    PredictionJobStatusResponse,
+)
 from .training_management import (
     ModelPointer,
     TrainingInfoRequest,
     TrainingJob,
-    TrainingStatus,
     TrainingStatusResponse,
 )

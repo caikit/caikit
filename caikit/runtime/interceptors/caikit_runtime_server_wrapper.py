@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Standard
-from typing import Callable, Optional
+from typing import Callable, Dict, Optional, Union
 import traceback
 
 # Third Party
@@ -25,7 +25,12 @@ import grpc
 import alog
 
 # Local
-from caikit.runtime.names import ACK_HEADER_STRING
+from caikit.core.data_model import DataBase
+from caikit.runtime.names import (
+    ACK_HEADER_STRING,
+    ServiceType,
+    get_service_package_name,
+)
 from caikit.runtime.service_factory import ServicePackage
 from caikit.runtime.service_generation.rpcs import CaikitRPCBase
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
@@ -47,18 +52,26 @@ class CaikitRuntimeServerWrapper(grpc.Server):
     instead.
     """
 
-    def __init__(self, server, global_predict, intercepted_svc_package: ServicePackage):
+    def __init__(
+        self,
+        server,
+        rpc_callable: Union[Callable, Dict[CaikitRPCBase, Callable]],
+        intercepted_svc_package: ServicePackage,
+        service_type: ServiceType,
+    ):
         """Initialize a new CaikitRuntimeServerWrapper
 
         Args:
             server(grpc.Server): The server that is being wrapped
-            global_predict(function): A function that will accept an arbitrary
-                gRPC request message and a grpc.ServicerContext, and return
-                a suitable gRPC response message
+            rpc_callable(Union[Callable, Dict[CaikitRPCBase, Callable]]): Either a function that
+                will accept an arbitrary gRPC request message and a grpc.ServicerContext, and
+                return a suitable gRPC response message or a mapping of CaikitRPC's to functions
+                that have the same limitation.
         """
 
         self._server = server
-        self._global_predict = global_predict
+        self._service_type = service_type
+        self._rpc_callable = rpc_callable
         self._intercepted_svc_package = intercepted_svc_package
         self._intercepted_methods = []
 
@@ -264,8 +277,30 @@ class CaikitRuntimeServerWrapper(grpc.Server):
         original_rpc_handler: RpcMethodHandler,
         caikit_rpc: Optional[CaikitRPCBase] = None,
     ):
+        request_deserializer = original_rpc_handler.request_deserializer
+        response_serializer = original_rpc_handler.response_serializer
         if caikit_rpc:
-            behavior = self.safe_rpc_wrapper(self._global_predict, caikit_rpc)
+            # If the rpc callable is a dict then it must be a mapping of CaikitRPCBase's to their
+            # callables
+            if isinstance(self._rpc_callable, dict):
+                # If this rpc type wasn't in the callable map raise an error
+                if type(caikit_rpc) not in self._rpc_callable:
+                    raise ValueError(
+                        f"Unknown rpc type {type(caikit_rpc)} passed to MultiFuncWrapper"
+                    )
+
+                rpc_func = self._rpc_callable[type(caikit_rpc)]
+                behavior = self.safe_rpc_wrapper(rpc_func, caikit_rpc)
+
+                # Fetch the input/output objects to determine the correct serializer
+                package_name = get_service_package_name(self._service_type)
+                rpc_json = caikit_rpc.create_rpc_json(package_name)
+                input_class = DataBase.get_class_for_name(rpc_json["input_type"])
+                output_class = DataBase.get_class_for_name(rpc_json["output_type"])
+                request_deserializer = input_class.get_proto_class().FromString
+                response_serializer = output_class.get_proto_class().SerializeToString
+            else:
+                behavior = self.safe_rpc_wrapper(self._rpc_callable, caikit_rpc)
         else:
             behavior = self.safe_rpc_wrapper(self._get_handler_fn(original_rpc_handler))
 
@@ -280,8 +315,8 @@ class CaikitRuntimeServerWrapper(grpc.Server):
 
         return handler_constructor(
             behavior=behavior,
-            request_deserializer=original_rpc_handler.request_deserializer,
-            response_serializer=original_rpc_handler.response_serializer,
+            request_deserializer=request_deserializer,
+            response_serializer=response_serializer,
         )
 
     # **************************************************************************

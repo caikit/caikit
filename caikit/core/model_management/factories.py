@@ -17,6 +17,7 @@ Global factories for model management
 
 # Local
 from ..toolkit.factory import ImportableFactory
+from .local_job_predictor import LocalJobPredictor
 from .local_model_finder import LocalModelFinder
 from .local_model_initializer import LocalModelInitializer
 from .local_model_trainer import LocalModelTrainer
@@ -27,6 +28,11 @@ from .multi_model_initializer import MultiModelInitializer
 # operation against a configured framework connection.
 model_trainer_factory = ImportableFactory("ModelTrainer")
 model_trainer_factory.register(LocalModelTrainer)
+
+# Job Predictor factory. A job predictor is responsible for performing the prediction
+# operation against a configured framework connection.
+job_predictor_factory = ImportableFactory("JobPredictors")
+job_predictor_factory.register(LocalJobPredictor)
 
 # Model finder factory. A finder is responsible for locating a well defined
 # configuration for a model based on a unique path or id.

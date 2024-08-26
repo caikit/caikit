@@ -33,13 +33,13 @@ from caikit.core import MODEL_MANAGER, ModuleBase, TaskBase
 from caikit.core.data_model import DataBase, DataStream
 from caikit.core.exceptions.caikit_core_exception import CaikitCoreException
 from caikit.core.signature_parsing import CaikitMethodSignature
-from caikit.interfaces.runtime.data_model import RuntimeServerContextType
+from caikit.interfaces.runtime.data_model import PredictionJob, RuntimeServerContextType
 from caikit.runtime import trace
 from caikit.runtime.metrics.rpc_meter import RPCMeter
 from caikit.runtime.model_management.model_manager import ModelManager
 from caikit.runtime.names import MODEL_MESH_MODEL_ID_KEY
 from caikit.runtime.service_factory import ServicePackage
-from caikit.runtime.service_generation.rpcs import TaskPredictRPC
+from caikit.runtime.service_generation.rpcs import TaskPredictionJobRPC, TaskPredictRPC
 from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.import_util import clean_lib_names
 from caikit.runtime.utils.servicer_util import (
@@ -59,6 +59,11 @@ from caikit.runtime.work_management.rpc_aborter import RpcAborter
 PREDICT_RPC_COUNTER = Counter(
     "predict_rpc_count",
     "Count of global predict-managed RPC calls",
+    ["grpc_request", "code", "model_id"],
+)
+JOB_PREDICT_RPC_COUNTER = Counter(
+    "predict_job_rpc_count",
+    "Count of global predict-managed RPC jobs started",
     ["grpc_request", "code", "model_id"],
 )
 PREDICT_FROM_PROTO_SUMMARY = Summary(
@@ -174,7 +179,7 @@ class GlobalPredictServicer:
             self.notify_backends_with_context(model_id, context)
 
             # Retrieve the model from the model manager
-            log.debug("<RUN52259029D>", "Retrieving model '%s'", model_id)
+            log.debug("<RUN52259129D>", "Retrieving model '%s'", model_id)
             model = self._model_manager.retrieve_model(model_id)
             model_class = type(model)
 
@@ -228,6 +233,178 @@ class GlobalPredictServicer:
                 else:
                     response_proto = build_proto_response(response)
             return response_proto
+
+    def StartPredictionJob(
+        self,
+        request: Union[ProtobufMessage, Iterable[ProtobufMessage]],
+        context: ServicerContext,
+        caikit_rpc: TaskPredictionJobRPC,
+        *_,
+        **__,
+    ) -> PredictionJob:
+        """StartPredictionJob -- Mocks the invocation of a Caikit Core Library
+        ModelManager.start_prediction_job() method using a loaded model
+
+        Args:
+            request (ProtobufMessage):
+                A deserialized RPC request message
+            context (ServicerContext):
+                Context object (contains request metadata, etc)
+            caikit_rpc: TaskPredictionJobRPC
+                The RPC used to
+
+        Returns:
+            response (Union[ProtobufMessage, Iterable[ProtobufMessage]]):
+                A Caikit Library data model response object
+        """
+        # Make sure the request has a model before doing anything
+        model_id = get_metadata(context, MODEL_MESH_MODEL_ID_KEY)
+        request_name = caikit_rpc.request.name
+
+        with alog.ContextLog(
+            log.debug,
+            "GlobalBackgroundPredictServicer.BackgroundPredict:%s",
+            request_name,
+        ):
+            # Before retrieving the model, which can trigger lazy backend
+            # initialization, we notify all backends of the context for this
+            # request which may update how the discovery logic works.
+            self.notify_backends_with_context(model_id, context)
+
+            # Retrieve the model from the model manager
+            log.debug("<RUN52259129D>", "Retrieving model '%s'", model_id)
+            model = self._model_manager.retrieve_model(model_id)
+            model_class = type(model)
+
+            # Little hackity hack: Calling _verify_model_task upfront here as well to
+            # short-circuit requests where the model is _totally_ unsupported
+            self._verify_model_task(model)
+
+            # Unmarshall the request object into the required module run argument(s)
+            with PREDICT_FROM_PROTO_SUMMARY.labels(
+                grpc_request=request_name, model_id=model_id
+            ).time():
+                inference_signature = model_class.get_inference_signature(
+                    input_streaming=caikit_rpc.input_streaming,
+                    output_streaming=caikit_rpc.output_streaming,
+                    task=caikit_rpc.task,
+                )
+                if not inference_signature:
+                    raise CaikitRuntimeException(
+                        StatusCode.INVALID_ARGUMENT,
+                        f"Model class {model_class} does not support {caikit_rpc.name}",
+                    )
+                if caikit_rpc.input_streaming:
+                    caikit_library_request = self._build_caikit_library_request_stream(
+                        request, inference_signature, caikit_rpc
+                    )
+                else:
+                    caikit_library_request = build_caikit_library_request_dict(
+                        request,
+                        inference_signature,
+                    )
+
+            response = self.run_prediction_job(
+                request_name,
+                model_id,
+                task=caikit_rpc.task,
+                prediction_func_name=inference_signature.method_name,
+                context=context,
+                context_arg=inference_signature.context_arg,
+                model=model,
+                wait=False,
+                **caikit_library_request,
+            )
+
+            response_proto = build_proto_response(response)
+            return response_proto
+
+    def run_prediction_job(
+        self,
+        request_name: str,
+        model_id: str,
+        prediction_func_name: str = "run",
+        task: Optional[TaskBase] = None,
+        context: Optional[RuntimeServerContextType] = None,  # noqa: F821
+        context_arg: Optional[str] = None,
+        model: Optional[ModuleBase] = None,
+        **kwargs,
+    ) -> PredictionJob:
+        """Start a prediction job against the given model using the raw arguments to
+        the model's run function.
+
+        Args:
+            request_name (str):
+                The name of the request message to validate the model's task
+            model_id (str):
+                The ID of the loaded model
+            prediction_func_name (str):
+                Explicit name of the prediction function to predict
+            task (Optional[TaskBase])
+                The task to use for inference (if multitask model)
+            context (Optional[RuntimeServerContextType]):
+                The context object from the inbound request
+            context_arg (Optional[str]):
+                The arg name to the model inference method where the context
+                should be passed
+            model (Optional[ModuleBase]):
+                Pre-fetched model object
+            **kwargs: Keyword arguments to pass to the model's run function
+        Returns:
+            response (Union[DataBase, Iterable[DataBase]]):
+                The object (unary) or objects (output stream) produced by the
+                inference request
+            PredictionJob: _description_
+        """
+        trace.set_tracer(context, self._tracer)
+        trace_context = trace.get_trace_context(context)
+        trace_span_name = f"{__name__}.GlobalPredictServicer.run_prediction_job"
+        with self._handle_predict_exceptions(
+            model_id, request_name
+        ), self._tracer.start_as_current_span(
+            trace_span_name,
+            context=trace_context,
+        ) as trace_span:
+
+            # Set trace attributes available before checking anything
+            trace_span.set_attribute("calling", trace_span_name)
+            trace_span.set_attribute("model_id", model_id)
+            trace_span.set_attribute("request_name", request_name)
+            trace_span.set_attribute("task", getattr(task, "__name__", str(task)))
+
+            model = model or self._model_manager.retrieve_model(model_id)
+            self._verify_model_task(model)
+            inference_sig = model.get_inference_signature(
+                output_streaming=False,
+                input_streaming=False,
+                task=task,
+            )
+            inference_func_name = inference_sig.method_name
+            context_arg = inference_sig.context_arg
+
+            log.debug2(
+                "Deduced inference function name: %s and context_arg: %s",
+                inference_func_name,
+                context_arg,
+            )
+            trace_span.set_attribute("inference_func_name", inference_func_name)
+
+            # If a context arg was supplied then add the context
+            if context_arg:
+                kwargs[context_arg] = context
+
+            model_future = MODEL_MANAGER.start_prediction_job(
+                model=model, prediction_func_name=prediction_func_name, **kwargs
+            )
+
+            # Update Prometheus metrics
+            JOB_PREDICT_RPC_COUNTER.labels(
+                grpc_request=request_name, code=StatusCode.OK.name, model_id=model_id
+            ).inc()
+            if get_config().runtime.metering.enabled:
+                self.rpc_meter.update_metrics(str(type(model)))
+
+            return PredictionJob(prediction_id=model_future.id)
 
     def predict_model(
         self,

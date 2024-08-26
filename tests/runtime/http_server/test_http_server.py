@@ -15,7 +15,7 @@
 Tests for the caikit HTTP server
 """
 # Standard
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from io import BytesIO
 from pathlib import Path
 from typing import Iterable
@@ -25,6 +25,7 @@ import json
 import os
 import signal
 import tempfile
+import time
 import zipfile
 
 # Third Party
@@ -39,6 +40,7 @@ from caikit.core.model_management.multi_model_finder import MultiModelFinder
 from caikit.runtime import http_server
 from caikit.runtime.http_server.http_server import StreamEventTypes
 from caikit.runtime.server_base import ServerThreadPool
+from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from tests.conftest import get_mutable_config_copy, reset_globals, temp_config
 from tests.core.helpers import MockBackend
 from tests.fixtures import Fixtures
@@ -92,7 +94,6 @@ def test_basic_tls_server(open_port):
             open_port,
             tls_config_override=config_overrides,
         ) as http_server_with_tls:
-            # start a non-blocking http server with basic tls
             resp = requests.get(
                 f"https://localhost:{http_server_with_tls.port}/docs",
                 verify=config_overrides["use_in_test"]["ca_cert"],
@@ -106,7 +107,6 @@ def test_basic_tls_server_with_wrong_cert(open_port):
             open_port,
             tls_config_override=config_overrides,
         ) as http_server_with_tls:
-            # start a non-blocking http server with basic tls
             with pytest.raises(requests.exceptions.SSLError):
                 requests.get(
                     f"https://localhost:{http_server_with_tls.port}/docs",
@@ -198,47 +198,58 @@ def test_mutual_tls_server_with_wrong_cert(open_port):
 
 
 @pytest.mark.parametrize(
-    ["enable_inference", "enable_training"],
-    [(True, False), (False, True), (False, False)],
+    ["enable_inference", "enable_training", "enable_inference_jobs", "error"],
+    [
+        (True, False, False, False),
+        (False, True, False, False),
+        (False, False, False, False),
+        (False, False, True, True),
+    ],
 )
-def test_services_disabled(open_port, enable_inference, enable_training):
+def test_services_disabled(
+    open_port, enable_inference, enable_training, enable_inference_jobs, error
+):
     with temp_config(
         {
             "runtime": {
                 "service_generation": {
                     "enable_inference": enable_inference,
                     "enable_training": enable_training,
+                    "enable_inference_jobs": enable_inference_jobs,
                 }
             },
         },
         "merge",
     ):
-        with runtime_http_test_server(open_port) as server:
-            # start a non-blocking http server with basic tls
-            resp = requests.get(
-                f"http://localhost:{open_port}{http_server.HEALTH_ENDPOINT}",
-            )
-            resp.raise_for_status()
-            assert server.enable_inference == enable_inference
-            assert (
-                server.global_predict_servicer
-                and server.model_management_servicer
-                and enable_inference
-            ) or (
-                server.global_predict_servicer is None
-                and server.model_management_servicer is None
-                and not enable_inference
-            )
-            assert server.enable_training == enable_training
-            assert (
-                server.global_train_servicer
-                and server.training_management_servicer
-                and enable_training
-            ) or (
-                server.global_train_servicer is None
-                and server.training_management_servicer is None
-                and not enable_training
-            )
+        error_context = (
+            pytest.raises(CaikitRuntimeException) if error else nullcontext()
+        )
+        with error_context:
+            with runtime_http_test_server(open_port) as server:
+                resp = requests.get(
+                    f"http://localhost:{open_port}{http_server.HEALTH_ENDPOINT}",
+                )
+                resp.raise_for_status()
+                assert server.enable_inference == enable_inference
+                assert (
+                    server.global_predict_servicer
+                    and server.model_management_servicer
+                    and enable_inference
+                ) or (
+                    server.global_predict_servicer is None
+                    and server.model_management_servicer is None
+                    and not enable_inference
+                )
+                assert server.enable_training == enable_training
+                assert (
+                    server.global_train_servicer
+                    and server.training_management_servicer
+                    and enable_training
+                ) or (
+                    server.global_train_servicer is None
+                    and server.training_management_servicer is None
+                    and not enable_training
+                )
 
 
 @pytest.mark.parametrize(
@@ -1058,6 +1069,95 @@ def test_single_models_info_ok(client, sample_task_model_id):
     model = json_response["models"][0]
     assert model["name"] == sample_task_model_id
     assert model["module_metadata"]["name"] == "SampleModule"
+
+
+## Job Inference Tests #############################################################
+
+
+def test_job_inference_sample_task(sample_task_model_id, client):
+    """Simple check that we can run a task using a prediction job"""
+    # Submit request
+    json_input = {"model_id": sample_task_model_id, "inputs": {"name": "world"}}
+    response = client.post(
+        f"/api/v1/task/sample/job",
+        json=json_input,
+    )
+    json_response = response.json()
+    assert response.status_code == 200, json_response
+    id = json_response["prediction_id"]
+
+    # Check that status is completed
+    response = client.get(f"/api/v1/task/sample/job", params={"prediction_id": id})
+    json_response = response.json()
+    assert response.status_code == 200, json_response
+    # IF job is still running then refetch until its completed
+    while json_response["state"] == "RUNNING":
+        response = client.get(f"/api/v1/task/sample/job", params={"prediction_id": id})
+        json_response = response.json()
+        assert response.status_code == 200, json_response
+        time.sleep(0.001)
+    assert json_response["state"] == "COMPLETED"
+
+    # Validate the results
+    response = client.get(
+        f"/api/v1/task/sample/job/results", params={"prediction_id": id}
+    )
+    json_response = response.json()
+    assert response.status_code == 200, json_response
+    assert json_response["greeting"] == "Hello world"
+
+
+def test_job_inference_sample_task_cancelled(sample_task_model_id, client):
+    """Simple check that we can cancel a prediction job"""
+    # Submit request with sleep delay
+    json_input = {
+        "model_id": sample_task_model_id,
+        "inputs": {"name": "world"},
+        "parameters": {"sleep_time": 10},
+    }
+    response = client.post(
+        f"/api/v1/task/sample/job",
+        json=json_input,
+    )
+    json_response = response.json()
+    assert response.status_code == 200, json_response
+    id = json_response["prediction_id"]
+
+    # Check that status is running
+    response = client.get(f"/api/v1/task/sample/job", params={"prediction_id": id})
+    json_response = response.json()
+    assert response.status_code == 200, json_response
+    assert json_response["state"] == "RUNNING"
+
+    # Check that fetching results of a running job raises a 404
+    response = client.get(
+        f"/api/v1/task/sample/job/results", params={"prediction_id": id}
+    )
+    json_response = response.json()
+    assert response.status_code == 404, json_response
+
+    # Cancel the job and check the status
+    response = client.delete(f"/api/v1/task/sample/job", params={"prediction_id": id})
+    json_response = response.json()
+    assert response.status_code == 200, json_response
+    assert json_response["state"] == "CANCELED"
+
+    # Validate that results raise 404
+    response = client.get(
+        f"/api/v1/task/sample/job/results", params={"prediction_id": id}
+    )
+    json_response = response.json()
+    assert response.status_code == 404, json_response
+
+
+def test_job_inference_not_exist(client):
+    """Simple check that we can cancel a prediction job"""
+    # Submit request with sleep delay
+    response = client.get(
+        f"/api/v1/task/sample/job", params={"prediction_id": "random_id"}
+    )
+    json_response = response.json()
+    assert response.status_code == 404, json_response
 
 
 ## Train Tests #################################################################

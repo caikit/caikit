@@ -28,6 +28,7 @@ from caikit.core import LocalBackend
 from caikit.core.data_model import DataStream, TrainingStatus
 from caikit.core.model_management import ModelFinderBase, model_finder_factory
 from caikit.core.modules import ModuleBase, ModuleSaver, module
+from sample_lib.data_model import SampleInputType, SampleOutputType
 
 # Unit Test Infrastructure
 from sample_lib.modules.sample_task import SampleModule
@@ -276,6 +277,17 @@ def setup_test_trainer(config=None):
     if config is not None:
         factory_blob["config"] = config
     with temp_config({"model_management": {"trainers": {"default": factory_blob}}}):
+        yield
+
+
+@contextmanager
+def setup_test_predictor(config=None):
+    factory_blob = {"type": TestPredictor.name}
+    if config is not None:
+        factory_blob["config"] = config
+    with temp_config(
+        {"model_management": {"job_predictors": {"default": factory_blob}}}
+    ):
         yield
 
 
@@ -727,3 +739,36 @@ def test_train_with_save_path(reset_globals):
             train_future.wait()
             assert train_future.get_info().status == TrainingStatus.COMPLETED
             assert os.path.exists(save_path)
+
+
+def test_job_predictor_with_model(reset_globals):
+    """Make sure predictions can be accessed through the central predict function
+    with the class directly
+    """
+
+    model = SampleModule()
+    sample_input = SampleInputType(name="world")
+    with setup_test_predictor():
+        predict_future = caikit.core.start_prediction_job(
+            model, "run", sample_input=sample_input
+        )
+        assert isinstance(predict_future, JobPredictorFutureBase)
+        result = predict_future.result()
+        assert isinstance(result, SampleOutputType)
+        found_future = caikit.get_prediction_future(predict_future.id)
+        assert found_future is predict_future
+
+
+def test_job_predictor_with_wait(reset_globals):
+    """Make sure training can be accessed through the central train function
+    with the class directly
+    """
+
+    model = SampleModule()
+    sample_input = SampleInputType(name="world")
+    with setup_test_predictor():
+        predict_future = caikit.core.start_prediction_job(
+            model, "run", sample_input=sample_input, wait=True
+        )
+        assert isinstance(predict_future, JobPredictorFutureBase)
+        result = predict_future.get_info().status == PredictionJobStatus.COMPLETED

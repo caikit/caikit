@@ -57,6 +57,8 @@ class SampleModule(caikit.core.ModuleBase):
         error: Optional[str] = None,
         request_id: Optional[str] = None,
         throw_first_num_requests: Optional[int] = None,
+        sleep_time: float = 0,
+        sleep_increment: float = 0.001,
         context: Optional[RuntimeServerContextType] = None,
     ) -> SampleOutputType:
         """
@@ -68,12 +70,19 @@ class SampleModule(caikit.core.ModuleBase):
                 for throw_first_num_requests. Defaults to None.
             throw_first_num_requests (Optional[int], optional): How many requests to throw an error
                 for before being successful. Defaults to None.
+            sleep_time float: How long to sleep before returning a result. Defaults to 0.
+            sleep_increment float: How large of increments to sleep in.
             context (Optional[RuntimeServerContextType]): The context for the runtime server request
         Returns:
             SampleOutputType: The output
         """
         span_name = f"{__name__}.{type(self).__name__}.run"
         with trace.start_child_span(context, span_name):
+            if sleep_time:
+                start_time = time.time()
+                while time.time() - sleep_time < start_time:
+                    time.sleep(sleep_increment)
+
             if throw:
                 self._raise_error(error)
 
@@ -81,6 +90,7 @@ class SampleModule(caikit.core.ModuleBase):
                 self._raise_error(
                     "throw_first_num_requests requires providing a request_id"
                 )
+
             # If a throw_first_num_requests was provided  then increment the tracker and raise an exception
             # until the number of requests is high enough
             if throw_first_num_requests:

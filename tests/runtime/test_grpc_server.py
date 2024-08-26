@@ -15,6 +15,7 @@
 # Have pylint ignore Class XXXX has no YYYY member so that we can use gRPC enums.
 # pylint: disable=E1101
 # Standard
+from contextlib import nullcontext
 from dataclasses import dataclass
 from unittest import mock
 import json
@@ -40,6 +41,7 @@ import alog
 
 # Local
 from caikit import get_config
+from caikit.core.data_model import PredictionJobStatus
 from caikit.core.data_model.producer import ProducerId
 from caikit.interfaces.common.data_model import File
 from caikit.interfaces.runtime.data_model import (
@@ -47,6 +49,9 @@ from caikit.interfaces.runtime.data_model import (
     ModelInfo,
     ModelInfoRequest,
     ModelInfoResponse,
+    PredictionJob,
+    PredictionJobInfoRequest,
+    PredictionJobStatusResponse,
     RuntimeInfoRequest,
     RuntimeInfoResponse,
     TrainingInfoRequest,
@@ -69,6 +74,7 @@ from caikit.runtime.protobufs import (
     process_pb2_grpc,
 )
 from caikit.runtime.service_factory import ServicePackage, ServicePackageFactory
+from caikit.runtime.types.caikit_runtime_exception import CaikitRuntimeException
 from caikit.runtime.utils.servicer_util import build_caikit_library_request_dict
 from sample_lib import CompositeModule, InnerModule, OtherModule, SamplePrimitiveModule
 from sample_lib.data_model import (
@@ -279,7 +285,12 @@ def test_global_predict_build_caikit_library_request_dict_creates_caikit_core_ru
     )
 
     # unset fields are included if they have defaults set
-    python_expected_arguments = {"sample_input", "throw"}
+    python_expected_arguments = {
+        "sleep_increment",
+        "sleep_time",
+        "sample_input",
+        "throw",
+    }
     assert python_request.HasField("throw") is True
     assert python_expected_arguments == set(python_sample_module_request_dict.keys())
 
@@ -320,6 +331,100 @@ def test_predict_sample_module_error_response(
             predict_request, metadata=[("mm-model-id", "random_model_id")]
         )
     assert context.value.code() == grpc.StatusCode.NOT_FOUND
+
+
+def test_job_predict_sample_module_ok_response(
+    sample_task_model_id, runtime_grpc_server, sample_inferece_job_service
+):
+    """Test RPC CaikitRuntime.SampleTaskStartPredictionJob successful response as well
+    as status and result rpcs"""
+    stub = sample_inferece_job_service.stub_class(
+        runtime_grpc_server.make_local_channel()
+    )
+    predict_request = get_inference_request(SampleTask)(
+        sample_input=HAPPY_PATH_INPUT_DM
+    ).to_proto()
+
+    # Start prediction in background
+    job_proto_info = stub.SampleTaskStartPredictionJob(
+        predict_request, metadata=[("mm-model-id", sample_task_model_id)]
+    )
+
+    job_info = PredictionJob.from_proto(job_proto_info)
+    assert job_info.prediction_id is not None
+
+    # Check background status. Repeatably check until status is not RUNNING
+    job_status = None
+    while not job_status or (
+        job_status and job_status.state == PredictionJobStatus.RUNNING.value
+    ):
+        predict_status_request = PredictionJobInfoRequest(
+            prediction_id=job_info.prediction_id
+        ).to_proto()
+        job_proto_status = stub.SampleTaskGetPredictionJobStatus(
+            predict_status_request, metadata=[("mm-model-id", sample_task_model_id)]
+        )
+
+        job_status = PredictionJobStatusResponse.from_proto(job_proto_status)
+    assert job_status.state == PredictionJobStatus.COMPLETED.value
+
+    # Get background result
+    job_result = stub.SampleTaskGetPredictionJobResult(
+        predict_status_request, metadata=[("mm-model-id", sample_task_model_id)]
+    )
+    assert job_result == HAPPY_PATH_RESPONSE
+
+
+def test_job_predict_sample_module_cancel_request(
+    sample_task_model_id, runtime_grpc_server, sample_inferece_job_service
+):
+    """Test that a grpc prediction job can be cancelled"""
+    # start a prediction that sleeps for a long time, so I can cancel
+    stub = sample_inferece_job_service.stub_class(
+        runtime_grpc_server.make_local_channel()
+    )
+    predict_request = get_inference_request(SampleTask)(
+        sample_input=HAPPY_PATH_INPUT_DM, sleep_time=10
+    ).to_proto()
+
+    # Start prediction in background
+    job_proto_info = stub.SampleTaskStartPredictionJob(
+        predict_request, metadata=[("mm-model-id", sample_task_model_id)]
+    )
+
+    job_info = PredictionJob.from_proto(job_proto_info)
+    assert job_info.prediction_id is not None
+
+    # Test to ensure that the  status is Running
+    predict_status_request = PredictionJobInfoRequest(
+        prediction_id=job_info.prediction_id
+    ).to_proto()
+    job_proto_status = stub.SampleTaskGetPredictionJobStatus(
+        predict_status_request, metadata=[("mm-model-id", sample_task_model_id)]
+    )
+    job_status = PredictionJobStatusResponse.from_proto(job_proto_status)
+    assert (
+        job_status.state == PredictionJobStatus.RUNNING.value
+    ), "Could not cancel this prediction within 10s"
+
+    # Test to ensure that fetching a result while before its completed raises an exception
+    with pytest.raises(grpc.RpcError):
+        # Ensure attempting to get the prediction result raises an error
+        stub.SampleTaskGetPredictionJobResult(
+            predict_status_request, metadata=[("mm-model-id", sample_task_model_id)]
+        )
+
+    # cancel the training
+    canceled_response = stub.SampleTaskCancelPredictionJob(predict_status_request)
+    canceled_status = PredictionJobStatusResponse.from_proto(canceled_response)
+    assert canceled_status.state == PredictionJobStatus.CANCELED.value
+
+    # Test to ensure that fetching a result after its been cancelled raises an exception
+    with pytest.raises(grpc.RpcError):
+        # Ensure attempting to get the prediction result raises an error
+        stub.SampleTaskGetPredictionJobResult(
+            predict_status_request, metadata=[("mm-model-id", sample_task_model_id)]
+        )
 
 
 def test_predict_sample_module_streaming_value_error_response(
@@ -1295,10 +1400,17 @@ def test_mtls_different_root(open_port):
 
 
 @pytest.mark.parametrize(
-    ["enable_inference", "enable_training"],
-    [(True, False), (False, True), (False, False)],
+    ["enable_inference", "enable_training", "enable_inference_jobs", "error"],
+    [
+        (True, False, False, False),
+        (False, True, False, False),
+        (False, False, False, False),
+        (False, False, True, True),
+    ],
 )
-def test_services_disabled(open_port, enable_inference, enable_training):
+def test_services_disabled(
+    open_port, enable_inference, enable_training, enable_inference_jobs, error
+):
     """Boot up a server with different combinations of services disabled"""
     with temp_config(
         {
@@ -1306,33 +1418,38 @@ def test_services_disabled(open_port, enable_inference, enable_training):
                 "service_generation": {
                     "enable_inference": enable_inference,
                     "enable_training": enable_training,
+                    "enable_inference_jobs": enable_inference_jobs,
                 }
             },
         },
         "merge",
     ):
-        with runtime_grpc_test_server(open_port) as server:
-            _assert_connection(server.make_local_channel())
-            assert server.enable_inference == enable_inference
-            assert (
-                server._global_predict_servicer
-                and server.model_management_service
-                and enable_inference
-            ) or (
-                server._global_predict_servicer is None
-                and server.model_management_service is None
-                and not enable_inference
-            )
-            assert server.enable_training == enable_training
-            assert (
-                server.training_service
-                and server.training_management_service
-                and enable_training
-            ) or (
-                server.training_service is None
-                and server.training_management_service is None
-                and not enable_training
-            )
+        error_context = (
+            pytest.raises(CaikitRuntimeException) if error else nullcontext()
+        )
+        with error_context:
+            with runtime_grpc_test_server(open_port) as server:
+                _assert_connection(server.make_local_channel())
+                assert server.enable_inference == enable_inference
+                assert (
+                    server._global_predict_servicer
+                    and server.model_management_service
+                    and enable_inference
+                ) or (
+                    server._global_predict_servicer is None
+                    and server.model_management_service is None
+                    and not enable_inference
+                )
+                assert server.enable_training == enable_training
+                assert (
+                    server.training_service
+                    and server.training_management_service
+                    and enable_training
+                ) or (
+                    server.training_service is None
+                    and server.training_management_service is None
+                    and not enable_training
+                )
 
 
 def test_certs_can_be_loaded_as_files(tmp_path, open_port):
@@ -1508,6 +1625,7 @@ def test_all_signal_handlers_invoked(open_port):
             RUNTIME_METRICS_ENABLED="false",
             RUNTIME_GRPC_ENABLED="true",
             RUNTIME_HTTP_ENABLED="true",
+            RUNTIME_SERVICE_GENERATION_ENABLE_INFERENCE_JOBS="false",
             LOG_LEVEL="info",
         )
         with server_proc as proc:
