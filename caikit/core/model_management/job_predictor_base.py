@@ -13,7 +13,7 @@
 # limitations under the License.
 """
 A Job Predictor is responsible for managing execution of a prediction jobs running
-in a background for a given task method
+in the background for a given task method
 
 Configuration for Job Predictors lives under the config as follows:
 
