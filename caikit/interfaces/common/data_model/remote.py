@@ -146,6 +146,9 @@ class ConnectionInfo(DataObjectBase):
     retries: Optional[int] = 1
     # Runtime specific retry options
     retry_options: Optional[JsonDict] = field(default_factory=dict)
+    # Maximum age for a client channel. Values less then 0 are infinite while 0 means new
+    # channel/session for every request
+    max_session_age: Optional[float] = -1
 
     def __post_init__(self):
         """Post init function to verify field types and set defaults"""
@@ -172,6 +175,12 @@ class ConnectionInfo(DataObjectBase):
             port=self.port,
             timeout=self.timeout,
             retries=self.retries,
+        )
+        error.type_check(
+            "<COR730224567E>",
+            float,
+            int,
+            max_session_age=self.max_session_age,
         )
 
         if self.options:
