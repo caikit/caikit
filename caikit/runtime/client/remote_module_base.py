@@ -480,13 +480,12 @@ class RemoteModuleBase(ModuleBase):
                 self._current_conn_time = datetime.now()
                 self._conn_channel = construction_fn()
 
-            # If the max session age is less then 0 then reuse the existing con channel
-            elif self._connection.max_session_age < 0:
-                pass
-
-            # If the current time is greater than the conn channel timeout then construct a
-            # new channel
-            elif datetime.now() - self._current_conn_time > self._max_conn_delta:
+            # If the max session age is greater then 0 then check if the conn channel time
+            # is older than the delta. If so construct a new channel
+            elif (
+                self._connection.max_session_age > 0
+                and datetime.now() - self._current_conn_time > self._max_conn_delta
+            ):
                 log.debug2("Creating new client channel due to max_session_age value")
                 self._current_conn_time = datetime.now()
                 self._conn_channel = construction_fn()

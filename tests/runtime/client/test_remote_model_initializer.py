@@ -15,6 +15,10 @@
 Tests for the RemoteModelInitializer
 """
 
+# Standard
+from datetime import datetime, timedelta
+from unittest import mock
+
 # Third Party
 import pytest
 
@@ -529,7 +533,7 @@ def test_remote_initializer_retry(sample_task_model_id, open_port, protocol):
 def test_remote_initializer_always_new_channel(
     sample_task_model_id, open_port, protocol
 ):
-    """Test to ensure RemoteModule Initializer negative max connection age always creates
+    """Test to ensure RemoteModule Initializer zero max connection age always creates
     a new channel"""
     local_module_class = (
         ModelManager.get_instance().retrieve_model(sample_task_model_id).__class__
@@ -565,9 +569,7 @@ def test_remote_initializer_always_new_channel(
 
 
 @pytest.mark.parametrize("protocol", ["grpc", "http"])
-def test_remote_initializer_always_time_new_channel(
-    sample_task_model_id, open_port, protocol
-):
+def test_remote_initializer_time_new_channel(sample_task_model_id, open_port, protocol):
     """Test to ensure RemoteModule Initializer max session age correctly takes affect"""
     local_module_class = (
         ModelManager.get_instance().retrieve_model(sample_task_model_id).__class__
@@ -593,20 +595,23 @@ def test_remote_initializer_always_time_new_channel(
         remote_model = remote_initializer.init(remote_config)
         assert isinstance(remote_model, ModuleBase)
 
-        # Run RemoteModule Request twice to ensure the channel is retained. Run the second one with a small sleep to ensure the third request gets a new object
+        # Run RemoteModule Request twice to ensure the channel is retained
         remote_model.run(
             SampleInputType(name="Test"),
             request_id=random_test_id(),
         )
         first_channel = remote_model._conn_channel
-        remote_model.run(
-            SampleInputType(name="Test"), request_id=random_test_id(), sleep_time=0.5
-        )
+        remote_model.run(SampleInputType(name="Test"), request_id=random_test_id())
         assert first_channel == remote_model._conn_channel
 
-        # Retrun RemoteModule Request and ensure that a new channel was generated
-        remote_model.run(
-            SampleInputType(name="Test"),
-            request_id=random_test_id(),
-        )
-        assert first_channel != remote_model._conn_channel
+        # Retrun RemoteModule Request with mocked date to ensure that a new channel was generated
+        tomorrow_time = datetime.now() + timedelta(days=1)
+        with mock.patch(
+            "caikit.runtime.client.remote_module_base.datetime",
+            mock.Mock(now=lambda: tomorrow_time),
+        ):
+            remote_model.run(
+                SampleInputType(name="Test"),
+                request_id=random_test_id(),
+            )
+            assert first_channel != remote_model._conn_channel
