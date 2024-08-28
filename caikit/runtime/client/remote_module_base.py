@@ -18,8 +18,9 @@ design this class/factory does not use any references to the original Module cla
 """
 # Standard
 from collections import OrderedDict
+from datetime import datetime, timedelta
 from threading import Lock
-from typing import Any, Callable, Dict, Generator, List, Type, Union
+from typing import Any, Callable, Dict, Generator, List, Optional, Type, Union
 import copy
 import inspect
 import json
@@ -83,7 +84,9 @@ class RemoteModuleBase(ModuleBase):
 
         # Configure GRPC variables and threading lock
         self._channel_lock = Lock()
-        self._conn_channel: Union[grpc.Channel, Session] = None
+        self._conn_channel: Optional[Union[grpc.Channel, Session]] = None
+        self._current_conn_time = None
+        self._max_conn_delta = timedelta(seconds=self._connection.max_session_age)
 
         # Assert parameter values
         if self._protocol == "grpc" and self._tls.enabled:
@@ -424,53 +427,70 @@ class RemoteModuleBase(ModuleBase):
     def _grpc_channel(self) -> grpc.Channel:
         """Helper function to construct a GRPC channel
         with correct credentials and TLS settings."""
-        # Short circuit if channel has already been set
-        if self._conn_channel:
-            return self._conn_channel
 
-        with self._channel_lock:
-            # Check for the channel again incase it was created during lock acquisition
-            if self._conn_channel:
-                return self._conn_channel
-
-            # Gather grpc configuration
+        def grpc_channel_construction_fn():
             target = self._get_remote_target()
             options = list(self._connection.options.items())
-
-            # Generate secure channel
-            channel = construct_grpc_channel(
+            return construct_grpc_channel(
                 target,
                 options,
                 self._tls,
                 self._connection.retries,
                 self._connection.retry_options,
             )
-            self._conn_channel = channel
-            return self._conn_channel
+
+        return self._get_remote_object(grpc_channel_construction_fn)
 
     @property
     def _http_session(self) -> Session:
         """Helper function to construct a requests Session with
         with correct credentials and TLS settings."""
-        # Short circuit if session has already been set
-        if self._conn_channel:
-            return self._conn_channel
 
-        with self._channel_lock:
-            # Check for the channel again incase it was created during lock acquisition
-            if self._conn_channel:
-                return self._conn_channel
-
-            self._conn_channel = construct_requests_session(
+        def session_construction_fn():
+            return construct_requests_session(
                 self._connection.options,
                 self._tls,
                 self._connection.timeout,
                 self._connection.retries,
                 self._connection.retry_options,
             )
-            return self._conn_channel
+
+        return self._get_remote_object(session_construction_fn)
 
     ### Generic Helper Functions
+
+    def _get_remote_object(
+        self, construction_fn: Callable[[None], Union[grpc.Channel, Session]]
+    ) -> Union[grpc.Channel, Session]:
+        """Helper function to control construction of a grpc channel or http session
+
+        Args:
+            construction_fn (Callable[[None], Union[grpc.Channel, Session]]): _description_
+
+        Returns:
+            Union[grpc.Channel, Session]: _description_
+        """
+        # If max_session_age is 0 then always return a new session/channel
+        if self._connection.max_session_age == 0:
+            return construction_fn()
+
+        with self._channel_lock:
+            # If there isn't a channel then construct a new one and set the time
+            if not self._conn_channel:
+                self._current_conn_time = datetime.now()
+                self._conn_channel = construction_fn()
+
+            # If the max session age is greater then 0 then check if the conn channel time
+            # is older than the delta. If so construct a new channel
+            elif (
+                self._connection.max_session_age > 0
+                and datetime.now() - self._current_conn_time > self._max_conn_delta
+            ):
+                log.debug2("Creating new client channel due to max_session_age value")
+                self._current_conn_time = datetime.now()
+                self._conn_channel = construction_fn()
+
+            return self._conn_channel
 
     def _get_remote_target(self) -> str:
         """Get the current remote target"""

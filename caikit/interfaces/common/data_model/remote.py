@@ -19,7 +19,7 @@ This file contains interfaces required to connect to Remote servers
 from dataclasses import field
 from http.client import HTTP_PORT, HTTPS_PORT
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 # First Party
 import alog
@@ -146,6 +146,9 @@ class ConnectionInfo(DataObjectBase):
     retries: Optional[int] = 1
     # Runtime specific retry options
     retry_options: Optional[JsonDict] = field(default_factory=dict)
+    # Maximum age for a client channel. Values less then 0 are infinite while 0 means new
+    # channel/session for every request
+    max_session_age: Union[float, int] = -1
 
     def __post_init__(self):
         """Post init function to verify field types and set defaults"""
@@ -172,6 +175,12 @@ class ConnectionInfo(DataObjectBase):
             port=self.port,
             timeout=self.timeout,
             retries=self.retries,
+        )
+        error.type_check(
+            "<COR730224567E>",
+            float,
+            int,
+            max_session_age=self.max_session_age,
         )
 
         if self.options:
