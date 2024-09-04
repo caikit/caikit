@@ -100,8 +100,8 @@ class InfoServicer:
         # Get all loaded models
         response = ModelInfoResponse(models=[])
         for name, loaded_module in loaded_model_list:
-            # Skip models that haven't been loaded yet
-            if loaded_module.loaded():
+            # Skip models that haven't been loaded yet or don't have a local instance tied
+            if loaded_module.loaded(require_instance=True):
                 model_instance = loaded_module.model()
                 response.models.append(
                     ModelInfo(

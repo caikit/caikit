@@ -116,13 +116,16 @@ def test_load_invalid_model_error_response(model_loader):
     """Test load invalid model error response"""
     model_id = random_test_id()
     with pytest.raises(CaikitRuntimeException) as context:
-        model_loader.load_model(
+        loaded_model = model_loader.load_model(
             model_id=model_id,
             local_model_path=Fixtures.get_bad_model_archive_path(),
             model_type="not_real",
-        ).wait()
+        )
+        loaded_model.wait()
     assert context.value.status_code == grpc.StatusCode.NOT_FOUND
     assert model_id in context.value.message
+    assert loaded_model.loaded()
+    assert not loaded_model.loaded(require_instance=True)
 
 
 def test_it_can_load_more_than_one_model(model_loader):
