@@ -68,7 +68,7 @@ class ChunkerTokenizationStreamResult(TokenizationStreamResult):
     """
 
     # Below 2 represent pointer from the input stream.
-    # These are different from start and processed_index index returned from TokenizationStreamResult,
-    # which refers to the char span
+    # These are different from start and processed_index index returned from
+    # TokenizationStreamResult, which refers to the char span
     input_start_index: Annotated[int, FieldNumber(5)]
     input_end_index: Annotated[int, FieldNumber(6)]
