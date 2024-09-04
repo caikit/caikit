@@ -31,7 +31,11 @@ from .data_model.classification import (
 )
 from .data_model.embedding_vectors import EmbeddingResult, EmbeddingResults
 from .data_model.reranker import RerankResult, RerankResults
-from .data_model.text import TokenizationResults, TokenizationStreamResult
+from .data_model.text import (
+    ChunkerTokenizationStreamResult,
+    TokenizationResults,
+    TokenizationStreamResult,
+)
 from .data_model.text_generation import GeneratedTextResult, GeneratedTextStreamResult
 
 
@@ -167,4 +171,19 @@ class SentenceSimilarityTasks(TaskBase):
     """Compare each of the source_sentences to each of the sentences.
     Returns a list of results in the order of the source_sentences.
     Each result contains a list of scores in the order of the input sentences.
+    """
+
+
+@task(
+    unary_parameters={"text": str},
+    streaming_parameters={
+        "text_stream": Iterable[str],
+        "input_index_stream": Iterable[int],
+    },
+    unary_output_type=TokenizationResults,
+    streaming_output_type=Iterable[ChunkerTokenizationStreamResult],
+)
+class ChunkerTokenizationTask(TaskBase):
+    """The Chunk tokenization task is responsible for taking input text
+    and giving out chunks of pre-configured type, like sentences.
     """

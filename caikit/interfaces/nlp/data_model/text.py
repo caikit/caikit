@@ -59,3 +59,16 @@ class TokenizationStreamResult(TokenizationResults):
         int, FieldNumber(2)
     ]  # Result index up to which text is processed
     start_index: Annotated[int, FieldNumber(3)]  # Result start index for processed text
+
+
+@dataobject(package=NLP_PACKAGE)
+class ChunkerTokenizationStreamResult(TokenizationStreamResult):
+    """
+    Streaming tokenization result that provides pointer to the input chunk processed
+    """
+
+    # Below 2 represent pointer from the input stream.
+    # These are different from start and processed_index index returned from TokenizationStreamResult,
+    # which refers to the char span
+    input_start_index: Annotated[int, FieldNumber(5)]
+    input_end_index: Annotated[int, FieldNumber(6)]
