@@ -40,7 +40,12 @@ from .sentence_similarity import (
     SentenceSimilarityResults,
     SentenceSimilarityScores,
 )
-from .text import Token, TokenizationResults, TokenizationStreamResult
+from .text import (
+    ChunkerTokenizationStreamResult,
+    Token,
+    TokenizationResults,
+    TokenizationStreamResult,
+)
 from .text_generation import (
     FinishReason,
     GeneratedTextResult,
