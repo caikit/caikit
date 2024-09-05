@@ -124,9 +124,7 @@ def test_load_invalid_model_error_response(model_loader):
         loaded_model.wait()
     assert context.value.status_code == grpc.StatusCode.NOT_FOUND
     assert model_id in context.value.message
-    assert loaded_model.loaded()
-    assert not loaded_model.loaded(require_instance=True)
-
+    assert not loaded_model.loaded()
 
 def test_it_can_load_more_than_one_model(model_loader):
     """Make sure we can load multiple models without side effects"""

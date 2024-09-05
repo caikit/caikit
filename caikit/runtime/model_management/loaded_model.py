@@ -118,16 +118,13 @@ class LoadedModel:  # pylint: disable=too-many-instance-attributes
         self.wait()
         return self._model
 
-    def loaded(self, require_instance: bool = False) -> bool:
-        """Determine if the model is has finished loading
-        
-        @param required_instance (bool): If true, require that the model has loaded successfully
-        
-        @returns loaded (bool): Whether or not the model is finished loading
-        return (
-            bool(self._model) or
-            (not require_instance and self._caikit_model_future.done())
-        )
+    def loaded(self) -> bool:
+        """Return if a model load job has resulted in a local instance
+
+        Returns:
+            bool: If a local model instance is available
+        """
+        return bool(self._model)
 
     def wait(self):
         if self._model is None:
