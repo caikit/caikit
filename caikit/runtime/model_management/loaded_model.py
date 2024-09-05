@@ -119,8 +119,11 @@ class LoadedModel:  # pylint: disable=too-many-instance-attributes
         return self._model
 
     def loaded(self, require_instance: bool = False) -> bool:
-        # If require_instance is true then require that the loaded model has a constructed instance
-        # attached
+        """Determine if the model is has finished loading
+        
+        @param required_instance (bool): If true, require that the model has loaded successfully
+        
+        @returns loaded (bool): Whether or not the model is finished loading
         if require_instance:
             return bool(self._model)
         return bool(self._model or self._caikit_model_future.done())
