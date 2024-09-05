@@ -116,13 +116,15 @@ def test_load_invalid_model_error_response(model_loader):
     """Test load invalid model error response"""
     model_id = random_test_id()
     with pytest.raises(CaikitRuntimeException) as context:
-        model_loader.load_model(
+        loaded_model = model_loader.load_model(
             model_id=model_id,
             local_model_path=Fixtures.get_bad_model_archive_path(),
             model_type="not_real",
-        ).wait()
+        )
+        loaded_model.wait()
     assert context.value.status_code == grpc.StatusCode.NOT_FOUND
     assert model_id in context.value.message
+    assert not loaded_model.loaded()
 
 
 def test_it_can_load_more_than_one_model(model_loader):
@@ -393,8 +395,8 @@ def test_load_model_loaded_status(model_loader):
         release_event.set()
         loaded_model._caikit_model_future.result()
 
-        # It is "loaded" even if .model() has not been called
-        assert loaded_model.loaded()
+        # It is done "loading" even if .model() has not been called
+        assert not loaded_model.loading()
         assert loaded_model._model is None
 
         # After calling .model() it's also loaded
