@@ -126,6 +126,7 @@ def test_load_invalid_model_error_response(model_loader):
     assert model_id in context.value.message
     assert not loaded_model.loaded()
 
+
 def test_it_can_load_more_than_one_model(model_loader):
     """Make sure we can load multiple models without side effects"""
     # TODO: change test to load multiple models
