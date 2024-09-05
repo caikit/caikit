@@ -118,6 +118,14 @@ class LoadedModel:  # pylint: disable=too-many-instance-attributes
         self.wait()
         return self._model
 
+    def loading(self) -> bool:
+        """Return if a model load job has completed. The model job might have failed
+
+        Returns:
+            bool: If a local model job is still running
+        """
+        return not bool(self._caikit_model_future.done())
+
     def loaded(self) -> bool:
         """Return if a model load job has resulted in a local instance
 

@@ -395,8 +395,8 @@ def test_load_model_loaded_status(model_loader):
         release_event.set()
         loaded_model._caikit_model_future.result()
 
-        # It is "loaded" even if .model() has not been called
-        assert loaded_model.loaded()
+        # It is done "loading" even if .model() has not been called
+        assert not loaded_model.loading()
         assert loaded_model._model is None
 
         # After calling .model() it's also loaded
