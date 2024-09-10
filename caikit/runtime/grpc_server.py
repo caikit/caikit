@@ -84,6 +84,7 @@ class RuntimeGRPCServer(RuntimeServerBase):
             thread_pool=self.thread_pool,
             interceptors=(PROMETHEUS_METRICS_INTERCEPTOR,),
             options=(self.config.runtime.grpc.options or {}).items(),
+            maximum_concurrent_rpcs=self.config.runtime.grpc.maximum_concurrent_rpcs,
         )
 
         # Start metrics server
