@@ -159,6 +159,10 @@ runtime:
         # Additional server options as key/value pairs
         # CITE: https://github.com/grpc/grpc/blob/master/include/grpc/impl/channel_arg_names.h#L22
         options: {}
+        # Setting for max concurrent requests at a time. This number is independent of the
+        # server_thread_pool_size. If this value is higher then server_thread_pool_size then
+        # requests will get queued up. Default means infinite
+        maximum_concurrent_rpcs: null
         # Legacy config for setting thread pool size. See runtime.server_thread_pool_size instead
         server_thread_pool_size: null
         # Timeout for health probe to receive a response

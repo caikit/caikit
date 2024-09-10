@@ -71,12 +71,13 @@ def construct_grpc_channel(
                         "retryPolicy": {
                             "maxAttempts": retries,
                             "initialBackoff": "0.1s",
-                            "maxBackoff": "1s",
+                            "maxBackoff": "5s",
                             "backoffMultiplier": 2,
                             "retryableStatusCodes": [
                                 "UNAVAILABLE",
                                 "UNKNOWN",
                                 "INTERNAL",
+                                "RESOURCE_EXHAUSTED",
                             ],
                             **retry_options,
                         },
