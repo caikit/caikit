@@ -138,16 +138,12 @@ class TestTrainer(ModelTrainerBase):
                 trainer_name=parent.instance_name,
                 training_id=str(uuid.uuid4()),
                 save_with_id=save_with_id,
+                save_path=save_path,
             )
             self._parent = parent
             self._trained_model = trained_model
             self._canceled = False
             self._completed = False
-            self._save_path = save_path
-
-        @property
-        def save_path(self):
-            return self._save_path
 
         def get_info(self):
             if self._completed:

@@ -230,7 +230,7 @@ class ModelManager:
         if wait:
             log.debug("Waiting for prediction %s to complete", prediction_future.id)
             with alog.ContextTimer(
-                log.debug, "Finished training %s in: ", prediction_future.id
+                log.debug, "Finished prediction %s in: ", prediction_future.id
             ):
                 prediction_future.wait()
 

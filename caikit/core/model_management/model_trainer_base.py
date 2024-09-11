@@ -44,7 +44,16 @@ class ModelTrainerFutureBase(JobFutureBase):
             kwargs["future_name"] = kwargs["trainer_name"]
         if "training_id" in kwargs:
             kwargs["future_id"] = kwargs["training_id"]
+        # If save path is provided then add it as a property
+        self._save_path = kwargs.get("save_path")
         super().__init__(*args, **kwargs)
+
+    @property
+    def save_path(self) -> Optional[str]:
+        """If created with a save path, the future must expose it, including
+        any injected background id
+        """
+        return self._save_path
 
     @abc.abstractmethod
     def load(self) -> ModuleBase:
