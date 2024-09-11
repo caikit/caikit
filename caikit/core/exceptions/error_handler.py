@@ -89,7 +89,9 @@ class ErrorHandler:
             < caikit_config.max_exception_log_messages
         ):
             self.log_chan.error(
-                log_code, "exception raised: {}".format(repr(exception))
+                log_code,
+                "exception raised: {}".format(repr(exception)),
+                exc_info=exception,
             )
 
         # if at the limit omit one message stating that we will no longer log
@@ -102,6 +104,7 @@ class ErrorHandler:
                 "reached MAX_EXCEPTION_LOG_MESSAGES of `{}`, will no log exception `{}`".format(
                     caikit_config.max_exception_log_messages, repr(exception)
                 ),
+                exc_info=exception,
             )
 
     def log_raise(
