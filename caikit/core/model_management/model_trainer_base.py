@@ -48,7 +48,6 @@ class ModelTrainerFutureBase(JobFutureBase):
         if "save_path" in kwargs:
             self.save_path = kwargs["save_path"]
         super().__init__(*args, **kwargs)
-        
 
     @abc.abstractmethod
     def load(self) -> ModuleBase:
