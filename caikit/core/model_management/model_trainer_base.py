@@ -44,7 +44,11 @@ class ModelTrainerFutureBase(JobFutureBase):
             kwargs["future_name"] = kwargs["trainer_name"]
         if "training_id" in kwargs:
             kwargs["future_id"] = kwargs["training_id"]
+        # If save path is provided then add it as a property
+        if "save_path" in kwargs:
+            self.save_path = kwargs["save_path"]
         super().__init__(*args, **kwargs)
+        
 
     @abc.abstractmethod
     def load(self) -> ModuleBase:
