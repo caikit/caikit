@@ -172,6 +172,26 @@ def test_save_with_id_and_model_name(trainer_type_cfg, save_path):
     assert os.path.exists(model_future.save_path)
 
 
+def test_save_and_cleanup(trainer_type_cfg, save_path):
+    """Test that saving with the training id and model name
+    correctly injects the ID and name in the save path
+    """
+
+    trainer_type_cfg["retention_duration"] = "0s"
+    trainer = local_trainer(**trainer_type_cfg)
+    model_future = trainer.train(
+        SampleModule,
+        training_data=DataStream.from_iterable([]),
+        save_path=save_path,
+    )
+    model_future.wait()
+
+    # Force purge of futures to test
+    trainer._purge_old_futures()
+
+    assert not os.path.exists(model_future.save_path)
+
+
 def test_save_with_model_name(trainer_type_cfg, save_path):
     """Test that saving with the model name correctly
     injects the model name in the save path
