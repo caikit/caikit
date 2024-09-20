@@ -213,7 +213,7 @@ class LocalJobBase(JobBase):
         def _delete_result(self):
             """Helper function to clear out the result when purging"""
 
-            if self.save_path and (save_pathlib := Path(self.save_path)) and save_pathlib.exists():
+            if self.save_path and (save_pathlib := Path(self.save_path)).exists():
                 if save_pathlib.is_file():
                     save_pathlib.unlink(missing_ok=True)
                 else:
