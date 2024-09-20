@@ -32,6 +32,7 @@ from typing import Any, Dict, Iterable, List, Optional, Type, Union
 import abc
 import os
 import re
+import shutil
 import threading
 import uuid
 
@@ -211,8 +212,14 @@ class LocalJobBase(JobBase):
         ## Impl ##
         def _delete_result(self):
             """Helper function to clear out the result when purging"""
-            if self.save_path and Path(self.save_path).exists():
-                Path(self.save_path).unlink(missing_ok=True)
+
+            if self.save_path:
+                save_pathlib = Path(self.save_path)
+                if save_pathlib.exists():
+                    if save_pathlib.is_file():
+                        save_pathlib.unlink(missing_ok=True)
+                    else:
+                        shutil.rmtree(save_pathlib, ignore_errors=True)
 
         def _make_background_info(
             self, status: JobStatus, errors: Optional[List[Exception]] = None
