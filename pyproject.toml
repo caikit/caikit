@@ -116,17 +116,6 @@ dev-build = [
     "flit==3.9.0",
 ]
 
-# NOTE: This is a "special" dependency set to allow for compatibility tests with
-# older versions of protobuf, therefore, the upper bound on protobuf _must_ remain
-# unchanged.
-dev-proto3 = [
-    "caikit[all-dev]",
-    "protobuf>=3.19.0,<3.20",
-    "grpcio>=1.35.0,<1.64",
-    "grpcio-health-checking>=1.35.0,<1.64",
-    "grpcio-reflection>=1.35.0,<1.64",
-]
-
 # NOTE: This is "all" from the user and dev perspective
 all-dev = [
     "caikit[all, dev-test, dev-docs, dev-fmt, dev-build]"
