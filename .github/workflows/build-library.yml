@@ -44,12 +44,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version.setup }}
-        uses: actions/setup-python@v4
+        uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version.setup }}
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r setup_requirements.txt
+          uv pip install build
+          uv tool install tox --with tox-uv
       - name: Build and test with tox
         run: tox -e ${{ matrix.python-version.tox }} -- tests
