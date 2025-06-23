@@ -24,7 +24,7 @@ import pytest
 from tests.examples.shared import requirements, waitForPort
 
 
-@pytest.mark.xfail("Unclear why this fails now")
+@pytest.mark.xfail
 @pytest.mark.examples
 def test_example_text_sentiment():
     # Example specific grpc port
