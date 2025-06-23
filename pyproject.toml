@@ -21,7 +21,7 @@ dependencies = [
     "importlib-metadata>=6.8.0,<8.0.0",
     "munch>=2.5.0,<5.0",
     "numpy>=1.22.2,<3",
-    "protobuf>=3.19.0,<7",
+    "protobuf>=4,<7",
     "psutil>=5,<6",
     "py-to-proto>=0.5.0,<0.7.0,!=0.2.1",
     "PyYAML>=6.0,<7.0",
