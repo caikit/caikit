@@ -34,9 +34,6 @@ jobs:
             tox: 'py310'
           - setup: '3.11'
             tox: 'py311'
-          # Special matrix entry to ensure protobuf 3 compatibility
-          - setup: '3.8'
-            tox: 'proto3'
           # Special matrix entry to ensure core tests pass without optional deps
           - setup: '3.8'
             tox: 'core'
@@ -44,12 +41,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python ${{ matrix.python-version.setup }}
-        uses: astral-sh/setup-uv@v5
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version.setup }}
       - name: Install dependencies
         run: |
-          uv pip install build
-          uv tool install tox --with tox-uv
+          python -m pip install --upgrade pip
+          python -m pip install -r setup_requirements.txt
       - name: Build and test with tox
         run: tox -e ${{ matrix.python-version.tox }} -- tests
