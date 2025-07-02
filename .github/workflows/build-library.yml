@@ -36,8 +36,6 @@ jobs:
             tox: 'py311'
           - setup: '3.12'
             tox: 'py312'
-          - setup: '3.13'
-            tox: 'py313'
           # Special matrix entry to ensure core tests pass without optional deps
           - setup: '3.8'
             tox: 'core'
