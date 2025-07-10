@@ -143,6 +143,4 @@ def _get_message_class(
     """Helper to get the concrete protobuf class from a descriptor. This
     supports compatibility between protobuf 3.X and 4.X
     """
-    if hasattr(message_factory, "GetMessageClass"):
-        return message_factory.GetMessageClass(desc)  # pragma: no cover
     return message_factory.GetMessageClass(desc)  # pragma: no cover
