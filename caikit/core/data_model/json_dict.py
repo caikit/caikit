@@ -145,4 +145,4 @@ def _get_message_class(
     """
     if hasattr(message_factory, "GetMessageClass"):
         return message_factory.GetMessageClass(desc)  # pragma: no cover
-    return message_factory.MessageFactory().GetPrototype(desc)  # pragma: no cover
+    return message_factory.GetMessageClass(desc)  # pragma: no cover
