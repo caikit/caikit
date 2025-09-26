@@ -26,6 +26,7 @@ from functools import partial
 from typing import Any, Callable, Optional, Tuple
 import multiprocessing
 import os
+import sys
 
 # First Party
 import alog
@@ -41,9 +42,9 @@ error = error_handler.get(log)
 
 OOM_EXIT_CODES = [137, 9, -9]
 
-FORK_CTX = multiprocessing.get_context("fork")
+FORK_CTX = multiprocessing.get_context("spawn") if sys.platform == 'win32' else multiprocessing.get_context("fork")
 SPAWN_CTX = multiprocessing.get_context("spawn")
-FORKSERVER_CTX = multiprocessing.get_context("forkserver")
+FORKSERVER_CTX = multiprocessing.get_context("spawn") if sys.platform == 'win32' else multiprocessing.get_context("forkserver")
 
 
 class _DestroyableProcess(
