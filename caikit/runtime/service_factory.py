@@ -21,8 +21,13 @@ import os
 
 # Third Party
 import google.protobuf.descriptor
-import google.protobuf.service
 import grpc
+
+try:
+    # Third Party
+    from google.protobuf.service import Service as GeneratedServiceType
+except ImportError:
+    from py_to_proto.compat import GeneratedServiceType
 
 # First Party
 from py_to_proto.json_to_service import json_to_service
@@ -73,11 +78,9 @@ class ServicePackage:
     - A client messages module
     """
 
-    service: Type[google.protobuf.service.Service]
+    service: Type[GeneratedServiceType]
     descriptor: google.protobuf.descriptor.ServiceDescriptor
-    registration_function: Callable[
-        [google.protobuf.service.Service, grpc.Server], None
-    ]
+    registration_function: Callable[[GeneratedServiceType, grpc.Server], None]
     stub_class: Type
     messages: ModuleType
     caikit_rpcs: Dict[str, CaikitRPCBase]
