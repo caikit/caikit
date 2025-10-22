@@ -26,6 +26,7 @@ from functools import partial
 from typing import Any, Callable, Optional, Tuple
 import multiprocessing
 import os
+import sys
 
 # First Party
 import alog
@@ -41,9 +42,11 @@ error = error_handler.get(log)
 
 OOM_EXIT_CODES = [137, 9, -9]
 
-FORK_CTX = multiprocessing.get_context("fork")
+FORK_CTX = None if sys.platform == "win32" else multiprocessing.get_context("fork")
 SPAWN_CTX = multiprocessing.get_context("spawn")
-FORKSERVER_CTX = multiprocessing.get_context("forkserver")
+FORKSERVER_CTX = (
+    None if sys.platform == "win32" else multiprocessing.get_context("forkserver")
+)
 
 
 class _DestroyableProcess(
@@ -231,11 +234,13 @@ class _ForkserverDestroyableProcess(FORKSERVER_CTX.Process, _DestroyableProcess)
     _MP_CTX = FORKSERVER_CTX
 
 
-_PROCESS_TYPES = {
-    "fork": _ForkDestroyableProcess,
-    "forkserver": _ForkserverDestroyableProcess,
-    "spawn": _SpawnDestroyableProcess,
-}
+_PROCESS_TYPES = {}
+if FORK_CTX is not None:
+    _PROCESS_TYPES["fork"] = _ForkDestroyableProcess
+if SPAWN_CTX is not None:
+    _PROCESS_TYPES["spawn"] = _SpawnDestroyableProcess
+if FORKSERVER_CTX is not None:
+    _PROCESS_TYPES["forkserver"] = _ForkserverDestroyableProcess
 
 
 def DestroyableProcess(start_method: str, *args, **kwargs):
@@ -247,7 +252,9 @@ def DestroyableProcess(start_method: str, *args, **kwargs):
     error.value_check(
         "<COR16699811E>",
         start_method in _PROCESS_TYPES,
-        "Unsupported start_method: {}",
+        "Unsupported start_method on {}: {}. Supported options are {}",
+        sys.platform,
         start_method,
+        list(_PROCESS_TYPES.keys()),
     )
     return _PROCESS_TYPES[start_method](*args, **kwargs)
