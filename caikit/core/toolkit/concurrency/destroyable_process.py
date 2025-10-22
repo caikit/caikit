@@ -222,24 +222,24 @@ class _DestroyableProcess(
         self._completion_event.set()
 
 
-class _ForkDestroyableProcess(FORK_CTX.Process, _DestroyableProcess):
-    _MP_CTX = FORK_CTX
-
-
-class _SpawnDestroyableProcess(SPAWN_CTX.Process, _DestroyableProcess):
-    _MP_CTX = SPAWN_CTX
-
-
-class _ForkserverDestroyableProcess(FORKSERVER_CTX.Process, _DestroyableProcess):
-    _MP_CTX = FORKSERVER_CTX
-
-
 _PROCESS_TYPES = {}
 if FORK_CTX is not None:
+
+    class _ForkDestroyableProcess(FORK_CTX.Process, _DestroyableProcess):
+        _MP_CTX = FORK_CTX
+
     _PROCESS_TYPES["fork"] = _ForkDestroyableProcess
 if SPAWN_CTX is not None:
+
+    class _SpawnDestroyableProcess(SPAWN_CTX.Process, _DestroyableProcess):
+        _MP_CTX = SPAWN_CTX
+
     _PROCESS_TYPES["spawn"] = _SpawnDestroyableProcess
 if FORKSERVER_CTX is not None:
+
+    class _ForkserverDestroyableProcess(FORKSERVER_CTX.Process, _DestroyableProcess):
+        _MP_CTX = FORKSERVER_CTX
+
     _PROCESS_TYPES["forkserver"] = _ForkserverDestroyableProcess
 
 
