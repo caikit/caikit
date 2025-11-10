@@ -272,6 +272,11 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 overlapping_kwarg_config,
             )
 
+            log.debug(
+                "server_config has the following configuration value(s): %s",
+                server_config,
+            )
+
             # Set the default concurrency limit if not changed from the default
             # sentinel value
             concurrency_limit = server_config.get("limit_concurrency", 0)
@@ -286,6 +291,13 @@ class RuntimeHTTPServer(RuntimeServerBase):
                 log.info(
                     "<RUN57106696I>",
                     "Limiting HTTP server concurrency to %d",
+                    concurrency_limit,
+                )
+            # limit concurrency is set to a specific value, so log the value
+            else:
+                log.info(
+                    "<RUN57106695I>",
+                    "HTTP server concurrency set to %d",
                     concurrency_limit,
                 )
             server_config["limit_concurrency"] = concurrency_limit
