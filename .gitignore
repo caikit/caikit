@@ -29,8 +29,8 @@ venv/
 # debug proto files
 tests/protos/*
 
-# Tox envs
-.tox
+# uv
+uv.lock
 
 # Sphinx generated files
 _build/

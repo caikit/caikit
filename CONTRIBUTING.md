@@ -66,35 +66,29 @@ Improvements to existing functionality are tracked as [GitHub issues using the U
 The following tools are required:
 
 - [git](https://git-scm.com)
-- [python](https://www.python.org) (v3.8+)
-- [pip](https://pypi.org/project/pip/) (v23.0+)
+- [python](https://www.python.org) (v3.9+)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 
-You can setup your dev environment using [tox](https://tox.wiki/en/latest/), an environment orchestrator which allows for setting up environments for and invoking builds, unit tests, formatting, linting, etc. Install tox with:
-
-```sh
-pip install -r setup_requirements.txt
-```
-
-If you want to manage your own virtual environment instead of using `tox`, you can install `caikit` and all dependencies with:
+Set up your dev environment by syncing all dependencies (uv handles virtual environment creation automatically):
 
 ```sh
-pip install .
+uv sync --extra all-dev
 ```
 
 ### Unit tests
 
 Unit tests are enforced by the CI system. When making changes, run the tests before pushing the changes to avoid CI issues.
 
-Running unit tests against all supported Python versions is as simple as:
+Running unit tests is as simple as:
 
 ```sh
-tox
+uv run pytest
 ```
 
-Running tests against a single Python version can be done with:
+To run the full test suite with all extras:
 
 ```sh
-tox -e py
+uv run --extra all --extra dev-test pytest
 ```
 
 ### Coding style
@@ -106,15 +100,21 @@ We use [pre-commit](https://pre-commit.com/) to enforce coding style using [blac
 You can invoke formatting with:
 
 ```sh
-tox -e fmt
+uv run --extra dev-fmt ./scripts/fmt.sh
 ```
 
-In addition, we use [pylint](https://www.pylint.org) to perform static code analysis of the code.
+In addition, we use [ruff](https://docs.astral.sh/ruff/) to perform static code analysis of the code.
 
 You can invoke the linting with the following command
 
 ```sh
-tox -e lint
+uv run --extra dev-fmt ruff check caikit examples
+```
+
+You can check internal import rules with:
+
+```sh
+uv run --extra dev-fmt ./scripts/check_deps.sh
 ```
 
 ## Your First Code Contribution

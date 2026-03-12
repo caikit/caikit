@@ -1,5 +1,6 @@
 [build-system]
-requires = ["setuptools>=60", "setuptools-scm>=8.0"]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
 [project]
 name = "caikit"
@@ -7,9 +8,15 @@ dynamic = ["version"]
 description = "AI toolkit that enables AI users to consume stable task-specific model APIs and enables AI developers build algorithms and models in a modular/composable framework"
 license = {text = "Apache-2.0"}
 readme = "README.md"
-requires-python = ">=3.8"
-classifiers=[
-    "License :: OSI Approved :: Apache Software License"
+requires-python = ">=3.9"
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "alchemy-config>=1.1.1,<2.0.0",
@@ -23,7 +30,7 @@ dependencies = [
     "numpy>=1.22.2,<3",
     "protobuf>=4,<7",
     "psutil>=5,<6",
-    "py-to-proto>=0.5.0,<0.7.0,!=0.2.1",
+    "py-to-proto>=0.5.0,<0.8.0,!=0.2.1",
     "PyYAML>=6.0,<7.0",
     "semver>=2.13.0,<4.0",
     "six>=1.16.0,<2.0.0",
@@ -68,17 +75,17 @@ runtime-trace = [
 ]
 
 interfaces-vision = [
-    "pillow>=6.2.1,<11.0"
+    "pillow>=6.2.1,<12.0"
 ]
 
 interfaces-ts = [
-    "pandas>=1.4.3,<2",
+    "pandas>=1.4.3,<3",
 ]
 
 interfaces-ts-pyspark = [
     "caikit[interfaces-ts]",
     "pyspark>=3.3,<3.6",
-    "pyarrow>=8.0.0,<16"
+    "pyarrow>=8.0.0,<19"
 ]
 
 # NOTE: This is "all" from the user perspective, not the dev perspective
@@ -121,15 +128,20 @@ all-dev = [
     "caikit[all, dev-test, dev-docs, dev-fmt, dev-build]"
 ]
 
-[tool.setuptools.packages.find]
-where = [""]
-include = ["caikit", "caikit*"]
-
-[tool.setuptools_scm]
-write_to = "caikit/_version.py"
-
 [project.urls]
 Source = "https://github.com/caikit/caikit"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "caikit/_version.py"
+
+[tool.hatch.build.targets.sdist]
+include = ["caikit/", "caikit_health_probe/", "LICENSE", "README.md"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["caikit", "caikit_health_probe"]
 
 [tool.pytest.ini_options]
 markers = [
@@ -144,16 +156,18 @@ filterwarnings = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py38"
+target-version = "py39"
 exclude = ["caikit/runtime/protobufs/*.py"]
 
 
 [tool.ruff.lint]
 select = [ "E", "F", "UP", "B", "SIM", "I"]
 ignore = [
+    "UP006", # non-pep585-annotation (e.g. Dict -> dict) - existing codebase convention
     "UP032", # f-string
+    "UP033", # lru-cache-without-parameters - existing codebase convention
     "UP034", # extraneous-parentheses
-    # "UP035", # deprecated-import
+    "UP035", # deprecated-import (e.g. typing.Dict -> dict) - existing codebase convention
 
     ## original errors fromt pylint
     "F403", # unable to detect undefined names
