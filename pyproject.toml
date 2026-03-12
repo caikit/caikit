@@ -84,8 +84,8 @@ interfaces-ts = [
 
 interfaces-ts-pyspark = [
     "caikit[interfaces-ts]",
-    "pyspark>=3.3,<3.6",
-    "pyarrow>=8.0.0,<19"
+    "pyspark>=3.3,<3.6; python_version < '3.13'",
+    "pyarrow>=8.0.0,<19; python_version < '3.13'",
 ]
 
 # NOTE: This is "all" from the user perspective, not the dev perspective

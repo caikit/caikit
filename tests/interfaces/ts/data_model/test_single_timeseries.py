@@ -27,8 +27,10 @@ from pandas import RangeIndex
 import dateutil
 import numpy as np
 import pandas as pd
-import pyspark.sql
 import pytest
+
+pyspark = pytest.importorskip("pyspark")
+import pyspark.sql
 
 # Local
 from caikit.interfaces.ts.data_model._single_timeseries import SingleTimeSeries
@@ -421,9 +423,9 @@ def test_not_serializable_value_val_any():
 
 @pytest.mark.filterwarnings(
     "ignore:'PYARROW_IGNORE_TIMEZONE' environment variable was not set.*",
-    "ignore:`to_list` loads all data into the driver's memory.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
-    "ignore:`to_numpy` loads all data into the driver's memory.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
-    "ignore:If `index_col` is not specified for `to_spark`, the existing index is lost when converting to Spark DataFrame.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
+    "ignore:`to_list` loads all data into the driver's memory.*:UserWarning",
+    "ignore:`to_numpy` loads all data into the driver's memory.*:UserWarning",
+    "ignore:If `index_col` is not specified for `to_spark`, the existing index is lost when converting to Spark DataFrame.*:UserWarning",
 )
 def test_create_single_timeseries_dm():
     df = pd.DataFrame({"time_tick": [0, 1, 2], "value": [1.0, 2.0, 3.0]})
@@ -587,8 +589,8 @@ def get_col_list(df_in, col):
 
 @pytest.mark.filterwarnings(
     "ignore:'PYARROW_IGNORE_TIMEZONE' environment variable was not set.*",
-    "ignore:`to_list` loads all data into the driver's memory.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
-    "ignore:`to_numpy` loads all data into the driver's memory.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
+    "ignore:`to_list` loads all data into the driver's memory.*:UserWarning",
+    "ignore:`to_numpy` loads all data into the driver's memory.*:UserWarning",
 )
 @pytest.mark.parametrize("df_ts_data", testable_data_frames)
 def test_timeseries_pd(df_ts_data):
@@ -722,7 +724,7 @@ def test_timeseries_pd(df_ts_data):
 
 
 @pytest.mark.filterwarnings(
-    "ignore:If `index_col` is not specified for `to_spark`, the existing index is lost when converting to Spark DataFrame.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning"
+    "ignore:If `index_col` is not specified for `to_spark`, the existing index is lost when converting to Spark DataFrame.*:UserWarning"
 )
 @pytest.mark.parametrize("df_ts_data", testable_data_frames)
 def test_timeseries_spark(df_ts_data):

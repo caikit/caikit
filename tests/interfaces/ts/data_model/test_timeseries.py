@@ -29,8 +29,9 @@ from pandas import RangeIndex
 import dateutil
 import numpy as np
 import pandas as pd
-import pyspark
 import pytest
+
+pyspark = pytest.importorskip("pyspark")
 
 # Local
 from caikit.core.data_model import ProducerId
@@ -177,8 +178,8 @@ def get_col_list(df_in, col):
 
 @pytest.mark.filterwarnings(
     "ignore:'PYARROW_IGNORE_TIMEZONE' environment variable was not set.*",
-    "ignore:`to_list` loads all data into the driver's memory.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
-    "ignore:`to_numpy` loads all data into the driver's memory.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
+    "ignore:`to_list` loads all data into the driver's memory.*:UserWarning",
+    "ignore:`to_numpy` loads all data into the driver's memory.*:UserWarning",
     "ignore:In a future version of pandas, a length 1 tuple will be returned.*:",
 )
 @pytest.mark.parametrize("df_mts_data", testable_data_frames)
@@ -223,9 +224,9 @@ def test_timeseries_spark(df_mts_data):
 
 @pytest.mark.filterwarnings(
     "ignore:'PYARROW_IGNORE_TIMEZONE' environment variable was not set.*",
-    "ignore:`to_list` loads all data into the driver's memory.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
-    "ignore:`to_numpy` loads all data into the driver's memory.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
-    "ignore:If `index_col` is not specified for `to_spark`, the existing index is lost when converting to Spark DataFrame.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
+    "ignore:`to_list` loads all data into the driver's memory.*:UserWarning",
+    "ignore:`to_numpy` loads all data into the driver's memory.*:UserWarning",
+    "ignore:If `index_col` is not specified for `to_spark`, the existing index is lost when converting to Spark DataFrame.*:UserWarning",
     "ignore:In a future version of pandas, a length 1 tuple will be returned.*:",
 )
 @pytest.mark.slow
@@ -747,7 +748,7 @@ def test_mts_len(sslocal_fixture):
 
 
 @pytest.mark.filterwarnings(
-    "ignore:.*loads all data into the driver's memory.*:pyspark.pandas.utils.PandasAPIOnSparkAdviceWarning",
+    "ignore:.*loads all data into the driver's memory.*:UserWarning",
     "ignore:toPandas attempted Arrow optimization.*:UserWarning",
 )
 def test_dm_serializes_spark_vectors(sslocal_fixture):
