@@ -685,12 +685,19 @@ def test_timeseries_pd(df_ts_data):
 
             # static as it never changes here
             to_check = [
-                pd.Period(value=dt.datetime.utcfromtimestamp(631195200), freq="H"),
                 pd.Period(
-                    value=dt.datetime.utcfromtimestamp(631195200 + 3600), freq="H"
+                    value=dt.datetime.fromtimestamp(631195200, tz=timezone.utc),
+                    freq="H",
                 ),
                 pd.Period(
-                    value=dt.datetime.utcfromtimestamp(631195200 + 3600 * 2), freq="H"
+                    value=dt.datetime.fromtimestamp(631195200 + 3600, tz=timezone.utc),
+                    freq="H",
+                ),
+                pd.Period(
+                    value=dt.datetime.fromtimestamp(
+                        631195200 + 3600 * 2, tz=timezone.utc
+                    ),
+                    freq="H",
                 ),
             ]
 
