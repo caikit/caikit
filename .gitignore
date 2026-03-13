@@ -37,6 +37,10 @@ _build/
 
 
 /caikit/_version.py
+
+# uv
+uv.lock
+
 # Compiled pb2s
 *_pb2.py
 *_pb2_grpc.py

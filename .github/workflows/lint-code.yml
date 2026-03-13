@@ -16,28 +16,23 @@ name: Lint and Format
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
         with:
-          python-version: 3.9
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r setup_requirements.txt
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v5
       - name: Check Formatting
-        run: tox -e fmt
+        run: uv run --extra dev-fmt ./scripts/fmt.sh
       - name: Linting
-        run: tox -e lint
+        run: uv run --extra all --extra dev-fmt --extra dev-test ruff check caikit examples
       - name: Setup Graphviz # `graphviz/dot` is required for the import checker
         uses: ts-graphviz/setup-graphviz@v1
       - name: Enforce import rules
-        run: tox -e imports
+        run: uv run --extra dev-fmt ./scripts/check_deps.sh
