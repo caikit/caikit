@@ -206,7 +206,7 @@ class PandasTimeSeriesBackend(TimeSeriesBackendBase):
         error.type_check_all(
             "<COR81128383E>",
             str,
-            np.int_,
+            np.integer,
             int,
             allow_none=True,
             ids=ids,
@@ -255,10 +255,10 @@ class PandasTimeSeriesBackend(TimeSeriesBackendBase):
             return self._timestamp_column
 
         if name == "ids" and self._ids is not None and len(self._ids) != 0:
-            if isinstance(self._ids[0], (np.int_, int)):
+            if isinstance(self._ids[0], (np.integer, int)):
                 val = data_model_class.IntIDSequence(
                     values=[
-                        id.item() if isinstance(id, np.int_) else id for id in self._ids
+                        id.item() if isinstance(id, np.integer) else id for id in self._ids
                     ]
                 )
                 return DataBase.OneofFieldVal(val=val, which_oneof="id_int")
