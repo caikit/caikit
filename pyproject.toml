@@ -151,9 +151,10 @@ exclude = ["caikit/runtime/protobufs/*.py"]
 [tool.ruff.lint]
 select = [ "E", "F", "UP", "B", "SIM", "I"]
 ignore = [
+    "UP006", # non-pep585-annotation (e.g. typing.List -> list)
     "UP032", # f-string
     "UP034", # extraneous-parentheses
-    # "UP035", # deprecated-import
+    "UP035", # deprecated-import (e.g. typing.List)
 
     ## original errors fromt pylint
     "F403", # unable to detect undefined names

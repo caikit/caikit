@@ -89,7 +89,7 @@ class SingleTimeSeries(DataObjectBase):
         backend
         """
         # this is called from MultiTimeSeries
-        if backend := kwargs.get("_backend", None):
+        if backend := kwargs.get("_backend"):
             self._backend = backend
         elif "values" in kwargs:
             self._ids = None
