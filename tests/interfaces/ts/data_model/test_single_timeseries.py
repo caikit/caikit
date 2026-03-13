@@ -30,6 +30,7 @@ import pandas as pd
 import pytest
 
 pyspark = pytest.importorskip("pyspark")
+# Third Party
 import pyspark.sql
 
 # Local
@@ -582,9 +583,9 @@ def get_df_len(df_in):
 
 def get_col_list(df_in, col):
     if isinstance(df_in, pd.DataFrame):
-        return df_in[col].values.tolist()
+        return df_in[col].tolist()
     else:
-        return df_in.toPandas()[col].values.tolist()
+        return df_in.toPandas()[col].tolist()
 
 
 @pytest.mark.filterwarnings(
