@@ -1,7 +1,7 @@
 # Caikit
 
 [![Build Status](https://github.com/caikit/caikit/actions/workflows/build-library.yml/badge.svg?branch=main&label=tests)](https://github.com/caikit/caikit/actions)
-[![Minimum Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Minimum Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Release](https://img.shields.io/github/v/release/caikit/caikit?include_prereleases&style=)](https://github.com/caikit/caikit/releases/)
 [![Read the Docs](https://img.shields.io/static/v1?label=readthedocs&message=reference&color=blue)](https://caikit.readthedocs.io/en/latest/)
 [![OpenSSF Best Practices](https://bestpractices.coreinfrastructure.org/projects/7443/badge)](https://bestpractices.coreinfrastructure.org/projects/7443)

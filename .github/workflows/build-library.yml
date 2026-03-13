@@ -26,8 +26,6 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - setup: '3.8'
-            tox: 'py38'
           - setup: '3.9'
             tox: 'py39'
           - setup: '3.10'
@@ -37,7 +35,7 @@ jobs:
           - setup: '3.12'
             tox: 'py312'
           # Special matrix entry to ensure core tests pass without optional deps
-          - setup: '3.8'
+          - setup: '3.9'
             tox: 'core'
 
     steps:
