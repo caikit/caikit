@@ -82,7 +82,7 @@ def strip_periodic(
     # find location of period field
     try:
         index = (
-            [type(x) for x in input_df.dtypes].index(pd.core.dtypes.dtypes.PeriodDtype)
+            [type(x) for x in input_df.dtypes].index(pd.PeriodDtype)
             if ts_col_name is None
             else input_df.columns.to_list().index(ts_col_name)
         )
