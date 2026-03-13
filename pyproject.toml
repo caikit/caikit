@@ -72,7 +72,8 @@ interfaces-vision = [
 ]
 
 interfaces-ts = [
-    "pandas>=1.4.3,<2",
+    "pandas>=1.4.3,<2; python_version<'3.12'",
+    "pandas>=2.0,<3; python_version>='3.12'",
 ]
 
 interfaces-ts-pyspark = [
