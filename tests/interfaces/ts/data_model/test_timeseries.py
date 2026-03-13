@@ -398,12 +398,12 @@ def check_df_ts_eq(
                 return False
             elif (
                 datamodel_ts.time_period.period_length.dt_sec.as_timedelta()
-                != ts_from_df.dtype.freq.delta
+                != pd.Timedelta(ts_from_df.dtype.freq)
             ):
                 test_log.debug(
                     "Period length mismatch: %s != %s",
                     datamodel_ts.time_period.period_length.dt_sec.as_timedelta(),
-                    ts_from_df.dtype.freq.delta,
+                    pd.Timedelta(ts_from_df.dtype.freq),
                 )
                 return False
     elif isinstance(ts_from_df, RangeIndex):

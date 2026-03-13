@@ -217,12 +217,12 @@ def check_df_ts_eq(
                 return False
             elif (
                 ts.time_period.period_length.dt_sec.as_timedelta()
-                != df_ts_range.dtype.freq.delta
+                != pd.Timedelta(df_ts_range.dtype.freq)
             ):
                 test_log.debug(
                     "Period length mismatch: %s != %s",
                     ts.time_period.period_length.dt_sec.as_timedelta(),
-                    df_ts_range.dtype.freq.delta,
+                    pd.Timedelta(df_ts_range.dtype.freq),
                 )
                 return False
     elif isinstance(df_ts_range, RangeIndex):
