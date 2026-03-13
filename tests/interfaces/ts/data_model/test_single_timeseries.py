@@ -215,9 +215,8 @@ def check_df_ts_eq(
             elif not ts.time_period.period_length.dt_sec:
                 test_log.debug("Period length for periodic not in seconds or str")
                 return False
-            elif (
-                ts.time_period.period_length.dt_sec.as_timedelta()
-                != pd.Timedelta(df_ts_range.dtype.freq)
+            elif ts.time_period.period_length.dt_sec.as_timedelta() != pd.Timedelta(
+                df_ts_range.dtype.freq
             ):
                 test_log.debug(
                     "Period length mismatch: %s != %s",
