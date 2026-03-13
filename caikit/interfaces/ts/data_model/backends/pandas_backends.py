@@ -16,17 +16,17 @@ Core data model backends backed by pandas
 """
 
 # Standard
+import json
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, Type, Union
-import json
-
-# Third Party
-from pandas import RangeIndex
-import numpy as np
-import pandas as pd
 
 # First Party
 import alog
+import numpy as np
+import pandas as pd
+
+# Third Party
+from pandas import RangeIndex
 
 # Local
 from .....core.data_model import DataBase, ProducerId
