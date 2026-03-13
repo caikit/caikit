@@ -177,14 +177,14 @@ def is_protoable_type(arg_type: Type) -> bool:
         protoable = True
     elif is_data_model_type(arg_type):
         protoable = True
-    elif typing.get_origin(arg_type) == list:
+    elif typing.get_origin(arg_type) is list:
         log.debug2("Arg is List")
         if not typing.get_args(arg_type):
             log.debug2("List annotation has no type")
             protoable = False
         else:
             protoable = is_protoable_type(typing.get_args(arg_type)[0])
-    elif typing.get_origin(arg_type) == dict:
+    elif typing.get_origin(arg_type) is dict:
         log.debug2("Arg is Dict")
         if not typing.get_args(arg_type):
             log.debug2("Dict annotation has no type")

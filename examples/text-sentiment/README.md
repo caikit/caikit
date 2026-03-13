@@ -6,7 +6,7 @@ This example uses the [HuggingFace DistilBERT base uncased finetuned SST-2](http
 
 The following tools are required:
 
-- [python](https://www.python.org) (v3.8+)
+- [python](https://www.python.org) (v3.9+)
 - [pip](https://pypi.org/project/pip/) (v23.0+)
 
 **Note: Before installing dependencies and to avoid conflicts in your environment, it is advisable to use a [virtual environment (venv)](https://docs.python.org/3/library/venv.html).**

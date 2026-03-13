@@ -170,9 +170,9 @@ def get_df_len(df_in):
 
 def get_col_list(df_in, col):
     if isinstance(df_in, pd.DataFrame):
-        return df_in[col].values.tolist()
+        return df_in[col].tolist()
     else:
-        return df_in.toPandas()[col].values.tolist()
+        return df_in.toPandas()[col].tolist()
 
 
 @pytest.mark.filterwarnings(
@@ -398,12 +398,12 @@ def check_df_ts_eq(
                 return False
             elif (
                 datamodel_ts.time_period.period_length.dt_sec.as_timedelta()
-                != ts_from_df.dtype.freq.delta
+                != pd.Timedelta(ts_from_df.dtype.freq)
             ):
                 test_log.debug(
                     "Period length mismatch: %s != %s",
                     datamodel_ts.time_period.period_length.dt_sec.as_timedelta(),
-                    ts_from_df.dtype.freq.delta,
+                    pd.Timedelta(ts_from_df.dtype.freq),
                 )
                 return False
     elif isinstance(ts_from_df, RangeIndex):

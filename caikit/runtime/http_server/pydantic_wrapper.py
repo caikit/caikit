@@ -188,7 +188,7 @@ def _get_pydantic_type(field_type: type) -> type:
         return int
     if np.issubclass_(field_type, np.floating):
         return float
-    if field_type == bytes:
+    if field_type is bytes:
         return Annotated[bytes, BeforeValidator(_from_base64)]
     if field_type in (
         int,

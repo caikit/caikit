@@ -17,7 +17,7 @@ The core data model objects for primitive time types
 
 # Standard
 from datetime import datetime, timedelta, timezone
-from functools import lru_cache
+from functools import cache
 from typing import List, Tuple, Union
 import json
 
@@ -199,7 +199,7 @@ class ValueSequence(DataObjectBase):
         values: Annotated[List[str], FieldNumber(1)]
 
         @classmethod
-        @lru_cache(maxsize=None)
+        @cache
         def decode_values(cls, values: Tuple[str]):
             """Cached class method to enable caching of decoded representations"""
             return [json.loads(v) for v in values]

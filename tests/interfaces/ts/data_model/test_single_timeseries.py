@@ -215,14 +215,13 @@ def check_df_ts_eq(
             elif not ts.time_period.period_length.dt_sec:
                 test_log.debug("Period length for periodic not in seconds or str")
                 return False
-            elif (
-                ts.time_period.period_length.dt_sec.as_timedelta()
-                != df_ts_range.dtype.freq.delta
+            elif ts.time_period.period_length.dt_sec.as_timedelta() != pd.Timedelta(
+                df_ts_range.dtype.freq
             ):
                 test_log.debug(
                     "Period length mismatch: %s != %s",
                     ts.time_period.period_length.dt_sec.as_timedelta(),
-                    df_ts_range.dtype.freq.delta,
+                    pd.Timedelta(df_ts_range.dtype.freq),
                 )
                 return False
     elif isinstance(df_ts_range, RangeIndex):
@@ -580,9 +579,9 @@ def get_df_len(df_in):
 
 def get_col_list(df_in, col):
     if isinstance(df_in, pd.DataFrame):
-        return df_in[col].values.tolist()
+        return df_in[col].tolist()
     else:
-        return df_in.toPandas()[col].values.tolist()
+        return df_in.toPandas()[col].tolist()
 
 
 @pytest.mark.filterwarnings(
@@ -686,12 +685,19 @@ def test_timeseries_pd(df_ts_data):
 
             # static as it never changes here
             to_check = [
-                pd.Period(value=dt.datetime.utcfromtimestamp(631195200), freq="H"),
                 pd.Period(
-                    value=dt.datetime.utcfromtimestamp(631195200 + 3600), freq="H"
+                    value=dt.datetime.fromtimestamp(631195200, tz=timezone.utc),
+                    freq="H",
                 ),
                 pd.Period(
-                    value=dt.datetime.utcfromtimestamp(631195200 + 3600 * 2), freq="H"
+                    value=dt.datetime.fromtimestamp(631195200 + 3600, tz=timezone.utc),
+                    freq="H",
+                ),
+                pd.Period(
+                    value=dt.datetime.fromtimestamp(
+                        631195200 + 3600 * 2, tz=timezone.utc
+                    ),
+                    freq="H",
                 ),
             ]
 

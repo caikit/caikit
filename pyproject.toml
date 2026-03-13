@@ -7,7 +7,7 @@ dynamic = ["version"]
 description = "AI toolkit that enables AI users to consume stable task-specific model APIs and enables AI developers build algorithms and models in a modular/composable framework"
 license = {text = "Apache-2.0"}
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 classifiers=[
     "License :: OSI Approved :: Apache Software License"
 ]
@@ -72,7 +72,7 @@ interfaces-vision = [
 ]
 
 interfaces-ts = [
-    "pandas>=1.4.3,<2",
+    "pandas>=2.0,<3",
 ]
 
 interfaces-ts-pyspark = [
@@ -144,16 +144,17 @@ filterwarnings = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py38"
+target-version = "py39"
 exclude = ["caikit/runtime/protobufs/*.py"]
 
 
 [tool.ruff.lint]
 select = [ "E", "F", "UP", "B", "SIM", "I"]
 ignore = [
+    "UP006", # non-pep585-annotation (e.g. typing.List -> list)
     "UP032", # f-string
     "UP034", # extraneous-parentheses
-    # "UP035", # deprecated-import
+    "UP035", # deprecated-import (e.g. typing.List)
 
     ## original errors fromt pylint
     "F403", # unable to detect undefined names
