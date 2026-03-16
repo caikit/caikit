@@ -80,7 +80,7 @@ uv sync --extra all-dev
 Unit tests are enforced by the CI system. When making changes, run the tests before pushing the changes to avoid CI issues.
 
 ```sh
-uv run pytest tests -m "not (examples or slow)"
+uv run pytest tests
 ```
 
 ### Coding style

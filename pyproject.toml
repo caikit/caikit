@@ -139,6 +139,7 @@ packages = ["caikit", "caikit_health_probe"]
 Source = "https://github.com/caikit/caikit"
 
 [tool.pytest.ini_options]
+addopts = "-m 'not (examples or slow)'"
 markers = [
     "examples: marks tests as e2e examples (deselect with '-m \"not examples\"')",
     "slow: marks tests requiring pyspark be installed (deselect with '-m \"not slow\"')"

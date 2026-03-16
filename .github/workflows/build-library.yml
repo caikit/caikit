@@ -38,7 +38,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: Run unit tests
         if: ${{ !matrix.core-only }}
-        run: uv run --no-editable --python ${{ matrix.python-version }} --extra all --extra dev-test pytest --cov=caikit --cov-report=html:coverage --cov-report=xml:coverage.xml tests -m "not (examples or slow)" -W error::UserWarning
+        run: uv run --no-editable --python ${{ matrix.python-version }} --extra all --extra dev-test pytest --cov=caikit --cov-report=html:coverage --cov-report=xml:coverage.xml tests -W error::UserWarning
       - name: Run core-only unit tests
         if: ${{ matrix.core-only }}
         run: uv run --no-editable --python ${{ matrix.python-version }} --extra dev-test pytest tests/core
