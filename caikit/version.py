@@ -4,3 +4,4 @@ try:
 except ImportError:
     __version__ = "unknown"
     __version_tuple__ = (0, 0, __version__)
+    version_tuple = __version_tuple__
