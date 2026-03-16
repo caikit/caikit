@@ -1,5 +1,6 @@
 [build-system]
-requires = ["setuptools>=60", "setuptools-scm>=8.0"]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
 [project]
 name = "caikit"
@@ -8,8 +9,13 @@ description = "AI toolkit that enables AI users to consume stable task-specific 
 license = {text = "Apache-2.0"}
 readme = "README.md"
 requires-python = ">=3.9"
-classifiers=[
-    "License :: OSI Approved :: Apache Software License"
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
     "alchemy-config>=1.1.1,<2.0.0",
@@ -23,7 +29,7 @@ dependencies = [
     "numpy>=1.22.2,<3",
     "protobuf>=4,<7",
     "psutil>=5,<6",
-    "py-to-proto>=0.5.0,<0.7.0,!=0.2.1",
+    "py-to-proto>=0.5.0,<0.8.0,!=0.2.1",
     "PyYAML>=6.0,<7.0",
     "semver>=2.13.0,<4.0",
     "six>=1.16.0,<2.0.0",
@@ -77,8 +83,9 @@ interfaces-ts = [
 
 interfaces-ts-pyspark = [
     "caikit[interfaces-ts]",
+    "numpy<2",
     "pyspark>=3.3,<3.6",
-    "pyarrow>=8.0.0,<16"
+    "pyarrow>=8.0.0,<22"
 ]
 
 # NOTE: This is "all" from the user perspective, not the dev perspective
@@ -112,26 +119,28 @@ dev-fmt = [
     "pydeps>=1.12.12,<2",
 ]
 
-dev-build = [
-    "flit==3.9.0",
-]
-
 # NOTE: This is "all" from the user and dev perspective
 all-dev = [
-    "caikit[all, dev-test, dev-docs, dev-fmt, dev-build]"
+    "caikit[all, dev-test, dev-docs, dev-fmt]"
 ]
 
-[tool.setuptools.packages.find]
-where = [""]
-include = ["caikit", "caikit*"]
+[tool.hatch.version]
+source = "vcs"
 
-[tool.setuptools_scm]
-write_to = "caikit/_version.py"
+[tool.hatch.build.hooks.vcs]
+version-file = "caikit/_version.py"
+
+[tool.hatch.build.targets.sdist]
+include = ["caikit/", "caikit_health_probe/", "LICENSE", "README.md"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["caikit", "caikit_health_probe"]
 
 [project.urls]
 Source = "https://github.com/caikit/caikit"
 
 [tool.pytest.ini_options]
+addopts = "-m 'not (examples or slow)'"
 markers = [
     "examples: marks tests as e2e examples (deselect with '-m \"not examples\"')",
     "slow: marks tests requiring pyspark be installed (deselect with '-m \"not slow\"')"
@@ -202,3 +211,20 @@ ignore = [
 "caikit/runtime/service_generation/protoable.py" = [
     "SIM114", # Combine `if` branches using logical `or` operator # TODO: simplify this logic
 ]
+
+[tool.coverage.report]
+omit = [
+    "caikit/runtime/protobufs/*",
+    "tests/**",
+]
+
+[tool.isort]
+profile = "black"
+from_first = true
+import_heading_future = "Future"
+import_heading_stdlib = "Standard"
+import_heading_thirdparty = "Third Party"
+import_heading_firstparty = "First Party"
+import_heading_localfolder = "Local"
+known_firstparty = ["alog", "aconfig", "py_to_proto", "import_tracker"]
+known_localfolder = ["caikit", "sample_lib", "tests", "text_sentiment"]

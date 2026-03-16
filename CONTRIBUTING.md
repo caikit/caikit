@@ -67,34 +67,26 @@ The following tools are required:
 
 - [git](https://git-scm.com)
 - [python](https://www.python.org) (v3.9+)
-- [pip](https://pypi.org/project/pip/) (v23.0+)
+- [uv](https://docs.astral.sh/uv/) (v0.4+)
 
-You can setup your dev environment using [tox](https://tox.wiki/en/latest/), an environment orchestrator which allows for setting up environments for and invoking builds, unit tests, formatting, linting, etc. Install tox with:
-
-```sh
-pip install -r setup_requirements.txt
-```
-
-If you want to manage your own virtual environment instead of using `tox`, you can install `caikit` and all dependencies with:
+Set up your dev environment with:
 
 ```sh
-pip install .
+uv sync --extra all-dev
 ```
 
 ### Unit tests
 
 Unit tests are enforced by the CI system. When making changes, run the tests before pushing the changes to avoid CI issues.
 
-Running unit tests against all supported Python versions is as simple as:
-
 ```sh
-tox
+uv run pytest tests
 ```
 
-Running tests against a single Python version can be done with:
+By default, tests marked `examples` or `slow` are excluded (configured in `pyproject.toml`). To run all tests override the mark expression:
 
 ```sh
-tox -e py
+uv run pytest tests -m ""
 ```
 
 ### Coding style
@@ -106,15 +98,15 @@ We use [pre-commit](https://pre-commit.com/) to enforce coding style using [blac
 You can invoke formatting with:
 
 ```sh
-tox -e fmt
+uv run ./scripts/fmt.sh
 ```
 
-In addition, we use [pylint](https://www.pylint.org) to perform static code analysis of the code.
+In addition, we use [ruff](https://docs.astral.sh/ruff/) to perform linting.
 
 You can invoke the linting with the following command
 
 ```sh
-tox -e lint
+uv run ruff check caikit examples
 ```
 
 ## Your First Code Contribution
