@@ -83,6 +83,12 @@ Unit tests are enforced by the CI system. When making changes, run the tests bef
 uv run pytest tests
 ```
 
+By default, tests marked `examples` or `slow` are excluded (configured in `pyproject.toml`). To run all tests override the mark expression:
+
+```sh
+uv run pytest tests -m ""
+```
+
 ### Coding style
 
 Caikit follows the python [pep8](https://peps.python.org/pep-0008/) coding style. The coding style is enforced by the CI system, and your PR will fail until the style has been applied correctly.
