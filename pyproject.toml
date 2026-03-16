@@ -83,6 +83,7 @@ interfaces-ts = [
 
 interfaces-ts-pyspark = [
     "caikit[interfaces-ts]",
+    "numpy<2",
     "pyspark>=3.3,<3.6",
     "pyarrow>=8.0.0,<22"
 ]
